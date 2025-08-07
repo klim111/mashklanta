@@ -26,6 +26,15 @@ interface InvestmentType {
   color: string;
 }
 
+interface LoanTrack {
+  id: string;
+  name: string;
+  category: 'fixed' | 'variable';
+  averageRate: number;
+  description: string;
+  color: string;
+}
+
 const investmentTypes: InvestmentType[] = [
   {
     name: "דירה יחידה",
@@ -54,6 +63,51 @@ const investmentTypes: InvestmentType[] = [
     maxTerm: 30,
     description: "משכנתא כללית לכל מטרה",
     color: "orange"
+  }
+]
+
+const loanTracks: LoanTrack[] = [
+  // Fixed Rate Tracks
+  {
+    id: 'kalatz',
+    name: 'קל"ץ',
+    category: 'fixed',
+    averageRate: 3.8,
+    description: 'ריבית קבועה לא צמודה',
+    color: 'blue'
+  },
+  {
+    id: 'katz',
+    name: 'ק"צ',
+    category: 'fixed',
+    averageRate: 4.2,
+    description: 'ריבית קבועה צמודה',
+    color: 'green'
+  },
+  // Variable Rate Tracks
+  {
+    id: 'gilad',
+    name: 'משתנה על בסיס אג"ח',
+    category: 'variable',
+    averageRate: 3.5,
+    description: 'ריבית משתנה על בסיס אג"ח ממשלתיות',
+    color: 'purple'
+  },
+  {
+    id: 'prime',
+    name: 'פריים',
+    category: 'variable',
+    averageRate: 4.5,
+    description: 'ריבית משתנה על בסיס ריבית הפריים',
+    color: 'orange'
+  },
+  {
+    id: 'gilad_tzomad',
+    name: 'משתנה על בסיס אג"ח צמודה',
+    category: 'variable',
+    averageRate: 3.9,
+    description: 'ריבית משתנה על בסיס אג"ח צמודה למדד',
+    color: 'indigo'
   }
 ]
 
@@ -98,11 +152,11 @@ export default function InteractiveCalculator() {
   // State
   const [propertyPrice, setPropertyPrice] = useState('')
   const [downPayment, setDownPayment] = useState('')
-  const [interestRate, setInterestRate] = useState(4.5)
-  const [loanTerm, setLoanTerm] = useState(30)
+  const [selectedLoanTrack, setSelectedLoanTrack] = useState<LoanTrack | null>(null)
+  const [loanTerm, setLoanTerm] = useState('')
   const [monthlyIncome, setMonthlyIncome] = useState('')
   const [otherLoans, setOtherLoans] = useState('')
-  const [otherLoansMonths, setOtherLoansMonths] = useState(0)
+  const [otherLoansMonths, setOtherLoansMonths] = useState('')
   const [selectedType, setSelectedType] = useState<InvestmentType>(investmentTypes[0])
   const [showSchedule, setShowSchedule] = useState(false)
   const [schedule, setSchedule] = useState<PaymentSchedule[]>([])
@@ -112,28 +166,46 @@ export default function InteractiveCalculator() {
   const [showEquityCalculator, setShowEquityCalculator] = useState(false)
   const [calculatedEquity, setCalculatedEquity] = useState<number>(0)
 
+  // Debug logging
+  console.log('Current state values:', {
+    propertyPrice,
+    downPayment,
+    selectedLoanTrack,
+    loanTerm,
+    monthlyIncome,
+    otherLoans,
+    otherLoansMonths
+  })
+
   // חישובים
-  const propertyPriceNum = parseFormattedNumber(propertyPrice) || 1500000
-  const downPaymentNum = parseFormattedNumber(downPayment) || 300000
-  const monthlyIncomeNum = parseFormattedNumber(monthlyIncome) || 15000
+  const propertyPriceNum = parseFormattedNumber(propertyPrice) || 0
+  const downPaymentNum = parseFormattedNumber(downPayment) || 0
+  const monthlyIncomeNum = parseFormattedNumber(monthlyIncome) || 0
   const otherLoansNum = parseFormattedNumber(otherLoans) || 0
+  const interestRateNum = selectedLoanTrack ? selectedLoanTrack.averageRate : 0
+  const loanTermNum = parseInt(loanTerm) || 0
+  const otherLoansMonthsNum = parseInt(otherLoansMonths) || 0
+
+  // בדיקה אם כל השדות הנדרשים מלאים
+  const hasRequiredFields = propertyPrice && downPayment && selectedLoanTrack && loanTerm
+
 
 
   
-  const loanAmount = propertyPriceNum - downPaymentNum
-  const monthlyPayment = loanAmount * (interestRate / 100 / 12) * Math.pow(1 + interestRate / 100 / 12, loanTerm * 12) / (Math.pow(1 + interestRate / 100 / 12, loanTerm * 12) - 1)
-  const totalPayment = monthlyPayment * loanTerm * 12
-  const totalInterest = totalPayment - loanAmount
+  const loanAmount = hasRequiredFields ? propertyPriceNum - downPaymentNum : 0
+  const monthlyPayment = hasRequiredFields ? loanAmount * (interestRateNum / 100 / 12) * Math.pow(1 + interestRateNum / 100 / 12, loanTermNum * 12) / (Math.pow(1 + interestRateNum / 100 / 12, loanTermNum * 12) - 1) : 0
+  const totalPayment = hasRequiredFields ? monthlyPayment * loanTermNum * 12 : 0
+  const totalInterest = hasRequiredFields ? totalPayment - loanAmount : 0
   const availableIncome = monthlyIncomeNum - otherLoansNum
-  const debtToIncomeRatio = availableIncome > 0 ? (monthlyPayment / availableIncome) * 100 : 100
-  const ltvRatio = (loanAmount / propertyPriceNum) * 100
-  const isLTVExceeded = ltvRatio > selectedType.maxLTV * 100
+  const debtToIncomeRatio = hasRequiredFields && availableIncome > 0 ? (monthlyPayment / availableIncome) * 100 : 0
+  const ltvRatio = hasRequiredFields && propertyPriceNum > 0 ? (loanAmount / propertyPriceNum) * 100 : 0
+  const isLTVExceeded = hasRequiredFields && ltvRatio > selectedType.maxLTV * 100
 
   // חישוב לוח סילוקין
   const calculateSchedule = () => {
     const principal = loanAmount
-    const annualInterestRate = interestRate / 100
-    const numberOfPayments = loanTerm * 12
+    const annualInterestRate = interestRateNum / 100
+    const numberOfPayments = loanTermNum * 12
     const monthlyInterestRate = annualInterestRate / 12
 
     const monthlyPaymentAmount = principal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments) / (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1)
@@ -159,28 +231,24 @@ export default function InteractiveCalculator() {
     setShowSchedule(true)
   }
 
-  // עדכון הון עצמי לפי LTV מקסימלי
-  useEffect(() => {
-    const maxLoan = propertyPriceNum * selectedType.maxLTV
-    const requiredDownPayment = propertyPriceNum - maxLoan
-    if (downPaymentNum < requiredDownPayment) {
-      setDownPayment(formatNumberWithCommas(requiredDownPayment.toString()))
-    }
-  }, [selectedType, propertyPriceNum])
-
-  // עדכון הון עצמי אוטומטי כשמשנים מחיר נכס
-  useEffect(() => {
-    const maxLoan = propertyPriceNum * selectedType.maxLTV
-    const requiredDownPayment = propertyPriceNum - maxLoan
-    if (downPaymentNum < requiredDownPayment) {
-      setDownPayment(formatNumberWithCommas(requiredDownPayment.toString()))
-    }
-  }, [propertyPriceNum, selectedType])
+  // חישוב הון עצמי מינימלי נדרש
+  const requiredDownPayment = propertyPrice ? propertyPriceNum * (1 - selectedType.maxLTV) : 0
+  const calculatedDownPayment = propertyPrice && downPayment ? propertyPriceNum - loanAmount : 0
 
 
 
   const getDebtRatioMessage = () => {
-    if (debtToIncomeRatio > 40) {
+    if (!hasRequiredFields) {
+      return {
+        message: "הזן את כל הפרטים הנדרשים לקבלת חישוב",
+        color: "text-gray-600",
+        bgColor: "bg-gray-50",
+        borderColor: "border-gray-200",
+        showButton: false,
+        buttonText: "",
+        buttonAction: () => {}
+      }
+    } else if (debtToIncomeRatio > 40) {
       return {
         message: "יחס החזר גבוה והבנק לא יאשר אותו",
         color: "text-red-600",
@@ -398,6 +466,7 @@ export default function InteractiveCalculator() {
                     <Input
                       type="text"
                       value={propertyPrice}
+                      autoComplete="off"
                       onChange={(e) => {
                         const value = e.target.value
                         // Allow empty value
@@ -413,7 +482,7 @@ export default function InteractiveCalculator() {
                         const formattedValue = formatNumberWithCommas(cleanValue)
                         setPropertyPrice(formattedValue)
                       }}
-                      placeholder="1,500,000"
+                      placeholder=""
                       className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-blue-500 placeholder:font-medium ${
                         propertyPriceNum < 500000 || propertyPriceNum > 5000000 ? 'border-red-300' : ''
                       }`}
@@ -467,6 +536,7 @@ export default function InteractiveCalculator() {
                         <Input
                           type="text"
                           value={downPayment}
+                          autoComplete="off"
                           onChange={(e) => {
                             const value = e.target.value
                             if (value === '') {
@@ -477,16 +547,24 @@ export default function InteractiveCalculator() {
                             const formattedValue = formatNumberWithCommas(cleanValue)
                             setDownPayment(formattedValue)
                           }}
-                          placeholder="300,000"
+                          placeholder=""
                           className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-green-500 placeholder:font-medium ${
-                            downPaymentNum < propertyPriceNum * (1 - selectedType.maxLTV) || downPaymentNum > propertyPriceNum * 0.8 ? 'border-red-300' : ''
+                            downPaymentNum < requiredDownPayment || downPaymentNum > propertyPriceNum * 0.8 ? 'border-red-300' : ''
                           }`}
                         />
-                        <div className="flex justify-between text-sm text-gray-500 mt-1">
-                          <span>{formatCurrency(propertyPriceNum * (1 - selectedType.maxLTV))}</span>
-                          <span>{formatCurrency(propertyPriceNum * 0.8)}</span>
+                        <div className="space-y-2 mt-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">הון עצמי מינימלי נדרש:</span>
+                            <span className="font-medium text-blue-600">{propertyPrice ? formatCurrency(requiredDownPayment) : 'הזן ערכים'}</span>
+                          </div>
+                          {downPayment && propertyPrice && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">הון עצמי מחושב:</span>
+                              <span className="font-medium text-green-600">{formatCurrency(calculatedDownPayment)}</span>
+                            </div>
+                          )}
                         </div>
-                        {(downPaymentNum < propertyPriceNum * (1 - selectedType.maxLTV) || downPaymentNum > propertyPriceNum * 0.8) && downPayment && (
+                        {(downPaymentNum < requiredDownPayment || downPaymentNum > propertyPriceNum * 0.8) && downPayment && (
                           <div className="text-xs text-red-600 mt-1">
                             ⚠️ ערך מחוץ לטווח המותר
                           </div>
@@ -530,67 +608,95 @@ export default function InteractiveCalculator() {
                     </div>
                   </div>
 
-                  {/* Interest Rate */}
+                  {/* Loan Track Selection */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <Label>ריבית שנתית</Label>
+                      <Label>מסלול הלוואה</Label>
                       <span className="text-lg font-bold text-purple-600">
-                        {interestRate.toFixed(2)}%
+                        {selectedLoanTrack ? selectedLoanTrack.name + ' (' + selectedLoanTrack.averageRate.toFixed(2) + '%)' : 'בחר מסלול'}
                       </span>
                     </div>
-                    <Input
-                      type="text"
-                      value={interestRate}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        // Allow empty value
-                        if (value === '') {
-                          setInterestRate(4.5)
-                          return
-                        }
-                        
-                        // Allow only digits and dots
-                        const cleanValue = value.replace(/[^\d.]/g, '')
-                        
-                        const numValue = parseFloat(cleanValue)
-                        
-                        // Always update the value if it's a valid number
-                        if (!isNaN(numValue)) {
-                          setInterestRate(numValue)
-                        }
-                      }}
-                      placeholder="4.5"
-                      className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-purple-500 placeholder:font-medium ${
-                        interestRate < 2 || interestRate > 8 ? 'border-red-300' : ''
-                      }`}
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                      <span>2%</span>
-                      <span>8%</span>
-                    </div>
-                    {(interestRate < 2 || interestRate > 8) && (
-                      <div className="text-xs text-red-600 mt-1">
-                        ⚠️ ערך מחוץ לטווח המותר (2% - 8%)
-                      </div>
-                    )}
-                  </div>
+                                         <div className="space-y-4">
+                       {/* Fixed Rate Tracks */}
+                       <div>
+                         <h4 className="text-sm font-semibold text-gray-700 mb-2">ריביות קבועות</h4>
+                         <div className="grid grid-cols-2 gap-2">
+                           {loanTracks.filter(track => track.category === 'fixed').map((track) => (
+                             <Button
+                               key={track.id}
+                               variant={selectedLoanTrack?.id === track.id ? "default" : "outline"}
+                               onClick={() => setSelectedLoanTrack(track)}
+                               className={`h-auto p-3 flex flex-col items-center space-y-1 ${
+                                 selectedLoanTrack?.id === track.id
+                                   ? track.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
+                                     track.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
+                                     track.color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' :
+                                     track.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
+                                     'bg-indigo-500 hover:bg-indigo-600'
+                                   : ''
+                               }`}
+                             >
+                               <span className="font-bold">{track.name}</span>
+                               <span className="text-xs opacity-80">{track.description}</span>
+                               <span className="text-xs">
+                                 ממוצע: {track.averageRate.toFixed(2)}%
+                               </span>
+                             </Button>
+                           ))}
+                         </div>
+                       </div>
+                       
+                       {/* Variable Rate Tracks */}
+                       <div>
+                         <h4 className="text-sm font-semibold text-gray-700 mb-2">ריביות משתנות</h4>
+                         <div className="grid grid-cols-2 gap-2">
+                           {loanTracks.filter(track => track.category === 'variable').map((track) => (
+                             <Button
+                               key={track.id}
+                               variant={selectedLoanTrack?.id === track.id ? "default" : "outline"}
+                               onClick={() => setSelectedLoanTrack(track)}
+                               className={`h-auto p-3 flex flex-col items-center space-y-1 ${
+                                 selectedLoanTrack?.id === track.id
+                                   ? track.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
+                                     track.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
+                                     track.color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' :
+                                     track.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
+                                     'bg-indigo-500 hover:bg-indigo-600'
+                                   : ''
+                               }`}
+                             >
+                               <span className="font-bold">{track.name}</span>
+                               <span className="text-xs opacity-80">{track.description}</span>
+                               <span className="text-xs">
+                                 ממוצע: {track.averageRate.toFixed(2)}%
+                               </span>
+                             </Button>
+                           ))}
+                         </div>
+                       </div>
+                     </div>
+                     <div className="text-sm text-gray-500 mt-2 text-center">
+                       <span>בחר מסלול הלוואה לקבלת חישוב מדויק</span>
+                     </div>
+                   </div>
 
                   {/* Loan Term */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <Label>תקופת המשכנתא</Label>
                       <span className="text-lg font-bold text-orange-600">
-                        {loanTerm} שנים
+                        {loanTermNum > 0 ? loanTermNum + ' שנים' : 'הזן ערך'}
                       </span>
                     </div>
                     <Input
                       type="text"
                       value={loanTerm}
+                      autoComplete="off"
                       onChange={(e) => {
                         const value = e.target.value
                         // Allow empty value
                         if (value === '') {
-                          setLoanTerm(30)
+                          setLoanTerm('')
                           return
                         }
                         
@@ -601,19 +707,19 @@ export default function InteractiveCalculator() {
                         
                         // Always update the value if it's a valid number
                         if (!isNaN(numValue)) {
-                          setLoanTerm(numValue)
+                          setLoanTerm(cleanValue)
                         }
                       }}
-                      placeholder="30"
+                      placeholder=""
                       className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
-                        loanTerm < 10 || loanTerm > selectedType.maxTerm ? 'border-red-300' : ''
+                        loanTermNum < 10 || loanTermNum > selectedType.maxTerm ? 'border-red-300' : ''
                       }`}
                     />
                     <div className="flex justify-between text-sm text-gray-500 mt-1">
                       <span>10 שנים</span>
                       <span>{selectedType.maxTerm} שנים</span>
                     </div>
-                    {(loanTerm < 10 || loanTerm > selectedType.maxTerm) && (
+                    {(loanTermNum < 10 || loanTermNum > selectedType.maxTerm) && loanTerm && (
                       <div className="text-xs text-red-600 mt-1">
                         ⚠️ ערך מחוץ לטווח המותר (10 - {selectedType.maxTerm} שנים)
                       </div>
@@ -631,6 +737,7 @@ export default function InteractiveCalculator() {
                     <Input
                       type="text"
                       value={monthlyIncome}
+                      autoComplete="off"
                       onChange={(e) => {
                         const value = e.target.value
                         // Allow empty value
@@ -646,7 +753,7 @@ export default function InteractiveCalculator() {
                         const formattedValue = formatNumberWithCommas(cleanValue)
                         setMonthlyIncome(formattedValue)
                       }}
-                      placeholder="15,000"
+                      placeholder=""
                       className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-indigo-500 placeholder:font-medium ${
                         monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000 ? 'border-red-300' : ''
                       }`}
@@ -673,6 +780,7 @@ export default function InteractiveCalculator() {
                     <Input
                       type="text"
                       value={otherLoans}
+                      autoComplete="off"
                       onChange={(e) => {
                         const value = e.target.value
                         // Allow empty value
@@ -688,7 +796,7 @@ export default function InteractiveCalculator() {
                         const formattedValue = formatNumberWithCommas(cleanValue)
                         setOtherLoans(formattedValue)
                       }}
-                      placeholder="0"
+                      placeholder=""
                       className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-red-500 placeholder:font-medium ${
                         otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum ? 'border-red-300' : ''
                       }`}
@@ -709,39 +817,40 @@ export default function InteractiveCalculator() {
                       <div className="flex justify-between items-center mb-2">
                         <Label>תקופה שנשארה (חודשים)</Label>
                         <span className="text-lg font-bold text-orange-600">
-                          {otherLoansMonths} חודשים
+                          {otherLoansMonthsNum > 0 ? otherLoansMonthsNum + ' חודשים' : 'הזן ערך'}
                         </span>
                       </div>
-                      <Input
-                        type="text"
-                        value={otherLoansMonths}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          // Allow empty value
-                          if (value === '') {
-                            setOtherLoansMonths(0)
-                            return
-                          }
-                          
-                          // Allow only digits
-                          const cleanValue = value.replace(/[^\d]/g, '')
-                          
-                          const numValue = parseInt(cleanValue)
-                          
-                          // Always update the value if it's a valid number
-                          if (!isNaN(numValue)) {
-                            setOtherLoansMonths(numValue)
-                          }
-                        }}
-                        placeholder="60"
-                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
-                          otherLoansMonths < 1 || otherLoansMonths > 300 ? 'border-red-300' : ''
-                        }`}
-                      />
+                                             <Input
+                         type="text"
+                         value={otherLoansMonths}
+                         autoComplete="off"
+                         onChange={(e) => {
+                           const value = e.target.value
+                           // Allow empty value
+                           if (value === '') {
+                             setOtherLoansMonths('')
+                             return
+                           }
+                           
+                           // Allow only digits
+                           const cleanValue = value.replace(/[^\d]/g, '')
+                           
+                           const numValue = parseInt(cleanValue)
+                           
+                           // Always update the value if it's a valid number
+                           if (!isNaN(numValue)) {
+                             setOtherLoansMonths(cleanValue)
+                           }
+                         }}
+                         placeholder="60"
+                         className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
+                           otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300 ? 'border-red-300' : ''
+                         }`}
+                       />
                       <div className="text-xs text-gray-500 mt-1">
                         מספר החודשים שנשארו לשלם את ההלוואה
                       </div>
-                      {(otherLoansMonths < 1 || otherLoansMonths > 300) && (
+                      {(otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300) && otherLoansMonths && (
                         <div className="text-xs text-red-600 mt-1">
                           ⚠️ ערך מחוץ לטווח המותר (1 - 300 חודשים)
                         </div>
@@ -756,14 +865,14 @@ export default function InteractiveCalculator() {
                 {/* Main Results */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 space-x-reverse">
-                      <DollarSign className="w-5 h-5" />
+                    <CardTitle className="flex items-center justify-center space-x-4 space-x-reverse">
+                      {/* <DollarSign className="w-5 h-5" /> */}
                       <span>תוצאות החישוב</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <motion.div
-                      key={`${propertyPriceNum}-${interestRate}-${loanTerm}`}
+                      key={`${propertyPriceNum}-${interestRateNum}-${loanTermNum}`}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3 }}
@@ -773,13 +882,13 @@ export default function InteractiveCalculator() {
                         <div className="bg-blue-50 p-4 rounded-lg">
                           <div className="text-sm text-gray-600">תשלום חודשי</div>
                           <div className="text-2xl font-bold text-blue-600">
-                            {formatCurrency(monthlyPayment)}
+                            {hasRequiredFields ? formatCurrency(monthlyPayment) : 'הזן ערכים'}
                           </div>
                         </div>
                         <div className="bg-green-50 p-4 rounded-lg">
                           <div className="text-sm text-gray-600">סכום הלוואה</div>
                           <div className="text-2xl font-bold text-green-600">
-                            {formatCurrency(loanAmount)}
+                            {hasRequiredFields ? formatCurrency(loanAmount) : 'הזן ערכים'}
                           </div>
                         </div>
                       </div>
@@ -788,13 +897,13 @@ export default function InteractiveCalculator() {
                         <div className="bg-purple-50 p-4 rounded-lg">
                           <div className="text-sm text-gray-600">סך ריביות</div>
                           <div className="text-xl font-bold text-purple-600">
-                            {formatCurrency(totalInterest)}
+                            {hasRequiredFields ? formatCurrency(totalInterest) : 'הזן ערכים'}
                           </div>
                         </div>
                         <div className="bg-orange-50 p-4 rounded-lg">
                           <div className="text-sm text-gray-600">יחס החזר</div>
                           <div className="text-xl font-bold text-orange-600">
-                            {debtToIncomeRatio.toFixed(1)}%
+                            {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
                           </div>
                         </div>
                       </div>
@@ -804,13 +913,13 @@ export default function InteractiveCalculator() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">יחס הלוואה (LTV)</span>
                           <span className={`font-bold ${isLTVExceeded ? 'text-red-600' : 'text-green-600'}`}>
-                            {ltvRatio.toFixed(1)}%
+                            {hasRequiredFields ? ltvRatio.toFixed(1) + '%' : 'הזן ערכים'}
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                           מקסימום מותר: {selectedType.maxLTV * 100}%
                         </div>
-                        {isLTVExceeded && (
+                        {isLTVExceeded && hasRequiredFields && (
                           <div className="mt-3 p-3 bg-red-100 rounded-lg">
                             <div className="flex items-center space-x-2 space-x-reverse mb-2">
                               <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -851,27 +960,29 @@ export default function InteractiveCalculator() {
                       <div className="flex justify-between items-center">
                         <span>יחס החזר</span>
                         <span className={`font-bold ${debtRatioInfo.color}`}>
-                          {debtToIncomeRatio.toFixed(1)}%
+                          {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
                         </span>
                       </div>
                       
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <motion.div
-                          className={`h-2 rounded-full ${
-                            debtToIncomeRatio <= 30 ? 'bg-green-500' : 
-                            debtToIncomeRatio <= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(debtToIncomeRatio, 100)}%` }}
-                          transition={{ duration: 0.5 }}
-                        />
-                      </div>
+                      {hasRequiredFields && (
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <motion.div
+                            className={`h-2 rounded-full ${
+                              debtToIncomeRatio <= 30 ? 'bg-green-500' : 
+                              debtToIncomeRatio <= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(debtToIncomeRatio, 100)}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                      )}
                       
                       <div className={`p-3 rounded-lg border ${debtRatioInfo.bgColor} ${debtRatioInfo.borderColor}`}>
                         <div className={`text-sm font-semibold ${debtRatioInfo.color}`}>
                           {debtRatioInfo.message}
                         </div>
-                        {otherLoansNum > 0 && (
+                        {otherLoansNum > 0 && hasRequiredFields && (
                           <div className="text-xs text-gray-600 mt-1">
                             הכנסה זמינה: {formatCurrency(availableIncome)} (הכנסה - הלוואות קיימות)
                           </div>
