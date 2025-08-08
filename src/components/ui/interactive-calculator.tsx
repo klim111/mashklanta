@@ -149,6 +149,39 @@ export default function InteractiveCalculator() {
     return new Intl.NumberFormat('he-IL').format(numValue)
   }
 
+  // Percent parsing helper for refinance inputs (allows decimals)
+  const parsePercent = (value: string) => {
+    if (!value) return 0
+    const clean = value.replace(/[^\d.]/g, '')
+    const parsed = parseFloat(clean)
+    return isNaN(parsed) ? 0 : parsed
+  }
+
+  // Generic amortization helpers used in refinance flow
+  const computeMonthlyPayment = (principal: number, annualRatePercent: number, termYears: number) => {
+    if (principal <= 0 || annualRatePercent < 0 || termYears <= 0) return 0
+    const monthlyRate = (annualRatePercent / 100) / 12
+    const n = Math.round(termYears * 12)
+    if (monthlyRate === 0) return principal / n
+    const factor = Math.pow(1 + monthlyRate, n)
+    return principal * monthlyRate * factor / (factor - 1)
+  }
+
+  // Solve for number of months given principal, rate and desired monthly payment
+  const computeTermMonthsForPayment = (principal: number, annualRatePercent: number, monthlyPayment: number) => {
+    if (principal <= 0 || annualRatePercent < 0 || monthlyPayment <= 0) return 0
+    const r = (annualRatePercent / 100) / 12
+    if (r === 0) {
+      return Math.ceil(principal / monthlyPayment)
+    }
+    // If payment is not enough to cover interest, no solution
+    if (monthlyPayment <= principal * r) return 0
+    const numerator = Math.log(monthlyPayment / (monthlyPayment - principal * r))
+    const denominator = Math.log(1 + r)
+    const months = Math.ceil(numerator / denominator)
+    return months
+  }
+
   // State
   const [propertyPrice, setPropertyPrice] = useState('')
   const [downPayment, setDownPayment] = useState('')
@@ -165,6 +198,14 @@ export default function InteractiveCalculator() {
   const [downPaymentMode, setDownPaymentMode] = useState<'manual' | 'calculate'>('manual')
   const [showEquityCalculator, setShowEquityCalculator] = useState(false)
   const [calculatedEquity, setCalculatedEquity] = useState<number>(0)
+
+  // Refinance state
+  const [currentBalance, setCurrentBalance] = useState('')
+  const [currentRate, setCurrentRate] = useState('') // percent input as string
+  const [currentRemainingTerm, setCurrentRemainingTerm] = useState('') // years
+  const [selectedRefiTrack, setSelectedRefiTrack] = useState<LoanTrack | null>(null)
+  const [refiCosts, setRefiCosts] = useState('')
+  const [refiNewTerm, setRefiNewTerm] = useState('') // years for the lower-payment option
 
   // Debug logging
   console.log('Current state values:', {
@@ -185,6 +226,45 @@ export default function InteractiveCalculator() {
   const interestRateNum = selectedLoanTrack ? selectedLoanTrack.averageRate : 0
   const loanTermNum = parseInt(loanTerm) || 0
   const otherLoansMonthsNum = parseInt(otherLoansMonths) || 0
+
+  // Refinance derived values
+  const currentBalanceNum = parseFormattedNumber(currentBalance) || 0
+  const currentRateNum = parsePercent(currentRate) || 0
+  const currentRemainingTermNum = parseInt(currentRemainingTerm) || 0
+  const selectedRefiRateNum = selectedRefiTrack ? selectedRefiTrack.averageRate : 0
+  const refiCostsNum = parseFormattedNumber(refiCosts) || 0
+  const refiNewTermNum = parseInt(refiNewTerm) || 0
+  const hasRefiRequired = Boolean(currentBalance && currentRate && currentRemainingTerm && selectedRefiTrack)
+
+  // Current plan metrics
+  const currentMonthlyPayment = hasRefiRequired 
+    ? computeMonthlyPayment(currentBalanceNum, currentRateNum, currentRemainingTermNum) 
+    : 0
+  const currentTotalPayment = hasRefiRequired ? currentMonthlyPayment * currentRemainingTermNum * 12 : 0
+  const currentTotalInterest = hasRefiRequired ? currentTotalPayment - currentBalanceNum : 0
+
+  // Option A: Lower monthly payment (user chooses new term)
+  const lowerPaymentMonthly = hasRefiRequired && refiNewTermNum > 0 
+    ? computeMonthlyPayment(currentBalanceNum, selectedRefiRateNum, refiNewTermNum)
+    : 0
+  const lowerPaymentTotalPayment = hasRefiRequired && refiNewTermNum > 0 
+    ? lowerPaymentMonthly * refiNewTermNum * 12 + refiCostsNum
+    : 0
+  const lowerPaymentTotalInterest = hasRefiRequired && refiNewTermNum > 0 
+    ? lowerPaymentTotalPayment - currentBalanceNum
+    : 0
+  const lowerPaymentSavings = hasRefiRequired && refiNewTermNum > 0 
+    ? currentTotalInterest - lowerPaymentTotalInterest
+    : 0
+
+  // Option B: Shorten period (keep current monthly payment, solve for new term)
+  const shortenMonths = hasRefiRequired && currentMonthlyPayment > 0
+    ? computeTermMonthsForPayment(currentBalanceNum, selectedRefiRateNum, currentMonthlyPayment)
+    : 0
+  const shortenYears = shortenMonths > 0 ? shortenMonths / 12 : 0
+  const shortenTotalPayment = shortenMonths > 0 ? (currentMonthlyPayment * shortenMonths) + refiCostsNum : 0
+  const shortenTotalInterest = shortenMonths > 0 ? shortenTotalPayment - currentBalanceNum : 0
+  const shortenSavings = shortenMonths > 0 ? currentTotalInterest - shortenTotalInterest : 0
 
   // בדיקה אם כל השדות הנדרשים מלאים
   const hasRequiredFields = propertyPrice && downPayment && selectedLoanTrack && loanTerm
@@ -377,6 +457,266 @@ export default function InteractiveCalculator() {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+        )}
+
+        {/* Refinance Calculator Screen */}
+        {calculatorMode === 'refinance' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mb-8"
+          >
+            <div className="text-center mb-8">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setCalculatorMode('initial')
+                }}
+                className="mb-4"
+              >
+                ← חזור לבחירה
+              </Button>
+              <h3 className="text-2xl font-bold mb-2">מחזור משכנתא</h3>
+              <p className="text-gray-600">השווה בין שתי אפשרויות: הורדת תשלום חודשי או קיצור התקופה להקטנת סך הריבית</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Current Mortgage Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2 space-x-reverse">
+                    <Home className="w-5 h-5" />
+                    <span>פרטי המשכנתא הנוכחית</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label>יתרת הלוואה</Label>
+                      <span className="text-lg font-bold text-blue-600">
+                        {currentBalance ? formatCurrency(currentBalanceNum) : 'הזן ערך'}
+                      </span>
+                    </div>
+                    <Input
+                      type="text"
+                      value={currentBalance}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === '') { setCurrentBalance(''); return }
+                        const clean = v.replace(/[^\d,]/g, '')
+                        setCurrentBalance(formatNumberWithCommas(clean))
+                      }}
+                      className="w-full text-left border-2 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label>יתרת תקופה (שנים)</Label>
+                      <span className="text-lg font-bold text-orange-600">
+                        {currentRemainingTermNum > 0 ? `${currentRemainingTermNum} שנים` : 'הזן ערך'}
+                      </span>
+                    </div>
+                    <Input
+                      type="text"
+                      value={currentRemainingTerm}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === '') { setCurrentRemainingTerm(''); return }
+                        const clean = v.replace(/[^\d]/g, '')
+                        if (clean) setCurrentRemainingTerm(clean)
+                      }}
+                      className="w-full text-left border-2 focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label>ריבית נוכחית (%)</Label>
+                      <span className="text-lg font-bold text-purple-600">
+                        {currentRate ? `${parsePercent(currentRate).toFixed(2)}%` : 'הזן ערך'}
+                      </span>
+                    </div>
+                    <Input
+                      type="text"
+                      value={currentRate}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === '') { setCurrentRate(''); return }
+                        const clean = v.replace(/[^\d.]/g, '')
+                        setCurrentRate(clean)
+                      }}
+                      placeholder="3.80"
+                      className="w-full text-left border-2 focus:border-purple-500"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">שיעור ריבית שנתי ממוצע</div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">תשלום חודשי (נוכחי):</span>
+                      <span className="font-semibold text-blue-700">{hasRefiRequired ? formatCurrency(currentMonthlyPayment) : '—'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">סך ריביות שנותרו:</span>
+                      <span className="font-semibold text-purple-700">{hasRefiRequired ? formatCurrency(currentTotalInterest) : '—'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* New Refinance Options */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2 space-x-reverse">
+                    <TrendingUp className="w-5 h-5" />
+                    <span>תנאי המחזור החדשים</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Select new track */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label>מסלול ריבית חדש</Label>
+                      <span className="text-lg font-bold text-green-600">
+                        {selectedRefiTrack ? `${selectedRefiTrack.name} (${selectedRefiRateNum.toFixed(2)}%)` : 'בחר מסלול'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {loanTracks.map((track) => (
+                        <Button
+                          key={track.id}
+                          variant={selectedRefiTrack?.id === track.id ? 'default' : 'outline'}
+                          onClick={() => setSelectedRefiTrack(track)}
+                          className={`h-auto p-3 flex flex-col items-center space-y-1 ${
+                            selectedRefiTrack?.id === track.id
+                              ? track.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
+                                track.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
+                                track.color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' :
+                                track.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
+                                'bg-indigo-500 hover:bg-indigo-600'
+                              : ''
+                          }`}
+                        >
+                          <span className="font-bold">{track.name}</span>
+                          <span className="text-xs opacity-80">{track.description}</span>
+                          <span className="text-xs">{track.averageRate.toFixed(2)}%</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Refinance costs */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Label>עלויות מחזור (אופציונלי)</Label>
+                      <span className="text-lg font-bold text-red-600">
+                        {refiCosts ? formatCurrency(refiCostsNum) : '—'}
+                      </span>
+                    </div>
+                    <Input
+                      type="text"
+                      value={refiCosts}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === '') { setRefiCosts(''); return }
+                        const clean = v.replace(/[^\d,]/g, '')
+                        setRefiCosts(formatNumberWithCommas(clean))
+                      }}
+                      placeholder="0"
+                      className="w-full text-left border-2 focus:border-red-500"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">עמלות, קנסות פירעון מוקדם, עו"ד, שמאי וכו'</div>
+                  </div>
+
+                  {/* Option A: Lower monthly payment */}
+                  <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-semibold text-blue-800">אפשרות א': הורדת תשלום חודשי</div>
+                      <div className="text-sm text-blue-700">בחר תקופה חדשה (שנים)</div>
+                    </div>
+                    <Input
+                      type="text"
+                      value={refiNewTerm}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === '') { setRefiNewTerm(''); return }
+                        const clean = v.replace(/[^\d]/g, '')
+                        if (clean) setRefiNewTerm(clean)
+                      }}
+                      placeholder={currentRemainingTerm || '20'}
+                      className="w-full text-left border-2 focus:border-blue-500 mb-3"
+                    />
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white rounded-md p-3">
+                        <div className="text-gray-600">תשלום חודשי חדש</div>
+                        <div className="text-lg font-bold text-blue-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentMonthly) : '—'}</div>
+                      </div>
+                      <div className="bg-white rounded-md p-3">
+                        <div className="text-gray-600">סך ריביות (כולל עלויות)</div>
+                        <div className="text-lg font-bold text-blue-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentTotalInterest) : '—'}</div>
+                      </div>
+                      <div className="bg-white rounded-md p-3 col-span-2">
+                        <div className="text-gray-600">חיסכון לעומת המסלול הנוכחי</div>
+                        <div className={`text-lg font-bold ${lowerPaymentSavings >= 0 ? 'text-green-700' : 'text-red-700'}`}>{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentSavings) : '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Option B: Shorten period */}
+                  <div className="border rounded-lg p-4 bg-green-50 border-green-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-semibold text-green-800">אפשרות ב': קיצור תקופה</div>
+                      <div className="text-sm text-green-700">שומרים על אותו תשלום חודשי</div>
+                    </div>
+                    <div className="text-xs text-gray-600 mb-3">אם התשלום החודשי הנוכחי נמוך מדי ביחס לריבית החדשה, לא ניתן לקצר.</div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white rounded-md p-3">
+                        <div className="text-gray-600">תקופה חדשה (מוערך)</div>
+                        <div className="text-lg font-bold text-green-700">{shortenMonths > 0 ? `${Math.ceil(shortenYears).toLocaleString('he-IL')} שנים (${shortenMonths.toLocaleString('he-IL')} חוד׳)` : '—'}</div>
+                      </div>
+                      <div className="bg-white rounded-md p-3">
+                        <div className="text-gray-600">סך ריביות (כולל עלויות)</div>
+                        <div className="text-lg font-bold text-green-700">{shortenMonths > 0 ? formatCurrency(shortenTotalInterest) : '—'}</div>
+                      </div>
+                      <div className="bg-white rounded-md p-3 col-span-2">
+                        <div className="text-gray-600">חיסכון לעומת המסלול הנוכחי</div>
+                        <div className={`text-lg font-bold ${shortenSavings >= 0 ? 'text-green-700' : 'text-red-700'}`}>{shortenMonths > 0 ? formatCurrency(shortenSavings) : '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Summary comparison */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-gray-50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-sm text-gray-600">סך ריביות נוכחי</div>
+                  <div className="text-xl font-bold text-gray-800">{hasRefiRequired ? formatCurrency(currentTotalInterest) : '—'}</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-blue-50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-sm text-blue-700">חיסכון - הורדת תשלום</div>
+                  <div className={`text-xl font-bold ${lowerPaymentSavings >= 0 ? 'text-blue-800' : 'text-red-600'}`}>{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentSavings) : '—'}</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-green-50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-sm text-green-700">חיסכון - קיצור תקופה</div>
+                  <div className={`text-xl font-bold ${shortenSavings >= 0 ? 'text-green-800' : 'text-red-600'}`}>{shortenMonths > 0 ? formatCurrency(shortenSavings) : '—'}</div>
+                </CardContent>
+              </Card>
+            </div>
           </motion.div>
         )}
 
