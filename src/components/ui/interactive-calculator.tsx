@@ -218,6 +218,93 @@ export default function InteractiveCalculator() {
     otherLoansMonths
   })
 
+  // BOI rates integration state
+  const [boiRateCache, setBoiRateCache] = useState<Record<string, { rate: number; asOf?: string }>>({})
+  const [isFetchingRate, setIsFetchingRate] = useState(false)
+  const [ratesError, setRatesError] = useState<string | null>(null)
+
+  // Helper to map BOI response into our track id
+  const mapBoiRate = (trackId: string, data: any): { rate: number | null; asOf?: string } => {
+    try {
+      // Preferred normalized shape
+      if (data && typeof data === 'object' && data.rates && typeof data.rates === 'object') {
+        const value = data.rates[trackId]
+        const asOf = data.asOf || data.date || undefined
+        if (typeof value === 'number' && isFinite(value)) return { rate: value, asOf }
+      }
+
+      // Heuristic search in flat object
+      const tryKeys = (keys: string[], obj: any): number | null => {
+        for (const key of keys) {
+          const k = Object.keys(obj).find((x) => x.toLowerCase() === key.toLowerCase())
+          if (k && typeof obj[k] === 'number' && isFinite(obj[k])) return obj[k] as number
+        }
+        // fuzzy contains
+        for (const key of keys) {
+          const k = Object.keys(obj).find((x) => x.toLowerCase().includes(key.toLowerCase()))
+          if (k && typeof obj[k] === 'number' && isFinite(obj[k])) return obj[k] as number
+        }
+        return null
+      }
+
+      const keyMap: Record<string, string[]> = {
+        prime: ['prime', 'prime_rate', 'r_prime', 'פריים'],
+        kalatz: ['fixed_unlinked', 'fixed_no_index', 'kalatz', 'קל"צ', 'קלצ', 'fixed_without_index'],
+        katz: ['fixed_cpi', 'fixed_indexed', 'katz', 'ק"צ', 'קצ', 'fixed_with_index'],
+        gilad: ['gov_bonds', 'bonds', 'agach', 'אג"ח', 'gilad'],
+        gilad_tzomad: ['gov_bonds_cpi', 'bonds_cpi', 'agach_tzomad', 'אג"ח צמוד']
+      }
+
+      const keys = keyMap[trackId] || []
+
+      // Flat object top-level
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const found = tryKeys(keys, data)
+        if (typeof found === 'number') return { rate: found, asOf: data.asOf || data.date }
+      }
+
+      // Series array (pick last/newest)
+      const series: any[] | undefined = Array.isArray(data) ? data : (Array.isArray(data?.series) ? data.series : undefined)
+      if (series && series.length > 0) {
+        const last = series[series.length - 1]
+        if (last && typeof last === 'object') {
+          const found = tryKeys(keys, last)
+          if (typeof found === 'number') return { rate: found, asOf: last.asOf || last.date }
+        }
+      }
+    } catch {
+      // ignore mapping errors
+    }
+    return { rate: null }
+  }
+
+  // When user selects a loan track, fetch and apply BOI rate if available
+  const handleSelectTrack = async (track: LoanTrack) => {
+    setRatesError(null)
+    // If we already have a cached rate for this track, apply immediately
+    const cached = boiRateCache[track.id]
+    if (cached) {
+      setSelectedLoanTrack({ ...track, averageRate: cached.rate })
+      return
+    }
+    setIsFetchingRate(true)
+    setSelectedLoanTrack(track)
+    try {
+      const res = await fetch('/api/boi/rates', { cache: 'no-store' })
+      if (!res.ok) throw new Error('שגיאה בשליפת ריביות')
+      const data = await res.json()
+      const { rate, asOf } = mapBoiRate(track.id, data)
+      if (rate !== null && isFinite(rate)) {
+        setBoiRateCache((prev) => ({ ...prev, [track.id]: { rate, asOf } }))
+        setSelectedLoanTrack({ ...track, averageRate: rate })
+      }
+    } catch (e: any) {
+      setRatesError(e?.message || 'נכשלה שליפת ריבית מבנק ישראל')
+    } finally {
+      setIsFetchingRate(false)
+    }
+  }
+
   // חישובים
   const propertyPriceNum = parseFormattedNumber(propertyPrice) || 0
   const downPaymentNum = parseFormattedNumber(downPayment) || 0
@@ -965,7 +1052,7 @@ export default function InteractiveCalculator() {
                              <Button
                                key={track.id}
                                variant={selectedLoanTrack?.id === track.id ? "default" : "outline"}
-                               onClick={() => setSelectedLoanTrack(track)}
+                               onClick={() => handleSelectTrack(track)}
                                className={`h-auto p-3 flex flex-col items-center space-y-1 ${
                                  selectedLoanTrack?.id === track.id
                                    ? track.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
@@ -994,7 +1081,7 @@ export default function InteractiveCalculator() {
                              <Button
                                key={track.id}
                                variant={selectedLoanTrack?.id === track.id ? "default" : "outline"}
-                               onClick={() => setSelectedLoanTrack(track)}
+                               onClick={() => handleSelectTrack(track)}
                                className={`h-auto p-3 flex flex-col items-center space-y-1 ${
                                  selectedLoanTrack?.id === track.id
                                    ? track.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
@@ -1015,461 +1102,466 @@ export default function InteractiveCalculator() {
                          </div>
                        </div>
                      </div>
-                     <div className="text-sm text-gray-500 mt-2 text-center">
-                       <span>בחר מסלול הלוואה לקבלת חישוב מדויק</span>
-                     </div>
-                   </div>
-
-                  {/* Loan Term */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <Label>תקופת המשכנתא</Label>
-                      <span className="text-lg font-bold text-orange-600">
-                        {loanTermNum > 0 ? loanTermNum + ' שנים' : 'הזן ערך'}
-                      </span>
-                    </div>
-                    <Input
-                      type="text"
-                      value={loanTerm}
-                      autoComplete="off"
-                      onChange={(e) => {
-                        const value = e.target.value
-                        // Allow empty value
-                        if (value === '') {
-                          setLoanTerm('')
-                          return
-                        }
-                        
-                        // Allow only digits
-                        const cleanValue = value.replace(/[^\d]/g, '')
-                        
-                        const numValue = parseInt(cleanValue)
-                        
-                        // Always update the value if it's a valid number
-                        if (!isNaN(numValue)) {
-                          setLoanTerm(cleanValue)
-                        }
-                      }}
-                      placeholder=""
-                      className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
-                        loanTermNum < 10 || loanTermNum > selectedType.maxTerm ? 'border-red-300' : ''
-                      }`}
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                      <span>10 שנים</span>
-                      <span>{selectedType.maxTerm} שנים</span>
-                    </div>
-                    {(loanTermNum < 10 || loanTermNum > selectedType.maxTerm) && loanTerm && (
-                      <div className="text-xs text-red-600 mt-1">
-                        ⚠️ ערך מחוץ לטווח המותר (10 - {selectedType.maxTerm} שנים)
+                      <div className="text-sm text-gray-500 mt-2 text-center">
+                        <span>בחר מסלול הלוואה לקבלת חישוב מדויק</span>
                       </div>
-                    )}
-                  </div>
+                      {isFetchingRate && (
+                        <div className="text-xs text-gray-500 mt-1 text-center">טוען ריבית עדכנית מבנק ישראל…</div>
+                      )}
+                      {ratesError && (
+                        <div className="text-xs text-red-600 mt-1 text-center">{ratesError}</div>
+                      )}
+                      {selectedLoanTrack && boiRateCache[selectedLoanTrack.id] && (
+                        <div className="text-xs text-green-600 mt-1 text-center">
+                          עודכן לפי בנק ישראל: {boiRateCache[selectedLoanTrack.id].rate.toFixed(2)}%{boiRateCache[selectedLoanTrack.id].asOf ? ` (נכון ל-${boiRateCache[selectedLoanTrack.id].asOf})` : ''}
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Monthly Income */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <Label>הכנסה חודשית</Label>
-                      <span className="text-lg font-bold text-indigo-600">
-                        {monthlyIncome ? formatCurrency(monthlyIncomeNum) : 'הזן ערך'}
-                      </span>
-                    </div>
-                    <Input
-                      type="text"
-                      value={monthlyIncome}
-                      autoComplete="off"
-                      onChange={(e) => {
-                        const value = e.target.value
-                        // Allow empty value
-                        if (value === '') {
-                          setMonthlyIncome('')
-                          return
-                        }
-                        
-                        // Allow only digits and commas
-                        const cleanValue = value.replace(/[^\d,]/g, '')
-                        
-                        // Format with commas
-                        const formattedValue = formatNumberWithCommas(cleanValue)
-                        setMonthlyIncome(formattedValue)
-                      }}
-                      placeholder=""
-                      className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-indigo-500 placeholder:font-medium ${
-                        monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000 ? 'border-red-300' : ''
-                      }`}
-                    />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
-                      <span>₪8K</span>
-                      <span>₪50K</span>
-                    </div>
-                    {(monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000) && monthlyIncome && (
-                      <div className="text-xs text-red-600 mt-1">
-                        ⚠️ ערך מחוץ לטווח המותר (₪8K - ₪50K)
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Other Loans */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <Label>הלוואות לתקופה של יותר מ-18 חודשים</Label>
-                      <span className="text-lg font-bold text-red-600">
-                        {otherLoans ? formatCurrency(otherLoansNum) : 'הזן ערך'}
-                      </span>
-                    </div>
-                    <Input
-                      type="text"
-                      value={otherLoans}
-                      autoComplete="off"
-                      onChange={(e) => {
-                        const value = e.target.value
-                        // Allow empty value
-                        if (value === '') {
-                          setOtherLoans('')
-                          return
-                        }
-                        
-                        // Allow only digits and commas
-                        const cleanValue = value.replace(/[^\d,]/g, '')
-                        
-                        // Format with commas
-                        const formattedValue = formatNumberWithCommas(cleanValue)
-                        setOtherLoans(formattedValue)
-                      }}
-                      placeholder=""
-                      className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-red-500 placeholder:font-medium ${
-                        otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum ? 'border-red-300' : ''
-                      }`}
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                      סכום החזר חודשי של הלוואות קיימות
-                    </div>
-                    {(otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum) && otherLoans && (
-                      <div className="text-xs text-red-600 mt-1">
-                        ⚠️ ערך מחוץ לטווח המותר (0 - {formatCurrency(monthlyIncomeNum)})
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Other Loans Months */}
-                  {otherLoansNum > 0 && (
+                    {/* Loan Term */}
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <Label>תקופה שנשארה (חודשים)</Label>
+                        <Label>תקופת המשכנתא</Label>
                         <span className="text-lg font-bold text-orange-600">
-                          {otherLoansMonthsNum > 0 ? otherLoansMonthsNum + ' חודשים' : 'הזן ערך'}
+                          {loanTermNum > 0 ? loanTermNum + ' שנים' : 'הזן ערך'}
                         </span>
                       </div>
-                                             <Input
-                         type="text"
-                         value={otherLoansMonths}
-                         autoComplete="off"
-                         onChange={(e) => {
-                           const value = e.target.value
-                           // Allow empty value
-                           if (value === '') {
-                             setOtherLoansMonths('')
-                             return
-                           }
-                           
-                           // Allow only digits
-                           const cleanValue = value.replace(/[^\d]/g, '')
-                           
-                           const numValue = parseInt(cleanValue)
-                           
-                           // Always update the value if it's a valid number
-                           if (!isNaN(numValue)) {
-                             setOtherLoansMonths(cleanValue)
-                           }
-                         }}
-                         placeholder="60"
-                         className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
-                           otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300 ? 'border-red-300' : ''
-                         }`}
-                       />
-                      <div className="text-xs text-gray-500 mt-1">
-                        מספר החודשים שנשארו לשלם את ההלוואה
+                      <Input
+                        type="text"
+                        value={loanTerm}
+                        autoComplete="off"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Allow empty value
+                          if (value === '') {
+                            setLoanTerm('')
+                            return
+                          }
+                          // Only digits
+                          if (/^\d+$/.test(value)) {
+                            setLoanTerm(value)
+                          }
+                        }}
+                        placeholder=""
+                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
+                          loanTermNum < 10 || loanTermNum > selectedType.maxTerm ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <div className="flex justify-between text-sm text-gray-500 mt-1">
+                        <span>10 שנים</span>
+                        <span>{selectedType.maxTerm} שנים</span>
                       </div>
-                      {(otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300) && otherLoansMonths && (
+                      {(loanTermNum < 10 || loanTermNum > selectedType.maxTerm) && loanTerm && (
                         <div className="text-xs text-red-600 mt-1">
-                          ⚠️ ערך מחוץ לטווח המותר (1 - 300 חודשים)
+                          ⚠️ ערך מחוץ לטווח המותר (10 - {selectedType.maxTerm} שנים)
                         </div>
                       )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
 
-              {/* Results */}
-              <div className="space-y-6">
-                {/* Main Results */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-center space-x-4 space-x-reverse">
-                      {/* <DollarSign className="w-5 h-5" /> */}
-                      <span>תוצאות החישוב</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <motion.div
-                      key={`${propertyPriceNum}-${interestRateNum}-${loanTermNum}`}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="space-y-4"
-                    >
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">תשלום חודשי</div>
-                          <div className="text-2xl font-bold text-blue-600">
-                            {hasRequiredFields ? formatCurrency(monthlyPayment) : 'הזן ערכים'}
-                          </div>
-                        </div>
-                        <div className="bg-green-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">סכום הלוואה</div>
-                          <div className="text-2xl font-bold text-green-600">
-                            {hasRequiredFields ? formatCurrency(loanAmount) : 'הזן ערכים'}
-                          </div>
-                        </div>
+                    {/* Monthly Income */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <Label>הכנסה חודשית</Label>
+                        <span className="text-lg font-bold text-indigo-600">
+                          {monthlyIncome ? formatCurrency(monthlyIncomeNum) : 'הזן ערך'}
+                        </span>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-purple-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">סך ריביות</div>
-                          <div className="text-xl font-bold text-purple-600">
-                            {hasRequiredFields ? formatCurrency(totalInterest) : 'הזן ערכים'}
-                          </div>
-                        </div>
-                        <div className="bg-orange-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">יחס החזר</div>
-                          <div className="text-xl font-bold text-orange-600">
-                            {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
-                          </div>
-                        </div>
+                      <Input
+                        type="text"
+                        value={monthlyIncome}
+                        autoComplete="off"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Allow empty value
+                          if (value === '') {
+                            setMonthlyIncome('')
+                            return
+                          }
+                          
+                          // Allow only digits and commas
+                          const cleanValue = value.replace(/[^\d,]/g, '')
+                          
+                          // Format with commas
+                          const formattedValue = formatNumberWithCommas(cleanValue)
+                          setMonthlyIncome(formattedValue)
+                        }}
+                        placeholder=""
+                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-indigo-500 placeholder:font-medium ${
+                          monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000 ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <div className="flex justify-between text-sm text-gray-500 mt-1">
+                        <span>₪8K</span>
+                        <span>₪50K</span>
                       </div>
+                      {(monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000) && monthlyIncome && (
+                        <div className="text-xs text-red-600 mt-1">
+                          ⚠️ ערך מחוץ לטווח המותר (₪8K - ₪50K)
+                        </div>
+                      )}
+                    </div>
 
-                      {/* LTV Ratio */}
-                      <div className={`p-4 rounded-lg ${isLTVExceeded ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">יחס הלוואה (LTV)</span>
-                          <span className={`font-bold ${isLTVExceeded ? 'text-red-600' : 'text-green-600'}`}>
-                            {hasRequiredFields ? ltvRatio.toFixed(1) + '%' : 'הזן ערכים'}
+                    {/* Other Loans */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <Label>הלוואות לתקופה של יותר מ-18 חודשים</Label>
+                        <span className="text-lg font-bold text-red-600">
+                          {otherLoans ? formatCurrency(otherLoansNum) : 'הזן ערך'}
+                        </span>
+                      </div>
+                      <Input
+                        type="text"
+                        value={otherLoans}
+                        autoComplete="off"
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Allow empty value
+                          if (value === '') {
+                            setOtherLoans('')
+                            return
+                          }
+                          
+                          // Allow only digits and commas
+                          const cleanValue = value.replace(/[^\d,]/g, '')
+                          
+                          // Format with commas
+                          const formattedValue = formatNumberWithCommas(cleanValue)
+                          setOtherLoans(formattedValue)
+                        }}
+                        placeholder=""
+                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-red-500 placeholder:font-medium ${
+                          otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        סכום החזר חודשי של הלוואות קיימות
+                      </div>
+                      {(otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum) && otherLoans && (
+                        <div className="text-xs text-red-600 mt-1">
+                          ⚠️ ערך מחוץ לטווח המותר (0 - {formatCurrency(monthlyIncomeNum)})
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Other Loans Months */}
+                    {otherLoansNum > 0 && (
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <Label>תקופה שנשארה (חודשים)</Label>
+                          <span className="text-lg font-bold text-orange-600">
+                            {otherLoansMonthsNum > 0 ? otherLoansMonthsNum + ' חודשים' : 'הזן ערך'}
                           </span>
                         </div>
+                                             <Input
+                           type="text"
+                           value={otherLoansMonths}
+                           autoComplete="off"
+                           onChange={(e) => {
+                             const value = e.target.value
+                             // Allow empty value
+                             if (value === '') {
+                               setOtherLoansMonths('')
+                               return
+                             }
+                             
+                             // Allow only digits
+                             const cleanValue = value.replace(/[^\d]/g, '')
+                             
+                             const numValue = parseInt(cleanValue)
+                             
+                             // Always update the value if it's a valid number
+                             if (!isNaN(numValue)) {
+                               setOtherLoansMonths(cleanValue)
+                             }
+                           }}
+                           placeholder="60"
+                           className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
+                             otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300 ? 'border-red-300' : ''
+                           }`}
+                         />
                         <div className="text-xs text-gray-500 mt-1">
-                          מקסימום מותר: {selectedType.maxLTV * 100}%
+                          מספר החודשים שנשארו לשלם את ההלוואה
                         </div>
-                        {isLTVExceeded && hasRequiredFields && (
-                          <div className="mt-3 p-3 bg-red-100 rounded-lg">
-                            <div className="flex items-center space-x-2 space-x-reverse mb-2">
-                              <AlertTriangle className="w-4 h-4 text-red-600" />
-                              <span className="text-sm font-semibold text-red-800">
-                                הון עצמי אינו מספיק
-                              </span>
-                            </div>
-                            <p className="text-xs text-red-700 mb-3">
-                              ההון העצמי הנוכחי אינו מספיק לרכישת נכס זה. נדרש הון עצמי של לפחות {formatCurrency(propertyPriceNum * (1 - selectedType.maxLTV))}.
-                            </p>
-                            <Button 
-                              size="sm" 
-                              className="w-full bg-red-600 hover:bg-red-700"
-                              onClick={() => {
-                                alert('נציג שלנו יצור איתך קשר בקרוב לעזור בגיוס הון עצמי נוסף!')
-                              }}
-                            >
-                              <HelpCircle className="w-4 h-4 ml-2" />
-                              בוא נעזור לך לגייס הון עצמי גבוה יותר
-                            </Button>
+                        {(otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300) && otherLoansMonths && (
+                          <div className="text-xs text-red-600 mt-1">
+                            ⚠️ ערך מחוץ לטווח המותר (1 - 300 חודשים)
                           </div>
                         )}
                       </div>
-                    </motion.div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Affordability Analysis */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 space-x-reverse">
-                      <TrendingUp className="w-5 h-5" />
-                      <span>ניתוח יכולת החזר</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>יחס החזר</span>
-                        <span className={`font-bold ${debtRatioInfo.color}`}>
-                          {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
-                        </span>
-                      </div>
-                      
-                      {hasRequiredFields && (
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <motion.div
-                            className={`h-2 rounded-full ${
-                              debtToIncomeRatio <= 30 ? 'bg-green-500' : 
-                              debtToIncomeRatio <= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${Math.min(debtToIncomeRatio, 100)}%` }}
-                            transition={{ duration: 0.5 }}
-                          />
-                        </div>
-                      )}
-                      
-                      <div className={`p-3 rounded-lg border ${debtRatioInfo.bgColor} ${debtRatioInfo.borderColor}`}>
-                        <div className={`text-sm font-semibold ${debtRatioInfo.color}`}>
-                          {debtRatioInfo.message}
-                        </div>
-                        {otherLoansNum > 0 && hasRequiredFields && (
-                          <div className="text-xs text-gray-600 mt-1">
-                            הכנסה זמינה: {formatCurrency(availableIncome)} (הכנסה - הלוואות קיימות)
-                          </div>
-                        )}
-                        {debtRatioInfo.showButton && (
-                          <Button 
-                            size="sm" 
-                            className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
-                            onClick={debtRatioInfo.buttonAction}
-                          >
-                            <Phone className="w-4 h-4 ml-2" />
-                            {debtRatioInfo.buttonText}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Amortization Schedule Button */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 space-x-reverse">
-                      <Table className="w-5 h-5" />
-                      <span>לוח סילוקין</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Button 
-                      onClick={() => {
-                        if (showSchedule) {
-                          setShowSchedule(false)
-                        } else {
-                          calculateSchedule()
-                        }
-                      }}
-                      className="w-full"
-                      variant={showSchedule ? "outline" : "default"}
-                    >
-                      {showSchedule ? (
-                        <>
-                          <EyeOff className="w-4 h-4 ml-2" />
-                          הסתר לוח סילוקין
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4 ml-2" />
-                          הצג לוח סילוקין מלא
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* לוח סילוקין מלא */}
-            <AnimatePresence>
-              {showSchedule && (
-                <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -50 }}
-                  transition={{ duration: 0.4 }}
-                  className="mt-8"
-                >
+                {/* Results */}
+                <div className="space-y-6">
+                  {/* Main Results */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center space-x-2 space-x-reverse">
-                        <Table className="w-5 h-5" />
-                        <span>לוח סילוקין מלא</span>
+                      <CardTitle className="flex items-center justify-center space-x-4 space-x-reverse">
+                        {/* <DollarSign className="w-5 h-5" /> */}
+                        <span>תוצאות החישוב</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="overflow-auto max-h-96 border rounded-lg">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0">
-                            <tr>
-                              <th className="px-4 py-3 text-right font-semibold">חודש</th>
-                              <th className="px-4 py-3 text-right font-semibold">קרן</th>
-                              <th className="px-4 py-3 text-right font-semibold">ריבית</th>
-                              <th className="px-4 py-3 text-right font-semibold">סה"כ תשלום</th>
-                              <th className="px-4 py-3 text-right font-semibold">יתרה</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {schedule.map((payment, index) => (
-                              <tr key={index} className="border-b hover:bg-gray-50">
-                                <td className="px-4 py-2 text-right">{payment.month}</td>
-                                <td className="px-4 py-2 text-right font-mono">
-                                  {formatCurrency(payment.principal)}
-                                </td>
-                                <td className="px-4 py-2 text-right font-mono">
-                                  {formatCurrency(payment.interest)}
-                                </td>
-                                <td className="px-4 py-2 text-right font-mono font-bold">
-                                  {formatCurrency(payment.total)}
-                                </td>
-                                <td className="px-4 py-2 text-right font-mono">
-                                  {formatCurrency(payment.balance)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">סה"כ החזר</div>
-                          <div className="text-xl font-bold text-blue-600">
-                            {formatCurrency(totalPayment)}
+                      <motion.div
+                        key={`${propertyPriceNum}-${interestRateNum}-${loanTermNum}`}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="space-y-4"
+                      >
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">תשלום חודשי</div>
+                            <div className="text-2xl font-bold text-blue-600">
+                              {hasRequiredFields ? formatCurrency(monthlyPayment) : 'הזן ערכים'}
+                            </div>
+                          </div>
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">סכום הלוואה</div>
+                            <div className="text-2xl font-bold text-green-600">
+                              {hasRequiredFields ? formatCurrency(loanAmount) : 'הזן ערכים'}
+                            </div>
                           </div>
                         </div>
-                        <div className="bg-green-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">סך ריביות</div>
-                          <div className="text-xl font-bold text-green-600">
-                            {formatCurrency(totalInterest)}
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-purple-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">סך ריביות</div>
+                            <div className="text-xl font-bold text-purple-600">
+                              {hasRequiredFields ? formatCurrency(totalInterest) : 'הזן ערכים'}
+                            </div>
+                          </div>
+                          <div className="bg-orange-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">יחס החזר</div>
+                            <div className="text-xl font-bold text-orange-600">
+                              {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
+                            </div>
                           </div>
                         </div>
-                        <div className="bg-purple-50 p-4 rounded-lg">
-                          <div className="text-sm text-gray-600">החזר לשקל</div>
-                          <div className="text-xl font-bold text-purple-600">
-                            {(totalPayment / loanAmount).toFixed(3)} ₪
+
+                        {/* LTV Ratio */}
+                        <div className={`p-4 rounded-lg ${isLTVExceeded ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">יחס הלוואה (LTV)</span>
+                            <span className={`font-bold ${isLTVExceeded ? 'text-red-600' : 'text-green-600'}`}>
+                              {hasRequiredFields ? ltvRatio.toFixed(1) + '%' : 'הזן ערכים'}
+                            </span>
                           </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            מקסימום מותר: {selectedType.maxLTV * 100}%
+                          </div>
+                          {isLTVExceeded && hasRequiredFields && (
+                            <div className="mt-3 p-3 bg-red-100 rounded-lg">
+                              <div className="flex items-center space-x-2 space-x-reverse mb-2">
+                                <AlertTriangle className="w-4 h-4 text-red-600" />
+                                <span className="text-sm font-semibold text-red-800">
+                                  הון עצמי אינו מספיק
+                                </span>
+                              </div>
+                              <p className="text-xs text-red-700 mb-3">
+                                ההון העצמי הנוכחי אינו מספיק לרכישת נכס זה. נדרש הון עצמי של לפחות {formatCurrency(propertyPriceNum * (1 - selectedType.maxLTV))}.
+                              </p>
+                              <Button 
+                                size="sm" 
+                                className="w-full bg-red-600 hover:bg-red-700"
+                                onClick={() => {
+                                  alert('נציג שלנו יצור איתך קשר בקרוב לעזור בגיוס הון עצמי נוסף!')
+                                }}
+                              >
+                                <HelpCircle className="w-4 h-4 ml-2" />
+                                בוא נעזור לך לגייס הון עצמי גבוה יותר
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Affordability Analysis */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2 space-x-reverse">
+                        <TrendingUp className="w-5 h-5" />
+                        <span>ניתוח יכולת החזר</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span>יחס החזר</span>
+                          <span className={`font-bold ${debtRatioInfo.color}`}>
+                            {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
+                          </span>
+                        </div>
+                        
+                        {hasRequiredFields && (
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <motion.div
+                              className={`h-2 rounded-full ${
+                                debtToIncomeRatio <= 30 ? 'bg-green-500' : 
+                                debtToIncomeRatio <= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                              }`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.min(debtToIncomeRatio, 100)}%` }}
+                              transition={{ duration: 0.5 }}
+                            />
+                          </div>
+                        )}
+                        
+                        <div className={`p-3 rounded-lg border ${debtRatioInfo.bgColor} ${debtRatioInfo.borderColor}`}>
+                          <div className={`text-sm font-semibold ${debtRatioInfo.color}`}>
+                            {debtRatioInfo.message}
+                          </div>
+                          {otherLoansNum > 0 && hasRequiredFields && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              הכנסה זמינה: {formatCurrency(availableIncome)} (הכנסה - הלוואות קיימות)
+                            </div>
+                          )}
+                          {debtRatioInfo.showButton && (
+                            <Button 
+                              size="sm" 
+                              className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                              onClick={debtRatioInfo.buttonAction}
+                            >
+                              <Phone className="w-4 h-4 ml-2" />
+                              {debtRatioInfo.buttonText}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
 
-        {/* Equity Calculator Modal */}
-        <EquityCalculatorModal
-          isOpen={showEquityCalculator}
-          onClose={() => setShowEquityCalculator(false)}
-          onApplyEquity={(equity) => {
-            setCalculatedEquity(equity)
-            setDownPayment(formatNumberWithCommas(equity.toString()))
-            setDownPaymentMode('calculate')
-          }}
-          propertyPrice={propertyPriceNum}
-        />
-      </div>
-    </section>
-  )
-}
+                  {/* Amortization Schedule Button */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2 space-x-reverse">
+                        <Table className="w-5 h-5" />
+                        <span>לוח סילוקין</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Button 
+                        onClick={() => {
+                          if (showSchedule) {
+                            setShowSchedule(false)
+                          } else {
+                            calculateSchedule()
+                          }
+                        }}
+                        className="w-full"
+                        variant={showSchedule ? "outline" : "default"}
+                      >
+                        {showSchedule ? (
+                          <>
+                            <EyeOff className="w-4 h-4 ml-2" />
+                            הסתר לוח סילוקין
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-4 h-4 ml-2" />
+                            הצג לוח סילוקין מלא
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* לוח סילוקין מלא */}
+              <AnimatePresence>
+                {showSchedule && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -50 }}
+                    transition={{ duration: 0.4 }}
+                    className="mt-8"
+                  >
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2 space-x-reverse">
+                          <Table className="w-5 h-5" />
+                          <span>לוח סילוקין מלא</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="overflow-auto max-h-96 border rounded-lg">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 sticky top-0">
+                              <tr>
+                                <th className="px-4 py-3 text-right font-semibold">חודש</th>
+                                <th className="px-4 py-3 text-right font-semibold">קרן</th>
+                                <th className="px-4 py-3 text-right font-semibold">ריבית</th>
+                                <th className="px-4 py-3 text-right font-semibold">סה"כ תשלום</th>
+                                <th className="px-4 py-3 text-right font-semibold">יתרה</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {schedule.map((payment, index) => (
+                                <tr key={index} className="border-b hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-right">{payment.month}</td>
+                                  <td className="px-4 py-2 text-right font-mono">
+                                    {formatCurrency(payment.principal)}
+                                  </td>
+                                  <td className="px-4 py-2 text-right font-mono">
+                                    {formatCurrency(payment.interest)}
+                                  </td>
+                                  <td className="px-4 py-2 text-right font-mono font-bold">
+                                    {formatCurrency(payment.total)}
+                                  </td>
+                                  <td className="px-4 py-2 text-right font-mono">
+                                    {formatCurrency(payment.balance)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">סה"כ החזר</div>
+                            <div className="text-xl font-bold text-blue-600">
+                              {formatCurrency(totalPayment)}
+                            </div>
+                          </div>
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">סך ריביות</div>
+                            <div className="text-xl font-bold text-green-600">
+                              {formatCurrency(totalInterest)}
+                            </div>
+                          </div>
+                          <div className="bg-purple-50 p-4 rounded-lg">
+                            <div className="text-sm text-gray-600">החזר לשקל</div>
+                            <div className="text-xl font-bold text-purple-600">
+                              {(totalPayment / loanAmount).toFixed(3)} ₪
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+
+          {/* Equity Calculator Modal */}
+          <EquityCalculatorModal
+            isOpen={showEquityCalculator}
+            onClose={() => setShowEquityCalculator(false)}
+            onApplyEquity={(equity) => {
+              setCalculatedEquity(equity)
+              setDownPayment(formatNumberWithCommas(equity.toString()))
+              setDownPaymentMode('calculate')
+            }}
+            propertyPrice={propertyPriceNum}
+          />
+        </div>
+      </section>
+    )
+  }
