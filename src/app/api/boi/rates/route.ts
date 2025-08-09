@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
 import { fetchBoiRates } from "@/lib/boi";
 
+export const runtime = "nodejs"; // ensure Node runtime for outbound fetch in some hosts
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from") || undefined;
@@ -11,23 +13,28 @@ export async function GET(req: NextRequest) {
   const ttlSeconds = parseInt(process.env.RATES_CACHE_TTL ?? "900", 10);
 
   if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      try {
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
         return NextResponse.json(JSON.parse(cached));
-      } catch {
-        // ignore parse error and refetch
       }
+    } catch {
+      // ignore cache errors
     }
   }
 
   try {
     const data = await fetchBoiRates({ from, to });
     if (redis) {
-      await redis.set(cacheKey, JSON.stringify(data), "EX", ttlSeconds);
+      try {
+        await redis.set(cacheKey, JSON.stringify(data), "EX", ttlSeconds);
+      } catch {
+        // ignore cache errors
+      }
     }
     return NextResponse.json(data, { status: 200 });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Failed to fetch rates" }, { status: 502 });
+    const message = err?.message ?? "Failed to fetch rates";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }
