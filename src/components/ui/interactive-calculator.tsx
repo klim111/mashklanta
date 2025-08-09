@@ -8,7 +8,7 @@ import { Input } from "./input"
 import { Label } from "./label"
 import EquityCalculatorModal from "./equity-calculator-modal"
 
-import { TrendingUp, DollarSign, Calendar, Home, Calculator, Table, Eye, EyeOff, AlertTriangle, HelpCircle, Phone } from "lucide-react"
+import { TrendingUp, DollarSign, Calendar, Home, Calculator, Table, Eye, EyeOff, AlertTriangle, HelpCircle, Phone, Upload } from "lucide-react"
 
 interface PaymentSchedule {
   month: number;
@@ -207,6 +207,18 @@ export default function InteractiveCalculator() {
   const [refiCosts, setRefiCosts] = useState('')
   const [refiNewTerm, setRefiNewTerm] = useState('') // years for the lower-payment option
 
+  // Upload + OCR state
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState<string | null>(null)
+  const [ocrSummary, setOcrSummary] = useState<null | {
+    principalOutstanding: number | null
+    currentRatePercent: number | null
+    remainingTermYears: number | null
+    trackType: string | null
+    linkage: string | null
+  }>(null)
+  const [ocrError, setOcrError] = useState<string | null>(null)
+
   // Debug logging
   console.log('Current state values:', {
     propertyPrice,
@@ -226,6 +238,25 @@ export default function InteractiveCalculator() {
   const interestRateNum = selectedLoanTrack ? selectedLoanTrack.averageRate : 0
   const loanTermNum = parseInt(loanTerm) || 0
   const otherLoansMonthsNum = parseInt(otherLoansMonths) || 0
+
+  // Derived values for new-loan calculator
+  const hasRequiredFields = Boolean(propertyPrice && downPayment && selectedLoanTrack && loanTerm)
+  const loanAmount = hasRequiredFields ? Math.max(propertyPriceNum - downPaymentNum, 0) : 0
+  const monthlyPayment = hasRequiredFields && loanAmount > 0 && loanTermNum > 0
+    ? (() => {
+        const r = (interestRateNum / 100) / 12
+        const n = loanTermNum * 12
+        if (r === 0) return loanAmount / n
+        const factor = Math.pow(1 + r, n)
+        return loanAmount * r * factor / (factor - 1)
+      })()
+    : 0
+  const totalPayment = hasRequiredFields ? monthlyPayment * loanTermNum * 12 : 0
+  const totalInterest = hasRequiredFields ? Math.max(totalPayment - loanAmount, 0) : 0
+  const availableIncome = Math.max(monthlyIncomeNum - otherLoansNum, 0)
+  const debtToIncomeRatio = hasRequiredFields && availableIncome > 0 ? (monthlyPayment / availableIncome) * 100 : 0
+  const ltvRatio = hasRequiredFields && propertyPriceNum > 0 ? (loanAmount / propertyPriceNum) * 100 : 0
+  const isLTVExceeded = hasRequiredFields ? ltvRatio > (selectedType.maxLTV * 100) : false
 
   // Refinance derived values
   const currentBalanceNum = parseFormattedNumber(currentBalance) || 0
@@ -266,20 +297,85 @@ export default function InteractiveCalculator() {
   const shortenTotalInterest = shortenMonths > 0 ? shortenTotalPayment - currentBalanceNum : 0
   const shortenSavings = shortenMonths > 0 ? currentTotalInterest - shortenTotalInterest : 0
 
-  // בדיקה אם כל השדות הנדרשים מלאים
-  const hasRequiredFields = propertyPrice && downPayment && selectedLoanTrack && loanTerm
+  // Upload helpers
+  const presignUpload = async (file: File) => {
+    const res = await fetch('/api/uploads/presign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+      }),
+    })
+    if (!res.ok) throw new Error('Presign failed')
+    return res.json() as Promise<{ key: string; url: string; method: string; headers: Record<string,string> }>
+  }
 
+  const uploadToS3 = async (url: string, headers: Record<string,string>, file: File) => {
+    const putRes = await fetch(url, { method: 'PUT', headers, body: file })
+    if (!putRes.ok) throw new Error('Upload failed')
+  }
 
+  const createDocumentFromKey = async (key: string) => {
+    const res = await fetch('/api/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ s3Key: key }),
+    })
+    if (!res.ok) throw new Error('OCR failed')
+    return res.json()
+  }
 
-  
-  const loanAmount = hasRequiredFields ? propertyPriceNum - downPaymentNum : 0
-  const monthlyPayment = hasRequiredFields ? loanAmount * (interestRateNum / 100 / 12) * Math.pow(1 + interestRateNum / 100 / 12, loanTermNum * 12) / (Math.pow(1 + interestRateNum / 100 / 12, loanTermNum * 12) - 1) : 0
-  const totalPayment = hasRequiredFields ? monthlyPayment * loanTermNum * 12 : 0
-  const totalInterest = hasRequiredFields ? totalPayment - loanAmount : 0
-  const availableIncome = monthlyIncomeNum - otherLoansNum
-  const debtToIncomeRatio = hasRequiredFields && availableIncome > 0 ? (monthlyPayment / availableIncome) * 100 : 0
-  const ltvRatio = hasRequiredFields && propertyPriceNum > 0 ? (loanAmount / propertyPriceNum) * 100 : 0
-  const isLTVExceeded = hasRequiredFields && ltvRatio > selectedType.maxLTV * 100
+  const onSelectImage = async (file: File) => {
+    try {
+      setIsUploading(true)
+      setOcrError(null)
+      setOcrSummary(null)
+      setUploadedPreviewUrl(URL.createObjectURL(file))
+
+      const presigned = await presignUpload(file)
+      await uploadToS3(presigned.url, presigned.headers, file)
+
+      const doc = await createDocumentFromKey(presigned.key)
+      const parsed = (doc?.parsedJson ?? {}) as any
+
+      // Auto-fill fields if present
+      if (parsed.principalOutstanding) {
+        setCurrentBalance(formatNumberWithCommas(String(Math.round(parsed.principalOutstanding))))
+      }
+      if (parsed.currentRatePercent) {
+        setCurrentRate(String(parsed.currentRatePercent))
+      }
+      if (parsed.remainingTermYears) {
+        setCurrentRemainingTerm(String(Math.round(parsed.remainingTermYears)))
+      }
+      // Optionally select track
+      const trackMap: Record<string, string> = {
+        kalatz: 'kalatz',
+        katz: 'katz',
+        prime: 'prime',
+        gilad: 'gilad',
+        variable: 'gilad',
+      }
+      if (parsed.trackType && trackMap[parsed.trackType]) {
+        const t = loanTracks.find(t => t.id === trackMap[parsed.trackType]) || null
+        setSelectedRefiTrack(t)
+      }
+
+      setOcrSummary({
+        principalOutstanding: parsed.principalOutstanding ?? null,
+        currentRatePercent: parsed.currentRatePercent ?? null,
+        remainingTermYears: parsed.remainingTermYears ?? null,
+        trackType: parsed.trackType ?? null,
+        linkage: parsed.linkage ?? null,
+      })
+    } catch (err: any) {
+      setOcrError(err?.message ?? 'שגיאה בהעלאת המסמך')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   // חישוב לוח סילוקין
   const calculateSchedule = () => {
@@ -482,6 +578,60 @@ export default function InteractiveCalculator() {
               <p className="text-gray-600">השווה בין שתי אפשרויות: הורדת תשלום חודשי או קיצור התקופה להקטנת סך הריבית</p>
             </div>
 
+            {/* New: Upload payoff schedule image first */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5" /> העלה צילום לוח סילוקין</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                  <label className="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2">
+                    <Upload className="w-4 h-4" /> בחר תמונה
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (f) onSelectImage(f)
+                      }}
+                    />
+                  </label>
+                  {isUploading && <span className="text-sm text-gray-600">מעלה ומנתח מסמך…</span>}
+                  {ocrError && <span className="text-sm text-red-600">{ocrError}</span>}
+                </div>
+                {uploadedPreviewUrl && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    <div className="md:col-span-1">
+                      {/* Preview */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={uploadedPreviewUrl} alt="תצוגה מקדימה" className="rounded border w-full object-contain max-h-56" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                          <div className="text-sm text-blue-800">יתרת הלוואה מזוהה</div>
+                          <div className="text-lg font-bold text-blue-900">{ocrSummary?.principalOutstanding ? formatCurrency(ocrSummary.principalOutstanding) : '—'}</div>
+                        </div>
+                        <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                          <div className="text-sm text-purple-800">ריבית מזוהה</div>
+                          <div className="text-lg font-bold text-purple-900">{ocrSummary?.currentRatePercent ? `${ocrSummary.currentRatePercent.toFixed(2)}%` : '—'}</div>
+                        </div>
+                        <div className="bg-orange-50 border border-orange-200 rounded p-3">
+                          <div className="text-sm text-orange-800">יתרת תקופה</div>
+                          <div className="text-lg font-bold text-orange-900">{ocrSummary?.remainingTermYears ? `${Math.round(ocrSummary.remainingTermYears)} שנים` : '—'}</div>
+                        </div>
+                        <div className="bg-green-50 border border-green-200 rounded p-3">
+                          <div className="text-sm text-green-800">מסלול</div>
+                          <div className="text-lg font-bold text-green-900">{ocrSummary?.trackType ? ocrSummary.trackType : '—'} {ocrSummary?.linkage ? `(${ocrSummary.linkage})` : ''}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Current Mortgage Details */}
               <Card>
@@ -661,34 +811,33 @@ export default function InteractiveCalculator() {
                       </div>
                       <div className="bg-white rounded-md p-3">
                         <div className="text-gray-600">סך ריביות (כולל עלויות)</div>
-                        <div className="text-lg font-bold text-blue-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentTotalInterest) : '—'}</div>
+                        <div className="text-lg font-bold text-purple-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentTotalInterest) : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3 col-span-2">
-                        <div className="text-gray-600">חיסכון לעומת המסלול הנוכחי</div>
-                        <div className={`text-lg font-bold ${lowerPaymentSavings >= 0 ? 'text-green-700' : 'text-red-700'}`}>{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentSavings) : '—'}</div>
+                        <div className="text-gray-600">חיסכון מוערך בריביות</div>
+                        <div className="text-lg font-bold text-green-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentSavings) : '—'}</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Option B: Shorten period */}
                   <div className="border rounded-lg p-4 bg-green-50 border-green-200">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="font-semibold text-green-800">אפשרות ב': קיצור תקופה</div>
-                      <div className="text-sm text-green-700">שומרים על אותו תשלום חודשי</div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-semibold text-green-800">אפשרות ב': קיצור התקופה</div>
+                      <div className="text-sm text-green-700">תשלום חודשי נשאר דומה לנוכחי</div>
                     </div>
-                    <div className="text-xs text-gray-600 mb-3">אם התשלום החודשי הנוכחי נמוך מדי ביחס לריבית החדשה, לא ניתן לקצר.</div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="bg-white rounded-md p-3">
-                        <div className="text-gray-600">תקופה חדשה (מוערך)</div>
-                        <div className="text-lg font-bold text-green-700">{shortenMonths > 0 ? `${Math.ceil(shortenYears).toLocaleString('he-IL')} שנים (${shortenMonths.toLocaleString('he-IL')} חוד׳)` : '—'}</div>
+                        <div className="text-gray-600">תקופה חדשה (שנים)</div>
+                        <div className="text-lg font-bold text-green-700">{shortenYears > 0 ? `${(shortenYears).toFixed(1)} שנים` : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3">
                         <div className="text-gray-600">סך ריביות (כולל עלויות)</div>
-                        <div className="text-lg font-bold text-green-700">{shortenMonths > 0 ? formatCurrency(shortenTotalInterest) : '—'}</div>
+                        <div className="text-lg font-bold text-purple-700">{shortenMonths > 0 ? formatCurrency(shortenTotalInterest) : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3 col-span-2">
-                        <div className="text-gray-600">חיסכון לעומת המסלול הנוכחי</div>
-                        <div className={`text-lg font-bold ${shortenSavings >= 0 ? 'text-green-700' : 'text-red-700'}`}>{shortenMonths > 0 ? formatCurrency(shortenSavings) : '—'}</div>
+                        <div className="text-gray-600">חיסכון מוערך בריביות</div>
+                        <div className="text-lg font-bold text-green-700">{shortenMonths > 0 ? formatCurrency(shortenSavings) : '—'}</div>
                       </div>
                     </div>
                   </div>
