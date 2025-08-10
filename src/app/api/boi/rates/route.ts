@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const data = await fetchBoiRates({ from, to });
-    if (redis) {
+    const isFallback = data && typeof data === "object" && data.source === "fallback";
+    if (redis && !isFallback) {
       await redis.set(cacheKey, JSON.stringify(data), "EX", ttlSeconds);
     }
     return NextResponse.json(data, { status: 200 });
