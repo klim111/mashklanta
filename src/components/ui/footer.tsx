@@ -6,7 +6,7 @@ import { Button } from "./button"
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-white text-gray-900 border-t">
       <div className="max-w-6xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
@@ -16,16 +16,16 @@ export default function Footer() {
               הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לך למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
             </p>
             <div className="flex space-x-4 space-x-reverse">
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 hover:translate-y-[-2px] transition-transform">
                 <Facebook className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 hover:translate-y-[-2px] transition-transform">
                 <Instagram className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 hover:translate-y-[-2px] transition-transform">
                 <Linkedin className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 hover:translate-y-[-2px] transition-transform">
                 <Twitter className="w-4 h-4" />
               </Button>
             </div>
