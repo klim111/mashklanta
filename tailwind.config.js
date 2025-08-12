@@ -10,8 +10,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'hebrew': ['system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
-        'sans': ['system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+        'hebrew': ['Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+        'sans': ['Inter', 'system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+        'inter': ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
