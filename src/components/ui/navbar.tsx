@@ -58,7 +58,7 @@ export default function NavBar() {
 
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">התחל עכשיו</Button>
+            <Button>התחל עכשיו</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
@@ -144,7 +144,7 @@ export default function NavBar() {
               </Dialog>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">התחל עכשיו</Button>
+                  <Button>התחל עכשיו</Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>

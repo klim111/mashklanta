@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { Heebo } from 'next/font/google'
+
+const heebo = Heebo({ subsets: ['hebrew'], weight: ['400','500','600','700'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'משכלתנא - ייעוץ משכנתאות חכם',
@@ -13,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body className="font-hebrew">{children}</body>
+      <body className={`${heebo.className} font-sans`}>{children}</body>
     </html>
   )
 } 

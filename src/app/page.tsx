@@ -29,7 +29,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen mx-auto bg-white text-foreground overflow-hidden">
+    <div className="min-h-screen mx-auto bg-white text-foreground overflow-hidden font-sans">
       {/* Navigation */}
       <motion.div
         style={{ y, opacity }}
@@ -189,7 +189,7 @@ export default function Home() {
         transition={{ duration: 0.5, delay: 1 }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-300"
+        className="fixed bottom-8 right-8 z-50 bg-primary hover:bg-primary/90 text-white p-4 rounded-full shadow-lg transition-all duration-300"
         onClick={() => {
           const heroSection = document.querySelector('section');
           if (heroSection) {
