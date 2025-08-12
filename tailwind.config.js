@@ -10,10 +10,31 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'hebrew': ['system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
-        'sans': ['system-ui', 'Avenir', 'Helvetica', 'Arial', 'sans-serif'],
+        'hebrew': ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
+        'sans': ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        // Professional Financial Colors
+        'financial-primary': '#1e3a8a',
+        'financial-primary-light': '#3b82f6',
+        'financial-primary-dark': '#1e40af',
+        'financial-success': '#059669',
+        'financial-success-light': '#10b981',
+        'financial-warning': '#d97706',
+        'financial-danger': '#dc2626',
+        'financial-gray': {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+        },
+        // Existing shadcn colors
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -76,11 +97,86 @@ module.exports = {
           to: {
             height: '0'
           }
+        },
+        // Professional Financial Animations
+        'blob': {
+          '0%': {
+            transform: 'translate(0px, 0px) scale(1)',
+          },
+          '33%': {
+            transform: 'translate(30px, -50px) scale(1.1)',
+          },
+          '66%': {
+            transform: 'translate(-20px, 20px) scale(0.9)',
+          },
+          '100%': {
+            transform: 'translate(0px, 0px) scale(1)',
+          }
+        },
+        'pulse-financial': {
+          '0%, 100%': {
+            boxShadow: '0 0 0 0 rgba(30, 58, 138, 0.4)',
+          },
+          '50%': {
+            boxShadow: '0 0 0 20px rgba(30, 58, 138, 0)',
+          }
+        },
+        'gradient-shift': {
+          '0%, 100%': {
+            backgroundPosition: '0% 50%',
+          },
+          '50%': {
+            backgroundPosition: '100% 50%',
+          }
+        },
+        'fade-in-up': {
+          from: {
+            opacity: '0',
+            transform: 'translateY(30px)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translateY(0)',
+          }
+        },
+        'slide-in-right': {
+          from: {
+            opacity: '0',
+            transform: 'translateX(-30px)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translateX(0)',
+          }
+        },
+        'float': {
+          '0%, 100%': {
+            transform: 'translateY(0px)',
+          },
+          '50%': {
+            transform: 'translateY(-10px)',
+          }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out'
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        'blob': 'blob 7s infinite',
+        'pulse-financial': 'pulse-financial 2s infinite',
+        'gradient-shift': 'gradient-shift 3s ease infinite',
+        'fade-in-up': 'fade-in-up 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+        'slide-in-right': 'slide-in-right 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+        'float': 'float 3s ease-in-out infinite',
+      },
+      backgroundImage: {
+        'financial-gradient': 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+        'financial-gradient-subtle': 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
+        'financial-success-gradient': 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+      },
+      boxShadow: {
+        'financial': '0 4px 12px rgba(30, 58, 138, 0.25)',
+        'financial-lg': '0 8px 25px rgba(30, 58, 138, 0.35)',
+        'financial-xl': '0 12px 40px rgba(0, 0, 0, 0.1)',
       }
     }
   },
