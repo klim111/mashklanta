@@ -2,86 +2,356 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Professional Financial Design System */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  /* Primary Financial Brand Colors */
+  --financial-primary: #1e3a8a; /* Deep Professional Blue */
+  --financial-primary-light: #3b82f6; /* Lighter Blue for accents */
+  --financial-primary-dark: #1e40af; /* Darker Blue for depth */
+  
+  /* Trust & Security Colors */
+  --financial-success: #059669; /* Professional Green */
+  --financial-success-light: #10b981;
+  --financial-warning: #d97706; /* Professional Orange */
+  --financial-danger: #dc2626; /* Professional Red */
+  
+  /* Neutral Professional Palette */
+  --financial-gray-50: #f8fafc;
+  --financial-gray-100: #f1f5f9;
+  --financial-gray-200: #e2e8f0;
+  --financial-gray-300: #cbd5e1;
+  --financial-gray-400: #94a3b8;
+  --financial-gray-500: #64748b;
+  --financial-gray-600: #475569;
+  --financial-gray-700: #334155;
+  --financial-gray-800: #1e293b;
+  --financial-gray-900: #0f172a;
+  
+  /* Background System */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-accent: #f1f5f9;
+  --bg-muted: #e2e8f0;
+  
+  /* Professional Typography */
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
-
   color-scheme: light;
-  color: #213547;
-  background-color: #ffffff;
-
+  color: var(--financial-gray-800);
+  background-color: var(--bg-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* Hebrew Typography Optimization */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   direction: rtl;
-  text-align: center;
-  background-color: #ffffff;
-  color: #213547;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--financial-gray-800);
+  overflow-x: hidden;
 }
 
+/* Professional Typography Scale */
 h1, h2, h3, h4, h5, h6 {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  font-weight: 600;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-weight: 700;
   direction: rtl;
-  text-align: center;
+  color: var(--financial-gray-900);
+  line-height: 1.2;
+  margin-bottom: 0.5em;
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #f9f9f9;
-  color: #213547;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+h3 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+}
+
+/* Professional Button System */
+.btn-primary {
+  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.35);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--financial-primary);
+  border: 2px solid var(--financial-primary);
+  padding: 1rem 2rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-secondary:hover {
+  background: var(--financial-primary);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.25);
+}
+
+/* Professional Card System */
+.card-financial {
+  background: white;
+  border: 1px solid var(--financial-gray-200);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-financial:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  border-color: var(--financial-primary-light);
+}
+
+.card-financial::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+}
+
+/* Professional Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
-  a:hover {
-    color: #747bff;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
   }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-financial {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(30, 58, 138, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(30, 58, 138, 0);
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Animation Classes */
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-pulse-financial {
+  animation: pulse-financial 2s infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Professional Gradient Backgrounds */
+.bg-financial-gradient {
+  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+}
+
+.bg-financial-gradient-subtle {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-accent) 100%);
+}
+
+.bg-financial-success-gradient {
+  background: linear-gradient(135deg, var(--financial-success) 0%, var(--financial-success-light) 100%);
+}
+
+/* Professional Text Styles */
+.text-financial-primary {
+  color: var(--financial-primary);
+}
+
+.text-financial-gradient {
+  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Professional Layout Utilities */
+.container-financial {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.section-padding {
+  padding: 5rem 0;
+}
+
+.section-padding-sm {
+  padding: 3rem 0;
+}
+
+/* Professional Form Styling */
+.form-financial input,
+.form-financial select,
+.form-financial textarea {
+  background: white;
+  border: 2px solid var(--financial-gray-200);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  color: var(--financial-gray-800);
+}
+
+.form-financial input:focus,
+.form-financial select:focus,
+.form-financial textarea:focus {
+  outline: none;
+  border-color: var(--financial-primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* Professional Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--financial-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--financial-gray-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--financial-primary);
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Professional Loading States */
+.loading-financial {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-financial::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Professional Status Indicators */
+.status-success {
+  color: var(--financial-success);
+  background: rgba(5, 150, 105, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-warning {
+  color: var(--financial-warning);
+  background: rgba(217, 119, 6, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-info {
+  color: var(--financial-primary);
+  background: rgba(30, 58, 138, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 /* Hebrew text styling */
@@ -242,56 +512,57 @@ html {
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 215 25% 27%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 27%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --popover-foreground: 215 25% 27%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-foreground: 215 25% 27%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-foreground: 215 25% 27%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --ring: 221 83% 53%;
+    --chart-1: 221 83% 53%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 24 70% 52%;
+    --chart-4: 280 87% 65%;
+    --chart-5: 14 91% 65%;
+    --radius: 0.75rem;
   }
+  
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 215 28% 17%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 215 28% 17%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 215 28% 17%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 25%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 215 28% 25%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 215 28% 25%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 215 28% 25%;
+    --input: 215 28% 25%;
+    --ring: 221 83% 53%;
+    --chart-1: 221 83% 53%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 24 70% 52%;
+    --chart-4: 280 87% 65%;
+    --chart-5: 14 91% 65%;
   }
 }
 
@@ -300,21 +571,33 @@ html {
     @apply border-border;
   }
   body {
-    @apply bg-white text-gray-900;
+    @apply bg-background text-foreground font-sans;
   }
 }
 
-/* Custom placeholder styling for better visibility */
-input::placeholder {
-  color: #6b7280 !important;
+/* Enhanced Input Styling */
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: var(--financial-gray-500) !important;
   font-weight: 500 !important;
   opacity: 1 !important;
   font-size: 1rem !important;
 }
 
-input:focus::placeholder {
-  color: #9ca3af !important;
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: var(--financial-gray-400) !important;
   opacity: 0.7 !important;
+}
+
+/* Professional Focus States */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: var(--financial-primary) !important;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1) !important;
 }
 
 /* Ensure placeholders are visible */
@@ -351,4 +634,21 @@ input[type="number"]::placeholder {
 *::placeholder {
   color: #6b7280 !important;
   opacity: 1 !important;
+} 
+
+/* Enhanced Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Professional Print Styles */
+@media print {
+  * {
+    background: white !important;
+    color: black !important;
+  }
 } 

@@ -1,4 +1,4 @@
-  'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -22,30 +22,32 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 300], [0, -50]);
-  const opacity = useTransform(scrollY, [0, 300], [1, 0.8]);
+  const opacity = useTransform(scrollY, [0, 300], [1, 0.9]);
 
   useEffect(() => {
     setIsLoaded(true);
   }, []);
 
   return (
-    <div className="min-h-screen mx-auto bg-white text-foreground overflow-hidden">
-      {/* Navigation */}
+    <div className="min-h-screen bg-financial-gradient-subtle text-foreground overflow-hidden">
+      {/* Professional Navigation */}
       <motion.div
         style={{ y, opacity }}
-        className="relative z-50"
+        className="relative z-50 bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100"
       >
         <NavBar />
       </motion.div>
-              {/* Mashkalanta Section */}
-              <motion.section
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          <Mashkalanta />
-        </motion.section>
+      
+      {/* Mashkalanta Section */}
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true, margin: "-100px" }}
+        className="bg-white"
+      >
+        <Mashkalanta />
+      </motion.section>
       
       {/* Main Content */}
       <div className="relative z-10">
@@ -58,14 +60,13 @@ export default function Home() {
           <Hero />
         </motion.section>
 
-
-
         {/* Services Section */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-white"
         >
           <Services />
         </motion.section>
@@ -76,6 +77,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-financial-gradient-subtle"
         >
           <Features />
         </motion.section>
@@ -86,7 +88,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           viewport={{ once: true, margin: "-100px" }}
-          className="py-16"
+          className="section-padding bg-white"
         >
           <InteractiveCalculator />
         </motion.section>
@@ -97,6 +99,8 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
           viewport={{ once: true, margin: "-100px" }}
+          id="demo-section"
+          className="section-padding bg-financial-gradient-subtle"
         >
           <Demo />
         </motion.section>
@@ -107,6 +111,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-white"
         >
           <Testimonials />
         </motion.section>
@@ -117,16 +122,18 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-financial-gradient-subtle"
         >
           <Pricing />
         </motion.section>
 
-        {/* Mortgage Calculator (ישן) */}
+        {/* Mortgage Calculator */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.8 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-white"
         >
           <MortgageCalculator />
         </motion.section>
@@ -137,6 +144,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.9 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-financial-gradient-subtle"
         >
           <EquityPlanner />
         </motion.section>
@@ -147,6 +155,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.0 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-white"
         >
           <Map />
         </motion.section>
@@ -157,6 +166,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.1 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-financial-gradient-subtle"
         >
           <Timeline />
         </motion.section>
@@ -167,6 +177,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.2 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="section-padding bg-white"
         >
           <Statistic />
         </motion.section>
@@ -177,19 +188,20 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.3 }}
           viewport={{ once: true, margin: "-100px" }}
+          className="bg-financial-gray-900 text-white"
         >
           <Footer />
         </motion.section>
       </div>
 
-      {/* Floating Action Button */}
+      {/* Professional Floating Action Button */}
       <motion.button
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: isLoaded ? 1 : 0, scale: isLoaded ? 1 : 0 }}
         transition={{ duration: 0.5, delay: 1 }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-300"
+        className="fixed bottom-8 right-8 z-50 btn-primary p-4 rounded-full shadow-2xl animate-pulse-financial"
         onClick={() => {
           const heroSection = document.querySelector('section');
           if (heroSection) {

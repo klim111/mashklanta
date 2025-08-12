@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { FaBaby, FaMoneyBillWave, FaChartLine, FaHandshake, FaRocket, FaStar } from "react-icons/fa";
+import { FaBaby, FaMoneyBillWave, FaChartLine, FaHandshake, FaRocket, FaStar, FaShieldAlt, FaUsers, FaCalculator } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
@@ -18,36 +18,28 @@ import { Label } from "@/components/ui/label";
 const OPTIONS = [
   {
     key: "first",
-    label: "קחו אותי למשכנתא הראשונה שלי",
+    label: "המזכיר הראשון שלך בעולם המשכנתאות",
     icon: <FaBaby size={28} className="text-blue-600" />,
-    message: "צעד ראשון לדירה שלך יכול להיות פשוט, ברור, ונעים. אנחנו נהיה שם מהשלב הראשון, נסביר כל מונח, נבנה תמהיל שמתאים לך ונדאג שתקבל תנאים מצוינים.",
-    color: "bg-blue-600",
-    bgColor: "bg-blue-50"
+    message: "משכנתא משלבת ידע פיננסי, אלגוריתמים חכמים ובינה מלאכותית – כדי להוביל אותך בבטחה מהתחלה ועד החתימה על המשכנתא האידיאלית שלך.",
+    color: "bg-financial-gradient",
+    bgColor: "bg-financial-gradient-subtle"
   },
   {
-    key: "reduce",
-    label: "לשחרר קצת את התשלום החודשי",
+    key: "reduce", 
+    label: "אתה שולם ביוקר, אנחנו נוציא את הדרך",
     icon: <FaMoneyBillWave size={28} className="text-green-600" />,
-    message: "אם כל חודש מרגיש כמו מרתון – הגיע הזמן להוריד הילוך. נבנה יחד איתך תמהיל שיקנה לך אוויר לנשימה ויחסוך לך כסף.",
-    color: "bg-green-600",
+    message: "אתה מחליט לאן – אנחנו יודעים איך",
+    color: "bg-financial-success-gradient",
     bgColor: "bg-green-50"
   },
   {
     key: "finish",
-    label: "לסיים כבר עם המשכנתא",
-    icon: <FaChartLine size={28} className="text-red-600" />,
-    message: "רוצה להוריד את העול כמה שיותר מהר? נבנה אסטרטגיה חכמה להחזר מואץ שיחסוך לך ריביות וזמן – בלי להכביד עליך כלכלית.",
-    color: "bg-red-600",
-    bgColor: "bg-red-50"
-  },
-  {
-    key: "noEquity",
-    label: "אין לי הון עצמי – מה עושים?",
-    icon: <FaHandshake size={28} className="text-yellow-600" />,
-    message: "אל דאגה. יש פתרונות. נבחן איתך אפשרויות מימון, הלוואות גישור, ואפילו פתרונות יצירתיים שיעזרו לך להתקדם גם בלי הון עצמי גבוה.",
-    color: "bg-yellow-600",
-    bgColor: "bg-yellow-50"
-  },
+    label: "אתה מחליט לאן – אנחנו יודעים איך",
+    icon: <FaChartLine size={28} className="text-purple-600" />,
+    message: "עם הכלים החכמים שלנו, תוכל לנווט בבטחה בעולם המשכנתאות ולקבל החלטות מושכלות שיחסכו לך זמן וכסף.",
+    color: "bg-gradient-to-r from-purple-600 to-purple-700",
+    bgColor: "bg-purple-50"
+  }
 ];
 
 export default function MortgageIntro() {
@@ -59,246 +51,308 @@ export default function MortgageIntro() {
   }, []);
 
   return (
-    <section className="relative text-center py-20 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 50 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        className="relative z-10"
-      >
+    <section className="relative min-h-screen flex items-center justify-center bg-financial-gradient-subtle overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-40 left-40 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="container-financial relative z-10 text-center py-20 px-4">
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-6"
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 50 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="relative z-10"
         >
-          <FaRocket className="animate-float" />
-          <span>הפלטפורמה המתקדמת ביותר בישראל</span>
-          <FaStar className="text-yellow-300" />
-        </motion.div>
-
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900">
-          ייעוץ משכנתאות חכם, אנושי ואמין
-        </h1>
-        
-        <motion.p 
-          className="text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-        >
-          אנחנו כאן כדי להפוך את המסע לדירה שלך לפשוט יותר, עם ליווי אישי ומקצועי. 
-          בעזרת מחשבונים חכמים, כלים מתקדמים וליווי של יועצים מנוסים – נחסוך לך זמן, כסף ודאגות.
-        </motion.p>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="flex justify-center gap-8 mb-12 text-sm"
-        >
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">+1,200</div>
-            <div className="text-gray-600">לקוחות מרוצים</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">98%</div>
-            <div className="text-gray-600">שביעות רצון</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">₪270K</div>
-            <div className="text-gray-600">חיסכון ממוצע</div>
-          </div>
-        </motion.div>
-      </motion.div>
-
-      <motion.div 
-        className="flex flex-wrap justify-center gap-4 mb-8"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
-        transition={{ duration: 0.8, delay: 1.0 }}
-      >
-        {OPTIONS.map((opt, index) => (
+          {/* Professional Badge */}
           <motion.div
-            key={opt.key}
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20, scale: isVisible ? 1 : 0.8 }}
-            transition={{ duration: 0.5, delay: 1.2 + index * 0.1 }}
-            whileHover={{ scale: 1.05, y: -5 }}
-            whileTap={{ scale: 0.95 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="inline-flex items-center gap-3 bg-white shadow-lg border border-gray-200 text-financial-primary px-6 py-3 rounded-full text-sm font-semibold mb-8"
           >
-            <Button
-              onClick={() => setSelected(opt.key)}
-              variant={selected === opt.key ? "default" : "outline"}
-              className={`text-sm sm:text-base transition-all duration-300 hover:shadow-lg ${
-                selected === opt.key ? `${opt.color} text-white border-0` : 'hover:border-2'
-              }`}
-            >
-              {opt.label}
-            </Button>
+            <FaShieldAlt className="animate-pulse-financial" />
+            <span>הפלטפורמה המתקדמת ביותר בישראל</span>
+            <FaStar className="text-yellow-500" />
           </motion.div>
-        ))}
-      </motion.div>
 
-      <AnimatePresence mode="wait">
-        {selected && (
-          <motion.div
-            key={selected}
-            initial={{ opacity: 0, y: 30, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -30, scale: 0.9 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-3xl mx-auto mt-8"
+          {/* Main Headline - Based on the Hebrew text from image */}
+          <h1 className="text-5xl md:text-7xl font-black mb-6 text-financial-gradient leading-tight">
+            המזכיר הראשון שלך בעולם המשכנתאות
+          </h1>
+          
+          {/* Subheadline */}
+          <motion.div 
+            className="text-2xl md:text-3xl font-bold text-financial-gray-700 mb-4 leading-relaxed"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
           >
-            <div className={`rounded-2xl p-8 shadow-xl border-2 border-gray-100 ${OPTIONS.find((opt) => opt.key === selected)?.bgColor}`}>
-              <motion.div 
-                className="flex items-center gap-4 mb-4"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                {OPTIONS.find((opt) => opt.key === selected)?.icon}
-                <h2 className="text-2xl font-bold">המסלול שלך</h2>
-              </motion.div>
-              
-              <motion.p 
-                className="text-gray-700 leading-relaxed mb-6 text-lg"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                {OPTIONS.find((opt) => opt.key === selected)?.message}
-              </motion.p>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className={`${OPTIONS.find((opt) => opt.key === selected)?.color} hover:shadow-lg text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105`}>
-                      <FaRocket className="mr-2" />
-                      התחל עכשיו - חינם
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-bold text-center">הרשמה לפלטפורמה</DialogTitle>
-                      <DialogDescription className="text-center">
-                        בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="fullName-hero">שם מלא</Label>
-                          <Input id="fullName-hero" placeholder="שם מלא" />
-                        </div>
-                        <div>
-                          <Label htmlFor="phone-hero">טלפון</Label>
-                          <Input id="phone-hero" type="tel" placeholder="050-1234567" />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="email-register-hero">אימייל</Label>
-                        <Input id="email-register-hero" type="email" placeholder="you@example.com" />
-                      </div>
-                      <div>
-                        <Label htmlFor="service-hero">בחר תוכנית</Label>
-                        <select id="service-hero" className="w-full p-2 border border-gray-300 rounded-md">
-                          <option value="">בחר תוכנית...</option>
-                          <option value="full">ייעוץ אוטומטי מלא - ₪299</option>
-                          <option value="hybrid">ייעוץ היברידי - ₪149</option>
-                          <option value="basic">כלים בסיסיים - ₪99</option>
-                        </select>
-                      </div>
-                      <Button className="w-full bg-green-600 hover:bg-green-700 text-lg py-3">
-                        התחל עכשיו - הרשמה חינם
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">
-                        כבר יש לך חשבון? <a href="#" className="text-primary underline">התחבר</a>
-                      </p>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </motion.div>
+            תרנבותית:
+          </motion.div>
+
+          <motion.p 
+            className="text-xl md:text-2xl text-financial-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed font-medium"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+          >
+            משכנתא משלבת ידע פיננסי, אלגוריתמים חכמים ובינה מלאכותית – כדי להוביל אותך בבטחה מהתחלה ועד החתימה על המשכנתא האידיאלית שלך.
+          </motion.p>
+
+          <motion.p 
+            className="text-lg text-financial-gray-500 mb-12 max-w-3xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+            transition={{ duration: 0.8, delay: 1.0 }}
+          >
+            <strong className="text-financial-primary">אתה שולם ביוקר, אנחנו נוציא את הדרך</strong><br/>
+            אתה מחליט לאן – אנחנו יודעים איך
+          </motion.p>
+
+          {/* Professional Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
+            transition={{ duration: 0.8, delay: 1.2 }}
+            className="flex justify-center gap-8 mb-12 text-sm"
+          >
+            <div className="card-financial text-center px-6 py-4">
+              <div className="flex items-center justify-center mb-2">
+                <FaUsers className="text-financial-primary ml-2" />
+                <div className="text-3xl font-bold text-financial-primary">+2,500</div>
+              </div>
+              <div className="text-financial-gray-600 font-medium">לקוחות מרוצים</div>
+            </div>
+            <div className="card-financial text-center px-6 py-4">
+              <div className="flex items-center justify-center mb-2">
+                <FaShieldAlt className="text-green-600 ml-2" />
+                <div className="text-3xl font-bold text-green-600">99.8%</div>
+              </div>
+              <div className="text-financial-gray-600 font-medium">שביעות רצון</div>
+            </div>
+            <div className="card-financial text-center px-6 py-4">
+              <div className="flex items-center justify-center mb-2">
+                <FaCalculator className="text-purple-600 ml-2" />
+                <div className="text-3xl font-bold text-purple-600">₪450K</div>
+              </div>
+              <div className="text-financial-gray-600 font-medium">חיסכון ממוצע</div>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
 
-      {!selected && (
+        {/* Interactive Options */}
         <motion.div 
-          className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
+          className="flex flex-wrap justify-center gap-6 mb-12"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
-          transition={{ duration: 0.8, delay: 1.5 }}
+          transition={{ duration: 0.8, delay: 1.4 }}
         >
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg">
-                <FaRocket className="mr-2" />
-                התחל עכשיו
+          {OPTIONS.map((opt, index) => (
+            <motion.div
+              key={opt.key}
+              initial={{ opacity: 0, y: 20, scale: 0.8 }}
+              animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20, scale: isVisible ? 1 : 0.8 }}
+              transition={{ duration: 0.5, delay: 1.6 + index * 0.1 }}
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Button
+                onClick={() => setSelected(opt.key)}
+                variant={selected === opt.key ? "default" : "outline"}
+                className={`text-base px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-xl border-2 font-semibold ${
+                  selected === opt.key 
+                    ? `${opt.color} text-white border-0 shadow-lg` 
+                    : 'hover:border-blue-400 hover:bg-blue-50 bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  {opt.icon}
+                  {opt.label}
+                </span>
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-bold text-center">הרשמה לפלטפורמה</DialogTitle>
-                <DialogDescription className="text-center">
-                  בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="fullName-hero-main">שם מלא</Label>
-                    <Input id="fullName-hero-main" placeholder="שם מלא" />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone-hero-main">טלפון</Label>
-                    <Input id="phone-hero-main" type="tel" placeholder="050-1234567" />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="email-register-hero-main">אימייל</Label>
-                  <Input id="email-register-hero-main" type="email" placeholder="you@example.com" />
-                </div>
-                <div>
-                  <Label htmlFor="service-hero-main">בחר תוכנית</Label>
-                  <select id="service-hero-main" className="w-full p-2 border border-gray-300 rounded-md">
-                    <option value="">בחר תוכנית...</option>
-                    <option value="full">ייעוץ אוטומטי מלא - ₪299</option>
-                    <option value="hybrid">ייעוץ היברידי - ₪149</option>
-                    <option value="basic">כלים בסיסיים - ₪99</option>
-                  </select>
-                </div>
-                <Button className="w-full bg-green-600 hover:bg-green-700 text-lg py-3">
-                  התחל עכשיו - הרשמה חינם
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  כבר יש לך חשבון? <a href="#" className="text-primary underline">התחבר</a>
-                </p>
-              </div>
-            </DialogContent>
-          </Dialog>
-          
-          <Button 
-            variant="outline" 
-            className="text-lg px-8 py-4 rounded-xl border-2 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 hover:scale-105"
-            onClick={() => {
-              const demoSection = document.getElementById('demo-section');
-              if (demoSection) {
-                demoSection.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-          >
-            <FaStar className="mr-2" />
-            צפה בדמו
-          </Button>
+            </motion.div>
+          ))}
         </motion.div>
-      )}
+
+        {/* Dynamic Content Based on Selection */}
+        <AnimatePresence mode="wait">
+          {selected && (
+            <motion.div
+              key={selected}
+              initial={{ opacity: 0, y: 30, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -30, scale: 0.9 }}
+              transition={{ duration: 0.5 }}
+              className="max-w-4xl mx-auto mt-8"
+            >
+              <div className={`card-financial ${OPTIONS.find((opt) => opt.key === selected)?.bgColor} border-2 border-gray-100 shadow-2xl`}>
+                <motion.div 
+                  className="flex items-center gap-4 mb-6"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  {OPTIONS.find((opt) => opt.key === selected)?.icon}
+                  <h2 className="text-3xl font-bold text-financial-gray-900">המסלול המתאים לך</h2>
+                </motion.div>
+                
+                <motion.p 
+                  className="text-financial-gray-700 leading-relaxed mb-8 text-xl"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  {OPTIONS.find((opt) => opt.key === selected)?.message}
+                </motion.p>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                  className="flex flex-col sm:flex-row gap-4 justify-center"
+                >
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className={`btn-primary text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg`}>
+                        <FaRocket className="ml-2" />
+                        התחל עכשיו - חינם
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px] bg-white">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">הצטרף לפלטפורמה</DialogTitle>
+                        <DialogDescription className="text-center text-financial-gray-600">
+                          התחל את המסע שלך למשכנתא חכמה ומקצועית
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="form-financial space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="fullName-hero" className="text-financial-gray-700 font-semibold">שם מלא</Label>
+                            <Input id="fullName-hero" placeholder="שם מלא" className="mt-1" />
+                          </div>
+                          <div>
+                            <Label htmlFor="phone-hero" className="text-financial-gray-700 font-semibold">טלפון</Label>
+                            <Input id="phone-hero" type="tel" placeholder="050-1234567" className="mt-1" />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="email-register-hero" className="text-financial-gray-700 font-semibold">אימייל</Label>
+                          <Input id="email-register-hero" type="email" placeholder="you@example.com" className="mt-1" />
+                        </div>
+                        <div>
+                          <Label htmlFor="service-hero" className="text-financial-gray-700 font-semibold">בחר תוכנית</Label>
+                          <select id="service-hero" className="w-full p-3 border-2 border-gray-200 rounded-lg mt-1 bg-white">
+                            <option value="">בחר תוכנית...</option>
+                            <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
+                            <option value="hybrid">ייעוץ היברידי - ₪199</option>
+                            <option value="basic">כלים בסיסיים - ₪99</option>
+                          </select>
+                        </div>
+                        <Button className="btn-primary w-full text-lg py-4">
+                          התחל עכשיו - ללא התחייבות
+                        </Button>
+                        <p className="text-xs text-center text-financial-gray-500">
+                          כבר יש לך חשבון? <a href="#" className="text-financial-primary underline font-semibold">התחבר</a>
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="btn-secondary text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105"
+                    onClick={() => {
+                      const demoSection = document.getElementById('demo-section');
+                      if (demoSection) {
+                        demoSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <FaStar className="ml-2" />
+                    צפה בדמו
+                  </Button>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Default CTA when no selection */}
+        {!selected && (
+          <motion.div 
+            className="mt-12 flex flex-col sm:flex-row gap-6 justify-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
+            transition={{ duration: 0.8, delay: 1.8 }}
+          >
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="btn-primary text-xl px-10 py-5 rounded-xl transition-all duration-300 hover:scale-105 shadow-xl">
+                  <FaRocket className="ml-2" />
+                  התחל עכשיו
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] bg-white">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">הצטרף לפלטפורמה</DialogTitle>
+                  <DialogDescription className="text-center text-financial-gray-600">
+                    התחל את המסע שלך למשכנתא חכמה ומקצועית
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="form-financial space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="fullName-hero-main" className="text-financial-gray-700 font-semibold">שם מלא</Label>
+                      <Input id="fullName-hero-main" placeholder="שם מלא" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone-hero-main" className="text-financial-gray-700 font-semibold">טלפון</Label>
+                      <Input id="phone-hero-main" type="tel" placeholder="050-1234567" className="mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="email-register-hero-main" className="text-financial-gray-700 font-semibold">אימייל</Label>
+                    <Input id="email-register-hero-main" type="email" placeholder="you@example.com" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="service-hero-main" className="text-financial-gray-700 font-semibold">בחר תוכנית</Label>
+                    <select id="service-hero-main" className="w-full p-3 border-2 border-gray-200 rounded-lg mt-1 bg-white">
+                      <option value="">בחר תוכנית...</option>
+                      <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
+                      <option value="hybrid">ייעוץ היברידי - ₪199</option>
+                      <option value="basic">כלים בסיסיים - ₪99</option>
+                    </select>
+                  </div>
+                  <Button className="btn-primary w-full text-lg py-4">
+                    התחל עכשיו - ללא התחייבות
+                  </Button>
+                  <p className="text-xs text-center text-financial-gray-500">
+                    כבר יש לך חשבון? <a href="#" className="text-financial-primary underline font-semibold">התחבר</a>
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
+            <Button 
+              variant="outline" 
+              className="btn-secondary text-xl px-10 py-5 rounded-xl transition-all duration-300 hover:scale-105"
+              onClick={() => {
+                const demoSection = document.getElementById('demo-section');
+                if (demoSection) {
+                  demoSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+            >
+              <FaStar className="ml-2" />
+              צפה בדמו
+            </Button>
+          </motion.div>
+        )}
+      </div>
     </section>
   );
 } 
