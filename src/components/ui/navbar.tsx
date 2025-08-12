@@ -17,16 +17,16 @@ import { Label } from "@/components/ui/label";
 
 export default function NavBar() {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+    <header className="bg-background shadow-sm px-4 py-3 flex justify-between items-center">
       <div className="flex items-center space-x-3">
-        <span className="text-2xl font-bold text-primary-800 bg-gradient-to-r from-primary-700 to-primary-900 bg-clip-text text-transparent">משכלתנא</span>
+        <span className="text-xl font-bold">משכלתנא</span>
       </div>
 
-      <nav className="hidden md:flex space-x-6">
-        <a href="#process" className="text-gray-700 hover:text-primary-700 font-medium transition-colors duration-300 hover:underline decoration-primary-500 decoration-2">תהליך</a>
-        <a href="#benefits" className="text-gray-700 hover:text-primary-700 font-medium transition-colors duration-300 hover:underline decoration-primary-500 decoration-2">יתרונות</a>
-        <a href="#stats" className="text-gray-700 hover:text-primary-700 font-medium transition-colors duration-300 hover:underline decoration-primary-500 decoration-2">נתונים</a>
-        <a href="#contact" className="text-gray-700 hover:text-primary-700 font-medium transition-colors duration-300 hover:underline decoration-primary-500 decoration-2">צור קשר</a>
+      <nav className="hidden md:flex space-x-4">
+        <a href="#process" className="hover:underline">תהליך</a>
+        <a href="#benefits" className="hover:underline">יתרונות</a>
+        <a href="#stats" className="hover:underline">נתונים</a>
+        <a href="#contact" className="hover:underline">צור קשר</a>
       </nav>
 
       {/* Desktop buttons with registration modal */}

@@ -1,13 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { Inter } from 'next/font/google'
+import { Heebo } from 'next/font/google'
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-inter'
-})
+const heebo = Heebo({ subsets: ['hebrew'], weight: ['400','500','600','700'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'משכלתנא - ייעוץ משכנתאות חכם',
@@ -21,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body className={`${inter.className} font-sans antialiased`}>{children}</body>
+      <body className={`${heebo.className} font-sans`}>{children}</body>
     </html>
   )
 } 
