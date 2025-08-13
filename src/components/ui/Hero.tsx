@@ -19,26 +19,26 @@ const OPTIONS = [
   {
     key: "first",
     label: "המזכיר הראשון שלך בעולם המשכנתאות",
-    icon: <FaBaby size={28} className="text-blue-600" />,
+    icon: <FaBaby size={28} className="text-financial-primary" />,
     message: "משכנתא משלבת ידע פיננסי, אלגוריתמים חכמים ובינה מלאכותית – כדי להוביל אותך בבטחה מהתחלה ועד החתימה על המשכנתא האידיאלית שלך.",
     color: "bg-financial-gradient",
-    bgColor: "bg-financial-gradient-subtle"
+    bgColor: "bg-financial-light"
   },
   {
     key: "reduce", 
     label: "אתה שולם ביוקר, אנחנו נוציא את הדרך",
-    icon: <FaMoneyBillWave size={28} className="text-green-600" />,
+    icon: <FaMoneyBillWave size={28} className="text-financial-success" />,
     message: "אתה מחליט לאן – אנחנו יודעים איך",
     color: "bg-financial-success-gradient",
-    bgColor: "bg-green-50"
+    bgColor: "bg-financial-light"
   },
   {
     key: "finish",
     label: "אתה מחליט לאן – אנחנו יודעים איך",
-    icon: <FaChartLine size={28} className="text-purple-600" />,
+    icon: <FaChartLine size={28} className="text-financial-accent" />,
     message: "עם הכלים החכמים שלנו, תוכל לנווט בבטחה בעולם המשכנתאות ולקבל החלטות מושכלות שיחסכו לך זמן וכסף.",
-    color: "bg-gradient-to-r from-purple-600 to-purple-700",
-    bgColor: "bg-purple-50"
+    color: "bg-financial-accent-gradient",
+    bgColor: "bg-financial-light"
   }
 ];
 
@@ -51,12 +51,11 @@ export default function MortgageIntro() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center bg-financial-gradient-subtle overflow-hidden">
-      {/* Background Elements */}
+    <section className="relative min-h-screen flex items-center justify-center bg-financial-hero overflow-hidden">
+      {/* Professional Geometric Background Pattern */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-40 left-40 w-80 h-80 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="absolute inset-0 bg-financial-pattern opacity-5"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-financial-primary/5 to-financial-primary/10"></div>
       </div>
 
       <div className="container-financial relative z-10 text-center py-20 px-4">

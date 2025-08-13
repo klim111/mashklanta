@@ -4,34 +4,39 @@
 
 /* Professional Financial Design System */
 :root {
-  /* Primary Financial Brand Colors */
-  --financial-primary: #1e3a8a; /* Deep Professional Blue */
-  --financial-primary-light: #3b82f6; /* Lighter Blue for accents */
-  --financial-primary-dark: #1e40af; /* Darker Blue for depth */
+  /* Primary Financial Brand Colors - More Professional */
+  --financial-primary: #0f172a; /* Very Dark Blue - Professional */
+  --financial-primary-light: #1e293b; /* Dark Blue-Gray */
+  --financial-primary-dark: #020617; /* Almost Black */
+  
+  /* Accent Colors - Sophisticated */
+  --financial-accent: #3730a3; /* Deep Indigo */
+  --financial-accent-light: #4f46e5; /* Lighter Indigo */
   
   /* Trust & Security Colors */
-  --financial-success: #059669; /* Professional Green */
-  --financial-success-light: #10b981;
-  --financial-warning: #d97706; /* Professional Orange */
-  --financial-danger: #dc2626; /* Professional Red */
+  --financial-success: #047857; /* Professional Dark Green */
+  --financial-success-light: #059669;
+  --financial-warning: #b45309; /* Professional Dark Orange */
+  --financial-danger: #b91c1c; /* Professional Dark Red */
   
   /* Neutral Professional Palette */
-  --financial-gray-50: #f8fafc;
-  --financial-gray-100: #f1f5f9;
-  --financial-gray-200: #e2e8f0;
-  --financial-gray-300: #cbd5e1;
-  --financial-gray-400: #94a3b8;
-  --financial-gray-500: #64748b;
-  --financial-gray-600: #475569;
-  --financial-gray-700: #334155;
-  --financial-gray-800: #1e293b;
-  --financial-gray-900: #0f172a;
+  --financial-gray-50: #f9fafb;
+  --financial-gray-100: #f3f4f6;
+  --financial-gray-200: #e5e7eb;
+  --financial-gray-300: #d1d5db;
+  --financial-gray-400: #9ca3af;
+  --financial-gray-500: #6b7280;
+  --financial-gray-600: #4b5563;
+  --financial-gray-700: #374151;
+  --financial-gray-800: #1f2937;
+  --financial-gray-900: #111827;
   
-  /* Background System */
+  /* Background System - Clean and Professional */
   --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-accent: #f1f5f9;
-  --bg-muted: #e2e8f0;
+  --bg-secondary: #f9fafb;
+  --bg-accent: #f3f4f6;
+  --bg-muted: #e5e7eb;
+  --bg-dark: #0f172a;
   
   /* Professional Typography */
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -53,7 +58,7 @@ body {
   min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   direction: rtl;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--bg-primary);
   color: var(--financial-gray-800);
   overflow-x: hidden;
 }
@@ -71,40 +76,40 @@ h1, h2, h3, h4, h5, h6 {
 h1 {
   font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 800;
-  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--financial-primary);
 }
 
 h2 {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
+  color: var(--financial-primary);
 }
 
 h3 {
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 600;
+  color: var(--financial-gray-800);
 }
 
 /* Professional Button System */
 .btn-primary {
-  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+  background: var(--financial-primary);
   color: white;
   border: none;
   padding: 1rem 2rem;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 1.1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.35);
+  background: var(--financial-primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .btn-primary:active {
@@ -114,37 +119,36 @@ h3 {
 .btn-secondary {
   background: white;
   color: var(--financial-primary);
-  border: 2px solid var(--financial-primary);
+  border: 2px solid var(--financial-gray-300);
   padding: 1rem 2rem;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 1.1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1rem;
+  transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background: var(--financial-primary);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.25);
+  border-color: var(--financial-primary);
+  background: var(--financial-gray-50);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Professional Card System */
 .card-financial {
   background: white;
   border: 1px solid var(--financial-gray-200);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .card-financial:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-  border-color: var(--financial-primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .card-financial::before {
@@ -153,15 +157,15 @@ h3 {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
+  height: 3px;
+  background: var(--financial-primary);
 }
 
 /* Professional Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -172,7 +176,7 @@ h3 {
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(-30px);
+    transform: translateX(-20px);
   }
   to {
     opacity: 1;
@@ -182,10 +186,10 @@ h3 {
 
 @keyframes pulse-financial {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(30, 58, 138, 0.4);
+    box-shadow: 0 0 0 0 rgba(15, 23, 42, 0.2);
   }
   50% {
-    box-shadow: 0 0 0 20px rgba(30, 58, 138, 0);
+    box-shadow: 0 0 0 10px rgba(15, 23, 42, 0);
   }
 }
 
@@ -222,11 +226,33 @@ h3 {
 }
 
 .bg-financial-gradient-subtle {
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-accent) 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.bg-financial-hero {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 50%, #f3f4f6 100%);
+}
+
+.bg-financial-light {
+  background: var(--bg-secondary);
+}
+
+.bg-financial-pattern {
+  background-image: 
+    linear-gradient(30deg, var(--financial-gray-200) 12%, transparent 12.5%, transparent 87%, var(--financial-gray-200) 87.5%, var(--financial-gray-200)),
+    linear-gradient(150deg, var(--financial-gray-200) 12%, transparent 12.5%, transparent 87%, var(--financial-gray-200) 87.5%, var(--financial-gray-200)),
+    linear-gradient(30deg, var(--financial-gray-200) 12%, transparent 12.5%, transparent 87%, var(--financial-gray-200) 87.5%, var(--financial-gray-200)),
+    linear-gradient(150deg, var(--financial-gray-200) 12%, transparent 12.5%, transparent 87%, var(--financial-gray-200) 87.5%, var(--financial-gray-200));
+  background-size: 80px 140px;
+  background-position: 0 0, 0 0, 40px 70px, 40px 70px;
 }
 
 .bg-financial-success-gradient {
   background: linear-gradient(135deg, var(--financial-success) 0%, var(--financial-success-light) 100%);
+}
+
+.bg-financial-accent-gradient {
+  background: linear-gradient(135deg, var(--financial-accent) 0%, var(--financial-accent-light) 100%);
 }
 
 /* Professional Text Styles */
@@ -234,11 +260,17 @@ h3 {
   color: var(--financial-primary);
 }
 
+.text-financial-success {
+  color: var(--financial-success);
+}
+
+.text-financial-accent {
+  color: var(--financial-accent);
+}
+
 .text-financial-gradient {
-  background: linear-gradient(135deg, var(--financial-primary) 0%, var(--financial-primary-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--financial-primary);
+  font-weight: 800;
 }
 
 /* Professional Layout Utilities */
@@ -261,11 +293,11 @@ h3 {
 .form-financial select,
 .form-financial textarea {
   background: white;
-  border: 2px solid var(--financial-gray-200);
-  border-radius: 0.5rem;
-  padding: 1rem;
+  border: 1px solid var(--financial-gray-300);
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
   font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   color: var(--financial-gray-800);
 }
 
@@ -274,7 +306,7 @@ h3 {
 .form-financial textarea:focus {
   outline: none;
   border-color: var(--financial-primary);
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.05);
 }
 
 /* Professional Scrollbar */
@@ -298,6 +330,61 @@ h3 {
 /* Smooth Scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Professional Section Dividers */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--financial-gray-200), transparent);
+  margin: 4rem 0;
+}
+
+/* Professional Box Shadows */
+.shadow-professional-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.shadow-professional {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.shadow-professional-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Professional Hover States */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Professional Badge Styles */
+.badge-professional {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  background: var(--financial-gray-100);
+  color: var(--financial-gray-700);
+  border: 1px solid var(--financial-gray-200);
+}
+
+.badge-primary {
+  background: var(--financial-primary);
+  color: white;
+  border: none;
+}
+
+.badge-success {
+  background: var(--financial-success);
+  color: white;
+  border: none;
 }
 
 /* Professional Loading States */
@@ -362,20 +449,7 @@ p, span, div {
 }
 
 /* Custom Animations */
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
+/* Removed blob animation - not suitable for professional financial site */
 
 @keyframes slide-in {
   from {
@@ -417,17 +491,13 @@ p, span, div {
   }
 }
 
-/* Animation Classes */
-.animate-blob {
-  animation: blob 7s infinite;
+/* Professional Animation Classes */
+.animate-fade-in {
+  animation: fade-in-up 0.6s ease-out;
 }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
+.animate-slide-up {
+  animation: slide-in 0.5s ease-out;
 }
 
 .animate-slide-in {

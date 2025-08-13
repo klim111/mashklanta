@@ -29,11 +29,11 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-financial-gradient-subtle text-foreground overflow-hidden">
+    <div className="min-h-screen bg-white text-foreground overflow-hidden">
       {/* Professional Navigation */}
       <motion.div
         style={{ y, opacity }}
-        className="relative z-50 bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100"
+        className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100"
       >
         <NavBar />
       </motion.div>
@@ -77,7 +77,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           viewport={{ once: true, margin: "-100px" }}
-          className="section-padding bg-financial-gradient-subtle"
+          className="section-padding bg-financial-light"
         >
           <Features />
         </motion.section>
@@ -100,7 +100,7 @@ export default function Home() {
           transition={{ duration: 0.6, delay: 0.5 }}
           viewport={{ once: true, margin: "-100px" }}
           id="demo-section"
-          className="section-padding bg-financial-gradient-subtle"
+          className="section-padding bg-financial-light"
         >
           <Demo />
         </motion.section>
@@ -122,7 +122,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
           viewport={{ once: true, margin: "-100px" }}
-          className="section-padding bg-financial-gradient-subtle"
+          className="section-padding bg-financial-light"
         >
           <Pricing />
         </motion.section>
@@ -144,7 +144,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.9 }}
           viewport={{ once: true, margin: "-100px" }}
-          className="section-padding bg-financial-gradient-subtle"
+          className="section-padding bg-financial-light"
         >
           <EquityPlanner />
         </motion.section>
@@ -166,7 +166,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.1 }}
           viewport={{ once: true, margin: "-100px" }}
-          className="section-padding bg-financial-gradient-subtle"
+          className="section-padding bg-financial-light"
         >
           <Timeline />
         </motion.section>
@@ -188,7 +188,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 1.3 }}
           viewport={{ once: true, margin: "-100px" }}
-          className="bg-financial-gray-900 text-white"
+          className="bg-financial-primary text-white"
         >
           <Footer />
         </motion.section>
@@ -199,9 +199,9 @@ export default function Home() {
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: isLoaded ? 1 : 0, scale: isLoaded ? 1 : 0 }}
         transition={{ duration: 0.5, delay: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="fixed bottom-8 right-8 z-50 btn-primary p-4 rounded-full shadow-2xl animate-pulse-financial"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="fixed bottom-8 right-8 z-50 bg-financial-primary text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all"
         onClick={() => {
           const heroSection = document.querySelector('section');
           if (heroSection) {
