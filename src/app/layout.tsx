@@ -1,19 +1,23 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import './globals.css';
+import { Providers } from '@/components/providers';
 
-export const metadata: Metadata = {
-  title: 'משכלתנא - ייעוץ משכנתאות חכם',
-  description: 'פלטפורמה חכמה לייעוץ משכנתאות עם כלים מתקדמים וחישובים מדויקים',
-}
+export const metadata = {
+  title: 'Nadlanium - מחשבון משכנתא חכם',
+  description: 'מחשבון משכנתא מתקדם עם ניהול מסמכים וניתוח נתונים',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body className="font-hebrew">{children}</body>
+      <body>
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
-  )
+  );
 } 

@@ -7,7 +7,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 // Initialize Nodemailer transporter for SMTP
 const createTransporter = () => {
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_PORT === '465',
@@ -42,7 +42,7 @@ export async function sendEmail({ to, subject, html, text }: EmailOptions) {
         subject,
         html,
         text,
-        reply_to: replyTo,
+        replyTo,
       });
       return { success: true, messageId: result.data?.id };
     } catch (error) {
