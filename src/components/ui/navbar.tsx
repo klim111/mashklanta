@@ -14,8 +14,12 @@ import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/compon
 import { MenuIcon, Shield, Calculator, TrendingUp, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 
 export default function NavBar() {
+  const { data: session, status } = useSession();
+
   return (
     <header className="bg-white/95 backdrop-blur-md shadow-financial border-b border-financial-gray-100 px-6 py-4 flex justify-between items-center">
       <div className="flex items-center gap-4">
@@ -34,86 +38,88 @@ export default function NavBar() {
         <a href="#contact" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">צור קשר</a>
       </nav>
 
-      {/* Desktop buttons with registration modal */}
+      {/* Desktop buttons */}
       <div className="hidden md:flex items-center gap-3">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="lg" className="font-semibold">
-              <Shield className="w-4 h-4 ml-2" />
-              התחברות
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[400px] bg-white">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">התחברות למערכת</DialogTitle>
-              <DialogDescription className="text-center text-financial-gray-600">
-                כניסה לחשבון האישי שלך
-              </DialogDescription>
-            </DialogHeader>
-            <div className="form-financial space-y-4">
-              <div>
-                <Label htmlFor="email" className="text-financial-gray-700 font-semibold">אימייל</Label>
-                <Input id="email" type="email" placeholder="you@example.com" className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="password" className="text-financial-gray-700 font-semibold">סיסמה</Label>
-                <Input id="password" type="password" placeholder="••••••••" className="mt-1" />
-              </div>
-              <Button className="btn-primary w-full text-lg py-3">התחבר</Button>
-              <p className="text-xs text-center text-financial-gray-500">
-                אין לך חשבון? <a href="#" className="text-financial-primary underline font-semibold">הירשם</a>
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="lg" className="font-semibold shadow-financial">
-              <TrendingUp className="w-4 h-4 ml-2" />
-              התחל עכשיו
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] bg-white">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">הצטרף לפלטפורמה</DialogTitle>
-              <DialogDescription className="text-center text-financial-gray-600">
-                בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה ומקצועית
-              </DialogDescription>
-            </DialogHeader>
-            <div className="form-financial space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="fullName" className="text-financial-gray-700 font-semibold">שם מלא</Label>
-                  <Input id="fullName" placeholder="שם מלא" className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="phone" className="text-financial-gray-700 font-semibold">טלפון</Label>
-                  <Input id="phone" type="tel" placeholder="050-1234567" className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email-register" className="text-financial-gray-700 font-semibold">אימייל</Label>
-                <Input id="email-register" type="email" placeholder="you@example.com" className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="service" className="text-financial-gray-700 font-semibold">בחר תוכנית</Label>
-                <select id="service" className="w-full p-3 border-2 border-financial-gray-200 rounded-lg mt-1 bg-white focus:border-financial-primary focus:outline-none focus:ring-2 focus:ring-financial-primary/20">
-                  <option value="">בחר תוכנית...</option>
-                  <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
-                  <option value="hybrid">ייעוץ היברידי - ₪199</option>
-                  <option value="basic">כלים בסיסיים - ₪99</option>
-                </select>
-              </div>
-              <Button variant="success" className="w-full text-lg py-4 font-semibold">
-                התחל עכשיו - ללא התחייבות
+        {session ? (
+          // Logged in user
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline" size="lg" className="font-semibold">
+                <Shield className="w-4 h-4 ml-2" />
+                לוח הבקרה
               </Button>
-              <p className="text-xs text-center text-financial-gray-500">
-                כבר יש לך חשבון? <a href="#" className="text-financial-primary underline font-semibold">התחבר</a>
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </Link>
+            <span className="text-sm text-financial-gray-700">שלום, {session.user?.name || session.user?.email}</span>
+            <Button 
+              onClick={() => signOut({ callbackUrl: '/' })}
+              variant="ghost" 
+              size="sm"
+              className="text-financial-gray-600 hover:text-financial-gray-900"
+            >
+              יציאה
+            </Button>
+          </div>
+        ) : (
+          // Not logged in
+          <>
+            <Link href="/auth/login">
+              <Button variant="outline" size="lg" className="font-semibold">
+                <Shield className="w-4 h-4 ml-2" />
+                התחברות
+              </Button>
+            </Link>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" className="font-semibold shadow-financial">
+                  <TrendingUp className="w-4 h-4 ml-2" />
+                  התחל עכשיו
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] bg-white">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">הצטרף לפלטפורמה</DialogTitle>
+                  <DialogDescription className="text-center text-financial-gray-600">
+                    בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה ומקצועית
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="form-financial space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="fullName" className="text-financial-gray-700 font-semibold">שם מלא</Label>
+                      <Input id="fullName" placeholder="שם מלא" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone" className="text-financial-gray-700 font-semibold">טלפון</Label>
+                      <Input id="phone" type="tel" placeholder="050-1234567" className="mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="email-register" className="text-financial-gray-700 font-semibold">אימייל</Label>
+                    <Input id="email-register" type="email" placeholder="you@example.com" className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="service" className="text-financial-gray-700 font-semibold">בחר תוכנית</Label>
+                    <select id="service" className="w-full p-3 border-2 border-financial-gray-200 rounded-lg mt-1 bg-white focus:border-financial-primary focus:outline-none focus:ring-2 focus:ring-financial-primary/20">
+                      <option value="">בחר תוכנית...</option>
+                      <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
+                      <option value="hybrid">ייעוץ היברידי - ₪199</option>
+                      <option value="basic">כלים בסיסיים - ₪99</option>
+                    </select>
+                  </div>
+                  <Link href="/auth/register" className="block">
+                    <Button variant="success" className="w-full text-lg py-4 font-semibold">
+                      התחל עכשיו - ללא התחייבות
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-center text-financial-gray-500">
+                    כבר יש לך חשבון? <Link href="/auth/login" className="text-financial-primary underline font-semibold">התחבר</Link>
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
       </div>
 
       {/* Mobile menu */}
@@ -140,61 +146,42 @@ export default function NavBar() {
             </nav>
 
             <div className="flex flex-col gap-3 pt-4 border-t border-financial-gray-200">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="lg" className="w-full font-semibold">
-                    <Shield className="w-4 h-4 ml-2" />
-                    התחברות
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px] bg-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">התחברות למערכת</DialogTitle>
-                  </DialogHeader>
-                  <div className="form-financial space-y-4">
-                    <div>
-                      <Label htmlFor="email-mobile" className="text-financial-gray-700 font-semibold">אימייל</Label>
-                      <Input id="email-mobile" type="email" placeholder="you@example.com" className="mt-1" />
-                    </div>
-                    <div>
-                      <Label htmlFor="password-mobile" className="text-financial-gray-700 font-semibold">סיסמה</Label>
-                      <Input id="password-mobile" type="password" placeholder="••••••••" className="mt-1" />
-                    </div>
-                    <Button className="btn-primary w-full text-lg py-3">התחבר</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button size="lg" className="w-full font-semibold shadow-financial">
-                    <TrendingUp className="w-4 h-4 ml-2" />
-                    התחל עכשיו
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px] bg-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center text-financial-gray-900">הצטרף לפלטפורמה</DialogTitle>
-                  </DialogHeader>
-                  <div className="form-financial space-y-4">
-                    <div>
-                      <Label htmlFor="fullName-mobile" className="text-financial-gray-700 font-semibold">שם מלא</Label>
-                      <Input id="fullName-mobile" placeholder="שם מלא" className="mt-1" />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone-mobile" className="text-financial-gray-700 font-semibold">טלפון</Label>
-                      <Input id="phone-mobile" type="tel" placeholder="050-1234567" className="mt-1" />
-                    </div>
-                    <div>
-                      <Label htmlFor="email-register-mobile" className="text-financial-gray-700 font-semibold">אימייל</Label>
-                      <Input id="email-register-mobile" type="email" placeholder="you@example.com" className="mt-1" />
-                    </div>
-                    <Button variant="success" className="w-full text-lg py-4 font-semibold">
-                      התחל עכשיו - ללא התחייבות
+              {session ? (
+                // Logged in user - mobile
+                <div className="space-y-3">
+                  <Link href="/dashboard">
+                    <Button variant="outline" size="lg" className="w-full font-semibold">
+                      <Shield className="w-4 h-4 ml-2" />
+                      לוח הבקרה
                     </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </Link>
+                  <Button 
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    variant="ghost" 
+                    size="lg"
+                    className="w-full text-financial-gray-600 hover:text-financial-gray-900"
+                  >
+                    יציאה
+                  </Button>
+                </div>
+              ) : (
+                // Not logged in - mobile
+                <>
+                  <Link href="/auth/login">
+                    <Button variant="outline" size="lg" className="w-full font-semibold">
+                      <Shield className="w-4 h-4 ml-2" />
+                      התחברות
+                    </Button>
+                  </Link>
+
+                  <Link href="/auth/register">
+                    <Button size="lg" className="w-full font-semibold shadow-financial">
+                      <TrendingUp className="w-4 h-4 ml-2" />
+                      התחל עכשיו
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </SheetContent>
