@@ -9,7 +9,6 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
-  url: process.env.NEXTAUTH_URL,
   debug: process.env.NODE_ENV === "development",
   providers: [
     Credentials({
