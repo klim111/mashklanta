@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Heebo } from 'next/font/google'
+import { Providers } from '@/components/providers'
 
 const heebo = Heebo({ subsets: ['hebrew'], weight: ['400','500','600','700'], display: 'swap' })
 
@@ -16,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body className={`${heebo.className} font-sans`}>{children}</body>
+      <body className={`${heebo.className} font-sans`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   )
 } 

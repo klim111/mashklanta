@@ -1,21 +1,27 @@
 "use client";
 
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
+import { useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu";
-import { MenuIcon } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { MenuIcon, User, LogOut } from "lucide-react";
+import { AuthForms } from "./auth-forms";
 
 export default function NavBar() {
+  const { data: session } = useSession();
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+
+  const handleAuthClick = (mode: "login" | "signup") => {
+    setAuthMode(mode);
+    setIsAuthOpen(true);
+  };
+
+  const handleSignOut = () => {
+    signOut({ callbackUrl: "/" });
+  };
+
   return (
     <header className="bg-background shadow-sm px-4 py-3 flex justify-between items-center">
       <div className="flex items-center space-x-3">
@@ -29,77 +35,31 @@ export default function NavBar() {
         <a href="#contact" className="hover:underline">צור קשר</a>
       </nav>
 
-      {/* Desktop buttons with registration modal */}
+      {/* Desktop authentication buttons */}
       <div className="hidden md:flex space-x-2">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline">התחברות</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>התחברות למערכת</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">אימייל</Label>
-                <Input id="email" type="email" placeholder="you@example.com" />
-              </div>
-              <div>
-                <Label htmlFor="password">סיסמה</Label>
-                <Input id="password" type="password" placeholder="••••••••" />
-              </div>
-              <Button className="w-full">התחבר</Button>
-              <p className="text-xs text-center text-muted-foreground">
-                אין לך חשבון? <a href="#" className="text-primary underline">הירשם</a>
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>התחל עכשיו</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center">הרשמה לפלטפורמה</DialogTitle>
-              <DialogDescription className="text-center">
-                בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="fullName">שם מלא</Label>
-                  <Input id="fullName" placeholder="שם מלא" />
-                </div>
-                <div>
-                  <Label htmlFor="phone">טלפון</Label>
-                  <Input id="phone" type="tel" placeholder="050-1234567" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email-register">אימייל</Label>
-                <Input id="email-register" type="email" placeholder="you@example.com" />
-              </div>
-              <div>
-                <Label htmlFor="service">בחר תוכנית</Label>
-                <select id="service" className="w-full p-2 border border-gray-300 rounded-md">
-                  <option value="">בחר תוכנית...</option>
-                  <option value="full">ייעוץ אוטומטי מלא - ₪299</option>
-                  <option value="hybrid">ייעוץ היברידי - ₪149</option>
-                  <option value="basic">כלים בסיסיים - ₪99</option>
-                </select>
-              </div>
-              <Button className="w-full bg-green-600 hover:bg-green-700 text-lg py-3">
-                התחל עכשיו - הרשמה חינם
-              </Button>
-              <p className="text-xs text-center text-muted-foreground">
-                כבר יש לך חשבון? <a href="#" className="text-primary underline">התחבר</a>
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {session ? (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-muted-foreground">
+              שלום, {session.user?.name || session.user?.email}
+            </span>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-1" />
+              התנתק
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Button 
+              variant="outline" 
+              onClick={() => handleAuthClick("login")}
+            >
+              התחברות
+            </Button>
+            <Button onClick={() => handleAuthClick("signup")}>
+              התחל עכשיו
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Mobile menu */}
@@ -118,76 +78,40 @@ export default function NavBar() {
               </NavigationMenuList>
             </NavigationMenu>
             <div className="mt-6 flex flex-col space-y-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline">התחברות</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px]">
-                  <DialogHeader>
-                    <DialogTitle>התחברות למערכת</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="email-mobile">אימייל</Label>
-                      <Input id="email-mobile" type="email" placeholder="you@example.com" />
-                    </div>
-                    <div>
-                      <Label htmlFor="password-mobile">סיסמה</Label>
-                      <Input id="password-mobile" type="password" placeholder="••••••••" />
-                    </div>
-                    <Button className="w-full">התחבר</Button>
-                    <p className="text-xs text-center text-muted-foreground">
-                      אין לך חשבון? <a href="#" className="text-primary underline">הירשם</a>
-                    </p>
+              {session ? (
+                <>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    שלום, {session.user?.name || session.user?.email}
                   </div>
-                </DialogContent>
-              </Dialog>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>התחל עכשיו</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center">הרשמה לפלטפורמה</DialogTitle>
-                    <DialogDescription className="text-center">
-                      בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="fullName-mobile">שם מלא</Label>
-                      <Input id="fullName-mobile" placeholder="שם מלא" />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone-mobile">טלפון</Label>
-                      <Input id="phone-mobile" type="tel" placeholder="050-1234567" />
-                    </div>
-                    <div>
-                      <Label htmlFor="email-register-mobile">אימייל</Label>
-                      <Input id="email-register-mobile" type="email" placeholder="you@example.com" />
-                    </div>
-                    <div>
-                      <Label htmlFor="service-mobile">בחר תוכנית</Label>
-                      <select id="service-mobile" className="w-full p-2 border border-gray-300 rounded-md">
-                        <option value="">בחר תוכנית...</option>
-                        <option value="full">ייעוץ אוטומטי מלא - ₪299</option>
-                        <option value="hybrid">ייעוץ היברידי - ₪149</option>
-                        <option value="basic">כלים בסיסיים - ₪99</option>
-                      </select>
-                    </div>
-                    <Button className="w-full bg-green-600 hover:bg-green-700 text-lg py-3">
-                      התחל עכשיו - הרשמה חינם
-                    </Button>
-                    <p className="text-xs text-center text-muted-foreground">
-                      כבר יש לך חשבון? <a href="#" className="text-primary underline">התחבר</a>
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  <Button variant="outline" onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-1" />
+                    התנתק
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleAuthClick("login")}
+                  >
+                    התחברות
+                  </Button>
+                  <Button onClick={() => handleAuthClick("signup")}>
+                    התחל עכשיו
+                  </Button>
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Authentication Forms */}
+      <AuthForms 
+        isOpen={isAuthOpen} 
+        onClose={() => setIsAuthOpen(false)} 
+        mode={authMode} 
+      />
     </header>
   );
 } 
