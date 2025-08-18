@@ -107,9 +107,11 @@ Located at `src/components/ui/navbar.tsx`
 - Run `npx prisma migrate dev` to ensure tables exist
 
 ### Authentication Issues
-- Verify NEXTAUTH_SECRET is set
+- **NO_SECRET Error**: If you see `[next-auth][error][NO_SECRET]`, run `./scripts/setup-env.sh` to generate a secure secret
+- Verify NEXTAUTH_SECRET is set in `.env.local`
 - Check browser console for errors
 - Verify the auth endpoints are working
+- Ensure `.env.local` file exists and is properly configured
 
 ### Frontend Issues
 - Check if SessionProvider is properly wrapped
