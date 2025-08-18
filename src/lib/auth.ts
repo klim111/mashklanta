@@ -4,11 +4,29 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
+import crypto from "crypto";
+
+// Generate a fallback secret if NEXTAUTH_SECRET is not set
+const generateFallbackSecret = () => {
+  if (process.env.NEXTAUTH_SECRET) {
+    return process.env.NEXTAUTH_SECRET;
+  }
+  
+  // In production, we should always have a secret set
+  if (process.env.NODE_ENV === "production") {
+    console.error("⚠️  NEXTAUTH_SECRET is not set in production! Please set this environment variable.");
+    throw new Error("NEXTAUTH_SECRET is required in production");
+  }
+  
+  // In development, generate a temporary secret
+  console.warn("⚠️  NEXTAUTH_SECRET not found, generating temporary secret for development");
+  return crypto.randomBytes(32).toString("base64");
+};
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: generateFallbackSecret(),
   debug: process.env.NODE_ENV === "development",
   providers: [
     Credentials({
