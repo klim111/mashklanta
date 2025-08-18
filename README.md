@@ -57,8 +57,19 @@ src/
 
 ## Server-side setup
 
+### Quick Setup (Recommended)
+Run the automated setup script:
+```bash
+./scripts/setup-env.sh
+```
+
+### Manual Setup
 1. Copy `.env.example` to `.env.local` and fill values (DB, Redis, S3, BOI API, NEXTAUTH_SECRET, Google Vision).
-2. Install dependencies and generate Prisma client:
+2. Generate a secure NEXTAUTH_SECRET:
+   ```bash
+   openssl rand -base64 32
+   ```
+3. Install dependencies and generate Prisma client:
 
 ```bash
 npm install
