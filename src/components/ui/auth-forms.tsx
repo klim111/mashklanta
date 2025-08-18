@@ -65,17 +65,23 @@ export function AuthForms({ isOpen, onClose, mode }: AuthFormsProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Signup failed");
+        const errorMessage = data.error || data.details || "Signup failed";
+        throw new Error(errorMessage);
       }
 
       setSuccess("Account created successfully! You can now log in.");
+      
+      // Store credentials for auto-login before clearing form
+      const emailForLogin = formData.email;
+      const passwordForLogin = formData.password;
+      
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       
       // Auto-login after successful signup
       setTimeout(() => {
         signIn("credentials", {
-          email: formData.email,
-          password: formData.password,
+          email: emailForLogin,
+          password: passwordForLogin,
           redirect: false,
         }).then((result) => {
           if (result?.ok) {
