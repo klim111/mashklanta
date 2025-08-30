@@ -27,6 +27,7 @@ export function LoanPlanner() {
   });
   
   const [showAmortTable, setShowAmortTable] = useState<Loan | null>(null);
+  const [activeCompareAction, setActiveCompareAction] = useState<'summary' | 'consolidation' | 'prepayment' | null>(null);
 
   // טעינה משמירה מקומית
   useEffect(() => {
@@ -193,6 +194,7 @@ export function LoanPlanner() {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
+                        setActiveCompareAction('summary');
                         // מעבר לטאב השוואה
                         const tabsList = document.querySelector('[role="tablist"]');
                         const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
@@ -207,6 +209,7 @@ export function LoanPlanner() {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
+                        setActiveCompareAction('consolidation');
                         const tabsList = document.querySelector('[role="tablist"]');
                         const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
                         compareTab?.click();
@@ -220,6 +223,7 @@ export function LoanPlanner() {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
+                        setActiveCompareAction('prepayment');
                         const tabsList = document.querySelector('[role="tablist"]');
                         const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
                         compareTab?.click();
@@ -240,6 +244,8 @@ export function LoanPlanner() {
               loans={state.loans}
               selectedIds={state.selectedForComparison}
               onClearSelection={clearSelection}
+              activeAction={activeCompareAction}
+              onActionComplete={() => setActiveCompareAction(null)}
             />
           </TabsContent>
 
