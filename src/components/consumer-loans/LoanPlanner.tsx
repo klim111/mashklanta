@@ -185,6 +185,52 @@ export function LoanPlanner() {
                   💡 לחץ על שם ההלוואה כדי לבחור אותה להשוואה. 
                   נבחרו {state.selectedForComparison.length} הלוואות להשוואה.
                 </p>
+                
+                {/* כפתורי פעולה מהירה כאשר נבחרו 2+ הלוואות */}
+                {state.selectedForComparison.length >= 2 && (
+                  <div className="mt-4 flex justify-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // מעבר לטאב השוואה
+                        const tabsList = document.querySelector('[role="tablist"]');
+                        const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
+                        compareTab?.click();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Calculator className="h-4 w-4" />
+                      הצג סיכום
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const tabsList = document.querySelector('[role="tablist"]');
+                        const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
+                        compareTab?.click();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <TrendingUp className="h-4 w-4" />
+                      איחוד הלוואות
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const tabsList = document.querySelector('[role="tablist"]');
+                        const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
+                        compareTab?.click();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      פרעון מוקדם
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
