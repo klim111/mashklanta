@@ -3,12 +3,43 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calculator, TrendingUp } from 'lucide-react';
+import { Plus, Calculator, TrendingUp, Merge, PiggyBank, GripVertical } from 'lucide-react';
+import { 
+  DndContext, 
+  closestCenter, 
+  KeyboardSensor, 
+  PointerSensor, 
+  useSensor, 
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent
+} from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import type { Loan, LoanPlannerState } from './types';
 import { LoanCard } from './LoanCard';
 import { AmortTable } from './AmortTable';
 import { ComparePanel } from './ComparePanel';
 import { OptimizePanel } from './OptimizePanel';
+
+// Component for droppable zones
+function DroppableZone({ id, children, className = '' }: { 
+  id: string; 
+  children: React.ReactNode; 
+  className?: string;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id });
+  
+  return (
+    <div 
+      ref={setNodeRef} 
+      className={`${className} ${isOver ? 'bg-blue-100 border-2 border-blue-300 border-dashed rounded-lg' : ''} transition-all duration-200`}
+    >
+      {children}
+    </div>
+  );
+}
 
 const STORAGE_KEY = 'consumer-loans-state';
 
@@ -28,6 +59,16 @@ export function LoanPlanner() {
   
   const [showAmortTable, setShowAmortTable] = useState<Loan | null>(null);
   const [activeCompareAction, setActiveCompareAction] = useState<'summary' | 'consolidation' | 'prepayment' | null>(null);
+  const [activeTab, setActiveTab] = useState('loans');
+  const [draggedLoan, setDraggedLoan] = useState<Loan | null>(null);
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // טעינה משמירה מקומית
   useEffect(() => {
@@ -110,28 +151,93 @@ export function LoanPlanner() {
     }));
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            מתכנן הלוואות צרכניות והשוואות
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            כלי מתקדם לתכנון, השוואה ואופטימיזציה של הלוואות צרכניות עם חישובי אנונה מדויקים
-          </p>
-        </div>
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const loanId = event.active.id as string;
+    const loan = state.loans.find(l => l.id === loanId);
+    setDraggedLoan(loan || null);
+  };
 
-        <Tabs defaultValue="loans" className="w-full">
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setDraggedLoan(null);
+    
+    if (!over) return;
+
+    const loanId = active.id as string;
+    const dropZone = over.id as string;
+    
+    // Add loan to selection if not already selected
+    if (!state.selectedForComparison.includes(loanId)) {
+      setState(prev => ({
+        ...prev,
+        selectedForComparison: [...prev.selectedForComparison, loanId],
+      }));
+    }
+    
+    // Handle different drop zones
+    switch (dropZone) {
+      case 'compare-tab':
+        setActiveTab('compare');
+        break;
+      case 'summary-action':
+        setActiveCompareAction('summary');
+        setActiveTab('compare');
+        break;
+      case 'consolidation-action':
+        setActiveCompareAction('consolidation');
+        setActiveTab('compare');
+        break;
+      case 'prepayment-action':
+        setActiveCompareAction('prepayment');
+        setActiveTab('compare');
+        break;
+    }
+  };
+
+  // Handle manual tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+
+  return (
+    <DndContext 
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="min-h-screen bg-gray-50" dir="rtl">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              מתכנן הלוואות צרכניות והשוואות
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              כלי מתקדם לתכנון, השוואה ואופטימיזציה של הלוואות צרכניות עם חישובי אנונה מדויקים
+            </p>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="loans" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
               ניהול הלוואות
             </TabsTrigger>
-            <TabsTrigger value="compare" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              השוואה
-            </TabsTrigger>
+            <DroppableZone id="compare-tab" className="flex-1">
+              <TabsTrigger value="compare" className="flex items-center gap-2 w-full">
+                <TrendingUp className="h-4 w-4" />
+                השוואה
+                {state.selectedForComparison.length > 0 && (
+                  <span className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs">
+                    {state.selectedForComparison.length}
+                  </span>
+                )}
+                {draggedLoan && (
+                  <span className="text-xs text-green-600">← שחרר כאן</span>
+                )}
+              </TabsTrigger>
+            </DroppableZone>
             <TabsTrigger value="optimize" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               שילובים
@@ -183,56 +289,84 @@ export function LoanPlanner() {
             {state.loans.length > 1 && (
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-700">
-                  💡 לחץ על שם ההלוואה כדי לבחור אותה להשוואה. 
+                  💡 לחץ על שם ההלוואה כדי לבחור אותה להשוואה או גרור באמצעות הידית <GripVertical className="inline h-4 w-4" /> לכרטיסיית השוואה או לכפתורי הפעולה. 
                   נבחרו {state.selectedForComparison.length} הלוואות להשוואה.
                 </p>
+                {draggedLoan && (
+                  <p className="text-sm text-green-700 mt-2">
+                    🎯 גורר את "{draggedLoan.name}" - שחרר על כרטיסיית השוואה או כפתור פעולה
+                  </p>
+                )}
                 
                 {/* כפתורי פעולה מהירה כאשר נבחרו 2+ הלוואות */}
                 {state.selectedForComparison.length >= 2 && (
                   <div className="mt-4 flex justify-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setActiveCompareAction('summary');
-                        // מעבר לטאב השוואה
-                        const tabsList = document.querySelector('[role="tablist"]');
-                        const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
-                        compareTab?.click();
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Calculator className="h-4 w-4" />
-                      הצג סיכום
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setActiveCompareAction('consolidation');
-                        const tabsList = document.querySelector('[role="tablist"]');
-                        const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
-                        compareTab?.click();
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <TrendingUp className="h-4 w-4" />
-                      איחוד הלוואות
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setActiveCompareAction('prepayment');
-                        const tabsList = document.querySelector('[role="tablist"]');
-                        const compareTab = tabsList?.querySelector('[value="compare"]') as HTMLElement;
-                        compareTab?.click();
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      פרעון מוקדם
-                    </Button>
+                    <DroppableZone id="summary-action" className="rounded-lg p-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setActiveCompareAction('summary');
+                          setActiveTab('compare');
+                        }}
+                        className="flex items-center gap-2 relative"
+                      >
+                        <Calculator className="h-4 w-4" />
+                        הצג סיכום
+                        {draggedLoan && (
+                          <span className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                            ↓
+                          </span>
+                        )}
+                      </Button>
+                    </DroppableZone>
+                    <DroppableZone id="consolidation-action" className="rounded-lg p-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setActiveCompareAction('consolidation');
+                          setActiveTab('compare');
+                        }}
+                        className="flex items-center gap-2 relative"
+                      >
+                        <Merge className="h-4 w-4" />
+                        איחוד הלוואות
+                        {draggedLoan && (
+                          <span className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                            ↓
+                          </span>
+                        )}
+                      </Button>
+                    </DroppableZone>
+                    <DroppableZone id="prepayment-action" className="rounded-lg p-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setActiveCompareAction('prepayment');
+                          setActiveTab('compare');
+                        }}
+                        className="flex items-center gap-2 relative"
+                      >
+                        <PiggyBank className="h-4 w-4" />
+                        פרעון מוקדם
+                        {draggedLoan && (
+                          <span className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                            ↓
+                          </span>
+                        )}
+                      </Button>
+                    </DroppableZone>
+                  </div>
+                )}
+                
+                {/* הוראות גרירה כאשר יש הלוואות אבל אין בחירה */}
+                {state.selectedForComparison.length < 2 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-600">
+                      🖱️ גרור הלוואות לכרטיסיית השוואה או בחר לפחות 2 הלוואות כדי להציג כפתורי פעולה
+                    </p>
                   </div>
                 )}
               </div>
@@ -262,6 +396,17 @@ export function LoanPlanner() {
           />
         )}
       </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {draggedLoan ? (
+          <div className="bg-white p-4 rounded-lg shadow-lg border-2 border-blue-300 opacity-90">
+            <h4 className="font-semibold">{draggedLoan.name}</h4>
+            <p className="text-sm text-gray-600">גרור לכרטיסיית השוואה או לכפתור פעולה</p>
+          </div>
+        ) : null}
+      </DragOverlay>
     </div>
+    </DndContext>
   );
 }

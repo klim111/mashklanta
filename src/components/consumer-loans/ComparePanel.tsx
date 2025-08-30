@@ -50,8 +50,10 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
           setShowPrepayment(true);
           break;
       }
-      // Call onActionComplete to reset the activeAction in parent
-      onActionComplete?.();
+      // Reset the activeAction in parent after processing
+      setTimeout(() => {
+        onActionComplete?.();
+      }, 100);
     }
   }, [activeAction, onActionComplete]);
   
