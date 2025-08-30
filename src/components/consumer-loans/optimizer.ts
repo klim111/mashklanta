@@ -97,14 +97,25 @@ export function evaluateNoConsolidation(
     let totalMonthlyPayment = 0;
     let totalInterest = 0;
     let totalPaid = 0;
-    let maxMonths = 0;
+    let weightedEndTime = 0;
+    let totalPaymentForWeighting = 0;
     
     for (const loan of allLoans) {
       const summary = calculateLoanSummary(loan);
       totalMonthlyPayment += summary.monthlyPayment;
       totalInterest += summary.totalInterest;
       totalPaid += summary.totalPaid;
-      maxMonths = Math.max(maxMonths, loan.months);
+      
+      // חישוב זמן סיום משוקלל לפי גודל התשלום החודשי
+      weightedEndTime += loan.months * summary.monthlyPayment;
+      totalPaymentForWeighting += summary.monthlyPayment;
+    }
+    
+    // אם יש תשלומים, נחשב ממוצע משוקלל, אחרת נקח את המקסימום
+    if (totalPaymentForWeighting > 0) {
+      weightedEndTime = Math.round(weightedEndTime / totalPaymentForWeighting);
+    } else {
+      weightedEndTime = Math.max(...allLoans.map(loan => loan.months));
     }
     
     results.push({
@@ -113,7 +124,7 @@ export function evaluateNoConsolidation(
       totalMonthlyPayment,
       totalInterest,
       totalPaid,
-      weightedEndTime: maxMonths,
+      weightedEndTime: weightedEndTime,
       description: `ללא איחוד - הלוואה חדשה ל-${term} חודשים`,
       cashAllocation: allocation,
     });
@@ -204,13 +215,19 @@ export function findBestPlan(args: OptimizationInput): OptimizationResult {
   
   // סינון לפי תקציב חודשי אם הוגדר
   let validResults = allResults;
+  let budgetExceeded = false;
+  
   if (budgetMonthly && budgetMonthly > 0) {
     validResults = allResults.filter(result => result.totalMonthlyPayment <= budgetMonthly);
-  }
-  
-  if (validResults.length === 0) {
-    // אם אין תרחיש תקין, לוקחים את הכי קרוב לתקציב
-    validResults = allResults.sort((a, b) => a.totalMonthlyPayment - b.totalMonthlyPayment);
+    
+    if (validResults.length === 0) {
+      // אם אין תרחיש תקין, נציג הודעה מתאימה
+      budgetExceeded = true;
+      // נבחר את 3 התרחישים הקרובים ביותר לתקציב
+      validResults = allResults
+        .sort((a, b) => a.totalMonthlyPayment - b.totalMonthlyPayment)
+        .slice(0, 3);
+    }
   }
   
   // בחירת התרחיש הטוב ביותר לפי המטרה
@@ -229,10 +246,18 @@ export function findBestPlan(args: OptimizationInput): OptimizationResult {
     reason = `נבחר בגלל מינימום החזר חודשי: ${Math.round(best.totalMonthlyPayment).toLocaleString('he-IL')} ₪`;
   }
   
+  // אם התרחיש הנבחר עדיין חורג מהתקציב, נוסיף התראה
+  if (budgetMonthly && best.totalMonthlyPayment > budgetMonthly) {
+    budgetExceeded = true;
+  }
+  
   return {
     best,
     compared: allResults,
-    reason,
+    reason: budgetExceeded 
+      ? `⚠️ אף תרחיש לא עומד בתקציב החודשי של ${budgetMonthly?.toLocaleString('he-IL')} ₪. מוצגים התרחישים הקרובים ביותר. ${reason}`
+      : reason,
+    budgetExceeded,
   };
 }
 

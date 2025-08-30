@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, Calculator, AlertCircle } from 'lucide-react';
 import type { Loan, OptimizationInput, Objective } from './types';
 import { findBestPlan } from './optimizer';
+import { calculateLoanSummary } from './loanMath';
 import { formatILS, formatNumber } from '@/lib/currency';
 
 interface OptimizePanelProps {
@@ -190,11 +191,31 @@ export function OptimizePanel({ loans }: OptimizePanelProps) {
               <div className="border-t pt-6">
                 <h4 className="text-lg font-bold mb-4">תוצאות האופטימיזציה</h4>
                 
+                {/* אזהרת חריגה מתקציב */}
+                {result.budgetExceeded && (
+                  <Card className="p-4 bg-yellow-50 border-yellow-200 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      <h5 className="font-bold text-yellow-800">אזהרה: חריגה מתקציב</h5>
+                    </div>
+                    <p className="text-sm text-yellow-700">
+                      אף אחד מהתרחישים לא עומד בתקציב החודשי שהוגדר של {formatILS(optimizationInput.budgetMonthly || 0)}.
+                      מוצגים התרחישים הקרובים ביותר לתקציב.
+                    </p>
+                  </Card>
+                )}
+
                 {/* התרחיש המנצח */}
-                <Card className="p-4 bg-green-50 border-green-200 mb-4">
+                <Card className={`p-4 mb-4 ${result.budgetExceeded ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <h5 className="font-bold text-green-800">התרחיש המומלץ</h5>
+                    {result.budgetExceeded ? (
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                    ) : (
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                    )}
+                    <h5 className={`font-bold ${result.budgetExceeded ? 'text-yellow-800' : 'text-green-800'}`}>
+                      {result.budgetExceeded ? 'התרחיש הקרוב ביותר לתקציב' : 'התרחיש המומלץ'}
+                    </h5>
                   </div>
                   
                   <div className="grid grid-cols-4 gap-4 mb-4">
@@ -216,7 +237,11 @@ export function OptimizePanel({ loans }: OptimizePanelProps) {
                     </div>
                   </div>
                   
-                  <div className="text-sm text-green-700 bg-green-100 p-3 rounded">
+                  <div className={`text-sm p-3 rounded ${
+                    result.budgetExceeded 
+                      ? 'text-yellow-700 bg-yellow-100' 
+                      : 'text-green-700 bg-green-100'
+                  }`}>
                     <strong>{result.best.description}</strong>
                     <br />
                     {result.reason}
@@ -244,40 +269,93 @@ export function OptimizePanel({ loans }: OptimizePanelProps) {
                   </TabsList>
                   
                   <TabsContent value="comparison" className="space-y-4">
+                    {optimizationInput.budgetMonthly && (
+                      <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                        💡 תקציב חודשי מוגדר: {formatILS(optimizationInput.budgetMonthly)}. 
+                        תרחישים החורגים מהתקציב מסומנים באדום.
+                      </div>
+                    )}
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
                             <th className="p-3 text-right">תרחיש</th>
-                            <th className="p-3 text-right">החזר חודשי</th>
+                            <th className="p-3 text-right">
+                              החזר חודשי
+                              {optimizationInput.budgetMonthly && (
+                                <div className="text-xs font-normal text-gray-500">
+                                  (תקציב: {formatILS(optimizationInput.budgetMonthly)})
+                                </div>
+                              )}
+                            </th>
                             <th className="p-3 text-right">סך ריבית</th>
                             <th className="p-3 text-right">סך תשלומים</th>
                             <th className="p-3 text-right">זמן סיום</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {result.compared.map((scenario, index) => (
-                            <tr 
-                              key={index} 
-                              className={`border-b ${
-                                scenario === result.best ? 'bg-green-50 font-semibold' : 'hover:bg-gray-50'
-                              }`}
-                            >
-                              <td className="p-3">
-                                {scenario === result.best && (
-                                  <TrendingUp className="h-4 w-4 text-green-600 inline ml-1" />
-                                )}
-                                {scenario.description}
-                              </td>
-                              <td className="p-3">{formatILS(scenario.totalMonthlyPayment)}</td>
-                              <td className="p-3">{formatILS(scenario.totalInterest)}</td>
-                              <td className="p-3">{formatILS(scenario.totalPaid)}</td>
-                              <td className="p-3">{scenario.weightedEndTime} חודשים</td>
-                            </tr>
-                          ))}
+                          {result.compared.map((scenario, index) => {
+                            const exceedsBudget = optimizationInput.budgetMonthly && 
+                              scenario.totalMonthlyPayment > optimizationInput.budgetMonthly;
+                            
+                            return (
+                              <tr 
+                                key={index} 
+                                className={`border-b ${
+                                  scenario === result.best 
+                                    ? result.budgetExceeded 
+                                      ? 'bg-yellow-50 font-semibold' 
+                                      : 'bg-green-50 font-semibold'
+                                    : exceedsBudget 
+                                      ? 'bg-red-50 text-gray-500' 
+                                      : 'hover:bg-gray-50'
+                                }`}
+                              >
+                                <td className="p-3">
+                                  {scenario === result.best && (
+                                    result.budgetExceeded ? (
+                                      <AlertCircle className="h-4 w-4 text-yellow-600 inline ml-1" />
+                                    ) : (
+                                      <TrendingUp className="h-4 w-4 text-green-600 inline ml-1" />
+                                    )
+                                  )}
+                                  {exceedsBudget && scenario !== result.best && (
+                                    <TrendingDown className="h-4 w-4 text-red-500 inline ml-1" />
+                                  )}
+                                  {scenario.description}
+                                  {exceedsBudget && (
+                                    <span className="text-xs text-red-500 mr-2">(חורג מתקציב)</span>
+                                  )}
+                                </td>
+                                <td className={`p-3 ${exceedsBudget ? 'text-red-500 font-semibold' : ''}`}>
+                                  {formatILS(scenario.totalMonthlyPayment)}
+                                </td>
+                                <td className="p-3">{formatILS(scenario.totalInterest)}</td>
+                                <td className="p-3">{formatILS(scenario.totalPaid)}</td>
+                                <td className="p-3">{scenario.weightedEndTime} חודשים</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
+                    
+                    {optimizationInput.budgetMonthly && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm">
+                        <strong>סיכום תקציב:</strong>
+                        {(() => {
+                          const withinBudget = result.compared.filter(s => 
+                            s.totalMonthlyPayment <= (optimizationInput.budgetMonthly || 0)
+                          ).length;
+                          const total = result.compared.length;
+                          return (
+                            <span className="mr-2">
+                              {withinBudget} מתוך {total} תרחישים עומדים בתקציב החודשי
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="details" className="space-y-4">
@@ -300,25 +378,79 @@ export function OptimizePanel({ loans }: OptimizePanelProps) {
                     
                     <Card className="p-4">
                       <h5 className="font-semibold mb-3">השוואה עם המצב הנוכחי</h5>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-gray-600">חיסכון בריבית</div>
-                          <div className="font-bold text-green-600">
-                            {(() => {
-                              const currentTotal = loans.reduce((sum, loan) => {
-                                const payment = (loan.principal * (loan.apr / 100 / 12) * Math.pow(1 + loan.apr / 100 / 12, loan.months)) / (Math.pow(1 + loan.apr / 100 / 12, loan.months) - 1);
-                                return sum + (payment * loan.months) - loan.principal;
-                              }, 0);
-                              const savings = currentTotal - result.best.totalInterest;
-                              return savings > 0 ? `${formatILS(savings)} חיסכון` : `${formatILS(-savings)} עלות נוספת`;
-                            })()}
+                      {(() => {
+                        // חישוב המצב הנוכחי
+                        const currentState = {
+                          totalMonthlyPayment: loans.reduce((sum, loan) => {
+                            const summary = calculateLoanSummary(loan);
+                            return sum + summary.monthlyPayment;
+                          }, 0),
+                          totalInterest: loans.reduce((sum, loan) => {
+                            const summary = calculateLoanSummary(loan);
+                            return sum + summary.totalInterest;
+                          }, 0),
+                          totalPaid: loans.reduce((sum, loan) => {
+                            const summary = calculateLoanSummary(loan);
+                            return sum + summary.totalPaid;
+                          }, 0),
+                        };
+
+                        // חישוב השינויים
+                        const monthlyChange = result.best.totalMonthlyPayment - currentState.totalMonthlyPayment;
+                        const interestChange = result.best.totalInterest - currentState.totalInterest;
+                        const totalChange = result.best.totalPaid - currentState.totalPaid;
+
+                        return (
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <div>
+                                <div className="text-sm text-gray-600">החזר חודשי</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">{formatILS(result.best.totalMonthlyPayment)}</span>
+                                  <span className={`text-sm ${monthlyChange > 0 ? 'text-red-600' : monthlyChange < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                                    {monthlyChange > 0 ? `+${formatILS(monthlyChange)}` : monthlyChange < 0 ? `${formatILS(monthlyChange)}` : 'ללא שינוי'}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-500">נוכחי: {formatILS(currentState.totalMonthlyPayment)}</div>
+                              </div>
+                              
+                              <div>
+                                <div className="text-sm text-gray-600">סך הריבית</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">{formatILS(result.best.totalInterest)}</span>
+                                  <span className={`text-sm ${interestChange > 0 ? 'text-red-600' : interestChange < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                                    {interestChange > 0 ? `+${formatILS(interestChange)}` : interestChange < 0 ? `${formatILS(interestChange)}` : 'ללא שינוי'}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-500">נוכחי: {formatILS(currentState.totalInterest)}</div>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                              <div>
+                                <div className="text-sm text-gray-600">סך התשלומים</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">{formatILS(result.best.totalPaid)}</span>
+                                  <span className={`text-sm ${totalChange > 0 ? 'text-red-600' : totalChange < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                                    {totalChange > 0 ? `+${formatILS(totalChange)}` : totalChange < 0 ? `${formatILS(totalChange)}` : 'ללא שינוי'}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-500">נוכחי: {formatILS(currentState.totalPaid)}</div>
+                              </div>
+                              
+                              <div>
+                                <div className="text-sm text-gray-600">מספר הלוואות</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">{result.best.loans.length}</span>
+                                  <span className="text-sm text-gray-500">
+                                    (נוכחי: {loans.length})
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-600">מספר הלוואות לאחר</div>
-                          <div className="font-bold">{result.best.loans.length}</div>
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </Card>
                   </TabsContent>
                 </Tabs>
