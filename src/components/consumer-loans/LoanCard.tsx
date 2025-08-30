@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Copy, Calculator, Edit3, Check, X, TrendingUp } from 'lucide-react';
+import { Trash2, Copy, Calculator, Edit3, Check, X, TrendingUp, GripVertical } from 'lucide-react';
+import { useDraggable } from '@dnd-kit/core';
 import type { Loan } from './types';
 import { calculateLoanSummary } from './loanMath';
 import { formatILS, formatPercent } from '@/lib/currency';
@@ -39,6 +40,21 @@ export function LoanCard({
     months: loan.months.toString(),
   });
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: loan.id,
+    disabled: isEditing,
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
   const summary = calculateLoanSummary(loan);
 
   const handleSave = () => {
@@ -65,14 +81,26 @@ export function LoanCard({
 
   return (
     <Card 
+      ref={setNodeRef}
+      style={style}
       className={`p-6 transition-all duration-200 ${
         isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:shadow-lg'
-      }`}
+      } ${isDragging ? 'opacity-50' : ''}`}
       dir="rtl"
     >
       <div className="space-y-4">
         {/* כותרת וכפתורי פעולה */}
         <div className="flex items-center justify-between">
+          {!isEditing && (
+            <div 
+              {...listeners} 
+              {...attributes}
+              className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+              title="גרור כדי להעביר להשוואה"
+            >
+              <GripVertical className="h-5 w-5 text-gray-400" />
+            </div>
+          )}
           {isEditing ? (
             <div className="flex-1 ml-4">
               <Input
@@ -84,7 +112,7 @@ export function LoanCard({
             </div>
           ) : (
             <h3 
-              className={`text-lg font-semibold cursor-pointer ${
+              className={`text-lg font-semibold cursor-pointer flex-1 ${
                 onToggleSelect ? 'hover:text-blue-600' : ''
               }`}
               onClick={() => onToggleSelect?.(loan.id)}
