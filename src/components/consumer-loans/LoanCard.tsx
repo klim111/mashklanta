@@ -5,10 +5,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Copy, Calculator, Edit3, Check, X } from 'lucide-react';
+import { Trash2, Copy, Calculator, Edit3, Check, X, TrendingUp } from 'lucide-react';
 import type { Loan } from './types';
 import { calculateLoanSummary } from './loanMath';
 import { formatILS, formatPercent } from '@/lib/currency';
+import { AmortChart } from './AmortChart';
 
 interface LoanCardProps {
   loan: Loan;
@@ -30,6 +31,7 @@ export function LoanCard({
   onToggleSelect,
 }: LoanCardProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showChart, setShowChart] = useState(false);
   const [editForm, setEditForm] = useState({
     name: loan.name,
     principal: loan.principal.toString(),
@@ -193,17 +195,36 @@ export function LoanCard({
               </div>
             </div>
             
-            <div className="mt-4">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => onShowAmortization(loan)}
-                className="w-full"
-              >
-                <Calculator className="h-4 w-4 ml-2" />
-                טבלת סילוקין
-              </Button>
+            <div className="mt-4 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onShowAmortization(loan)}
+                  className="w-full"
+                >
+                  <Calculator className="h-4 w-4 ml-2" />
+                  טבלת סילוקין
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowChart(!showChart)}
+                  className="w-full"
+                >
+                  <TrendingUp className="h-4 w-4 ml-2" />
+                  גרף סילוקין
+                </Button>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* גרף לוח סילוקין */}
+        {!isEditing && showChart && (
+          <div className="border-t pt-4 mt-4">
+            <h4 className="text-sm font-semibold mb-3 text-gray-700">גרף לוח סילוקין</h4>
+            <AmortChart loan={loan} height={250} />
           </div>
         )}
       </div>
