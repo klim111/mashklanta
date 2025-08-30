@@ -56,6 +56,7 @@ export interface OptimizationResult {
   best: ScenarioResult;
   compared: ScenarioResult[];
   reason: string;
+  budgetExceeded?: boolean;
 }
 
 export interface LoanPlannerState {
