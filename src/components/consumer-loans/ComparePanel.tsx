@@ -15,9 +15,11 @@ interface ComparePanelProps {
   loans: Loan[];
   selectedIds: string[];
   onClearSelection: () => void;
+  activeAction?: 'summary' | 'consolidation' | 'prepayment' | null;
+  onActionComplete?: () => void;
 }
 
-export function ComparePanel({ loans, selectedIds, onClearSelection }: ComparePanelProps) {
+export function ComparePanel({ loans, selectedIds, onClearSelection, activeAction, onActionComplete }: ComparePanelProps) {
   const [showAmortChart, setShowAmortChart] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showConsolidation, setShowConsolidation] = useState(false);
@@ -27,6 +29,31 @@ export function ComparePanel({ loans, selectedIds, onClearSelection }: ComparePa
     months: '60'
   });
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
+  
+  // Handle activeAction from parent component
+  React.useEffect(() => {
+    if (activeAction) {
+      switch (activeAction) {
+        case 'summary':
+          setShowSummary(true);
+          setShowConsolidation(false);
+          setShowPrepayment(false);
+          break;
+        case 'consolidation':
+          setShowSummary(false);
+          setShowConsolidation(true);
+          setShowPrepayment(false);
+          break;
+        case 'prepayment':
+          setShowSummary(false);
+          setShowConsolidation(false);
+          setShowPrepayment(true);
+          break;
+      }
+      // Call onActionComplete to reset the activeAction in parent
+      onActionComplete?.();
+    }
+  }, [activeAction, onActionComplete]);
   
   const selectedLoans = loans.filter(loan => selectedIds.includes(loan.id));
   
