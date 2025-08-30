@@ -35,6 +35,7 @@ export default function NavBar() {
         <a href="#process" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">תהליך</a>
         <a href="#benefits" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">יתרונות</a>
         <a href="#stats" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">נתונים</a>
+        <Link href="/consumer-loans" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">הלוואות צרכניות</Link>
         <a href="#contact" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">צור קשר</a>
       </nav>
 
@@ -142,6 +143,7 @@ export default function NavBar() {
               <a href="#process" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">תהליך</a>
               <a href="#benefits" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">יתרונות</a>
               <a href="#stats" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">נתונים</a>
+              <Link href="/consumer-loans" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">הלוואות צרכניות</Link>
               <a href="#contact" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">צור קשר</a>
             </nav>
 
