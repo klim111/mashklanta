@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
+import { TrendingUp } from 'lucide-react';
 import type { Loan } from './types';
-import { calculateLoanSummary } from './loanMath';
+import { calculateLoanSummary, buildAmortSchedule } from './loanMath';
 import { formatILS } from '@/lib/currency';
 
 interface ComparePanelProps {
@@ -15,6 +16,7 @@ interface ComparePanelProps {
 }
 
 export function ComparePanel({ loans, selectedIds, onClearSelection }: ComparePanelProps) {
+  const [showAmortChart, setShowAmortChart] = useState(false);
   const selectedLoans = loans.filter(loan => selectedIds.includes(loan.id));
   
   if (selectedLoans.length < 2) {
@@ -37,7 +39,7 @@ export function ComparePanel({ loans, selectedIds, onClearSelection }: ComparePa
     };
   });
 
-  // נתונים לגרף
+  // נתונים לגרף עמודות
   const chartData = comparisons.map(comp => ({
     name: comp.name,
     'החזר חודשי': Math.round(comp.summary.monthlyPayment),
@@ -45,13 +47,62 @@ export function ComparePanel({ loans, selectedIds, onClearSelection }: ComparePa
     'סך תשלומים': Math.round(comp.summary.totalPaid),
   }));
 
+  // נתונים לגרף לוח סילוקין משווה
+  const getAmortComparisonData = () => {
+    if (selectedLoans.length !== 2) return [];
+    
+    const schedules = selectedLoans.map(loan => ({
+      loan,
+      schedule: buildAmortSchedule({
+        principal: loan.principal,
+        apr: loan.apr,
+        months: loan.months,
+      })
+    }));
+
+    const maxMonths = Math.max(...schedules.map(s => s.schedule.monthsActual));
+    const data = [];
+
+    for (let month = 1; month <= maxMonths; month++) {
+      const dataPoint: any = { month };
+      
+      schedules.forEach(({ loan, schedule }) => {
+        const row = schedule.rows.find(r => r.m === month);
+        if (row) {
+          dataPoint[`${loan.name} - יתרה`] = Math.round(row.balEnd);
+        } else {
+          dataPoint[`${loan.name} - יתרה`] = 0;
+        }
+      });
+      
+      data.push(dataPoint);
+    }
+
+    return data;
+  };
+
+  const amortComparisonData = getAmortComparisonData();
+  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
+
   return (
     <Card className="p-6" dir="rtl">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold">השוואת הלוואות ({selectedLoans.length})</h3>
-        <Button variant="outline" onClick={onClearSelection}>
-          נקה בחירה
-        </Button>
+        <div className="flex gap-2">
+          {selectedLoans.length === 2 && (
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAmortChart(!showAmortChart)}
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4" />
+              {showAmortChart ? 'הסתר גרף סילוקין' : 'הצג גרף סילוקין'}
+            </Button>
+          )}
+          <Button variant="outline" onClick={onClearSelection}>
+            נקה בחירה
+          </Button>
+        </div>
       </div>
 
       {/* טבלת השוואה */}
@@ -90,33 +141,74 @@ export function ComparePanel({ loans, selectedIds, onClearSelection }: ComparePa
         </table>
       </div>
 
-      {/* גרף השוואה */}
-      <div className="h-80">
-        <h4 className="text-lg font-semibold mb-4">גרף השוואה</h4>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="name" 
-              tick={{ fontSize: 12 }}
-              interval={0}
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
-            <YAxis 
-              tick={{ fontSize: 12 }}
-              tickFormatter={(value) => `₪${(value / 1000).toFixed(0)}K`}
-            />
-            <Tooltip 
-              formatter={(value: number, name: string) => [formatILS(value), name]}
-              labelStyle={{ direction: 'rtl' }}
-            />
-            <Legend />
-            <Bar dataKey="החזר חודשי" fill="#3b82f6" />
-            <Bar dataKey="סך ריבית" fill="#ef4444" />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* גרף השוואה מתקדם */}
+      <div className="space-y-6">
+        <div className="h-80">
+          <h4 className="text-lg font-semibold mb-4">השוואה ויזואלית - היבטים כלליים</h4>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis 
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => `₪${(value / 1000).toFixed(0)}K`}
+              />
+              <Tooltip 
+                formatter={(value: number, name: string) => [formatILS(value), name]}
+                labelStyle={{ direction: 'rtl' }}
+              />
+              <Legend />
+              <Bar dataKey="החזר חודשי" fill="#3b82f6" name="החזר חודשי" />
+              <Bar dataKey="סך ריבית" fill="#ef4444" name="סך ריבית" />
+              <Bar dataKey="סך תשלומים" fill="#10b981" name="סך תשלומים" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* גרף השוואת לוח סילוקין */}
+        {showAmortChart && selectedLoans.length === 2 && (
+          <div className="h-96 border-t pt-6">
+            <h4 className="text-lg font-semibold mb-4">השוואת קצב החזר - לוח סילוקין</h4>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={amortComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'חודש', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `₪${(value / 1000).toFixed(0)}K`}
+                  label={{ value: 'יתרה (₪)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [formatILS(value), name]}
+                  labelFormatter={(month) => `חודש ${month}`}
+                  labelStyle={{ direction: 'rtl' }}
+                />
+                <Legend />
+                {selectedLoans.map((loan, index) => (
+                  <Line 
+                    key={loan.id}
+                    type="monotone" 
+                    dataKey={`${loan.name} - יתרה`}
+                    stroke={colors[index % colors.length]} 
+                    strokeWidth={3}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* סיכום מהיר */}
