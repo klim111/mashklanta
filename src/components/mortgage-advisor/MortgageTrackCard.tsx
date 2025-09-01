@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Edit, Check, X, Calculator } from 'lucide-react';
+import { Trash2, Edit, Check, X, Calculator, TrendingUp } from 'lucide-react';
 import type { MortgageTrack } from './types';
 import { TRACK_TYPES, DEFAULT_INTEREST_RATES } from './types';
 import { formatCurrency, formatPercentage, calculateMonthlyPayment } from './mortgageCalculations';
+import { useCPI } from '@/hooks/useCPI';
 
 interface MortgageTrackCardProps {
   track: MortgageTrack;
@@ -28,6 +29,7 @@ export function MortgageTrackCard({
 }: MortgageTrackCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(track);
+  const { cpiData, loading: cpiLoading } = useCPI();
 
   const handleSave = () => {
     // חישוב מחדש של האחוז והסכום
@@ -221,7 +223,21 @@ export function MortgageTrackCard({
         
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">ריבית:</span>
-          <span className="font-medium">{formatPercentage(track.interestRate)}</span>
+          <div className="text-left">
+            <span className="font-medium">{formatPercentage(track.interestRate)}</span>
+            {track.type === 'madad' && cpiData && (
+              <div className="text-xs text-purple-600 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                מדד: {cpiData.value.toFixed(1)} 
+                <span className={`text-xs ${cpiData.changePercentage >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ({cpiData.changePercentage >= 0 ? '+' : ''}{cpiData.changePercentage.toFixed(2)}%)
+                </span>
+              </div>
+            )}
+            {track.type === 'madad' && cpiLoading && (
+              <div className="text-xs text-gray-500">טוען מדד...</div>
+            )}
+          </div>
         </div>
         
         <div className="flex justify-between items-center">

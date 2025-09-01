@@ -9,6 +9,7 @@ import { Trash2, Edit, Check, X, Copy, Calculator, TrendingUp, PieChart } from '
 import type { MortgageMix } from './types';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
 import { TRACK_TYPES } from './types';
+import { useCPI } from '@/hooks/useCPI';
 
 interface MortgageMixCardProps {
   mix: MortgageMix;
@@ -33,6 +34,7 @@ export function MortgageMixCard({
 }: MortgageMixCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ name: mix.name, notes: mix.notes || '' });
+  const { cpiData, loading: cpiLoading } = useCPI();
 
   const handleSave = () => {
     onUpdate({
@@ -194,6 +196,12 @@ export function MortgageMixCard({
                   <div>{formatCurrency(track.amount)}</div>
                   <div className="text-xs text-gray-500">
                     {formatPercentage(track.percentage, 1)} • {formatPercentage(track.interestRate)}
+                    {track.type === 'madad' && cpiData && (
+                      <div className="text-xs text-purple-600 flex items-center gap-1 mt-1">
+                        <TrendingUp className="h-3 w-3" />
+                        מדד: {cpiData.value.toFixed(1)}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
