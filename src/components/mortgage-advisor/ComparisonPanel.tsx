@@ -23,6 +23,7 @@ import {
   calculateMortgageMix 
 } from './mortgageCalculations';
 import { TRACK_TYPES } from './types';
+import { useCPI } from '@/hooks/useCPI';
 
 interface ComparisonPanelProps {
   mixes: MortgageMix[];
@@ -32,6 +33,7 @@ interface ComparisonPanelProps {
 
 export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: ComparisonPanelProps) {
   const [activeView, setActiveView] = useState<'summary' | 'detailed' | 'charts'>('summary');
+  const { cpiData, loading: cpiLoading } = useCPI();
   
   const selectedMixes = mixes.filter(mix => selectedIds.includes(mix.id));
 
@@ -131,7 +133,14 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
                     </div>
                     <div>
                       <span className="text-gray-600">ריבית: </span>
-                      <span className="font-medium">{formatPercentage(trackCalc.track.interestRate)}</span>
+                      <div className="inline-block">
+                        <span className="font-medium">{formatPercentage(trackCalc.track.interestRate)}</span>
+                        {trackCalc.track.type === 'madad' && cpiData && (
+                          <div className="text-xs text-purple-600 inline-block mr-2">
+                            (מדד: {cpiData.value.toFixed(1)})
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <span className="text-gray-600">תקופה: </span>

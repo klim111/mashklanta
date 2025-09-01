@@ -178,3 +178,151 @@ export function formatNumber(num: number): string {
 export function formatPercentage(rate: number, decimals: number = 2): string {
   return `${rate.toFixed(decimals)}%`;
 }
+
+/**
+ * יצירת נתוני גרף החזר חודשי לאורך זמן
+ */
+export function generateMonthlyPaymentChart(trackCalculations: TrackCalculation[]): Array<{
+  month: number;
+  year: number;
+  totalPayment: number;
+  [trackName: string]: number;
+}> {
+  // מציאת האורך המקסימלי של לוח סילוקין
+  const maxLength = Math.max(...trackCalculations.map(calc => calc.amortSchedule.length));
+  
+  const chartData = [];
+  for (let i = 0; i < maxLength; i++) {
+    const month = i + 1;
+    const year = Math.floor(i / 12) + 1;
+    
+    let totalPayment = 0;
+    const monthData: any = { month, year };
+    
+    trackCalculations.forEach(calc => {
+      const payment = calc.amortSchedule[i]?.payment || 0;
+      totalPayment += payment;
+      monthData[calc.track.name] = payment;
+    });
+    
+    monthData.totalPayment = totalPayment;
+    chartData.push(monthData);
+  }
+  
+  return chartData;
+}
+
+/**
+ * יצירת נתוני גרף יתרת חוב לאורך זמן
+ */
+export function generateDebtBalanceChart(trackCalculations: TrackCalculation[]): Array<{
+  month: number;
+  year: number;
+  totalBalance: number;
+  [trackName: string]: number;
+}> {
+  const maxLength = Math.max(...trackCalculations.map(calc => calc.amortSchedule.length));
+  
+  const chartData = [];
+  for (let i = 0; i < maxLength; i++) {
+    const month = i + 1;
+    const year = Math.floor(i / 12) + 1;
+    
+    let totalBalance = 0;
+    const monthData: any = { month, year };
+    
+    trackCalculations.forEach(calc => {
+      const balance = calc.amortSchedule[i]?.balanceEnd || 0;
+      totalBalance += balance;
+      monthData[calc.track.name] = balance;
+    });
+    
+    monthData.totalBalance = totalBalance;
+    chartData.push(monthData);
+  }
+  
+  return chartData;
+}
+
+/**
+ * יצירת נתוני גרף ריבית ממוצעת לאורך זמן
+ */
+export function generateAverageInterestChart(trackCalculations: TrackCalculation[]): Array<{
+  month: number;
+  year: number;
+  averageInterestRate: number;
+}> {
+  const maxLength = Math.max(...trackCalculations.map(calc => calc.amortSchedule.length));
+  
+  const chartData = [];
+  for (let i = 0; i < maxLength; i++) {
+    const month = i + 1;
+    const year = Math.floor(i / 12) + 1;
+    
+    // חישוב ריבית ממוצעת משוקללת לחודש הנוכחי
+    let totalBalance = 0;
+    let weightedInterest = 0;
+    
+    trackCalculations.forEach(calc => {
+      const balance = calc.amortSchedule[i]?.balanceEnd || 0;
+      totalBalance += balance;
+      weightedInterest += balance * calc.track.interestRate;
+    });
+    
+    const averageInterestRate = totalBalance > 0 ? weightedInterest / totalBalance : 0;
+    
+    chartData.push({
+      month,
+      year,
+      averageInterestRate
+    });
+  }
+  
+  return chartData;
+}
+
+/**
+ * יצירת נתוני גרף חלוקת תשלום (קרן מול ריבית)
+ */
+export function generatePaymentBreakdownChart(trackCalculations: TrackCalculation[]): Array<{
+  month: number;
+  year: number;
+  totalInterest: number;
+  totalPrincipal: number;
+  interestPercentage: number;
+  principalPercentage: number;
+}> {
+  const maxLength = Math.max(...trackCalculations.map(calc => calc.amortSchedule.length));
+  
+  const chartData = [];
+  for (let i = 0; i < maxLength; i++) {
+    const month = i + 1;
+    const year = Math.floor(i / 12) + 1;
+    
+    let totalInterest = 0;
+    let totalPrincipal = 0;
+    
+    trackCalculations.forEach(calc => {
+      const row = calc.amortSchedule[i];
+      if (row) {
+        totalInterest += row.interest;
+        totalPrincipal += row.principal;
+      }
+    });
+    
+    const totalPayment = totalInterest + totalPrincipal;
+    const interestPercentage = totalPayment > 0 ? (totalInterest / totalPayment) * 100 : 0;
+    const principalPercentage = totalPayment > 0 ? (totalPrincipal / totalPayment) * 100 : 0;
+    
+    chartData.push({
+      month,
+      year,
+      totalInterest,
+      totalPrincipal,
+      interestPercentage,
+      principalPercentage
+    });
+  }
+  
+  return chartData;
+}

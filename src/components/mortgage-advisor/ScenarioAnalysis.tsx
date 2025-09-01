@@ -41,12 +41,18 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
   });
 
   const baseCalculation = calculateMortgageMix(baseMix);
+  
+  // בדיקה אם יש מסלולי פריים בתמהיל
+  const hasPrimeTracks = baseMix.tracks.some(track => track.type === 'prime');
 
-  // יצירת תמהיל עם שינוי ריבית
+  // יצירת תמהיל עם שינוי ריבית (רק למסלולים שאינם פריים)
   const createRateChangeScenario = (rateChange: number) => {
     const modifiedTracks = baseMix.tracks.map(track => ({
       ...track,
-      interestRate: Math.max(0.1, track.interestRate + rateChange)
+      // אם זה מסלול פריים, לא משנים את הריבית
+      interestRate: track.type === 'prime' 
+        ? track.interestRate 
+        : Math.max(0.1, track.interestRate + rateChange)
     }));
 
     return calculateMortgageMix({
@@ -96,21 +102,35 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label>שינוי ריבית ({scenarios.interestRateChange > 0 ? '+' : ''}{scenarios.interestRateChange.toFixed(1)}%)</Label>
-              <Slider
-                value={[scenarios.interestRateChange]}
-                onValueChange={(value) => setScenarios({...scenarios, interestRateChange: value[0]})}
-                min={-3}
-                max={5}
-                step={0.1}
-                className="mt-2"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>-3%</span>
-                <span>+5%</span>
+            {!hasPrimeTracks && (
+              <div>
+                <Label>שינוי ריבית ({scenarios.interestRateChange > 0 ? '+' : ''}{scenarios.interestRateChange.toFixed(1)}%)</Label>
+                <Slider
+                  value={[scenarios.interestRateChange]}
+                  onValueChange={(value) => setScenarios({...scenarios, interestRateChange: value[0]})}
+                  min={-3}
+                  max={5}
+                  step={0.1}
+                  className="mt-2"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>-3%</span>
+                  <span>+5%</span>
+                </div>
               </div>
-            </div>
+            )}
+            
+            {hasPrimeTracks && (
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm font-medium text-orange-800">מסלול פריים זוהה</span>
+                </div>
+                <p className="text-xs text-orange-700">
+                  ריבית פריים נקבעת על ידי בנק ישראל ולא ניתנת לשינוי בניתוח תרחישים
+                </p>
+              </div>
+            )}
 
             <div>
               <Label>שינוי הכנסה ({scenarios.incomeChange > 0 ? '+' : ''}{scenarios.incomeChange}%)</Label>
