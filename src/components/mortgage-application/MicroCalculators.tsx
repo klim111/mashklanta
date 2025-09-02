@@ -338,7 +338,7 @@ export function MicroCalculators({ activeCalculators = ['monthly-payment', 'affo
     }));
   };
 
-  const calculateResults = (calculatorId: string) => {
+  const calculateResults = (calculatorId: string): CalculatorResult[] => {
     const state = calculatorStates[calculatorId] || {};
     
     switch (calculatorId) {
@@ -352,10 +352,10 @@ export function MicroCalculators({ activeCalculators = ['monthly-payment', 'affo
         const totalInterest = (payment * numPayments) - loanAmount;
         
         return [
-          { label: 'החזר חודשי', value: totalPayment, format: 'currency', trend: 'neutral' },
-          { label: 'רק קרן וריבית', value: payment, format: 'currency', trend: 'neutral' },
-          { label: 'סה"כ ריבית', value: totalInterest, format: 'currency', trend: 'down' },
-          { label: 'סה"כ תשלומים', value: totalPayment * numPayments, format: 'currency', trend: 'down' }
+          { label: 'החזר חודשי', value: totalPayment, format: 'currency' as const, trend: 'neutral' as const },
+          { label: 'רק קרן וריבית', value: payment, format: 'currency' as const, trend: 'neutral' as const },
+          { label: 'סה"כ ריבית', value: totalInterest, format: 'currency' as const, trend: 'down' as const },
+          { label: 'סה"כ תשלומים', value: totalPayment * numPayments, format: 'currency' as const, trend: 'down' as const }
         ];
       }
       
@@ -367,11 +367,14 @@ export function MicroCalculators({ activeCalculators = ['monthly-payment', 'affo
         const safetyAmount = (monthlyIncome * safetyMargin) / 100;
         const netAvailable = availableIncome - safetyAmount;
         
+        const debtTrend = debtRatio > 40 ? 'down' as const : 'up' as const;
+        const incomeTrend = netAvailable > 0 ? 'up' as const : 'down' as const;
+        
         return [
-          { label: 'יחס החזר', value: debtRatio, format: 'percentage', trend: debtRatio > 40 ? 'down' : 'up' },
-          { label: 'הכנסה פנויה', value: netAvailable, format: 'currency', trend: netAvailable > 0 ? 'up' : 'down' },
-          { label: 'סה"כ התחייבויות', value: totalDebts, format: 'currency', trend: 'neutral' },
-          { label: 'מרווח ביטחון', value: safetyAmount, format: 'currency', trend: 'up' }
+          { label: 'יחס החזר', value: debtRatio, format: 'percentage' as const, trend: debtTrend },
+          { label: 'הכנסה פנויה', value: netAvailable, format: 'currency' as const, trend: incomeTrend },
+          { label: 'סה"כ התחייבויות', value: totalDebts, format: 'currency' as const, trend: 'neutral' as const },
+          { label: 'מרווח ביטחון', value: safetyAmount, format: 'currency' as const, trend: 'up' as const }
         ];
       }
       
