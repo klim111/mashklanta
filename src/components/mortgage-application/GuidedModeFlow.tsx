@@ -12,7 +12,23 @@ interface GuidedModeFlowProps {
   onReset: () => void;
 }
 
-const guidedQuestions = [
+const guidedQuestions: Array<{
+  id: string;
+  title: string;
+  description: string;
+  type: 'number' | 'currency' | 'text' | 'select';
+  section: string;
+  field: string;
+  placeholder: string;
+  min?: number;
+  max?: number;
+  options?: { value: string; label: string }[];
+  utilityInfo: {
+    benefit: string;
+    impact: string;
+    costImpact: number;
+  };
+}> = [
   {
     id: 'age',
     title: 'בואו נכיר - כמה אתם בני?',
