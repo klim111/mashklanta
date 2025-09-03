@@ -37,6 +37,7 @@ export default function NavBar() {
         <a href="#stats" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">נתונים</a>
         <Link href="/consumer-loans" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">הלוואות צרכניות</Link>
         <Link href="/mortgage-advisor" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">כלי יועצי משכנתא</Link>
+        <Link href="/mortgage-application" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">בקשת משכנתא</Link>
         <a href="#contact" className="text-financial-gray-700 hover:text-financial-primary font-semibold transition-all duration-300 hover:scale-105">צור קשר</a>
       </nav>
 
@@ -146,6 +147,7 @@ export default function NavBar() {
               <a href="#stats" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">נתונים</a>
               <Link href="/consumer-loans" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">הלוואות צרכניות</Link>
               <Link href="/mortgage-advisor" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">כלי יועצי משכנתא</Link>
+              <Link href="/mortgage-application" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">בקשת משכנתא</Link>
               <a href="#contact" className="text-financial-gray-700 hover:text-financial-primary font-semibold text-lg transition-colors">צור קשר</a>
             </nav>
 
