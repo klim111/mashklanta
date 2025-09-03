@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ModeSelectionScreen } from './ModeSelectionScreen';
 import { GuidedModeFlow } from './GuidedModeFlow';
@@ -33,6 +33,7 @@ export function MortgageApplication() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 text-right" dir="rtl">
+      
       {/* Cost Rail - Always visible when mode is selected */}
       <AnimatePresence>
         {mode && (

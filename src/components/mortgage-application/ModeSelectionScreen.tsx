@@ -13,6 +13,10 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
   const [hoveredMode, setHoveredMode] = useState<string | null>(null);
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
 
+  const handleButtonClick = (modeId: string) => {
+    onModeSelect(modeId as ApplicationMode);
+  };
+
   const modes = [
     {
       id: 'guided',
@@ -167,21 +171,24 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                   </motion.div>
 
                   {/* CTA Button */}
-                  <motion.button
+                  <button
                     className={`
                       w-full mt-6 py-4 px-6 rounded-xl font-medium text-white
                       bg-gradient-to-r ${mode.color} shadow-md
                       hover:shadow-lg transition-all duration-200
+                      relative z-10
                     `}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onModeSelect(mode.id as ApplicationMode)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleButtonClick(mode.id);
+                    }}
                   >
                     <span className="flex items-center justify-center gap-2">
                       בואו נתחיל
                       <ArrowLeft className="w-4 h-4" />
                     </span>
-                  </motion.button>
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
