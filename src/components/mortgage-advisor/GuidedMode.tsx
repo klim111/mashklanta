@@ -225,13 +225,18 @@ export function GuidedMode({ state, updateState, onAddHint }: GuidedModeProps) {
     setAnswers(newAnswers);
     
     // Update global state
-    const updates = {};
+    const updates: Partial<MortgageState> = {};
     const fieldPath = currentQuestion.field.split('.');
     if (fieldPath.length === 2) {
-      updates[fieldPath[0]] = {
-        ...state[fieldPath[0] as keyof MortgageState],
-        [fieldPath[1]]: value
-      };
+      const topLevelKey = fieldPath[0] as keyof MortgageState;
+      const nestedKey = fieldPath[1];
+      
+      if (topLevelKey === 'personalInfo' || topLevelKey === 'preferences' || topLevelKey === 'propertyInfo' || topLevelKey === 'mortgageStructure') {
+        (updates as any)[topLevelKey] = {
+          ...(state[topLevelKey] as any),
+          [nestedKey]: value
+        };
+      }
     }
     updateState(updates);
 
