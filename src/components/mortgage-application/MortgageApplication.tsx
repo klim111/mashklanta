@@ -22,8 +22,13 @@ export function MortgageApplication() {
     setCurrentStep 
   } = useMortgageApplication();
 
+  console.log('MortgageApplication render - current mode:', mode);
+
   const handleModeSelect = (selectedMode: ApplicationMode) => {
+    console.log('handleModeSelect called with:', selectedMode);
+    console.log('Current mode before update:', mode);
     setMode(selectedMode);
+    console.log('Mode state updated to:', selectedMode);
   };
 
   const handleReset = () => {
@@ -33,6 +38,11 @@ export function MortgageApplication() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 text-right" dir="rtl">
+      {/* Debug Info */}
+      <div className="fixed top-4 left-4 bg-white p-2 rounded shadow z-50 text-sm">
+        Debug: Mode = {mode || 'null'}
+      </div>
+      
       {/* Cost Rail - Always visible when mode is selected */}
       <AnimatePresence>
         {mode && (
@@ -53,49 +63,30 @@ export function MortgageApplication() {
 
       {/* Main Content */}
       <div className="relative">
-        <AnimatePresence mode="wait">
-          {!mode && (
-            <motion.div
-              key="mode-selection"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
-              <ModeSelectionScreen onModeSelect={handleModeSelect} />
-            </motion.div>
-          )}
+        {/* Simplified rendering for debugging */}
+        {!mode && (
+          <div>
+            <ModeSelectionScreen onModeSelect={handleModeSelect} />
+          </div>
+        )}
 
-          {mode === 'guided' && (
-            <motion.div
-              key="guided-mode"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
-              <GuidedModeFlow 
-                userProfile={userProfile}
-                onReset={handleReset}
-              />
-            </motion.div>
-          )}
+        {mode === 'guided' && (
+          <div>
+            <GuidedModeFlow 
+              userProfile={userProfile}
+              onReset={handleReset}
+            />
+          </div>
+        )}
 
-          {mode === 'pro' && (
-            <motion.div
-              key="pro-mode"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            >
-              <ProModeFlow 
-                userProfile={userProfile}
-                onReset={handleReset}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {mode === 'pro' && (
+          <div>
+            <ProModeFlow 
+              userProfile={userProfile}
+              onReset={handleReset}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
