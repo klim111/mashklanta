@@ -13,6 +13,12 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
   const [hoveredMode, setHoveredMode] = useState<string | null>(null);
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
 
+  // Test function to verify the component is working
+  const testClick = () => {
+    alert('Test click function called!');
+    console.log('Test click function called!');
+  };
+
   const modes = [
     {
       id: 'guided',
@@ -65,6 +71,16 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
 
       {/* Mode Cards */}
       <div className="grid md:grid-cols-2 gap-8 max-w-5xl w-full">
+        {/* Test Button */}
+        <div className="col-span-2 mb-4">
+          <button 
+            onClick={testClick}
+            className="bg-red-500 text-white px-4 py-2 rounded"
+          >
+            Test Button - Click Me
+          </button>
+        </div>
+        
         {modes.map((mode, index) => {
           const Icon = mode.icon;
           const isHovered = hoveredMode === mode.id;
@@ -88,6 +104,10 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                 onHoverEnd={() => setHoveredMode(null)}
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.2 }}
+                onClick={() => {
+                  console.log('Card clicked for mode:', mode.id);
+                  alert(`Card clicked for mode: ${mode.id}`);
+                }}
               >
                 {/* Background Gradient */}
                 <motion.div
@@ -167,21 +187,26 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                   </motion.div>
 
                   {/* CTA Button */}
-                  <motion.button
+                  <button
                     className={`
                       w-full mt-6 py-4 px-6 rounded-xl font-medium text-white
                       bg-gradient-to-r ${mode.color} shadow-md
                       hover:shadow-lg transition-all duration-200
+                      relative z-10
                     `}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onModeSelect(mode.id as ApplicationMode)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      alert(`Button clicked for mode: ${mode.id}`);
+                      console.log('Button clicked for mode:', mode.id);
+                      console.log('onModeSelect function:', onModeSelect);
+                      onModeSelect(mode.id as ApplicationMode);
+                    }}
                   >
                     <span className="flex items-center justify-center gap-2">
                       בואו נתחיל
                       <ArrowLeft className="w-4 h-4" />
                     </span>
-                  </motion.button>
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
