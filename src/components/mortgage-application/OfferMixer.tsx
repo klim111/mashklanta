@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Shuffle, TrendingDown, Award, Calculator, DollarSign, Percent, GripVertical } from 'lucide-react';
+import { Shuffle, TrendingDown, Award, Calculator, Banknote, Percent, GripVertical } from 'lucide-react';
 
 interface MortgageTrack {
   id: string;
@@ -476,7 +476,7 @@ export function OfferMixer({ offers = sampleOffers }: OfferMixerProps) {
               <div className="space-y-4">
                 {[
                   { track: bestTracks.lowestRate, label: 'ריבית נמוכה', icon: Percent, color: 'text-emerald-600' },
-                  { track: bestTracks.lowestPayment, label: 'החזר נמוך', icon: DollarSign, color: 'text-blue-600' },
+                  { track: bestTracks.lowestPayment, label: 'החזר נמוך', icon: Banknote, color: 'text-blue-600' },
                   { track: bestTracks.lowestTotal, label: 'עלות כוללת', icon: Calculator, color: 'text-purple-600' }
                 ].map(({ track, label, icon: Icon, color }) => (
                   <div key={track.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">

@@ -11,21 +11,26 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold">משכלתנא</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">מ</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">משכלתנא</h3>
+            </div>
             <p className="text-gray-300 leading-relaxed">
               הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לך למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
             </p>
             <div className="flex space-x-4 space-x-reverse">
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-blue-500">
                 <Facebook className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-blue-500">
                 <Instagram className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-blue-500">
                 <Linkedin className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2">
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white hover:border-blue-500">
                 <Twitter className="w-4 h-4" />
               </Button>
             </div>
@@ -33,7 +38,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold">קישורים מהירים</h4>
+            <h4 className="text-lg font-semibold text-white">קישורים מהירים</h4>
             <ul className="space-y-2 text-gray-300">
               <li><a href="#" className="hover:text-white transition-colors">אודותינו</a></li>
               <li><a href="#" className="hover:text-white transition-colors">שירותים</a></li>
@@ -45,7 +50,7 @@ export default function Footer() {
 
           {/* Services */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold">השירותים שלנו</h4>
+            <h4 className="text-lg font-semibold text-white">השירותים שלנו</h4>
             <ul className="space-y-2 text-gray-300">
               <li><a href="#" className="hover:text-white transition-colors">ייעוץ אוטומטי מלא</a></li>
               <li><a href="#" className="hover:text-white transition-colors">ייעוץ היברידי</a></li>
@@ -57,22 +62,22 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold">צור קשר</h4>
+            <h4 className="text-lg font-semibold text-white">צור קשר</h4>
             <div className="space-y-3 text-gray-300">
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Phone className="w-4 h-4" />
+              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
+                <Phone className="w-4 h-4 text-blue-500" />
                 <span>03-1234567</span>
               </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Mail className="w-4 h-4" />
+              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
+                <Mail className="w-4 h-4 text-blue-500" />
                 <span>info@mashkalanta.co.il</span>
               </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <MapPin className="w-4 h-4" />
+              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
+                <MapPin className="w-4 h-4 text-blue-500" />
                 <span>תל אביב, ישראל</span>
               </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Clock className="w-4 h-4" />
+              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
+                <Clock className="w-4 h-4 text-blue-500" />
                 <span>א-ה: 9:00-18:00</span>
               </div>
             </div>

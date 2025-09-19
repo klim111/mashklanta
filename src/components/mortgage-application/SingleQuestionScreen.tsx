@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { DollarSign, Hash } from 'lucide-react';
+import { Banknote, Hash } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -49,7 +49,7 @@ export function SingleQuestionScreen({ question, value, onChange }: SingleQuesti
         return (
           <div className="relative">
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <DollarSign className="w-5 h-5" />
+              <Banknote className="w-5 h-5" />
             </div>
             <motion.input
               type="text"

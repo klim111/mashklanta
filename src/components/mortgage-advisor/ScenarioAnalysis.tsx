@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   Lightbulb,
   Target,
-  DollarSign
+  Banknote
 } from 'lucide-react';
 import type { MortgageMix } from './types';
 import { calculateMortgageMix, formatCurrency, formatPercentage } from './mortgageCalculations';
@@ -282,7 +282,7 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
+                <Banknote className="h-4 w-4" />
                 רגישות לשינוי ריבית
               </h4>
               <div className="space-y-2">

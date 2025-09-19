@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Shield, Zap, DollarSign, TrendingUp, Info, ChevronRight } from 'lucide-react';
+import { Dna, Shield, Zap, Banknote, TrendingUp, Info, ChevronRight } from 'lucide-react';
 
 interface PreferenceQuestion {
   id: string;

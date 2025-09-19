@@ -52,81 +52,113 @@ const COLORS = ["#8884d8", "#82ca9d", "#ffc658"];
 
 export default function Statistic() {
   return (
-    <section id="stats" className="py-10 px-4 bg-muted">
-      <h2 className="text-3xl font-bold text-center mb-8">נתונים וסטטיסטיקות</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardContent className="h-64">
-            <h3 className="text-lg font-semibold text-center">מגמת מחירי דירות</h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <LineChart data={housingPrices}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="price" stroke="#8884d8" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+    <section id="stats" className="py-20 px-4 bg-gray-50">
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 text-gray-900">
+          נתונים וסטטיסטיקות
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="h-80 p-6">
+              <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">מגמת מחירי דירות</h3>
+              <ResponsiveContainer width="100%" height="85%">
+                <LineChart data={housingPrices}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      color: '#374151'
+                    }} 
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="h-64">
-            <h3 className="text-lg font-semibold text-center">ריביות המשכנתא</h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart data={interestRates}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="rate" fill="#82ca9d" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="h-80 p-6">
+              <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">ריביות המשכנתא</h3>
+              <ResponsiveContainer width="100%" height="85%">
+                <BarChart data={interestRates}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      color: '#374151'
+                    }} 
+                  />
+                  <Legend />
+                  <Bar dataKey="rate" fill="#059669" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="h-64">
-            <h3 className="text-lg font-semibold text-center">התפלגות סוגי מסלולים</h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <PieChart>
-                <Pie
-                  data={loanDistribution}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  label
-                >
-                  {loanDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="h-80 p-6">
+              <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">התפלגות סוגי מסלולים</h3>
+              <ResponsiveContainer width="100%" height="85%">
+                <PieChart>
+                  <Pie
+                    data={loanDistribution}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#2563eb"
+                    label
+                  >
+                    {loanDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#2563eb', '#059669', '#7c3aed'][index % 3]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      color: '#374151'
+                    }} 
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="h-64">
-            <h3 className="text-lg font-semibold text-center">אחוז מהכנסה לתשלום משכנתא</h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart data={monthlyMortgage}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="income" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="percent" fill="#ffc658" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="h-80 p-6">
+              <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">אחוז מהכנסה לתשלום משכנתא</h3>
+              <ResponsiveContainer width="100%" height="85%">
+                <BarChart data={monthlyMortgage}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="income" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      color: '#374151'
+                    }} 
+                  />
+                  <Legend />
+                  <Bar dataKey="percent" fill="#dc2626" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </section>
   );

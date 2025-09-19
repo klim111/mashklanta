@@ -2,7 +2,7 @@
 
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, ShieldCheck, Home, BadgeDollarSign, CheckCircle } from "lucide-react";
+import { FileText, ShieldCheck, Home, Banknote, CheckCircle } from "lucide-react";
 
 export default function Map() {
   return (
@@ -87,7 +87,7 @@ export default function Map() {
         <AccordionItem value="step4">
           <AccordionTrigger>
             <div className="flex items-center gap-2">
-              <BadgeDollarSign className="w-5 h-5 text-yellow-600" />
+              <Banknote className="w-5 h-5 text-yellow-600" />
               שלב 4: הצעת משכנתא וחתימה
             </div>
           </AccordionTrigger>

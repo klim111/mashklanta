@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calculator } from "lucide-react";
+import Link from "next/link";
 
 interface Expense {
   description: string;
@@ -69,7 +71,15 @@ export default function CapitalPlanningCalculator() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold text-center">מחשבון הון עצמי</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">מחשבון הון עצמי</h1>
+        <Link href="/equity-planning">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Calculator className="w-4 h-4 ml-2" />
+            כלי תכנון מתקדם
+          </Button>
+        </Link>
+      </div>
 
       {/* סוג ההלוואה */}
       <div className="flex justify-center flex-wrap gap-2">
