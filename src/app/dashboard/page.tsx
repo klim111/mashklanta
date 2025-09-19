@@ -12,7 +12,7 @@ import {
   User, 
   LogOut,
   TrendingUp,
-  DollarSign,
+  Banknote,
   BarChart3,
   Settings,
   ChevronRight,
@@ -205,7 +205,15 @@ export default function DashboardPage() {
                 <MortgageCalculator />
               </div>
               <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h2 className="text-2xl font-bold mb-6">מחשבון הון עצמי</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">מחשבון הון עצמי</h2>
+                  <Link href="/equity-planning">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all">
+                      <Calculator className="w-5 h-5" />
+                      תכנון מתקדם
+                    </button>
+                  </Link>
+                </div>
                 <EquityPlanner />
               </div>
             </div>

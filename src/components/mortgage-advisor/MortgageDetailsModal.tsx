@@ -10,7 +10,7 @@ import {
   Calculator, 
   TrendingUp, 
   Calendar, 
-  DollarSign,
+  Banknote,
   Download,
   X,
   BarChart3,

@@ -8,7 +8,7 @@ import { Input } from "./input"
 import { Label } from "./label"
 import EquityCalculatorModal from "./equity-calculator-modal"
 
-import { TrendingUp, DollarSign, Calendar, Home, Calculator, Table, Eye, EyeOff, AlertTriangle, HelpCircle, Phone, Upload } from "lucide-react"
+import { TrendingUp, Banknote, Calendar, Home, Calculator, Table, Eye, EyeOff, AlertTriangle, HelpCircle, Phone, Upload } from "lucide-react"
 
 interface PaymentSchedule {
   month: number;
@@ -1447,7 +1447,7 @@ export default function InteractiveCalculator() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center justify-center space-x-4 space-x-reverse">
-                        {/* <DollarSign className="w-5 h-5" /> */}
+                        {/* <Banknote className="w-5 h-5" /> */}
                         <span>תוצאות החישוב</span>
                       </CardTitle>
                     </CardHeader>

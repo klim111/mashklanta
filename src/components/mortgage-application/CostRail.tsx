@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { DollarSign, TrendingUp, Info } from 'lucide-react';
+import { Banknote, TrendingUp, Info } from 'lucide-react';
 import { useState } from 'react';
 import { MortgageCosts } from './hooks/useMortgageApplication';
 
@@ -58,7 +58,7 @@ export function CostRail({ costs }: CostRailProps) {
         <div className="p-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-white" />
+              <Banknote className="w-6 h-6 text-white" />
             </div>
             <AnimatePresence>
               {isExpanded && (

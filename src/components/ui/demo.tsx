@@ -11,7 +11,7 @@ import {
   CheckCircle, 
   ArrowRight,
   Home,
-  DollarSign,
+  Banknote,
   Clock,
   Users,
   Building

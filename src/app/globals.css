@@ -2,6 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px) rotate(45deg); }
+  50% { transform: translateY(-15px) rotate(45deg); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite 2s;
+}
+
+.animate-float-slow {
+  animation: float-slow 10s ease-in-out infinite 1s;
+}
+
+/* Financial Graphics Carousel */
+@keyframes carousel-slide {
+  0%, 22% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  25%, 97% { 
+    opacity: 0; 
+    transform: scale(0.98); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+.animate-carousel-slide-1 {
+  animation: carousel-slide 16s ease-in-out infinite;
+}
+
+.animate-carousel-slide-2 {
+  animation: carousel-slide 16s ease-in-out infinite 4s;
+}
+
+.animate-carousel-slide-3 {
+  animation: carousel-slide 16s ease-in-out infinite 8s;
+}
+
+.animate-carousel-slide-4 {
+  animation: carousel-slide 16s ease-in-out infinite 12s;
+}
+
+/* Financial Elements Animation */
+@keyframes float-up {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    opacity: 0.6; 
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3));
+  }
+  50% { 
+    opacity: 0.9; 
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+  }
+}
+
+@keyframes draw-line {
+  0% { stroke-dasharray: 0, 1000; }
+  100% { stroke-dasharray: 1000, 0; }
+}
+
+.animate-float-up {
+  animation: float-up 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+.animate-draw-line {
+  animation: draw-line 3s ease-in-out infinite;
+}
+
 /* Professional Financial Design System */
 :root {
   /* Primary Financial Brand Colors - More Professional */

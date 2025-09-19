@@ -11,7 +11,7 @@ import { Badge } from "./badge"
 import { Progress } from "./progress"
 import { 
   Calculator, 
-  DollarSign, 
+  Banknote, 
   Home, 
   FileText, 
   Building, 
@@ -84,7 +84,7 @@ const expenseCategories: ExpenseCategory[] = [
   {
     id: 'purchaseTax',
     label: 'מס רכישה',
-    icon: <DollarSign className="w-4 h-4" />,
+    icon: <Banknote className="w-4 h-4" />,
     description: 'מס רכישה על הנכס',
     placeholder: '0',
     tooltip: 'מס רכישה נקבע לפי ערך הנכס ומצב הרכישה',
@@ -459,7 +459,7 @@ export default function EquityCalculatorModal({
                     className="space-y-6"
                   >
                     <div className="text-center">
-                      <DollarSign className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+                      <Banknote className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                       <h4 className="text-xl font-semibold mb-2">מה הסכום הפנוי שיש בידך?</h4>
                       <p className="text-gray-600">הזן את הסכום הפנוי שלך לחישוב הון עצמי</p>
                     </div>
@@ -647,7 +647,7 @@ export default function EquityCalculatorModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Card className="border-blue-200 bg-blue-50">
                         <CardContent className="p-4 text-center">
-                          <DollarSign className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                          <Banknote className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                           <div className="text-sm text-gray-600">הון פנוי</div>
                           <div className="text-xl font-bold text-blue-600">
                             {formatCurrency(equityCalculation.availableFunds)}
@@ -712,7 +712,7 @@ export default function EquityCalculatorModal({
                        <Card className="border-blue-200 bg-blue-50">
                          <CardHeader>
                            <CardTitle className="flex items-center gap-2 text-blue-800">
-                             <DollarSign className="w-5 h-5" />
+                             <Banknote className="w-5 h-5" />
                              פרטי חישוב מס רכישה
                            </CardTitle>
                          </CardHeader>
