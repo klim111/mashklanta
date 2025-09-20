@@ -134,14 +134,6 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
         </Alert>
       )}
 
-      {/* כפתור הוספת מסלול */}
-      <div className="text-center">
-        <Button onClick={addTrack} className="px-6 py-3">
-          <Plus className="h-5 w-5 ml-2" />
-          הוסף מסלול
-        </Button>
-      </div>
-
       {/* רשימת מסלולים */}
       {tracks.length === 0 ? (
         <Card className="text-center py-12">
@@ -160,17 +152,29 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {tracks.map((track) => (
-            <MortgageTrackCard
-              key={track.id}
-              track={track}
-              totalMortgageAmount={totalAmount}
-              onUpdate={updateTrack}
-              onDelete={deleteTrack}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {tracks.map((track) => (
+              <MortgageTrackCard
+                key={track.id}
+                track={track}
+                totalMortgageAmount={totalAmount}
+                onUpdate={updateTrack}
+                onDelete={deleteTrack}
+              />
+            ))}
+          </div>
+          
+          {/* כפתור הוספת מסלול נוסף - מופיע רק אם יש מסלולים קיימים */}
+          {!isAmountValid && (
+            <div className="text-center">
+              <Button onClick={addTrack} className="px-6 py-3">
+                <Plus className="h-5 w-5 ml-2" />
+                הוסף מסלול
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* סיכום התמהיל */}
@@ -222,7 +226,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
         )}
         <Button 
           onClick={handleSave}
-          disabled={tracks.length === 0 || !mixName.trim()}
+          disabled={tracks.length === 0 || !mixName.trim() || !isAmountValid}
           className="px-8 py-3"
         >
           <Save className="h-5 w-5 ml-2" />
