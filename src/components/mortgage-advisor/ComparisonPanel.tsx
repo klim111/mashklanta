@@ -15,6 +15,20 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line
+} from 'recharts';
 import type { MortgageMix } from './types';
 import { 
   formatCurrency, 
@@ -349,14 +363,199 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
         </TabsContent>
 
         <TabsContent value="charts" className="space-y-6">
+          {/* גרף תשלום חודשי */}
           <Card>
             <CardHeader>
-              <CardTitle>השוואה ויזואלית</CardTitle>
+              <CardTitle>השוואת תשלום חודשי</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center text-gray-500">
-                <PieChart className="h-16 w-16 mx-auto mb-4" />
-                <p>גרפים יתווספו בגרסה הבאה</p>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={calculations.map(calc => ({
+                    name: calc.mix.name,
+                    monthlyPayment: calc.summary.totalMonthlyPayment,
+                    totalInterest: calc.summary.totalInterest,
+                    totalPaid: calc.summary.totalPaid
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        formatCurrency(value as number), 
+                        name === 'monthlyPayment' ? 'תשלום חודשי' :
+                        name === 'totalInterest' ? 'סך הריבית' :
+                        'סך התשלום'
+                      ]}
+                      labelStyle={{ direction: 'rtl' }}
+                    />
+                    <Bar 
+                      dataKey="monthlyPayment" 
+                      fill="#3b82f6" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* גרף סך הריבית */}
+          <Card>
+            <CardHeader>
+              <CardTitle>השוואת סך הריבית</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={calculations.map(calc => ({
+                    name: calc.mix.name,
+                    totalInterest: calc.summary.totalInterest,
+                    averageRate: calc.summary.averageRate * 100
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        name === 'totalInterest' ? formatCurrency(value as number) : `${(value as number).toFixed(2)}%`,
+                        name === 'totalInterest' ? 'סך הריבית' : 'ריבית ממוצעת'
+                      ]}
+                      labelStyle={{ direction: 'rtl' }}
+                    />
+                    <Bar 
+                      dataKey="totalInterest" 
+                      fill="#ef4444" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* גרף פיזור מסלולים */}
+          <Card>
+            <CardHeader>
+              <CardTitle>פיזור מסלולים לפי סוג</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {calculations.map((calc) => {
+                  const trackTypes = calc.mix.tracks.reduce((acc, track) => {
+                    acc[track.type] = (acc[track.type] || 0) + track.amount;
+                    return acc;
+                  }, {} as Record<string, number>);
+
+                  const pieData = Object.entries(trackTypes).map(([type, amount]) => ({
+                    name: TRACK_TYPES[type as keyof typeof TRACK_TYPES],
+                    value: amount,
+                    percentage: ((amount / calc.mix.totalAmount) * 100).toFixed(1)
+                  }));
+
+                  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+
+                  return (
+                    <div key={calc.mix.id} className="space-y-4">
+                      <h4 className="font-semibold text-center">{calc.mix.name}</h4>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie
+                              data={pieData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percentage }) => `${name}: ${percentage}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value) => formatCurrency(value as number)}
+                              labelStyle={{ direction: 'rtl' }}
+                            />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* גרף השוואת עלויות לאורך זמן */}
+          <Card>
+            <CardHeader>
+              <CardTitle>השוואת עלויות לאורך זמן</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={Array.from({ length: 25 }, (_, year) => {
+                    const dataPoint: any = { year: year + 1 };
+                    calculations.forEach((calc, index) => {
+                      const remainingYears = Math.max(0, calc.summary.weightedAverageYears - year);
+                      const remainingAmount = calc.mix.totalAmount * (remainingYears / calc.summary.weightedAverageYears);
+                      const monthlyPayment = calc.summary.totalMonthlyPayment;
+                      dataPoint[`mix${index}`] = remainingAmount > 0 ? remainingAmount : 0;
+                      dataPoint[`mix${index}Name`] = calc.mix.name;
+                    });
+                    return dataPoint;
+                  })}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="year" 
+                      tick={{ fontSize: 12 }}
+                      label={{ value: 'שנה', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                      label={{ value: 'יתרה (₪)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        formatCurrency(value as number),
+                        calculations[parseInt(name.replace('mix', ''))]?.mix.name || ''
+                      ]}
+                      labelStyle={{ direction: 'rtl' }}
+                    />
+                    {calculations.map((_, index) => (
+                      <Line 
+                        key={index}
+                        type="monotone" 
+                        dataKey={`mix${index}`} 
+                        stroke={['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][index % 4]}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
