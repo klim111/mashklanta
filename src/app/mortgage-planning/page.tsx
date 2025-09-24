@@ -1540,6 +1540,7 @@ export default function MortgagePlanning() {
         {currentStep === 'personal-info' && renderPersonalInfoForm()}
         {currentStep === 'existing-property' && renderExistingPropertyForm()}
         {currentStep === 'reverse-mortgage' && renderReverseMortgageForm()}
+        {currentStep === 'offer-analysis' && renderOfferAnalysisStep()}
         {currentStep === 'results' && renderResults()}
       </div>
 
