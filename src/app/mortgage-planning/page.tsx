@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Target, TrendingUp, Calculator, Banknote } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Target, TrendingUp, Calculator, Banknote, FileText, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,7 +29,7 @@ interface UserData {
 }
 
 export default function MortgagePlanning() {
-  const [currentStep, setCurrentStep] = useState<'property-type' | 'calculation-type' | 'personal-info' | 'existing-property' | 'reverse-mortgage' | 'results'>('property-type');
+  const [currentStep, setCurrentStep] = useState<'property-type' | 'calculation-type' | 'personal-info' | 'existing-property' | 'reverse-mortgage' | 'offer-analysis' | 'results'>('property-type');
   const [userData, setUserData] = useState<UserData>({
     propertyType: '',
     calculationType: '',
@@ -332,7 +332,7 @@ export default function MortgagePlanning() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid md:grid-cols-3 gap-8">
         <motion.div
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
@@ -386,12 +386,133 @@ export default function MortgagePlanning() {
             </CardContent>
           </Card>
         </motion.div>
+
+        <motion.div
+          whileHover={{ scale: 1.02, y: -5 }}
+          whileTap={{ scale: 0.98 }}
+          className="group cursor-pointer"
+          onClick={() => setCurrentStep('offer-analysis')}
+        >
+          <Card className="h-full border border-gray-200 hover:border-purple-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[400px]">
+            <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+              <div>
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <FileText className="w-10 h-10 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+                  תבדוק הצעה שקיבלתי
+                </h3>
+                <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                  מנתח את ההצעה שקיבלת בבנק ובודק אפשרויות שיפור התנאים
+                </p>
+              </div>
+              <div className="flex items-center justify-center text-purple-600 group-hover:text-purple-700 font-semibold">
+                <span>בדוק הצעה</span>
+                <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       <div className="text-center mt-8">
         <Button
           variant="outline"
           onClick={() => setCurrentStep('property-type')}
+          className="px-6 py-3"
+        >
+          <ArrowLeft className="w-5 h-5 ml-2" />
+          חזור
+        </Button>
+      </div>
+    </motion.div>
+  );
+
+  const renderOfferAnalysisStep = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="max-w-3xl mx-auto"
+    >
+      <div className="text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+          בדיקת הצעת בנק
+        </h2>
+        <p className="text-lg text-gray-600">
+          העלה מסמך הצעה מהבנק או הזן ידנית כדי שננתח ונבדוק שיפורים
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Upload card */}
+        <Card className="border border-gray-200 bg-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-8 text-center flex flex-col h-full justify-between">
+            <div>
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
+                <Upload className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">העלה הצעת בנק</h3>
+              <p className="text-gray-600 mb-6">תמוך בתמונות או PDF של מסמך ההצעה</p>
+              <div className="flex items-center justify-center">
+                <label className="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                  בחר קובץ
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files && e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          try {
+                            localStorage.setItem('uploadedBankOffer', String(reader.result));
+                            alert('הקובץ נטען. ננתח את ההצעה במסך כלי היועצים.');
+                            window.location.href = '/mortgage-advisor';
+                          } catch (err) {
+                            console.error('שגיאה בשמירת הקובץ:', err);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manual entry card */}
+        <Card className="border border-gray-200 bg-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-8 text-center flex flex-col h-full justify-between">
+            <div>
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg">
+                <Calculator className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">הזנה ידנית</h3>
+              <p className="text-gray-600 mb-6">פתח את כלי היועצים לבניית תמהיל והשוואת תנאים</p>
+              <Button
+                onClick={() => {
+                  try {
+                    localStorage.setItem('advisorEntryMode', 'manual-offer');
+                  } catch (err) {}
+                  window.location.href = '/mortgage-advisor';
+                }}
+                className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                עבור לכלי היועצים
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="text-center mt-10">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentStep('calculation-type')}
           className="px-6 py-3"
         >
           <ArrowLeft className="w-5 h-5 ml-2" />
