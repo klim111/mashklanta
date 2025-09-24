@@ -540,7 +540,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
                     <Tooltip 
                       formatter={(value, name) => [
                         formatCurrency(value as number),
-                        calculations[parseInt(name.replace('mix', ''))]?.mix.name || ''
+                        calculations[parseInt(typeof name === 'string' ? name.replace('mix', '') : String(name).replace('mix', ''))]?.mix.name || ''
                       ]}
                       labelStyle={{ direction: 'rtl' }}
                     />
