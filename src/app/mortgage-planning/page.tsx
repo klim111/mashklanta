@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import NavBar from '@/components/ui/navbar';
 import EquityCalculator from '@/components/ui/equitycalc';
+import MortgageTermsTable from '@/components/mortgage-application/MortgageTermsTable';
 
 interface UserData {
   propertyType: string;
@@ -47,6 +48,9 @@ export default function MortgagePlanning() {
   });
   const [showEquityCalculator, setShowEquityCalculator] = useState(false);
   const [showCapitalWarning, setShowCapitalWarning] = useState(false);
+  const [analyzedTerms, setAnalyzedTerms] = useState<any>(null);
+  const [extractedText, setExtractedText] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -59,6 +63,23 @@ export default function MortgagePlanning() {
       } catch (error) {
         console.error('Error loading saved data:', error);
       }
+    }
+  }, []);
+
+  // Load analyzed terms if available
+  useEffect(() => {
+    try {
+      const termsData = localStorage.getItem('analyzedMortgageTerms');
+      const textData = localStorage.getItem('extractedText');
+
+      if (termsData) {
+        setAnalyzedTerms(JSON.parse(termsData));
+      }
+      if (textData) {
+        setExtractedText(textData);
+      }
+    } catch (error) {
+      console.error('Error loading analyzed data:', error);
     }
   }, []);
 
@@ -461,17 +482,40 @@ export default function MortgagePlanning() {
                     type="file"
                     accept="image/*,application/pdf"
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files && e.target.files[0];
                       if (file) {
+                        setIsAnalyzing(true);
                         const reader = new FileReader();
-                        reader.onload = () => {
+                        reader.onload = async () => {
                           try {
-                            localStorage.setItem('uploadedBankOffer', String(reader.result));
-                            alert('הקובץ נטען. ננתח את ההצעה במסך כלי היועצים.');
-                            window.location.href = '/mortgage-advisor';
+                            const imageData = String(reader.result);
+                            localStorage.setItem('uploadedBankOffer', imageData);
+
+                            // Send to API for analysis
+                            const response = await fetch('/api/analyze-image', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({ imageData }),
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+                              setAnalyzedTerms(result.mortgageTerms);
+                              setExtractedText(result.extractedText);
+                              localStorage.setItem('analyzedMortgageTerms', JSON.stringify(result.mortgageTerms));
+                              localStorage.setItem('extractedText', result.extractedText);
+                            } else {
+                              console.error('Error analyzing image:', await response.text());
+                              alert('שגיאה בניתוח התמונה. נסה שוב.');
+                            }
                           } catch (err) {
-                            console.error('שגיאה בשמירת הקובץ:', err);
+                            console.error('שגיאה בעיבוד התמונה:', err);
+                            alert('שגיאה בעיבוד התמונה. נסה שוב.');
+                          } finally {
+                            setIsAnalyzing(false);
                           }
                         };
                         reader.readAsDataURL(file);
@@ -508,6 +552,22 @@ export default function MortgagePlanning() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Display analyzed mortgage terms if available */}
+      {isAnalyzing && (
+        <div className="mt-8 text-center">
+          <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-lg">
+            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            מנתח את התמונה...
+          </div>
+        </div>
+      )}
+
+      {analyzedTerms && (
+        <div className="mt-8">
+          <MortgageTermsTable terms={analyzedTerms} extractedText={extractedText} />
+        </div>
+      )}
 
       <div className="text-center mt-10">
         <Button
