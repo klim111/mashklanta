@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   const isDashboard = request.nextUrl.pathname.startsWith('/dashboard');
   const isProtectedAPI = request.nextUrl.pathname.startsWith('/api') && 
                          !request.nextUrl.pathname.startsWith('/api/auth') &&
-                         !request.nextUrl.pathname.startsWith('/api/health');
+                         !request.nextUrl.pathname.startsWith('/api/health') &&
+                         !request.nextUrl.pathname.startsWith('/api/analyze-image');
 
   // If user is not logged in and trying to access protected routes
   if (!token && (isDashboard || isProtectedAPI)) {
