@@ -1,1142 +1,977 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, ReferenceLine
+} from 'recharts';
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Play, Pause, RotateCcw, TrendingUp, TrendingDown, DollarSign, PiggyBank, Home, CreditCard } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Play, Pause, RotateCcw, TrendingUp, TrendingDown,
+  DollarSign, Wallet, PiggyBank, Home, AlertCircle,
+  Activity, ChevronLeft, Settings, Info, Download, Upload
+} from 'lucide-react';
+import Link from 'next/link';
 
-// Types for our financial model
-interface FinancialState {
-  t: number;
+// Types
+interface FinancialParams {
+  liquid0: number;
+  debt0: number;
+  savings0: number;
+  assets0: number;
+  incomeMonthly: number;
+  expenseMonthly: number;
+  debtRateAPR: number;
+  savingsRateAPR: number;
+  assetsGrowthAPR: number;
+  allocToDebt: number;
+  allocToSavings: number;
+  allocToAssets: number;
+  maxMonths?: number;
+}
+
+interface TimelineState {
+  month: number;
   liquid: number;
   debt: number;
   savings: number;
   assets: number;
   wealth: number;
   lost: number;
-  monthlyFlow: number;
+  netCashFlow: number;
+  debtPayment: number;
+  savingsDeposit: number;
+  assetsInvestment: number;
+  debtInterest: number;
+  savingsInterest: number;
+  assetsGrowth: number;
 }
 
-interface FinancialInputs {
-  // Initial values
-  liquid0: number;
-  debt0: number;
-  savings0: number;
-  assets0: number;
-  
-  // Monthly cash flow
-  incomeMonthly: number;
-  expenseMonthly: number;
-  
-  // Interest rates (APR)
-  debtRateAPR: number;
-  savingsRateAPR: number;
-  assetsGrowthAPR: number;
-  
-  // Allocation rules (percentages)
-  allocToDebt: number;
-  allocToSavings: number;
-  allocToAssets: number;
-}
+// Financial calculation engine
+class FinancialEngine {
+  params: FinancialParams;
+  timeline: TimelineState[];
 
-const defaultInputs: FinancialInputs = {
-  liquid0: 50000,
-  debt0: 200000,
-  savings0: 30000,
-  assets0: 100000,
-  incomeMonthly: 15000,
-  expenseMonthly: 12000,
-  debtRateAPR: 4.5,
-  savingsRateAPR: 2.5,
-  assetsGrowthAPR: 6.0,
-  allocToDebt: 50,
-  allocToSavings: 30,
-  allocToAssets: 20,
-};
+  constructor(params: FinancialParams) {
+    this.params = params;
+    this.timeline = [];
+    this.calculateTimeline();
+  }
 
-const MAX_MONTHS = 120; // 10 years
+  calculateTimeline() {
+    const {
+      liquid0, debt0, savings0, assets0,
+      incomeMonthly, expenseMonthly,
+      debtRateAPR, savingsRateAPR, assetsGrowthAPR,
+      allocToDebt, allocToSavings, allocToAssets,
+      maxMonths = 360
+    } = this.params;
 
-export default function FinancialDynamicsPage() {
-  const [inputs, setInputs] = useState<FinancialInputs>(defaultInputs);
-  const [currentMonth, setCurrentMonth] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [simulationData, setSimulationData] = useState<FinancialState[]>([]);
-  const [hoveredElement, setHoveredElement] = useState<string | null>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipData, setTooltipData] = useState<any>(null);
-  const [animationSpeed, setAnimationSpeed] = useState(1);
-  const [showFlowDetails, setShowFlowDetails] = useState(false);
+    this.timeline = [];
+    
+    let liquid = liquid0;
+    let debt = debt0;
+    let savings = savings0;
+    let assets = assets0;
+    let lostCumulative = 0;
 
-  // Calculate simulation data
-  const calculateSimulation = useCallback((inputs: FinancialInputs): FinancialState[] => {
-    const data: FinancialState[] = [];
-    let liquid = inputs.liquid0;
-    let debt = inputs.debt0;
-    let savings = inputs.savings0;
-    let assets = inputs.assets0;
-    let totalLost = 0;
+    // Initial state
+    this.timeline.push({
+      month: 0,
+      liquid,
+      debt,
+      savings,
+      assets,
+      wealth: savings + assets - debt,
+      lost: lostCumulative,
+      netCashFlow: 0,
+      debtPayment: 0,
+      savingsDeposit: 0,
+      assetsInvestment: 0,
+      debtInterest: 0,
+      savingsInterest: 0,
+      assetsGrowth: 0
+    });
 
-    for (let t = 0; t <= MAX_MONTHS; t++) {
-      // Record current state
-      const wealth = savings + assets - debt;
-      const monthlyFlow = t === 0 ? 0 : inputs.incomeMonthly - inputs.expenseMonthly;
-      
-      data.push({
-        t,
-        liquid,
-        debt,
-        savings,
-        assets,
-        wealth,
-        lost: totalLost,
-        monthlyFlow,
-      });
+    for (let t = 1; t <= maxMonths; t++) {
+      // Step 1: Cash flow
+      const netCashFlow = incomeMonthly - expenseMonthly;
+      liquid += netCashFlow;
 
-      if (t === MAX_MONTHS) break;
+      // Step 2: Calculate interest/growth
+      const debtInterest = debt * (debtRateAPR / 100 / 12);
+      const savingsInterest = savings * (savingsRateAPR / 100 / 12);
+      const assetsGrowth = assets * (assetsGrowthAPR / 100 / 12);
 
-      // Monthly simulation step
-      // 1. Add cash flow
-      liquid += inputs.incomeMonthly - inputs.expenseMonthly;
-
-      // 2. Calculate interest on debt
-      const monthlyDebtRate = inputs.debtRateAPR / 100 / 12;
-      const interestDebt = debt * monthlyDebtRate;
-
-      // 3. Calculate allocations
+      // Step 3: Allocations (ensure we don't go negative)
       const availableLiquid = Math.max(0, liquid);
-      const totalAllocationPercent = inputs.allocToDebt + inputs.allocToSavings + inputs.allocToAssets;
       
-      let payDebt = 0;
-      let paySavings = 0;
-      let payAssets = 0;
-
-      if (totalAllocationPercent > 0 && availableLiquid > 0) {
-        payDebt = Math.min(availableLiquid * (inputs.allocToDebt / 100), availableLiquid);
-        paySavings = Math.min(availableLiquid * (inputs.allocToSavings / 100), availableLiquid - payDebt);
-        payAssets = Math.min(availableLiquid * (inputs.allocToAssets / 100), availableLiquid - payDebt - paySavings);
-      }
-
-      // 4. Process debt payment
-      if (payDebt > 0) {
-        if (payDebt >= interestDebt) {
-          // Cover interest and reduce principal
-          totalLost += interestDebt;
-          debt = Math.max(0, debt - (payDebt - interestDebt));
+      // Calculate actual allocations based on available liquid
+      let actualDebtPayment = Math.min(allocToDebt, availableLiquid);
+      let remainingLiquid = availableLiquid - actualDebtPayment;
+      
+      let actualSavingsDeposit = Math.min(allocToSavings, remainingLiquid);
+      remainingLiquid -= actualSavingsDeposit;
+      
+      let actualAssetsInvestment = Math.min(allocToAssets, remainingLiquid);
+      
+      // Step 4: Process debt payment (R- calculation)
+      if (actualDebtPayment > 0) {
+        if (actualDebtPayment >= debtInterest) {
+          // Payment covers interest + principal
+          lostCumulative += debtInterest; // Interest is "lost" money (R-)
+          debt = Math.max(0, debt - (actualDebtPayment - debtInterest));
         } else {
-          // Only partial interest coverage
-          totalLost += payDebt;
-          debt += (interestDebt - payDebt); // Remaining interest adds to debt
+          // Payment only partially covers interest
+          lostCumulative += actualDebtPayment;
+          debt += (debtInterest - actualDebtPayment); // Debt grows
         }
       } else {
         // No payment, debt grows by interest
-        debt += interestDebt;
-        totalLost += interestDebt;
+        debt += debtInterest;
       }
 
-      // 5. Process savings
-      savings += paySavings;
-      const monthlySavingsRate = inputs.savingsRateAPR / 100 / 12;
-      savings += savings * monthlySavingsRate;
+      // Step 5: Update savings (R+)
+      savings += actualSavingsDeposit + savingsInterest;
 
-      // 6. Process assets
-      assets += payAssets;
-      const monthlyAssetsRate = inputs.assetsGrowthAPR / 100 / 12;
-      assets += assets * monthlyAssetsRate;
+      // Step 6: Update assets
+      assets += actualAssetsInvestment + assetsGrowth;
 
-      // 7. Update liquid
-      liquid -= (payDebt + paySavings + payAssets);
-      liquid = Math.max(0, liquid); // Prevent negative liquid
+      // Step 7: Update liquid after allocations
+      liquid -= (actualDebtPayment + actualSavingsDeposit + actualAssetsInvestment);
+
+      // Calculate wealth
+      const wealth = savings + assets - debt;
+
+      // Store timeline data
+      this.timeline.push({
+        month: t,
+        liquid: Math.round(liquid),
+        debt: Math.round(debt),
+        savings: Math.round(savings),
+        assets: Math.round(assets),
+        wealth: Math.round(wealth),
+        lost: Math.round(lostCumulative),
+        netCashFlow: Math.round(netCashFlow),
+        debtPayment: Math.round(actualDebtPayment),
+        savingsDeposit: Math.round(actualSavingsDeposit),
+        assetsInvestment: Math.round(actualAssetsInvestment),
+        debtInterest: Math.round(debtInterest),
+        savingsInterest: Math.round(savingsInterest),
+        assetsGrowth: Math.round(assetsGrowth)
+      });
+
+      // Stop if debt is paid off and we're in a stable state
+      if (debt === 0 && t > 12) {
+        // Continue for a few more months to show stability
+        for (let stabilityMonth = 1; stabilityMonth <= 6; stabilityMonth++) {
+          const stableNetCashFlow = incomeMonthly - expenseMonthly;
+          liquid += stableNetCashFlow;
+          
+          const stableSavingsInterest = savings * (savingsRateAPR / 100 / 12);
+          const stableAssetsGrowth = assets * (assetsGrowthAPR / 100 / 12);
+          
+          const stableAvailableLiquid = Math.max(0, liquid);
+          const stableSavingsDeposit = Math.min(allocToSavings, stableAvailableLiquid);
+          const stableAssetsInvestment = Math.min(allocToAssets, stableAvailableLiquid - stableSavingsDeposit);
+          
+          savings += stableSavingsDeposit + stableSavingsInterest;
+          assets += stableAssetsInvestment + stableAssetsGrowth;
+          liquid -= (stableSavingsDeposit + stableAssetsInvestment);
+          
+          this.timeline.push({
+            month: t + stabilityMonth,
+            liquid: Math.round(liquid),
+            debt: 0,
+            savings: Math.round(savings),
+            assets: Math.round(assets),
+            wealth: Math.round(savings + assets),
+            lost: Math.round(lostCumulative),
+            netCashFlow: Math.round(stableNetCashFlow),
+            debtPayment: 0,
+            savingsDeposit: Math.round(stableSavingsDeposit),
+            assetsInvestment: Math.round(stableAssetsInvestment),
+            debtInterest: 0,
+            savingsInterest: Math.round(stableSavingsInterest),
+            assetsGrowth: Math.round(stableAssetsGrowth)
+          });
+        }
+        break;
+      }
     }
+  }
 
-    return data;
-  }, []);
+  getStateAt(month: number): TimelineState {
+    const index = Math.min(month, this.timeline.length - 1);
+    return this.timeline[index];
+  }
 
-  // Recalculate when inputs change
-  useEffect(() => {
-    const data = calculateSimulation(inputs);
-    setSimulationData(data);
-  }, [inputs, calculateSimulation]);
+  getTimeline(): TimelineState[] {
+    return this.timeline;
+  }
+}
 
-  // Animation logic
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlaying && currentMonth < MAX_MONTHS) {
-      interval = setInterval(() => {
-        setCurrentMonth(prev => Math.min(prev + 1, MAX_MONTHS));
-      }, 150 / animationSpeed);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, currentMonth, animationSpeed]);
+// Flow animation component
+interface FlowAnimationProps {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  amount: number;
+  color: string;
+  label?: string;
+  isActive: boolean;
+}
 
-  // Get current state for display
-  const currentState = simulationData[currentMonth] || simulationData[0];
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('he-IL', {
-      style: 'currency',
-      currency: 'ILS',
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const formatPercent = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
-
-  // Interactive functions
-  const handleElementHover = (elementType: string, data: any) => {
-    setHoveredElement(elementType);
-    setTooltipData(data);
-    setShowTooltip(true);
-  };
-
-  const handleElementLeave = () => {
-    setHoveredElement(null);
-    setShowTooltip(false);
-    setTooltipData(null);
-  };
-
-  const toggleFlowDetails = () => {
-    setShowFlowDetails(!showFlowDetails);
-  };
-
-  const adjustAnimationSpeed = (speed: number) => {
-    setAnimationSpeed(speed);
-  };
-
-  // Enhanced flow animation components
-  const WaterFlowAnimation = ({ isActive, direction = 'vertical', className = '', color = 'blue' }: {
-    isActive: boolean;
-    direction?: 'vertical' | 'horizontal';
-    className?: string;
-    color?: 'blue' | 'green' | 'orange' | 'purple';
-  }) => {
-    if (!isActive) return null;
-
-    const colorClasses = {
-      blue: 'bg-blue-400',
-      green: 'bg-green-400', 
-      orange: 'bg-orange-400',
-      purple: 'bg-purple-400'
-    };
-
-    return (
-      <motion.div className={`absolute ${className}`}>
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={i}
-            className={`absolute w-3 h-3 ${colorClasses[color]} rounded-full opacity-80 shadow-lg`}
-            animate={direction === 'vertical' ? 
-              { y: [0, 50, 100], opacity: [0.8, 0.6, 0], scale: [1, 1.2, 0.8] } :
-              { x: [0, 50, 100], opacity: [0.8, 0.6, 0], scale: [1, 1.2, 0.8] }
-            }
-            transition={{
-              duration: 2 / animationSpeed,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut"
-            }}
-          />
-        ))}
-      </motion.div>
-    );
-  };
-
-  // Continuous water flow effect
-  const ContinuousFlowEffect = ({ isActive, direction = 'vertical', className = '', color = 'blue' }: {
-    isActive: boolean;
-    direction?: 'vertical' | 'horizontal';
-    className?: string;
-    color?: 'blue' | 'green' | 'orange' | 'purple';
-  }) => {
-    if (!isActive) return null;
-
-    const colorClasses = {
-      blue: 'from-blue-400 to-blue-600',
-      green: 'from-green-400 to-green-600',
-      orange: 'from-orange-400 to-orange-600', 
-      purple: 'from-purple-400 to-purple-600'
-    };
-
-    return (
-      <motion.div 
-        className={`absolute ${className} overflow-hidden`}
-        style={{
-          background: `linear-gradient(${direction === 'vertical' ? '180deg' : '90deg'}, transparent, ${colorClasses[color].split(' ')[1]}, transparent)`,
-        }}
-      >
-        <motion.div
-          className={`w-full h-full bg-gradient-to-${direction === 'vertical' ? 'b' : 'r'} ${colorClasses[color]} opacity-60`}
-          animate={direction === 'vertical' ? 
-            { y: ['-100%', '100%'] } :
-            { x: ['-100%', '100%'] }
-          }
-          transition={{
-            duration: 1.5 / animationSpeed,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
-      </motion.div>
-    );
-  };
-
-  const SavingsSegment = ({ amount, rate, index, totalSavings }: {
-    amount: number;
-    rate: number;
-    index: number;
-    totalSavings: number;
-  }) => {
-    const colors = ['bg-emerald-500', 'bg-teal-500', 'bg-cyan-500', 'bg-sky-500', 'bg-indigo-500'];
-    const borderColors = ['border-emerald-700', 'border-teal-700', 'border-cyan-700', 'border-sky-700', 'border-indigo-700'];
-    const heightPercentage = totalSavings > 0 ? Math.min(95, Math.max(5, (amount / totalSavings) * 100)) : 5;
-    
-    return (
-      <motion.div
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ 
-          height: `${heightPercentage}%`,
-          opacity: amount > 100 ? 1 : 0
-        }}
-        className={`w-full ${colors[index % colors.length]} ${borderColors[index % borderColors.length]} border-2 relative flex items-center justify-center`}
-        transition={{ duration: 0.8, delay: index * 0.1 }}
-      >
-        {amount > 500 && (
-          <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5 + index * 0.1 }}
-            className="absolute inset-1 bg-white/20 rounded-sm flex items-center justify-center"
-          >
-            <span className="text-[10px] font-bold text-white drop-shadow-lg">
-              {rate.toFixed(1)}%
-            </span>
-          </motion.div>
-        )}
-      </motion.div>
-    );
-  };
+const FlowAnimation: React.FC<FlowAnimationProps> = ({ from, to, amount, color, label, isActive }) => {
+  if (!isActive || amount <= 0) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4" dir="rtl">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 pointer-events-none"
+    >
+      <svg className="absolute inset-0 w-full h-full">
+        <defs>
+          <linearGradient id={`gradient-${from}-${to}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <stop offset="50%" stopColor={color} stopOpacity="0.8" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.2" />
+          </linearGradient>
+        </defs>
+        <motion.path
+          d={`M ${from.x} ${from.y} Q ${(from.x + to.x) / 2} ${Math.min(from.y, to.y) - 50} ${to.x} ${to.y}`}
+          stroke={`url(#gradient-${from}-${to})`}
+          strokeWidth={Math.max(2, Math.min(10, amount / 1000))}
+          fill="none"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        />
+      </svg>
+      {label && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          className="absolute text-xs font-semibold"
+          style={{
+            left: `${(from.x + to.x) / 2}px`,
+            top: `${Math.min(from.y, to.y) - 60}px`,
+            color,
+            transform: 'translateX(-50%)'
+          }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          transition={{ delay: 0.5 }}
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            דינמיקה פיננסית אינטראקטיבית
-          </h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            הדגמה בזמן אמת של זרימת כסף: תזרים → נזיל → {'{חוב, חיסכון, נכסים}'} → עושר
-          </p>
+          ₪{amount.toLocaleString()}
         </motion.div>
+      )}
+    </motion.div>
+  );
+};
 
-        {/* Controls */}
-        <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center justify-between">
-              <span>בקרת סימולציה</span>
+// Money container visualization
+interface MoneyContainerProps {
+  title: string;
+  amount: number;
+  maxAmount: number;
+  color: string;
+  icon: React.ElementType;
+  trend?: number;
+  highlight?: boolean;
+}
+
+const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmount, color, icon: Icon, trend, highlight }) => {
+  const fillPercentage = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      className={`relative bg-white rounded-2xl shadow-lg border-2 ${highlight ? 'border-blue-400' : 'border-gray-200'} p-4 h-48`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="font-semibold text-gray-800">{title}</h3>
+        </div>
+        {trend !== undefined && trend !== 0 && (
+          <Badge variant={trend > 0 ? "default" : "destructive"} className="text-xs">
+            {trend > 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+            {Math.abs(trend)}%
+          </Badge>
+        )}
+      </div>
+      
+      <div className="relative h-24 bg-gray-100 rounded-xl overflow-hidden">
+        <motion.div
+          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${color} opacity-80`}
+          initial={{ height: 0 }}
+          animate={{ height: `${fillPercentage}%` }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-2xl font-bold text-gray-800">
+            ₪{amount.toLocaleString()}
+          </span>
+        </div>
+      </div>
+      
+      {highlight && (
+        <motion.div
+          className="absolute -inset-1 rounded-2xl bg-blue-400 opacity-20"
+          animate={{ opacity: [0.1, 0.3, 0.1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
+    </motion.div>
+  );
+};
+
+export default function FinancialDynamicsPage() {
+  // State management
+  const [currentMonth, setCurrentMonth] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(1);
+  const [viewMode, setViewMode] = useState('visualization'); // 'visualization' | 'charts' | 'data'
+  
+  // Input parameters
+  const [params, setParams] = useState({
+    // Initial values
+    liquid0: 50000,
+    debt0: 500000,
+    savings0: 100000,
+    assets0: 200000,
+    
+    // Monthly cash flow
+    incomeMonthly: 25000,
+    expenseMonthly: 15000,
+    
+    // Interest rates (APR)
+    debtRateAPR: 5.5,
+    savingsRateAPR: 3.5,
+    assetsGrowthAPR: 7.0,
+    
+    // Allocation rules
+    allocToDebt: 5000,
+    allocToSavings: 2000,
+    allocToAssets: 1000,
+    
+    // Simulation settings
+    maxMonths: 360
+  });
+
+  // Calculate financial timeline
+  const engine = useMemo(() => new FinancialEngine(params), [params]);
+  const timeline = engine.getTimeline();
+  const currentState = timeline[Math.min(currentMonth, timeline.length - 1)];
+  
+  // Animation control
+  useEffect(() => {
+    if (isPlaying && currentMonth < timeline.length - 1) {
+      const timer = setTimeout(() => {
+        setCurrentMonth(prev => Math.min(prev + 1, timeline.length - 1));
+      }, 1000 / playSpeed);
+      return () => clearTimeout(timer);
+    } else if (currentMonth >= timeline.length - 1) {
+      setIsPlaying(false);
+    }
+  }, [isPlaying, currentMonth, timeline.length, playSpeed]);
+
+  // Handlers
+  const handleParamChange = useCallback((key: keyof FinancialParams, value: string) => {
+    setParams(prev => ({ ...prev, [key]: parseFloat(value) || 0 }));
+    setCurrentMonth(0); // Reset timeline when params change
+  }, []);
+
+  const handleReset = () => {
+    setCurrentMonth(0);
+    setIsPlaying(false);
+  };
+
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify({ params, timeline }, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = 'financial-simulation.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  // Chart data preparation
+  const chartData = timeline.slice(0, Math.max(currentMonth + 1, 12)).map(state => ({
+    month: state.month,
+    נזיל: state.liquid,
+    חוב: -state.debt,
+    חיסכון: state.savings,
+    נכסים: state.assets,
+    עושר: state.wealth,
+    'כסף אבוד': -state.lost
+  }));
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
+      {/* Header */}
+      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <ChevronLeft className="w-4 h-4" />
+                  חזרה
+                </Button>
+              </Link>
               <div className="flex items-center gap-2">
-                <Button
-                  variant={isPlaying ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  disabled={currentMonth >= MAX_MONTHS}
-                >
-                  {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  {isPlaying ? 'עצור' : 'הפעל'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setCurrentMonth(0);
-                    setIsPlaying(false);
-                  }}
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  איפוס
-                </Button>
+                <Activity className="w-6 h-6 text-indigo-600" />
+                <h1 className="text-xl font-bold text-gray-900">דינמיקה פיננסית</h1>
               </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Time Slider */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>חודש: {currentMonth}</Label>
-                <Label className="text-sm text-gray-500">
-                  שנה {Math.floor(currentMonth / 12)}.{currentMonth % 12}
-                </Label>
-              </div>
-              <Slider
-                value={[currentMonth]}
-                onValueChange={([value]) => {
-                  setCurrentMonth(value);
-                  setIsPlaying(false);
-                }}
-                max={MAX_MONTHS}
-                step={1}
-                className="w-full"
-              />
             </div>
-
-            {/* Animation Speed Control */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>מהירות אנימציה</Label>
-                <Label className="text-sm text-gray-500">
-                  {animationSpeed}x
-                </Label>
-              </div>
-              <Slider
-                value={[animationSpeed]}
-                onValueChange={([value]) => adjustAnimationSpeed(value)}
-                min={0.5}
-                max={3}
-                step={0.1}
-                className="w-full"
-              />
-            </div>
-
-            {/* Flow Details Toggle */}
-            <div className="flex items-center justify-between">
-              <Label>פרטי זרימה</Label>
+            
+            <div className="flex items-center gap-2">
               <Button
-                variant={showFlowDetails ? "default" : "outline"}
+                variant="outline"
                 size="sm"
-                onClick={toggleFlowDetails}
+                onClick={handleExport}
+                className="gap-2"
               >
-                {showFlowDetails ? 'הסתר' : 'הצג'}
+                <Download className="w-4 h-4" />
+                ייצוא
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewMode(viewMode === 'visualization' ? 'charts' : 'visualization')}
+                className="gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                {viewMode === 'visualization' ? 'גרפים' : 'ויזואליזציה'}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Input Panel */}
-          <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
-            <CardHeader>
-              <CardTitle>פרמטרי קלט</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Initial Values */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">ערכי פתיחה</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="liquid0">כסף נזיל</Label>
-                    <Input
-                      id="liquid0"
-                      type="number"
-                      value={inputs.liquid0}
-                      onChange={(e) => setInputs(prev => ({ ...prev, liquid0: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="debt0">חוב</Label>
-                    <Input
-                      id="debt0"
-                      type="number"
-                      value={inputs.debt0}
-                      onChange={(e) => setInputs(prev => ({ ...prev, debt0: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="savings0">חיסכון</Label>
-                    <Input
-                      id="savings0"
-                      type="number"
-                      value={inputs.savings0}
-                      onChange={(e) => setInputs(prev => ({ ...prev, savings0: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assets0">נכסים</Label>
-                    <Input
-                      id="assets0"
-                      type="number"
-                      value={inputs.assets0}
-                      onChange={(e) => setInputs(prev => ({ ...prev, assets0: Number(e.target.value) }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Monthly Cash Flow */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">תזרים חודשי</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="income">הכנסות</Label>
-                    <Input
-                      id="income"
-                      type="number"
-                      value={inputs.incomeMonthly}
-                      onChange={(e) => setInputs(prev => ({ ...prev, incomeMonthly: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="expenses">הוצאות</Label>
-                    <Input
-                      id="expenses"
-                      type="number"
-                      value={inputs.expenseMonthly}
-                      onChange={(e) => setInputs(prev => ({ ...prev, expenseMonthly: Number(e.target.value) }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Interest Rates */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">ריביות שנתיות (%)</h3>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>ריבית חוב: {formatPercent(inputs.debtRateAPR)}</Label>
-                    <Slider
-                      value={[inputs.debtRateAPR]}
-                      onValueChange={([value]) => setInputs(prev => ({ ...prev, debtRateAPR: value }))}
-                      min={0}
-                      max={15}
-                      step={0.1}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>ריבית חיסכון: {formatPercent(inputs.savingsRateAPR)}</Label>
-                    <Slider
-                      value={[inputs.savingsRateAPR]}
-                      onValueChange={([value]) => setInputs(prev => ({ ...prev, savingsRateAPR: value }))}
-                      min={0}
-                      max={10}
-                      step={0.1}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>תשואת נכסים: {formatPercent(inputs.assetsGrowthAPR)}</Label>
-                    <Slider
-                      value={[inputs.assetsGrowthAPR]}
-                      onValueChange={([value]) => setInputs(prev => ({ ...prev, assetsGrowthAPR: value }))}
-                      min={0}
-                      max={15}
-                      step={0.1}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Allocation Rules */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">חוקי הקצאה (%)</h3>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>לחוב: {inputs.allocToDebt}%</Label>
-                    <Slider
-                      value={[inputs.allocToDebt]}
-                      onValueChange={([value]) => setInputs(prev => ({ ...prev, allocToDebt: value }))}
-                      min={0}
-                      max={100}
-                      step={1}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>לחיסכון: {inputs.allocToSavings}%</Label>
-                    <Slider
-                      value={[inputs.allocToSavings]}
-                      onValueChange={([value]) => setInputs(prev => ({ ...prev, allocToSavings: value }))}
-                      min={0}
-                      max={100}
-                      step={1}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>לנכסים: {inputs.allocToAssets}%</Label>
-                    <Slider
-                      value={[inputs.allocToAssets]}
-                      onValueChange={([value]) => setInputs(prev => ({ ...prev, allocToAssets: value }))}
-                      min={0}
-                      max={100}
-                      step={1}
-                    />
-                  </div>
-                </div>
-                <div className="text-sm text-gray-500">
-                  סה"כ: {inputs.allocToDebt + inputs.allocToSavings + inputs.allocToAssets}%
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Visualization Panel */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Flow Visualization */}
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+          {/* Control Panel */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Input Parameters */}
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>זרימת כסף אינטראקטיבית</span>
-                  <div className="text-sm text-gray-500">
-                    חודש {currentMonth} / שנה {Math.floor(currentMonth / 12)}.{currentMonth % 12}
-                  </div>
-                </CardTitle>
+                <CardTitle>פרמטרים פיננסיים</CardTitle>
+                <CardDescription>הגדר את הערכים ההתחלתיים והתזרים החודשי</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="relative h-96 bg-gradient-to-b from-slate-100 to-slate-50 rounded-lg p-8 overflow-hidden border-2 border-gray-200">
+              <CardContent className="space-y-4">
+                <Tabs defaultValue="initial" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="initial">התחלה</TabsTrigger>
+                    <TabsTrigger value="flow">תזרים</TabsTrigger>
+                    <TabsTrigger value="rates">ריביות</TabsTrigger>
+                  </TabsList>
                   
-                  {/* Vertical Cash Flow Pipe */}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
-                    {/* Cash Flow Source */}
-                    <motion.div
-                      animate={{ scale: currentState?.monthlyFlow > 0 ? 1.05 : 0.95 }}
-                      className="mb-2 cursor-pointer"
-                      onMouseEnter={() => handleElementHover('cashFlow', {
-                        type: 'תזרים מזומנים',
-                        amount: currentState?.monthlyFlow || 0,
-                        description: 'ההכנסות פחות ההוצאות החודשיות'
-                      })}
-                      onMouseLeave={handleElementLeave}
-                    >
-                      <div className={`px-6 py-3 rounded-t-lg text-white font-bold text-center shadow-lg ${
-                        currentState?.monthlyFlow > 0 ? 'bg-emerald-600' : 'bg-red-600'
-                      }`}>
-                        תזרים מזומנים
-                      </div>
-                      <div className={`px-4 py-2 rounded-b-lg text-white font-bold text-center shadow-lg ${
-                        currentState?.monthlyFlow > 0 ? 'bg-emerald-500' : 'bg-red-500'
-                      }`}>
-                        {formatCurrency(currentState?.monthlyFlow || 0)}
-                      </div>
-                    </motion.div>
-
-                    {/* Vertical Pipe - מחובר ישירות ללא רווח לבר הנזיל */}
-                    <div className="w-8 h-20 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mx-auto shadow-inner">
-                      <ContinuousFlowEffect 
-                        isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
-                        direction="vertical"
-                        className="w-full h-full rounded-full"
-                        color="blue"
-                      />
-                      <WaterFlowAnimation 
-                        isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
-                        direction="vertical"
-                        className="left-1/2 transform -translate-x-1/2"
-                        color="blue"
+                  <TabsContent value="initial" className="space-y-3">
+                    <div>
+                      <Label htmlFor="liquid0">כסף נזיל</Label>
+                      <Input
+                        id="liquid0"
+                        type="number"
+                        value={params.liquid0}
+                        onChange={(e) => handleParamChange('liquid0', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
                       />
                     </div>
-                  </div>
-
-                  {/* Horizontal Liquid Money Bar - מחובר ישירות לצינור האנכי ללא רווח */}
-                  <div className="absolute top-20 left-1/2 transform -translate-x-1/2">
-                    <motion.div
-                      className="w-80 h-20 bg-gradient-to-r from-slate-400 to-slate-500 rounded-lg flex items-center relative overflow-hidden border-4 border-slate-600 shadow-lg cursor-pointer"
-                      animate={{ 
-                        borderColor: currentState?.liquid > 0 ? '#1e40af' : '#dc2626' 
-                      }}
-                      onMouseEnter={() => handleElementHover('liquid', {
-                        type: 'כסף נזיל',
-                        amount: currentState?.liquid || 0,
-                        description: 'הכסף הזמין לשימוש מיידי'
-                      })}
-                      onMouseLeave={handleElementLeave}
-                    >
-                      <motion.div
-                        className="absolute inset-1 bg-gradient-to-r from-blue-600 to-blue-700 rounded-md shadow-inner"
-                        animate={{ 
-                          width: `${Math.min(95, Math.max(5, (currentState?.liquid || 0) / 1000))}%`,
-                          backgroundColor: currentState?.liquid > 0 ? '#1e40af' : '#dc2626'
-                        }}
-                        transition={{ duration: 0.6 }}
+                    <div>
+                      <Label htmlFor="debt0">חוב התחלתי</Label>
+                      <Input
+                        id="debt0"
+                        type="number"
+                        value={params.debt0}
+                        onChange={(e) => handleParamChange('debt0', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
                       />
-                      <div className="relative z-10 w-full text-center">
-                        <div className="text-white font-bold text-lg drop-shadow-lg">
-                          כסף נזיל
-                        </div>
-                        <div className="text-white font-bold drop-shadow-lg">
-                          {formatCurrency(currentState?.liquid || 0)}
-                        </div>
-                      </div>
-                      
-                      {/* Continuous horizontal water flow */}
-                      <ContinuousFlowEffect 
-                        isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
-                        direction="horizontal"
-                        className="w-full h-full rounded-md"
-                        color="blue"
+                    </div>
+                    <div>
+                      <Label htmlFor="savings0">חיסכון התחלתי</Label>
+                      <Input
+                        id="savings0"
+                        type="number"
+                        value={params.savings0}
+                        onChange={(e) => handleParamChange('savings0', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
                       />
-                    </motion.div>
-                  </div>
-
-                  {/* Three Outgoing Pipes and Bars - מחוברים ישירות ללא רווחים לבר הנזיל */}
-                  <div className="absolute top-40 left-1/2 transform -translate-x-1/2 flex gap-16">
-                    
-                    {/* Debt Section with Split Flow */}
-                    <div className="flex flex-col items-center relative">
-                      {/* Main Connecting Pipe - מחובר ישירות לבר הנזיל ללא רווח */}
-                      <div className="w-6 h-12 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mb-2 shadow-inner">
-                        <ContinuousFlowEffect 
-                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="w-full h-full rounded-full"
-                          color="orange"
-                        />
-                        <WaterFlowAnimation 
-                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="left-1/2 transform -translate-x-1/2"
-                          color="orange"
-                        />
-                      </div>
-                      
-                      {/* Split Junction - צומת פיצול */}
-                      <div className="relative mb-2">
-                        <div className="w-8 h-6 bg-gradient-to-r from-gray-500 to-gray-600 rounded shadow-inner"></div>
-                        
-                        {/* Principal Payment Pipe (Left) - צינור קרן */}
-                        <div className="absolute -left-6 top-1 w-3 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded-full shadow-inner">
-                          <ContinuousFlowEffect 
-                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                            direction="vertical"
-                            className="w-full h-full rounded-full"
-                            color="green"
-                          />
-                          <WaterFlowAnimation 
-                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                            direction="vertical"
-                            className="left-1/2 transform -translate-x-1/2"
-                            color="green"
-                          />
-                        </div>
-                        
-                        {/* Interest Payment Pipe (Right) - צינור ריבית */}
-                        <div className="absolute -right-6 top-1 w-3 h-8 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full shadow-inner">
-                          <ContinuousFlowEffect 
-                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                            direction="vertical"
-                            className="w-full h-full rounded-full"
-                            color="orange"
-                          />
-                          <WaterFlowAnimation 
-                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                            direction="vertical"
-                            className="left-1/2 transform -translate-x-1/2"
-                            color="orange"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Debt Bar - בר החוב */}
-                      <motion.div
-                        className="w-28 h-36 bg-gradient-to-b from-red-200 to-red-300 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-4 border-red-600 shadow-lg cursor-pointer"
-                        whileHover={{ scale: 1.05 }}
-                        onMouseEnter={() => handleElementHover('debt', {
-                          type: 'חוב',
-                          amount: currentState?.debt || 0,
-                          description: 'החוב הכולל כולל ריבית',
-                          rate: inputs.debtRateAPR
-                        })}
-                        onMouseLeave={handleElementLeave}
-                      >
-                        <motion.div
-                          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-red-700 to-red-600 rounded-b-lg shadow-inner"
-                          animate={{ 
-                            height: `${Math.min(95, Math.max(5, ((currentState?.debt || 0) / 4000)))}%`
-                          }}
-                          transition={{ duration: 0.6 }}
-                        />
-                        <CreditCard className="w-8 h-8 text-white relative z-10 mb-2 drop-shadow-lg" />
-                        <span className="text-sm text-white font-bold relative z-10 text-center drop-shadow-lg">
-                          חוב<br/>{formatCurrency(currentState?.debt || 0)}
-                        </span>
-                      </motion.div>
-                      
-                      {/* Principal and Interest Labels */}
-                      <div className="flex gap-8 mt-3 text-sm">
-                        <div className="text-green-700 font-bold text-center">
-                          <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1 shadow"></div>
-                          קרן
-                        </div>
-                        <div className="text-orange-700 font-bold text-center">
-                          <div className="w-3 h-3 bg-orange-500 rounded-full mx-auto mb-1 shadow"></div>
-                          ריבית
-                        </div>
-                      </div>
                     </div>
-
-                    {/* Savings Section */}
-                    <div className="flex flex-col items-center">
-                      {/* Connecting Pipe - מחובר ישירות לבר הנזיל ללא רווח */}
-                      <div className="w-6 h-12 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mb-2 shadow-inner">
-                        <ContinuousFlowEffect 
-                          isActive={(inputs.allocToSavings > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="w-full h-full rounded-full"
-                          color="green"
-                        />
-                        <WaterFlowAnimation 
-                          isActive={(inputs.allocToSavings > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="left-1/2 transform -translate-x-1/2"
-                          color="green"
-                        />
-                      </div>
-                      
-                      {/* Savings Bar with Segments */}
-                      <motion.div
-                        className="w-28 h-36 bg-gradient-to-b from-green-200 to-green-300 rounded-lg relative overflow-hidden border-4 border-green-600 shadow-lg cursor-pointer"
-                        whileHover={{ scale: 1.05 }}
-                        onMouseEnter={() => handleElementHover('savings', {
-                          type: 'חיסכון',
-                          amount: currentState?.savings || 0,
-                          description: 'החיסכון הכולל כולל ריבית',
-                          rate: inputs.savingsRateAPR
-                        })}
-                        onMouseLeave={handleElementLeave}
-                      >
-                        <div className="absolute bottom-0 left-0 right-0 flex flex-col-reverse h-full">
-                          {/* Create multiple segments based on savings amount */}
-                          {(() => {
-                            const totalSavings = currentState?.savings || 0;
-                            const segments = [];
-                            const baseRate = inputs.savingsRateAPR;
-                            
-                            // Create up to 4 segments with different rates
-                            const segmentCount = Math.min(4, Math.floor(totalSavings / 10000) + 1);
-                            const amountPerSegment = totalSavings / segmentCount;
-                            
-                            for (let i = 0; i < segmentCount; i++) {
-                              const rate = baseRate + (i * 0.5); // Increasing rates for newer deposits
-                              segments.push(
-                                <SavingsSegment
-                                  key={i}
-                                  amount={amountPerSegment}
-                                  rate={rate}
-                                  index={i}
-                                  totalSavings={totalSavings}
-                                />
-                              );
-                            }
-                            return segments;
-                          })()}
-                        </div>
-                        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-20">
-                          <PiggyBank className="w-8 h-8 text-white drop-shadow-lg" />
-                          <span className="text-sm text-white font-bold text-center mt-1 drop-shadow-lg">
-                            חיסכון<br/>{formatCurrency(currentState?.savings || 0)}
-                          </span>
-                        </div>
-                      </motion.div>
-                    </div>
-
-                    {/* Assets Section */}
-                    <div className="flex flex-col items-center">
-                      {/* Connecting Pipe - מחובר ישירות לבר הנזיל ללא רווח */}
-                      <div className="w-6 h-12 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mb-2 shadow-inner">
-                        <ContinuousFlowEffect 
-                          isActive={(inputs.allocToAssets > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="w-full h-full rounded-full"
-                          color="purple"
-                        />
-                        <WaterFlowAnimation 
-                          isActive={(inputs.allocToAssets > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="left-1/2 transform -translate-x-1/2"
-                          color="purple"
-                        />
-                      </div>
-                      
-                      {/* Assets Bar */}
-                      <motion.div
-                        className="w-28 h-36 bg-gradient-to-b from-purple-200 to-purple-300 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-4 border-purple-600 shadow-lg cursor-pointer"
-                        whileHover={{ scale: 1.05 }}
-                        onMouseEnter={() => handleElementHover('assets', {
-                          type: 'נכסים',
-                          amount: currentState?.assets || 0,
-                          description: 'הנכסים הכוללים כולל תשואה',
-                          rate: inputs.assetsGrowthAPR
-                        })}
-                        onMouseLeave={handleElementLeave}
-                      >
-                        <motion.div
-                          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-700 to-purple-600 rounded-b-lg shadow-inner"
-                          animate={{ 
-                            height: `${Math.min(95, Math.max(5, ((currentState?.assets || 0) / 3000)))}%`
-                          }}
-                          transition={{ duration: 0.6 }}
-                        />
-                        <Home className="w-8 h-8 text-white relative z-10 mb-2 drop-shadow-lg" />
-                        <span className="text-sm text-white font-bold relative z-10 text-center drop-shadow-lg">
-                          נכסים<br/>{formatCurrency(currentState?.assets || 0)}
-                        </span>
-                      </motion.div>
-                    </div>
-                  </div>
-
-                  {/* Lost Money Bar - בר הכסף האבוד עם חיבור מושלם */}
-                  <div className="absolute bottom-16 right-8">
-                    {/* Connection pipe from debt interest - צינור מחובר ישירות */}
-                    <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
-                      <div className="w-4 h-12 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full relative shadow-inner">
-                        <ContinuousFlowEffect 
-                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="w-full h-full rounded-full"
-                          color="orange"
-                        />
-                        <WaterFlowAnimation 
-                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
-                          direction="vertical"
-                          className="left-1/2 transform -translate-x-1/2"
-                          color="orange"
-                        />
-                      </div>
-                      <div className="text-sm text-orange-700 font-bold text-center mt-2 drop-shadow">
-                        ריבית
-                      </div>
-                    </div>
-                    
-                    <motion.div
-                      className="w-44 h-16 bg-gradient-to-r from-orange-200 to-orange-300 rounded-lg relative overflow-hidden border-4 border-orange-600 shadow-lg cursor-pointer"
-                      whileHover={{ scale: 1.05 }}
-                      animate={{ 
-                        boxShadow: (currentState?.lost || 0) > 0 ? '0 0 25px rgba(255, 165, 0, 0.4)' : '0 0 0px rgba(255, 165, 0, 0)'
-                      }}
-                      onMouseEnter={() => handleElementHover('lost', {
-                        type: 'כסף אבוד',
-                        amount: currentState?.lost || 0,
-                        description: 'הכסף שאבד על ריבית חוב'
-                      })}
-                      onMouseLeave={handleElementLeave}
-                    >
-                      <motion.div
-                        className="absolute inset-1 bg-gradient-to-r from-orange-600 to-red-600 rounded-md shadow-inner"
-                        animate={{ 
-                          width: `${Math.min(95, Math.max(5, (currentState?.lost || 0) / 1000))}%`
-                        }}
-                        transition={{ duration: 0.6 }}
+                    <div>
+                      <Label htmlFor="assets0">נכסים התחלתיים</Label>
+                      <Input
+                        id="assets0"
+                        type="number"
+                        value={params.assets0}
+                        onChange={(e) => handleParamChange('assets0', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
                       />
-                      <div className="relative z-10 h-full flex flex-col items-center justify-center text-white font-bold text-sm">
-                        <div className="text-sm">כסף אבוד</div>
-                        <div className="text-lg">{formatCurrency(currentState?.lost || 0)}</div>
-                      </div>
-                    </motion.div>
-                  </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="flow" className="space-y-3">
+                    <div>
+                      <Label htmlFor="income">הכנסה חודשית</Label>
+                      <Input
+                        id="income"
+                        type="number"
+                        value={params.incomeMonthly}
+                        onChange={(e) => handleParamChange('incomeMonthly', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="expense">הוצאות חודשיות</Label>
+                      <Input
+                        id="expense"
+                        type="number"
+                        value={params.expenseMonthly}
+                        onChange={(e) => handleParamChange('expenseMonthly', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="allocDebt">הקצאה לחוב</Label>
+                      <Input
+                        id="allocDebt"
+                        type="number"
+                        value={params.allocToDebt}
+                        onChange={(e) => handleParamChange('allocToDebt', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="allocSavings">הקצאה לחיסכון</Label>
+                      <Input
+                        id="allocSavings"
+                        type="number"
+                        value={params.allocToSavings}
+                        onChange={(e) => handleParamChange('allocToSavings', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="allocAssets">הקצאה לנכסים</Label>
+                      <Input
+                        id="allocAssets"
+                        type="number"
+                        value={params.allocToAssets}
+                        onChange={(e) => handleParamChange('allocToAssets', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="rates" className="space-y-3">
+                    <div>
+                      <Label htmlFor="debtRate">ריבית חוב (APR %)</Label>
+                      <Input
+                        id="debtRate"
+                        type="number"
+                        step="0.1"
+                        value={params.debtRateAPR}
+                        onChange={(e) => handleParamChange('debtRateAPR', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="savingsRate">ריבית חיסכון (APR %)</Label>
+                      <Input
+                        id="savingsRate"
+                        type="number"
+                        step="0.1"
+                        value={params.savingsRateAPR}
+                        onChange={(e) => handleParamChange('savingsRateAPR', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="assetsGrowth">תשואת נכסים (APR %)</Label>
+                      <Input
+                        id="assetsGrowth"
+                        type="number"
+                        step="0.1"
+                        value={params.assetsGrowthAPR}
+                        onChange={(e) => handleParamChange('assetsGrowthAPR', e.target.value)}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
 
-                  {/* Wealth Indicator */}
-                  <div className="absolute bottom-4 left-4">
-                    <motion.div
-                      className={`px-4 py-2 rounded-lg text-white font-bold cursor-pointer ${
-                        (currentState?.wealth || 0) > 0 ? 'bg-emerald-600' : 'bg-red-600'
-                      }`}
-                      animate={{ scale: (currentState?.wealth || 0) > 0 ? 1.05 : 0.95 }}
-                      onMouseEnter={() => handleElementHover('wealth', {
-                        type: 'עושר כולל',
-                        amount: currentState?.wealth || 0,
-                        description: 'חיסכון + נכסים - חוב'
-                      })}
-                      onMouseLeave={handleElementLeave}
-                    >
-                      עושר כולל: {formatCurrency(currentState?.wealth || 0)}
-                    </motion.div>
+            {/* Timeline Control */}
+            <Card>
+              <CardHeader>
+                <CardTitle>בקרת זמן</CardTitle>
+                <CardDescription>חודש {currentMonth} מתוך {timeline.length - 1}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Slider
+                    value={[currentMonth]}
+                    onValueChange={([value]) => setCurrentMonth(value)}
+                    max={timeline.length - 1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>התחלה</span>
+                    <span>{Math.floor((timeline.length - 1) / 12)} שנים</span>
                   </div>
-
-                  {/* Interactive Tooltip */}
-                  <AnimatePresence>
-                    {showTooltip && tooltipData && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="absolute top-4 right-4 bg-white rounded-lg shadow-xl border-2 border-gray-200 p-4 z-50 max-w-xs"
-                      >
-                        <div className="text-sm font-bold text-gray-900 mb-2">
-                          {tooltipData.type}
-                        </div>
-                        <div className="text-lg font-bold text-blue-600 mb-2">
-                          {formatCurrency(tooltipData.amount)}
-                        </div>
-                        <div className="text-xs text-gray-600 mb-2">
-                          {tooltipData.description}
-                        </div>
-                        {tooltipData.rate && (
-                          <div className="text-xs text-gray-500">
-                            ריבית: {tooltipData.rate.toFixed(1)}%
-                          </div>
-                        )}
-                      </motion.div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    className="flex-1"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    איפוס
+                  </Button>
+                  <Button
+                    variant={isPlaying ? "destructive" : "default"}
+                    size="sm"
+                    onClick={handlePlayPause}
+                    className="flex-1"
+                  >
+                    {isPlaying ? (
+                      <>
+                        <Pause className="w-4 h-4 mr-2" />
+                        עצור
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 mr-2" />
+                        הפעל
+                      </>
                     )}
-                  </AnimatePresence>
-
-                  {/* Flow Details Panel */}
-                  <AnimatePresence>
-                    {showFlowDetails && (
-                      <motion.div
-                        initial={{ opacity: 0, x: 300 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 300 }}
-                        className="absolute top-4 left-4 bg-white rounded-lg shadow-xl border-2 border-gray-200 p-4 z-50 max-w-sm"
-                      >
-                        <div className="text-sm font-bold text-gray-900 mb-3">
-                          פרטי זרימה חודשית
-                        </div>
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between">
-                            <span>תזרים:</span>
-                            <span className="font-bold">{formatCurrency(currentState?.monthlyFlow || 0)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>לחוב:</span>
-                            <span className="font-bold">{formatCurrency((currentState?.liquid || 0) * (inputs.allocToDebt / 100))}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>לחיסכון:</span>
-                            <span className="font-bold">{formatCurrency((currentState?.liquid || 0) * (inputs.allocToSavings / 100))}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>לנכסים:</span>
-                            <span className="font-bold">{formatCurrency((currentState?.liquid || 0) * (inputs.allocToAssets / 100))}</span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  </Button>
+                </div>
+                
+                <div>
+                  <Label htmlFor="speed">מהירות הפעלה</Label>
+                  <Slider
+                    id="speed"
+                    value={[playSpeed]}
+                    onValueChange={([value]) => setPlaySpeed(value)}
+                    min={0.5}
+                    max={5}
+                    step={0.5}
+                    className="w-full"
+                  />
+                  <div className="text-center text-xs text-gray-500 mt-1">
+                    x{playSpeed}
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Current State Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="p-4 text-center">
-                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                  <div className="text-2xl font-bold text-blue-900">
-                    {formatCurrency(currentState?.liquid || 0)}
-                  </div>
-                  <div className="text-sm text-blue-600">כסף נזיל</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-red-50 border-red-200">
-                <CardContent className="p-4 text-center">
-                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-red-600" />
-                  <div className="text-2xl font-bold text-red-900">
-                    {formatCurrency(currentState?.debt || 0)}
-                  </div>
-                  <div className="text-sm text-red-600">חוב</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="p-4 text-center">
-                  <PiggyBank className="w-8 h-8 mx-auto mb-2 text-green-600" />
-                  <div className="text-2xl font-bold text-green-900">
-                    {formatCurrency(currentState?.savings || 0)}
-                  </div>
-                  <div className="text-sm text-green-600">חיסכון</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-purple-50 border-purple-200">
-                <CardContent className="p-4 text-center">
-                  <Home className="w-8 h-8 mx-auto mb-2 text-purple-600" />
-                  <div className="text-2xl font-bold text-purple-900">
-                    {formatCurrency(currentState?.assets || 0)}
-                  </div>
-                  <div className="text-sm text-purple-600">נכסים</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Charts */}
-            <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
+            {/* Key Metrics */}
+            <Card>
               <CardHeader>
-                <CardTitle>מגמות לאורך זמן</CardTitle>
+                <CardTitle>מדדים מרכזיים</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={simulationData.slice(0, currentMonth + 1)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="t" 
-                        label={{ value: 'חודשים', position: 'insideBottom', offset: -5 }}
-                      />
-                      <YAxis 
-                        tickFormatter={(value) => formatCurrency(value)}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [formatCurrency(value), name]}
-                        labelFormatter={(label) => `חודש ${label}`}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="wealth" 
-                        stroke="#10b981" 
-                        strokeWidth={3}
-                        name="עושר"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="liquid" 
-                        stroke="#3b82f6" 
-                        strokeWidth={2}
-                        name="נזיל"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="debt" 
-                        stroke="#ef4444" 
-                        strokeWidth={2}
-                        name="חוב"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="savings" 
-                        stroke="#22c55e" 
-                        strokeWidth={2}
-                        name="חיסכון"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="assets" 
-                        stroke="#8b5cf6" 
-                        strokeWidth={2}
-                        name="נכסים"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="lost" 
-                        stroke="#f59e0b" 
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        name="כסף אבוד (R⁻)"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">עושר נטו</span>
+                  <span className={`text-lg font-bold ${currentState.wealth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₪{currentState.wealth.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">כסף אבוד (R-)</span>
+                  <span className="text-lg font-bold text-red-600">
+                    ₪{currentState.lost.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">תזרים נטו</span>
+                  <span className={`text-lg font-bold ${currentState.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₪{currentState.netCashFlow.toLocaleString()}
+                  </span>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Main Visualization Area */}
+          <div className="lg:col-span-2 space-y-6">
+            {viewMode === 'visualization' ? (
+              <>
+                {/* Flow Visualization */}
+                <Card className="overflow-hidden">
+                  <CardHeader>
+                    <CardTitle>זרימת כסף בזמן אמת</CardTitle>
+                    <CardDescription>
+                      ויזואליזציה של תנועת הכסף בין השכבות השונות
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative h-96 bg-gradient-to-b from-blue-50 to-white rounded-xl p-4">
+                      {/* Income Flow */}
+                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                        <motion.div
+                          className="bg-green-100 border-2 border-green-400 rounded-xl px-4 py-2"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-green-600" />
+                            <span className="font-semibold text-green-800">
+                              הכנסה: ₪{params.incomeMonthly.toLocaleString()}
+                            </span>
+                          </div>
+                        </motion.div>
+                      </div>
+
+                      {/* Liquid Container */}
+                      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-48">
+                        <MoneyContainer
+                          title="כסף נזיל"
+                          amount={currentState.liquid}
+                          maxAmount={200000}
+                          color="from-blue-500 to-blue-600"
+                          icon={Wallet}
+                          highlight={true}
+                        />
+                      </div>
+
+                      {/* Bottom Containers */}
+                      <div className="absolute bottom-4 left-0 right-0 grid grid-cols-3 gap-4 px-4">
+                        <MoneyContainer
+                          title="חוב"
+                          amount={currentState.debt}
+                          maxAmount={params.debt0}
+                          color="from-red-500 to-red-600"
+                          icon={TrendingDown}
+                          trend={currentState.debtPayment > 0 ? -5 : 0}
+                        />
+                        <MoneyContainer
+                          title="חיסכון (R+)"
+                          amount={currentState.savings}
+                          maxAmount={500000}
+                          color="from-green-500 to-green-600"
+                          icon={PiggyBank}
+                          trend={currentState.savingsInterest > 0 ? 3.5 : 0}
+                        />
+                        <MoneyContainer
+                          title="נכסים"
+                          amount={currentState.assets}
+                          maxAmount={1000000}
+                          color="from-purple-500 to-purple-600"
+                          icon={Home}
+                          trend={currentState.assetsGrowth > 0 ? 7 : 0}
+                        />
+                      </div>
+
+                      {/* Flow Animations */}
+                      <AnimatePresence>
+                        {currentState.debtPayment > 0 && (
+                          <FlowAnimation
+                            from={{ x: 240, y: 200 }}
+                            to={{ x: 100, y: 320 }}
+                            amount={currentState.debtPayment}
+                            color="#ef4444"
+                            label="לחוב"
+                            isActive={true}
+                          />
+                        )}
+                        {currentState.savingsDeposit > 0 && (
+                          <FlowAnimation
+                            from={{ x: 240, y: 200 }}
+                            to={{ x: 240, y: 320 }}
+                            amount={currentState.savingsDeposit}
+                            color="#10b981"
+                            label="לחיסכון"
+                            isActive={true}
+                          />
+                        )}
+                        {currentState.assetsInvestment > 0 && (
+                          <FlowAnimation
+                            from={{ x: 240, y: 200 }}
+                            to={{ x: 380, y: 320 }}
+                            amount={currentState.assetsInvestment}
+                            color="#8b5cf6"
+                            label="לנכסים"
+                            isActive={true}
+                          />
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Wealth and Lost Money Indicators */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">עושר כולל</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-green-600">
+                        ₪{currentState.wealth.toLocaleString()}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        חיסכון + נכסים - חוב
+                      </p>
+                      <div className="mt-4 space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>חיסכון</span>
+                          <span className="font-medium">₪{currentState.savings.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>נכסים</span>
+                          <span className="font-medium">₪{currentState.assets.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>חוב</span>
+                          <span className="font-medium text-red-600">-₪{currentState.debt.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">כסף אבוד (R-)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-red-600">
+                        ₪{currentState.lost.toLocaleString()}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        ריבית ששולמה על חובות
+                      </p>
+                      <Alert className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          כסף זה "אבוד" כי הוא משלם ריבית ולא מקטין קרן
+                        </AlertDescription>
+                      </Alert>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            ) : (
+              /* Charts View */
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>התפתחות לאורך זמן</CardTitle>
+                    <CardDescription>
+                      גרפים המציגים את השינויים בכל הפרמטרים
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <AreaChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="month" 
+                          label={{ value: 'חודש', position: 'insideBottom', offset: -5 }}
+                        />
+                        <YAxis 
+                          label={{ value: '₪', angle: -90, position: 'insideLeft' }}
+                          tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                        />
+                        <Tooltip 
+                          formatter={(value) => `₪${value.toLocaleString()}`}
+                          labelFormatter={(label) => `חודש ${label}`}
+                        />
+                        <Legend />
+                        <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+                        
+                        <Area type="monotone" dataKey="נזיל" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                        <Area type="monotone" dataKey="חיסכון" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                        <Area type="monotone" dataKey="נכסים" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+                        <Area type="monotone" dataKey="חוב" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
+                        <Line type="monotone" dataKey="עושר" stroke="#f59e0b" strokeWidth={3} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>ניתוח תזרים</CardTitle>
+                    <CardDescription>
+                      פירוט התשלומים והריביות לאורך זמן
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`} />
+                        <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
+                        <Legend />
+                        
+                        <Line 
+                          type="monotone" 
+                          dataKey="כסף אבוד" 
+                          stroke="#ef4444" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Information Footer */}
+        <div className="mt-8">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>הסבר:</strong> המערכת מדמה את הדינמיקה הפיננסית שלך לאורך זמן. 
+              <span className="text-green-600 font-semibold"> R+ </span>
+              מייצג ריבית חיובית על חיסכון (כסף שעובד בשבילך), 
+              <span className="text-red-600 font-semibold"> R- </span>
+              מייצג ריבית על חוב (כסף אבוד). 
+              המטרה היא למקסם עושר ולמזער כסף אבוד.
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
     </div>

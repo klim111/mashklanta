@@ -430,7 +430,7 @@ export default function Home() {
 
                   {/* Tools Grid */}
                   <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                    {/* Financial Dynamics Tool */}
+                    {/* Simulations Tool */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
@@ -439,17 +439,17 @@ export default function Home() {
                       whileHover={{ scale: 1.05, y: -5 }}
                       className="group"
                     >
-                      <Link href="/financial-dynamics">
+                      <Link href="/simulations">
                         <Card className="h-full border border-gray-200 hover:border-indigo-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
                           <CardContent className="p-4 text-center">
                             <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                               <Activity className="w-6 h-6 text-white" />
                             </div>
                             <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                              דינמיקה פיננסית
+                              סימולציות
                             </h3>
                             <p className="text-xs text-gray-600 leading-relaxed">
-                              הדגמה אינטראקטיבית של זרימת כסף בזמן אמת
+                              כלי סימולציה מתקדמים לתכנון פיננסי
                             </p>
                           </CardContent>
                         </Card>
