@@ -185,34 +185,68 @@ export default function FinancialDynamicsPage() {
     return `${value.toFixed(1)}%`;
   };
 
-  // Flow animation component
-  const FlowAnimation = ({ from, to, amount, color, delay = 0 }: {
-    from: string;
-    to: string;
-    amount: number;
-    color: string;
-    delay?: number;
+  // Enhanced flow animation components
+  const WaterFlowAnimation = ({ isActive, direction = 'vertical', className = '' }: {
+    isActive: boolean;
+    direction?: 'vertical' | 'horizontal';
+    className?: string;
   }) => {
-    if (amount <= 0) return null;
+    if (!isActive) return null;
 
     return (
+      <motion.div className={`absolute ${className}`}>
+        {[...Array(3)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 bg-blue-400 rounded-full opacity-70"
+            animate={direction === 'vertical' ? 
+              { y: [0, 40, 80], opacity: [0.7, 0.5, 0] } :
+              { x: [0, 40, 80], opacity: [0.7, 0.5, 0] }
+            }
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              delay: i * 0.3,
+              ease: "easeInOut"
+            }}
+          />
+        ))}
+      </motion.div>
+    );
+  };
+
+  const SavingsSegment = ({ amount, rate, index, totalSavings }: {
+    amount: number;
+    rate: number;
+    index: number;
+    totalSavings: number;
+  }) => {
+    const colors = ['bg-emerald-500', 'bg-teal-500', 'bg-cyan-500', 'bg-sky-500', 'bg-indigo-500'];
+    const borderColors = ['border-emerald-700', 'border-teal-700', 'border-cyan-700', 'border-sky-700', 'border-indigo-700'];
+    const heightPercentage = totalSavings > 0 ? Math.min(95, Math.max(5, (amount / totalSavings) * 100)) : 5;
+    
+    return (
       <motion.div
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0 }}
-        transition={{ delay, duration: 0.5 }}
-        className={`absolute w-2 h-8 ${color} rounded-full opacity-70`}
-        style={{
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ 
+          height: `${heightPercentage}%`,
+          opacity: amount > 100 ? 1 : 0
         }}
+        className={`w-full ${colors[index % colors.length]} ${borderColors[index % borderColors.length]} border-2 relative flex items-center justify-center`}
+        transition={{ duration: 0.8, delay: index * 0.1 }}
       >
-        <motion.div
-          animate={{ y: [0, -20, -40] }}
-          transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-          className="w-full h-full bg-current rounded-full"
-        />
+        {amount > 500 && (
+          <motion.div 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.5 + index * 0.1 }}
+            className="absolute inset-1 bg-white/20 rounded-sm flex items-center justify-center"
+          >
+            <span className="text-[10px] font-bold text-white drop-shadow-lg">
+              {rate.toFixed(1)}%
+            </span>
+          </motion.div>
+        )}
       </motion.div>
     );
   };
@@ -451,118 +485,276 @@ export default function FinancialDynamicsPage() {
             {/* Flow Visualization */}
             <Card className="bg-white/95 backdrop-blur-sm shadow-xl border-0">
               <CardHeader>
-                <CardTitle>זרימת כסף אינטראקטיבית</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>זרימת כסף אינטראקטיבית</span>
+                  <div className="text-sm text-gray-500">
+                    חודש {currentMonth} / שנה {Math.floor(currentMonth / 12)}.{currentMonth % 12}
+                  </div>
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="relative h-80 bg-gradient-to-b from-blue-50 to-slate-50 rounded-lg p-6 overflow-hidden">
-                  {/* Cash Flow Input */}
-                  <motion.div
-                    animate={{ scale: currentState?.monthlyFlow > 0 ? 1.1 : 0.9 }}
-                    className="absolute top-4 left-1/2 transform -translate-x-1/2"
-                  >
-                    <div className={`px-4 py-2 rounded-lg text-white font-bold ${
-                      currentState?.monthlyFlow > 0 ? 'bg-green-500' : 'bg-red-500'
-                    }`}>
-                      תזרים: {formatCurrency(currentState?.monthlyFlow || 0)}
+                <div className="relative h-96 bg-gradient-to-b from-slate-100 to-slate-50 rounded-lg p-8 overflow-hidden border-2 border-gray-200">
+                  
+                  {/* Vertical Cash Flow Pipe */}
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
+                    {/* Cash Flow Source */}
+                    <motion.div
+                      animate={{ scale: currentState?.monthlyFlow > 0 ? 1.05 : 0.95 }}
+                      className="mb-2"
+                    >
+                      <div className={`px-6 py-3 rounded-t-lg text-white font-bold text-center ${
+                        currentState?.monthlyFlow > 0 ? 'bg-emerald-600' : 'bg-red-600'
+                      }`}>
+                        תזרים מזומנים
+                      </div>
+                      <div className={`px-4 py-2 rounded-b-lg text-white font-bold text-center ${
+                        currentState?.monthlyFlow > 0 ? 'bg-emerald-500' : 'bg-red-500'
+                      }`}>
+                        {formatCurrency(currentState?.monthlyFlow || 0)}
+                      </div>
+                    </motion.div>
+
+                    {/* Vertical Pipe */}
+                    <div className="w-6 h-16 bg-gray-400 rounded-full relative mx-auto">
+                      <WaterFlowAnimation 
+                        isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
+                        direction="vertical"
+                        className="left-1/2 transform -translate-x-1/2"
+                      />
                     </div>
-                  </motion.div>
+                  </div>
 
-                  {/* Liquid Money Bar */}
-                  <motion.div
-                    className="absolute top-20 left-1/2 transform -translate-x-1/2 w-64 h-12 bg-blue-200 rounded-lg flex items-center justify-center relative overflow-hidden"
-                    animate={{ 
-                      backgroundColor: currentState?.liquid > 0 ? '#93c5fd' : '#fca5a5' 
-                    }}
-                  >
+                  {/* Horizontal Liquid Money Bar */}
+                  <div className="absolute top-24 left-1/2 transform -translate-x-1/2">
                     <motion.div
-                      className="absolute inset-0 bg-blue-400 rounded-lg"
+                      className="w-80 h-16 bg-slate-300 rounded-lg flex items-center relative overflow-hidden border-4 border-slate-400"
                       animate={{ 
-                        width: `${Math.min(100, Math.max(10, (currentState?.liquid || 0) / 1000))}%`
+                        borderColor: currentState?.liquid > 0 ? '#3b82f6' : '#ef4444' 
                       }}
-                      transition={{ duration: 0.5 }}
-                    />
-                    <span className="relative z-10 text-white font-bold">
-                      נזיל: {formatCurrency(currentState?.liquid || 0)}
-                    </span>
-                  </motion.div>
-
-                  {/* Three containers: Debt, Savings, Assets */}
-                  <div className="absolute top-40 left-1/2 transform -translate-x-1/2 flex gap-8">
-                    {/* Debt Container */}
-                    <motion.div
-                      className="w-20 h-32 bg-red-200 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden"
-                      whileHover={{ scale: 1.05 }}
                     >
                       <motion.div
-                        className="absolute bottom-0 left-0 right-0 bg-red-400 rounded-b-lg"
+                        className="absolute inset-1 bg-blue-500 rounded-md"
                         animate={{ 
-                          height: `${Math.min(100, Math.max(10, ((currentState?.debt || 0) / 5000)))}%`
+                          width: `${Math.min(95, Math.max(5, (currentState?.liquid || 0) / 1000))}%`,
+                          backgroundColor: currentState?.liquid > 0 ? '#3b82f6' : '#ef4444'
                         }}
-                        transition={{ duration: 0.5 }}
+                        transition={{ duration: 0.6 }}
                       />
-                      <CreditCard className="w-6 h-6 text-white relative z-10 mb-1" />
-                      <span className="text-xs text-white font-bold relative z-10">חוב</span>
-                    </motion.div>
-
-                    {/* Savings Container */}
-                    <motion.div
-                      className="w-20 h-32 bg-green-200 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 bg-green-400 rounded-b-lg"
-                        animate={{ 
-                          height: `${Math.min(100, Math.max(10, ((currentState?.savings || 0) / 2000)))}%`
-                        }}
-                        transition={{ duration: 0.5 }}
+                      <div className="relative z-10 w-full text-center">
+                        <div className="text-white font-bold text-lg drop-shadow-lg">
+                          כסף נזיל
+                        </div>
+                        <div className="text-white font-bold drop-shadow-lg">
+                          {formatCurrency(currentState?.liquid || 0)}
+                        </div>
+                      </div>
+                      
+                      {/* Horizontal water flow animation */}
+                      <WaterFlowAnimation 
+                        isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
+                        direction="horizontal"
+                        className="top-1/2 left-4 transform -translate-y-1/2"
                       />
-                      <PiggyBank className="w-6 h-6 text-white relative z-10 mb-1" />
-                      <span className="text-xs text-white font-bold relative z-10">חיסכון</span>
-                    </motion.div>
-
-                    {/* Assets Container */}
-                    <motion.div
-                      className="w-20 h-32 bg-purple-200 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 bg-purple-400 rounded-b-lg"
-                        animate={{ 
-                          height: `${Math.min(100, Math.max(10, ((currentState?.assets || 0) / 3000)))}%`
-                        }}
-                        transition={{ duration: 0.5 }}
-                      />
-                      <Home className="w-6 h-6 text-white relative z-10 mb-1" />
-                      <span className="text-xs text-white font-bold relative z-10">נכסים</span>
                     </motion.div>
                   </div>
 
-                  {/* Wealth Bar */}
-                  <motion.div
-                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-64 h-12 bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden"
-                    animate={{ 
-                      backgroundColor: (currentState?.wealth || 0) > 0 ? '#86efac' : '#fca5a5' 
-                    }}
-                  >
-                    <motion.div
-                      className={`absolute inset-0 rounded-lg ${
-                        (currentState?.wealth || 0) > 0 ? 'bg-green-400' : 'bg-red-400'
-                      }`}
-                      animate={{ 
-                        width: `${Math.min(100, Math.max(10, Math.abs(currentState?.wealth || 0) / 2000))}%`
-                      }}
-                      transition={{ duration: 0.5 }}
-                    />
-                    <span className="relative z-10 text-white font-bold">
-                      עושר: {formatCurrency(currentState?.wealth || 0)}
-                    </span>
-                  </motion.div>
-
-                  {/* Money Lost Indicator */}
-                  <div className="absolute top-4 right-4">
-                    <div className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm">
-                      R⁻: {formatCurrency(currentState?.lost || 0)}
+                  {/* Three Outgoing Pipes and Bars */}
+                  <div className="absolute top-48 left-1/2 transform -translate-x-1/2 flex gap-16">
+                    
+                    {/* Debt Section with Split Flow */}
+                    <div className="flex flex-col items-center relative">
+                      {/* Main Connecting Pipe */}
+                      <div className="w-4 h-8 bg-gray-400 rounded-full relative mb-2">
+                        <WaterFlowAnimation 
+                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="left-1/2 transform -translate-x-1/2"
+                        />
+                      </div>
+                      
+                      {/* Split Junction */}
+                      <div className="relative mb-2">
+                        <div className="w-6 h-4 bg-gray-400 rounded"></div>
+                        
+                        {/* Principal Payment Pipe (Left) */}
+                        <div className="absolute -left-4 top-2 w-2 h-6 bg-green-400 rounded-full">
+                          <WaterFlowAnimation 
+                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                            direction="vertical"
+                            className="left-1/2 transform -translate-x-1/2"
+                          />
+                        </div>
+                        
+                        {/* Interest Payment Pipe (Right) */}
+                        <div className="absolute -right-4 top-2 w-2 h-6 bg-orange-400 rounded-full">
+                          <WaterFlowAnimation 
+                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                            direction="vertical"
+                            className="left-1/2 transform -translate-x-1/2"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Debt Bar */}
+                      <motion.div
+                        className="w-24 h-32 bg-red-100 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-2 border-red-400"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <motion.div
+                          className="absolute bottom-0 left-0 right-0 bg-red-600 rounded-b-lg"
+                          animate={{ 
+                            height: `${Math.min(95, Math.max(5, ((currentState?.debt || 0) / 4000)))}%`
+                          }}
+                          transition={{ duration: 0.6 }}
+                        />
+                        <CreditCard className="w-6 h-6 text-white relative z-10 mb-1 drop-shadow" />
+                        <span className="text-xs text-white font-bold relative z-10 text-center drop-shadow">
+                          חוב<br/>{formatCurrency(currentState?.debt || 0)}
+                        </span>
+                      </motion.div>
+                      
+                      {/* Principal and Interest Labels */}
+                      <div className="flex gap-8 mt-2 text-xs">
+                        <div className="text-green-600 font-bold text-center">
+                          <div className="w-2 h-2 bg-green-400 rounded-full mx-auto mb-1"></div>
+                          קרן
+                        </div>
+                        <div className="text-orange-600 font-bold text-center">
+                          <div className="w-2 h-2 bg-orange-400 rounded-full mx-auto mb-1"></div>
+                          ריבית
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Savings Section with Segments */}
+                    <div className="flex flex-col items-center">
+                      {/* Connecting Pipe */}
+                      <div className="w-4 h-8 bg-gray-400 rounded-full relative mb-2">
+                        <WaterFlowAnimation 
+                          isActive={(inputs.allocToSavings > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="left-1/2 transform -translate-x-1/2"
+                        />
+                      </div>
+                      
+                      {/* Savings Bar with Segments */}
+                      <motion.div
+                        className="w-24 h-32 bg-green-100 rounded-lg relative overflow-hidden border-2 border-green-400"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <div className="absolute bottom-0 left-0 right-0 flex flex-col-reverse h-full">
+                          {/* Create multiple segments based on savings amount */}
+                          {(() => {
+                            const totalSavings = currentState?.savings || 0;
+                            const segments = [];
+                            const baseRate = inputs.savingsRateAPR;
+                            
+                            // Create up to 4 segments with different rates
+                            const segmentCount = Math.min(4, Math.floor(totalSavings / 10000) + 1);
+                            const amountPerSegment = totalSavings / segmentCount;
+                            
+                            for (let i = 0; i < segmentCount; i++) {
+                              const rate = baseRate + (i * 0.5); // Increasing rates for newer deposits
+                              segments.push(
+                                <SavingsSegment
+                                  key={i}
+                                  amount={amountPerSegment}
+                                  rate={rate}
+                                  index={i}
+                                  totalSavings={totalSavings}
+                                />
+                              );
+                            }
+                            return segments;
+                          })()}
+                        </div>
+                        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-20">
+                          <PiggyBank className="w-6 h-6 text-white drop-shadow-lg" />
+                          <span className="text-xs text-white font-bold text-center mt-1 drop-shadow-lg">
+                            חיסכון<br/>{formatCurrency(currentState?.savings || 0)}
+                          </span>
+                        </div>
+                      </motion.div>
+                    </div>
+
+                    {/* Assets Section */}
+                    <div className="flex flex-col items-center">
+                      {/* Connecting Pipe */}
+                      <div className="w-4 h-8 bg-gray-400 rounded-full relative mb-2">
+                        <WaterFlowAnimation 
+                          isActive={(inputs.allocToAssets > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="left-1/2 transform -translate-x-1/2"
+                        />
+                      </div>
+                      
+                      {/* Assets Bar */}
+                      <motion.div
+                        className="w-24 h-32 bg-purple-100 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-2 border-purple-400"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <motion.div
+                          className="absolute bottom-0 left-0 right-0 bg-purple-600 rounded-b-lg"
+                          animate={{ 
+                            height: `${Math.min(95, Math.max(5, ((currentState?.assets || 0) / 3000)))}%`
+                          }}
+                          transition={{ duration: 0.6 }}
+                        />
+                        <Home className="w-6 h-6 text-white relative z-10 mb-1 drop-shadow" />
+                        <span className="text-xs text-white font-bold relative z-10 text-center drop-shadow">
+                          נכסים<br/>{formatCurrency(currentState?.assets || 0)}
+                        </span>
+                      </motion.div>
+                    </div>
+                  </div>
+
+                  {/* Lost Money Bar (replacing R⁻) */}
+                  <div className="absolute bottom-16 right-8">
+                    {/* Connection pipe from debt interest */}
+                    <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
+                      <div className="w-2 h-8 bg-orange-400 rounded-full relative">
+                        <WaterFlowAnimation 
+                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="left-1/2 transform -translate-x-1/2"
+                        />
+                      </div>
+                      <div className="text-xs text-orange-600 font-bold text-center mt-1">
+                        ריבית
+                      </div>
+                    </div>
+                    
+                    <motion.div
+                      className="w-40 h-12 bg-orange-100 rounded-lg relative overflow-hidden border-2 border-orange-400 shadow-lg"
+                      whileHover={{ scale: 1.05 }}
+                      animate={{ 
+                        boxShadow: (currentState?.lost || 0) > 0 ? '0 0 20px rgba(255, 165, 0, 0.3)' : '0 0 0px rgba(255, 165, 0, 0)'
+                      }}
+                    >
+                      <motion.div
+                        className="absolute inset-1 bg-gradient-to-r from-orange-500 to-red-500 rounded-md"
+                        animate={{ 
+                          width: `${Math.min(95, Math.max(5, (currentState?.lost || 0) / 1000))}%`
+                        }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <div className="relative z-10 h-full flex flex-col items-center justify-center text-white font-bold text-sm">
+                        <div className="text-xs">כסף אבוד</div>
+                        <div>{formatCurrency(currentState?.lost || 0)}</div>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Wealth Indicator */}
+                  <div className="absolute bottom-4 left-4">
+                    <motion.div
+                      className={`px-4 py-2 rounded-lg text-white font-bold ${
+                        (currentState?.wealth || 0) > 0 ? 'bg-emerald-600' : 'bg-red-600'
+                      }`}
+                      animate={{ scale: (currentState?.wealth || 0) > 0 ? 1.05 : 0.95 }}
+                    >
+                      עושר כולל: {formatCurrency(currentState?.wealth || 0)}
+                    </motion.div>
                   </div>
                 </div>
               </CardContent>
