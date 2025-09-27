@@ -67,7 +67,11 @@ export default function FinancialDynamicsPage() {
   const [currentMonth, setCurrentMonth] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [simulationData, setSimulationData] = useState<FinancialState[]>([]);
-  const [hoveredData, setHoveredData] = useState<FinancialState | null>(null);
+  const [hoveredElement, setHoveredElement] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipData, setTooltipData] = useState<any>(null);
+  const [animationSpeed, setAnimationSpeed] = useState(1);
+  const [showFlowDetails, setShowFlowDetails] = useState(false);
 
   // Calculate simulation data
   const calculateSimulation = useCallback((inputs: FinancialInputs): FinancialState[] => {
@@ -165,10 +169,10 @@ export default function FinancialDynamicsPage() {
     if (isPlaying && currentMonth < MAX_MONTHS) {
       interval = setInterval(() => {
         setCurrentMonth(prev => Math.min(prev + 1, MAX_MONTHS));
-      }, 150);
+      }, 150 / animationSpeed);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, currentMonth]);
+  }, [isPlaying, currentMonth, animationSpeed]);
 
   // Get current state for display
   const currentState = simulationData[currentMonth] || simulationData[0];
@@ -181,36 +185,100 @@ export default function FinancialDynamicsPage() {
     }).format(value);
   };
 
-  const formatPercent = (value: number) => {
-    return `${value.toFixed(1)}%`;
+  // Interactive functions
+  const handleElementHover = (elementType: string, data: any) => {
+    setHoveredElement(elementType);
+    setTooltipData(data);
+    setShowTooltip(true);
+  };
+
+  const handleElementLeave = () => {
+    setHoveredElement(null);
+    setShowTooltip(false);
+    setTooltipData(null);
+  };
+
+  const toggleFlowDetails = () => {
+    setShowFlowDetails(!showFlowDetails);
+  };
+
+  const adjustAnimationSpeed = (speed: number) => {
+    setAnimationSpeed(speed);
   };
 
   // Enhanced flow animation components
-  const WaterFlowAnimation = ({ isActive, direction = 'vertical', className = '' }: {
+  const WaterFlowAnimation = ({ isActive, direction = 'vertical', className = '', color = 'blue' }: {
     isActive: boolean;
     direction?: 'vertical' | 'horizontal';
     className?: string;
+    color?: 'blue' | 'green' | 'orange' | 'purple';
   }) => {
     if (!isActive) return null;
 
+    const colorClasses = {
+      blue: 'bg-blue-400',
+      green: 'bg-green-400', 
+      orange: 'bg-orange-400',
+      purple: 'bg-purple-400'
+    };
+
     return (
       <motion.div className={`absolute ${className}`}>
-        {[...Array(3)].map((_, i) => (
+        {[...Array(5)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-2 h-2 bg-blue-400 rounded-full opacity-70"
+            className={`absolute w-3 h-3 ${colorClasses[color]} rounded-full opacity-80 shadow-lg`}
             animate={direction === 'vertical' ? 
-              { y: [0, 40, 80], opacity: [0.7, 0.5, 0] } :
-              { x: [0, 40, 80], opacity: [0.7, 0.5, 0] }
+              { y: [0, 50, 100], opacity: [0.8, 0.6, 0], scale: [1, 1.2, 0.8] } :
+              { x: [0, 50, 100], opacity: [0.8, 0.6, 0], scale: [1, 1.2, 0.8] }
             }
             transition={{
-              duration: 1.5,
+              duration: 2 / animationSpeed,
               repeat: Infinity,
-              delay: i * 0.3,
+              delay: i * 0.2,
               ease: "easeInOut"
             }}
           />
         ))}
+      </motion.div>
+    );
+  };
+
+  // Continuous water flow effect
+  const ContinuousFlowEffect = ({ isActive, direction = 'vertical', className = '', color = 'blue' }: {
+    isActive: boolean;
+    direction?: 'vertical' | 'horizontal';
+    className?: string;
+    color?: 'blue' | 'green' | 'orange' | 'purple';
+  }) => {
+    if (!isActive) return null;
+
+    const colorClasses = {
+      blue: 'from-blue-400 to-blue-600',
+      green: 'from-green-400 to-green-600',
+      orange: 'from-orange-400 to-orange-600', 
+      purple: 'from-purple-400 to-purple-600'
+    };
+
+    return (
+      <motion.div 
+        className={`absolute ${className} overflow-hidden`}
+        style={{
+          background: `linear-gradient(${direction === 'vertical' ? '180deg' : '90deg'}, transparent, ${colorClasses[color].split(' ')[1]}, transparent)`,
+        }}
+      >
+        <motion.div
+          className={`w-full h-full bg-gradient-to-${direction === 'vertical' ? 'b' : 'r'} ${colorClasses[color]} opacity-60`}
+          animate={direction === 'vertical' ? 
+            { y: ['-100%', '100%'] } :
+            { x: ['-100%', '100%'] }
+          }
+          transition={{
+            duration: 1.5 / animationSpeed,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
       </motion.div>
     );
   };
@@ -316,6 +384,36 @@ export default function FinancialDynamicsPage() {
                 step={1}
                 className="w-full"
               />
+            </div>
+
+            {/* Animation Speed Control */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label>מהירות אנימציה</Label>
+                <Label className="text-sm text-gray-500">
+                  {animationSpeed}x
+                </Label>
+              </div>
+              <Slider
+                value={[animationSpeed]}
+                onValueChange={([value]) => adjustAnimationSpeed(value)}
+                min={0.5}
+                max={3}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+
+            {/* Flow Details Toggle */}
+            <div className="flex items-center justify-between">
+              <Label>פרטי זרימה</Label>
+              <Button
+                variant={showFlowDetails ? "default" : "outline"}
+                size="sm"
+                onClick={toggleFlowDetails}
+              >
+                {showFlowDetails ? 'הסתר' : 'הצג'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -500,43 +598,62 @@ export default function FinancialDynamicsPage() {
                     {/* Cash Flow Source */}
                     <motion.div
                       animate={{ scale: currentState?.monthlyFlow > 0 ? 1.05 : 0.95 }}
-                      className="mb-2"
+                      className="mb-2 cursor-pointer"
+                      onMouseEnter={() => handleElementHover('cashFlow', {
+                        type: 'תזרים מזומנים',
+                        amount: currentState?.monthlyFlow || 0,
+                        description: 'ההכנסות פחות ההוצאות החודשיות'
+                      })}
+                      onMouseLeave={handleElementLeave}
                     >
-                      <div className={`px-6 py-3 rounded-t-lg text-white font-bold text-center ${
+                      <div className={`px-6 py-3 rounded-t-lg text-white font-bold text-center shadow-lg ${
                         currentState?.monthlyFlow > 0 ? 'bg-emerald-600' : 'bg-red-600'
                       }`}>
                         תזרים מזומנים
                       </div>
-                      <div className={`px-4 py-2 rounded-b-lg text-white font-bold text-center ${
+                      <div className={`px-4 py-2 rounded-b-lg text-white font-bold text-center shadow-lg ${
                         currentState?.monthlyFlow > 0 ? 'bg-emerald-500' : 'bg-red-500'
                       }`}>
                         {formatCurrency(currentState?.monthlyFlow || 0)}
                       </div>
                     </motion.div>
 
-                    {/* Vertical Pipe */}
-                    <div className="w-6 h-16 bg-gray-400 rounded-full relative mx-auto">
+                    {/* Vertical Pipe - מחובר ישירות ללא רווח לבר הנזיל */}
+                    <div className="w-8 h-20 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mx-auto shadow-inner">
+                      <ContinuousFlowEffect 
+                        isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
+                        direction="vertical"
+                        className="w-full h-full rounded-full"
+                        color="blue"
+                      />
                       <WaterFlowAnimation 
                         isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
                         direction="vertical"
                         className="left-1/2 transform -translate-x-1/2"
+                        color="blue"
                       />
                     </div>
                   </div>
 
-                  {/* Horizontal Liquid Money Bar */}
-                  <div className="absolute top-24 left-1/2 transform -translate-x-1/2">
+                  {/* Horizontal Liquid Money Bar - מחובר ישירות לצינור האנכי ללא רווח */}
+                  <div className="absolute top-20 left-1/2 transform -translate-x-1/2">
                     <motion.div
-                      className="w-80 h-16 bg-slate-300 rounded-lg flex items-center relative overflow-hidden border-4 border-slate-400"
+                      className="w-80 h-20 bg-gradient-to-r from-slate-400 to-slate-500 rounded-lg flex items-center relative overflow-hidden border-4 border-slate-600 shadow-lg cursor-pointer"
                       animate={{ 
-                        borderColor: currentState?.liquid > 0 ? '#3b82f6' : '#ef4444' 
+                        borderColor: currentState?.liquid > 0 ? '#1e40af' : '#dc2626' 
                       }}
+                      onMouseEnter={() => handleElementHover('liquid', {
+                        type: 'כסף נזיל',
+                        amount: currentState?.liquid || 0,
+                        description: 'הכסף הזמין לשימוש מיידי'
+                      })}
+                      onMouseLeave={handleElementLeave}
                     >
                       <motion.div
-                        className="absolute inset-1 bg-blue-500 rounded-md"
+                        className="absolute inset-1 bg-gradient-to-r from-blue-600 to-blue-700 rounded-md shadow-inner"
                         animate={{ 
                           width: `${Math.min(95, Math.max(5, (currentState?.liquid || 0) / 1000))}%`,
-                          backgroundColor: currentState?.liquid > 0 ? '#3b82f6' : '#ef4444'
+                          backgroundColor: currentState?.liquid > 0 ? '#1e40af' : '#dc2626'
                         }}
                         transition={{ duration: 0.6 }}
                       />
@@ -549,98 +666,141 @@ export default function FinancialDynamicsPage() {
                         </div>
                       </div>
                       
-                      {/* Horizontal water flow animation */}
-                      <WaterFlowAnimation 
+                      {/* Continuous horizontal water flow */}
+                      <ContinuousFlowEffect 
                         isActive={Math.abs(currentState?.monthlyFlow || 0) > 0} 
                         direction="horizontal"
-                        className="top-1/2 left-4 transform -translate-y-1/2"
+                        className="w-full h-full rounded-md"
+                        color="blue"
                       />
                     </motion.div>
                   </div>
 
-                  {/* Three Outgoing Pipes and Bars */}
-                  <div className="absolute top-48 left-1/2 transform -translate-x-1/2 flex gap-16">
+                  {/* Three Outgoing Pipes and Bars - מחוברים ישירות ללא רווחים לבר הנזיל */}
+                  <div className="absolute top-40 left-1/2 transform -translate-x-1/2 flex gap-16">
                     
                     {/* Debt Section with Split Flow */}
                     <div className="flex flex-col items-center relative">
-                      {/* Main Connecting Pipe */}
-                      <div className="w-4 h-8 bg-gray-400 rounded-full relative mb-2">
+                      {/* Main Connecting Pipe - מחובר ישירות לבר הנזיל ללא רווח */}
+                      <div className="w-6 h-12 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mb-2 shadow-inner">
+                        <ContinuousFlowEffect 
+                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="w-full h-full rounded-full"
+                          color="red"
+                        />
                         <WaterFlowAnimation 
                           isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
                           direction="vertical"
                           className="left-1/2 transform -translate-x-1/2"
+                          color="red"
                         />
                       </div>
                       
-                      {/* Split Junction */}
+                      {/* Split Junction - צומת פיצול */}
                       <div className="relative mb-2">
-                        <div className="w-6 h-4 bg-gray-400 rounded"></div>
+                        <div className="w-8 h-6 bg-gradient-to-r from-gray-500 to-gray-600 rounded shadow-inner"></div>
                         
-                        {/* Principal Payment Pipe (Left) */}
-                        <div className="absolute -left-4 top-2 w-2 h-6 bg-green-400 rounded-full">
+                        {/* Principal Payment Pipe (Left) - צינור קרן */}
+                        <div className="absolute -left-6 top-1 w-3 h-8 bg-gradient-to-b from-green-500 to-green-600 rounded-full shadow-inner">
+                          <ContinuousFlowEffect 
+                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                            direction="vertical"
+                            className="w-full h-full rounded-full"
+                            color="green"
+                          />
                           <WaterFlowAnimation 
                             isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
                             direction="vertical"
                             className="left-1/2 transform -translate-x-1/2"
+                            color="green"
                           />
                         </div>
                         
-                        {/* Interest Payment Pipe (Right) */}
-                        <div className="absolute -right-4 top-2 w-2 h-6 bg-orange-400 rounded-full">
+                        {/* Interest Payment Pipe (Right) - צינור ריבית */}
+                        <div className="absolute -right-6 top-1 w-3 h-8 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full shadow-inner">
+                          <ContinuousFlowEffect 
+                            isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                            direction="vertical"
+                            className="w-full h-full rounded-full"
+                            color="orange"
+                          />
                           <WaterFlowAnimation 
                             isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
                             direction="vertical"
                             className="left-1/2 transform -translate-x-1/2"
+                            color="orange"
                           />
                         </div>
                       </div>
                       
-                      {/* Debt Bar */}
+                      {/* Debt Bar - בר החוב */}
                       <motion.div
-                        className="w-24 h-32 bg-red-100 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-2 border-red-400"
-                        whileHover={{ scale: 1.02 }}
+                        className="w-28 h-36 bg-gradient-to-b from-red-200 to-red-300 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-4 border-red-600 shadow-lg cursor-pointer"
+                        whileHover={{ scale: 1.05 }}
+                        onMouseEnter={() => handleElementHover('debt', {
+                          type: 'חוב',
+                          amount: currentState?.debt || 0,
+                          description: 'החוב הכולל כולל ריבית',
+                          rate: inputs.debtRateAPR
+                        })}
+                        onMouseLeave={handleElementLeave}
                       >
                         <motion.div
-                          className="absolute bottom-0 left-0 right-0 bg-red-600 rounded-b-lg"
+                          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-red-700 to-red-600 rounded-b-lg shadow-inner"
                           animate={{ 
                             height: `${Math.min(95, Math.max(5, ((currentState?.debt || 0) / 4000)))}%`
                           }}
                           transition={{ duration: 0.6 }}
                         />
-                        <CreditCard className="w-6 h-6 text-white relative z-10 mb-1 drop-shadow" />
-                        <span className="text-xs text-white font-bold relative z-10 text-center drop-shadow">
+                        <CreditCard className="w-8 h-8 text-white relative z-10 mb-2 drop-shadow-lg" />
+                        <span className="text-sm text-white font-bold relative z-10 text-center drop-shadow-lg">
                           חוב<br/>{formatCurrency(currentState?.debt || 0)}
                         </span>
                       </motion.div>
                       
                       {/* Principal and Interest Labels */}
-                      <div className="flex gap-8 mt-2 text-xs">
-                        <div className="text-green-600 font-bold text-center">
-                          <div className="w-2 h-2 bg-green-400 rounded-full mx-auto mb-1"></div>
+                      <div className="flex gap-8 mt-3 text-sm">
+                        <div className="text-green-700 font-bold text-center">
+                          <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1 shadow"></div>
                           קרן
                         </div>
-                        <div className="text-orange-600 font-bold text-center">
-                          <div className="w-2 h-2 bg-orange-400 rounded-full mx-auto mb-1"></div>
+                        <div className="text-orange-700 font-bold text-center">
+                          <div className="w-3 h-3 bg-orange-500 rounded-full mx-auto mb-1 shadow"></div>
                           ריבית
                         </div>
                       </div>
                     </div>
 
-                    {/* Savings Section with Segments */}
+                    {/* Savings Section */}
                     <div className="flex flex-col items-center">
-                      {/* Connecting Pipe */}
-                      <div className="w-4 h-8 bg-gray-400 rounded-full relative mb-2">
+                      {/* Connecting Pipe - מחובר ישירות לבר הנזיל ללא רווח */}
+                      <div className="w-6 h-12 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mb-2 shadow-inner">
+                        <ContinuousFlowEffect 
+                          isActive={(inputs.allocToSavings > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="w-full h-full rounded-full"
+                          color="green"
+                        />
                         <WaterFlowAnimation 
                           isActive={(inputs.allocToSavings > 0 && currentState?.liquid > 0)} 
                           direction="vertical"
                           className="left-1/2 transform -translate-x-1/2"
+                          color="green"
                         />
                       </div>
                       
                       {/* Savings Bar with Segments */}
                       <motion.div
-                        className="w-24 h-32 bg-green-100 rounded-lg relative overflow-hidden border-2 border-green-400"
-                        whileHover={{ scale: 1.02 }}
+                        className="w-28 h-36 bg-gradient-to-b from-green-200 to-green-300 rounded-lg relative overflow-hidden border-4 border-green-600 shadow-lg cursor-pointer"
+                        whileHover={{ scale: 1.05 }}
+                        onMouseEnter={() => handleElementHover('savings', {
+                          type: 'חיסכון',
+                          amount: currentState?.savings || 0,
+                          description: 'החיסכון הכולל כולל ריבית',
+                          rate: inputs.savingsRateAPR
+                        })}
+                        onMouseLeave={handleElementLeave}
                       >
                         <div className="absolute bottom-0 left-0 right-0 flex flex-col-reverse h-full">
                           {/* Create multiple segments based on savings amount */}
@@ -669,8 +829,8 @@ export default function FinancialDynamicsPage() {
                           })()}
                         </div>
                         <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-20">
-                          <PiggyBank className="w-6 h-6 text-white drop-shadow-lg" />
-                          <span className="text-xs text-white font-bold text-center mt-1 drop-shadow-lg">
+                          <PiggyBank className="w-8 h-8 text-white drop-shadow-lg" />
+                          <span className="text-sm text-white font-bold text-center mt-1 drop-shadow-lg">
                             חיסכון<br/>{formatCurrency(currentState?.savings || 0)}
                           </span>
                         </div>
@@ -679,68 +839,95 @@ export default function FinancialDynamicsPage() {
 
                     {/* Assets Section */}
                     <div className="flex flex-col items-center">
-                      {/* Connecting Pipe */}
-                      <div className="w-4 h-8 bg-gray-400 rounded-full relative mb-2">
+                      {/* Connecting Pipe - מחובר ישירות לבר הנזיל ללא רווח */}
+                      <div className="w-6 h-12 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full relative mb-2 shadow-inner">
+                        <ContinuousFlowEffect 
+                          isActive={(inputs.allocToAssets > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="w-full h-full rounded-full"
+                          color="purple"
+                        />
                         <WaterFlowAnimation 
                           isActive={(inputs.allocToAssets > 0 && currentState?.liquid > 0)} 
                           direction="vertical"
                           className="left-1/2 transform -translate-x-1/2"
+                          color="purple"
                         />
                       </div>
                       
                       {/* Assets Bar */}
                       <motion.div
-                        className="w-24 h-32 bg-purple-100 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-2 border-purple-400"
-                        whileHover={{ scale: 1.02 }}
+                        className="w-28 h-36 bg-gradient-to-b from-purple-200 to-purple-300 rounded-lg flex flex-col items-center justify-end p-2 relative overflow-hidden border-4 border-purple-600 shadow-lg cursor-pointer"
+                        whileHover={{ scale: 1.05 }}
+                        onMouseEnter={() => handleElementHover('assets', {
+                          type: 'נכסים',
+                          amount: currentState?.assets || 0,
+                          description: 'הנכסים הכוללים כולל תשואה',
+                          rate: inputs.assetsGrowthAPR
+                        })}
+                        onMouseLeave={handleElementLeave}
                       >
                         <motion.div
-                          className="absolute bottom-0 left-0 right-0 bg-purple-600 rounded-b-lg"
+                          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-purple-700 to-purple-600 rounded-b-lg shadow-inner"
                           animate={{ 
                             height: `${Math.min(95, Math.max(5, ((currentState?.assets || 0) / 3000)))}%`
                           }}
                           transition={{ duration: 0.6 }}
                         />
-                        <Home className="w-6 h-6 text-white relative z-10 mb-1 drop-shadow" />
-                        <span className="text-xs text-white font-bold relative z-10 text-center drop-shadow">
+                        <Home className="w-8 h-8 text-white relative z-10 mb-2 drop-shadow-lg" />
+                        <span className="text-sm text-white font-bold relative z-10 text-center drop-shadow-lg">
                           נכסים<br/>{formatCurrency(currentState?.assets || 0)}
                         </span>
                       </motion.div>
                     </div>
                   </div>
 
-                  {/* Lost Money Bar (replacing R⁻) */}
+                  {/* Lost Money Bar - בר הכסף האבוד עם חיבור מושלם */}
                   <div className="absolute bottom-16 right-8">
-                    {/* Connection pipe from debt interest */}
-                    <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
-                      <div className="w-2 h-8 bg-orange-400 rounded-full relative">
+                    {/* Connection pipe from debt interest - צינור מחובר ישירות */}
+                    <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
+                      <div className="w-4 h-12 bg-gradient-to-b from-orange-500 to-orange-600 rounded-full relative shadow-inner">
+                        <ContinuousFlowEffect 
+                          isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
+                          direction="vertical"
+                          className="w-full h-full rounded-full"
+                          color="orange"
+                        />
                         <WaterFlowAnimation 
                           isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
                           direction="vertical"
                           className="left-1/2 transform -translate-x-1/2"
+                          color="orange"
                         />
                       </div>
-                      <div className="text-xs text-orange-600 font-bold text-center mt-1">
+                      <div className="text-sm text-orange-700 font-bold text-center mt-2 drop-shadow">
                         ריבית
                       </div>
                     </div>
                     
                     <motion.div
-                      className="w-40 h-12 bg-orange-100 rounded-lg relative overflow-hidden border-2 border-orange-400 shadow-lg"
+                      className="w-44 h-16 bg-gradient-to-r from-orange-200 to-orange-300 rounded-lg relative overflow-hidden border-4 border-orange-600 shadow-lg cursor-pointer"
                       whileHover={{ scale: 1.05 }}
                       animate={{ 
-                        boxShadow: (currentState?.lost || 0) > 0 ? '0 0 20px rgba(255, 165, 0, 0.3)' : '0 0 0px rgba(255, 165, 0, 0)'
+                        boxShadow: (currentState?.lost || 0) > 0 ? '0 0 25px rgba(255, 165, 0, 0.4)' : '0 0 0px rgba(255, 165, 0, 0)'
                       }}
+                      onMouseEnter={() => handleElementHover('lost', {
+                        type: 'כסף אבוד',
+                        amount: currentState?.lost || 0,
+                        description: 'הכסף שאבד על ריבית חוב'
+                      })}
+                      onMouseLeave={handleElementLeave}
                     >
                       <motion.div
-                        className="absolute inset-1 bg-gradient-to-r from-orange-500 to-red-500 rounded-md"
+                        className="absolute inset-1 bg-gradient-to-r from-orange-600 to-red-600 rounded-md shadow-inner"
                         animate={{ 
                           width: `${Math.min(95, Math.max(5, (currentState?.lost || 0) / 1000))}%`
                         }}
                         transition={{ duration: 0.6 }}
                       />
                       <div className="relative z-10 h-full flex flex-col items-center justify-center text-white font-bold text-sm">
-                        <div className="text-xs">כסף אבוד</div>
-                        <div>{formatCurrency(currentState?.lost || 0)}</div>
+                        <div className="text-sm">כסף אבוד</div>
+                        <div className="text-lg">{formatCurrency(currentState?.lost || 0)}</div>
                       </div>
                     </motion.div>
                   </div>
@@ -748,14 +935,81 @@ export default function FinancialDynamicsPage() {
                   {/* Wealth Indicator */}
                   <div className="absolute bottom-4 left-4">
                     <motion.div
-                      className={`px-4 py-2 rounded-lg text-white font-bold ${
+                      className={`px-4 py-2 rounded-lg text-white font-bold cursor-pointer ${
                         (currentState?.wealth || 0) > 0 ? 'bg-emerald-600' : 'bg-red-600'
                       }`}
                       animate={{ scale: (currentState?.wealth || 0) > 0 ? 1.05 : 0.95 }}
+                      onMouseEnter={() => handleElementHover('wealth', {
+                        type: 'עושר כולל',
+                        amount: currentState?.wealth || 0,
+                        description: 'חיסכון + נכסים - חוב'
+                      })}
+                      onMouseLeave={handleElementLeave}
                     >
                       עושר כולל: {formatCurrency(currentState?.wealth || 0)}
                     </motion.div>
                   </div>
+
+                  {/* Interactive Tooltip */}
+                  <AnimatePresence>
+                    {showTooltip && tooltipData && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute top-4 right-4 bg-white rounded-lg shadow-xl border-2 border-gray-200 p-4 z-50 max-w-xs"
+                      >
+                        <div className="text-sm font-bold text-gray-900 mb-2">
+                          {tooltipData.type}
+                        </div>
+                        <div className="text-lg font-bold text-blue-600 mb-2">
+                          {formatCurrency(tooltipData.amount)}
+                        </div>
+                        <div className="text-xs text-gray-600 mb-2">
+                          {tooltipData.description}
+                        </div>
+                        {tooltipData.rate && (
+                          <div className="text-xs text-gray-500">
+                            ריבית: {tooltipData.rate.toFixed(1)}%
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Flow Details Panel */}
+                  <AnimatePresence>
+                    {showFlowDetails && (
+                      <motion.div
+                        initial={{ opacity: 0, x: 300 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 300 }}
+                        className="absolute top-4 left-4 bg-white rounded-lg shadow-xl border-2 border-gray-200 p-4 z-50 max-w-sm"
+                      >
+                        <div className="text-sm font-bold text-gray-900 mb-3">
+                          פרטי זרימה חודשית
+                        </div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span>תזרים:</span>
+                            <span className="font-bold">{formatCurrency(currentState?.monthlyFlow || 0)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>לחוב:</span>
+                            <span className="font-bold">{formatCurrency((currentState?.liquid || 0) * (inputs.allocToDebt / 100))}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>לחיסכון:</span>
+                            <span className="font-bold">{formatCurrency((currentState?.liquid || 0) * (inputs.allocToSavings / 100))}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>לנכסים:</span>
+                            <span className="font-bold">{formatCurrency((currentState?.liquid || 0) * (inputs.allocToAssets / 100))}</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </CardContent>
             </Card>
