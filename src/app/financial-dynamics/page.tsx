@@ -185,6 +185,10 @@ export default function FinancialDynamicsPage() {
     }).format(value);
   };
 
+  const formatPercent = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
+
   // Interactive functions
   const handleElementHover = (elementType: string, data: any) => {
     setHoveredElement(elementType);
@@ -687,13 +691,13 @@ export default function FinancialDynamicsPage() {
                           isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
                           direction="vertical"
                           className="w-full h-full rounded-full"
-                          color="red"
+                          color="orange"
                         />
                         <WaterFlowAnimation 
                           isActive={(inputs.allocToDebt > 0 && currentState?.liquid > 0)} 
                           direction="vertical"
                           className="left-1/2 transform -translate-x-1/2"
-                          color="red"
+                          color="orange"
                         />
                       </div>
                       
