@@ -22,6 +22,7 @@ import {
   Activity, ChevronLeft, Settings, Info, Download, Upload
 } from 'lucide-react';
 import Link from 'next/link';
+import RealTimeMoneyFlow from '@/components/financial-dynamics/RealTimeMoneyFlow';
 
 // Types
 interface FinancialParams {
@@ -343,7 +344,9 @@ export default function FinancialDynamicsPage() {
   const [currentMonth, setCurrentMonth] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState(1);
-  const [viewMode, setViewMode] = useState('visualization'); // 'visualization' | 'charts' | 'data'
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const [debtPaymentDay, setDebtPaymentDay] = useState(15);
+  const [savingsPaymentDay, setSavingsPaymentDay] = useState(1);
   
   // Input parameters
   const [params, setParams] = useState({
@@ -414,6 +417,26 @@ export default function FinancialDynamicsPage() {
     linkElement.click();
   };
 
+  const handlePaymentDayChange = (type: 'debt' | 'savings', day: number) => {
+    if (type === 'debt') {
+      setDebtPaymentDay(day);
+    } else {
+      setSavingsPaymentDay(day);
+    }
+  };
+
+  // Close settings modal on escape key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && settingsPanelOpen) {
+        setSettingsPanelOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [settingsPanelOpen]);
+
   // Chart data preparation
   const chartData = timeline.slice(0, Math.max(currentMonth + 1, 12)).map(state => ({
     month: state.month,
@@ -457,11 +480,11 @@ export default function FinancialDynamicsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setViewMode(viewMode === 'visualization' ? 'charts' : 'visualization')}
+                onClick={() => setSettingsPanelOpen(!settingsPanelOpen)}
                 className="gap-2"
               >
                 <Settings className="w-4 h-4" />
-                {viewMode === 'visualization' ? 'גרפים' : 'ויזואליזציה'}
+                הגדרות
               </Button>
             </div>
           </div>
@@ -469,9 +492,53 @@ export default function FinancialDynamicsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Control Panel */}
-          <div className="lg:col-span-1 space-y-6">
+        {/* Settings Panel - Slide from right */}
+        <AnimatePresence>
+          {settingsPanelOpen && (
+            <>
+              {/* Backdrop for outside click */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                onClick={() => setSettingsPanelOpen(false)}
+              />
+              
+              {/* Settings Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="fixed right-0 top-16 bottom-0 w-96 bg-white shadow-2xl z-50 overflow-y-auto border-l border-gray-200"
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-gray-900">הגדרות סימולציה</h2>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSettingsPanelOpen(false)}
+                        className="rounded-full hover:bg-gray-100"
+                        title="סגור"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSettingsPanelOpen(false)}
+                        className="rounded-full hover:bg-gray-100 text-gray-500"
+                        title="סגור"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </Button>
+                    </div>
+                  </div>
             {/* Input Parameters */}
             <Card>
               <CardHeader>
@@ -701,277 +768,230 @@ export default function FinancialDynamicsPage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Key Metrics */}
+            
+            {/* Payment Day Settings */}
             <Card>
               <CardHeader>
-                <CardTitle>מדדים מרכזיים</CardTitle>
+                <CardTitle>הגדרות תשלומים</CardTitle>
+                <CardDescription>הגדר ימי תשלום חודשיים</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">עושר נטו</span>
-                  <span className={`text-lg font-bold ${currentState.wealth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ₪{currentState.wealth.toLocaleString()}
-                  </span>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="savingsDay">יום הפקדת חיסכון</Label>
+                    <Input
+                      id="savingsDay"
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={savingsPaymentDay}
+                      onChange={(e) => setSavingsPaymentDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="text-center font-bold"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">יום 1-31 בכל חודש</p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="debtDay">יום תשלום חוב</Label>
+                    <Input
+                      id="debtDay"
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={debtPaymentDay}
+                      onChange={(e) => setDebtPaymentDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="text-center font-bold"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">יום 1-31 בכל חודש</p>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">כסף אבוד (R-)</span>
-                  <span className="text-lg font-bold text-red-600">
-                    ₪{currentState.lost.toLocaleString()}
-                  </span>
+                
+                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <span className="text-sm">חיסכון: יום {savingsPaymentDay}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500" />
+                    <span className="text-sm">חוב: יום {debtPaymentDay}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">תזרים נטו</span>
-                  <span className={`text-lg font-bold ${currentState.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ₪{currentState.netCashFlow.toLocaleString()}
-                  </span>
-                </div>
+              </CardContent>
+            </Card>
+
+              </div>
+            </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content Area */}
+        <div className="space-y-6">
+          {/* New Real-Time Money Flow Component */}
+          <RealTimeMoneyFlow
+            currentState={currentState}
+            params={params}
+            maxValues={{
+              liquid: 200000,
+              debt: params.debt0,
+              savings: 500000,
+              assets: 1000000,
+              wealth: 2000000
+            }}
+            isPlaying={isPlaying}
+            playSpeed={playSpeed}
+            onSettingsClick={() => setSettingsPanelOpen(true)}
+            timeline={timeline}
+            debtPaymentDay={debtPaymentDay}
+            savingsPaymentDay={savingsPaymentDay}
+            onPaymentDayChange={handlePaymentDayChange}
+          />
+          {/* Charts Section - Always Visible */}
+          <div className="grid lg:grid-cols-2 gap-6">
+
+            <Card>
+              <CardHeader>
+                <CardTitle>התפתחות לאורך זמן</CardTitle>
+                <CardDescription>
+                  גרפים המציגים את השינויים בכל הפרמטרים
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="month" 
+                      label={{ value: 'חודש', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis 
+                      label={{ value: '₪', angle: -90, position: 'insideLeft' }}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                    />
+                    <Tooltip 
+                      formatter={(value) => `₪${value.toLocaleString()}`}
+                      labelFormatter={(label) => `חודש ${label}`}
+                    />
+                    <Legend />
+                    <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+                    
+                    <Area type="monotone" dataKey="נזיל" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="חיסכון" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="נכסים" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
+                    <Area type="monotone" dataKey="חוב" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
+                    <Line type="monotone" dataKey="עושר" stroke="#f59e0b" strokeWidth={3} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>ניתוח תזרים</CardTitle>
+                <CardDescription>
+                  פירוט התשלומים והריביות לאורך זמן
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`} />
+                    <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
+                    <Legend />
+                    
+                    <Line 
+                      type="monotone" 
+                      dataKey="כסף אבוד" 
+                      stroke="#ef4444" 
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
 
-          {/* Main Visualization Area */}
-          <div className="lg:col-span-2 space-y-6">
-            {viewMode === 'visualization' ? (
-              <>
-                {/* Flow Visualization */}
-                <Card className="overflow-hidden">
-                  <CardHeader>
-                    <CardTitle>זרימת כסף בזמן אמת</CardTitle>
-                    <CardDescription>
-                      ויזואליזציה של תנועת הכסף בין השכבות השונות
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="relative h-96 bg-gradient-to-b from-blue-50 to-white rounded-xl p-4">
-                      {/* Income Flow */}
-                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                        <motion.div
-                          className="bg-green-100 border-2 border-green-400 rounded-xl px-4 py-2"
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-green-600" />
-                            <span className="font-semibold text-green-800">
-                              הכנסה: ₪{params.incomeMonthly.toLocaleString()}
-                            </span>
-                          </div>
-                        </motion.div>
-                      </div>
-
-                      {/* Liquid Container */}
-                      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-48">
-                        <MoneyContainer
-                          title="כסף נזיל"
-                          amount={currentState.liquid}
-                          maxAmount={200000}
-                          color="from-blue-500 to-blue-600"
-                          icon={Wallet}
-                          highlight={true}
-                        />
-                      </div>
-
-                      {/* Bottom Containers */}
-                      <div className="absolute bottom-4 left-0 right-0 grid grid-cols-3 gap-4 px-4">
-                        <MoneyContainer
-                          title="חוב"
-                          amount={currentState.debt}
-                          maxAmount={params.debt0}
-                          color="from-red-500 to-red-600"
-                          icon={TrendingDown}
-                          trend={currentState.debtPayment > 0 ? -5 : 0}
-                        />
-                        <MoneyContainer
-                          title="חיסכון (R+)"
-                          amount={currentState.savings}
-                          maxAmount={500000}
-                          color="from-green-500 to-green-600"
-                          icon={PiggyBank}
-                          trend={currentState.savingsInterest > 0 ? 3.5 : 0}
-                        />
-                        <MoneyContainer
-                          title="נכסים"
-                          amount={currentState.assets}
-                          maxAmount={1000000}
-                          color="from-purple-500 to-purple-600"
-                          icon={Home}
-                          trend={currentState.assetsGrowth > 0 ? 7 : 0}
-                        />
-                      </div>
-
-                      {/* Flow Animations */}
-                      <AnimatePresence>
-                        {currentState.debtPayment > 0 && (
-                          <FlowAnimation
-                            from={{ x: 240, y: 200 }}
-                            to={{ x: 100, y: 320 }}
-                            amount={currentState.debtPayment}
-                            color="#ef4444"
-                            label="לחוב"
-                            isActive={true}
-                          />
-                        )}
-                        {currentState.savingsDeposit > 0 && (
-                          <FlowAnimation
-                            from={{ x: 240, y: 200 }}
-                            to={{ x: 240, y: 320 }}
-                            amount={currentState.savingsDeposit}
-                            color="#10b981"
-                            label="לחיסכון"
-                            isActive={true}
-                          />
-                        )}
-                        {currentState.assetsInvestment > 0 && (
-                          <FlowAnimation
-                            from={{ x: 240, y: 200 }}
-                            to={{ x: 380, y: 320 }}
-                            amount={currentState.assetsInvestment}
-                            color="#8b5cf6"
-                            label="לנכסים"
-                            isActive={true}
-                          />
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Wealth and Lost Money Indicators */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">עושר כולל</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-green-600">
-                        ₪{currentState.wealth.toLocaleString()}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        חיסכון + נכסים - חוב
-                      </p>
-                      <div className="mt-4 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>חיסכון</span>
-                          <span className="font-medium">₪{currentState.savings.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>נכסים</span>
-                          <span className="font-medium">₪{currentState.assets.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>חוב</span>
-                          <span className="font-medium text-red-600">-₪{currentState.debt.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">כסף אבוד (R-)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-red-600">
-                        ₪{currentState.lost.toLocaleString()}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        ריבית ששולמה על חובות
-                      </p>
-                      <Alert className="mt-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          כסף זה "אבוד" כי הוא משלם ריבית ולא מקטין קרן
-                        </AlertDescription>
-                      </Alert>
-                    </CardContent>
-                  </Card>
+          {/* Key Metrics Cards */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">עושר כולל</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">
+                  ₪{currentState.wealth.toLocaleString()}
                 </div>
-              </>
-            ) : (
-              /* Charts View */
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>התפתחות לאורך זמן</CardTitle>
-                    <CardDescription>
-                      גרפים המציגים את השינויים בכל הפרמטרים
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <AreaChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="month" 
-                          label={{ value: 'חודש', position: 'insideBottom', offset: -5 }}
-                        />
-                        <YAxis 
-                          label={{ value: '₪', angle: -90, position: 'insideLeft' }}
-                          tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
-                        />
-                        <Tooltip 
-                          formatter={(value) => `₪${value.toLocaleString()}`}
-                          labelFormatter={(label) => `חודש ${label}`}
-                        />
-                        <Legend />
-                        <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
-                        
-                        <Area type="monotone" dataKey="נזיל" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                        <Area type="monotone" dataKey="חיסכון" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
-                        <Area type="monotone" dataKey="נכסים" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
-                        <Area type="monotone" dataKey="חוב" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
-                        <Line type="monotone" dataKey="עושר" stroke="#f59e0b" strokeWidth={3} dot={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
+                <p className="text-sm text-gray-600 mt-2">
+                  חיסכון + נכסים - חוב
+                </p>
+                <div className="mt-4 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>חיסכון</span>
+                    <span className="font-medium">₪{currentState.savings.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>נכסים</span>
+                    <span className="font-medium">₪{currentState.assets.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>חוב</span>
+                    <span className="font-medium text-red-600">-₪{currentState.debt.toLocaleString()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>ניתוח תזרים</CardTitle>
-                    <CardDescription>
-                      פירוט התשלומים והריביות לאורך זמן
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`} />
-                        <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
-                        <Legend />
-                        
-                        <Line 
-                          type="monotone" 
-                          dataKey="כסף אבוד" 
-                          stroke="#ef4444" 
-                          strokeWidth={2}
-                          dot={{ r: 3 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">כסף אבוד (R-)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">
+                  ₪{currentState.lost.toLocaleString()}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  ריבית ששולמה על חובות
+                </p>
+                <Alert className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    כסף זה "אבוד" כי הוא משלם ריבית ולא מקטין קרן
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">תזרים נטו</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-3xl font-bold ${currentState.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ₪{currentState.netCashFlow.toLocaleString()}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  הכנסה - הוצאות
+                </p>
+              </CardContent>
+            </Card>
           </div>
-        </div>
 
-        {/* Information Footer */}
-        <div className="mt-8">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              <strong>הסבר:</strong> המערכת מדמה את הדינמיקה הפיננסית שלך לאורך זמן. 
-              <span className="text-green-600 font-semibold"> R+ </span>
-              מייצג ריבית חיובית על חיסכון (כסף שעובד בשבילך), 
-              <span className="text-red-600 font-semibold"> R- </span>
-              מייצג ריבית על חוב (כסף אבוד). 
-              המטרה היא למקסם עושר ולמזער כסף אבוד.
-            </AlertDescription>
-          </Alert>
+          {/* Information Footer */}
+          <div className="mt-8">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>הסבר:</strong> המערכת מדמה את הדינמיקה הפיננסית שלך לאורך זמן. 
+                <span className="text-green-600 font-semibold"> R+ </span>
+                מייצג ריבית חיובית על חיסכון (כסף שעובד בשבילך), 
+                <span className="text-red-600 font-semibold"> R- </span>
+                מייצג ריבית על חוב (כסף אבוד). 
+                המטרה היא למקסם עושר ולמזער כסף אבוד.
+              </AlertDescription>
+            </Alert>
+          </div>
         </div>
       </div>
     </div>

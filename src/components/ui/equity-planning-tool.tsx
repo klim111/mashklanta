@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -25,7 +25,15 @@ import {
   ArrowRight,
   ArrowLeft,
   Settings,
-  Target
+  Target,
+  Truck,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  Scale,
+  Search,
+  Package,
+  Hammer
 } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -82,13 +90,21 @@ interface EquityPlanningData {
   currentStep: number;
 }
 
-// Categories with presets
+// Categories with presets - organized by process stages
 const CATEGORIES: Category[] = [
   {
-    id: 'bank',
-    name: 'בנק ומשכנתא',
-    icon: HomeIcon,
-    description: 'עמלות בנק, שמאי, וכל הנוגע למשכנתא',
+    id: 'equity',
+    name: 'הון עצמי לרכישת הדירה',
+    icon: Banknote,
+    description: 'הון עצמי מינימלי הנדרש על פי תקנות בנק ישראל',
+    color: 'emerald',
+    presets: []  // Special category - calculated separately
+  },
+  {
+    id: 'mortgage',
+    name: 'עלות לקיחת משכנתא',
+    icon: Building2,
+    description: 'פתיחת תיק, נוטריון, שמאות',
     color: 'blue',
     presets: [
       {
@@ -97,30 +113,63 @@ const CATEGORIES: Category[] = [
         notes: 'בדרך כלל 0.25% ממחיר הנכס'
       },
       {
-        description: 'שמאי בנק',
+        description: 'אישור חתימות נוטריון',
+        defaultAmount: 500,
+        notes: 'אישור חתימות אצל נוטריון'
+      },
+      {
+        description: 'שמאות',
         minAmount: 2000,
         maxAmount: 3500,
         notes: 'בין 2,000-3,500 ₪ בהתאם לערך הנכס'
-      },
-      {
-        description: 'ביטוח מבנה',
-        percentageOfPrice: 0.001,
-        notes: 'כ-0.1% ממחיר הנכס לשנה'
       }
     ]
   },
   {
     id: 'legal',
-    name: 'משפטי ומיסוי',
-    icon: FileText,
-    description: 'עורך דין, מיסים וכל הנוגע לרכישה',
+    name: 'משפטי',
+    icon: Scale,
+    description: 'שכר טרחת עורך דין',
     color: 'green',
     presets: [
       {
-        description: 'עורך דין',
+        description: 'שכר טרחה עורך דין',
         defaultAmount: 8000,
         notes: 'בדרך כלל 6,000-12,000 ₪'
+      }
+    ]
+  },
+  {
+    id: 'property-search',
+    name: 'מציאת נכס',
+    icon: Search,
+    description: 'תיווך, נסיעות, ימי עבודה',
+    color: 'purple',
+    presets: [
+      {
+        description: 'עמלת תיווך',
+        percentageOfPrice: 0.02,
+        notes: '2% ממחיר הנכס + מע"ם'
       },
+      {
+        description: 'נסיעות ומעקבים',
+        defaultAmount: 1500,
+        notes: 'הוצאות נסיעה וביקורים בנכסים'
+      },
+      {
+        description: 'אובדן ימי עבודה',
+        defaultAmount: 5000,
+        notes: 'ערך של ימי עבודה שהוקדשו לחיפוש'
+      }
+    ]
+  },
+  {
+    id: 'taxation',
+    name: 'מיסוי',
+    icon: Banknote,
+    description: 'מס רכישה, מס שבח, היטל השבחה',
+    color: 'red',
+    presets: [
       {
         description: 'מס רכישה',
         percentageOfPrice: 0.035,
@@ -139,33 +188,38 @@ const CATEGORIES: Category[] = [
     ]
   },
   {
-    id: 'brokerage',
-    name: 'תיווך ועמלות',
-    icon: TrendingUp,
-    description: 'מתווך, עמלות מכירה ורכישה',
-    color: 'purple',
+    id: 'logistics',
+    name: 'לוגיסטיקה',
+    icon: Package,
+    description: 'אחסון, מגורים זמניים, הובלה',
+    color: 'amber',
     presets: [
       {
-        description: 'עמלת מתווך',
-        percentageOfPrice: 0.02,
-        notes: '2% ממחיר הנכס + מע"ם'
+        description: 'אחסון זמני',
+        defaultAmount: 2000,
+        notes: 'אם יש צורך באחסון'
       },
       {
-        description: 'עמלת מכירה (אם רלוונטי)',
-        percentageOfPrice: 0.02,
-        notes: 'אם מוכרים נכס קיים'
+        description: 'מגורים זמניים',
+        defaultAmount: 8000,
+        notes: 'דמי שכירות זמניים בין מכירה לרכישה'
+      },
+      {
+        description: 'חברת הובלה',
+        defaultAmount: 3000,
+        notes: 'תלוי בכמות החפצים ובמרחק'
       }
     ]
   },
   {
-    id: 'property',
-    name: 'נכס ושיפוצים',
-    icon: Settings,
-    description: 'שיפוצים, ציוד ועלויות הכנה',
+    id: 'new-home',
+    name: 'בדירה החדשה',
+    icon: Hammer,
+    description: 'שיפוצים, מכשירי חשמל, ריהוט',
     color: 'orange',
     presets: [
       {
-        description: 'שיפוצים בסיסיים',
+        description: 'שיפוצים',
         minAmount: 50000,
         maxAmount: 150000,
         notes: 'תלוי במצב הנכס'
@@ -176,44 +230,19 @@ const CATEGORIES: Category[] = [
         notes: 'מקרר, מכונת כביסה, מדיח וכו\''
       },
       {
-        description: 'ריהוט בסיסי',
+        description: 'ריהוט',
         defaultAmount: 40000,
         notes: 'מיטות, ארונות, שולחן וכו\''
       }
     ]
   },
   {
-    id: 'moving',
-    name: 'מעבר והובלה',
-    icon: Target,
-    description: 'עלויות מעבר, הובלה ואחסון',
-    color: 'teal',
-    presets: [
-      {
-        description: 'חברת הובלה',
-        defaultAmount: 3000,
-        notes: 'תלוי בכמות החפצים ובמרחק'
-      },
-      {
-        description: 'אחסון זמני',
-        defaultAmount: 2000,
-        notes: 'אם יש צורך באחסון'
-      }
-    ]
-  },
-  {
-    id: 'other',
-    name: 'אחר',
-    icon: Calculator,
+    id: 'emergency',
+    name: 'חירום ובלתי צפוי',
+    icon: AlertCircle,
     description: 'הוצאות נוספות שלא נכללו בקטגוריות',
     color: 'gray',
-    presets: [
-      {
-        description: 'חירום ובלתי צפוי',
-        percentageOfPrice: 0.02,
-        notes: '2% מהמחיר לבלתי צפוי'
-      }
-    ]
+    presets: []  // No sub-items by default
   }
 ];
 
@@ -240,6 +269,218 @@ export default function EquityPlanningTool() {
   const [editingItem, setEditingItem] = useState<ExpenseItem | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'best' | 'worst' | 'expected'>('expected');
+  const [presetsInitialized, setPresetsInitialized] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [isEditingEquity, setIsEditingEquity] = useState(false);
+  const [isEditingEquityDate, setIsEditingEquityDate] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date | null>(null);
+
+  // Initialize calendar to first expense date
+  useEffect(() => {
+    if (data.currentStep === 1 && data.expenses.length > 0 && !calendarMonth) {
+      const allDates = data.expenses
+        .map(e => new Date(e.paymentDate))
+        .filter(d => !isNaN(d.getTime()))
+        .sort((a, b) => a.getTime() - b.getTime());
+      
+      if (allDates.length > 0) {
+        setCalendarMonth(allDates[0]);
+      }
+    }
+  }, [data.currentStep, data.expenses, calendarMonth]);
+
+  // Toggle category expansion
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
+  // Get equity status colors and message
+  const getEquityStatus = (currentEquity: number, minRequired: number, propertyPrice: number) => {
+    const percentage = (currentEquity / propertyPrice) * 100;
+    const minPercentage = (minRequired / propertyPrice) * 100;
+    
+    if (currentEquity < minRequired) {
+      return {
+        bgClass: 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200',
+        textClass: 'text-red-900',
+        noteClass: 'text-red-700',
+        borderClass: 'border-red-300 hover:border-red-400 focus:border-red-500',
+        message: `⚠️ הון עצמי נמוך מהמינימום הנדרש (${minPercentage.toFixed(1)}%)`,
+        motivation: ''
+      };
+    } else if (currentEquity === minRequired) {
+      return {
+        bgClass: 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200',
+        textClass: 'text-amber-900',
+        noteClass: 'text-amber-700',
+        borderClass: 'border-amber-300 hover:border-amber-400 focus:border-amber-500',
+        message: `✓ הון עצמי מינימלי ${minPercentage.toFixed(1)}% לפי תקנות בנק ישראל`,
+        motivation: '💡 העלאת ההון העצמי תשפר את תנאי המשכנתא ותפחית ריבית'
+      };
+    } else if (currentEquity < minRequired * 1.2) {
+      return {
+        bgClass: 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200',
+        textClass: 'text-green-900',
+        noteClass: 'text-green-700',
+        borderClass: 'border-green-300 hover:border-green-400 focus:border-green-500',
+        message: `✓ ${percentage.toFixed(1)}% הון עצמי - מעל המינימום!`,
+        motivation: '👍 תנאי משכנתא משופרים! המשך להעלות לתנאים עוד יותר טובים'
+      };
+    } else if (currentEquity < minRequired * 1.5) {
+      return {
+        bgClass: 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300',
+        textClass: 'text-emerald-900',
+        noteClass: 'text-emerald-700',
+        borderClass: 'border-emerald-400 hover:border-emerald-500 focus:border-emerald-600',
+        message: `✓ ${percentage.toFixed(1)}% הון עצמי - מצוין!`,
+        motivation: '🎉 ריבית מופחתת משמעותית! חיסכון גדול על פני שנות המשכנתא'
+      };
+    } else {
+      return {
+        bgClass: 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300',
+        textClass: 'text-blue-900',
+        noteClass: 'text-blue-700',
+        borderClass: 'border-blue-400 hover:border-blue-500 focus:border-blue-600',
+        message: `✓ ${percentage.toFixed(1)}% הון עצמי - מעולה!`,
+        motivation: '🌟 תנאי משכנתא מצוינים! ריבית נמוכה במיוחד וחיסכון מקסימלי'
+      };
+    }
+  };
+
+  // Calculate date based on category and target date with distribution
+  const calculateExpenseDate = (categoryId: string, targetDate: string, itemIndex: number = 0): string => {
+    if (!targetDate) return new Date().toISOString().split('T')[0];
+    
+    const target = new Date(targetDate);
+    
+    switch (categoryId) {
+      case 'equity':
+        // On target date
+        break;
+      case 'mortgage':
+        // 1.5 months before, distributed
+        target.setMonth(target.getMonth() - 1);
+        target.setDate(target.getDate() - 15 + (itemIndex * 3));
+        break;
+      case 'legal':
+        // 1 month before
+        target.setMonth(target.getMonth() - 1);
+        target.setDate(target.getDate() + (itemIndex * 2));
+        break;
+      case 'property-search':
+        // 2-3 months before, distributed
+        target.setMonth(target.getMonth() - 2);
+        target.setDate(target.getDate() - (itemIndex * 7));
+        break;
+      case 'taxation':
+        // Around target date, distributed
+        target.setDate(target.getDate() - (itemIndex * 2));
+        break;
+      case 'logistics':
+        // Around target date, distributed
+        target.setDate(target.getDate() + (itemIndex * 3));
+        break;
+      case 'new-home':
+        // 1-2 months after, distributed
+        target.setMonth(target.getMonth() + 1);
+        target.setDate(target.getDate() + (itemIndex * 7));
+        break;
+      case 'emergency':
+        // On target date
+        break;
+    }
+    
+    return target.toISOString().split('T')[0];
+  };
+
+  // Reset presets flag when going back to step 0
+  useEffect(() => {
+    if (data.currentStep === 0) {
+      setPresetsInitialized(false);
+    }
+  }, [data.currentStep]);
+
+  // Initialize all presets when entering step 1
+  useEffect(() => {
+    if (data.currentStep === 1 && !presetsInitialized && data.propertyData.price > 0) {
+      const initialExpenses: ExpenseItem[] = [];
+      
+      // First, add the equity requirement item
+      const minEquityRequired = data.propertyData.price * 
+        FINANCING_PROFILES[data.propertyData.financingProfile].minEquityPercent;
+      
+      const equityExpense: ExpenseItem = {
+        id: `equity-main-${Date.now()}`,
+        categoryId: 'equity',
+        description: 'הון עצמי לרכישת הדירה',
+        amount: minEquityRequired,
+        paymentDate: data.propertyData.targetDate,
+        status: 'planned',
+        calculationSource: 'percentage',
+        percentageOfPrice: FINANCING_PROFILES[data.propertyData.financingProfile].minEquityPercent,
+        notes: `הון עצמי מינימלי ${FINANCING_PROFILES[data.propertyData.financingProfile].minEquityPercent * 100}% לפי תקנות בנק ישראל`
+      };
+      initialExpenses.push(equityExpense);
+      
+      // Then add all other categories
+      CATEGORIES.forEach(category => {
+        // Skip equity and empty presets (like emergency category)
+        if (category.id === 'equity' || category.presets.length === 0) return;
+        
+        category.presets.forEach((preset, index) => {
+          // Calculate initial amount based on preset type
+          let calculatedAmount = 0;
+          let calculationSource: 'percentage' | 'fixed' | 'range' = 'fixed';
+
+          if (preset.percentageOfPrice) {
+            calculatedAmount = data.propertyData.price * preset.percentageOfPrice;
+            calculationSource = 'percentage';
+          } else if (preset.minAmount !== undefined && preset.maxAmount !== undefined) {
+            // For range, use average as initial value
+            calculatedAmount = (preset.minAmount + preset.maxAmount) / 2;
+            calculationSource = 'range';
+          } else if (preset.defaultAmount !== undefined) {
+            calculatedAmount = preset.defaultAmount;
+            calculationSource = 'fixed';
+          }
+
+          // Calculate dynamic date based on category with distribution
+          const expenseDate = calculateExpenseDate(category.id, data.propertyData.targetDate, index);
+
+          const newExpense: ExpenseItem = {
+            id: `${category.id}-preset-${index}-${Date.now()}-${index}`,
+            categoryId: category.id,
+            description: preset.description,
+            amount: calculatedAmount,
+            paymentDate: expenseDate,
+            status: 'planned',
+            calculationSource,
+            percentageOfPrice: preset.percentageOfPrice,
+            minAmount: preset.minAmount,
+            maxAmount: preset.maxAmount,
+            notes: preset.notes
+          };
+          
+          initialExpenses.push(newExpense);
+        });
+      });
+
+      setData(prev => ({
+        ...prev,
+        expenses: initialExpenses
+      }));
+      setPresetsInitialized(true);
+    }
+  }, [data.currentStep, data.propertyData.price, data.propertyData.targetDate, data.propertyData.financingProfile, presetsInitialized]);
 
   // Calculate totals
   const calculateTotals = () => {
@@ -411,66 +652,739 @@ export default function EquityPlanningTool() {
     </motion.div>
   );
 
-  // Step 2: Expenses by Categories
-  const renderExpensesByCategories = () => (
+  // Helper to get category color class
+  const getCategoryColorClass = (color: string) => {
+    const colorMap: Record<string, string> = {
+      emerald: 'bg-emerald-100 text-emerald-700',
+      blue: 'bg-blue-100 text-blue-600',
+      green: 'bg-green-100 text-green-600',
+      purple: 'bg-purple-100 text-purple-600',
+      orange: 'bg-orange-100 text-orange-600',
+      teal: 'bg-teal-100 text-teal-600',
+      red: 'bg-red-100 text-red-600',
+      amber: 'bg-amber-100 text-amber-600',
+      indigo: 'bg-indigo-100 text-indigo-600',
+      gray: 'bg-gray-100 text-gray-600'
+    };
+    return colorMap[color] || 'bg-gray-100 text-gray-600';
+  };
+
+  const getCategoryBgColor = (color: string) => {
+    const colorMap: Record<string, string> = {
+      emerald: '#10B981',
+      blue: '#3B82F6',
+      green: '#22C55E',
+      purple: '#A855F7',
+      orange: '#F97316',
+      teal: '#14B8A6',
+      red: '#EF4444',
+      amber: '#F59E0B',
+      indigo: '#6366F1',
+      gray: '#6B7280'
+    };
+    return colorMap[color] || '#6B7280';
+  };
+
+  // Add new expense to category
+  const addNewExpenseToCategory = (categoryId: string) => {
+    const newExpense: ExpenseItem = {
+      id: Date.now().toString(),
+      categoryId,
+      description: '',
+      amount: 0,
+      paymentDate: data.propertyData.targetDate || new Date().toISOString().split('T')[0],
+      status: 'planned',
+      calculationSource: 'fixed',
+      notes: ''
+    };
+    setData(prev => ({
+      ...prev,
+      expenses: [...prev.expenses, newExpense]
+    }));
+  };
+
+  // Update expense inline
+  const updateExpenseInline = (expenseId: string, field: keyof ExpenseItem, value: any) => {
+    setData(prev => ({
+      ...prev,
+      expenses: prev.expenses.map(e => 
+        e.id === expenseId ? { ...e, [field]: value } : e
+      )
+    }));
+  };
+
+  // Step 2: Expenses by Categories - COLLAPSIBLE TABLE VIEW
+  const renderExpensesByCategories = () => {
+    // Calculate pie chart data INCLUDING equity
+    const categoryTotals = CATEGORIES.map(category => {
+      const categoryExpenses = expensesByCategory[category.id] || [];
+      const total = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      return { ...category, total };
+    }).filter(cat => cat.total > 0);
+
+    const totalForPie = categoryTotals.reduce((sum, cat) => sum + cat.total, 0);
+    
+    // Get equity expense
+    const equityExpense = data.expenses.find(e => e.categoryId === 'equity');
+
+    return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-8"
-    >
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">הוצאות לפי קטגוריות</h2>
-        <p className="text-gray-600">הוסיפו והתאימו את ההוצאות הנלוות</p>
+        className="space-y-4"
+      >
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main collapsible table - 2/3 width */}
+          <div className="lg:col-span-2">
+            <Card className="overflow-hidden shadow-xl border-gray-200">
+              {/* Table Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                <div className="flex items-center justify-between text-white">
+                  <div className="flex items-center gap-3">
+                    <PieChart className="w-6 h-6" />
+                    <div>
+                      <h3 className="text-lg font-bold">
+                        סיכום הוצאות
+                        {selectedDate && (
+                          <Badge variant="secondary" className="mr-2 bg-white/20 text-white border-white/30">
+                            מסונן: {new Date(selectedDate).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })}
+                          </Badge>
+                        )}
+                      </h3>
+                      <p className="text-sm text-blue-100">
+                        {selectedDate 
+                          ? `${data.expenses.filter(e => e.paymentDate === selectedDate).length} סעיפים ביום זה`
+                          : `${CATEGORIES.length} קטגוריות | ${data.expenses.length} סעיפים`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <div className="text-2xl font-bold">₪{totals.totalExpenses.toLocaleString()}</div>
+                    <div className="text-xs text-blue-100">{totals.percentageOfPrice.toFixed(1)}% מהנכס</div>
+                  </div>
+                </div>
+                {selectedDate && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedDate(null)}
+                    className="mt-2 text-white hover:bg-white/20"
+                  >
+                    <X className="w-3 h-3 ml-1" />
+                    בטל סינון
+                  </Button>
+                )}
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <CardContent className="p-0">
+                {/* Collapsible Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider w-8"></th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
+                          קטגוריה
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          תיאור
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
+                          סכום
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
+                          פעולות
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
         {CATEGORIES.map((category) => {
-          const categoryExpenses = expensesByCategory[category.id] || [];
+                        // Filter expenses by selected date if any
+                        let categoryExpenses = (expensesByCategory[category.id] || []).sort((a, b) => 
+                          new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()
+                        );
+                        
+                        // Apply date filter
+                        if (selectedDate) {
+                          categoryExpenses = categoryExpenses.filter(exp => exp.paymentDate === selectedDate);
+                        }
+                        
           const categoryTotal = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+                        const isExpanded = expandedCategories.has(category.id) || (selectedDate !== null && categoryExpenses.length > 0);
+                        const hasItems = categoryExpenses.length > 0;
+                        const isEquityCategory = category.id === 'equity';
+                        
+                        // Skip category if filtered and no expenses
+                        if (selectedDate && !hasItems && category.id !== 'equity') {
+                          return null;
+                        }
+
+                        // Special rendering for equity category
+                        if (isEquityCategory && equityExpense) {
+                          const minEquityRequired = data.propertyData.price * 
+                            FINANCING_PROFILES[data.propertyData.financingProfile].minEquityPercent;
+                          const equityStatus = getEquityStatus(equityExpense.amount, minEquityRequired, data.propertyData.price);
           
           return (
-            <motion.div
+                            <tr 
               key={category.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Card 
-                className={`cursor-pointer transition-all duration-300 hover:shadow-lg border-2 ${
-                  selectedCategory === category.id ? 'border-blue-500' : 'border-gray-200'
-                }`}
-                onClick={() => {
-                  setSelectedCategory(category.id);
-                  setIsDrawerOpen(true);
-                }}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      category.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                      category.color === 'green' ? 'bg-green-100 text-green-600' :
-                      category.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                      category.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                      category.color === 'teal' ? 'bg-teal-100 text-teal-600' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      <category.icon className="w-6 h-6" />
-                    </div>
-                    <Badge variant="secondary">
-                      {categoryExpenses.length} פריטים
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg">{category.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 mb-4">{category.description}</p>
-                  <div className="text-2xl font-bold text-gray-900">
-                    ₪{categoryTotal.toLocaleString()}
+                              onClick={() => !isEditingEquity && !isEditingEquityDate && setIsEditingEquityDate(true)}
+                              className={`${equityStatus.bgClass} border-b-2 transition-all duration-300 ${!isEditingEquity && !isEditingEquityDate ? 'cursor-pointer hover:shadow-md' : ''}`}
+                            >
+                              {/* Empty for expand icon */}
+                              <td className="px-4 py-4"></td>
+
+                              {/* Category Icon */}
+                              <td className="px-4 py-4">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColorClass(category.color)} shadow-sm transition-transform hover:scale-110`}>
+                                  <category.icon className="w-6 h-6" />
+                                </div>
+                              </td>
+
+                              {/* Category Name & Note */}
+                              <td className="px-4 py-4">
+                                <div>
+                                  <div className={`font-bold text-lg ${equityStatus.textClass}`}>{category.name}</div>
+                                  <div className={`text-sm ${equityStatus.noteClass} font-medium mt-1`}>
+                                    {equityStatus.message}
+                                  </div>
+                                  {equityStatus.motivation && (
+                                    <div className={`text-xs ${equityStatus.noteClass} mt-2 font-semibold animate-pulse`}>
+                                      {equityStatus.motivation}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Amount/Date - Combined column */}
+                              <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                {isEditingEquityDate ? (
+                                  <div className="space-y-2">
+                                    {/* Amount */}
+                                    <div className="relative">
+                                      <Input
+                                        type="number"
+                                        value={equityExpense.amount || ''}
+                                        onChange={(e) => updateExpenseInline(equityExpense.id, 'amount', parseFloat(e.target.value) || 0)}
+                                        className={`text-right text-xl font-bold border-2 ${equityStatus.borderClass} bg-white transition-colors pr-10 w-48 ${equityStatus.textClass}`}
+                                      />
+                                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${equityStatus.noteClass} font-bold`}>₪</span>
+                                    </div>
+                                    {/* Date */}
+                                    <Input
+                                      type="date"
+                                      value={equityExpense.paymentDate}
+                                      onChange={(e) => updateExpenseInline(equityExpense.id, 'paymentDate', e.target.value)}
+                                      onBlur={() => setIsEditingEquityDate(false)}
+                                      autoFocus
+                                      className={`text-right text-sm border-2 ${equityStatus.borderClass} bg-white transition-colors`}
+                                    />
+                                  </div>
+                                ) : isEditingEquity ? (
+                                  <div className="relative">
+                                    <Input
+                                      type="number"
+                                      value={equityExpense.amount || ''}
+                                      onChange={(e) => updateExpenseInline(equityExpense.id, 'amount', parseFloat(e.target.value) || 0)}
+                                      onBlur={() => setIsEditingEquity(false)}
+                                      autoFocus
+                                      className={`text-right text-xl font-bold border-2 ${equityStatus.borderClass} bg-white transition-colors pr-10 w-48 ${equityStatus.textClass}`}
+                                    />
+                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${equityStatus.noteClass} font-bold`}>₪</span>
+                                  </div>
+                                ) : (
+                                  <div 
+                                    onClick={() => setIsEditingEquity(true)}
+                                    className={`text-2xl font-bold ${equityStatus.textClass} cursor-pointer hover:underline transition-all hover:scale-105`}
+                                  >
+                                    ₪{equityExpense.amount.toLocaleString()}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Edit button - opens date editing */}
+                              <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setIsEditingEquityDate(true)}
+                                  className={`h-9 w-9 p-0 hover:bg-emerald-100 transition-colors ${equityStatus.noteClass}`}
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return (
+                          <Fragment key={category.id}>
+                            {/* Category Row - No date column */}
+                            <tr 
+                              onClick={() => hasItems && toggleCategory(category.id)}
+                              className={`${hasItems ? 'cursor-pointer' : ''} bg-gradient-to-r from-gray-100 to-gray-50 hover:from-gray-150 hover:to-gray-100 transition-all border-b-2 border-gray-200`}
+                            >
+                              {/* Category Icon */}
+                              <td className="px-4 py-4" colSpan={2}>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColorClass(category.color)} shadow-sm`}>
+                                  <category.icon className="w-6 h-6" />
+                                </div>
+                              </td>
+
+                              {/* Category Name & Description */}
+                              <td className="px-4 py-4">
+                                <div>
+                                  <div className="font-bold text-lg text-gray-900">{category.name}</div>
+                                  <div className="text-sm text-gray-500">{category.description}</div>
+                                  {hasItems && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {categoryExpenses.length} {categoryExpenses.length === 1 ? 'סעיף' : 'סעיפים'}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Category Total */}
+                              <td className="px-4 py-4">
+                                <div className="text-xl font-bold text-gray-900">
+                                  ₪{categoryTotal.toLocaleString()}
+                                </div>
+                              </td>
+
+                              {/* Details button (for categories with items) or empty */}
+                              <td className="px-4 py-4">
+                                {hasItems && (
+                                  <div className="flex items-center gap-2 text-gray-600">
+                                    <motion.div
+                                      animate={{ rotate: isExpanded ? 180 : 0 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <ChevronDown className="w-5 h-5" />
+                                    </motion.div>
+                                    <span className="text-sm font-medium">פירוט</span>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+
+                            {/* Expandable Sub-Items - WITH date column */}
+                            <AnimatePresence mode="sync">
+                              {isExpanded && hasItems && (
+                                <>
+                                  {categoryExpenses.map((expense, index) => (
+                                    <motion.tr
+                                      key={expense.id}
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-blue-50/30 transition-colors border-b border-gray-100`}
+                                    >
+                                      {/* Small Category Indicator - same colSpan as parent */}
+                                      <td className="px-4 py-3" colSpan={2}>
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getCategoryColorClass(category.color)}`}>
+                                          <category.icon className="w-4 h-4" />
+                                        </div>
+                                      </td>
+
+                                      {/* Description - inline edit */}
+                                      <td className="px-4 py-3">
+                                        <div className="space-y-1">
+                                          <Input
+                                            value={expense.description}
+                                            onChange={(e) => updateExpenseInline(expense.id, 'description', e.target.value)}
+                                            placeholder="תיאור ההוצאה"
+                                            className="text-right text-sm font-medium border-0 bg-transparent hover:bg-white focus:bg-white transition-colors"
+                                          />
+                                          {expense.notes && (
+                                            <p className="text-xs text-gray-500 pr-3">{expense.notes}</p>
+                                          )}
+                                          {expense.calculationSource === 'percentage' && expense.percentageOfPrice && (
+                                            <p className="text-xs text-blue-600 pr-3 font-medium">
+                                              {(expense.percentageOfPrice * 100).toFixed(2)}% ממחיר הנכס
+                                            </p>
+                                          )}
+                                          {expense.calculationSource === 'range' && expense.minAmount && expense.maxAmount && (
+                                            <p className="text-xs text-amber-600 pr-3 font-medium">
+                                              טווח: ₪{expense.minAmount.toLocaleString()}-₪{expense.maxAmount.toLocaleString()}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </td>
+
+                                      {/* Amount + Date - combined in one column */}
+                                      <td className="px-4 py-3">
+                                        <div className="space-y-2">
+                                          {/* Amount */}
+                                          <div className="relative">
+                                            <Input
+                                              type="number"
+                                              value={expense.amount || ''}
+                                              onChange={(e) => updateExpenseInline(expense.id, 'amount', parseFloat(e.target.value) || 0)}
+                                              placeholder="0"
+                                              className="text-right text-base font-bold border-0 bg-transparent hover:bg-white focus:bg-white transition-colors pr-2 text-gray-900"
+                                            />
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">₪</span>
+                                          </div>
+                                          {/* Date */}
+                                          <Input
+                                            type="date"
+                                            value={expense.paymentDate}
+                                            onChange={(e) => updateExpenseInline(expense.id, 'paymentDate', e.target.value)}
+                                            className="text-right text-xs border-0 bg-transparent hover:bg-white focus:bg-white transition-colors"
+                                          />
+                                        </div>
+                                      </td>
+
+                                      {/* Delete button */}
+                                      <td className="px-4 py-3">
+                                        <div className="flex justify-center">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => deleteExpense(expense.id)}
+                                            className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </motion.tr>
+                                  ))}
+                                  
+                                  {/* Add new item row */}
+                                  <motion.tr
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="bg-gray-50/50 border-b border-gray-200"
+                                  >
+                                    <td colSpan={5} className="px-4 py-3">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          addNewExpenseToCategory(category.id);
+                                        }}
+                                        className="w-full text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                      >
+                                        <Plus className="w-4 h-4 ml-2" />
+                                        הוסף סעיף נוסף
+                                      </Button>
+                                    </td>
+                                  </motion.tr>
+                                </>
+                              )}
+                            </AnimatePresence>
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          );
-        })}
+          </div>
+
+          {/* Calendar, Pie chart & Summary - 1/3 width */}
+          <div className="lg:col-span-1 space-y-3">
+            {/* Calendar - MOVED TO TOP */}
+            <Card>
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-3 h-3" />
+                  לוח תשלומים
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-1 pb-3">
+                {(() => {
+                  // Group expenses by date
+                  const expensesByDate = data.expenses.reduce((acc, expense) => {
+                    if (!acc[expense.paymentDate]) {
+                      acc[expense.paymentDate] = [];
+                    }
+                    acc[expense.paymentDate].push(expense);
+                    return acc;
+                  }, {} as Record<string, ExpenseItem[]>);
+
+                  // Get date range
+                  const allDates = data.expenses.map(e => new Date(e.paymentDate).getTime()).filter(d => !isNaN(d));
+                  if (allDates.length === 0) {
+                    return <p className="text-sm text-gray-500 text-center py-4">אין תשלומים מתוכננים</p>;
+                  }
+
+                  const minDate = new Date(Math.min(...allDates));
+                  const maxDate = new Date(Math.max(...allDates));
+                  
+                  // Get current month to display (use calendarMonth state or first expense date)
+                  const displayDate = calendarMonth || minDate;
+                  
+                  const year = displayDate.getFullYear();
+                  const month = displayDate.getMonth();
+
+                  // Navigation functions
+                  const goToPreviousMonth = () => {
+                    const newDate = new Date(displayDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setCalendarMonth(newDate);
+                  };
+
+                  const goToNextMonth = () => {
+                    const newDate = new Date(displayDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setCalendarMonth(newDate);
+                  };
+                  
+                  // Get first day of month and last day
+                  const firstDay = new Date(year, month, 1);
+                  const lastDay = new Date(year, month + 1, 0);
+                  const daysInMonth = lastDay.getDate();
+                  const startingDayOfWeek = firstDay.getDay();
+
+                  // Hebrew day names
+                  const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+
+                  return (
+                    <div className="space-y-0.5">
+                      {/* Month/Year header with navigation */}
+                      <div className="flex items-center justify-between mb-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={goToPreviousMonth}
+                          className="h-5 w-5 p-0"
+                        >
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </Button>
+                        <div className="font-bold text-[10px] text-gray-900">
+                          {displayDate.toLocaleDateString('he-IL', { month: 'short', year: '2-digit' })}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={goToNextMonth}
+                          className="h-5 w-5 p-0"
+                        >
+                          <ArrowLeft className="w-2.5 h-2.5" />
+                        </Button>
+                      </div>
+
+                      {/* Calendar grid */}
+                      <div className="grid grid-cols-7 gap-px bg-gray-200 p-px rounded">
+                        {/* Day names */}
+                        {dayNames.map(day => (
+                          <div key={day} className="text-center text-[8px] font-semibold text-gray-600 bg-white p-0.5">
+                            {day}
+                          </div>
+                        ))}
+
+                        {/* Empty cells for days before month starts */}
+                        {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                          <div key={`empty-${i}`} className="bg-white" style={{ aspectRatio: '1' }} />
+                        ))}
+
+                        {/* Days of month */}
+                        {Array.from({ length: daysInMonth }).map((_, i) => {
+                          const day = i + 1;
+                          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                          const dayExpenses = expensesByDate[dateStr] || [];
+                          const hasExpenses = dayExpenses.length > 0;
+                          const isSelected = selectedDate === dateStr;
+                          
+                          // Get most expensive expense's category for icon
+                          const primaryExpense = dayExpenses.length > 0 
+                            ? dayExpenses.reduce((prev, current) => (prev.amount > current.amount) ? prev : current)
+                            : null;
+                          const primaryCategory = primaryExpense 
+                            ? CATEGORIES.find(c => c.id === primaryExpense.categoryId)
+                            : null;
+
+                          return (
+                            <button
+                              key={day}
+                              onClick={() => setSelectedDate(isSelected ? null : dateStr)}
+                              className={`
+                                p-px text-xs font-medium transition-all relative
+                                ${hasExpenses 
+                                  ? isSelected
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-blue-50 text-blue-900 hover:bg-blue-100'
+                                  : 'bg-white text-gray-400'
+                                }
+                              `}
+                              style={{ aspectRatio: '1' }}
+                            >
+                              <div className="flex flex-col items-center justify-center h-full">
+                                <span className="text-[7px] font-bold leading-none">{day}</span>
+                                {hasExpenses && primaryCategory && (
+                                  <div className={`w-2 h-2 rounded-sm flex items-center justify-center mt-px ${
+                                    isSelected ? 'bg-white/20' : getCategoryColorClass(primaryCategory.color)
+                                  }`}>
+                                    <primaryCategory.icon className="w-1 h-1" />
+                                  </div>
+                                )}
+                                {hasExpenses && dayExpenses.length > 1 && (
+                                  <span className="absolute top-0 right-0 text-[5px] bg-red-500 text-white rounded-full w-2 h-2 flex items-center justify-center leading-none">
+                                    {dayExpenses.length}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected date info - very compact */}
+                      {selectedDate && expensesByDate[selectedDate] && expensesByDate[selectedDate].length > 0 && (
+                        <div className="mt-1 p-1 bg-blue-50 rounded text-[8px]">
+                          <div className="font-bold text-blue-900">
+                            {expensesByDate[selectedDate].length} הוצאות | ₪{(expensesByDate[selectedDate].reduce((sum, e) => sum + e.amount, 0) / 1000).toFixed(0)}K
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            {/* Pie Chart */}
+            <Card>
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <PieChart className="w-3 h-3" />
+                  חלוקת ההון
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 pt-1 pb-3">
+                {/* SVG Pie Chart */}
+                {totalForPie > 0 ? (
+                  <>
+                    <div className="w-full aspect-square flex items-center justify-center max-h-32">
+                      <svg viewBox="0 0 200 200" className="w-full h-full">
+                        {(() => {
+                          let currentAngle = 0;
+                          return categoryTotals.map((cat, index) => {
+                            const percentage = (cat.total / totalForPie) * 100;
+                            const angle = (percentage / 100) * 360;
+                            const startAngle = currentAngle;
+                            const endAngle = currentAngle + angle;
+                            currentAngle = endAngle;
+
+                            // Calculate path for pie slice
+                            const startRad = (startAngle - 90) * (Math.PI / 180);
+                            const endRad = (endAngle - 90) * (Math.PI / 180);
+                            const x1 = 100 + 80 * Math.cos(startRad);
+                            const y1 = 100 + 80 * Math.sin(startRad);
+                            const x2 = 100 + 80 * Math.cos(endRad);
+                            const y2 = 100 + 80 * Math.sin(endRad);
+                            const largeArc = angle > 180 ? 1 : 0;
+
+                            return (
+                              <path
+                                key={cat.id}
+                                d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                                fill={getCategoryBgColor(cat.color)}
+                                opacity="0.9"
+                                className="hover:opacity-100 transition-opacity cursor-pointer"
+                              />
+                            );
+                          });
+                        })()}
+                        {/* Center white circle for donut effect */}
+                        <circle cx="100" cy="100" r="50" fill="white" />
+                        <text x="100" y="95" textAnchor="middle" className="text-xs font-bold fill-gray-700">
+                          סה״כ
+                        </text>
+                        <text x="100" y="110" textAnchor="middle" className="text-lg font-bold fill-gray-900">
+                          {(totalForPie / 1000).toFixed(0)}K
+                        </text>
+                      </svg>
+                  </div>
+
+                    {/* Legend */}
+                    <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                      {categoryTotals.map((cat) => {
+                        const percentage = (cat.total / totalForPie) * 100;
+                        return (
+                          <div key={cat.id} className="flex items-center justify-between gap-1 p-1 rounded hover:bg-gray-50">
+                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                              <div 
+                                className="w-2 h-2 rounded-sm flex-shrink-0"
+                                style={{ backgroundColor: getCategoryBgColor(cat.color) }}
+                              />
+                              <span className="text-[10px] font-medium text-gray-700 truncate">{cat.name}</span>
+                            </div>
+                            <div className="text-left flex-shrink-0">
+                              <span className="text-[10px] font-bold text-gray-900">
+                                ₪{(cat.total / 1000).toFixed(0)}K
+                              </span>
+                              <span className="text-[8px] text-gray-500 ml-1">
+                                {percentage.toFixed(0)}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <PieChart className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">הוסיפו הוצאות לצפייה בגרף</p>
+                  </div>
+                )}
+                </CardContent>
+              </Card>
+
+
+            {/* Summary */}
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50">
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="flex items-center gap-2 text-blue-900 text-sm">
+                  <Banknote className="w-3 h-3" />
+                  סיכום
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5 pt-1 pb-2">
+                {/* Property Price */}
+                <div className="flex justify-between items-center py-1 border-b border-blue-200">
+                  <span className="text-[10px] font-medium text-gray-700">עלות דירה</span>
+                  <span className="text-xs font-bold text-gray-900">
+                    ₪{(data.propertyData.price / 1000).toFixed(0)}K
+                  </span>
+                </div>
+
+                {/* Equity */}
+                {equityExpense && (
+                  <div className="flex justify-between items-center py-1 border-b border-blue-200">
+                    <span className="text-[10px] font-medium text-emerald-700">הון עצמי</span>
+                    <span className="text-xs font-bold text-emerald-900">
+                      ₪{(equityExpense.amount / 1000).toFixed(0)}K
+                    </span>
+                  </div>
+                )}
+
+                {/* Additional Expenses */}
+                <div className="flex justify-between items-center py-1 border-b border-blue-200">
+                  <span className="text-[10px] font-medium text-orange-700">הוצאות נלוות</span>
+                  <span className="text-xs font-bold text-orange-900">
+                    ₪{(data.expenses.filter(e => e.categoryId !== 'equity').reduce((sum, e) => sum + e.amount, 0) / 1000).toFixed(0)}K
+                  </span>
+                </div>
+
+                {/* Total Required */}
+                <div className="flex justify-between items-center py-2 bg-blue-600 -mx-6 -mb-6 px-6 pb-6 rounded-b-lg mt-1">
+                  <span className="text-xs font-bold text-white">סה״כ נדרש</span>
+                  <span className="text-lg font-bold text-white">
+                    ₪{(totals.totalExpenses / 1000).toFixed(0)}K
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
       </div>
 
       <div className="flex justify-center gap-4 pt-6">
@@ -492,6 +1406,7 @@ export default function EquityPlanningTool() {
       </div>
     </motion.div>
   );
+  };
 
   // Export functionality
   const exportToCSV = () => {
@@ -663,14 +1578,7 @@ export default function EquityPlanningTool() {
               {categoryTotals.map(category => (
                 <div key={category.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      category.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                      category.color === 'green' ? 'bg-green-100 text-green-600' :
-                      category.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                      category.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                      category.color === 'teal' ? 'bg-teal-100 text-teal-600' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getCategoryColorClass(category.color)}`}>
                       <category.icon className="w-4 h-4" />
                     </div>
                     <span className="font-medium">{category.name}</span>
@@ -779,14 +1687,7 @@ export default function EquityPlanningTool() {
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center gap-2 justify-end">
                               {category && (
-                                <div className={`w-6 h-6 rounded flex items-center justify-center ${
-                                  category.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                                  category.color === 'green' ? 'bg-green-100 text-green-600' :
-                                  category.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                                  category.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                                  category.color === 'teal' ? 'bg-teal-100 text-teal-600' :
-                                  'bg-gray-100 text-gray-600'
-                                }`}>
+                                <div className={`w-6 h-6 rounded flex items-center justify-center ${getCategoryColorClass(category.color)}`}>
                                   <category.icon className="w-3 h-3" />
                                 </div>
                               )}
@@ -924,14 +1825,7 @@ export default function EquityPlanningTool() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                category.color === 'blue' ? 'bg-blue-100 text-blue-600' :
-                category.color === 'green' ? 'bg-green-100 text-green-600' :
-                category.color === 'purple' ? 'bg-purple-100 text-purple-600' :
-                category.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                category.color === 'teal' ? 'bg-teal-100 text-teal-600' :
-                'bg-gray-100 text-gray-600'
-              }`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getCategoryColorClass(category.color)}`}>
                 <category.icon className="w-5 h-5" />
               </div>
               {category.name}
@@ -1078,15 +1972,9 @@ export default function EquityPlanningTool() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="text-center">
               <h1 className="text-2xl font-bold text-gray-900">תכנון הון עצמי — הוצאות נלוות</h1>
               <p className="text-gray-600">כלי מקצועי לתכנון וניהול הוצאות רכישת נכס</p>
-            </div>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 ml-2" />
-              הוסף סעיף
-            </Button>
           </div>
         </div>
 
@@ -1126,16 +2014,11 @@ export default function EquityPlanningTool() {
           </div>
         </div>
 
-        <div className="flex">
-          {/* Main Content */}
-          <div className="flex-1 p-6">
-            {data.currentStep === 0 && renderBasicSettings()}
-            {data.currentStep === 1 && renderExpensesByCategories()}
-            {data.currentStep === 2 && renderSummaryAndCashFlow()}
-          </div>
-
-          {/* Sidebar */}
-          {renderSidebar()}
+        {/* Main Content */}
+        <div className="p-6">
+          {data.currentStep === 0 && renderBasicSettings()}
+          {data.currentStep === 1 && renderExpensesByCategories()}
+          {data.currentStep === 2 && renderSummaryAndCashFlow()}
         </div>
 
         {/* Category Drawer */}
@@ -1246,3 +2129,4 @@ export default function EquityPlanningTool() {
     </TooltipProvider>
   );
 }
+
