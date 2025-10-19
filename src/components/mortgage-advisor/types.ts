@@ -1,7 +1,7 @@
 export interface MortgageTrack {
   id: string;
   name: string;
-  type: 'fixed' | 'variable' | 'prime' | 'madad';
+  type: 'fixed_unlinked' | 'fixed_linked' | 'prime' | 'variable_unlinked' | 'variable_linked' | 'makam' | 'dollar' | 'euro' | 'eligibility' | 'five_year_plan' | 'grant';
   amount: number; // סכום במסלול בש"ח
   percentage: number; // אחוז מסך המשכנתא
   interestRate: number; // ריבית שנתית באחוזים
@@ -9,6 +9,15 @@ export interface MortgageTrack {
   monthlyPayment?: number; // תשלום חודשי מחושב
   totalInterest?: number; // סך הריבית
   totalPaid?: number; // סך הכל לתשלום
+  // שדות נוספים לריביות צמודות
+  cpiIndex?: number; // מדד המחירים לצרכן
+  // שדות לריביות משתנות
+  variablePeriod?: number; // תקופת משתנה (1-5 שנים)
+  // שדות למטבעות חוץ
+  exchangeRate?: number; // שער חליפין
+  currency?: 'USD' | 'EUR'; // סוג מטבע
+  // לוח סילוקין
+  amortizationType?: 'spitzer' | 'equal_principal' | 'partial_grace' | 'full_grace' | 'ability_based' | 'secured';
 }
 
 export interface MortgageMix {
@@ -72,15 +81,46 @@ export interface MortgageAdvisorState {
 }
 
 export const TRACK_TYPES = {
-  fixed: 'ריבית קבועה',
-  variable: 'ריבית משתנה',
+  fixed_unlinked: 'ריבית קבועה לא צמודה',
+  fixed_linked: 'ריבית קבועה צמודה',
   prime: 'פריים',
-  madad: 'צמוד מדד'
+  variable_unlinked: 'ריבית משתנה לא צמודה',
+  variable_linked: 'ריבית משתנה צמודה',
+  makam: 'מק"מ',
+  dollar: 'מטח דולר',
+  euro: 'מטח יורו',
+  eligibility: 'זכאות',
+  five_year_plan: 'תוכנית חומש',
+  grant: 'מענק'
 } as const;
 
 export const DEFAULT_INTEREST_RATES = {
-  fixed: 4.5,
-  variable: 3.8,
+  fixed_unlinked: 4.5,
+  fixed_linked: 3.2,
   prime: 5.2,
-  madad: 2.1
+  variable_unlinked: 3.8,
+  variable_linked: 2.8,
+  makam: 4.0,
+  dollar: 3.5,
+  euro: 3.3,
+  eligibility: 2.5,
+  five_year_plan: 3.0,
+  grant: 1.5
+} as const;
+
+export const AMORTIZATION_TYPES = {
+  spitzer: 'שפיצר',
+  equal_principal: 'קרן שווה',
+  partial_grace: 'גרייס חלקי',
+  full_grace: 'גרייס מלא',
+  ability_based: 'כפי יכולתך',
+  secured: 'משכנתא בטוחה'
+} as const;
+
+export const VARIABLE_PERIODS = {
+  1: '1 שנה',
+  2: '2 שנים',
+  3: '3 שנים',
+  4: '4 שנים',
+  5: '5 שנים'
 } as const;

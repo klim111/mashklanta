@@ -275,6 +275,8 @@ export default function EquityPlanningTool() {
   const [isEditingEquityDate, setIsEditingEquityDate] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<Date | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [hoveredPieSegment, setHoveredPieSegment] = useState<string | null>(null);
 
   // Initialize calendar to first expense date
   useEffect(() => {
@@ -572,85 +574,238 @@ export default function EquityPlanningTool() {
   };
 
   // Step 1: Basic Settings
-  const renderBasicSettings = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-8"
-    >
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">הגדרות בסיס</h2>
-        <p className="text-gray-600">הזינו את פרטי הנכס ופרופיל המימון</p>
-      </div>
+  const renderBasicSettings = () => {
+    const minEquityRequired = data.propertyData.price * 
+      FINANCING_PROFILES[data.propertyData.financingProfile].minEquityPercent;
 
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <Label htmlFor="propertyPrice" className="text-lg font-medium">מחיר הנכס</Label>
-          <Input
-            id="propertyPrice"
-            type="number"
-            placeholder="₪"
-            value={data.propertyData.price || ''}
-            onChange={(e) => setData(prev => ({
-              ...prev,
-              propertyData: { ...prev.propertyData, price: parseFloat(e.target.value) || 0 }
-            }))}
-            className="text-right text-lg mt-2"
-          />
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-8"
+      >
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">הגדרות בסיס</h2>
+          <p className="text-gray-600">הזינו את פרטי הנכס ופרופיל המימון</p>
         </div>
 
-        <div>
-          <Label htmlFor="targetDate" className="text-lg font-medium">תאריך יעד לרכישה</Label>
-          <Input
-            id="targetDate"
-            type="date"
-            value={data.propertyData.targetDate}
-            onChange={(e) => setData(prev => ({
-              ...prev,
-              propertyData: { ...prev.propertyData, targetDate: e.target.value }
-            }))}
-            className="text-right mt-2"
-          />
-        </div>
+        <div className="max-w-4xl mx-auto">
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Input Fields */}
+            <div className="lg:col-span-2 space-y-6">
+              <div>
+                <Label htmlFor="propertyPrice" className="text-lg font-medium">מחיר הנכס</Label>
+                <Input
+                  id="propertyPrice"
+                  type="number"
+                  placeholder="₪"
+                  value={data.propertyData.price || ''}
+                  onChange={(e) => setData(prev => ({
+                    ...prev,
+                    propertyData: { ...prev.propertyData, price: parseFloat(e.target.value) || 0 }
+                  }))}
+                  className="text-right text-lg mt-2"
+                />
+              </div>
 
-        <div>
-          <Label className="text-lg font-medium">פרופיל מימון</Label>
-          <div className="grid grid-cols-2 gap-4 mt-2">
-            {Object.entries(FINANCING_PROFILES).map(([key, profile]) => (
-              <Button
-                key={key}
-                variant={data.propertyData.financingProfile === key ? "default" : "outline"}
-                onClick={() => setData(prev => ({
-                  ...prev,
-                  propertyData: { ...prev.propertyData, financingProfile: key as any }
-                }))}
-                className="h-16 text-sm"
-              >
-                <div>
-                  <div className="font-medium">{profile.name}</div>
-                  <div className="text-xs opacity-70">
-                    הון עצמי מינימלי: {profile.minEquityPercent * 100}%
-                  </div>
+              <div>
+                <Label className="text-lg font-medium">פרופיל מימון</Label>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  {Object.entries(FINANCING_PROFILES).map(([key, profile]) => (
+                    <Button
+                      key={key}
+                      variant={data.propertyData.financingProfile === key ? "default" : "outline"}
+                      onClick={() => setData(prev => ({
+                        ...prev,
+                        propertyData: { ...prev.propertyData, financingProfile: key as any }
+                      }))}
+                      className="h-16 text-sm"
+                    >
+                      <div>
+                        <div className="font-medium">{profile.name}</div>
+                        <div className="text-xs opacity-70">
+                          הון עצמי מינימלי: {profile.minEquityPercent * 100}%
+                        </div>
+                      </div>
+                    </Button>
+                  ))}
                 </div>
-              </Button>
-            ))}
+              </div>
+
+              <div className="flex justify-center pt-6">
+                <Button
+                  onClick={() => setData(prev => ({ ...prev, currentStep: 1 }))}
+                  disabled={!data.propertyData.price || !data.propertyData.targetDate}
+                  size="lg"
+                  className="px-8"
+                >
+                  המשך להוצאות
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Right Column - Equity Display & Calendar */}
+            <div className="space-y-4">
+              {/* Equity Display */}
+              {data.propertyData.price > 0 && (
+                <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
+                  <CardHeader className="pb-3 pt-4 px-4">
+                    <CardTitle className="flex items-center gap-2 text-emerald-900 text-base font-semibold">
+                      <Banknote className="w-5 h-5" />
+                      הון עצמי מינימלי
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-emerald-900 mb-2">
+                        ₪{minEquityRequired.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-emerald-700">
+                        {FINANCING_PROFILES[data.propertyData.financingProfile].minEquityPercent * 100}% ממחיר הנכס
+                      </div>
+                      <div className="text-xs text-emerald-600 mt-1">
+                        לפי תקנות בנק ישראל
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Date Calendar */}
+              <Card>
+                <CardHeader className="pb-2 pt-3 px-3">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                    <Calendar className="w-4 h-4" />
+                    תאריך יעד לרכישה
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-1 pb-3 px-3">
+                  {(() => {
+                    // Get current month or use target date if set
+                    const currentDate = data.propertyData.targetDate ? new Date(data.propertyData.targetDate) : new Date();
+                    const year = currentDate.getFullYear();
+                    const month = currentDate.getMonth();
+
+                    // Navigation functions
+                    const goToPreviousMonth = () => {
+                      const newDate = new Date(currentDate);
+                      newDate.setMonth(newDate.getMonth() - 1);
+                      setData(prev => ({
+                        ...prev,
+                        propertyData: { ...prev.propertyData, targetDate: newDate.toISOString().split('T')[0] }
+                      }));
+                    };
+
+                    const goToNextMonth = () => {
+                      const newDate = new Date(currentDate);
+                      newDate.setMonth(newDate.getMonth() + 1);
+                      setData(prev => ({
+                        ...prev,
+                        propertyData: { ...prev.propertyData, targetDate: newDate.toISOString().split('T')[0] }
+                      }));
+                    };
+                    
+                    // Get first day of month and last day
+                    const firstDay = new Date(year, month, 1);
+                    const lastDay = new Date(year, month + 1, 0);
+                    const daysInMonth = lastDay.getDate();
+                    const startingDayOfWeek = firstDay.getDay();
+
+                    // Hebrew day names
+                    const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+
+                    return (
+                      <div className="space-y-1">
+                        {/* Month/Year header with navigation */}
+                        <div className="flex items-center justify-between mb-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={goToPreviousMonth}
+                            className="h-5 w-5 p-0"
+                          >
+                            <ArrowRight className="w-2.5 h-2.5" />
+                          </Button>
+                          <div className="font-bold text-sm text-gray-900">
+                            {currentDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={goToNextMonth}
+                            className="h-5 w-5 p-0"
+                          >
+                            <ArrowLeft className="w-2.5 h-2.5" />
+                          </Button>
+                        </div>
+
+                        {/* Calendar grid */}
+                        <div className="grid grid-cols-7 gap-1 bg-gray-100 p-1 rounded">
+                          {/* Day names */}
+                          {dayNames.map(day => (
+                            <div key={day} className="text-center text-[9px] font-bold text-gray-600 bg-white p-1 rounded-sm">
+                              {day}
+                            </div>
+                          ))}
+
+                          {/* Empty cells for days before month starts */}
+                          {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                            <div key={`empty-${i}`} className="bg-white rounded h-8" />
+                          ))}
+
+                          {/* Days of month */}
+                          {Array.from({ length: daysInMonth }).map((_, i) => {
+                            const day = i + 1;
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const isSelected = data.propertyData.targetDate === dateStr;
+
+                            return (
+                              <button
+                                key={day}
+                                onClick={() => setData(prev => ({
+                                  ...prev,
+                                  propertyData: { ...prev.propertyData, targetDate: dateStr }
+                                }))}
+                                className={`
+                                  h-8 text-xs font-medium transition-all relative rounded
+                                  ${isSelected
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-900'
+                                  }
+                                `}
+                              >
+                                <div className="flex items-center justify-center h-full">
+                                  <span className="text-[10px] font-bold">{day}</span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Selected date info */}
+                        {data.propertyData.targetDate && (
+                          <div className="mt-1 p-1.5 bg-blue-50 rounded text-[9px] border border-blue-200">
+                            <div className="font-bold text-blue-900">
+                              תאריך נבחר: {new Date(data.propertyData.targetDate).toLocaleDateString('he-IL', { 
+                                day: 'numeric', 
+                                month: 'long', 
+                                year: 'numeric' 
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-
-        <div className="flex justify-center pt-6">
-          <Button
-            onClick={() => setData(prev => ({ ...prev, currentStep: 1 }))}
-            disabled={!data.propertyData.price || !data.propertyData.targetDate}
-            size="lg"
-            className="px-8"
-          >
-            המשך להוצאות
-            <ArrowRight className="w-5 h-5 mr-2" />
-          </Button>
-        </div>
-      </div>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   // Helper to get category color class
   const getCategoryColorClass = (color: string) => {
@@ -733,6 +888,79 @@ export default function EquityPlanningTool() {
       animate={{ opacity: 1, y: 0 }}
         className="space-y-4"
       >
+        {/* Dashboard Summary Row */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Property Price Card */}
+          <Card className="bg-gradient-to-br from-slate-50 to-gray-50">
+            <CardContent className="pt-6 pb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-600 mb-1">עלות דירה</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ₪{(data.propertyData.price / 1000).toFixed(0)}K
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                  <HomeIcon className="w-6 h-6 text-gray-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Equity Card */}
+          {equityExpense && (
+            <Card className="bg-gradient-to-br from-emerald-50 to-teal-50">
+              <CardContent className="pt-6 pb-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-emerald-700 mb-1">הון עצמי</p>
+                    <p className="text-2xl font-bold text-emerald-900">
+                      ₪{(equityExpense.amount / 1000).toFixed(0)}K
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-emerald-200 rounded-full flex items-center justify-center">
+                    <Banknote className="w-6 h-6 text-emerald-700" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Additional Expenses Card */}
+          <Card className="bg-gradient-to-br from-orange-50 to-amber-50">
+            <CardContent className="pt-6 pb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-orange-700 mb-1">הוצאות נלוות</p>
+                  <p className="text-2xl font-bold text-orange-900">
+                    ₪{(data.expenses.filter(e => e.categoryId !== 'equity').reduce((sum, e) => sum + e.amount, 0) / 1000).toFixed(0)}K
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-orange-200 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-orange-700" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Total Required Card */}
+          <Card className="bg-gradient-to-br from-blue-500 to-indigo-600">
+            <CardContent className="pt-6 pb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-blue-100 mb-1">סה״כ נדרש</p>
+                  <p className="text-2xl font-bold text-white">
+                    ₪{(totals.totalExpenses / 1000).toFixed(0)}K
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <Calculator className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main collapsible table - 2/3 width */}
           <div className="lg:col-span-2">
@@ -750,10 +978,17 @@ export default function EquityPlanningTool() {
                             מסונן: {new Date(selectedDate).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })}
                           </Badge>
                         )}
+                        {selectedCategoryFilter && (
+                          <Badge variant="secondary" className="mr-2 bg-white/20 text-white border-white/30">
+                            קטגוריה: {CATEGORIES.find(c => c.id === selectedCategoryFilter)?.name}
+                          </Badge>
+                        )}
                       </h3>
                       <p className="text-sm text-blue-100">
                         {selectedDate 
                           ? `${data.expenses.filter(e => e.paymentDate === selectedDate).length} סעיפים ביום זה`
+                          : selectedCategoryFilter
+                          ? `${data.expenses.filter(e => e.categoryId === selectedCategoryFilter).length} סעיפים בקטגוריה`
                           : `${CATEGORIES.length} קטגוריות | ${data.expenses.length} סעיפים`
                         }
                       </p>
@@ -764,11 +999,14 @@ export default function EquityPlanningTool() {
                     <div className="text-xs text-blue-100">{totals.percentageOfPrice.toFixed(1)}% מהנכס</div>
                   </div>
                 </div>
-                {selectedDate && (
+                {(selectedDate || selectedCategoryFilter) && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setSelectedDate(null)}
+                    onClick={() => {
+                      setSelectedDate(null);
+                      setSelectedCategoryFilter(null);
+                    }}
                     className="mt-2 text-white hover:bg-white/20"
                   >
                     <X className="w-3 h-3 ml-1" />
@@ -810,13 +1048,18 @@ export default function EquityPlanningTool() {
                           categoryExpenses = categoryExpenses.filter(exp => exp.paymentDate === selectedDate);
                         }
                         
+                        // Apply category filter
+                        if (selectedCategoryFilter && category.id !== selectedCategoryFilter) {
+                          return null;
+                        }
+                        
           const categoryTotal = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-                        const isExpanded = expandedCategories.has(category.id) || (selectedDate !== null && categoryExpenses.length > 0);
+                        const isExpanded = expandedCategories.has(category.id) || (selectedDate !== null && categoryExpenses.length > 0) || (selectedCategoryFilter === category.id);
                         const hasItems = categoryExpenses.length > 0;
                         const isEquityCategory = category.id === 'equity';
                         
                         // Skip category if filtered and no expenses
-                        if (selectedDate && !hasItems && category.id !== 'equity') {
+                        if ((selectedDate || selectedCategoryFilter) && !hasItems && category.id !== 'equity') {
                           return null;
                         }
 
@@ -979,7 +1222,9 @@ export default function EquityPlanningTool() {
                                       animate={{ opacity: 1, height: 'auto' }}
                                       exit={{ opacity: 0, height: 0 }}
                                       transition={{ duration: 0.2 }}
-                                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-blue-50/30 transition-colors border-b border-gray-100`}
+                                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-blue-50/30 transition-colors border-b border-gray-100 ${
+                                        expense.status === 'paid' ? 'bg-green-50/50 border-green-200' : ''
+                                      }`}
                                     >
                                       {/* Small Category Indicator - same colSpan as parent */}
                                       <td className="px-4 py-3" colSpan={2}>
@@ -995,7 +1240,9 @@ export default function EquityPlanningTool() {
                                             value={expense.description}
                                             onChange={(e) => updateExpenseInline(expense.id, 'description', e.target.value)}
                                             placeholder="תיאור ההוצאה"
-                                            className="text-right text-sm font-medium border-0 bg-transparent hover:bg-white focus:bg-white transition-colors"
+                                            className={`text-right text-sm font-medium border-0 bg-transparent hover:bg-white focus:bg-white transition-colors ${
+                                              expense.status === 'paid' ? 'line-through text-green-600' : ''
+                                            }`}
                                           />
                                           {expense.notes && (
                                             <p className="text-xs text-gray-500 pr-3">{expense.notes}</p>
@@ -1023,7 +1270,9 @@ export default function EquityPlanningTool() {
                                               value={expense.amount || ''}
                                               onChange={(e) => updateExpenseInline(expense.id, 'amount', parseFloat(e.target.value) || 0)}
                                               placeholder="0"
-                                              className="text-right text-base font-bold border-0 bg-transparent hover:bg-white focus:bg-white transition-colors pr-2 text-gray-900"
+                                              className={`text-right text-base font-bold border-0 bg-transparent hover:bg-white focus:bg-white transition-colors pr-2 ${
+                                                expense.status === 'paid' ? 'text-green-600 line-through' : 'text-gray-900'
+                                              }`}
                                             />
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">₪</span>
                                           </div>
@@ -1037,9 +1286,29 @@ export default function EquityPlanningTool() {
                                         </div>
                                       </td>
 
-                                      {/* Delete button */}
+                                      {/* Status & Actions */}
                                       <td className="px-4 py-3">
-                                        <div className="flex justify-center">
+                                        <div className="flex justify-center items-center gap-1">
+                                          {/* Payment Status Toggle */}
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => updateExpenseInline(expense.id, 'status', 
+                                              expense.status === 'paid' ? 'planned' : 'paid'
+                                            )}
+                                            className={`h-9 w-9 p-0 transition-colors ${
+                                              expense.status === 'paid' 
+                                                ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                                                : 'hover:bg-gray-50 hover:text-gray-600'
+                                            }`}
+                                          >
+                                            {expense.status === 'paid' ? (
+                                              <CheckCircle className="w-4 h-4" />
+                                            ) : (
+                                              <Clock className="w-4 h-4" />
+                                            )}
+                                          </Button>
+                                          {/* Delete button */}
                                           <Button
                                             size="sm"
                                             variant="ghost"
@@ -1089,16 +1358,16 @@ export default function EquityPlanningTool() {
           </div>
 
           {/* Calendar, Pie chart & Summary - 1/3 width */}
-          <div className="lg:col-span-1 space-y-3">
-            {/* Calendar - MOVED TO TOP */}
-            <Card>
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-3 h-3" />
+          <div className="lg:col-span-1 space-y-2">
+            {/* Calendar - Larger */}
+            <Card className="flex-shrink-0">
+              <CardHeader className="pb-1 pt-2 px-3">
+                <CardTitle className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Calendar className="w-3.5 h-3.5" />
                   לוח תשלומים
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-1 pb-3">
+              <CardContent className="pt-0 pb-2 px-3">
                 {(() => {
                   // Group expenses by date
                   const expensesByDate = data.expenses.reduce((acc, expense) => {
@@ -1147,7 +1416,7 @@ export default function EquityPlanningTool() {
                   const dayNames = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 
                   return (
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       {/* Month/Year header with navigation */}
                       <div className="flex items-center justify-between mb-1">
                         <Button
@@ -1158,8 +1427,8 @@ export default function EquityPlanningTool() {
                         >
                           <ArrowRight className="w-2.5 h-2.5" />
                         </Button>
-                        <div className="font-bold text-[10px] text-gray-900">
-                          {displayDate.toLocaleDateString('he-IL', { month: 'short', year: '2-digit' })}
+                        <div className="font-bold text-xs text-gray-900">
+                          {displayDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
                         </div>
                         <Button
                           size="sm"
@@ -1171,18 +1440,18 @@ export default function EquityPlanningTool() {
                         </Button>
                       </div>
 
-                      {/* Calendar grid */}
-                      <div className="grid grid-cols-7 gap-px bg-gray-200 p-px rounded">
+                      {/* Calendar grid - LARGER */}
+                      <div className="grid grid-cols-7 gap-1 bg-gray-100 p-1 rounded">
                         {/* Day names */}
                         {dayNames.map(day => (
-                          <div key={day} className="text-center text-[8px] font-semibold text-gray-600 bg-white p-0.5">
+                          <div key={day} className="text-center text-[9px] font-bold text-gray-600 bg-white p-1 rounded-sm">
                             {day}
                           </div>
                         ))}
 
                         {/* Empty cells for days before month starts */}
                         {Array.from({ length: startingDayOfWeek }).map((_, i) => (
-                          <div key={`empty-${i}`} className="bg-white" style={{ aspectRatio: '1' }} />
+                          <div key={`empty-${i}`} className="bg-white rounded h-12" />
                         ))}
 
                         {/* Days of month */}
@@ -1206,27 +1475,24 @@ export default function EquityPlanningTool() {
                               key={day}
                               onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                               className={`
-                                p-px text-xs font-medium transition-all relative
+                                h-12 text-xs font-medium transition-all relative rounded
                                 ${hasExpenses 
                                   ? isSelected
-                                    ? 'bg-blue-600 text-white'
+                                    ? 'bg-blue-600 text-white shadow-md'
                                     : 'bg-blue-50 text-blue-900 hover:bg-blue-100'
-                                  : 'bg-white text-gray-400'
+                                  : 'bg-white text-gray-500 hover:bg-gray-50'
                                 }
                               `}
-                              style={{ aspectRatio: '1' }}
                             >
-                              <div className="flex flex-col items-center justify-center h-full">
-                                <span className="text-[7px] font-bold leading-none">{day}</span>
+                              <div className="flex flex-col items-center justify-center h-full gap-0.5 p-1">
+                                <span className={`text-[10px] font-bold leading-none ${hasExpenses ? 'text-blue-900' : ''} ${isSelected ? 'text-white' : ''}`}>
+                                  {day}
+                                </span>
                                 {hasExpenses && primaryCategory && (
-                                  <div className={`w-2 h-2 rounded-sm flex items-center justify-center mt-px ${
-                                    isSelected ? 'bg-white/20' : getCategoryColorClass(primaryCategory.color)
-                                  }`}>
-                                    <primaryCategory.icon className="w-1 h-1" />
-                                  </div>
+                                  <primaryCategory.icon className={`w-5 h-5 mt-0.5 ${isSelected ? 'text-white' : ''}`} />
                                 )}
                                 {hasExpenses && dayExpenses.length > 1 && (
-                                  <span className="absolute top-0 right-0 text-[5px] bg-red-500 text-white rounded-full w-2 h-2 flex items-center justify-center leading-none">
+                                  <span className="absolute top-0.5 right-0.5 text-[7px] bg-red-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none font-bold">
                                     {dayExpenses.length}
                                   </span>
                                 )}
@@ -1236,9 +1502,9 @@ export default function EquityPlanningTool() {
                         })}
                       </div>
 
-                      {/* Selected date info - very compact */}
+                      {/* Selected date info */}
                       {selectedDate && expensesByDate[selectedDate] && expensesByDate[selectedDate].length > 0 && (
-                        <div className="mt-1 p-1 bg-blue-50 rounded text-[8px]">
+                        <div className="mt-1 p-1.5 bg-blue-50 rounded text-[9px] border border-blue-200">
                           <div className="font-bold text-blue-900">
                             {expensesByDate[selectedDate].length} הוצאות | ₪{(expensesByDate[selectedDate].reduce((sum, e) => sum + e.amount, 0) / 1000).toFixed(0)}K
                           </div>
@@ -1251,19 +1517,19 @@ export default function EquityPlanningTool() {
             </Card>
 
             {/* Pie Chart */}
-            <Card>
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <PieChart className="w-3 h-3" />
+            <Card className="flex-shrink-0">
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <PieChart className="w-5 h-5" />
                   חלוקת ההון
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1 pt-1 pb-3">
+              <CardContent className="space-y-3 pt-2 pb-4 px-4">
                 {/* SVG Pie Chart */}
                 {totalForPie > 0 ? (
                   <>
-                    <div className="w-full aspect-square flex items-center justify-center max-h-32">
-                      <svg viewBox="0 0 200 200" className="w-full h-full">
+                    <div className="w-full flex items-center justify-center relative" style={{ height: '240px' }}>
+                      <svg viewBox="0 0 200 200" className="w-full h-full" style={{ maxWidth: '240px', maxHeight: '240px' }}>
                         {(() => {
                           let currentAngle = 0;
                           return categoryTotals.map((cat, index) => {
@@ -1276,52 +1542,93 @@ export default function EquityPlanningTool() {
                             // Calculate path for pie slice
                             const startRad = (startAngle - 90) * (Math.PI / 180);
                             const endRad = (endAngle - 90) * (Math.PI / 180);
-                            const x1 = 100 + 80 * Math.cos(startRad);
-                            const y1 = 100 + 80 * Math.sin(startRad);
-                            const x2 = 100 + 80 * Math.cos(endRad);
-                            const y2 = 100 + 80 * Math.sin(endRad);
+                            const x1 = 100 + 90 * Math.cos(startRad);
+                            const y1 = 100 + 90 * Math.sin(startRad);
+                            const x2 = 100 + 90 * Math.cos(endRad);
+                            const y2 = 100 + 90 * Math.sin(endRad);
                             const largeArc = angle > 180 ? 1 : 0;
 
+                            const isHovered = hoveredPieSegment === cat.id;
+                            const isSelected = selectedCategoryFilter === cat.id;
+
                             return (
-                              <path
-                                key={cat.id}
-                                d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                                fill={getCategoryBgColor(cat.color)}
-                                opacity="0.9"
-                                className="hover:opacity-100 transition-opacity cursor-pointer"
-                              />
+                              <g key={cat.id}>
+                                <path
+                                  d={`M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                                  fill={getCategoryBgColor(cat.color)}
+                                  opacity={isHovered || isSelected ? "1" : "0.85"}
+                                  className={`transition-all cursor-pointer ${isHovered ? 'scale-105' : ''} ${isSelected ? 'drop-shadow-lg' : ''}`}
+                                  onClick={() => {
+                                    setSelectedDate(null);
+                                    setSelectedCategoryFilter(prev => prev === cat.id ? null : cat.id);
+                                  }}
+                                  onMouseEnter={() => setHoveredPieSegment(cat.id)}
+                                  onMouseLeave={() => setHoveredPieSegment(null)}
+                                  style={{ 
+                                    transform: (isHovered || isSelected) ? 'scale(1.05)' : 'scale(1)',
+                                    transformOrigin: 'center',
+                                    filter: isSelected ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))' : 'none'
+                                  }}
+                                />
+                              </g>
                             );
                           });
                         })()}
                         {/* Center white circle for donut effect */}
                         <circle cx="100" cy="100" r="50" fill="white" />
-                        <text x="100" y="95" textAnchor="middle" className="text-xs font-bold fill-gray-700">
+                        <text x="100" y="95" textAnchor="middle" className="text-sm font-bold fill-gray-700">
                           סה״כ
                         </text>
-                        <text x="100" y="110" textAnchor="middle" className="text-lg font-bold fill-gray-900">
+                        <text x="100" y="112" textAnchor="middle" className="text-2xl font-bold fill-gray-900">
                           {(totalForPie / 1000).toFixed(0)}K
                         </text>
                       </svg>
-                  </div>
-
-                    {/* Legend */}
-                    <div className="space-y-0.5 max-h-24 overflow-y-auto">
-                      {categoryTotals.map((cat) => {
+                      {/* Tooltip */}
+                      {hoveredPieSegment && (() => {
+                        const cat = categoryTotals.find(c => c.id === hoveredPieSegment);
+                        if (!cat) return null;
                         const percentage = (cat.total / totalForPie) * 100;
                         return (
-                          <div key={cat.id} className="flex items-center justify-between gap-1 p-1 rounded hover:bg-gray-50">
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 bg-gray-900 text-white text-xs px-2.5 py-1.5 rounded shadow-lg whitespace-nowrap pointer-events-none z-10">
+                            {cat.name}: ₪{(cat.total / 1000).toFixed(0)}K ({percentage.toFixed(0)}%)
+                          </div>
+                        );
+                      })()}
+                  </div>
+
+                    {/* Legend - Compact Grid Layout */}
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                      {categoryTotals.map((cat) => {
+                        const percentage = (cat.total / totalForPie) * 100;
+                        const isHovered = hoveredPieSegment === cat.id;
+                        const isSelected = selectedCategoryFilter === cat.id;
+                        return (
+                          <div 
+                            key={cat.id} 
+                            className={`flex items-center justify-between gap-1 px-2 py-1.5 rounded transition-all cursor-pointer ${
+                              isHovered || isSelected ? 'bg-gray-200 shadow-sm' : 'hover:bg-gray-50'
+                            }`}
+                            onClick={() => {
+                              setSelectedDate(null);
+                              setSelectedCategoryFilter(prev => prev === cat.id ? null : cat.id);
+                            }}
+                            onMouseEnter={() => setHoveredPieSegment(cat.id)}
+                            onMouseLeave={() => setHoveredPieSegment(null)}
+                          >
                             <div className="flex items-center gap-1 flex-1 min-w-0">
                               <div 
-                                className="w-2 h-2 rounded-sm flex-shrink-0"
+                                className={`w-3 h-3 rounded flex-shrink-0 transition-transform ${isHovered || isSelected ? 'scale-110' : ''}`}
                                 style={{ backgroundColor: getCategoryBgColor(cat.color) }}
                               />
-                              <span className="text-[10px] font-medium text-gray-700 truncate">{cat.name}</span>
+                              <span className={`text-[11px] truncate ${isHovered || isSelected ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+                                {cat.name}
+                              </span>
                             </div>
-                            <div className="text-left flex-shrink-0">
-                              <span className="text-[10px] font-bold text-gray-900">
+                            <div className="flex items-baseline gap-0.5 flex-shrink-0">
+                              <span className={`text-xs font-bold ${isHovered || isSelected ? 'text-gray-900' : 'text-gray-700'}`}>
                                 ₪{(cat.total / 1000).toFixed(0)}K
                               </span>
-                              <span className="text-[8px] text-gray-500 ml-1">
+                              <span className="text-[9px] text-gray-500">
                                 {percentage.toFixed(0)}%
                               </span>
                             </div>
@@ -1338,52 +1645,6 @@ export default function EquityPlanningTool() {
                 )}
                 </CardContent>
               </Card>
-
-
-            {/* Summary */}
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="flex items-center gap-2 text-blue-900 text-sm">
-                  <Banknote className="w-3 h-3" />
-                  סיכום
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-0.5 pt-1 pb-2">
-                {/* Property Price */}
-                <div className="flex justify-between items-center py-1 border-b border-blue-200">
-                  <span className="text-[10px] font-medium text-gray-700">עלות דירה</span>
-                  <span className="text-xs font-bold text-gray-900">
-                    ₪{(data.propertyData.price / 1000).toFixed(0)}K
-                  </span>
-                </div>
-
-                {/* Equity */}
-                {equityExpense && (
-                  <div className="flex justify-between items-center py-1 border-b border-blue-200">
-                    <span className="text-[10px] font-medium text-emerald-700">הון עצמי</span>
-                    <span className="text-xs font-bold text-emerald-900">
-                      ₪{(equityExpense.amount / 1000).toFixed(0)}K
-                    </span>
-                  </div>
-                )}
-
-                {/* Additional Expenses */}
-                <div className="flex justify-between items-center py-1 border-b border-blue-200">
-                  <span className="text-[10px] font-medium text-orange-700">הוצאות נלוות</span>
-                  <span className="text-xs font-bold text-orange-900">
-                    ₪{(data.expenses.filter(e => e.categoryId !== 'equity').reduce((sum, e) => sum + e.amount, 0) / 1000).toFixed(0)}K
-                  </span>
-                </div>
-
-                {/* Total Required */}
-                <div className="flex justify-between items-center py-2 bg-blue-600 -mx-6 -mb-6 px-6 pb-6 rounded-b-lg mt-1">
-                  <span className="text-xs font-bold text-white">סה״כ נדרש</span>
-                  <span className="text-lg font-bold text-white">
-                    ₪{(totals.totalExpenses / 1000).toFixed(0)}K
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
       </div>
 
@@ -1392,7 +1653,7 @@ export default function EquityPlanningTool() {
           variant="outline"
           onClick={() => setData(prev => ({ ...prev, currentStep: 0 }))}
         >
-          <ArrowLeft className="w-5 h-5 ml-2" />
+          <ArrowRight className="w-5 h-5 ml-2" />
           חזור
         </Button>
         <Button
@@ -1401,7 +1662,7 @@ export default function EquityPlanningTool() {
           className="px-8"
         >
           המשך לסיכום
-          <ArrowRight className="w-5 h-5 mr-2" />
+          <ArrowLeft className="w-5 h-5 mr-2" />
         </Button>
       </div>
     </motion.div>
@@ -1682,8 +1943,12 @@ export default function EquityPlanningTool() {
                     .map((expense) => {
                       const category = CATEGORIES.find(c => c.id === expense.categoryId);
                       return (
-                        <tr key={expense.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-right font-medium">{expense.description}</td>
+                        <tr key={expense.id} className={`hover:bg-gray-50 ${
+                          expense.status === 'paid' ? 'bg-green-50/30' : ''
+                        }`}>
+                          <td className={`px-4 py-3 text-right font-medium ${
+                            expense.status === 'paid' ? 'line-through text-green-600' : ''
+                          }`}>{expense.description}</td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center gap-2 justify-end">
                               {category && (
@@ -1694,7 +1959,9 @@ export default function EquityPlanningTool() {
                               <span className="text-sm">{category?.name}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right font-bold">₪{expense.amount.toLocaleString()}</td>
+                          <td className={`px-4 py-3 text-right font-bold ${
+                            expense.status === 'paid' ? 'text-green-600 line-through' : ''
+                          }`}>₪{expense.amount.toLocaleString()}</td>
                           <td className="px-4 py-3 text-right text-sm">
                             {new Date(expense.paymentDate).toLocaleDateString('he-IL')}
                           </td>
@@ -1733,7 +2000,7 @@ export default function EquityPlanningTool() {
             variant="outline"
             onClick={() => setData(prev => ({ ...prev, currentStep: 1 }))}
           >
-            <ArrowLeft className="w-5 h-5 ml-2" />
+            <ArrowRight className="w-5 h-5 ml-2" />
             חזור
           </Button>
           <Button onClick={exportToCSV} variant="outline">

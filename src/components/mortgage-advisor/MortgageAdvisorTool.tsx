@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calculator, TrendingUp, PieChart, Home, Users } from 'lucide-react';
+import { Plus, Calculator, TrendingUp, PieChart, Home, Users, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import type { MortgageMix, MortgageAdvisorState } from './types';
 import { MortgageMixBuilder } from './MortgageMixBuilder';
 import { MortgageMixCard } from './MortgageMixCard';
 import { ComparisonPanel } from './ComparisonPanel';
 import { MortgageDetailsModal } from './MortgageDetailsModal';
 import { ScenarioAnalysis } from './ScenarioAnalysis';
+import { MortgageOptimizer } from './MortgageOptimizer';
 
 const STORAGE_KEY = 'mortgage-advisor-state';
 
@@ -21,9 +22,12 @@ export function MortgageAdvisorTool() {
   });
   
   const [showBuilder, setShowBuilder] = useState(false);
+  const [showOptimizer, setShowOptimizer] = useState(false);
   const [editingMix, setEditingMix] = useState<MortgageMix | undefined>();
+  const [builderMode, setBuilderMode] = useState<'create' | 'edit'>('create');
   const [showDetailsModal, setShowDetailsModal] = useState<MortgageMix | null>(null);
   const [showScenarioAnalysis, setShowScenarioAnalysis] = useState<MortgageMix | null>(null);
+  const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
 
   // טעינה משמירה מקומית
   useEffect(() => {
@@ -47,9 +51,24 @@ export function MortgageAdvisorTool() {
     }
   }, [state]);
 
+
   const addMix = () => {
     setEditingMix(undefined);
+    setBuilderMode('create');
     setShowBuilder(true);
+    navigateTo('builder');
+  };
+
+  const openOptimizer = () => {
+    setShowOptimizer(true);
+    navigateTo('optimizer');
+  };
+
+  const editMix = (mix: MortgageMix) => {
+    setEditingMix(mix);
+    setBuilderMode('edit');
+    setShowBuilder(true);
+    navigateTo('builder');
   };
 
   const saveMix = (mix: MortgageMix) => {
@@ -60,7 +79,66 @@ export function MortgageAdvisorTool() {
         : [...prev.mixes, mix]
     }));
     setShowBuilder(false);
+    setShowOptimizer(false);
     setEditingMix(undefined);
+    setBuilderMode('create');
+    // חזרה למסך הראשי לאחר שמירה
+    goToHome();
+  };
+
+  const cancelEdit = () => {
+    setShowBuilder(false);
+    setEditingMix(undefined);
+    setBuilderMode('create');
+    // חזרה למסך הראשי לאחר ביטול
+    goToHome();
+  };
+
+  // פונקציות ניווט
+  const navigateTo = (screen: string) => {
+    setNavigationHistory(prev => [...prev, screen]);
+  };
+
+  const goBack = () => {
+    if (navigationHistory.length > 0) {
+      const previousScreen = navigationHistory[navigationHistory.length - 1];
+      setNavigationHistory(prev => prev.slice(0, -1));
+      
+      // סגירת כל המודלים והמסכים הפתוחים
+      setShowBuilder(false);
+      setShowOptimizer(false);
+      setShowDetailsModal(null);
+      setShowScenarioAnalysis(null);
+      setEditingMix(undefined);
+      
+      // החזרה למסך הקודם לפי הסוג
+      if (previousScreen === 'builder') {
+        setState(prev => ({ ...prev, activeTab: 'builder' }));
+      } else if (previousScreen === 'compare') {
+        setState(prev => ({ ...prev, activeTab: 'compare' }));
+      } else {
+        // אם אין מסך קודם ספציפי, חזור למסך הראשי
+        setState(prev => ({ ...prev, activeTab: 'builder' }));
+      }
+    }
+  };
+
+  const goToHome = () => {
+    // איפוס כל המצבים בבת אחת
+    setShowBuilder(false);
+    setShowOptimizer(false);
+    setShowDetailsModal(null);
+    setShowScenarioAnalysis(null);
+    setEditingMix(undefined);
+    setBuilderMode('create');
+    setNavigationHistory([]);
+    
+    // חזרה למסך הראשי
+    setState(prevState => ({
+      ...prevState,
+      selectedForComparison: [],
+      activeTab: 'builder'
+    }));
   };
 
   const updateMix = (updatedMix: MortgageMix) => {
@@ -94,11 +172,6 @@ export function MortgageAdvisorTool() {
     }));
   };
 
-  const editMix = (mix: MortgageMix) => {
-    setEditingMix(mix);
-    setShowBuilder(true);
-  };
-
   const toggleMixSelection = (id: string) => {
     setState(prev => ({
       ...prev,
@@ -120,20 +193,77 @@ export function MortgageAdvisorTool() {
       ...prev,
       activeTab: value as any
     }));
+    navigateTo(value);
   };
 
   const showDetails = (mix: MortgageMix) => {
     setShowDetailsModal(mix);
+    navigateTo('details');
   };
 
   const showScenarios = (mix: MortgageMix) => {
     setShowScenarioAnalysis(mix);
+    navigateTo('scenarios');
   };
+
+  if (showOptimizer) {
+    return (
+      <div className="min-h-screen bg-gray-50" dir="rtl">
+        <div className="container mx-auto px-4 py-8">
+          {/* כפתורי ניווט */}
+          <div className="flex justify-between items-center mb-6">
+            <Button 
+              variant="outline" 
+              onClick={goBack}
+              disabled={navigationHistory.length === 0}
+              className="flex items-center gap-2"
+            >
+              <ArrowRight className="h-4 w-4" />
+              חזור
+            </Button>
+            <div></div>
+            <Button 
+              variant="outline" 
+              onClick={goToHome}
+              className="flex items-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              עמוד ראשי
+            </Button>
+          </div>
+
+          <MortgageOptimizer onSelectMix={saveMix} />
+        </div>
+      </div>
+    );
+  }
 
   if (showBuilder) {
     return (
       <div className="min-h-screen bg-gray-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
+          {/* כפתורי ניווט */}
+          <div className="flex justify-between items-center mb-6">
+            <Button 
+              variant="outline" 
+              onClick={goBack}
+              disabled={navigationHistory.length === 0}
+              className="flex items-center gap-2"
+            >
+              <ArrowRight className="h-4 w-4" />
+              חזור
+            </Button>
+            <div></div>
+            <Button 
+              variant="outline" 
+              onClick={goToHome}
+              className="flex items-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              עמוד ראשי
+            </Button>
+          </div>
+
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
               {editingMix ? 'עריכת תמהיל משכנתא' : 'בניית תמהיל משכנתא חדש'}
@@ -146,10 +276,7 @@ export function MortgageAdvisorTool() {
           <MortgageMixBuilder
             onSave={saveMix}
             editingMix={editingMix}
-            onCancel={() => {
-              setShowBuilder(false);
-              setEditingMix(undefined);
-            }}
+            onCancel={cancelEdit}
           />
         </div>
       </div>
@@ -160,9 +287,34 @@ export function MortgageAdvisorTool() {
     return (
       <div className="min-h-screen bg-gray-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
+          {/* כפתורי ניווט */}
+          <div className="flex justify-between items-center mb-6">
+            <Button 
+              variant="outline" 
+              onClick={goBack}
+              disabled={navigationHistory.length === 0}
+              className="flex items-center gap-2"
+            >
+              <ArrowRight className="h-4 w-4" />
+              חזור
+            </Button>
+            <div></div>
+            <Button 
+              variant="outline" 
+              onClick={goToHome}
+              className="flex items-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              עמוד ראשי
+            </Button>
+          </div>
+
           <ScenarioAnalysis
             baseMix={showScenarioAnalysis}
-            onClose={() => setShowScenarioAnalysis(null)}
+            onClose={() => {
+              setShowScenarioAnalysis(null);
+              goToHome();
+            }}
           />
         </div>
       </div>
@@ -172,6 +324,28 @@ export function MortgageAdvisorTool() {
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
       <div className="container mx-auto px-4 py-8">
+        {/* כפתורי ניווט */}
+        <div className="flex justify-between items-center mb-6">
+          <Button 
+            variant="outline" 
+            onClick={goBack}
+            disabled={navigationHistory.length === 0}
+            className="flex items-center gap-2"
+          >
+            <ArrowRight className="h-4 w-4" />
+            חזור
+          </Button>
+          <div></div>
+          <Button 
+            variant="outline" 
+            onClick={goToHome}
+            className="flex items-center gap-2"
+          >
+            <Home className="h-4 w-4" />
+            עמוד ראשי
+          </Button>
+        </div>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
             <Home className="h-10 w-10 text-blue-600" />
@@ -207,11 +381,29 @@ export function MortgageAdvisorTool() {
           </TabsList>
 
           <TabsContent value="builder" className="space-y-6">
-            {/* כפתור הוספת תמהיל */}
-            <div className="text-center">
-              <Button onClick={addMix} className="px-6 py-3 text-lg">
-                <Plus className="h-5 w-5 ml-2" />
-                בנה תמהיל חדש
+            {/* כפתורי בניית תמהיל */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+              <Button 
+                onClick={addMix} 
+                variant="outline"
+                className="px-6 py-6 text-lg h-auto flex-col gap-2 border-2 hover:border-blue-500 hover:bg-blue-50"
+              >
+                <Plus className="h-8 w-8" />
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold">בנייה ידנית</span>
+                  <span className="text-sm text-gray-600 font-normal">בנה תמהיל בהתאמה אישית מלאה</span>
+                </div>
+              </Button>
+              
+              <Button 
+                onClick={openOptimizer} 
+                className="px-6 py-6 text-lg h-auto flex-col gap-2 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 border-2 border-purple-400"
+              >
+                <TrendingUp className="h-8 w-8" />
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold">אופטימיזציית תמהיל</span>
+                  <span className="text-sm text-purple-100 font-normal">קבל המלצות חכמות מותאמות אישית</span>
+                </div>
               </Button>
             </div>
 
@@ -223,12 +415,18 @@ export function MortgageAdvisorTool() {
                   אין תמהילי משכנתא במערכת
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  התחל על ידי בניית התמהיל הראשון שלך
+                  התחל על ידי בניית תמהיל חדש או קבל המלצה אוטומטית
                 </p>
-                <Button onClick={addMix} className="px-6 py-3">
-                  <Plus className="h-5 w-5 ml-2" />
-                  בנה תמהיל ראשון
-                </Button>
+                <div className="flex gap-4 justify-center">
+                  <Button onClick={addMix} variant="outline" className="px-6 py-3">
+                    <Plus className="h-5 w-5 ml-2" />
+                    בנה תמהיל ידנית
+                  </Button>
+                  <Button onClick={openOptimizer} className="px-6 py-3 bg-purple-600 hover:bg-purple-700">
+                    <TrendingUp className="h-5 w-5 ml-2" />
+                    אופטימיזציית תמהיל
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
@@ -243,6 +441,7 @@ export function MortgageAdvisorTool() {
                       onShowDetails={showDetails}
                       onAnalyzeScenarios={showScenarios}
                       onToggleSelect={toggleMixSelection}
+                      onEdit={editMix}
                       isSelected={state.selectedForComparison.includes(mix.id)}
                     />
                   ))}
@@ -294,7 +493,10 @@ export function MortgageAdvisorTool() {
         <MortgageDetailsModal
           mix={showDetailsModal}
           isOpen={!!showDetailsModal}
-          onClose={() => setShowDetailsModal(null)}
+          onClose={() => {
+            setShowDetailsModal(null);
+            goToHome();
+          }}
         />
       </div>
     </div>

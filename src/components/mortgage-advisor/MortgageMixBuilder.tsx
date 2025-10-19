@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,18 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
   const [totalAmount, setTotalAmount] = useState(editingMix?.totalAmount || 1000000);
   const [tracks, setTracks] = useState<MortgageTrack[]>(editingMix?.tracks || []);
   const [notes, setNotes] = useState(editingMix?.notes || '');
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+
+  // פתיחת כל המסלולים במוד עריכה כאשר עורכים תמהיל קיים
+  useEffect(() => {
+    if (editingMix && editingMix.tracks.length > 0) {
+      // פתיחת המסלול הראשון במוד עריכה
+      setEditingTrackId(editingMix.tracks[0].id);
+    } else {
+      // איפוס מוד העריכה עבור תמהיל חדש
+      setEditingTrackId(null);
+    }
+  }, [editingMix]);
 
   const addTrack = () => {
     const remainingAmount = totalAmount - tracks.reduce((sum, track) => sum + track.amount, 0);
@@ -32,24 +44,30 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
     const newTrack: MortgageTrack = {
       id: `track-${Date.now()}`,
       name: `מסלול ${tracks.length + 1}`,
-      type: 'fixed',
+      type: 'fixed_unlinked',
       amount: suggestedAmount,
       percentage: totalAmount > 0 ? (suggestedAmount / totalAmount) * 100 : 0,
-      interestRate: DEFAULT_INTEREST_RATES.fixed,
-      years: 20
+      interestRate: DEFAULT_INTEREST_RATES.fixed_unlinked,
+      years: 20,
+      amortizationType: 'spitzer'
     };
     
     setTracks([...tracks, newTrack]);
+    setEditingTrackId(newTrack.id); // פתיחת המסלול החדש במוד עריכה
   };
 
   const updateTrack = (updatedTrack: MortgageTrack) => {
     setTracks(tracks.map(track => 
       track.id === updatedTrack.id ? updatedTrack : track
     ));
+    setEditingTrackId(null); // סגירת מוד העריכה לאחר השמירה
   };
 
   const deleteTrack = (id: string) => {
     setTracks(tracks.filter(track => track.id !== id));
+    if (editingTrackId === id) {
+      setEditingTrackId(null); // סגירת מוד העריכה אם מוחקים את המסלול הנערך
+    }
   };
 
   const handleSave = () => {
@@ -83,8 +101,13 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
-            פרטי התמהיל
+            {editingMix ? 'עריכת התמהיל' : 'פרטי התמהיל'}
           </CardTitle>
+          {editingMix && (
+            <p className="text-sm text-blue-600 mt-2">
+              📝 מצב עריכה - כל המסלולים זמינים לעריכה
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -161,6 +184,8 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
                 totalMortgageAmount={totalAmount}
                 onUpdate={updateTrack}
                 onDelete={deleteTrack}
+                isEditing={editingTrackId === track.id}
+                onStartEditing={() => setEditingTrackId(track.id)}
               />
             ))}
           </div>
