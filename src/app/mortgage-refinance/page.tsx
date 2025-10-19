@@ -316,20 +316,33 @@ export default function MortgageRefinancePage() {
               id: 'current-mix',
               name: `התמהיל הנוכחי - ${refinanceData.bankName}`,
               totalAmount: refinanceData.currentTracks.reduce((sum, track) => sum + track.remainingAmount, 0),
-              tracks: refinanceData.currentTracks.map(track => ({
-                id: track.id,
-                name: `${track.trackType === 'prime' ? 'פריים' :
-                       track.trackType === 'variable' ? 'משתנה' :
-                       track.trackType === 'fixed' ? 'קבועה' : 'צמודה למדד'}`,
-                type: track.trackType === 'indexLinked' ? 'madad' : track.trackType,
-                amount: track.remainingAmount,
-                percentage: (track.remainingAmount / refinanceData.currentTracks.reduce((sum, t) => sum + t.remainingAmount, 0)) * 100,
-                interestRate: track.interestRate,
-                years: track.remainingPeriod,
-                monthlyPayment: track.monthlyPayment,
-                totalInterest: 0,
-                totalPaid: 0
-              })),
+              tracks: refinanceData.currentTracks.map(track => {
+                // Map local track types to advisor track types
+                const mapTrackType = (localType: string) => {
+                  switch (localType) {
+                    case 'prime': return 'prime';
+                    case 'variable': return 'variable_unlinked';
+                    case 'fixed': return 'fixed_unlinked';
+                    case 'indexLinked': return 'fixed_linked';
+                    default: return 'prime';
+                  }
+                };
+
+                return {
+                  id: track.id,
+                  name: `${track.trackType === 'prime' ? 'פריים' :
+                         track.trackType === 'variable' ? 'משתנה' :
+                         track.trackType === 'fixed' ? 'קבועה' : 'צמודה למדד'}`,
+                  type: mapTrackType(track.trackType),
+                  amount: track.remainingAmount,
+                  percentage: (track.remainingAmount / refinanceData.currentTracks.reduce((sum, t) => sum + t.remainingAmount, 0)) * 100,
+                  interestRate: track.interestRate,
+                  years: track.remainingPeriod,
+                  monthlyPayment: track.monthlyPayment,
+                  totalInterest: 0,
+                  totalPaid: 0
+                };
+              }),
               createdAt: new Date(),
               notes: '',
               totalMonthlyPayment: refinanceData.currentTracks.reduce((sum, track) => sum + track.monthlyPayment, 0),

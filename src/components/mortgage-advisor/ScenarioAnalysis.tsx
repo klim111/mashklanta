@@ -325,7 +325,7 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
                   </div>
                 )}
 
-                {baseMix.tracks.filter(t => t.type === 'variable').length > 0 && (
+                {baseMix.tracks.filter(t => t.type === 'variable_unlinked' || t.type === 'variable_linked').length > 0 && (
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                       <TrendingUp className="h-4 w-4 text-blue-600" />
