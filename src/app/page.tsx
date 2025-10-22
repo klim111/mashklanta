@@ -15,6 +15,7 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isNavbarOpen, setIsNavbarOpen] = useState(false);
   const [showHamburger, setShowHamburger] = useState(false);
+  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 300], [0, -50]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0.9]);
@@ -142,7 +143,7 @@ export default function Home() {
                   }
                 }}
               >
-                בוא נתחיל
+                התחל עכשיו
                 <ArrowLeft className="w-5 h-5 mr-2" />
               </Button>
             </motion.div>

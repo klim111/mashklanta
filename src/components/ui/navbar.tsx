@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Dialog,
   DialogTrigger,
@@ -11,14 +12,16 @@ import {
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList } from "@/components/ui/navigation-menu";
-import { MenuIcon, Shield, Home, TrendingUp, Users, LogIn } from "lucide-react";
+import { MenuIcon, Shield, Home, TrendingUp, Users, LogIn, UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
+import AdvisorLoginModal from "@/components/ui/AdvisorLoginModal";
 
 export default function NavBar() {
   const { data: session, status } = useSession();
+  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
 
   return (
     <header className="bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
@@ -67,62 +70,24 @@ export default function NavBar() {
         ) : (
           // Not logged in
           <>
-            <Link href="/auth/login">
-              <Button variant="outline" size="lg" className="font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300">
-                <LogIn className="w-4 h-4 ml-2" />
-                התחברות
-              </Button>
-            </Link>
-
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="lg" className="font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-                  <TrendingUp className="w-4 h-4 ml-2" />
-                  התחל עכשיו
+            <div className="flex items-center gap-3">
+              <Link href="/auth/login">
+                <Button variant="outline" size="lg" className="font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300">
+                  <LogIn className="w-4 h-4 ml-2" />
+                  התחברות
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] bg-white">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-bold text-center text-gray-900">הצטרף לפלטפורמה</DialogTitle>
-                  <DialogDescription className="text-center text-gray-600">
-                    בחר את התוכנית המתאימה לך והתחל את המסע למשכנתא חכמה ומקצועית
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="fullName" className="text-gray-700 font-semibold">שם מלא</Label>
-                      <Input id="fullName" placeholder="שם מלא" className="mt-1" />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone" className="text-gray-700 font-semibold">טלפון</Label>
-                      <Input id="phone" type="tel" placeholder="050-1234567" className="mt-1" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="email-register" className="text-gray-700 font-semibold">אימייל</Label>
-                    <Input id="email-register" type="email" placeholder="you@example.com" className="mt-1" />
-                  </div>
-                  <div>
-                    <Label htmlFor="service" className="text-gray-700 font-semibold">בחר תוכנית</Label>
-                    <select id="service" className="w-full p-3 border-2 border-gray-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                      <option value="">בחר תוכנית...</option>
-                      <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
-                      <option value="hybrid">ייעוץ היברידי - ₪199</option>
-                      <option value="basic">כלים בסיסיים - ₪99</option>
-                    </select>
-                  </div>
-                  <Link href="/auth/register" className="block">
-                    <Button className="w-full text-lg py-4 font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-                      התחל עכשיו - ללא התחייבות
-                    </Button>
-                  </Link>
-                  <p className="text-xs text-center text-gray-500">
-                    כבר יש לך חשבון? <Link href="/auth/login" className="text-blue-600 underline font-semibold hover:text-blue-700">התחבר</Link>
-                  </p>
-                </div>
-              </DialogContent>
-            </Dialog>
+              </Link>
+
+              <Button 
+                size="lg" 
+                className="font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                onClick={() => setShowAdvisorModal(true)}
+              >
+                <UserCheck className="w-4 h-4 ml-2" />
+                כניסה ליועצים
+              </Button>
+            </div>
+
           </>
         )}
       </div>
@@ -178,23 +143,31 @@ export default function NavBar() {
                 <>
                   <Link href="/auth/login">
                     <Button variant="outline" size="lg" className="w-full font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600">
-                      <Shield className="w-4 h-4 ml-2" />
+                      <LogIn className="w-4 h-4 ml-2" />
                       התחברות
                     </Button>
                   </Link>
 
-                  <Link href="/auth/register">
-                    <Button size="lg" className="w-full font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-                      <TrendingUp className="w-4 h-4 ml-2" />
-                      התחל עכשיו
-                    </Button>
-                  </Link>
+                  <Button 
+                    size="lg" 
+                    className="w-full font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                    onClick={() => setShowAdvisorModal(true)}
+                  >
+                    <UserCheck className="w-4 h-4 ml-2" />
+                    כניסה ליועצים
+                  </Button>
+
                 </>
               )}
             </div>
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Advisor Login Modal */}
+      {showAdvisorModal && (
+        <AdvisorLoginModal onClose={() => setShowAdvisorModal(false)} />
+      )}
     </header>
   );
 } 

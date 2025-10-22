@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
 // Initialize Resend if API key is provided

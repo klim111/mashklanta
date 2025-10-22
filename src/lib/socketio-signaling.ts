@@ -1,0 +1,237 @@
+'use client';
+
+import { io, Socket } from 'socket.io-client';
+
+export interface SignalingMessage {
+  type: 'offer' | 'answer' | 'ice-candidate' | 'chat-message' | 'user-joined' | 'user-left' | 'call-ended' | 'screen-share-start' | 'screen-share-end';
+  data: any;
+  from: string;
+  to?: string;
+  callId: string;
+  timestamp: number;
+}
+
+export class SocketIOSignaling {
+  private socket: Socket | null = null;
+  private callId: string;
+  private userId: string;
+  private userType: string;
+  private onMessage: (message: SignalingMessage) => void;
+  private onConnectionChange: (connected: boolean) => void;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000;
+
+  constructor(
+    callId: string,
+    userId: string,
+    userType: 'advisor' | 'client',
+    onMessage: (message: SignalingMessage) => void,
+    onConnectionChange: (connected: boolean) => void
+  ) {
+    this.callId = callId;
+    this.userId = userId;
+    this.userType = userType;
+    this.onMessage = onMessage;
+    this.onConnectionChange = onConnectionChange;
+  }
+
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Connect to Socket.IO server
+        const serverUrl = process.env.NODE_ENV === 'production' 
+          ? `wss://${window.location.hostname}:3001`
+          : 'http://localhost:3001';
+        
+        this.socket = io(serverUrl, {
+          transports: ['websocket', 'polling'],
+          timeout: 20000,
+          forceNew: true
+        });
+
+        this.socket.on('connect', () => {
+          console.log('Socket.IO connected:', this.socket?.id);
+          this.reconnectAttempts = 0;
+          this.onConnectionChange(true);
+          
+          // Join the call room
+          this.socket?.emit('join-call', {
+            callId: this.callId,
+            userId: this.userId,
+            userType: this.userType
+          });
+          
+          resolve();
+        });
+
+        this.socket.on('disconnect', () => {
+          console.log('Socket.IO disconnected');
+          this.onConnectionChange(false);
+          this.attemptReconnect();
+        });
+
+        this.socket.on('connect_error', (error) => {
+          console.error('Socket.IO connection error:', error);
+          this.onConnectionChange(false);
+          this.attemptReconnect();
+        });
+
+        // Handle signaling messages
+        this.socket.on('webrtc-signal', (data) => {
+          const message: SignalingMessage = {
+            type: data.type,
+            data: data.signal,
+            from: data.from,
+            callId: this.callId,
+            timestamp: data.timestamp
+          };
+          this.onMessage(message);
+        });
+
+        // Handle chat messages
+        this.socket.on('chat-message', (data) => {
+          const message: SignalingMessage = {
+            type: 'chat-message',
+            data: { message: data.message },
+            from: data.from,
+            callId: this.callId,
+            timestamp: data.timestamp
+          };
+          this.onMessage(message);
+        });
+
+        // Handle user events
+        this.socket.on('user-joined', (data) => {
+          const message: SignalingMessage = {
+            type: 'user-joined',
+            data: { userId: data.userId, userType: data.userType },
+            from: data.userId,
+            callId: this.callId,
+            timestamp: data.timestamp
+          };
+          this.onMessage(message);
+        });
+
+        this.socket.on('user-left', (data) => {
+          const message: SignalingMessage = {
+            type: 'user-left',
+            data: { userId: data.userId, userType: data.userType },
+            from: data.userId,
+            callId: this.callId,
+            timestamp: data.timestamp
+          };
+          this.onMessage(message);
+        });
+
+        this.socket.on('call-ended', (data) => {
+          const message: SignalingMessage = {
+            type: 'call-ended',
+            data: {},
+            from: data.from,
+            callId: this.callId,
+            timestamp: data.timestamp
+          };
+          this.onMessage(message);
+        });
+
+        // Handle call info
+        this.socket.on('call-info', (data) => {
+          console.log('Call info received:', data);
+          // You can handle call info here if needed
+        });
+
+      } catch (error) {
+        console.error('Failed to connect to Socket.IO:', error);
+        reject(error);
+      }
+    });
+  }
+
+  private attemptReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.connect().catch(() => {
+          console.log('Reconnection failed');
+        });
+      }, this.reconnectDelay * this.reconnectAttempts);
+    } else {
+      console.log('Max reconnection attempts reached');
+    }
+  }
+
+  sendOffer(offer: RTCSessionDescriptionInit, to: string = 'broadcast') {
+    if (this.socket) {
+      this.socket.emit('webrtc-signal', {
+        type: 'offer',
+        target: to,
+        signal: offer
+      });
+    }
+  }
+
+  sendAnswer(answer: RTCSessionDescriptionInit, to: string = 'broadcast') {
+    if (this.socket) {
+      this.socket.emit('webrtc-signal', {
+        type: 'answer',
+        target: to,
+        signal: answer
+      });
+    }
+  }
+
+  sendIceCandidate(candidate: RTCIceCandidateInit, to: string = 'broadcast') {
+    if (this.socket) {
+      this.socket.emit('webrtc-signal', {
+        type: 'ice-candidate',
+        target: to,
+        signal: candidate
+      });
+    }
+  }
+
+  sendChatMessage(message: string) {
+    if (this.socket) {
+      this.socket.emit('chat-message', { message });
+    }
+  }
+
+  startScreenShare() {
+    if (this.socket) {
+      this.socket.emit('screen-share-start');
+    }
+  }
+
+  endScreenShare() {
+    if (this.socket) {
+      this.socket.emit('screen-share-end');
+    }
+  }
+
+  endCall() {
+    if (this.socket) {
+      this.socket.emit('end-call');
+    }
+  }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+  }
+}
+
+// Factory function to create signaling instance
+export function createSocketIOSignaling(
+  callId: string,
+  userId: string,
+  userType: 'advisor' | 'client',
+  onMessage: (message: SignalingMessage) => void,
+  onConnectionChange: (connected: boolean) => void
+): SocketIOSignaling {
+  return new SocketIOSignaling(callId, userId, userType, onMessage, onConnectionChange);
+}

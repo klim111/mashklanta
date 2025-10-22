@@ -30,7 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { WebRTCSignaling, SignalingMessage, createMockSignaling } from '@/lib/webrtc-signaling';
+import { SocketIOSignaling, SignalingMessage, createSocketIOSignaling } from '@/lib/socketio-signaling';
 
 interface CallState {
   isConnected: boolean;
@@ -71,7 +71,7 @@ export default function VideoCallPage({ params }: { params: { id: string } }) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const signalingRef = useRef<WebRTCSignaling | null>(null);
+  const signalingRef = useRef<SocketIOSignaling | null>(null);
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
 
   // Initialize devices and signaling
@@ -126,9 +126,10 @@ export default function VideoCallPage({ params }: { params: { id: string } }) {
     const callId = params.id;
     const userId = `client_${Date.now()}`;
     
-    const signaling = createMockSignaling(
+    const signaling = createSocketIOSignaling(
       callId,
       userId,
+      'client',
       handleSignalingMessage,
       setIsSignalingConnected
     );

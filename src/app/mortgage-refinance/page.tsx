@@ -219,7 +219,65 @@ export default function MortgageRefinancePage() {
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6">
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 mb-4">גרור ושחרר את הקובץ כאן או לחץ לבחירה</p>
-          <Button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white">
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            className="hidden"
+            id="document-upload"
+            onChange={async (e) => {
+              const file = e.target.files && e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  try {
+                    const imageData = String(reader.result);
+                    
+                    const response = await fetch('/api/analyze-image', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ 
+                        imageData, 
+                        useOpenAI: true,
+                        documentType: 'payoff_report' // This is a payoff report document
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const result = await response.json();
+                      console.log('Parsed data:', result.mortgageTerms);
+                      console.log('Extracted text:', result.extractedText);
+                      console.log('Parsing method:', result.parsingMethod);
+                      
+                      // Show the parsed text in an alert or console for now
+                      alert(`מסמך נפרס בהצלחה!\n\nנתונים שנמצאו:\n${JSON.stringify(result.mortgageTerms, null, 2)}\n\nטקסט שנמצא:\n${result.extractedText}`);
+                    } else {
+                      console.error('Error analyzing image:', await response.text());
+                      alert('שגיאה בניתוח התמונה. נסה שוב.');
+                    }
+                  } catch (err) {
+                    console.error('שגיאה בעיבוד התמונה:', err);
+                    alert('שגיאה בעיבוד התמונה. נסה שוב.');
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+          />
+          <Button 
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => {
+              console.log('Upload button clicked');
+              const fileInput = document.getElementById('document-upload');
+              if (fileInput) {
+                console.log('File input found, triggering click');
+                fileInput.click();
+              } else {
+                console.error('File input not found');
+              }
+            }}
+          >
             בחר קובץ
           </Button>
         </div>

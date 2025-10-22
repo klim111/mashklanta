@@ -1,18 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, AlertCircle, Loader2, Home } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showAdvisorMessage, setShowAdvisorMessage] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('advisor') === 'true') {
+      setShowAdvisorMessage(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +37,15 @@ export default function LoginPage() {
       if (result?.error) {
         setError('שם משתמש או סיסמה שגויים');
       } else {
-        router.push('/dashboard');
+        // Check user role and redirect accordingly
+        const response = await fetch('/api/auth/session');
+        const session = await response.json();
+        
+        if (session?.user?.role === 'ADVISOR') {
+          router.push('/advisor-dashboard');
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (error) {
       setError('אירעה שגיאה בהתחברות');
@@ -57,6 +73,18 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold text-gray-900">התחברות</h1>
             <p className="text-gray-600 mt-2">ברוכים השבים ל-Nadlanium</p>
           </div>
+
+          {/* Success Message for Advisor Registration */}
+          {showAdvisorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700"
+            >
+              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm">ההרשמה ליועצים הושלמה בהצלחה! התחבר עכשיו</span>
+            </motion.div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -144,8 +172,9 @@ export default function LoginPage() {
             </div>
           </div>
 
+
           {/* Register Link */}
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <p className="text-gray-600">
               עדיין אין לך חשבון?{' '}
               <Link
@@ -155,6 +184,22 @@ export default function LoginPage() {
                 הירשם עכשיו
               </Link>
             </p>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">או</span>
+              </div>
+            </div>
+            
+            <Link href="/auth/register?role=ADVISOR">
+              <button className="w-full py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2">
+                <UserCheck className="w-5 h-5" />
+                הצטרף לנבחרת היועצים
+              </button>
+            </Link>
           </div>
         </div>
 

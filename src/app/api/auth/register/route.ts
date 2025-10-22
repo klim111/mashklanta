@@ -10,6 +10,7 @@ const registerSchema = z.object({
   email: z.string().email('כתובת מייל לא תקינה'),
   password: z.string().min(8, 'הסיסמה חייבת להכיל לפחות 8 תווים'),
   name: z.string().min(2, 'השם חייב להכיל לפחות 2 תווים'),
+  role: z.enum(['CLIENT', 'ADVISOR']).optional().default('CLIENT'),
 });
 
 export async function POST(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, name } = validationResult.data;
+    const { email, password, name, role } = validationResult.data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
         email,
         name,
         hashedPassword,
+        role,
       },
     });
 

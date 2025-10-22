@@ -35,6 +35,8 @@ export default function DashboardPage() {
     if (status === 'loading') return;
     if (!session) {
       router.push('/auth/login');
+    } else if (session.user?.role === 'ADVISOR') {
+      router.push('/advisor-dashboard');
     }
   }, [session, status, router]);
 

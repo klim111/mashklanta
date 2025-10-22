@@ -1,24 +1,34 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'CLIENT' as 'CLIENT' | 'ADVISOR',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Check if role is specified in URL
+  useEffect(() => {
+    const role = searchParams.get('role');
+    if (role === 'ADVISOR') {
+      setFormData(prev => ({ ...prev, role: 'ADVISOR' }));
+    }
+  }, [searchParams]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -66,6 +76,7 @@ export default function RegisterPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          role: formData.role,
         }),
       });
 
@@ -76,7 +87,11 @@ export default function RegisterPage() {
       } else {
         setSuccess('ההרשמה הושלמה בהצלחה! נשלח אליך מייל עם קישור לאימות');
         setTimeout(() => {
-          router.push('/auth/login');
+          if (formData.role === 'ADVISOR') {
+            router.push('/auth/login?advisor=true');
+          } else {
+            router.push('/auth/login');
+          }
         }, 3000);
       }
     } catch (error) {
@@ -102,8 +117,15 @@ export default function RegisterPage() {
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">הרשמה</h1>
-            <p className="text-gray-600 mt-2">צור חשבון חדש ב-Nadlanium</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {formData.role === 'ADVISOR' ? 'הרשמה ליועצי משכנתאות' : 'הרשמה'}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {formData.role === 'ADVISOR' 
+                ? 'הצטרף לנבחרת היועצים של משכנתא' 
+                : 'צור חשבון חדש ב-Nadlanium'
+              }
+            </p>
           </div>
 
           {/* Success Message */}
@@ -132,6 +154,25 @@ export default function RegisterPage() {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Role Selection - only show if not pre-selected */}
+            {!searchParams.get('role') && (
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                  סוג משתמש
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                >
+                  <option value="CLIENT">לקוח</option>
+                  <option value="ADVISOR">יועץ משכנתאות</option>
+                </select>
+              </div>
+            )}
+
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                 שם מלא
@@ -225,7 +266,7 @@ export default function RegisterPage() {
                   נרשמת בהצלחה!
                 </>
               ) : (
-                'הירשם'
+                formData.role === 'ADVISOR' ? 'הצטרף לנבחרת היועצים' : 'הירשם'
               )}
             </button>
           </form>

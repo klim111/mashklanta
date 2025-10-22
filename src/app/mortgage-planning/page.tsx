@@ -476,12 +476,12 @@ export default function MortgagePlanning() {
               <h3 className="text-2xl font-bold text-gray-900 mb-3">העלה הצעת בנק</h3>
               <p className="text-gray-600 mb-6">תמוך בתמונות או PDF של מסמך ההצעה</p>
               <div className="flex items-center justify-center">
-                <label className="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                  בחר קובץ
+                <div className="relative">
                   <input
                     type="file"
                     accept="image/*,application/pdf"
                     className="hidden"
+                    id="bank-offer-upload"
                     onChange={async (e) => {
                       const file = e.target.files && e.target.files[0];
                       if (file) {
@@ -492,13 +492,17 @@ export default function MortgagePlanning() {
                             const imageData = String(reader.result);
                             localStorage.setItem('uploadedBankOffer', imageData);
 
-                            // Send to API for analysis
+                            // Send to API for analysis with OpenAI
                             const response = await fetch('/api/analyze-image', {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',
                               },
-                              body: JSON.stringify({ imageData }),
+                              body: JSON.stringify({ 
+                                imageData, 
+                                useOpenAI: true,
+                                documentType: 'bank_offer' // This is a bank offer document
+                              }),
                             });
 
                             if (response.ok) {
@@ -507,6 +511,11 @@ export default function MortgagePlanning() {
                               setExtractedText(result.extractedText);
                               localStorage.setItem('analyzedMortgageTerms', JSON.stringify(result.mortgageTerms));
                               localStorage.setItem('extractedText', result.extractedText);
+                              
+                              // Show parsing method and confidence if available
+                              if (result.parsingMethod === 'openai' && result.mortgageTerms.confidence) {
+                                console.log(`Document parsed with OpenAI (confidence: ${result.mortgageTerms.confidence}%)`);
+                              }
                             } else {
                               console.error('Error analyzing image:', await response.text());
                               alert('שגיאה בניתוח התמונה. נסה שוב.');
@@ -522,7 +531,14 @@ export default function MortgagePlanning() {
                       }
                     }}
                   />
-                </label>
+                  <label 
+                    htmlFor="bank-offer-upload"
+                    className="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                    onClick={() => console.log('Bank offer upload label clicked')}
+                  >
+                    בחר קובץ
+                  </label>
+                </div>
               </div>
             </div>
           </CardContent>

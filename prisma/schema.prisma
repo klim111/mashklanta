@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,14 +16,21 @@ model User {
   emailVerified  DateTime?
   image          String?
   hashedPassword String?
+  role           UserRole  @default(CLIENT)
 
   accounts       Account[]
   sessions       Session[]
   documents      Document[]
   calculations   Calculation[]
+  clients        Client[]  @relation("AdvisorClients")
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+enum UserRole {
+  CLIENT
+  ADVISOR
 }
 
 model Account {
@@ -91,6 +98,96 @@ model Calculation {
   inputsJson  Json
   resultsJson Json
   createdAt   DateTime @default(now())
+}
+
+model Client {
+  id                String        @id @default(cuid())
+  advisorId         String
+  advisor           User          @relation("AdvisorClients", fields: [advisorId], references: [id])
+  
+  // פרטי לקוח
+  name              String
+  email             String
+  phone             String?
+  address           String?
+  
+  // סטטוס לקוח
+  status            ClientStatus  @default(POTENTIAL)
+  progress          Int           @default(0) // 0-100
+  
+  // פרטים פיננסיים
+  income            Float?
+  expenses          Float?
+  creditScore       Int?
+  downPayment       Float?
+  propertyValue     Float?
+  
+  // תמהילים
+  mortgageMixes     Json?
+  
+  // ריביות מהבנקים
+  bankRates         Json?
+  
+  // פעולות
+  actions           ClientAction[]
+  
+  // תזכורות
+  reminders         Reminder[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+enum ClientStatus {
+  POTENTIAL
+  ACTIVE
+  IN_PROCESS
+}
+
+model ClientAction {
+  id          String      @id @default(cuid())
+  clientId    String
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  type        ActionType
+  description String
+  status      ActionStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum ActionType {
+  CALL
+  EMAIL
+  MEETING
+  DOCUMENT_REVIEW
+  RATE_NEGOTIATION
+  APPLICATION_SUBMISSION
+  FOLLOW_UP
+}
+
+enum ActionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Reminder {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  dueDate     DateTime
+  isCompleted Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model RatesCache {

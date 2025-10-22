@@ -1,0 +1,31 @@
+{
+  "name": "mashklanta-websocket-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for video calling signaling",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "nodemon websocket-server.js",
+    "pm2": "pm2 start websocket-server.js --name websocket-server"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "websocket",
+    "socket.io",
+    "webrtc",
+    "video-calling",
+    "signaling"
+  ],
+  "author": "Mashklanta Team",
+  "license": "MIT"
+}

@@ -29,7 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { WebRTCSignaling, SignalingMessage, createMockSignaling } from '@/lib/webrtc-signaling';
+import { SocketIOSignaling, SignalingMessage, createSocketIOSignaling } from '@/lib/socketio-signaling';
 
 interface VideoCallModalProps {
   isOpen: boolean;
@@ -95,7 +95,7 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const signalingRef = useRef<WebRTCSignaling | null>(null);
+  const signalingRef = useRef<SocketIOSignaling | null>(null);
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
 
   // Initialize devices and generate share link
@@ -165,9 +165,10 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     const callId = callState.shareLink.split('/').pop() || '';
     const userId = `advisor_${advisor.email}`;
     
-    const signaling = createMockSignaling(
+    const signaling = createSocketIOSignaling(
       callId,
       userId,
+      'advisor',
       handleSignalingMessage,
       setIsSignalingConnected
     );
@@ -183,14 +184,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
       case 'chat-message':
         setChatMessages(prev => [...prev, {
           id: Date.now().toString(),
-          sender: message.from === `advisor_${advisor.email}` ? advisor.name : 'לקוח',
+          sender: message.from.includes('advisor') ? advisor.name : 'לקוח',
           message: message.data.message,
           timestamp: new Date(message.timestamp)
         }]);
         break;
         
       case 'user-joined':
-        if (message.data.userId !== `advisor_${advisor.email}`) {
+        if (!message.data.userId.includes('advisor')) {
           console.log('Client joined the call');
         }
         break;

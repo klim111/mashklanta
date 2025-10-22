@@ -421,6 +421,89 @@ export default function InteractiveCalculator() {
       setOcrSummary(null)
       setUploadedPreviewUrl(URL.createObjectURL(file))
 
+      // First try OpenAI parsing
+      try {
+        const reader = new FileReader()
+        reader.onload = async () => {
+          try {
+            const imageData = String(reader.result)
+            
+            const response = await fetch('/api/analyze-image', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                imageData, 
+                useOpenAI: true,
+                documentType: 'payoff_report' // This is a payoff schedule document
+              }),
+            })
+
+            if (response.ok) {
+              const result = await response.json()
+              console.log('OpenAI Parsed data:', result.mortgageTerms)
+              console.log('OpenAI Extracted text:', result.extractedText)
+              console.log('OpenAI Parsing method:', result.parsingMethod)
+              
+              // Show parsed text in console and alert
+              alert(`מסמך נפרס בהצלחה עם OpenAI!\n\nנתונים שנמצאו:\n${JSON.stringify(result.mortgageTerms, null, 2)}\n\nטקסט שנמצא:\n${result.extractedText}`)
+              
+              // Auto-fill fields if present
+              if (result.mortgageTerms.principalOutstanding) {
+                setCurrentBalance(formatNumberWithCommas(String(Math.round(parseFloat(result.mortgageTerms.principalOutstanding)))))
+              }
+              if (result.mortgageTerms.currentRatePercent) {
+                setCurrentRate(String(result.mortgageTerms.currentRatePercent))
+              }
+              if (result.mortgageTerms.remainingTermYears) {
+                setCurrentRemainingTerm(String(Math.round(parseFloat(result.mortgageTerms.remainingTermYears))))
+              }
+              
+              // Optionally select track
+              const trackMap: Record<string, string> = {
+                kalatz: 'kalatz',
+                katz: 'katz',
+                prime: 'prime',
+                gilad: 'gilad',
+                variable: 'gilad',
+              }
+              if (result.mortgageTerms.trackType && trackMap[result.mortgageTerms.trackType]) {
+                const t = loanTracks.find(t => t.id === trackMap[result.mortgageTerms.trackType]) || null
+                setSelectedRefiTrack(t)
+              }
+
+              setOcrSummary({
+                principalOutstanding: result.mortgageTerms.principalOutstanding ? parseFloat(result.mortgageTerms.principalOutstanding) : null,
+                currentRatePercent: result.mortgageTerms.currentRatePercent ? parseFloat(result.mortgageTerms.currentRatePercent) : null,
+                remainingTermYears: result.mortgageTerms.remainingTermYears ? parseFloat(result.mortgageTerms.remainingTermYears) : null,
+                trackType: result.mortgageTerms.trackType ?? null,
+                linkage: result.mortgageTerms.linkage ?? null,
+              })
+            } else {
+              throw new Error('OpenAI parsing failed, falling back to original method')
+            }
+          } catch (openAIError) {
+            console.error('OpenAI parsing failed, using fallback:', openAIError)
+            // Fall back to original method
+            await fallbackToOriginalParsing(file)
+          }
+        }
+        reader.readAsDataURL(file)
+      } catch (err: any) {
+        console.error('Error in OpenAI parsing:', err)
+        // Fall back to original method
+        await fallbackToOriginalParsing(file)
+      }
+    } catch (err: any) {
+      setOcrError(err?.message ?? 'שגיאה בהעלאת המסמך')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const fallbackToOriginalParsing = async (file: File) => {
+    try {
       const presigned = await presignUpload(file)
       await uploadToS3(presigned.url, presigned.headers, file)
 
@@ -458,9 +541,7 @@ export default function InteractiveCalculator() {
         linkage: parsed.linkage ?? null,
       })
     } catch (err: any) {
-      setOcrError(err?.message ?? 'שגיאה בהעלאת המסמך')
-    } finally {
-      setIsUploading(false)
+      throw new Error(err?.message ?? 'שגיאה בהעלאת המסמך')
     }
   }
 
@@ -672,18 +753,25 @@ export default function InteractiveCalculator() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col sm:flex-row gap-3 items-center">
-                  <label className="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2">
-                    <Upload className="w-4 h-4" /> בחר תמונה
+                  <div className="relative">
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
+                      id="image-upload"
                       onChange={(e) => {
                         const f = e.target.files?.[0]
                         if (f) onSelectImage(f)
                       }}
                     />
-                  </label>
+                    <label 
+                      htmlFor="image-upload"
+                      className="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-2"
+                      onClick={() => console.log('Upload label clicked')}
+                    >
+                      <Upload className="w-4 h-4" /> בחר תמונה
+                    </label>
+                  </div>
                   {isUploading && <span className="text-sm text-gray-600">מעלה ומנתח מסמך…</span>}
                   {ocrError && <span className="text-sm text-red-600">{ocrError}</span>}
                 </div>

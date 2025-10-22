@@ -35,10 +35,10 @@ export class WebRTCSignaling {
     return new Promise((resolve, reject) => {
       try {
         // Use WebSocket for real-time communication
-        // In production, replace with your WebSocket server URL
+        // In production, use your actual domain
         const wsUrl = process.env.NODE_ENV === 'production' 
-          ? 'wss://your-websocket-server.com/ws'
-          : 'ws://localhost:8080/ws';
+          ? `wss://${window.location.host}/api/websocket`
+          : `ws://${window.location.host}/api/websocket`;
         
         this.ws = new WebSocket(wsUrl);
 

@@ -33,11 +33,91 @@ const steps = [
       <form className="space-y-4">
         <label className="block">
           תעודת זהות:
-          <input type="file" className="w-full mt-1" />
+          <input 
+            type="file" 
+            accept="image/*,application/pdf"
+            className="w-full mt-1" 
+            onChange={async (e) => {
+              const file = e.target.files && e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  try {
+                    const imageData = String(reader.result);
+                    
+                    const response = await fetch('/api/analyze-image', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ 
+                        imageData, 
+                        useOpenAI: true 
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const result = await response.json();
+                      console.log('ID Document parsed:', result.mortgageTerms);
+                      console.log('ID Document text:', result.extractedText);
+                      alert(`תעודת זהות נפרסה בהצלחה!\n\nנתונים שנמצאו:\n${JSON.stringify(result.mortgageTerms, null, 2)}\n\nטקסט שנמצא:\n${result.extractedText}`);
+                    } else {
+                      console.error('Error analyzing ID:', await response.text());
+                      alert('שגיאה בניתוח תעודת הזהות. נסה שוב.');
+                    }
+                  } catch (err) {
+                    console.error('שגיאה בעיבוד תעודת הזהות:', err);
+                    alert('שגיאה בעיבוד תעודת הזהות. נסה שוב.');
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+          />
         </label>
         <label className="block">
           תלושי שכר:
-          <input type="file" className="w-full mt-1" />
+          <input 
+            type="file" 
+            accept="image/*,application/pdf"
+            className="w-full mt-1" 
+            onChange={async (e) => {
+              const file = e.target.files && e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  try {
+                    const imageData = String(reader.result);
+                    
+                    const response = await fetch('/api/analyze-image', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ 
+                        imageData, 
+                        useOpenAI: true 
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const result = await response.json();
+                      console.log('Salary slip parsed:', result.mortgageTerms);
+                      console.log('Salary slip text:', result.extractedText);
+                      alert(`תלוש שכר נפרס בהצלחה!\n\nנתונים שנמצאו:\n${JSON.stringify(result.mortgageTerms, null, 2)}\n\nטקסט שנמצא:\n${result.extractedText}`);
+                    } else {
+                      console.error('Error analyzing salary slip:', await response.text());
+                      alert('שגיאה בניתוח תלוש השכר. נסה שוב.');
+                    }
+                  } catch (err) {
+                    console.error('שגיאה בעיבוד תלוש השכר:', err);
+                    alert('שגיאה בעיבוד תלוש השכר. נסה שוב.');
+                  }
+                };
+                reader.readAsDataURL(file);
+              }
+            }}
+          />
         </label>
       </form>
     ),
