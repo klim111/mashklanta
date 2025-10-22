@@ -46,7 +46,7 @@ interface CallState {
   isWaitingForAdvisor: boolean;
 }
 
-export default function VideoCallPage({ params }: { params: { id: string } }) {
+export default function VideoCallPage({ params }: { params: Promise<{ id: string }> }) {
   const [callState, setCallState] = useState<CallState>({
     isConnected: false,
     isVideoOn: true,
@@ -63,6 +63,7 @@ export default function VideoCallPage({ params }: { params: { id: string } }) {
 
   const [chatMessages, setChatMessages] = useState<Array<{id: string, sender: string, message: string, timestamp: Date}>>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [callId, setCallId] = useState<string>('');
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -74,11 +75,22 @@ export default function VideoCallPage({ params }: { params: { id: string } }) {
   const signalingRef = useRef<SocketIOSignaling | null>(null);
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
 
+  // Get call ID from params
+  useEffect(() => {
+    const getCallId = async () => {
+      const resolvedParams = await params;
+      setCallId(resolvedParams.id);
+    };
+    getCallId();
+  }, [params]);
+
   // Initialize devices and signaling
   useEffect(() => {
     initializeDevices();
-    initializeSignaling();
-  }, []);
+    if (callId) {
+      initializeSignaling();
+    }
+  }, [callId]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -123,7 +135,8 @@ export default function VideoCallPage({ params }: { params: { id: string } }) {
   };
 
   const initializeSignaling = async () => {
-    const callId = params.id;
+    if (!callId) return;
+    
     const userId = `client_${Date.now()}`;
     
     const signaling = createSocketIOSignaling(

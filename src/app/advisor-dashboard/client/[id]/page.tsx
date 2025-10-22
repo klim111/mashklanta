@@ -80,7 +80,7 @@ interface Reminder {
   createdAt: string;
 }
 
-export default function ClientProfilePage({ params }: { params: { id: string } }) {
+export default function ClientProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [client, setClient] = useState<Client | null>(null);
@@ -91,6 +91,16 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
     isOpen: false,
     client: null
   });
+  const [clientId, setClientId] = useState<string>('');
+
+  // Get client ID from params
+  useEffect(() => {
+    const getClientId = async () => {
+      const resolvedParams = await params;
+      setClientId(resolvedParams.id);
+    };
+    getClientId();
+  }, [params]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -103,9 +113,11 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
 
   // Mock data - replace with real API calls
   useEffect(() => {
+    if (!clientId) return;
+    
     // Mock client data
     setClient({
-      id: params.id,
+      id: clientId,
       name: 'דוד כהן',
       email: 'david@example.com',
       phone: '050-1234567',
@@ -169,7 +181,7 @@ export default function ClientProfilePage({ params }: { params: { id: string } }
         createdAt: '2024-01-16'
       }
     ]);
-  }, [params.id]);
+  }, [clientId]);
 
   if (status === 'loading') {
     return (
