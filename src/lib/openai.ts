@@ -183,7 +183,7 @@ export async function parseMortgageDocumentWithOpenAI(
       remainingTermYears: typeof parsedData.remainingTermYears === 'number' ? parsedData.remainingTermYears : null,
       principalOutstanding: typeof parsedData.principalOutstanding === 'number' ? parsedData.principalOutstanding : null,
       currentRatePercent: typeof parsedData.currentRatePercent === 'number' ? parsedData.currentRatePercent : null,
-      tableData: Array.isArray(parsedData.tableData) ? parsedData.tableData.map(row => ({
+      tableData: Array.isArray(parsedData.tableData) ? parsedData.tableData.map((row: any) => ({
         trackType: row.trackType || null,
         interestRate: typeof row.interestRate === 'number' ? row.interestRate : null,
         period: typeof row.period === 'number' ? row.period : null,
@@ -396,7 +396,7 @@ export async function parseSpecificMortgageDocument(
       remainingTermYears: typeof parsedData.remainingTermYears === 'number' ? parsedData.remainingTermYears : null,
       principalOutstanding: typeof parsedData.principalOutstanding === 'number' ? parsedData.principalOutstanding : null,
       currentRatePercent: typeof parsedData.currentRatePercent === 'number' ? parsedData.currentRatePercent : null,
-      tableData: Array.isArray(parsedData.tableData) ? parsedData.tableData.map(row => ({
+      tableData: Array.isArray(parsedData.tableData) ? parsedData.tableData.map((row: any) => ({
         trackType: row.trackType || null,
         interestRate: typeof row.interestRate === 'number' ? row.interestRate : null,
         period: typeof row.period === 'number' ? row.period : null,
