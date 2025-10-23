@@ -51,9 +51,7 @@ export class WebRTCSignaling {
           this.send({
             type: 'user-joined',
             data: { userId: this.userId, callId: this.callId },
-            from: this.userId,
-            callId: this.callId,
-            timestamp: Date.now()
+            callId: this.callId
           });
           
           resolve();
