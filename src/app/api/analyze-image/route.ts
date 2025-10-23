@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           image: { content: base64Image },
         });
         const detections = result.textAnnotations;
-        extractedText = detections && detections.length > 0 ? detections[0].description : '';
+        extractedText = detections && detections.length > 0 ? (detections[0].description || '') : '';
         
         // Use regex parsing as fallback
         mortgageTerms = await parseWithRegex(extractedText);
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         image: { content: base64Image },
       });
       const detections = result.textAnnotations;
-      extractedText = detections && detections.length > 0 ? detections[0].description : '';
+      extractedText = detections && detections.length > 0 ? (detections[0].description || '') : '';
       
       // Use regex parsing
       mortgageTerms = await parseWithRegex(extractedText);
