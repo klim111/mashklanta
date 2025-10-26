@@ -435,9 +435,9 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
           { urls: 'stun:stun.gmx.net' }
         ],
         iceCandidatePoolSize: 20,
-        bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require',
-        iceTransportPolicy: 'all',
+        bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+        rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
+        iceTransportPolicy: 'all' as RTCIceTransportPolicy,
         iceCandidateTimeout: 10000
       };
 

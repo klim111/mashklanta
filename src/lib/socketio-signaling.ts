@@ -80,9 +80,7 @@ export class SocketIOSignaling {
           console.error('Socket.IO connection error:', error);
           console.error('Connection details:', {
             serverUrl,
-            errorMessage: error.message,
-            errorType: error.type,
-            errorDescription: error.description
+            errorMessage: error.message
           });
           this.onConnectionChange(false);
           this.attemptReconnect();
