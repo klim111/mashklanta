@@ -148,7 +148,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             }
             
             // Check video element state more thoroughly
-            if (video.paused || video.ended || video.readyState < 2) {
+              if (video.paused || video.ended || video.readyState < 2) {
               console.warn('Client remote video not playing properly, attempting recovery...');
               handleVideoFreeze();
             }
@@ -215,11 +215,11 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     };
   }, []);
 
-  // Handle call connection
+  // Handle call connection - REMOVED WebRTC initialization to prevent race conditions
   useEffect(() => {
     if (callState.isConnected) {
       startCallDuration();
-      initializeWebRTC();
+      // WebRTC is now initialized directly in joinCall()
     }
 
     return () => {
@@ -230,14 +230,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     };
   }, [callState.isConnected]);
 
-  // Initialize WebRTC when signaling is connected
-  useEffect(() => {
-    if (isSignalingConnected && !peerConnectionRef.current) {
-      console.log('Signaling connected, initializing WebRTC for client');
-      console.log('Client video element ref:', remoteVideoRef.current);
-      initializeWebRTC();
-    }
-  }, [isSignalingConnected]);
+  // Initialize WebRTC when signaling is connected - REMOVED to prevent race conditions
+  // WebRTC is now initialized directly in joinCall()
 
   const initializeDevices = async () => {
     try {
@@ -349,19 +343,19 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     if (peerConnectionRef.current) {
       try {
         console.log('Client setting remote description...');
-        await peerConnectionRef.current.setRemoteDescription(offer);
+      await peerConnectionRef.current.setRemoteDescription(offer);
         console.log('Client remote description set successfully');
         
         console.log('Client creating answer...');
-        const answer = await peerConnectionRef.current.createAnswer();
+      const answer = await peerConnectionRef.current.createAnswer();
         console.log('Client answer created:', answer);
         
         console.log('Client setting local description...');
-        await peerConnectionRef.current.setLocalDescription(answer);
+      await peerConnectionRef.current.setLocalDescription(answer);
         console.log('Client local description set successfully');
-        
+      
         console.log('Client sending answer to:', from);
-        signalingRef.current?.sendAnswer(answer, from);
+      signalingRef.current?.sendAnswer(answer, from);
         console.log('Client answer sent successfully');
       } catch (error) {
         console.error('Client error handling offer:', error);
@@ -414,6 +408,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   };
 
   const initializeWebRTC = async () => {
+    // Prevent multiple initializations
+    if (peerConnectionRef.current) {
+      console.log('Client WebRTC already initialized, skipping...');
+      return;
+    }
+    
     try {
       // Get user media with selected devices and optimized constraints
       const constraints = {
@@ -1005,9 +1005,9 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         if (newAudioTrack && peerConnectionRef.current) {
           // Find the audio sender
           const audioSender = peerConnectionRef.current.getSenders().find(s => 
-            s.track && s.track.kind === 'audio'
-          );
-          
+          s.track && s.track.kind === 'audio'
+        );
+        
           if (audioSender) {
             console.log('Client replacing audio track...');
             await audioSender.replaceTrack(newAudioTrack);
@@ -1030,10 +1030,10 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
               localStreamRef.current = newStream;
               
               // Update local video element
-              if (localVideoRef.current) {
-                localVideoRef.current.srcObject = newStream;
-              }
-              
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = newStream;
+        }
+        
               console.log('Client local stream recreated with new audio track');
               
               // Debug audio track status
@@ -1217,6 +1217,15 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     console.log('Client joining call');
     console.log('Client video element ref during join:', remoteVideoRef.current);
     
+    // Initialize WebRTC immediately when joining the call
+    console.log('Client initializing WebRTC for call...');
+    try {
+      await initializeWebRTC();
+      console.log('Client WebRTC initialized successfully');
+    } catch (error) {
+      console.error('Client WebRTC initialization failed:', error);
+    }
+    
     // Ensure video can play after user interaction
     if (remoteVideoRef.current) {
       try {
@@ -1225,12 +1234,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       } catch (error) {
         console.log('Client remote video play after interaction failed:', error);
       }
-    }
-    
-    // Wait for WebRTC to be initialized if not already done
-    if (!peerConnectionRef.current) {
-      console.log('WebRTC not initialized yet, waiting...');
-      await initializeWebRTC();
     }
     
     // Wait a bit for WebRTC to be ready, then create offer
@@ -1354,10 +1357,10 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                   <h3 className="text-xl font-semibold mb-2">ממתין ליועץ...</h3>
                   <p className="text-gray-300 mb-6">היועץ יתחבר בקרוב לשיחה</p>
                   <div className="space-y-2">
-                    <Button onClick={joinCall} className="bg-green-600 hover:bg-green-700">
-                      <Phone className="w-4 h-4 mr-2" />
-                      הצטרף לשיחה
-                    </Button>
+                  <Button onClick={joinCall} className="bg-green-600 hover:bg-green-700">
+                    <Phone className="w-4 h-4 mr-2" />
+                    הצטרף לשיחה
+                  </Button>
                     <Button 
                       onClick={async () => {
                         console.log('Testing video element...');
