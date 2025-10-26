@@ -342,36 +342,68 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   };
 
   const handleOffer = async (offer: RTCSessionDescriptionInit, from: string) => {
+    console.log('Client handling offer from:', from);
+    console.log('Client offer data:', offer);
+    console.log('Client peer connection exists:', !!peerConnectionRef.current);
+    
     if (peerConnectionRef.current) {
-      await peerConnectionRef.current.setRemoteDescription(offer);
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
-      
-      signalingRef.current?.sendAnswer(answer, from);
+      try {
+        console.log('Client setting remote description...');
+        await peerConnectionRef.current.setRemoteDescription(offer);
+        console.log('Client remote description set successfully');
+        
+        console.log('Client creating answer...');
+        const answer = await peerConnectionRef.current.createAnswer();
+        console.log('Client answer created:', answer);
+        
+        console.log('Client setting local description...');
+        await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('Client local description set successfully');
+        
+        console.log('Client sending answer to:', from);
+        signalingRef.current?.sendAnswer(answer, from);
+        console.log('Client answer sent successfully');
+      } catch (error) {
+        console.error('Client error handling offer:', error);
+      }
+    } else {
+      console.error('Client peer connection not available for offer');
     }
   };
 
   const handleAnswer = async (answer: RTCSessionDescriptionInit, from: string) => {
-    console.log('Client received answer from:', from);
+    console.log('Client handling answer from:', from);
+    console.log('Client answer data:', answer);
+    console.log('Client peer connection exists:', !!peerConnectionRef.current);
+    
     if (peerConnectionRef.current) {
       try {
+        console.log('Client setting remote description from answer...');
         await peerConnectionRef.current.setRemoteDescription(answer);
-        console.log('Client set remote description from answer');
+        console.log('Client remote description set from answer successfully');
       } catch (error) {
-        console.error('Error handling answer:', error);
+        console.error('Client error handling answer:', error);
       }
+    } else {
+      console.error('Client peer connection not available for answer');
     }
   };
 
   const handleIceCandidate = async (candidate: RTCIceCandidateInit, from: string) => {
-    console.log('Client received ICE candidate from:', from);
+    console.log('Client handling ICE candidate from:', from);
+    console.log('Client ICE candidate data:', candidate);
+    console.log('Client peer connection exists:', !!peerConnectionRef.current);
+    
     if (peerConnectionRef.current) {
       try {
+        console.log('Client adding ICE candidate...');
         await peerConnectionRef.current.addIceCandidate(candidate);
-        console.log('Client added ICE candidate');
+        console.log('Client ICE candidate added successfully');
       } catch (error) {
-        console.error('Error adding ICE candidate:', error);
+        console.error('Client error handling ICE candidate:', error);
       }
+    } else {
+      console.error('Client peer connection not available for ICE candidate');
     }
   };
 
@@ -399,7 +431,11 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         } : false
       };
 
+      console.log('Client requesting user media with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Client got user media stream:', stream);
+      console.log('Client stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
+      
       localStreamRef.current = stream;
 
       if (localVideoRef.current) {
@@ -438,10 +474,14 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         iceCandidateTimeout: 10000
       };
 
+      console.log('Client creating peer connection with configuration:', configuration);
       peerConnectionRef.current = new RTCPeerConnection(configuration);
+      console.log('Client peer connection created:', peerConnectionRef.current);
 
       // Add local stream to peer connection
+      console.log('Client adding tracks to peer connection...');
       stream.getTracks().forEach(track => {
+        console.log('Client adding track:', track.kind, track.id);
         peerConnectionRef.current?.addTrack(track, stream);
       });
 
