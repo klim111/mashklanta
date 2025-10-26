@@ -157,6 +157,7 @@ export class HTTPSignaling {
         if (data.signals) {
           data.signals.forEach((signal: any) => {
             if (signal.from !== this.userId) {
+              console.log('Processing WebRTC signal:', signal);
               const message: SignalingMessage = {
                 type: signal.type,
                 data: signal.signal,
@@ -175,7 +176,7 @@ export class HTTPSignaling {
         this.onConnectionChange(false);
         this.stopPolling();
       }
-    }, 1000); // Poll every second
+    }, 500); // Poll every 500ms for faster WebRTC signaling
   }
 
   private stopPolling() {
@@ -197,10 +198,7 @@ export class HTTPSignaling {
           callId: this.callId,
           userId: this.userId,
           target,
-          signal: {
-            type,
-            ...signal
-          }
+          signal: signal // Send the signal directly, not wrapped
         }),
       });
 
@@ -213,14 +211,17 @@ export class HTTPSignaling {
   }
 
   sendOffer(offer: RTCSessionDescriptionInit, to: string = 'broadcast') {
+    console.log('Sending WebRTC offer:', offer);
     this.sendSignal('offer', offer, to);
   }
 
   sendAnswer(answer: RTCSessionDescriptionInit, to: string = 'broadcast') {
+    console.log('Sending WebRTC answer:', answer);
     this.sendSignal('answer', answer, to);
   }
 
   sendIceCandidate(candidate: RTCIceCandidateInit, to: string = 'broadcast') {
+    console.log('Sending ICE candidate:', candidate);
     this.sendSignal('ice-candidate', candidate, to);
   }
 

@@ -315,14 +315,17 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         break;
         
       case 'offer':
+        console.log('Advisor received offer from:', message.from, message.data);
         handleOffer(message.data, message.from);
         break;
         
       case 'answer':
+        console.log('Advisor received answer from:', message.from, message.data);
         handleAnswer(message.data, message.from);
         break;
         
       case 'ice-candidate':
+        console.log('Advisor received ICE candidate from:', message.from, message.data);
         handleIceCandidate(message.data, message.from);
         break;
         

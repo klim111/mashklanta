@@ -312,6 +312,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'offer':
+        console.log('Client received offer from:', message.from, message.data);
         handleOffer(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -319,6 +320,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'answer':
+        console.log('Client received answer from:', message.from, message.data);
         handleAnswer(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -326,6 +328,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'ice-candidate':
+        console.log('Client received ICE candidate from:', message.from, message.data);
         handleIceCandidate(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
