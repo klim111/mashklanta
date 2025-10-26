@@ -1,0 +1,343 @@
+'use client';
+
+export interface SignalingMessage {
+  type: 'offer' | 'answer' | 'ice-candidate' | 'chat-message' | 'user-joined' | 'user-left' | 'call-ended' | 'screen-share-start' | 'screen-share-end';
+  data: any;
+  from: string;
+  to?: string;
+  callId: string;
+  timestamp: number;
+}
+
+export class HTTPSignaling {
+  private callId: string;
+  private userId: string;
+  private userType: string;
+  private onMessage: (message: SignalingMessage) => void;
+  private onConnectionChange: (connected: boolean) => void;
+  private pollingInterval: NodeJS.Timeout | null = null;
+  private isConnected = false;
+  private lastPollTime = 0;
+  private baseUrl: string;
+
+  constructor(
+    callId: string,
+    userId: string,
+    userType: 'advisor' | 'client',
+    onMessage: (message: SignalingMessage) => void,
+    onConnectionChange: (connected: boolean) => void
+  ) {
+    this.callId = callId;
+    this.userId = userId;
+    this.userType = userType;
+    this.onMessage = onMessage;
+    this.onConnectionChange = onConnectionChange;
+    
+    // Use the same domain for API calls
+    this.baseUrl = '/api/websocket';
+  }
+
+  async connect(): Promise<void> {
+    try {
+      console.log('Connecting to HTTP signaling server...');
+      
+      // Join the call
+      const joinResponse = await fetch(`${this.baseUrl}?action=join&callId=${this.callId}&userId=${this.userId}&userType=${this.userType}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!joinResponse.ok) {
+        throw new Error(`Failed to join call: ${joinResponse.statusText}`);
+      }
+
+      const joinData = await joinResponse.json();
+      console.log('Joined call successfully:', joinData);
+
+      this.isConnected = true;
+      this.onConnectionChange(true);
+
+      // Start polling for messages
+      this.startPolling();
+
+      // Handle existing participants
+      if (joinData.participants) {
+        joinData.participants.forEach((participant: any) => {
+          if (participant.userId !== this.userId) {
+            const message: SignalingMessage = {
+              type: 'user-joined',
+              data: { userId: participant.userId, userType: participant.userType },
+              from: participant.userId,
+              callId: this.callId,
+              timestamp: Date.now()
+            };
+            this.onMessage(message);
+          }
+        });
+      }
+
+      // Handle existing messages
+      if (joinData.messages) {
+        joinData.messages.forEach((msg: any) => {
+          const message: SignalingMessage = {
+            type: 'chat-message',
+            data: { message: msg.message },
+            from: msg.from,
+            callId: this.callId,
+            timestamp: msg.timestamp
+          };
+          this.onMessage(message);
+        });
+      }
+
+      // Handle existing signals
+      if (joinData.signals) {
+        joinData.signals.forEach((signal: any) => {
+          if (signal.from !== this.userId) {
+            const message: SignalingMessage = {
+              type: signal.type,
+              data: signal.signal,
+              from: signal.from,
+              callId: this.callId,
+              timestamp: signal.timestamp
+            };
+            this.onMessage(message);
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Failed to connect to HTTP signaling:', error);
+      this.onConnectionChange(false);
+      throw error;
+    }
+  }
+
+  private startPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+    }
+
+    this.pollingInterval = setInterval(async () => {
+      if (!this.isConnected) return;
+
+      try {
+        const response = await fetch(`${this.baseUrl}?action=poll&callId=${this.callId}&userId=${this.userId}&since=${this.lastPollTime}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          console.error('Polling failed:', response.statusText);
+          return;
+        }
+
+        const data = await response.json();
+        this.lastPollTime = data.timestamp || Date.now();
+
+        // Process new messages
+        if (data.messages) {
+          data.messages.forEach((msg: any) => {
+            const message: SignalingMessage = {
+              type: 'chat-message',
+              data: { message: msg.message },
+              from: msg.from,
+              callId: this.callId,
+              timestamp: msg.timestamp
+            };
+            this.onMessage(message);
+          });
+        }
+
+        // Process new signals
+        if (data.signals) {
+          data.signals.forEach((signal: any) => {
+            if (signal.from !== this.userId) {
+              const message: SignalingMessage = {
+                type: signal.type,
+                data: signal.signal,
+                from: signal.from,
+                callId: this.callId,
+                timestamp: signal.timestamp
+              };
+              this.onMessage(message);
+            }
+          });
+        }
+
+      } catch (error) {
+        console.error('Polling error:', error);
+        this.isConnected = false;
+        this.onConnectionChange(false);
+        this.stopPolling();
+      }
+    }, 1000); // Poll every second
+  }
+
+  private stopPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+  }
+
+  private async sendSignal(type: string, signal: any, target: string = 'broadcast') {
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'webrtc-signal',
+          callId: this.callId,
+          userId: this.userId,
+          target,
+          signal: {
+            type,
+            ...signal
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send signal:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error sending signal:', error);
+    }
+  }
+
+  sendOffer(offer: RTCSessionDescriptionInit, to: string = 'broadcast') {
+    this.sendSignal('offer', offer, to);
+  }
+
+  sendAnswer(answer: RTCSessionDescriptionInit, to: string = 'broadcast') {
+    this.sendSignal('answer', answer, to);
+  }
+
+  sendIceCandidate(candidate: RTCIceCandidateInit, to: string = 'broadcast') {
+    this.sendSignal('ice-candidate', candidate, to);
+  }
+
+  async sendChatMessage(message: string) {
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'chat-message',
+          callId: this.callId,
+          userId: this.userId,
+          message
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send chat message:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+    }
+  }
+
+  async startScreenShare() {
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'screen-share-start',
+          callId: this.callId,
+          userId: this.userId
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to start screen share:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error starting screen share:', error);
+    }
+  }
+
+  async endScreenShare() {
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'screen-share-end',
+          callId: this.callId,
+          userId: this.userId
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to end screen share:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error ending screen share:', error);
+    }
+  }
+
+  async endCall() {
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'call-ended',
+          callId: this.callId,
+          userId: this.userId
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to end call:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error ending call:', error);
+    }
+  }
+
+  async disconnect() {
+    this.isConnected = false;
+    this.stopPolling();
+    this.onConnectionChange(false);
+
+    try {
+      await fetch(`${this.baseUrl}?action=leave&callId=${this.callId}&userId=${this.userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
+  }
+}
+
+// Factory function to create signaling instance
+export function createHTTPSignaling(
+  callId: string,
+  userId: string,
+  userType: 'advisor' | 'client',
+  onMessage: (message: SignalingMessage) => void,
+  onConnectionChange: (connected: boolean) => void
+): HTTPSignaling {
+  return new HTTPSignaling(callId, userId, userType, onMessage, onConnectionChange);
+}

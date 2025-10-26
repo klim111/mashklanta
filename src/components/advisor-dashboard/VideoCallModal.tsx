@@ -29,7 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { SocketIOSignaling, SignalingMessage, createSocketIOSignaling } from '@/lib/socketio-signaling';
+import { HTTPSignaling, SignalingMessage, createHTTPSignaling } from '@/lib/http-signaling';
 
 interface VideoCallModalProps {
   isOpen: boolean;
@@ -96,7 +96,7 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const signalingRef = useRef<SocketIOSignaling | null>(null);
+  const signalingRef = useRef<HTTPSignaling | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const maxReconnectAttempts = 3;
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
@@ -267,7 +267,7 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     
     console.log('Initializing signaling for advisor:', { callId, userId, shareLink: callState.shareLink });
     
-    const signaling = createSocketIOSignaling(
+    const signaling = createHTTPSignaling(
       callId,
       userId,
       'advisor',
