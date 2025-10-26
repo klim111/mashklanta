@@ -41,14 +41,16 @@ export class SocketIOSignaling {
       try {
         // Connect to Socket.IO server
         const serverUrl = process.env.NODE_ENV === 'production' 
-          ? `wss://${window.location.hostname}:3001`
-          : 'http://localhost:3001';
+          ? (process.env.NEXT_PUBLIC_WEBSOCKET_URL || `wss://${window.location.hostname}`)
+          : (process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3002');
         
         this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'],
           timeout: 20000,
           forceNew: true
         });
+
+        console.log('Attempting to connect to WebSocket server:', serverUrl);
 
         this.socket.on('connect', () => {
           console.log('Socket.IO connected:', this.socket?.id);
@@ -62,6 +64,9 @@ export class SocketIOSignaling {
             userType: this.userType
           });
           
+          // Set up ping/pong for connection health
+          this.setupPingPong();
+          
           resolve();
         });
 
@@ -73,12 +78,19 @@ export class SocketIOSignaling {
 
         this.socket.on('connect_error', (error) => {
           console.error('Socket.IO connection error:', error);
+          console.error('Connection details:', {
+            serverUrl,
+            errorMessage: error.message,
+            errorType: error.type,
+            errorDescription: error.description
+          });
           this.onConnectionChange(false);
           this.attemptReconnect();
         });
 
         // Handle signaling messages
         this.socket.on('webrtc-signal', (data) => {
+          console.log('Received WebRTC signal:', data);
           const message: SignalingMessage = {
             type: data.type,
             data: data.signal,
@@ -91,6 +103,7 @@ export class SocketIOSignaling {
 
         // Handle chat messages
         this.socket.on('chat-message', (data) => {
+          console.log('Received chat message:', data);
           const message: SignalingMessage = {
             type: 'chat-message',
             data: { message: data.message },
@@ -146,6 +159,24 @@ export class SocketIOSignaling {
         reject(error);
       }
     });
+  }
+
+  private setupPingPong() {
+    if (this.socket) {
+      // Send ping every 15 seconds
+      const pingInterval = setInterval(() => {
+        if (this.socket && this.socket.connected) {
+          this.socket.emit('ping');
+        } else {
+          clearInterval(pingInterval);
+        }
+      }, 15000);
+      
+      // Handle pong response
+      this.socket.on('pong', () => {
+        console.log('Received pong from server');
+      });
+    }
   }
 
   private attemptReconnect() {

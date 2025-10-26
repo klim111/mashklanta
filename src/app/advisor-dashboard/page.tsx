@@ -171,6 +171,12 @@ export default function AdvisorDashboardPage() {
   };
 
   const startVideoCall = (client: Client) => {
+    console.log('🎥 Starting video call for client:', client.name);
+    console.log('👤 Advisor session:', { 
+      user: session?.user, 
+      role: session?.user?.role,
+      email: session?.user?.email 
+    });
     setVideoCallModal({
       isOpen: true,
       client: client
@@ -521,7 +527,7 @@ export default function AdvisorDashboardPage() {
           client={videoCallModal.client}
           advisor={{
             name: session.user?.name || 'יועץ',
-            email: session.user?.email || ''
+            email: session.user?.email || 'advisor@example.com'
           }}
         />
       )}

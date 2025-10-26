@@ -10,8 +10,16 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? ["https://your-domain.com", "https://www.your-domain.com"]
-      : ["http://localhost:3000", "http://127.0.0.1:3000"],
+      ? [
+          process.env.FRONTEND_URL || "https://your-domain.com",
+          process.env.FRONTEND_URL_WWW || "https://www.your-domain.com"
+        ]
+      : [
+          "http://localhost:3000", 
+          "http://127.0.0.1:3000",
+          "http://localhost:3001",
+          "http://127.0.0.1:3001"
+        ],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -23,6 +31,17 @@ const activeCalls = new Map();
 // Handle WebSocket connections
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+  
+  // Set up connection health monitoring
+  socket.lastPing = Date.now();
+  socket.isAlive = true;
+  
+  // Handle ping/pong for connection health
+  socket.on('ping', () => {
+    socket.lastPing = Date.now();
+    socket.isAlive = true;
+    socket.emit('pong');
+  });
 
   // Join a call room
   socket.on('join-call', (data) => {
@@ -76,28 +95,43 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Handle WebRTC signaling
+  // Handle WebRTC signaling with enhanced error handling
   socket.on('webrtc-signal', (data) => {
     const { type, target, signal } = data;
     
+    console.log(`WebRTC signal received: ${type} from ${socket.userId} in call ${socket.callId}`);
+    
     if (socket.callId) {
+      const call = activeCalls.get(socket.callId);
+      if (!call) {
+        console.error(`Call ${socket.callId} not found for signal ${type}`);
+        return;
+      }
+      
+      const signalData = {
+        type,
+        from: socket.userId,
+        signal,
+        timestamp: Date.now()
+      };
+      
       // Forward the signal to the target user or broadcast to all
       if (target && target !== 'broadcast') {
-        socket.to(socket.callId).emit('webrtc-signal', {
-          type,
-          from: socket.userId,
-          signal,
-          timestamp: Date.now()
-        });
+        const targetParticipant = call.participants.get(target);
+        if (targetParticipant) {
+          socket.to(targetParticipant.socketId).emit('webrtc-signal', signalData);
+          console.log(`Forwarded ${type} signal to specific target ${target} in call ${socket.callId}`);
+        } else {
+          console.warn(`Target participant ${target} not found in call ${socket.callId}`);
+        }
       } else {
         // Broadcast to all other participants in the call
-        socket.to(socket.callId).emit('webrtc-signal', {
-          type,
-          from: socket.userId,
-          signal,
-          timestamp: Date.now()
-        });
+        const participants = Array.from(call.participants.keys());
+        console.log(`Broadcasting ${type} signal to ${participants.length} participants in call ${socket.callId}`);
+        socket.to(socket.callId).emit('webrtc-signal', signalData);
       }
+    } else {
+      console.error('WebRTC signal received without callId');
     }
   });
 
@@ -105,7 +139,9 @@ io.on('connection', (socket) => {
   socket.on('chat-message', (data) => {
     const { message } = data;
     
-    if (socket.callId) {
+    console.log(`Chat message received from ${socket.userId || 'unknown'} in call ${socket.callId || 'unknown'}: ${message}`);
+    
+    if (socket.callId && socket.userId) {
       const call = activeCalls.get(socket.callId);
       if (call) {
         const chatMessage = {
@@ -113,7 +149,7 @@ io.on('connection', (socket) => {
           from: socket.userId,
           message,
           timestamp: Date.now(),
-          userType: socket.userType
+          userType: socket.userType || 'unknown'
         };
         
         // Store message
@@ -122,8 +158,12 @@ io.on('connection', (socket) => {
         // Broadcast to all participants in the call
         io.to(socket.callId).emit('chat-message', chatMessage);
         
-        console.log(`Chat message in call ${socket.callId} from ${socket.userId}: ${message}`);
+        console.log(`Chat message broadcasted to all participants in call ${socket.callId}`);
+      } else {
+        console.log(`Call ${socket.callId} not found in active calls`);
       }
+    } else {
+      console.log('Cannot send chat message - missing callId or userId');
     }
   });
 
@@ -215,11 +255,27 @@ app.get('/call/:callId', (req, res) => {
   }
 });
 
-const PORT = process.env.WEBSOCKET_PORT || 3001;
+// Connection health monitoring
+setInterval(() => {
+  io.sockets.sockets.forEach((socket) => {
+    const now = Date.now();
+    const timeSinceLastPing = now - socket.lastPing;
+    
+    if (timeSinceLastPing > 30000) { // 30 seconds timeout
+      console.log(`Socket ${socket.id} appears to be dead, disconnecting...`);
+      socket.disconnect(true);
+    }
+  });
+}, 10000); // Check every 10 seconds
 
-server.listen(PORT, () => {
-  console.log(`WebSocket server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+const PORT = process.env.WEBSOCKET_PORT || 3002;
+const HOST = process.env.WEBSOCKET_HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+  console.log(`WebSocket server running on ${HOST}:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Health check: http://${HOST}:${PORT}/health`);
+  console.log(`CORS origins: ${JSON.stringify(io.engine.opts.cors.origin)}`);
 });
 
 module.exports = { app, server, io };

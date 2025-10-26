@@ -87,6 +87,7 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const [activeTab, setActiveTab] = useState<'overview' | 'mortgage' | 'documents'>('overview');
   const [chatMessages, setChatMessages] = useState<Array<{id: string, sender: string, message: string, timestamp: Date}>>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [clientConnected, setClientConnected] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -96,23 +97,119 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const signalingRef = useRef<SocketIOSignaling | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const maxReconnectAttempts = 3;
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<string>('new');
+  const connectionMonitorRef = useRef<NodeJS.Timeout | null>(null);
+  const isChangingAudioRef = useRef<boolean>(false);
 
   // Initialize devices and generate share link
   useEffect(() => {
     if (isOpen) {
+      console.log('VideoCallModal opened, initializing...', { 
+        client: client.name, 
+        advisor: advisor.email,
+        advisorName: advisor.name,
+        isOpen 
+      });
       initializeDevices();
       generateShareLink();
-      initializeSignaling();
     }
   }, [isOpen]);
+
+  // Initialize signaling when share link is available
+  useEffect(() => {
+    if (isOpen && callState.shareLink) {
+      console.log('Share link available, starting signaling initialization...');
+      initializeSignaling();
+    }
+  }, [isOpen, callState.shareLink]);
+
+  // Start connection monitoring when call is active
+  useEffect(() => {
+    if (callState.isConnected && peerConnectionRef.current) {
+      console.log('Starting enhanced connection monitoring for advisor...');
+      
+      let lastVideoFrameTime = Date.now();
+      let frozenVideoCount = 0;
+      
+      connectionMonitorRef.current = setInterval(() => {
+        if (peerConnectionRef.current) {
+          const connectionState = peerConnectionRef.current.connectionState;
+          const iceConnectionState = peerConnectionRef.current.iceConnectionState;
+          
+          console.log('Advisor connection monitor:', { connectionState, iceConnectionState });
+          
+          // Enhanced video stream monitoring (skip during audio changes)
+          if (remoteVideoRef.current && !isChangingAudioRef.current) {
+            const video = remoteVideoRef.current;
+            const currentTime = Date.now();
+            
+            // Check if video is actually receiving frames
+            if (video.currentTime > 0) {
+              const timeDiff = currentTime - lastVideoFrameTime;
+              if (timeDiff > 5000) { // No frame updates for 5 seconds
+                frozenVideoCount++;
+                console.warn(`Advisor video appears frozen (${frozenVideoCount} consecutive checks)`);
+                
+                if (frozenVideoCount >= 2) {
+                  console.warn('Advisor video confirmed frozen, attempting recovery...');
+                  handleVideoFreeze();
+                  frozenVideoCount = 0;
+                }
+              } else {
+                frozenVideoCount = 0;
+              }
+              lastVideoFrameTime = currentTime;
+            }
+            
+            // Check video element state
+            if (video.paused || video.ended || video.readyState < 2) {
+              console.warn('Advisor remote video not playing properly, attempting recovery...');
+              handleVideoFreeze();
+            }
+          }
+          
+          // Check ICE connection states
+          if (iceConnectionState === 'failed' || iceConnectionState === 'disconnected') {
+            console.warn('Advisor ICE connection issue detected, attempting recovery...');
+            handleIceFailure();
+          } else if (iceConnectionState === 'checking' && connectionState === 'connected') {
+            // ICE is checking but connection is established - this might indicate issues
+            console.log('Advisor ICE checking while connected - monitoring...');
+          }
+          
+          // Check for video track issues
+          const videoTrack = peerConnectionRef.current.getReceivers()
+            .find(receiver => receiver.track && receiver.track.kind === 'video')?.track as MediaStreamTrack;
+          
+          if (videoTrack && videoTrack.readyState === 'ended') {
+            console.warn('Advisor video track ended, attempting recovery...');
+            handleVideoTrackEnd();
+          }
+        }
+      }, 2000); // Check every 2 seconds for better responsiveness
+    }
+    
+    return () => {
+      if (connectionMonitorRef.current) {
+        clearInterval(connectionMonitorRef.current);
+        connectionMonitorRef.current = null;
+      }
+    };
+  }, [callState.isConnected]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (connectionMonitorRef.current) {
+        clearInterval(connectionMonitorRef.current);
+      }
       if (signalingRef.current) {
         signalingRef.current.disconnect();
       }
+      cleanup();
     };
   }, []);
 
@@ -130,6 +227,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
       cleanup();
     };
   }, [isOpen, callState.isConnected]);
+
+  // Initialize WebRTC when signaling is connected
+  useEffect(() => {
+    if (isSignalingConnected && !peerConnectionRef.current) {
+      console.log('Signaling connected, initializing WebRTC for advisor');
+      initializeWebRTC();
+    }
+  }, [isSignalingConnected]);
 
   const initializeDevices = async () => {
     try {
@@ -152,18 +257,15 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const generateShareLink = () => {
     const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const shareLink = `${window.location.origin}/video-call/${callId}`;
+    console.log('Generated share link:', shareLink);
     setCallState(prev => ({ ...prev, shareLink }));
   };
 
   const initializeSignaling = async () => {
-    // Wait for share link to be generated
-    if (!callState.shareLink) {
-      setTimeout(() => initializeSignaling(), 100);
-      return;
-    }
-    
     const callId = callState.shareLink.split('/').pop() || '';
     const userId = `advisor_${advisor.email}`;
+    
+    console.log('Initializing signaling for advisor:', { callId, userId, shareLink: callState.shareLink });
     
     const signaling = createSocketIOSignaling(
       callId,
@@ -174,30 +276,42 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     );
     
     signalingRef.current = signaling;
-    await signaling.connect();
+    try {
+      console.log('Attempting to connect advisor to WebSocket server...');
+      await signaling.connect();
+      console.log('✅ Advisor signaling connected successfully');
+    } catch (error) {
+      console.error('❌ Failed to connect advisor signaling:', error);
+    }
   };
 
   const handleSignalingMessage = (message: SignalingMessage) => {
-    console.log('Received signaling message:', message);
+    console.log('Advisor received signaling message:', message);
     
     switch (message.type) {
       case 'chat-message':
-        setChatMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          sender: message.from.includes('advisor') ? advisor.name : 'לקוח',
-          message: message.data.message,
-          timestamp: new Date(message.timestamp)
-        }]);
+        console.log('Advisor received chat message:', message.data.message);
+        // Only add message if it's not from the current advisor (prevent duplicates)
+        if (!message.from.includes('advisor')) {
+          setChatMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            sender: 'לקוח',
+            message: message.data.message,
+            timestamp: new Date(message.timestamp)
+          }]);
+        }
         break;
         
       case 'user-joined':
         if (!message.data.userId.includes('advisor')) {
           console.log('Client joined the call');
+          setClientConnected(true);
         }
         break;
         
       case 'user-left':
         console.log('Client left the call');
+        setClientConnected(false);
         break;
         
       case 'offer':
@@ -219,12 +333,18 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   };
 
   const handleOffer = async (offer: RTCSessionDescriptionInit, from: string) => {
+    console.log('Advisor received offer from:', from);
     if (peerConnectionRef.current) {
-      await peerConnectionRef.current.setRemoteDescription(offer);
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
-      
-      signalingRef.current?.sendAnswer(answer, from);
+      try {
+        await peerConnectionRef.current.setRemoteDescription(offer);
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        
+        signalingRef.current?.sendAnswer(answer, from);
+        console.log('Advisor sent answer to:', from);
+      } catch (error) {
+        console.error('Error handling offer:', error);
+      }
     }
   };
 
@@ -235,8 +355,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   };
 
   const handleIceCandidate = async (candidate: RTCIceCandidateInit, from: string) => {
+    console.log('Advisor received ICE candidate from:', from);
     if (peerConnectionRef.current) {
-      await peerConnectionRef.current.addIceCandidate(candidate);
+      try {
+        await peerConnectionRef.current.addIceCandidate(candidate);
+        console.log('Advisor added ICE candidate');
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
     }
   };
 
@@ -260,13 +386,19 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
 
   const initializeWebRTC = async () => {
     try {
-      // Get user media with selected devices
+      // Get user media with selected devices and optimized constraints
       const constraints = {
         video: callState.isVideoOn ? {
-          deviceId: callState.selectedCameraId ? { exact: callState.selectedCameraId } : undefined
+          deviceId: callState.selectedCameraId ? { exact: callState.selectedCameraId } : undefined,
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         } : false,
         audio: callState.isAudioOn ? {
-          deviceId: callState.selectedMicrophoneId ? { exact: callState.selectedMicrophoneId } : undefined
+          deviceId: callState.selectedMicrophoneId ? { exact: callState.selectedMicrophoneId } : undefined,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         } : false
       };
 
@@ -277,12 +409,36 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         localVideoRef.current.srcObject = stream;
       }
 
-      // Initialize peer connection
+      // Initialize peer connection with enhanced configuration
       const configuration = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          { urls: 'stun:stun.ekiga.net' },
+          { urls: 'stun:stun.ideasip.com' },
+          { urls: 'stun:stun.schlund.de' },
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'stun:stun.voiparound.com' },
+          { urls: 'stun:stun.voipbuster.com' },
+          { urls: 'stun:stun.voipstunt.com' },
+          { urls: 'stun:stun.counterpath.com' },
+          { urls: 'stun:stun.1und1.de' },
+          { urls: 'stun:stun.gmx.net' },
+          { urls: 'stun:stun.voiparound.com' },
+          { urls: 'stun:stun.voipbuster.com' },
+          { urls: 'stun:stun.voipstunt.com' },
+          { urls: 'stun:stun.counterpath.com' },
+          { urls: 'stun:stun.1und1.de' },
+          { urls: 'stun:stun.gmx.net' }
+        ],
+        iceCandidatePoolSize: 20,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
+        iceTransportPolicy: 'all',
+        iceCandidateTimeout: 10000
       };
 
       peerConnectionRef.current = new RTCPeerConnection(configuration);
@@ -292,25 +448,276 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         peerConnectionRef.current?.addTrack(track, stream);
       });
 
-      // Handle remote stream
+      // Handle remote stream with enhanced monitoring
       peerConnectionRef.current.ontrack = (event) => {
         const [remoteStream] = event.streams;
         remoteStreamRef.current = remoteStream;
+        
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
+          
+          // Enhanced event listeners for video monitoring
+          remoteVideoRef.current.addEventListener('loadstart', () => {
+            console.log('Advisor remote video loadstart');
+          });
+          
+          remoteVideoRef.current.addEventListener('loadeddata', () => {
+            console.log('Advisor remote video loadeddata');
+          });
+          
+          remoteVideoRef.current.addEventListener('canplay', () => {
+            console.log('Advisor remote video canplay');
+          });
+          
+          remoteVideoRef.current.addEventListener('playing', () => {
+            console.log('Advisor remote video playing');
+          });
+          
+          remoteVideoRef.current.addEventListener('waiting', () => {
+            console.warn('Advisor remote video waiting for data');
+          });
+          
+          remoteVideoRef.current.addEventListener('stalled', () => {
+            console.warn('Advisor remote video stalled');
+            setTimeout(() => handleVideoFreeze(), 2000);
+          });
+          
+          remoteVideoRef.current.addEventListener('error', (e) => {
+            console.error('Advisor remote video error:', e);
+            setTimeout(() => handleVideoFreeze(), 1000);
+          });
+          
+          remoteVideoRef.current.addEventListener('pause', () => {
+            console.warn('Advisor remote video paused, attempting recovery...');
+            setTimeout(() => handleVideoFreeze(), 1000);
+          });
+          
+          remoteVideoRef.current.addEventListener('ended', () => {
+            console.warn('Advisor remote video ended, attempting recovery...');
+            setTimeout(() => handleVideoTrackEnd(), 1000);
+          });
+          
+          // Monitor video track changes
+          const videoTrack = remoteStream.getVideoTracks()[0];
+          if (videoTrack) {
+            videoTrack.addEventListener('ended', () => {
+              console.warn('Advisor remote video track ended');
+              handleVideoTrackEnd();
+            });
+            
+            videoTrack.addEventListener('mute', () => {
+              console.warn('Advisor remote video track muted');
+            });
+            
+            videoTrack.addEventListener('unmute', () => {
+              console.log('Advisor remote video track unmuted');
+            });
+          }
         }
       };
 
       // Handle ICE candidates
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate && signalingRef.current) {
+          console.log('Advisor sending ICE candidate');
           // Send ICE candidate to all other participants
           signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
         }
       };
 
+      // Handle connection state changes
+      peerConnectionRef.current.onconnectionstatechange = () => {
+        const state = peerConnectionRef.current?.connectionState;
+        console.log('Advisor connection state:', state);
+        setConnectionState(state || 'unknown');
+      };
+
+      // Handle ICE connection state changes
+      peerConnectionRef.current.oniceconnectionstatechange = () => {
+        const state = peerConnectionRef.current?.iceConnectionState;
+        console.log('Advisor ICE connection state:', state);
+        
+        // Handle connection failures
+        if (state === 'failed' || state === 'disconnected') {
+          console.warn('Advisor ICE connection failed/disconnected, attempting to restart...');
+          restartIce();
+        }
+      };
+
+      // Handle ICE gathering state changes
+      peerConnectionRef.current.onicegatheringstatechange = () => {
+        const state = peerConnectionRef.current?.iceGatheringState;
+        console.log('Advisor ICE gathering state:', state);
+      };
+
+      console.log('WebRTC initialized for advisor');
+
     } catch (error) {
       console.error('Error initializing WebRTC:', error);
+    }
+  };
+
+  const reconnectWebRTC = async () => {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached for advisor');
+      return;
+    }
+    
+    console.log(`Advisor attempting WebRTC reconnection (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+    setReconnectAttempts(prev => prev + 1);
+    
+    try {
+      // Clean up existing connection
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      
+      // Wait a bit before reconnecting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Reinitialize WebRTC
+      await initializeWebRTC();
+      
+      // Reset reconnect attempts on success
+      setReconnectAttempts(0);
+      console.log('Advisor WebRTC reconnection successful');
+      
+    } catch (error) {
+      console.error('Advisor WebRTC reconnection failed:', error);
+    }
+  };
+
+  const handleVideoFreeze = async () => {
+    console.log('Handling video freeze for advisor...');
+    
+    // Try multiple recovery strategies
+    try {
+      // Strategy 1: Restart ICE
+      await restartIce();
+      
+      // Strategy 2: If ICE restart doesn't work, try renegotiation
+      setTimeout(async () => {
+        if (peerConnectionRef.current && signalingRef.current) {
+          const iceState = peerConnectionRef.current.iceConnectionState;
+          if (iceState === 'failed' || iceState === 'disconnected') {
+            console.log('ICE restart failed, attempting renegotiation...');
+            await attemptRenegotiation();
+          }
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error handling video freeze:', error);
+    }
+  };
+
+  const handleIceFailure = async () => {
+    console.log('Handling ICE failure for advisor...');
+    
+    try {
+      // Try ICE restart first
+      await restartIce();
+      
+      // If that fails, attempt full reconnection
+      setTimeout(async () => {
+        if (peerConnectionRef.current) {
+          const iceState = peerConnectionRef.current.iceConnectionState;
+          if (iceState === 'failed' || iceState === 'disconnected') {
+            console.log('ICE restart failed, attempting full reconnection...');
+            await reconnectWebRTC();
+          }
+        }
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Error handling ICE failure:', error);
+    }
+  };
+
+  const handleVideoTrackEnd = async () => {
+    console.log('Handling video track end for advisor...');
+    
+    try {
+      // Try to restart the video track
+      if (localStreamRef.current) {
+        const videoTrack = localStreamRef.current.getVideoTracks()[0];
+        if (videoTrack) {
+          // Replace the video track
+          const sender = peerConnectionRef.current?.getSenders().find(s => 
+            s.track && s.track.kind === 'video'
+          );
+          
+          if (sender) {
+            await sender.replaceTrack(videoTrack);
+            console.log('Advisor video track replaced');
+          }
+        }
+      }
+      
+      // If track replacement fails, try renegotiation
+      setTimeout(async () => {
+        await attemptRenegotiation();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error handling video track end:', error);
+    }
+  };
+
+  const attemptRenegotiation = async () => {
+    if (peerConnectionRef.current && signalingRef.current) {
+      try {
+        console.log('Attempting renegotiation for advisor...');
+        
+        // Create a new offer to trigger renegotiation
+        const offer = await peerConnectionRef.current.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
+        
+        await peerConnectionRef.current.setLocalDescription(offer);
+        signalingRef.current.sendOffer(offer, 'broadcast');
+        console.log('Advisor sent renegotiation offer');
+        
+      } catch (error) {
+        console.error('Error during renegotiation:', error);
+        // If renegotiation fails, try full reconnection
+        await reconnectWebRTC();
+      }
+    }
+  };
+
+  const restartIce = async () => {
+    if (peerConnectionRef.current) {
+      try {
+        console.log('Restarting ICE for advisor...');
+        
+        // First try restartIce
+        await peerConnectionRef.current.restartIce();
+        console.log('ICE restart completed for advisor');
+        
+        // If that doesn't work, try creating a new offer
+        setTimeout(async () => {
+          if (peerConnectionRef.current && signalingRef.current) {
+            const iceState = peerConnectionRef.current.iceConnectionState;
+            if (iceState === 'failed' || iceState === 'disconnected') {
+              console.log('ICE restart failed, creating new offer...');
+              try {
+                const offer = await peerConnectionRef.current.createOffer();
+                await peerConnectionRef.current.setLocalDescription(offer);
+                signalingRef.current.sendOffer(offer, 'broadcast');
+                console.log('Advisor sent new offer after ICE restart');
+              } catch (error) {
+                console.error('Error creating new offer:', error);
+              }
+            }
+          }
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Error restarting ICE:', error);
+      }
     }
   };
 
@@ -401,34 +808,101 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     
     if (localStreamRef.current && callState.isAudioOn) {
       try {
-        const constraints = {
-          video: callState.isVideoOn ? { deviceId: { exact: callState.selectedCameraId } } : false,
+        console.log('Advisor switching microphone to:', microphoneId);
+        
+        // Set flag to prevent video monitoring during audio change
+        isChangingAudioRef.current = true;
+        
+        // Only get audio stream to avoid affecting video
+        const audioConstraints = {
           audio: { deviceId: { exact: microphoneId } }
         };
         
-        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const newAudioStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        const newAudioTrack = newAudioStream.getAudioTracks()[0];
         
-        // Replace audio track
-        const newAudioTrack = newStream.getAudioTracks()[0];
-        const sender = peerConnectionRef.current?.getSenders().find(s => 
-          s.track && s.track.kind === 'audio'
-        );
-        
-        if (sender && newAudioTrack) {
-          await sender.replaceTrack(newAudioTrack);
+        if (newAudioTrack && peerConnectionRef.current) {
+          // Find the audio sender
+          const audioSender = peerConnectionRef.current.getSenders().find(s => 
+            s.track && s.track.kind === 'audio'
+          );
+          
+          if (audioSender) {
+            console.log('Advisor replacing audio track...');
+            await audioSender.replaceTrack(newAudioTrack);
+            console.log('Advisor audio track replaced successfully');
+            
+            // Create new stream with existing video track and new audio track
+            if (localStreamRef.current) {
+              const videoTrack = localStreamRef.current.getVideoTracks()[0];
+              const newStream = new MediaStream();
+              
+              // Add existing video track
+              if (videoTrack) {
+                newStream.addTrack(videoTrack);
+              }
+              
+              // Add new audio track
+              newStream.addTrack(newAudioTrack);
+              
+              // Update references
+              localStreamRef.current = newStream;
+              
+              // Update local video element
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = newStream;
+              }
+              
+              console.log('Advisor local stream recreated with new audio track');
+              
+              // Debug audio track status
+              setTimeout(() => {
+                const audioTrack = newStream.getAudioTracks()[0];
+                if (audioTrack) {
+                  console.log('Advisor new audio track status:', {
+                    enabled: audioTrack.enabled,
+                    muted: audioTrack.muted,
+                    readyState: audioTrack.readyState,
+                    label: audioTrack.label
+                  });
+                  
+                  // Check if track is being sent through WebRTC
+                  const audioSender = peerConnectionRef.current?.getSenders().find(s => 
+                    s.track && s.track.kind === 'audio'
+                  );
+                  if (audioSender && audioSender.track) {
+                    console.log('Advisor WebRTC audio sender track:', {
+                      enabled: audioSender.track.enabled,
+                      muted: audioSender.track.muted,
+                      readyState: audioSender.track.readyState,
+                      label: audioSender.track.label,
+                      id: audioSender.track.id
+                    });
+                  }
+                }
+              }, 1000);
+            }
+          } else {
+            console.error('Advisor audio sender not found');
+          }
         }
         
-        // Update local stream
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = newStream;
-        }
+        // Stop the temporary audio stream (we only needed the track)
+        newAudioStream.getTracks().forEach(track => {
+          if (track !== newAudioTrack) {
+            track.stop();
+          }
+        });
         
-        // Stop old stream
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-        localStreamRef.current = newStream;
+        // Clear flag after audio change is complete
+        setTimeout(() => {
+          isChangingAudioRef.current = false;
+          console.log('Advisor audio change completed, video monitoring resumed');
+        }, 2000);
         
       } catch (error) {
         console.error('Error switching microphone:', error);
+        isChangingAudioRef.current = false; // Clear flag on error
       }
     }
   };
@@ -436,6 +910,7 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const toggleScreenShare = async () => {
     if (!callState.isScreenSharing) {
       try {
+        console.log('Advisor starting screen share...');
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true
@@ -443,6 +918,13 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         
         if (screenShareRef.current) {
           screenShareRef.current.srcObject = screenStream;
+        }
+        
+        // Store original video track for restoration
+        const originalVideoTrack = localStreamRef.current?.getVideoTracks()[0];
+        if (originalVideoTrack) {
+          // Store reference to original track
+          (peerConnectionRef.current as any).originalVideoTrack = originalVideoTrack;
         }
         
         // Add screen share track to peer connection
@@ -453,21 +935,96 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
           );
           
           if (sender) {
+            console.log('Advisor replacing video track with screen share...');
             await sender.replaceTrack(videoTrack);
+            console.log('Advisor screen share track replaced successfully');
           }
         }
         
         setCallState(prev => ({ ...prev, isScreenSharing: true }));
         
         // Handle screen share end
-        screenStream.getVideoTracks()[0].onended = () => {
-          setCallState(prev => ({ ...prev, isScreenSharing: false }));
+        screenStream.getVideoTracks()[0].onended = async () => {
+          console.log('Advisor screen share ended, restoring video...');
+          await restoreVideoStream();
         };
         
       } catch (error) {
         console.error('Error starting screen share:', error);
       }
     } else {
+      console.log('Advisor stopping screen share...');
+      await restoreVideoStream();
+    }
+  };
+
+  const restoreVideoStream = async () => {
+    try {
+      console.log('Advisor restoring video stream...');
+      
+      if (peerConnectionRef.current) {
+        const originalVideoTrack = (peerConnectionRef.current as any).originalVideoTrack;
+        
+        if (originalVideoTrack) {
+          // Restore original video track
+          const sender = peerConnectionRef.current.getSenders().find(s => 
+            s.track && s.track.kind === 'video'
+          );
+          
+          if (sender) {
+            console.log('Advisor restoring original video track...');
+            await sender.replaceTrack(originalVideoTrack);
+            console.log('Advisor original video track restored successfully');
+          }
+          
+          // Clear the stored reference
+          delete (peerConnectionRef.current as any).originalVideoTrack;
+        } else {
+          // If no original track, get new camera stream
+          console.log('Advisor no original track found, getting new camera stream...');
+          const constraints = {
+            video: { deviceId: { exact: callState.selectedCameraId } },
+            audio: callState.isAudioOn ? { deviceId: { exact: callState.selectedMicrophoneId } } : false
+          };
+          
+          const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+          const newVideoTrack = newStream.getVideoTracks()[0];
+          
+          if (newVideoTrack && peerConnectionRef.current) {
+            const sender = peerConnectionRef.current.getSenders().find(s => 
+              s.track && s.track.kind === 'video'
+            );
+            
+            if (sender) {
+              await sender.replaceTrack(newVideoTrack);
+              console.log('Advisor new camera track restored successfully');
+            }
+          }
+          
+          // Update local stream reference
+          if (localStreamRef.current) {
+            // Stop old video track
+            const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
+            if (oldVideoTrack) {
+              oldVideoTrack.stop();
+            }
+            
+            // Update stream with new video track
+            localStreamRef.current = newStream;
+            
+            // Update local video element
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = newStream;
+            }
+          }
+        }
+      }
+      
+      setCallState(prev => ({ ...prev, isScreenSharing: false }));
+      console.log('Advisor video stream restored successfully');
+      
+    } catch (error) {
+      console.error('Error restoring video stream:', error);
       setCallState(prev => ({ ...prev, isScreenSharing: false }));
     }
   };
@@ -476,8 +1033,18 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     setCallState(prev => ({ ...prev, isFullscreen: !prev.isFullscreen }));
   };
 
-  const startCall = () => {
+  const startCall = async () => {
     setCallState(prev => ({ ...prev, isConnected: true }));
+    
+    // Initialize WebRTC connection when call starts
+    if (signalingRef.current && peerConnectionRef.current) {
+      try {
+        // Advisor waits for client to join and create offer
+        console.log('Advisor waiting for client to join and create offer');
+      } catch (error) {
+        console.error('Error starting call:', error);
+      }
+    }
   };
 
   const endCall = () => {
@@ -491,17 +1058,27 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   };
 
   const sendMessage = () => {
-    if (newMessage.trim() && signalingRef.current) {
-      // Send message via signaling
-      signalingRef.current.sendChatMessage(newMessage);
+    if (newMessage.trim()) {
+      console.log('Advisor sending message:', newMessage);
+      console.log('Signaling connected:', isSignalingConnected);
+      console.log('Signaling ref exists:', !!signalingRef.current);
       
-      // Add to local chat immediately
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        sender: advisor.name,
-        message: newMessage,
-        timestamp: new Date()
-      }]);
+      if (signalingRef.current && isSignalingConnected) {
+        // Send message via signaling
+        signalingRef.current.sendChatMessage(newMessage);
+        console.log('Message sent via signaling');
+        
+        // Add to local chat immediately (don't wait for server echo)
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          sender: advisor.name,
+          message: newMessage,
+          timestamp: new Date()
+        }]);
+      } else {
+        console.error('Cannot send message - signaling not connected');
+      }
+      
       setNewMessage('');
     }
   };
@@ -512,7 +1089,16 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     { id: 'documents', label: 'מסמכים', icon: FileText }
   ];
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log('VideoCallModal is closed');
+    return null;
+  }
+  
+  console.log('VideoCallModal is rendering', { 
+    isSignalingConnected, 
+    connectionState,
+    shareLink: callState.shareLink 
+  });
 
   return (
     <AnimatePresence>
@@ -534,10 +1120,18 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
           <div className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className={`w-3 h-3 rounded-full ${
+                  isSignalingConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
                 <span className="text-sm font-medium text-gray-600">
-                  {callState.isConnected ? formatDuration(callState.callDuration) : 'ממתין לחיבור...'}
+                  {callState.isConnected ? formatDuration(callState.callDuration) : 
+                   isSignalingConnected ? 'ממתין ללקוח...' : 'מתחבר...'}
                 </span>
+                {connectionState !== 'new' && (
+                  <span className="text-xs text-gray-500 ml-2">
+                    ({connectionState})
+                  </span>
+                )}
               </div>
               <div className="h-4 w-px bg-gray-300"></div>
               <div>
@@ -831,6 +1425,18 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
                 </div>
                 
                 <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                  {chatMessages.length === 0 && (
+                    <div className="text-center text-gray-500 text-sm">
+                      {isSignalingConnected ? 
+                        (clientConnected ? 'אין הודעות עדיין' : 'ממתין ללקוח...') : 
+                        'מתחבר...'}
+                    </div>
+                  )}
+                  {clientConnected && (
+                    <div className="text-center text-green-600 text-sm mb-2">
+                      ✅ לקוח מחובר
+                    </div>
+                  )}
                   {chatMessages.map((message) => (
                     <div key={message.id} className="flex flex-col">
                       <div className="flex items-center gap-2 mb-1">

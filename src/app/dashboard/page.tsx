@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import MortgageCalculator from '@/components/mortgagecalculator';
-import EquityPlanner from '@/components/ui/equitycalc';
+import CapitalPlanningCalculator from '@/components/ui/equitycalc';
 
 type TabType = 'overview' | 'calculators' | 'my-mortgages' | 'settings';
 
@@ -216,7 +216,7 @@ export default function DashboardPage() {
                     </button>
                   </Link>
                 </div>
-                <EquityPlanner />
+                <CapitalPlanningCalculator />
               </div>
             </div>
           )}

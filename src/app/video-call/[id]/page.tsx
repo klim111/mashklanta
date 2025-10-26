@@ -64,6 +64,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const [chatMessages, setChatMessages] = useState<Array<{id: string, sender: string, message: string, timestamp: Date}>>([]);
   const [newMessage, setNewMessage] = useState('');
   const [callId, setCallId] = useState<string>('');
+  const [advisorConnected, setAdvisorConnected] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -73,7 +74,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const signalingRef = useRef<SocketIOSignaling | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const maxReconnectAttempts = 3;
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<string>('new');
+  const connectionMonitorRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAdvisorActivityRef = useRef<number>(Date.now());
 
   // Get call ID from params
   useEffect(() => {
@@ -86,18 +92,126 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
 
   // Initialize devices and signaling
   useEffect(() => {
+    console.log('Video call page mounted, callId:', callId);
     initializeDevices();
     if (callId) {
+      console.log('Initializing client signaling for callId:', callId);
       initializeSignaling();
     }
   }, [callId]);
 
+  // Start connection monitoring when call is active
+  useEffect(() => {
+    if (callState.isConnected && peerConnectionRef.current) {
+      console.log('Starting enhanced connection monitoring for client...');
+      
+      let lastVideoCurrentTime = 0;
+      let lastVideoCheckTime = Date.now();
+      let frozenVideoCount = 0;
+      
+      connectionMonitorRef.current = setInterval(() => {
+        if (peerConnectionRef.current) {
+          const connectionState = peerConnectionRef.current.connectionState;
+          const iceConnectionState = peerConnectionRef.current.iceConnectionState;
+          
+          console.log('Client connection monitor:', { connectionState, iceConnectionState });
+          
+          // Enhanced video stream monitoring
+          if (remoteVideoRef.current) {
+            const video = remoteVideoRef.current;
+            const currentTime = Date.now();
+            
+            // Check if video is actually receiving frames
+            if (video.currentTime > 0) {
+              // Check if video currentTime is advancing (proper frame detection)
+              if (video.currentTime === lastVideoCurrentTime) {
+                frozenVideoCount++;
+                console.warn(`Client video currentTime not advancing (${frozenVideoCount} consecutive checks)`);
+                
+                if (frozenVideoCount >= 3) {
+                  console.warn('Client video confirmed frozen - currentTime not advancing, attempting recovery...');
+                  handleVideoFreeze();
+                  frozenVideoCount = 0;
+                }
+              } else {
+                frozenVideoCount = 0;
+                lastVideoCurrentTime = video.currentTime;
+              }
+              
+              // Check if too much time has passed since last check
+              const timeSinceLastCheck = currentTime - lastVideoCheckTime;
+              if (timeSinceLastCheck > 10000) { // More than 10 seconds
+                console.warn('Client video monitoring gap detected, checking stream...');
+                handleVideoFreeze();
+              }
+              lastVideoCheckTime = currentTime;
+            }
+            
+            // Check video element state more thoroughly
+            if (video.paused || video.ended || video.readyState < 2) {
+              console.warn('Client remote video not playing properly, attempting recovery...');
+              handleVideoFreeze();
+            }
+            
+            // Check for video element issues
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+              console.warn('Client video has zero dimensions, attempting recovery...');
+              handleVideoFreeze();
+            }
+            
+            // Check if video has srcObject but no currentTime
+            if (video.srcObject && video.currentTime === 0 && video.readyState >= 2) {
+              console.warn('Client video has stream but no currentTime, attempting recovery...');
+              handleVideoFreeze();
+            }
+          }
+          
+          // Check advisor activity heartbeat
+          const timeSinceLastActivity = Date.now() - lastAdvisorActivityRef.current;
+          if (timeSinceLastActivity > 15000) { // 15 seconds without activity
+            console.warn('Client no advisor activity for 15+ seconds, checking connection...');
+            handleVideoFreeze();
+          }
+          
+          // Check ICE connection states
+          if (iceConnectionState === 'failed' || iceConnectionState === 'disconnected') {
+            console.warn('Client ICE connection issue detected, attempting recovery...');
+            handleIceFailure();
+          } else if (iceConnectionState === 'checking' && connectionState === 'connected') {
+            // ICE is checking but connection is established - this might indicate issues
+            console.log('Client ICE checking while connected - monitoring...');
+          }
+          
+          // Check for video track issues
+          const videoTrack = peerConnectionRef.current.getReceivers()
+            .find(receiver => receiver.track && receiver.track.kind === 'video')?.track as MediaStreamTrack;
+          
+          if (videoTrack && videoTrack.readyState === 'ended') {
+            console.warn('Client video track ended, attempting recovery...');
+            handleVideoTrackEnd();
+          }
+        }
+      }, 2000); // Check every 2 seconds for better responsiveness
+    }
+    
+    return () => {
+      if (connectionMonitorRef.current) {
+        clearInterval(connectionMonitorRef.current);
+        connectionMonitorRef.current = null;
+      }
+    };
+  }, [callState.isConnected]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (connectionMonitorRef.current) {
+        clearInterval(connectionMonitorRef.current);
+      }
       if (signalingRef.current) {
         signalingRef.current.disconnect();
       }
+      cleanup();
     };
   }, []);
 
@@ -115,6 +229,15 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       cleanup();
     };
   }, [callState.isConnected]);
+
+  // Initialize WebRTC when signaling is connected
+  useEffect(() => {
+    if (isSignalingConnected && !peerConnectionRef.current) {
+      console.log('Signaling connected, initializing WebRTC for client');
+      console.log('Client video element ref:', remoteVideoRef.current);
+      initializeWebRTC();
+    }
+  }, [isSignalingConnected]);
 
   const initializeDevices = async () => {
     try {
@@ -139,6 +262,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     
     const userId = `client_${Date.now()}`;
     
+    console.log('Initializing signaling for client:', { callId, userId });
+    
     const signaling = createSocketIOSignaling(
       callId,
       userId,
@@ -148,7 +273,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     );
     
     signalingRef.current = signaling;
-    await signaling.connect();
+    try {
+      await signaling.connect();
+      console.log('Client signaling connected successfully');
+    } catch (error) {
+      console.error('Failed to connect client signaling:', error);
+    }
   };
 
   const handleSignalingMessage = (message: SignalingMessage) => {
@@ -156,34 +286,50 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     
     switch (message.type) {
       case 'chat-message':
-        setChatMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          sender: message.from.includes('advisor') ? 'יועץ' : 'לקוח',
-          message: message.data.message,
-          timestamp: new Date(message.timestamp)
-        }]);
+        console.log('Client received chat message:', message.data.message);
+        // Only add message if it's from the advisor (prevent duplicates)
+        if (message.from.includes('advisor')) {
+          setChatMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            sender: 'יועץ',
+            message: message.data.message,
+            timestamp: new Date(message.timestamp)
+          }]);
+        }
         break;
         
       case 'user-joined':
         if (message.from.includes('advisor')) {
           console.log('Advisor joined the call');
+          setAdvisorConnected(true);
+          lastAdvisorActivityRef.current = Date.now();
         }
         break;
         
       case 'user-left':
         console.log('User left the call');
+        setAdvisorConnected(false);
         break;
         
       case 'offer':
         handleOffer(message.data, message.from);
+        if (message.from.includes('advisor')) {
+          lastAdvisorActivityRef.current = Date.now();
+        }
         break;
         
       case 'answer':
         handleAnswer(message.data, message.from);
+        if (message.from.includes('advisor')) {
+          lastAdvisorActivityRef.current = Date.now();
+        }
         break;
         
       case 'ice-candidate':
         handleIceCandidate(message.data, message.from);
+        if (message.from.includes('advisor')) {
+          lastAdvisorActivityRef.current = Date.now();
+        }
         break;
         
       case 'call-ended':
@@ -203,14 +349,26 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   };
 
   const handleAnswer = async (answer: RTCSessionDescriptionInit, from: string) => {
+    console.log('Client received answer from:', from);
     if (peerConnectionRef.current) {
-      await peerConnectionRef.current.setRemoteDescription(answer);
+      try {
+        await peerConnectionRef.current.setRemoteDescription(answer);
+        console.log('Client set remote description from answer');
+      } catch (error) {
+        console.error('Error handling answer:', error);
+      }
     }
   };
 
   const handleIceCandidate = async (candidate: RTCIceCandidateInit, from: string) => {
+    console.log('Client received ICE candidate from:', from);
     if (peerConnectionRef.current) {
-      await peerConnectionRef.current.addIceCandidate(candidate);
+      try {
+        await peerConnectionRef.current.addIceCandidate(candidate);
+        console.log('Client added ICE candidate');
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
     }
   };
 
@@ -222,13 +380,19 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
 
   const initializeWebRTC = async () => {
     try {
-      // Get user media with selected devices
+      // Get user media with selected devices and optimized constraints
       const constraints = {
         video: callState.isVideoOn ? {
-          deviceId: callState.selectedCameraId ? { exact: callState.selectedCameraId } : undefined
+          deviceId: callState.selectedCameraId ? { exact: callState.selectedCameraId } : undefined,
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         } : false,
         audio: callState.isAudioOn ? {
-          deviceId: callState.selectedMicrophoneId ? { exact: callState.selectedMicrophoneId } : undefined
+          deviceId: callState.selectedMicrophoneId ? { exact: callState.selectedMicrophoneId } : undefined,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         } : false
       };
 
@@ -239,12 +403,36 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         localVideoRef.current.srcObject = stream;
       }
 
-      // Initialize peer connection
+      // Initialize peer connection with enhanced configuration
       const configuration = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' },
+          { urls: 'stun:stun.ekiga.net' },
+          { urls: 'stun:stun.ideasip.com' },
+          { urls: 'stun:stun.schlund.de' },
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'stun:stun.voiparound.com' },
+          { urls: 'stun:stun.voipbuster.com' },
+          { urls: 'stun:stun.voipstunt.com' },
+          { urls: 'stun:stun.counterpath.com' },
+          { urls: 'stun:stun.1und1.de' },
+          { urls: 'stun:stun.gmx.net' },
+          { urls: 'stun:stun.voiparound.com' },
+          { urls: 'stun:stun.voipbuster.com' },
+          { urls: 'stun:stun.voipstunt.com' },
+          { urls: 'stun:stun.counterpath.com' },
+          { urls: 'stun:stun.1und1.de' },
+          { urls: 'stun:stun.gmx.net' }
+        ],
+        iceCandidatePoolSize: 20,
+        bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+        rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
+        iceTransportPolicy: 'all' as RTCIceTransportPolicy,
+        iceCandidateTimeout: 10000
       };
 
       peerConnectionRef.current = new RTCPeerConnection(configuration);
@@ -254,25 +442,423 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         peerConnectionRef.current?.addTrack(track, stream);
       });
 
-      // Handle remote stream
+      // Handle remote stream with enhanced monitoring and proper initialization
       peerConnectionRef.current.ontrack = (event) => {
+        console.log('Client received remote track:', event.track.kind, event.track.id);
+        console.log('Client remote track readyState:', event.track.readyState);
+        console.log('Client remote track enabled:', event.track.enabled);
+        
         const [remoteStream] = event.streams;
         remoteStreamRef.current = remoteStream;
+        
+        console.log('Client remote stream:', remoteStream);
+        console.log('Client remote stream active:', remoteStream.active);
+        console.log('Client remote stream tracks:', remoteStream.getTracks().length);
+        
         if (remoteVideoRef.current) {
+          console.log('Client setting remote video stream');
+          console.log('Client video element before:', {
+            srcObject: remoteVideoRef.current.srcObject,
+            readyState: remoteVideoRef.current.readyState,
+            paused: remoteVideoRef.current.paused
+          });
+          
+          // Set the stream directly
           remoteVideoRef.current.srcObject = remoteStream;
+          
+          console.log('Client video element after:', {
+            srcObject: remoteVideoRef.current.srcObject,
+            readyState: remoteVideoRef.current.readyState,
+            paused: remoteVideoRef.current.paused
+          });
+          
+          // Wait a moment for the stream to be ready, then try to play
+          setTimeout(() => {
+            if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+              console.log('Client attempting to play video...');
+              const playPromise = remoteVideoRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise.then(() => {
+                  console.log('Client remote video started playing successfully');
+                }).catch((error) => {
+                  console.error('Client remote video play failed:', error);
+                  // Try to play again after a longer delay
+                  setTimeout(() => {
+                    if (remoteVideoRef.current) {
+                      console.log('Client retrying video play...');
+                      remoteVideoRef.current.play().catch(e => 
+                        console.error('Client remote video retry play failed:', e)
+                      );
+                    }
+                  }, 2000);
+                });
+              }
+            } else {
+              console.error('Client video element or srcObject is null');
+              // Try to set the stream again after a delay
+              setTimeout(() => {
+                if (remoteVideoRef.current && remoteStreamRef.current) {
+                  console.log('Client retrying stream assignment...');
+                  remoteVideoRef.current.srcObject = remoteStreamRef.current;
+                  remoteVideoRef.current.play().catch(e => 
+                    console.error('Client delayed play failed:', e)
+                  );
+                }
+              }, 500);
+            }
+          }, 100);
+          
+          // Enhanced event listeners for video monitoring
+          remoteVideoRef.current.addEventListener('loadstart', () => {
+            console.log('Client remote video loadstart');
+          });
+          
+          remoteVideoRef.current.addEventListener('loadeddata', () => {
+            console.log('Client remote video loadeddata');
+          });
+          
+          remoteVideoRef.current.addEventListener('canplay', () => {
+            console.log('Client remote video canplay');
+            // Ensure video is playing
+            if (remoteVideoRef.current && remoteVideoRef.current.paused) {
+              remoteVideoRef.current.play().catch(e => 
+                console.error('Client remote video canplay play failed:', e)
+              );
+            }
+          });
+          
+          remoteVideoRef.current.addEventListener('canplaythrough', () => {
+            console.log('Client remote video canplaythrough');
+          });
+          
+          remoteVideoRef.current.addEventListener('playing', () => {
+            console.log('Client remote video playing');
+          });
+          
+          remoteVideoRef.current.addEventListener('waiting', () => {
+            console.warn('Client remote video waiting for data');
+          });
+          
+          remoteVideoRef.current.addEventListener('stalled', () => {
+            console.warn('Client remote video stalled');
+            setTimeout(() => handleVideoFreeze(), 2000);
+          });
+          
+          remoteVideoRef.current.addEventListener('error', (e) => {
+            console.error('Client remote video error:', e);
+            setTimeout(() => handleVideoFreeze(), 1000);
+          });
+          
+          remoteVideoRef.current.addEventListener('pause', () => {
+            console.warn('Client remote video paused, attempting recovery...');
+            setTimeout(() => handleVideoFreeze(), 1000);
+          });
+          
+          remoteVideoRef.current.addEventListener('ended', () => {
+            console.warn('Client remote video ended, attempting recovery...');
+            setTimeout(() => handleVideoTrackEnd(), 1000);
+          });
+          
+          // Monitor video track changes
+          const videoTrack = remoteStream.getVideoTracks()[0];
+          if (videoTrack) {
+            console.log('Client monitoring video track:', videoTrack.id);
+            
+            videoTrack.addEventListener('ended', () => {
+              console.warn('Client remote video track ended');
+              handleVideoTrackEnd();
+            });
+            
+            videoTrack.addEventListener('mute', () => {
+              console.warn('Client remote video track muted');
+            });
+            
+            videoTrack.addEventListener('unmute', () => {
+              console.log('Client remote video track unmuted');
+            });
+            
+            // Monitor track settings
+            videoTrack.addEventListener('settingschange', () => {
+              console.log('Client remote video track settings changed');
+            });
+            
+            // Monitor stream activity
+            const checkStreamActivity = () => {
+              if (!remoteStream.active) {
+                console.warn('Client remote stream became inactive');
+                handleVideoFreeze();
+              }
+            };
+            
+            // Check stream activity every 5 seconds
+            const streamActivityInterval = setInterval(checkStreamActivity, 5000);
+            
+            // Clean up interval when track ends
+            videoTrack.addEventListener('ended', () => {
+              clearInterval(streamActivityInterval);
+            });
+          }
         }
       };
 
       // Handle ICE candidates
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate && signalingRef.current) {
+          console.log('Client sending ICE candidate');
           // Send ICE candidate to all other participants
           signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
         }
       };
 
+      // Handle connection state changes
+      peerConnectionRef.current.onconnectionstatechange = () => {
+        const state = peerConnectionRef.current?.connectionState;
+        console.log('Client connection state:', state);
+        setConnectionState(state || 'unknown');
+      };
+
+      // Handle ICE connection state changes
+      peerConnectionRef.current.oniceconnectionstatechange = () => {
+        const state = peerConnectionRef.current?.iceConnectionState;
+        console.log('Client ICE connection state:', state);
+        
+        // Handle connection failures
+        if (state === 'failed' || state === 'disconnected') {
+          console.warn('Client ICE connection failed/disconnected, attempting to restart...');
+          restartIce();
+        }
+      };
+
+      // Handle ICE gathering state changes
+      peerConnectionRef.current.onicegatheringstatechange = () => {
+        const state = peerConnectionRef.current?.iceGatheringState;
+        console.log('Client ICE gathering state:', state);
+      };
+
+      console.log('WebRTC initialized for client');
+
     } catch (error) {
       console.error('Error initializing WebRTC:', error);
+    }
+  };
+
+  const reconnectWebRTC = async () => {
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached for client');
+      return;
+    }
+    
+    console.log(`Client attempting WebRTC reconnection (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+    setReconnectAttempts(prev => prev + 1);
+    
+    try {
+      // Clean up existing connection
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      
+      // Wait a bit before reconnecting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Reinitialize WebRTC
+      await initializeWebRTC();
+      
+      // Reset reconnect attempts on success
+      setReconnectAttempts(0);
+      console.log('Client WebRTC reconnection successful');
+      
+    } catch (error) {
+      console.error('Client WebRTC reconnection failed:', error);
+    }
+  };
+
+  const handleVideoFreeze = async () => {
+    console.log('Handling video freeze for client...');
+    
+    // Try multiple recovery strategies
+    try {
+      // Strategy 1: Check if stream is still active
+      if (remoteStreamRef.current && !remoteStreamRef.current.active) {
+        console.log('Client remote stream is inactive, attempting to reconnect...');
+        await reconnectWebRTC();
+        return;
+      }
+      
+      // Strategy 2: Try to restart video playback
+      if (remoteVideoRef.current && remoteVideoRef.current.paused) {
+        console.log('Client attempting to restart paused video...');
+        try {
+          await remoteVideoRef.current.play();
+          console.log('Client video playback restarted successfully');
+          return; // Success, no need for further recovery
+        } catch (playError) {
+          console.error('Client video play restart failed:', playError);
+        }
+      }
+      
+      // Strategy 3: Check if video element needs to be refreshed
+      if (remoteVideoRef.current && remoteVideoRef.current.readyState < 2) {
+        console.log('Client video not ready, attempting to refresh stream...');
+        await refreshVideoStream();
+        return;
+      }
+      
+      // Strategy 4: Check if video track is still active
+      if (remoteStreamRef.current) {
+        const videoTrack = remoteStreamRef.current.getVideoTracks()[0];
+        if (videoTrack && videoTrack.readyState === 'ended') {
+          console.log('Client video track ended, attempting to reconnect...');
+          await reconnectWebRTC();
+          return;
+        }
+      }
+      
+      // Strategy 5: Restart ICE
+      await restartIce();
+      
+      // Strategy 6: If ICE restart doesn't work, try renegotiation
+      setTimeout(async () => {
+        if (peerConnectionRef.current && signalingRef.current) {
+          const iceState = peerConnectionRef.current.iceConnectionState;
+          if (iceState === 'failed' || iceState === 'disconnected') {
+            console.log('ICE restart failed, attempting renegotiation...');
+            await attemptRenegotiation();
+          }
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error handling video freeze:', error);
+    }
+  };
+
+  const refreshVideoStream = async () => {
+    if (remoteVideoRef.current && remoteStreamRef.current) {
+      console.log('Client refreshing video stream...');
+      
+      try {
+        // Don't clear the stream, just reassign it
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+        
+        // Try to play
+        await remoteVideoRef.current.play();
+        console.log('Client video stream refreshed successfully');
+        
+      } catch (error) {
+        console.error('Client video stream refresh failed:', error);
+        // If refresh fails, try full reconnection
+        await reconnectWebRTC();
+      }
+    }
+  };
+
+  const handleIceFailure = async () => {
+    console.log('Handling ICE failure for client...');
+    
+    try {
+      // Try ICE restart first
+      await restartIce();
+      
+      // If that fails, attempt full reconnection
+      setTimeout(async () => {
+        if (peerConnectionRef.current) {
+          const iceState = peerConnectionRef.current.iceConnectionState;
+          if (iceState === 'failed' || iceState === 'disconnected') {
+            console.log('ICE restart failed, attempting full reconnection...');
+            await reconnectWebRTC();
+          }
+        }
+      }, 5000);
+      
+    } catch (error) {
+      console.error('Error handling ICE failure:', error);
+    }
+  };
+
+  const handleVideoTrackEnd = async () => {
+    console.log('Handling video track end for client...');
+    
+    try {
+      // Try to restart the video track
+      if (localStreamRef.current) {
+        const videoTrack = localStreamRef.current.getVideoTracks()[0];
+        if (videoTrack) {
+          // Replace the video track
+          const sender = peerConnectionRef.current?.getSenders().find(s => 
+            s.track && s.track.kind === 'video'
+          );
+          
+          if (sender) {
+            await sender.replaceTrack(videoTrack);
+            console.log('Client video track replaced');
+          }
+        }
+      }
+      
+      // If track replacement fails, try renegotiation
+      setTimeout(async () => {
+        await attemptRenegotiation();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error handling video track end:', error);
+    }
+  };
+
+  const attemptRenegotiation = async () => {
+    if (peerConnectionRef.current && signalingRef.current) {
+      try {
+        console.log('Attempting renegotiation for client...');
+        
+        // Create a new offer to trigger renegotiation
+        const offer = await peerConnectionRef.current.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
+        
+        await peerConnectionRef.current.setLocalDescription(offer);
+        signalingRef.current.sendOffer(offer, 'broadcast');
+        console.log('Client sent renegotiation offer');
+        
+      } catch (error) {
+        console.error('Error during renegotiation:', error);
+        // If renegotiation fails, try full reconnection
+        await reconnectWebRTC();
+      }
+    }
+  };
+
+  const restartIce = async () => {
+    if (peerConnectionRef.current) {
+      try {
+        console.log('Restarting ICE for client...');
+        
+        // First try restartIce
+        await peerConnectionRef.current.restartIce();
+        console.log('ICE restart completed for client');
+        
+        // If that doesn't work, try creating a new offer
+        setTimeout(async () => {
+          if (peerConnectionRef.current && signalingRef.current) {
+            const iceState = peerConnectionRef.current.iceConnectionState;
+            if (iceState === 'failed' || iceState === 'disconnected') {
+              console.log('ICE restart failed, creating new offer...');
+              try {
+                const offer = await peerConnectionRef.current.createOffer();
+                await peerConnectionRef.current.setLocalDescription(offer);
+                signalingRef.current.sendOffer(offer, 'broadcast');
+                console.log('Client sent new offer after ICE restart');
+              } catch (error) {
+                console.error('Error creating new offer:', error);
+              }
+            }
+          }
+        }, 2000);
+        
+      } catch (error) {
+        console.error('Error restarting ICE:', error);
+      }
     }
   };
 
@@ -363,31 +949,88 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     
     if (localStreamRef.current && callState.isAudioOn) {
       try {
-        const constraints = {
-          video: callState.isVideoOn ? { deviceId: { exact: callState.selectedCameraId } } : false,
+        console.log('Client switching microphone to:', microphoneId);
+        
+        // Only get audio stream to avoid affecting video
+        const audioConstraints = {
           audio: { deviceId: { exact: microphoneId } }
         };
         
-        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const newAudioStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        const newAudioTrack = newAudioStream.getAudioTracks()[0];
         
-        // Replace audio track
-        const newAudioTrack = newStream.getAudioTracks()[0];
-        const sender = peerConnectionRef.current?.getSenders().find(s => 
-          s.track && s.track.kind === 'audio'
-        );
-        
-        if (sender && newAudioTrack) {
-          await sender.replaceTrack(newAudioTrack);
+        if (newAudioTrack && peerConnectionRef.current) {
+          // Find the audio sender
+          const audioSender = peerConnectionRef.current.getSenders().find(s => 
+            s.track && s.track.kind === 'audio'
+          );
+          
+          if (audioSender) {
+            console.log('Client replacing audio track...');
+            await audioSender.replaceTrack(newAudioTrack);
+            console.log('Client audio track replaced successfully');
+            
+            // Create new stream with existing video track and new audio track
+            if (localStreamRef.current) {
+              const videoTrack = localStreamRef.current.getVideoTracks()[0];
+              const newStream = new MediaStream();
+              
+              // Add existing video track
+              if (videoTrack) {
+                newStream.addTrack(videoTrack);
+              }
+              
+              // Add new audio track
+              newStream.addTrack(newAudioTrack);
+              
+              // Update references
+              localStreamRef.current = newStream;
+              
+              // Update local video element
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = newStream;
+              }
+              
+              console.log('Client local stream recreated with new audio track');
+              
+              // Debug audio track status
+              setTimeout(() => {
+                const audioTrack = newStream.getAudioTracks()[0];
+                if (audioTrack) {
+                  console.log('Client new audio track status:', {
+                    enabled: audioTrack.enabled,
+                    muted: audioTrack.muted,
+                    readyState: audioTrack.readyState,
+                    label: audioTrack.label
+                  });
+                  
+                  // Check if track is being sent through WebRTC
+                  const audioSender = peerConnectionRef.current?.getSenders().find(s => 
+                    s.track && s.track.kind === 'audio'
+                  );
+                  if (audioSender && audioSender.track) {
+                    console.log('Client WebRTC audio sender track:', {
+                      enabled: audioSender.track.enabled,
+                      muted: audioSender.track.muted,
+                      readyState: audioSender.track.readyState,
+                      label: audioSender.track.label,
+                      id: audioSender.track.id
+                    });
+                  }
+                }
+              }, 1000);
+            }
+          } else {
+            console.error('Client audio sender not found');
+          }
         }
         
-        // Update local stream
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = newStream;
-        }
-        
-        // Stop old stream
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-        localStreamRef.current = newStream;
+        // Stop the temporary audio stream (we only needed the track)
+        newAudioStream.getTracks().forEach(track => {
+          if (track !== newAudioTrack) {
+            track.stop();
+          }
+        });
         
       } catch (error) {
         console.error('Error switching microphone:', error);
@@ -398,6 +1041,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const toggleScreenShare = async () => {
     if (!callState.isScreenSharing) {
       try {
+        console.log('Client starting screen share...');
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true
@@ -405,6 +1049,13 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         
         if (screenShareRef.current) {
           screenShareRef.current.srcObject = screenStream;
+        }
+        
+        // Store original video track for restoration
+        const originalVideoTrack = localStreamRef.current?.getVideoTracks()[0];
+        if (originalVideoTrack) {
+          // Store reference to original track
+          (peerConnectionRef.current as any).originalVideoTrack = originalVideoTrack;
         }
         
         // Add screen share track to peer connection
@@ -415,21 +1066,96 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
           );
           
           if (sender) {
+            console.log('Client replacing video track with screen share...');
             await sender.replaceTrack(videoTrack);
+            console.log('Client screen share track replaced successfully');
           }
         }
         
         setCallState(prev => ({ ...prev, isScreenSharing: true }));
         
         // Handle screen share end
-        screenStream.getVideoTracks()[0].onended = () => {
-          setCallState(prev => ({ ...prev, isScreenSharing: false }));
+        screenStream.getVideoTracks()[0].onended = async () => {
+          console.log('Client screen share ended, restoring video...');
+          await restoreVideoStream();
         };
         
       } catch (error) {
         console.error('Error starting screen share:', error);
       }
     } else {
+      console.log('Client stopping screen share...');
+      await restoreVideoStream();
+    }
+  };
+
+  const restoreVideoStream = async () => {
+    try {
+      console.log('Client restoring video stream...');
+      
+      if (peerConnectionRef.current) {
+        const originalVideoTrack = (peerConnectionRef.current as any).originalVideoTrack;
+        
+        if (originalVideoTrack) {
+          // Restore original video track
+          const sender = peerConnectionRef.current.getSenders().find(s => 
+            s.track && s.track.kind === 'video'
+          );
+          
+          if (sender) {
+            console.log('Client restoring original video track...');
+            await sender.replaceTrack(originalVideoTrack);
+            console.log('Client original video track restored successfully');
+          }
+          
+          // Clear the stored reference
+          delete (peerConnectionRef.current as any).originalVideoTrack;
+        } else {
+          // If no original track, get new camera stream
+          console.log('Client no original track found, getting new camera stream...');
+          const constraints = {
+            video: { deviceId: { exact: callState.selectedCameraId } },
+            audio: callState.isAudioOn ? { deviceId: { exact: callState.selectedMicrophoneId } } : false
+          };
+          
+          const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+          const newVideoTrack = newStream.getVideoTracks()[0];
+          
+          if (newVideoTrack && peerConnectionRef.current) {
+            const sender = peerConnectionRef.current.getSenders().find(s => 
+              s.track && s.track.kind === 'video'
+            );
+            
+            if (sender) {
+              await sender.replaceTrack(newVideoTrack);
+              console.log('Client new camera track restored successfully');
+            }
+          }
+          
+          // Update local stream reference
+          if (localStreamRef.current) {
+            // Stop old video track
+            const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
+            if (oldVideoTrack) {
+              oldVideoTrack.stop();
+            }
+            
+            // Update stream with new video track
+            localStreamRef.current = newStream;
+            
+            // Update local video element
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = newStream;
+            }
+          }
+        }
+      }
+      
+      setCallState(prev => ({ ...prev, isScreenSharing: false }));
+      console.log('Client video stream restored successfully');
+      
+    } catch (error) {
+      console.error('Error restoring video stream:', error);
       setCallState(prev => ({ ...prev, isScreenSharing: false }));
     }
   };
@@ -445,14 +1171,43 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       isWaitingForAdvisor: false 
     }));
     
-    // Create offer and send to advisor
-    if (peerConnectionRef.current && signalingRef.current) {
-      const offer = await peerConnectionRef.current.createOffer();
-      await peerConnectionRef.current.setLocalDescription(offer);
-      
-      // Send offer to advisor
-      signalingRef.current.sendOffer(offer, 'advisor');
+    console.log('Client joining call');
+    console.log('Client video element ref during join:', remoteVideoRef.current);
+    
+    // Ensure video can play after user interaction
+    if (remoteVideoRef.current) {
+      try {
+        await remoteVideoRef.current.play();
+        console.log('Client remote video started playing after user interaction');
+      } catch (error) {
+        console.log('Client remote video play after interaction failed:', error);
+      }
     }
+    
+    // Wait for WebRTC to be initialized if not already done
+    if (!peerConnectionRef.current) {
+      console.log('WebRTC not initialized yet, waiting...');
+      await initializeWebRTC();
+    }
+    
+    // Wait a bit for WebRTC to be ready, then create offer
+    setTimeout(async () => {
+      if (peerConnectionRef.current && signalingRef.current) {
+        try {
+          console.log('Creating offer for advisor');
+          const offer = await peerConnectionRef.current.createOffer();
+          await peerConnectionRef.current.setLocalDescription(offer);
+          
+          // Send offer to advisor
+          signalingRef.current.sendOffer(offer, 'broadcast');
+          console.log('Client sent offer to advisor');
+        } catch (error) {
+          console.error('Error creating client offer:', error);
+        }
+      } else {
+        console.error('Cannot create offer - missing peerConnection or signaling');
+      }
+    }, 1000);
   };
 
   const endCall = () => {
@@ -467,17 +1222,27 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   };
 
   const sendMessage = () => {
-    if (newMessage.trim() && signalingRef.current) {
-      // Send message via signaling
-      signalingRef.current.sendChatMessage(newMessage);
+    if (newMessage.trim()) {
+      console.log('Client sending message:', newMessage);
+      console.log('Signaling connected:', isSignalingConnected);
+      console.log('Signaling ref exists:', !!signalingRef.current);
       
-      // Add to local chat immediately
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        sender: 'לקוח',
-        message: newMessage,
-        timestamp: new Date()
-      }]);
+      if (signalingRef.current && isSignalingConnected) {
+        // Send message via signaling
+        signalingRef.current.sendChatMessage(newMessage);
+        console.log('Message sent via signaling');
+        
+        // Add to local chat immediately (don't wait for server echo)
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          sender: 'לקוח',
+          message: newMessage,
+          timestamp: new Date()
+        }]);
+      } else {
+        console.error('Cannot send message - signaling not connected');
+      }
+      
       setNewMessage('');
     }
   };
@@ -490,10 +1255,18 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className={`w-3 h-3 rounded-full ${
+                  isSignalingConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
                 <span className="text-sm font-medium text-gray-300">
-                  {callState.isConnected ? formatDuration(callState.callDuration) : 'ממתין לחיבור...'}
+                  {callState.isConnected ? formatDuration(callState.callDuration) : 
+                   isSignalingConnected ? 'ממתין ליועץ...' : 'מתחבר...'}
                 </span>
+                {connectionState !== 'new' && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    ({connectionState})
+                  </span>
+                )}
               </div>
               <div className="h-4 w-px bg-gray-600"></div>
               <div>
@@ -537,10 +1310,33 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                   </div>
                   <h3 className="text-xl font-semibold mb-2">ממתין ליועץ...</h3>
                   <p className="text-gray-300 mb-6">היועץ יתחבר בקרוב לשיחה</p>
-                  <Button onClick={joinCall} className="bg-green-600 hover:bg-green-700">
-                    <Phone className="w-4 h-4 mr-2" />
-                    הצטרף לשיחה
-                  </Button>
+                  <div className="space-y-2">
+                    <Button onClick={joinCall} className="bg-green-600 hover:bg-green-700">
+                      <Phone className="w-4 h-4 mr-2" />
+                      הצטרף לשיחה
+                    </Button>
+                    <Button 
+                      onClick={async () => {
+                        console.log('Testing video element...');
+                        if (remoteVideoRef.current) {
+                          console.log('Video element exists:', remoteVideoRef.current);
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                            remoteVideoRef.current.srcObject = stream;
+                            await remoteVideoRef.current.play();
+                            console.log('Test video playing successfully');
+                          } catch (error) {
+                            console.error('Test video failed:', error);
+                          }
+                        } else {
+                          console.error('Video element not found');
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-xs"
+                    >
+                      Test Video Element
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : !callState.isConnected ? (
@@ -560,7 +1356,25 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  muted={true}
+                  controls={false}
                   className="w-full h-full object-cover"
+                  style={{ 
+                    backgroundColor: '#000',
+                    minHeight: '100%',
+                    minWidth: '100%'
+                  }}
+                  onClick={async () => {
+                    // Ensure video plays on user interaction
+                    if (remoteVideoRef.current && remoteVideoRef.current.paused) {
+                      try {
+                        await remoteVideoRef.current.play();
+                        console.log('Client video started playing after click');
+                      } catch (error) {
+                        console.error('Client video play after click failed:', error);
+                      }
+                    }
+                  }}
                 />
                 
                 {/* Local Video */}
@@ -684,6 +1498,18 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
           </div>
           
           <div className="flex-1 p-4 overflow-y-auto space-y-3">
+            {chatMessages.length === 0 && (
+              <div className="text-center text-gray-400 text-sm">
+                {isSignalingConnected ? 
+                  (advisorConnected ? 'אין הודעות עדיין' : 'ממתין ליועץ...') : 
+                  'מתחבר...'}
+              </div>
+            )}
+            {advisorConnected && (
+              <div className="text-center text-green-400 text-sm mb-2">
+                ✅ יועץ מחובר
+              </div>
+            )}
             {chatMessages.map((message) => (
               <div key={message.id} className="flex flex-col">
                 <div className="flex items-center gap-2 mb-1">
