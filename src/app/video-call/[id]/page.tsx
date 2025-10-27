@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HTTPSignaling, SignalingMessage, createHTTPSignaling } from '@/lib/http-signaling';
+import { getWebRTCConfiguration, getMediaConstraints, createConnectionMonitor } from '@/lib/webrtc-config';
 
 interface CallState {
   isConnected: boolean;
@@ -415,21 +416,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     }
     
     try {
-      // Get user media with selected devices and optimized constraints
-      const constraints = {
-        video: callState.isVideoOn ? {
-          deviceId: callState.selectedCameraId ? { exact: callState.selectedCameraId } : undefined,
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 30, max: 60 }
-        } : false,
-        audio: callState.isAudioOn ? {
-          deviceId: callState.selectedMicrophoneId ? { exact: callState.selectedMicrophoneId } : undefined,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } : false
-      };
+      // Get user media with optimized constraints
+      const constraints = getMediaConstraints(
+        callState.isVideoOn,
+        callState.isAudioOn,
+        callState.selectedCameraId || callState.selectedMicrophoneId
+      );
 
       console.log('Client requesting user media with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -442,38 +434,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         localVideoRef.current.srcObject = stream;
       }
 
-      // Initialize peer connection with enhanced configuration
-      const configuration = {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-          { urls: 'stun:stun.ekiga.net' },
-          { urls: 'stun:stun.ideasip.com' },
-          { urls: 'stun:stun.schlund.de' },
-          { urls: 'stun:stun.stunprotocol.org:3478' },
-          { urls: 'stun:stun.voiparound.com' },
-          { urls: 'stun:stun.voipbuster.com' },
-          { urls: 'stun:stun.voipstunt.com' },
-          { urls: 'stun:stun.counterpath.com' },
-          { urls: 'stun:stun.1und1.de' },
-          { urls: 'stun:stun.gmx.net' },
-          { urls: 'stun:stun.voiparound.com' },
-          { urls: 'stun:stun.voipbuster.com' },
-          { urls: 'stun:stun.voipstunt.com' },
-          { urls: 'stun:stun.counterpath.com' },
-          { urls: 'stun:stun.1und1.de' },
-          { urls: 'stun:stun.gmx.net' }
-        ],
-        iceCandidatePoolSize: 20,
-        bundlePolicy: 'max-bundle' as RTCBundlePolicy,
-        rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
-        iceTransportPolicy: 'all' as RTCIceTransportPolicy,
-        iceCandidateTimeout: 10000
-      };
-
+      // Initialize peer connection with optimized configuration
+      const configuration = getWebRTCConfiguration();
       console.log('Client creating peer connection with configuration:', configuration);
       peerConnectionRef.current = new RTCPeerConnection(configuration);
       console.log('Client peer connection created:', peerConnectionRef.current);
@@ -644,6 +606,22 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         }
       };
 
+      // Set up connection monitoring
+      createConnectionMonitor(
+        peerConnectionRef.current,
+        (state) => {
+          console.log('Client connection state:', state);
+          setConnectionState(state);
+        },
+        (state) => {
+          console.log('Client ICE connection state:', state);
+          if (state === 'failed' || state === 'disconnected') {
+            console.warn('Client ICE connection failed/disconnected, attempting to restart...');
+            restartIce();
+          }
+        }
+      );
+
       // Handle ICE candidates
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate && signalingRef.current) {
@@ -651,31 +629,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
           // Send ICE candidate to all other participants
           signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
         }
-      };
-
-      // Handle connection state changes
-      peerConnectionRef.current.onconnectionstatechange = () => {
-        const state = peerConnectionRef.current?.connectionState;
-        console.log('Client connection state:', state);
-        setConnectionState(state || 'unknown');
-      };
-
-      // Handle ICE connection state changes
-      peerConnectionRef.current.oniceconnectionstatechange = () => {
-        const state = peerConnectionRef.current?.iceConnectionState;
-        console.log('Client ICE connection state:', state);
-        
-        // Handle connection failures
-        if (state === 'failed' || state === 'disconnected') {
-          console.warn('Client ICE connection failed/disconnected, attempting to restart...');
-          restartIce();
-        }
-      };
-
-      // Handle ICE gathering state changes
-      peerConnectionRef.current.onicegatheringstatechange = () => {
-        const state = peerConnectionRef.current?.iceGatheringState;
-        console.log('Client ICE gathering state:', state);
       };
 
       console.log('WebRTC initialized for client');

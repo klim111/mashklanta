@@ -128,6 +128,7 @@ export class HTTPSignaling {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
           },
         });
 
@@ -140,7 +141,8 @@ export class HTTPSignaling {
         this.lastPollTime = data.timestamp || Date.now();
 
         // Process new messages
-        if (data.messages) {
+        if (data.messages && data.messages.length > 0) {
+          console.log(`Received ${data.messages.length} new messages`);
           data.messages.forEach((msg: any) => {
             const message: SignalingMessage = {
               type: 'chat-message',
@@ -154,7 +156,8 @@ export class HTTPSignaling {
         }
 
         // Process new signals
-        if (data.signals) {
+        if (data.signals && data.signals.length > 0) {
+          console.log(`Received ${data.signals.length} new signals`);
           data.signals.forEach((signal: any) => {
             if (signal.from !== this.userId) {
               console.log('Processing WebRTC signal:', signal);
@@ -176,7 +179,7 @@ export class HTTPSignaling {
         this.onConnectionChange(false);
         this.stopPolling();
       }
-    }, 500); // Poll every 500ms for faster WebRTC signaling
+    }, 300); // Poll every 300ms for faster WebRTC signaling
   }
 
   private stopPolling() {
@@ -188,6 +191,8 @@ export class HTTPSignaling {
 
   private async sendSignal(type: string, signal: any, target: string = 'broadcast') {
     try {
+      console.log(`Sending ${type} signal:`, signal);
+      
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -198,12 +203,18 @@ export class HTTPSignaling {
           callId: this.callId,
           userId: this.userId,
           target,
-          signal: signal // Send the signal directly, not wrapped
+          signal: {
+            type: type,
+            ...signal
+          }
         }),
       });
 
       if (!response.ok) {
-        console.error('Failed to send signal:', response.statusText);
+        const errorText = await response.text();
+        console.error('Failed to send signal:', response.statusText, errorText);
+      } else {
+        console.log(`${type} signal sent successfully`);
       }
     } catch (error) {
       console.error('Error sending signal:', error);

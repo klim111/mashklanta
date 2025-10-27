@@ -7,6 +7,22 @@ const callStore = new Map<string, {
   signals: any[];
 }>();
 
+// Clean up old calls every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  const maxAge = 30 * 60 * 1000; // 30 minutes
+  
+  for (const [callId, call] of callStore.entries()) {
+    const hasActiveParticipants = Array.from(call.participants.values())
+      .some(p => (now - p.lastSeen) < maxAge);
+    
+    if (!hasActiveParticipants) {
+      callStore.delete(callId);
+      console.log(`Cleaned up inactive call: ${callId}`);
+    }
+  }
+}, 5 * 60 * 1000);
+
 // WebSocket-like API using HTTP polling and Server-Sent Events
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -26,6 +42,7 @@ export async function GET(request: NextRequest) {
       messages: [],
       signals: []
     });
+    console.log(`Created new call: ${callId}`);
   }
 
   const call = callStore.get(callId)!;
@@ -38,6 +55,18 @@ export async function GET(request: NextRequest) {
         joinedAt: new Date(),
         lastSeen: Date.now()
       });
+
+      console.log(`User ${userId} (${userType}) joined call ${callId}`);
+
+      // Notify other participants about new user
+      const joinSignal = {
+        type: 'user-joined',
+        from: userId,
+        target: 'broadcast',
+        signal: { userId, userType },
+        timestamp: Date.now()
+      };
+      call.signals.push(joinSignal);
 
       // Return call info
       return new Response(JSON.stringify({
@@ -52,7 +81,12 @@ export async function GET(request: NextRequest) {
         signals: call.signals.slice(-20)
       }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
 
     case 'poll':
@@ -73,16 +107,34 @@ export async function GET(request: NextRequest) {
         timestamp: Date.now()
       }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
 
     case 'leave':
       // Remove participant
       call.participants.delete(userId);
       
+      // Notify other participants about user leaving
+      const leaveSignal = {
+        type: 'user-left',
+        from: userId,
+        target: 'broadcast',
+        signal: { userId, userType },
+        timestamp: Date.now()
+      };
+      call.signals.push(leaveSignal);
+      
+      console.log(`User ${userId} left call ${callId}`);
+      
       // Clean up empty calls
       if (call.participants.size === 0) {
         callStore.delete(callId);
+        console.log(`Deleted empty call: ${callId}`);
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -112,21 +164,24 @@ export async function POST(request: NextRequest) {
         messages: [],
         signals: []
       });
+      console.log(`Created new call via POST: ${callId}`);
     }
 
     const call = callStore.get(callId)!;
 
     switch (type) {
       case 'webrtc-signal':
-        // Store WebRTC signal
+        // Store WebRTC signal with proper structure
         const signalData = {
-          type: signal.type || type,
+          type: signal?.type || 'webrtc-signal',
           from: userId,
           target,
           signal: signal,
           timestamp: Date.now()
         };
         call.signals.push(signalData);
+        
+        console.log(`WebRTC signal stored: ${signalData.type} from ${userId} in call ${callId}`);
         
         // Keep only last 100 signals
         if (call.signals.length > 100) {
@@ -145,6 +200,8 @@ export async function POST(request: NextRequest) {
         };
         call.messages.push(chatMessage);
         
+        console.log(`Chat message stored from ${userId} in call ${callId}: ${message}`);
+        
         // Keep only last 200 messages
         if (call.messages.length > 200) {
           call.messages = call.messages.slice(-200);
@@ -155,20 +212,31 @@ export async function POST(request: NextRequest) {
       case 'screen-share-end':
       case 'call-ended':
         // Store event
-        call.signals.push({
+        const eventSignal = {
           type,
           from: userId,
+          target: 'broadcast',
+          signal: { type },
           timestamp: Date.now()
-        });
+        };
+        call.signals.push(eventSignal);
+        
+        console.log(`Event signal stored: ${type} from ${userId} in call ${callId}`);
         break;
 
       default:
+        console.warn(`Unknown message type: ${type}`);
         return new Response('Unknown message type', { status: 400 });
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
 
   } catch (error) {
