@@ -24,10 +24,7 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
     iceCandidatePoolSize: 10, // Reduced from 20 for better performance
     bundlePolicy: 'max-bundle' as RTCBundlePolicy,
     rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
-    iceTransportPolicy: 'all' as RTCIceTransportPolicy,
-    
-    // Timeout settings optimized for serverless
-    iceCandidateTimeout: 8000, // Reduced timeout for faster failure detection
+    iceTransportPolicy: 'all' as RTCIceTransportPolicy
   };
 };
 
