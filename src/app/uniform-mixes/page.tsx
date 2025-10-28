@@ -99,7 +99,7 @@ export default function UniformMixes() {
       tracks: [{
         id: 'track-1-1',
         name: 'ריבית קבועה לא צמודה',
-        type: 'fixed',
+        type: 'fixed_unlinked',
         amount: loanAmount,
         percentage: 100,
         interestRate: 5.0,
@@ -118,7 +118,7 @@ export default function UniformMixes() {
         {
           id: 'track-2-1',
           name: 'ריבית קבועה לא צמודה',
-          type: 'fixed',
+          type: 'fixed_unlinked',
           amount: loanAmount * 0.5,
           percentage: 50,
           interestRate: 5.0,
@@ -147,7 +147,7 @@ export default function UniformMixes() {
         {
           id: 'track-3-1',
           name: 'ריבית קבועה לא צמודה',
-          type: 'fixed',
+          type: 'fixed_unlinked',
           amount: loanAmount * (1/3),
           percentage: 33.33,
           interestRate: 5.0,
@@ -165,7 +165,7 @@ export default function UniformMixes() {
         {
           id: 'track-3-3',
           name: 'ריבית משתנה צמודה מדד',
-          type: 'madad',
+          type: 'fixed_linked',
           amount: loanAmount * (1/3),
           percentage: 33.34,
           interestRate: 6.0,

@@ -10,6 +10,7 @@ import type { MortgageMix } from './types';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
 import { TRACK_TYPES } from './types';
 import { useCPI } from '@/hooks/useCPI';
+import { useCurrencyRates } from '@/hooks/useCurrencyRates';
 
 interface MortgageMixCardProps {
   mix: MortgageMix;
@@ -19,6 +20,7 @@ interface MortgageMixCardProps {
   onShowDetails?: (mix: MortgageMix) => void;
   onAnalyzeScenarios?: (mix: MortgageMix) => void;
   onToggleSelect?: (id: string) => void;
+  onEdit?: (mix: MortgageMix) => void;
   isSelected?: boolean;
 }
 
@@ -30,11 +32,13 @@ export function MortgageMixCard({
   onShowDetails,
   onAnalyzeScenarios,
   onToggleSelect,
+  onEdit,
   isSelected = false
 }: MortgageMixCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ name: mix.name, notes: mix.notes || '' });
   const { cpiData, loading: cpiLoading } = useCPI();
+  const { currencyRates, loading: currencyLoading } = useCurrencyRates();
 
   const handleSave = () => {
     onUpdate({
@@ -121,11 +125,23 @@ export function MortgageMixCard({
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
+                {onEdit && (
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => onEdit(mix)}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="עריכת תמהיל מלא (כל המסלולים)"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button 
                   size="sm" 
                   variant="ghost"
                   onClick={() => setIsEditing(true)}
                   className="text-gray-600 hover:text-gray-800"
+                  title="עריכת שם והערות"
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
@@ -185,10 +201,18 @@ export function MortgageMixCard({
               <div key={track.id} className="flex justify-between items-center text-sm p-2 bg-white rounded border">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${
-                    track.type === 'fixed' ? 'bg-blue-500' :
-                    track.type === 'variable' ? 'bg-green-500' :
+                    track.type === 'fixed_unlinked' ? 'bg-blue-500' :
+                    track.type === 'fixed_linked' ? 'bg-blue-400' :
                     track.type === 'prime' ? 'bg-orange-500' :
-                    'bg-purple-500'
+                    track.type === 'variable_unlinked' ? 'bg-green-500' :
+                    track.type === 'variable_linked' ? 'bg-green-400' :
+                    track.type === 'makam' ? 'bg-purple-500' :
+                    track.type === 'dollar' ? 'bg-yellow-500' :
+                    track.type === 'euro' ? 'bg-gray-500' :
+                    track.type === 'eligibility' ? 'bg-pink-500' :
+                    track.type === 'five_year_plan' ? 'bg-indigo-500' :
+                    track.type === 'grant' ? 'bg-teal-500' :
+                    'bg-gray-400'
                   }`} />
                   <span className="font-medium">{TRACK_TYPES[track.type]}</span>
                 </div>
@@ -196,10 +220,20 @@ export function MortgageMixCard({
                   <div>{formatCurrency(track.amount)}</div>
                   <div className="text-xs text-gray-500">
                     {formatPercentage(track.percentage, 1)} • {formatPercentage(track.interestRate)}
-                    {track.type === 'madad' && cpiData && (
+                    {(track.type.includes('linked') || track.type === 'makam') && cpiData && (
                       <div className="text-xs text-purple-600 flex items-center gap-1 mt-1">
                         <TrendingUp className="h-3 w-3" />
                         מדד: {cpiData.value.toFixed(1)}
+                      </div>
+                    )}
+                    {track.type.includes('variable') && track.variablePeriod && (
+                      <div className="text-xs text-green-600 mt-1">
+                        משתנה: {track.variablePeriod} שנים
+                      </div>
+                    )}
+                    {(track.type === 'dollar' || track.type === 'euro') && track.exchangeRate && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        שער: {track.exchangeRate.toFixed(3)} ₪
                       </div>
                     )}
                   </div>

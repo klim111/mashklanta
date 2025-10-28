@@ -127,8 +127,8 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-4 h-4 rounded-full ${
-                        trackCalc.track.type === 'fixed' ? 'bg-blue-500' :
-                        trackCalc.track.type === 'variable' ? 'bg-green-500' :
+                        trackCalc.track.type === 'fixed_unlinked' || trackCalc.track.type === 'fixed_linked' ? 'bg-blue-500' :
+                        trackCalc.track.type === 'variable_unlinked' || trackCalc.track.type === 'variable_linked' ? 'bg-green-500' :
                         trackCalc.track.type === 'prime' ? 'bg-orange-500' :
                         'bg-purple-500'
                       }`} />
@@ -149,7 +149,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
                       <span className="text-gray-600">ריבית: </span>
                       <div className="inline-block">
                         <span className="font-medium">{formatPercentage(trackCalc.track.interestRate)}</span>
-                        {trackCalc.track.type === 'madad' && cpiData && (
+                        {trackCalc.track.type === 'fixed_linked' && cpiData && (
                           <div className="text-xs text-purple-600 inline-block mr-2">
                             (מדד: {cpiData.value.toFixed(1)})
                           </div>

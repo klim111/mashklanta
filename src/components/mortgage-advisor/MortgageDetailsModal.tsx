@@ -201,8 +201,8 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`w-4 h-4 rounded-full ${
-                        trackCalc.track.type === 'fixed' ? 'bg-blue-500' :
-                        trackCalc.track.type === 'variable' ? 'bg-green-500' :
+                        trackCalc.track.type === 'fixed_unlinked' || trackCalc.track.type === 'fixed_linked' ? 'bg-blue-500' :
+                        trackCalc.track.type === 'variable_unlinked' || trackCalc.track.type === 'variable_linked' ? 'bg-green-500' :
                         trackCalc.track.type === 'prime' ? 'bg-orange-500' :
                         'bg-purple-500'
                       }`} />
@@ -230,7 +230,7 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                       <div className="text-lg font-semibold text-green-600">
                         {formatPercentage(trackCalc.track.interestRate)}
                       </div>
-                      {trackCalc.track.type === 'madad' && cpiData && (
+                      {trackCalc.track.type === 'fixed_linked' && cpiData && (
                         <div className="text-xs text-purple-600 flex items-center gap-1 mt-1">
                           <TrendingUp className="h-3 w-3" />
                           מדד נוכחי: {cpiData.value.toFixed(1)} 
@@ -239,7 +239,7 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                           </span>
                         </div>
                       )}
-                      {trackCalc.track.type === 'madad' && cpiLoading && (
+                      {trackCalc.track.type === 'fixed_linked' && cpiLoading && (
                         <div className="text-xs text-gray-500 mt-1">טוען נתוני מדד...</div>
                       )}
                     </div>
@@ -286,8 +286,8 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className={`w-4 h-4 rounded-full ${
-                      trackCalc.track.type === 'fixed' ? 'bg-blue-500' :
-                      trackCalc.track.type === 'variable' ? 'bg-green-500' :
+                      trackCalc.track.type === 'fixed_unlinked' || trackCalc.track.type === 'fixed_linked' ? 'bg-blue-500' :
+                      trackCalc.track.type === 'variable_unlinked' || trackCalc.track.type === 'variable_linked' ? 'bg-green-500' :
                       trackCalc.track.type === 'prime' ? 'bg-orange-500' :
                       'bg-purple-500'
                     }`} />
