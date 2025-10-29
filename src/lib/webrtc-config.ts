@@ -1,7 +1,12 @@
 // WebRTC configuration optimized for Vercel deployment
 export const getWebRTCConfiguration = (): RTCConfiguration => {
-  return {
-    iceServers: [
+  // Read TURN configuration from env (exposed to client)
+  const turnUrl = (process.env.NEXT_PUBLIC_TURN_URL || '').trim();
+  const turnUsername = (process.env.NEXT_PUBLIC_TURN_USERNAME || '').trim();
+  const turnCredential = (process.env.NEXT_PUBLIC_TURN_CREDENTIAL || '').trim();
+  const forceRelay = (process.env.NEXT_PUBLIC_FORCE_TURN || '').toLowerCase() === 'true';
+
+  const iceServers: RTCIceServer[] = [
       // Google STUN servers (most reliable)
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
@@ -14,17 +19,31 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
       { urls: 'stun:stun.ideasip.com' },
       { urls: 'stun:stun.schlund.de' },
       { urls: 'stun:stun.stunprotocol.org:3478' },
-      
-      // TURN servers (if available - for NAT traversal)
-      // Note: In production, you should use your own TURN servers
-      // { urls: 'turn:your-turn-server.com:3478', username: 'user', credential: 'pass' }
-    ],
-    
+  ];
+
+  // Append TURN if provided
+  if (turnUrl) {
+    const turnServer: RTCIceServer = { urls: turnUrl } as RTCIceServer;
+    if (turnUsername) turnServer.username = turnUsername;
+    if (turnCredential) turnServer.credential = turnCredential as any;
+    iceServers.push(turnServer);
+    console.log('TURN server configured:', {
+      url: turnUrl.replace(/:(?:[^:@]*)@/, ':***@'),
+      hasUsername: !!turnUsername,
+      hasCredential: !!turnCredential,
+      forceRelay
+    });
+  } else {
+    console.warn('No TURN server configured. Peer-to-peer may fail behind strict NATs.');
+  }
+
+  return {
+    iceServers,
     // Optimized settings for Vercel/serverless environment
     iceCandidatePoolSize: 10, // Reduced from 20 for better performance
     bundlePolicy: 'max-bundle' as RTCBundlePolicy,
     rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
-    iceTransportPolicy: 'all' as RTCIceTransportPolicy
+    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy
   };
 };
 
