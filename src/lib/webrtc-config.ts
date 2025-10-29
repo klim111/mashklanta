@@ -29,26 +29,38 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
 };
 
 // Media constraints optimized for different connection types
-export const getMediaConstraints = (isVideoOn: boolean, isAudioOn: boolean, deviceId?: string) => {
-  return {
-    video: isVideoOn ? {
-      deviceId: deviceId ? { exact: deviceId } : undefined,
+export const getMediaConstraints = (
+  isVideoOn: boolean, 
+  isAudioOn: boolean, 
+  videoDeviceId?: string, 
+  audioDeviceId?: string
+) => {
+  const constraints: MediaStreamConstraints = {};
+  
+  if (isVideoOn) {
+    constraints.video = {
+      deviceId: videoDeviceId ? { exact: videoDeviceId } : undefined,
       width: { ideal: 1280, max: 1920 },
       height: { ideal: 720, max: 1080 },
       frameRate: { ideal: 30, max: 60 },
-      // Optimize for serverless environment
       facingMode: 'user',
-    } : false,
-    audio: isAudioOn ? {
-      deviceId: deviceId ? { exact: deviceId } : undefined,
+    };
+  } else {
+    constraints.video = false;
+  }
+  
+  if (isAudioOn) {
+    constraints.audio = {
+      deviceId: audioDeviceId ? { exact: audioDeviceId } : undefined,
       echoCancellation: true,
       noiseSuppression: true,
       autoGainControl: true,
-      // Additional audio optimizations
-      sampleRate: 48000,
-      channelCount: 2,
-    } : false
-  };
+    };
+  } else {
+    constraints.audio = false;
+  }
+  
+  return constraints;
 };
 
 // Connection monitoring utilities
@@ -138,5 +150,62 @@ export const testMediaAccess = async (constraints: MediaStreamConstraints): Prom
   } catch (error) {
     console.error('Media access test failed:', error);
     return false;
+  }
+};
+
+// Enhanced media access with better error handling
+export const requestMediaAccess = async (
+  isVideoOn: boolean,
+  isAudioOn: boolean,
+  videoDeviceId?: string,
+  audioDeviceId?: string
+): Promise<MediaStream> => {
+  try {
+    // First, try with both video and audio
+    const constraints = getMediaConstraints(isVideoOn, isAudioOn, videoDeviceId, audioDeviceId);
+    console.log('Requesting media access with constraints:', constraints);
+    
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    console.log('Media access granted, stream tracks:', stream.getTracks().map(t => ({
+      kind: t.kind,
+      enabled: t.enabled,
+      readyState: t.readyState,
+      label: t.label
+    })));
+    
+    return stream;
+  } catch (error) {
+    console.error('Media access failed:', error);
+    
+    // If both video and audio fail, try video only
+    if (isVideoOn && isAudioOn) {
+      console.log('Trying video only...');
+      try {
+        const videoConstraints = getMediaConstraints(true, false, videoDeviceId);
+        const stream = await navigator.mediaDevices.getUserMedia(videoConstraints);
+        console.log('Video-only access granted');
+        return stream;
+      } catch (videoError) {
+        console.error('Video-only access failed:', videoError);
+      }
+    }
+    
+    // If video fails, try audio only
+    if (isAudioOn) {
+      console.log('Trying audio only...');
+      try {
+        const audioConstraints = getMediaConstraints(false, true, undefined, audioDeviceId);
+        const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        console.log('Audio-only access granted');
+        return stream;
+      } catch (audioError) {
+        console.error('Audio-only access failed:', audioError);
+      }
+    }
+    
+    // If all else fails, try basic constraints
+    console.log('Trying basic constraints...');
+    const basicConstraints = getMediaConstraints(isVideoOn, isAudioOn);
+    return await navigator.mediaDevices.getUserMedia(basicConstraints);
   }
 };

@@ -31,7 +31,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HTTPSignaling, SignalingMessage, createHTTPSignaling } from '@/lib/http-signaling';
-import { getWebRTCConfiguration, getMediaConstraints, createConnectionMonitor } from '@/lib/webrtc-config';
+import { getWebRTCConfiguration, getMediaConstraints, createConnectionMonitor, requestMediaAccess } from '@/lib/webrtc-config';
+import { MediaPermissionCheck } from '@/components/ui/media-permission-check';
 
 interface CallState {
   isConnected: boolean;
@@ -66,6 +67,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const [newMessage, setNewMessage] = useState('');
   const [callId, setCallId] = useState<string>('');
   const [advisorConnected, setAdvisorConnected] = useState(false);
+  const [mediaPermissionGranted, setMediaPermissionGranted] = useState(false);
+  const [showPermissionCheck, setShowPermissionCheck] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -95,6 +98,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     console.log('Video call page mounted, callId:', callId);
     initializeDevices();
+    setShowPermissionCheck(true);
     if (callId) {
       console.log('Initializing client signaling for callId:', callId);
       initializeSignaling();
@@ -416,15 +420,15 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     }
     
     try {
-      // Get user media with optimized constraints
-      const constraints = getMediaConstraints(
+      // Request media access with enhanced error handling
+      console.log('Client requesting media access...');
+      const stream = await requestMediaAccess(
         callState.isVideoOn,
         callState.isAudioOn,
-        callState.selectedCameraId || callState.selectedMicrophoneId
+        callState.selectedCameraId,
+        callState.selectedMicrophoneId
       );
-
-      console.log('Client requesting user media with constraints:', constraints);
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
       console.log('Client got user media stream:', stream);
       console.log('Client stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
       
@@ -432,6 +436,13 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        // Ensure video plays
+        try {
+          await localVideoRef.current.play();
+          console.log('Client local video started playing');
+        } catch (playError) {
+          console.error('Client local video play failed:', playError);
+        }
       }
 
       // Initialize peer connection with optimized configuration
@@ -470,6 +481,16 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
           
           // Set the stream directly
           remoteVideoRef.current.srcObject = remoteStream;
+          
+          // Ensure remote video plays
+          remoteVideoRef.current.addEventListener('loadedmetadata', async () => {
+            try {
+              await remoteVideoRef.current?.play();
+              console.log('Client remote video started playing');
+            } catch (playError) {
+              console.error('Client remote video play failed:', playError);
+            }
+          });
           
           console.log('Client video element after:', {
             srcObject: remoteVideoRef.current.srcObject,
@@ -1160,7 +1181,24 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     setCallState(prev => ({ ...prev, isFullscreen: !prev.isFullscreen }));
   };
 
+  const handlePermissionGranted = () => {
+    console.log('Client media permissions granted');
+    setMediaPermissionGranted(true);
+    setShowPermissionCheck(false);
+  };
+
+  const handlePermissionDenied = () => {
+    console.log('Client media permissions denied');
+    setMediaPermissionGranted(false);
+    // Don't hide permission check, let user try again
+  };
+
   const joinCall = async () => {
+    if (!mediaPermissionGranted) {
+      setShowPermissionCheck(true);
+      return;
+    }
+    
     setCallState(prev => ({ 
       ...prev, 
       isConnected: true, 
@@ -1301,7 +1339,20 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         <div className="flex-1 flex flex-col">
           {/* Video Container */}
           <div className="flex-1 relative bg-gray-900">
-            {callState.isWaitingForAdvisor ? (
+            {showPermissionCheck ? (
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div className="text-center text-white max-w-md">
+                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Camera className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-4">נדרשות הרשאות מצלמה ומיקרופון</h3>
+                  <MediaPermissionCheck
+                    onPermissionGranted={handlePermissionGranted}
+                    onPermissionDenied={handlePermissionDenied}
+                  />
+                </div>
+              </div>
+            ) : callState.isWaitingForAdvisor ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center text-white">
                   <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1314,27 +1365,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                     <Phone className="w-4 h-4 mr-2" />
                     הצטרף לשיחה
                   </Button>
-                    <Button 
-                      onClick={async () => {
-                        console.log('Testing video element...');
-                        if (remoteVideoRef.current) {
-                          console.log('Video element exists:', remoteVideoRef.current);
-                          try {
-                            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                            remoteVideoRef.current.srcObject = stream;
-                            await remoteVideoRef.current.play();
-                            console.log('Test video playing successfully');
-                          } catch (error) {
-                            console.error('Test video failed:', error);
-                          }
-                        } else {
-                          console.error('Video element not found');
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-xs"
-                    >
-                      Test Video Element
-                    </Button>
                   </div>
                 </div>
               </div>
