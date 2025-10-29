@@ -457,14 +457,27 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       // Negotiation guard to avoid parallel negotiations
       let isNegotiating = false;
 
-      // Add local stream to peer connection
-      console.log('Client adding tracks to peer connection...');
-      stream.getTracks().forEach(track => {
-        console.log('Client adding track:', track.kind, track.id);
-        peerConnectionRef.current?.addTrack(track, stream);
-      });
+      const negotiateNow = async () => {
+        if (!peerConnectionRef.current || !signalingRef.current) return;
+        if (isNegotiating) return;
+        isNegotiating = true;
+        try {
+          console.log('Client negotiateNow: creating offer...');
+          const offer = await peerConnectionRef.current.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          await peerConnectionRef.current.setLocalDescription(offer);
+          signalingRef.current.sendOffer(offer, 'broadcast');
+          console.log('Client sent offer from negotiateNow');
+        } catch (err) {
+          console.error('Client negotiateNow error:', err);
+        } finally {
+          isNegotiating = false;
+        }
+      };
 
-      // Auto negotiation when needed (more reliable than timeouts)
+      // Auto negotiation when needed (register BEFORE adding tracks)
       peerConnectionRef.current.onnegotiationneeded = async () => {
         if (!peerConnectionRef.current || !signalingRef.current) return;
         if (isNegotiating) return;
@@ -484,6 +497,21 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
           isNegotiating = false;
         }
       };
+
+      // Add local stream to peer connection
+      console.log('Client adding tracks to peer connection...');
+      stream.getTracks().forEach(track => {
+        console.log('Client adding track:', track.kind, track.id);
+        peerConnectionRef.current?.addTrack(track, stream);
+      });
+
+      // Fallback: if no localDescription shortly after adding tracks, trigger negotiation
+      setTimeout(() => {
+        if (peerConnectionRef.current && !peerConnectionRef.current.localDescription) {
+          console.log('Client fallback negotiation trigger');
+          negotiateNow();
+        }
+      }, 200);
 
       // Handle remote stream with enhanced monitoring and proper initialization
       peerConnectionRef.current.ontrack = (event) => {

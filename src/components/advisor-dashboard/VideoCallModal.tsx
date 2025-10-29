@@ -428,12 +428,27 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
       // Negotiation guard to avoid parallel negotiations
       let isNegotiating = false;
 
-      // Add local stream to peer connection
-      stream.getTracks().forEach(track => {
-        peerConnectionRef.current?.addTrack(track, stream);
-      });
+      const negotiateNow = async () => {
+        if (!peerConnectionRef.current || !signalingRef.current) return;
+        if (isNegotiating) return;
+        isNegotiating = true;
+        try {
+          console.log('Advisor negotiateNow: creating offer...');
+          const offer = await peerConnectionRef.current.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          await peerConnectionRef.current.setLocalDescription(offer);
+          signalingRef.current.sendOffer(offer, 'broadcast');
+          console.log('Advisor sent offer from negotiateNow');
+        } catch (err) {
+          console.error('Advisor negotiateNow error:', err);
+        } finally {
+          isNegotiating = false;
+        }
+      };
 
-      // Auto negotiation when needed (advisor will answer; but if alone in room, do nothing until offer arrives)
+      // Auto negotiation when needed (register BEFORE adding tracks)
       peerConnectionRef.current.onnegotiationneeded = async () => {
         // Advisor generally responds to client offers; only negotiate if explicitly needed (e.g., after reconnection)
         if (!peerConnectionRef.current || !signalingRef.current) return;
@@ -455,6 +470,18 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         }
       };
 
+      // Add local stream to peer connection
+      stream.getTracks().forEach(track => {
+        peerConnectionRef.current?.addTrack(track, stream);
+      });
+
+      // Fallback: if no localDescription shortly after adding tracks, trigger negotiation
+      setTimeout(() => {
+        if (peerConnectionRef.current && !peerConnectionRef.current.localDescription) {
+          console.log('Advisor fallback negotiation trigger');
+          negotiateNow();
+        }
+      }, 200);
       // Handle remote stream with enhanced monitoring
       peerConnectionRef.current.ontrack = (event) => {
         console.log('Advisor received remote track:', event.track.kind);
