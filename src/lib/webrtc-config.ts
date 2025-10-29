@@ -23,8 +23,7 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
     const turnServer: RTCIceServer = { 
       urls: turnUrl,
       username: turnUsername,
-      credential: turnCredential,
-      credentialType: 'password'
+      credential: turnCredential
     };
     iceServers.unshift(turnServer); // Add at beginning for priority
     
@@ -33,8 +32,7 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
       const turnsServer: RTCIceServer = { 
         urls: turnsUrl,
         username: turnUsername,
-        credential: turnCredential,
-        credentialType: 'password'
+        credential: turnCredential
       };
       iceServers.unshift(turnsServer); // Even higher priority
     }
