@@ -25,7 +25,8 @@ import {
   Check,
   Camera,
   CameraOff,
-  User
+  User,
+  Wifi
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { HTTPSignaling, SignalingMessage, createHTTPSignaling } from '@/lib/http-signaling';
 import { getWebRTCConfiguration, getMediaConstraints, createConnectionMonitor, requestMediaAccess } from '@/lib/webrtc-config';
 import { MediaPermissionCheck } from '@/components/ui/media-permission-check';
+import { WebRTCDebug } from '@/components/ui/webrtc-debug';
 
 interface CallState {
   isConnected: boolean;
@@ -69,6 +71,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const [advisorConnected, setAdvisorConnected] = useState(false);
   const [mediaPermissionGranted, setMediaPermissionGranted] = useState(false);
   const [showPermissionCheck, setShowPermissionCheck] = useState(false);
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -1507,6 +1510,15 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             </Button>
             
             <Button
+              variant={showDebugConsole ? "default" : "outline"}
+              size="lg"
+              onClick={() => setShowDebugConsole(!showDebugConsole)}
+              className="rounded-full w-12 h-12"
+            >
+              <Wifi className="w-5 h-5" />
+            </Button>
+            
+            <Button
               variant="destructive"
               size="lg"
               onClick={endCall}
@@ -1519,6 +1531,21 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
 
         {/* Chat Sidebar */}
         <div className="w-80 border-l border-gray-700 bg-gray-800 flex flex-col">
+          {/* Debug Console */}
+          {showDebugConsole && (
+            <div className="p-4 border-b border-gray-700">
+              <WebRTCDebug
+                peerConnection={peerConnectionRef.current}
+                localStream={localStreamRef.current}
+                remoteStream={remoteStreamRef.current}
+                connectionState={connectionState}
+                iceConnectionState={peerConnectionRef.current?.iceConnectionState || 'unknown'}
+                iceGatheringState={peerConnectionRef.current?.iceGatheringState || 'unknown'}
+                onRestartConnection={reconnectWebRTC}
+              />
+            </div>
+          )}
+          
           <div className="p-4 border-b border-gray-700">
             <h3 className="font-semibold text-white flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />

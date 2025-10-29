@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { HTTPSignaling, SignalingMessage, createHTTPSignaling } from '@/lib/http-signaling';
 import { getWebRTCConfiguration, getMediaConstraints, createConnectionMonitor, requestMediaAccess } from '@/lib/webrtc-config';
 import { MediaPermissionCheck } from '@/components/ui/media-permission-check';
+import { WebRTCDebug } from '@/components/ui/webrtc-debug';
 
 interface VideoCallModalProps {
   isOpen: boolean;
@@ -92,6 +93,7 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const [clientConnected, setClientConnected] = useState(false);
   const [mediaPermissionGranted, setMediaPermissionGranted] = useState(false);
   const [showPermissionCheck, setShowPermissionCheck] = useState(false);
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -1329,6 +1331,15 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
                 </Button>
                 
                 <Button
+                  variant={showDebugConsole ? "default" : "outline"}
+                  size="lg"
+                  onClick={() => setShowDebugConsole(!showDebugConsole)}
+                  className="rounded-full w-12 h-12"
+                >
+                  <Wifi className="w-5 h-5" />
+                </Button>
+                
+                <Button
                   variant="destructive"
                   size="lg"
                   onClick={endCall}
@@ -1341,6 +1352,21 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
 
             {/* Sidebar */}
             <div className="w-80 border-l bg-gray-50 flex flex-col">
+              {/* Debug Console */}
+              {showDebugConsole && (
+                <div className="p-4 border-b">
+                  <WebRTCDebug
+                    peerConnection={peerConnectionRef.current}
+                    localStream={localStreamRef.current}
+                    remoteStream={remoteStreamRef.current}
+                    connectionState={connectionState}
+                    iceConnectionState={peerConnectionRef.current?.iceConnectionState || 'unknown'}
+                    iceGatheringState={peerConnectionRef.current?.iceGatheringState || 'unknown'}
+                    onRestartConnection={reconnectWebRTC}
+                  />
+                </div>
+              )}
+              
               {/* Client Data Panel */}
               {showClientData && (
                 <div className="p-4 border-b">
