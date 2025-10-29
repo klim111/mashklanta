@@ -19,6 +19,8 @@ export class HTTPSignaling {
   private isConnected = false;
   private lastPollTime = 0;
   private baseUrl: string;
+  private processedMessageIds: Set<string> = new Set();
+  private processedSignalKeys: Set<string> = new Set();
 
   constructor(
     callId: string,
@@ -78,35 +80,14 @@ export class HTTPSignaling {
         });
       }
 
-      // Handle existing messages
-      if (joinData.messages) {
-        joinData.messages.forEach((msg: any) => {
-          const message: SignalingMessage = {
-            type: 'chat-message',
-            data: { message: msg.message },
-            from: msg.from,
-            callId: this.callId,
-            timestamp: msg.timestamp
-          };
-          this.onMessage(message);
-        });
-      }
-
-      // Handle existing signals
-      if (joinData.signals) {
-        joinData.signals.forEach((signal: any) => {
-          if (signal.from !== this.userId) {
-            const message: SignalingMessage = {
-              type: signal.type,
-              data: signal.signal,
-              from: signal.from,
-              callId: this.callId,
-              timestamp: signal.timestamp
-            };
-            this.onMessage(message);
-          }
-        });
-      }
+      // Initialize lastPollTime to the latest known timestamp to avoid duplicates on first poll
+      const lastMsgTs = Array.isArray(joinData.messages) && joinData.messages.length > 0
+        ? Math.max(...joinData.messages.map((m: any) => m.timestamp || 0))
+        : 0;
+      const lastSigTs = Array.isArray(joinData.signals) && joinData.signals.length > 0
+        ? Math.max(...joinData.signals.map((s: any) => s.timestamp || 0))
+        : 0;
+      this.lastPollTime = Math.max(lastMsgTs, lastSigTs, Date.now());
 
     } catch (error) {
       console.error('Failed to connect to HTTP signaling:', error);
@@ -144,6 +125,9 @@ export class HTTPSignaling {
         if (data.messages && data.messages.length > 0) {
           console.log(`Received ${data.messages.length} new messages`);
           data.messages.forEach((msg: any) => {
+            const id = String(msg.id ?? `${msg.from}-${msg.timestamp}-${msg.message}`);
+            if (this.processedMessageIds.has(id)) return;
+            this.processedMessageIds.add(id);
             const message: SignalingMessage = {
               type: 'chat-message',
               data: { message: msg.message },
@@ -160,6 +144,9 @@ export class HTTPSignaling {
           console.log(`Received ${data.signals.length} new signals`);
           data.signals.forEach((signal: any) => {
             if (signal.from !== this.userId) {
+              const key = `${signal.type}|${signal.from}|${signal.timestamp}`;
+              if (this.processedSignalKeys.has(key)) return;
+              this.processedSignalKeys.add(key);
               console.log('Processing WebRTC signal:', signal);
               const message: SignalingMessage = {
                 type: signal.type,
