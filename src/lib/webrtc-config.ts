@@ -43,9 +43,7 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
     iceCandidatePoolSize: 0, // Don't pre-gather candidates, gather them on-demand
     bundlePolicy: 'max-bundle' as RTCBundlePolicy,
     rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
-    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy,
-    // Additional configurations for better P2P connectivity
-    sdpSemantics: 'unified-plan' as RTCSdpSemantics
+    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy
   };
 };
 
