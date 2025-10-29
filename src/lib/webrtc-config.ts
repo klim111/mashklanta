@@ -55,13 +55,7 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
     iceCandidatePoolSize: forceRelay ? 0 : 4, // Pre-gather candidates for faster connection
     bundlePolicy: 'max-bundle' as RTCBundlePolicy, // Bundle all media on single transport
     rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy, // Multiplex RTP and RTCP
-    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy,
-    
-    // Additional optimizations for low latency
-    sdpSemantics: 'unified-plan' as RTCSdpSemantics,
-    
-    // Certificate configuration for faster DTLS handshake
-    certificates: undefined // Let browser generate optimized certificates
+    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy
   };
 };
 
