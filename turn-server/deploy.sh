@@ -260,6 +260,10 @@ EOF
     sed -i "s/EXTERNAL_IP_PLACEHOLDER/$external_ip/g" coturn.conf
     sed -i "s/TURN_SECRET_PLACEHOLDER/$(echo "$credentials" | grep TURN_SECRET | cut -d= -f2)/g" coturn.conf
     
+    # Ensure proc-user and proc-group are commented out (for Docker)
+    sed -i 's/^proc-user=/#proc-user=/' coturn.conf
+    sed -i 's/^proc-group=/#proc-group=/' coturn.conf
+    
     # Deploy with Docker Compose
     docker-compose --env-file "$ENV_FILE" up -d
     
