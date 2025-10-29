@@ -454,12 +454,36 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       peerConnectionRef.current = new RTCPeerConnection(configuration);
       console.log('Client peer connection created:', peerConnectionRef.current);
 
+      // Negotiation guard to avoid parallel negotiations
+      let isNegotiating = false;
+
       // Add local stream to peer connection
       console.log('Client adding tracks to peer connection...');
       stream.getTracks().forEach(track => {
         console.log('Client adding track:', track.kind, track.id);
         peerConnectionRef.current?.addTrack(track, stream);
       });
+
+      // Auto negotiation when needed (more reliable than timeouts)
+      peerConnectionRef.current.onnegotiationneeded = async () => {
+        if (!peerConnectionRef.current || !signalingRef.current) return;
+        if (isNegotiating) return;
+        isNegotiating = true;
+        try {
+          console.log('Client onnegotiationneeded: creating offer...');
+          const offer = await peerConnectionRef.current.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          await peerConnectionRef.current.setLocalDescription(offer);
+          signalingRef.current.sendOffer(offer, 'broadcast');
+          console.log('Client sent offer from onnegotiationneeded');
+        } catch (err) {
+          console.error('Client negotiation error:', err);
+        } finally {
+          isNegotiating = false;
+        }
+      };
 
       // Handle remote stream with enhanced monitoring and proper initialization
       peerConnectionRef.current.ontrack = (event) => {
@@ -1230,24 +1254,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       }
     }
     
-    // Wait a bit for WebRTC to be ready, then create offer
-    setTimeout(async () => {
-      if (peerConnectionRef.current && signalingRef.current) {
-        try {
-          console.log('Creating offer for advisor');
-          const offer = await peerConnectionRef.current.createOffer();
-          await peerConnectionRef.current.setLocalDescription(offer);
-          
-          // Send offer to advisor
-          signalingRef.current.sendOffer(offer, 'broadcast');
-          console.log('Client sent offer to advisor');
-        } catch (error) {
-          console.error('Error creating client offer:', error);
-        }
-      } else {
-        console.error('Cannot create offer - missing peerConnection or signaling');
-      }
-    }, 1000);
+    // No timeout-based offer; onnegotiationneeded handles it
   };
 
   const endCall = () => {

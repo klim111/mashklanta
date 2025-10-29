@@ -425,10 +425,35 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
       console.log('Advisor creating peer connection with configuration:', configuration);
       peerConnectionRef.current = new RTCPeerConnection(configuration);
 
+      // Negotiation guard to avoid parallel negotiations
+      let isNegotiating = false;
+
       // Add local stream to peer connection
       stream.getTracks().forEach(track => {
         peerConnectionRef.current?.addTrack(track, stream);
       });
+
+      // Auto negotiation when needed (advisor will answer; but if alone in room, do nothing until offer arrives)
+      peerConnectionRef.current.onnegotiationneeded = async () => {
+        // Advisor generally responds to client offers; only negotiate if explicitly needed (e.g., after reconnection)
+        if (!peerConnectionRef.current || !signalingRef.current) return;
+        if (isNegotiating) return;
+        isNegotiating = true;
+        try {
+          console.log('Advisor onnegotiationneeded: creating offer to ensure connectivity...');
+          const offer = await peerConnectionRef.current.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          await peerConnectionRef.current.setLocalDescription(offer);
+          signalingRef.current.sendOffer(offer, 'broadcast');
+          console.log('Advisor sent offer from onnegotiationneeded');
+        } catch (err) {
+          console.error('Advisor negotiation error:', err);
+        } finally {
+          isNegotiating = false;
+        }
+      };
 
       // Handle remote stream with enhanced monitoring
       peerConnectionRef.current.ontrack = (event) => {
