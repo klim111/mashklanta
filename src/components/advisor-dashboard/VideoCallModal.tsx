@@ -578,12 +578,29 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         }
       );
 
-      // Handle ICE candidates
+      // Handle ICE candidates with detailed logging
       peerConnectionRef.current.onicecandidate = (event) => {
-        if (event.candidate && signalingRef.current) {
-          console.log('Advisor sending ICE candidate');
-          // Send ICE candidate to all other participants
-          signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
+        if (event.candidate) {
+          console.log('Advisor ICE candidate:', {
+            type: event.candidate.type,
+            protocol: event.candidate.protocol,
+            address: event.candidate.address,
+            port: event.candidate.port,
+            candidate: event.candidate.candidate
+          });
+          if (signalingRef.current) {
+            signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
+          }
+        } else {
+          console.log('Advisor ICE gathering complete');
+          // If ICE gathering completes but we still don't have connection, try restart
+          setTimeout(() => {
+            const pc = peerConnectionRef.current;
+            if (pc && (pc.iceConnectionState === 'new' || pc.iceConnectionState === 'checking')) {
+              console.log('Advisor ICE gathering complete but no connection, attempting restart...');
+              restartIce();
+            }
+          }, 3000);
         }
       };
 

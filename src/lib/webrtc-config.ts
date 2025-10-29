@@ -39,11 +39,13 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
 
   return {
     iceServers,
-    // Optimized settings for Vercel/serverless environment
-    iceCandidatePoolSize: 10, // Reduced from 20 for better performance
+    // Optimized settings for pure peer-to-peer (no TURN)
+    iceCandidatePoolSize: 0, // Don't pre-gather candidates, gather them on-demand
     bundlePolicy: 'max-bundle' as RTCBundlePolicy,
     rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
-    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy
+    iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy,
+    // Additional configurations for better P2P connectivity
+    sdpSemantics: 'unified-plan' as RTCSdpSemantics
   };
 };
 
