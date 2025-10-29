@@ -423,13 +423,14 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     }
     
     try {
-      // Request media access with enhanced error handling
+      // Request media access with enhanced error handling and adaptive quality
       console.log('Client requesting media access...');
       const stream = await requestMediaAccess(
         callState.isVideoOn,
         callState.isAudioOn,
         callState.selectedCameraId,
-        callState.selectedMicrophoneId
+        callState.selectedMicrophoneId,
+        'medium' // Start with medium quality, can be adjusted based on connection
       );
       
       console.log('Client got user media stream:', stream);

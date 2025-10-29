@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  coturn:
+    image: coturn/coturn:latest
+    container_name: mashklanta-turn-server
+    restart: always
+    
+    # Network configuration
+    network_mode: host
+    
+    # Environment variables
+    environment:
+      - TURN_SECRET=${TURN_SECRET}
+      - EXTERNAL_IP=${EXTERNAL_IP}
+      - REALM=mashklanta.com
+      
+    # Volume mounts
+    volumes:
+      - ./coturn.conf:/etc/coturn/turnserver.conf:ro
+      - coturn_logs:/var/log/coturn
+      - coturn_data:/var/lib/coturn
+      
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "turnutils_stunclient", "127.0.0.1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "3"
+    
+    # Security
+    user: "1000:1000"
+    
+    # Capabilities (required for network operations)
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    # Command override for custom configuration
+    command: [
+      "turnserver",
+      "-c", "/etc/coturn/turnserver.conf",
+      "--pidfile=",
+      "-f"
+    ]
+
+  # Optional: Monitoring with Prometheus metrics
+  turn-exporter:
+    image: prom/node-exporter:latest
+    container_name: turn-metrics-exporter
+    restart: always
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    profiles:
+      - monitoring
+
+  # Optional: Log aggregation
+  fluentd:
+    image: fluent/fluentd:v1.16-1
+    container_name: turn-log-aggregator
+    restart: always
+    volumes:
+      - coturn_logs:/fluentd/log/coturn:ro
+      - ./fluentd.conf:/fluentd/etc/fluent.conf:ro
+    ports:
+      - "24224:24224"
+    profiles:
+      - logging
+
+volumes:
+  coturn_logs:
+    driver: local
+  coturn_data:
+    driver: local
+
+# Networks
+networks:
+  default:
+    name: turn-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
