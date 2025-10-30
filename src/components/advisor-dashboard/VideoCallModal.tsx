@@ -333,9 +333,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         // Auto-initialize WebRTC if we haven't already and we receive an offer
         if (!peerConnectionRef.current && mediaPermissionGranted) {
           console.log('🚀 Advisor auto-initializing WebRTC in response to client offer');
-          await initializeWebRTC();
-          // Wait a moment for WebRTC to be ready, then handle the offer
-          setTimeout(() => handleOffer(message.data, message.from), 500);
+          initializeWebRTC().then(() => {
+            // Wait a moment for WebRTC to be ready, then handle the offer
+            setTimeout(() => handleOffer(message.data, message.from), 500);
+          }).catch(error => {
+            console.error('❌ Advisor WebRTC initialization failed:', error);
+            // Try to handle the offer anyway
+            handleOffer(message.data, message.from);
+          });
         } else {
           handleOffer(message.data, message.from);
         }
