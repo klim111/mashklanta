@@ -448,26 +448,38 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         }
       };
 
-      // Auto negotiation when needed (register BEFORE adding tracks)
+      // Advisor responds to client offers - disable auto negotiation to prevent conflicts
       peerConnectionRef.current.onnegotiationneeded = async () => {
-        // Advisor generally responds to client offers; only negotiate if explicitly needed (e.g., after reconnection)
+        // Advisor waits for client to initiate - only negotiate if we have no remote description
         if (!peerConnectionRef.current || !signalingRef.current) return;
         if (isNegotiating) return;
-        isNegotiating = true;
-        try {
-          console.log('Advisor onnegotiationneeded: creating offer to ensure connectivity...');
-          const offer = await peerConnectionRef.current.createOffer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true
-          });
-          await peerConnectionRef.current.setLocalDescription(offer);
-          signalingRef.current.sendOffer(offer, 'broadcast');
-          console.log('Advisor sent offer from onnegotiationneeded');
-        } catch (err) {
-          console.error('Advisor negotiation error:', err);
-        } finally {
-          isNegotiating = false;
+        
+        // Skip auto-negotiation if we already have a connection established
+        if (peerConnectionRef.current.remoteDescription) {
+          console.log('Advisor already has remote description, skipping auto-negotiation');
+          return;
         }
+        
+        // Only negotiate if client hasn't initiated after a delay
+        setTimeout(async () => {
+          if (peerConnectionRef.current && !peerConnectionRef.current.remoteDescription && !isNegotiating) {
+            isNegotiating = true;
+            try {
+              console.log('Advisor fallback negotiation: client did not initiate, creating offer...');
+              const offer = await peerConnectionRef.current.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+              });
+              await peerConnectionRef.current.setLocalDescription(offer);
+              signalingRef.current?.sendOffer(offer, 'broadcast');
+              console.log('Advisor sent fallback offer');
+            } catch (err) {
+              console.error('Advisor fallback negotiation error:', err);
+            } finally {
+              isNegotiating = false;
+            }
+          }
+        }, 5000); // Wait 5 seconds for client to initiate
       };
 
       // Add local stream to peer connection
@@ -1288,7 +1300,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
                       ref={remoteVideoRef}
                       autoPlay
                       playsInline
+                      muted={false}
+                      controls={false}
                       className="w-full h-full object-cover"
+                      style={{ 
+                        backgroundColor: '#000',
+                        minHeight: '100%',
+                        minWidth: '100%'
+                      }}
                     />
                     
                     {/* Local Video */}

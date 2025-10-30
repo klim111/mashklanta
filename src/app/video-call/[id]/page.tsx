@@ -478,10 +478,17 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         }
       };
 
-      // Auto negotiation when needed (register BEFORE adding tracks)
+      // Client initiates WebRTC connection - auto negotiation when needed
       peerConnectionRef.current.onnegotiationneeded = async () => {
         if (!peerConnectionRef.current || !signalingRef.current) return;
         if (isNegotiating) return;
+        
+        // Only proceed if we don't have a remote description (haven't received offer)
+        if (peerConnectionRef.current.remoteDescription) {
+          console.log('Client already has remote description, skipping offer creation');
+          return;
+        }
+        
         isNegotiating = true;
         try {
           console.log('Client onnegotiationneeded: creating offer...');
@@ -554,41 +561,56 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             paused: remoteVideoRef.current.paused
           });
           
-          // Wait a moment for the stream to be ready, then try to play
-          setTimeout(() => {
-            if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
-              console.log('Client attempting to play video...');
-              const playPromise = remoteVideoRef.current.play();
-              if (playPromise !== undefined) {
-                playPromise.then(() => {
-                  console.log('Client remote video started playing successfully');
-                }).catch((error) => {
-                  console.error('Client remote video play failed:', error);
-                  // Try to play again after a longer delay
-                  setTimeout(() => {
-                    if (remoteVideoRef.current) {
-                      console.log('Client retrying video play...');
-                      remoteVideoRef.current.play().catch(e => 
-                        console.error('Client remote video retry play failed:', e)
-                      );
-                    }
-                  }, 2000);
-                });
-              }
-            } else {
-              console.error('Client video element or srcObject is null');
-              // Try to set the stream again after a delay
-              setTimeout(() => {
-                if (remoteVideoRef.current && remoteStreamRef.current) {
-                  console.log('Client retrying stream assignment...');
-                  remoteVideoRef.current.srcObject = remoteStreamRef.current;
-                  remoteVideoRef.current.play().catch(e => 
-                    console.error('Client delayed play failed:', e)
-                  );
+          // Enhanced video stream initialization with better error handling
+          const initializeVideoPlayback = async () => {
+            if (!remoteVideoRef.current || !remoteStream) return;
+            
+            try {
+              console.log('Client initializing video playback...');
+              
+              // Ensure video element is properly configured
+              const video = remoteVideoRef.current;
+              video.srcObject = remoteStream;
+              
+              // Wait for metadata to load
+              await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Metadata load timeout')), 5000);
+                
+                video.addEventListener('loadedmetadata', () => {
+                  clearTimeout(timeout);
+                  resolve(null);
+                }, { once: true });
+                
+                if (video.readyState >= 1) {
+                  clearTimeout(timeout);
+                  resolve(null);
                 }
-              }, 500);
+              });
+              
+              // Try to play the video
+              await video.play();
+              console.log('✅ Client remote video playing successfully');
+              
+            } catch (error) {
+              console.error('❌ Client video initialization failed:', error);
+              
+              // Retry with user interaction requirement
+              if (error instanceof Error && error.name === 'NotAllowedError') {
+                console.log('Client video requires user interaction, will play on click');
+              } else {
+                // Retry after delay
+                setTimeout(() => {
+                  if (remoteVideoRef.current && remoteStreamRef.current) {
+                    console.log('Client retrying video initialization...');
+                    initializeVideoPlayback();
+                  }
+                }, 2000);
+              }
             }
-          }, 100);
+          };
+          
+          // Initialize playback after a short delay
+          setTimeout(initializeVideoPlayback, 100);
           
           // Enhanced event listeners for video monitoring
           remoteVideoRef.current.addEventListener('loadstart', () => {
@@ -1436,31 +1458,31 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
               </div>
             ) : (
               <>
-                {/* Remote Video */}
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  muted={true}
-                  controls={false}
-                  className="w-full h-full object-cover"
-                  style={{ 
-                    backgroundColor: '#000',
-                    minHeight: '100%',
-                    minWidth: '100%'
-                  }}
-                  onClick={async () => {
-                    // Ensure video plays on user interaction
-                    if (remoteVideoRef.current && remoteVideoRef.current.paused) {
-                      try {
-                        await remoteVideoRef.current.play();
-                        console.log('Client video started playing after click');
-                      } catch (error) {
-                        console.error('Client video play after click failed:', error);
-                      }
-                    }
-                  }}
-                />
+                    {/* Remote Video */}
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      muted={false}
+                      controls={false}
+                      className="w-full h-full object-cover"
+                      style={{ 
+                        backgroundColor: '#000',
+                        minHeight: '100%',
+                        minWidth: '100%'
+                      }}
+                      onClick={async () => {
+                        // Ensure video plays on user interaction
+                        if (remoteVideoRef.current && remoteVideoRef.current.paused) {
+                          try {
+                            await remoteVideoRef.current.play();
+                            console.log('Client video started playing after click');
+                          } catch (error) {
+                            console.error('Client video play after click failed:', error);
+                          }
+                        }
+                      }}
+                    />
                 
                 {/* Local Video */}
                 <div className="absolute top-4 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden">

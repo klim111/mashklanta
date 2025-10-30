@@ -171,17 +171,24 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       case 'webrtc-signal':
-        // Store WebRTC signal with proper structure
+        // Store WebRTC signal with proper structure for client consumption
         const signalData = {
           type: signal?.type || 'webrtc-signal',
           from: userId,
           target,
-          signal: signal,
+          signal: signal?.type === 'offer' ? signal : 
+                 signal?.type === 'answer' ? signal :
+                 signal?.type === 'ice-candidate' ? signal :
+                 signal, // fallback to original signal structure
           timestamp: Date.now()
         };
         call.signals.push(signalData);
         
-        console.log(`WebRTC signal stored: ${signalData.type} from ${userId} in call ${callId}`);
+        console.log(`WebRTC signal stored: ${signalData.type} from ${userId} in call ${callId}`, {
+          signalType: signal?.type,
+          hasOffer: !!signal?.sdp,
+          hasCandidate: !!signal?.candidate
+        });
         
         // Keep only last 100 signals
         if (call.signals.length > 100) {

@@ -53,10 +53,7 @@ su - mashklanta
 # Clone the repository
 git clone https://github.com/YOUR_USERNAME/mashklanta.git
 cd mashklanta/turn-server
-
-# Make deployment script executable
-chmod +x deploy.sh
-
+ 
 # Run the deployment (takes 5-10 minutes)
 ./deploy.sh
 ```

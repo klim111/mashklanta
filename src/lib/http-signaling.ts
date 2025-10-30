@@ -180,6 +180,29 @@ export class HTTPSignaling {
     try {
       console.log(`Sending ${type} signal:`, signal);
       
+      // Structure the signal properly based on type
+      let structuredSignal;
+      if (type === 'offer' || type === 'answer') {
+        structuredSignal = {
+          type: type,
+          sdp: signal.sdp,
+          ...(signal.type && { sdpType: signal.type })
+        };
+      } else if (type === 'ice-candidate') {
+        structuredSignal = {
+          type: type,
+          candidate: signal.candidate,
+          sdpMid: signal.sdpMid,
+          sdpMLineIndex: signal.sdpMLineIndex,
+          usernameFragment: signal.usernameFragment
+        };
+      } else {
+        structuredSignal = {
+          type: type,
+          ...signal
+        };
+      }
+      
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -190,10 +213,7 @@ export class HTTPSignaling {
           callId: this.callId,
           userId: this.userId,
           target,
-          signal: {
-            type: type,
-            ...signal
-          }
+          signal: structuredSignal
         }),
       });
 

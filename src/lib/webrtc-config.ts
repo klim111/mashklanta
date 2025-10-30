@@ -37,16 +37,25 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
       iceServers.unshift(turnsServer); // Even higher priority
     }
     
-    console.log('Custom TURN server configured:', {
-      turnUrl: turnUrl.replace(/:\/\/.*@/, '://***@'),
-      turnsUrl: turnsUrl ? turnsUrl.replace(/:\/\/.*@/, '://***@') : 'not configured',
+    console.log('✅ Custom TURN server configured:', {
+      turnUrl: turnUrl.replace(/\/\/.*@/, '//***@'),
+      turnsUrl: turnsUrl ? turnsUrl.replace(/\/\/.*@/, '//***@') : 'not configured',
       hasCredentials: !!turnUsername && !!turnCredential,
       forceRelay,
       totalServers: iceServers.length
     });
   } else {
-    console.warn('Custom TURN server not fully configured. WebRTC may fail behind strict NATs/firewalls.');
-    console.log('Required env vars: NEXT_PUBLIC_TURN_URL, NEXT_PUBLIC_TURN_USERNAME, NEXT_PUBLIC_TURN_CREDENTIAL');
+    console.warn('⚠️ Custom TURN server not fully configured. WebRTC may fail behind strict NATs/firewalls.');
+    console.log('Required env vars:', {
+      TURN_URL: !!turnUrl ? '✅' : '❌',
+      TURN_USERNAME: !!turnUsername ? '✅' : '❌', 
+      TURN_CREDENTIAL: !!turnCredential ? '✅' : '❌'
+    });
+    console.log('Available env values:', {
+      turnUrl: turnUrl || 'not set',
+      turnUsername: turnUsername || 'not set',
+      turnCredential: turnCredential ? '[HIDDEN]' : 'not set'
+    });
   }
 
   return {
