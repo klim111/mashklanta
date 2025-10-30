@@ -72,7 +72,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const [mediaPermissionGranted, setMediaPermissionGranted] = useState(false);
   const [showPermissionCheck, setShowPermissionCheck] = useState(false);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
-  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -239,13 +238,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     };
   }, [callState.isConnected]);
 
-  // Initialize WebRTC when signaling is connected and we have media permissions
-  useEffect(() => {
-    if (isSignalingConnected && mediaPermissionGranted && !peerConnectionRef.current) {
-      console.log('🔗 Signaling connected and permissions granted, initializing WebRTC...');
-      initializeWebRTC();
-    }
-  }, [isSignalingConnected, mediaPermissionGranted]);
+  // Initialize WebRTC when signaling is connected - REMOVED to prevent race conditions
+  // WebRTC is now initialized directly in joinCall()
 
   const initializeDevices = async () => {
     try {
@@ -320,12 +314,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'offer':
-        console.log('📥 Client received offer from:', message.from);
-        console.log('📋 Offer details:', { 
-          type: message.data?.type, 
-          hasSdp: !!message.data?.sdp,
-          sdpLength: message.data?.sdp?.length 
-        });
+        console.log('Client received offer from:', message.from, message.data);
         handleOffer(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -333,12 +322,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'answer':
-        console.log('📥 Client received answer from:', message.from);
-        console.log('📋 Answer details:', { 
-          type: message.data?.type, 
-          hasSdp: !!message.data?.sdp,
-          sdpLength: message.data?.sdp?.length 
-        });
+        console.log('Client received answer from:', message.from, message.data);
         handleAnswer(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -346,12 +330,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'ice-candidate':
-        console.log('📥 Client received ICE candidate from:', message.from);
-        console.log('🧊 ICE candidate details:', { 
-          hasCandidate: !!message.data?.candidate,
-          sdpMid: message.data?.sdpMid,
-          sdpMLineIndex: message.data?.sdpMLineIndex 
-        });
+        console.log('Client received ICE candidate from:', message.from, message.data);
         handleIceCandidate(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -445,14 +424,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     
     try {
       // Request media access with enhanced error handling and adaptive quality
-      console.log('📷 Client requesting media access...');
-      console.log('🔧 Media constraints:', {
-        video: callState.isVideoOn,
-        audio: callState.isAudioOn,
-        selectedCamera: callState.selectedCameraId,
-        selectedMicrophone: callState.selectedMicrophoneId
-      });
-      
+      console.log('Client requesting media access...');
       const stream = await requestMediaAccess(
         callState.isVideoOn,
         callState.isAudioOn,
@@ -461,14 +433,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         'medium' // Start with medium quality, can be adjusted based on connection
       );
       
-      console.log('✅ Client got user media stream:', stream);
-      console.log('🎵 Client stream tracks:', stream.getTracks().map(t => ({ 
-        kind: t.kind, 
-        enabled: t.enabled, 
-        readyState: t.readyState,
-        label: t.label,
-        id: t.id
-      })));
+      console.log('Client got user media stream:', stream);
+      console.log('Client stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
       
       localStreamRef.current = stream;
 
@@ -758,7 +724,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       // Handle ICE candidates with detailed logging
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('🧊 Client ICE candidate generated:', {
+          console.log('Client ICE candidate:', {
             type: event.candidate.type,
             protocol: event.candidate.protocol,
             address: event.candidate.address,
@@ -766,48 +732,25 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             candidate: event.candidate.candidate
           });
           if (signalingRef.current) {
-            console.log('📤 Client sending ICE candidate via signaling...');
             signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
-          } else {
-            console.error('❌ Client signaling not available to send ICE candidate');
           }
         } else {
-          console.log('✅ Client ICE gathering complete');
+          console.log('Client ICE gathering complete');
           // If ICE gathering completes but we still don't have connection, try restart
           setTimeout(() => {
             const pc = peerConnectionRef.current;
             if (pc && (pc.iceConnectionState === 'new' || pc.iceConnectionState === 'checking')) {
-              console.log('⚠️ Client ICE gathering complete but no connection, attempting restart...');
+              console.log('Client ICE gathering complete but no connection, attempting restart...');
               restartIce();
             }
           }, 3000);
         }
       };
 
-      console.log('✅ WebRTC initialized for client');
+      console.log('WebRTC initialized for client');
 
-      // Client initiates the connection by creating an offer after initialization
-      setTimeout(async () => {
-        if (peerConnectionRef.current && signalingRef.current && !peerConnectionRef.current.localDescription) {
-          try {
-            console.log('🚀 Client creating initial offer...');
-            const offer = await peerConnectionRef.current.createOffer({
-              offerToReceiveAudio: true,
-              offerToReceiveVideo: true
-            });
-            await peerConnectionRef.current.setLocalDescription(offer);
-            signalingRef.current.sendOffer(offer, 'broadcast');
-            console.log('📤 Client sent initial offer');
-          } catch (error) {
-            console.error('❌ Client failed to create initial offer:', error);
-          }
-        }
-      }, 1000); // Wait 1 second for everything to be ready
-
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error initializing WebRTC:', error);
-      setMediaError(error?.message || 'Failed to access camera/microphone');
-      setShowPermissionCheck(true);
     }
   };
 
@@ -1334,15 +1277,9 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   };
 
   const handlePermissionGranted = () => {
-    console.log('✅ Client media permissions granted');
+    console.log('Client media permissions granted');
     setMediaPermissionGranted(true);
     setShowPermissionCheck(false);
-    
-    // If signaling is already connected, initialize WebRTC now
-    if (isSignalingConnected && !peerConnectionRef.current) {
-      console.log('🔗 Permissions granted, signaling ready - initializing WebRTC immediately');
-      setTimeout(() => initializeWebRTC(), 100);
-    }
   };
 
   const handlePermissionDenied = () => {
@@ -1363,26 +1300,29 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       isWaitingForAdvisor: false 
     }));
     
-    console.log('🎯 Client joining call');
-    console.log('📹 Client video element ref during join:', remoteVideoRef.current);
+    console.log('Client joining call');
+    console.log('Client video element ref during join:', remoteVideoRef.current);
     
-    // Initialize WebRTC if signaling is ready and we haven't initialized yet
-    if (isSignalingConnected && !peerConnectionRef.current) {
-      console.log('🚀 Client call joined - signaling ready, initializing WebRTC now');
-      setTimeout(() => initializeWebRTC(), 200);
-    } else {
-      console.log('⏳ Client call joined - waiting for signaling connection before WebRTC init');
+    // Initialize WebRTC immediately when joining the call
+    console.log('Client initializing WebRTC for call...');
+    try {
+      await initializeWebRTC();
+      console.log('Client WebRTC initialized successfully');
+    } catch (error) {
+      console.error('Client WebRTC initialization failed:', error);
     }
     
     // Ensure video can play after user interaction
     if (remoteVideoRef.current) {
       try {
         await remoteVideoRef.current.play();
-        console.log('✅ Client remote video started playing after user interaction');
+        console.log('Client remote video started playing after user interaction');
       } catch (error) {
-        console.log('⚠️ Client remote video play after interaction failed:', error);
+        console.log('Client remote video play after interaction failed:', error);
       }
     }
+    
+    // No timeout-based offer; onnegotiationneeded handles it
   };
 
   const endCall = () => {
@@ -1421,42 +1361,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       setNewMessage('');
     }
   };
-
-  // Debug function to check current state
-  const debugCurrentState = () => {
-    console.log('🔍 CLIENT DEBUG STATE:');
-    console.log('📡 Signaling connected:', isSignalingConnected);
-    console.log('🎥 Media permissions granted:', mediaPermissionGranted);
-    console.log('🔗 Peer connection exists:', !!peerConnectionRef.current);
-    console.log('📹 Local stream exists:', !!localStreamRef.current);
-    console.log('📺 Remote stream exists:', !!remoteStreamRef.current);
-    console.log('🎯 Call connected:', callState.isConnected);
-    
-    if (peerConnectionRef.current) {
-      console.log('🌐 WebRTC State:', {
-        connectionState: peerConnectionRef.current.connectionState,
-        iceConnectionState: peerConnectionRef.current.iceConnectionState,
-        iceGatheringState: peerConnectionRef.current.iceGatheringState,
-        signalingState: peerConnectionRef.current.signalingState,
-        hasLocalDescription: !!peerConnectionRef.current.localDescription,
-        hasRemoteDescription: !!peerConnectionRef.current.remoteDescription
-      });
-    }
-    
-    if (localStreamRef.current) {
-      console.log('🎵 Local stream tracks:', localStreamRef.current.getTracks().map(t => ({
-        kind: t.kind,
-        enabled: t.enabled,
-        readyState: t.readyState,
-        label: t.label
-      })));
-    }
-  };
-
-  // Add debug function to window for manual testing
-  if (typeof window !== 'undefined') {
-    (window as any).debugClientState = debugCurrentState;
-  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -1524,9 +1428,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                     onPermissionGranted={handlePermissionGranted}
                     onPermissionDenied={handlePermissionDenied}
                   />
-                  {mediaError && (
-                    <p className="text-sm text-red-400 mt-3">{mediaError}</p>
-                  )}
                 </div>
               </div>
             ) : callState.isWaitingForAdvisor ? (
@@ -1562,7 +1463,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                       ref={remoteVideoRef}
                       autoPlay
                       playsInline
-                      muted={true}
+                      muted={false}
                       controls={false}
                       className="w-full h-full object-cover"
                       style={{ 
@@ -1700,59 +1601,6 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             >
               <PhoneOff className="w-5 h-5" />
             </Button>
-
-            {/* Manual camera start fallback */}
-            {!localStreamRef.current && callState.isConnected && (
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={async () => {
-                  try {
-                    setMediaError(null);
-                    const stream = await requestMediaAccess(
-                      true,
-                      callState.isAudioOn,
-                      callState.selectedCameraId,
-                      callState.selectedMicrophoneId,
-                      'low'
-                    );
-                    localStreamRef.current = stream;
-                    if (localVideoRef.current) {
-                      localVideoRef.current.srcObject = stream;
-                      try { await localVideoRef.current.play(); } catch {}
-                    }
-                    // Attach to peer connection if present
-                    const pc = peerConnectionRef.current;
-                    if (pc) {
-                      const senders = pc.getSenders();
-                      const newVideo = stream.getVideoTracks()[0];
-                      if (newVideo) {
-                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                        if (videoSender) {
-                          await videoSender.replaceTrack(newVideo);
-                        } else {
-                          pc.addTrack(newVideo, stream);
-                        }
-                      }
-                      const newAudio = stream.getAudioTracks()[0];
-                      if (newAudio) {
-                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-                        if (audioSender) {
-                          await audioSender.replaceTrack(newAudio);
-                        } else {
-                          pc.addTrack(newAudio, stream);
-                        }
-                      }
-                    }
-                  } catch (e: any) {
-                    setMediaError(e?.message || 'Failed to start camera');
-                  }
-                }}
-                className="rounded-full px-4"
-              >
-                הפעל מצלמה
-              </Button>
-            )}
           </div>
         </div>
 
