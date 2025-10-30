@@ -72,6 +72,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   const [mediaPermissionGranted, setMediaPermissionGranted] = useState(false);
   const [showPermissionCheck, setShowPermissionCheck] = useState(false);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -803,8 +804,10 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         }
       }, 1000); // Wait 1 second for everything to be ready
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initializing WebRTC:', error);
+      setMediaError(error?.message || 'Failed to access camera/microphone');
+      setShowPermissionCheck(true);
     }
   };
 
@@ -1521,6 +1524,9 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                     onPermissionGranted={handlePermissionGranted}
                     onPermissionDenied={handlePermissionDenied}
                   />
+                  {mediaError && (
+                    <p className="text-sm text-red-400 mt-3">{mediaError}</p>
+                  )}
                 </div>
               </div>
             ) : callState.isWaitingForAdvisor ? (
@@ -1556,7 +1562,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
                       ref={remoteVideoRef}
                       autoPlay
                       playsInline
-                      muted={false}
+                      muted={true}
                       controls={false}
                       className="w-full h-full object-cover"
                       style={{ 
@@ -1694,6 +1700,59 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             >
               <PhoneOff className="w-5 h-5" />
             </Button>
+
+            {/* Manual camera start fallback */}
+            {!localStreamRef.current && callState.isConnected && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={async () => {
+                  try {
+                    setMediaError(null);
+                    const stream = await requestMediaAccess(
+                      true,
+                      callState.isAudioOn,
+                      callState.selectedCameraId,
+                      callState.selectedMicrophoneId,
+                      'low'
+                    );
+                    localStreamRef.current = stream;
+                    if (localVideoRef.current) {
+                      localVideoRef.current.srcObject = stream;
+                      try { await localVideoRef.current.play(); } catch {}
+                    }
+                    // Attach to peer connection if present
+                    const pc = peerConnectionRef.current;
+                    if (pc) {
+                      const senders = pc.getSenders();
+                      const newVideo = stream.getVideoTracks()[0];
+                      if (newVideo) {
+                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                        if (videoSender) {
+                          await videoSender.replaceTrack(newVideo);
+                        } else {
+                          pc.addTrack(newVideo, stream);
+                        }
+                      }
+                      const newAudio = stream.getAudioTracks()[0];
+                      if (newAudio) {
+                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                        if (audioSender) {
+                          await audioSender.replaceTrack(newAudio);
+                        } else {
+                          pc.addTrack(newAudio, stream);
+                        }
+                      }
+                    }
+                  } catch (e: any) {
+                    setMediaError(e?.message || 'Failed to start camera');
+                  }
+                }}
+                className="rounded-full px-4"
+              >
+                הפעל מצלמה
+              </Button>
+            )}
           </div>
         </div>
 
