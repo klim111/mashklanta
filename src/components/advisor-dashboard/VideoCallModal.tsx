@@ -410,13 +410,45 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
       localStreamRef.current = stream;
 
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        // Ensure video plays
+        const video = localVideoRef.current;
+        video.srcObject = stream;
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true as any;
+
+        const waitForMetadata = () => new Promise<void>((resolve, reject) => {
+          let settled = false as boolean;
+          const cleanup = () => {
+            video.removeEventListener('loadedmetadata', onReady);
+            video.removeEventListener('canplay', onReady);
+            video.removeEventListener('error', onError as any);
+          };
+          const onReady = () => {
+            if (settled) return; settled = true; cleanup(); resolve();
+          };
+          const onError = (e: any) => {
+            if (settled) return; settled = true; cleanup(); reject(e);
+          };
+          const timer = setTimeout(() => {
+            if (settled) return; settled = true; cleanup(); reject(new Error('Metadata load timeout'));
+          }, 10000);
+          const wrappedResolve = () => { clearTimeout(timer); onReady(); };
+          const wrappedReject = (e: any) => { clearTimeout(timer); onError(e); };
+          video.addEventListener('loadedmetadata', wrappedResolve, { once: true } as any);
+          video.addEventListener('canplay', wrappedResolve, { once: true } as any);
+          video.addEventListener('error', wrappedReject as any, { once: true } as any);
+        });
+
         try {
-          await localVideoRef.current.play();
-          console.log('Advisor local video started playing');
-        } catch (playError) {
-          console.error('Advisor local video play failed:', playError);
+          await waitForMetadata();
+          try {
+            await video.play();
+            console.log('Advisor local video started playing');
+          } catch (playError) {
+            console.warn('Advisor local video play blocked by autoplay policies.', playError);
+          }
+        } catch (e) {
+          console.error('Advisor local video metadata failed:', e);
         }
       }
 
