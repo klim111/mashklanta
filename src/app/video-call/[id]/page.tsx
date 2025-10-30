@@ -444,7 +444,14 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     
     try {
       // Request media access with enhanced error handling and adaptive quality
-      console.log('Client requesting media access...');
+      console.log('📷 Client requesting media access...');
+      console.log('🔧 Media constraints:', {
+        video: callState.isVideoOn,
+        audio: callState.isAudioOn,
+        selectedCamera: callState.selectedCameraId,
+        selectedMicrophone: callState.selectedMicrophoneId
+      });
+      
       const stream = await requestMediaAccess(
         callState.isVideoOn,
         callState.isAudioOn,
@@ -453,8 +460,14 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         'medium' // Start with medium quality, can be adjusted based on connection
       );
       
-      console.log('Client got user media stream:', stream);
-      console.log('Client stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
+      console.log('✅ Client got user media stream:', stream);
+      console.log('🎵 Client stream tracks:', stream.getTracks().map(t => ({ 
+        kind: t.kind, 
+        enabled: t.enabled, 
+        readyState: t.readyState,
+        label: t.label,
+        id: t.id
+      })));
       
       localStreamRef.current = stream;
 
@@ -1318,9 +1331,15 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
   };
 
   const handlePermissionGranted = () => {
-    console.log('Client media permissions granted');
+    console.log('✅ Client media permissions granted');
     setMediaPermissionGranted(true);
     setShowPermissionCheck(false);
+    
+    // If signaling is already connected, initialize WebRTC now
+    if (isSignalingConnected && !peerConnectionRef.current) {
+      console.log('🔗 Permissions granted, signaling ready - initializing WebRTC immediately');
+      setTimeout(() => initializeWebRTC(), 100);
+    }
   };
 
   const handlePermissionDenied = () => {
@@ -1341,23 +1360,26 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       isWaitingForAdvisor: false 
     }));
     
-    console.log('Client joining call');
-    console.log('Client video element ref during join:', remoteVideoRef.current);
+    console.log('🎯 Client joining call');
+    console.log('📹 Client video element ref during join:', remoteVideoRef.current);
     
-    // WebRTC will be initialized when both signaling is connected and permissions are granted
-    console.log('Client call joined - waiting for signaling and permissions before WebRTC init');
+    // Initialize WebRTC if signaling is ready and we haven't initialized yet
+    if (isSignalingConnected && !peerConnectionRef.current) {
+      console.log('🚀 Client call joined - signaling ready, initializing WebRTC now');
+      setTimeout(() => initializeWebRTC(), 200);
+    } else {
+      console.log('⏳ Client call joined - waiting for signaling connection before WebRTC init');
+    }
     
     // Ensure video can play after user interaction
     if (remoteVideoRef.current) {
       try {
         await remoteVideoRef.current.play();
-        console.log('Client remote video started playing after user interaction');
+        console.log('✅ Client remote video started playing after user interaction');
       } catch (error) {
-        console.log('Client remote video play after interaction failed:', error);
+        console.log('⚠️ Client remote video play after interaction failed:', error);
       }
     }
-    
-    // No timeout-based offer; onnegotiationneeded handles it
   };
 
   const endCall = () => {
@@ -1396,6 +1418,42 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       setNewMessage('');
     }
   };
+
+  // Debug function to check current state
+  const debugCurrentState = () => {
+    console.log('🔍 CLIENT DEBUG STATE:');
+    console.log('📡 Signaling connected:', isSignalingConnected);
+    console.log('🎥 Media permissions granted:', mediaPermissionGranted);
+    console.log('🔗 Peer connection exists:', !!peerConnectionRef.current);
+    console.log('📹 Local stream exists:', !!localStreamRef.current);
+    console.log('📺 Remote stream exists:', !!remoteStreamRef.current);
+    console.log('🎯 Call connected:', callState.isConnected);
+    
+    if (peerConnectionRef.current) {
+      console.log('🌐 WebRTC State:', {
+        connectionState: peerConnectionRef.current.connectionState,
+        iceConnectionState: peerConnectionRef.current.iceConnectionState,
+        iceGatheringState: peerConnectionRef.current.iceGatheringState,
+        signalingState: peerConnectionRef.current.signalingState,
+        hasLocalDescription: !!peerConnectionRef.current.localDescription,
+        hasRemoteDescription: !!peerConnectionRef.current.remoteDescription
+      });
+    }
+    
+    if (localStreamRef.current) {
+      console.log('🎵 Local stream tracks:', localStreamRef.current.getTracks().map(t => ({
+        kind: t.kind,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        label: t.label
+      })));
+    }
+  };
+
+  // Add debug function to window for manual testing
+  if (typeof window !== 'undefined') {
+    (window as any).debugClientState = debugCurrentState;
+  }
 
   return (
     <div className="min-h-screen bg-gray-900">

@@ -398,7 +398,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   const initializeWebRTC = async () => {
     try {
       // Request media access with enhanced error handling
-      console.log('Advisor requesting media access...');
+      console.log('📷 Advisor requesting media access...');
+      console.log('🔧 Advisor media constraints:', {
+        video: callState.isVideoOn,
+        audio: callState.isAudioOn,
+        selectedCamera: callState.selectedCameraId,
+        selectedMicrophone: callState.selectedMicrophoneId
+      });
+      
       const stream = await requestMediaAccess(
         callState.isVideoOn,
         callState.isAudioOn,
@@ -406,7 +413,15 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         callState.selectedMicrophoneId
       );
       
-      console.log('Advisor got user media stream:', stream);
+      console.log('✅ Advisor got user media stream:', stream);
+      console.log('🎵 Advisor stream tracks:', stream.getTracks().map(t => ({ 
+        kind: t.kind, 
+        enabled: t.enabled, 
+        readyState: t.readyState,
+        label: t.label,
+        id: t.id
+      })));
+      
       localStreamRef.current = stream;
 
       if (localVideoRef.current) {
@@ -1100,9 +1115,15 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   };
 
   const handlePermissionGranted = () => {
-    console.log('Media permissions granted');
+    console.log('✅ Advisor media permissions granted');
     setMediaPermissionGranted(true);
     setShowPermissionCheck(false);
+    
+    // If signaling is already connected, initialize WebRTC now
+    if (isSignalingConnected && !peerConnectionRef.current) {
+      console.log('🔗 Advisor permissions granted, signaling ready - initializing WebRTC immediately');
+      setTimeout(() => initializeWebRTC(), 100);
+    }
   };
 
   const handlePermissionDenied = () => {
@@ -1119,14 +1140,14 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     
     setCallState(prev => ({ ...prev, isConnected: true }));
     
-    // Initialize WebRTC connection when call starts
-    if (signalingRef.current && peerConnectionRef.current) {
-      try {
-        // Advisor waits for client to join and create offer
-        console.log('Advisor waiting for client to join and create offer');
-      } catch (error) {
-        console.error('Error starting call:', error);
-      }
+    console.log('🎯 Advisor starting call');
+    
+    // Initialize WebRTC if signaling is ready and we haven't initialized yet
+    if (isSignalingConnected && !peerConnectionRef.current) {
+      console.log('🚀 Advisor call started - signaling ready, initializing WebRTC now');
+      setTimeout(() => initializeWebRTC(), 200);
+    } else {
+      console.log('⏳ Advisor call started - waiting for signaling connection before WebRTC init');
     }
   };
 
