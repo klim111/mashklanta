@@ -68,6 +68,49 @@ export const getWebRTCConfiguration = (): RTCConfiguration => {
   };
 };
 
+// Async variant that supports TURN REST (shared secret) by fetching creds from server
+export const getWebRTCConfigurationAsync = async (): Promise<RTCConfiguration> => {
+  // If static creds are provided, reuse the sync version
+  const hasStatic = !!(process.env.NEXT_PUBLIC_TURN_URL && process.env.NEXT_PUBLIC_TURN_USERNAME && process.env.NEXT_PUBLIC_TURN_CREDENTIAL);
+  if (hasStatic) {
+    return getWebRTCConfiguration();
+  }
+
+  try {
+    const res = await fetch('/api/turn/credentials', { cache: 'no-store' });
+    if (!res.ok) {
+      console.warn('Failed to fetch TURN REST credentials, falling back to static config.');
+      return getWebRTCConfiguration();
+    }
+    const data = await res.json();
+    const { urls, username, credential, forceRelay } = data || {};
+
+    const iceServers: RTCIceServer[] = [];
+    if (Array.isArray(urls) && username && credential) {
+      iceServers.push({ urls, username, credential } as any);
+    }
+
+    // Always append baseline STUN servers
+    iceServers.push(
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      { urls: 'stun:stun.stunprotocol.org:3478' }
+    );
+
+    return {
+      iceServers,
+      iceCandidatePoolSize: forceRelay ? 0 : 4,
+      bundlePolicy: 'max-bundle' as RTCBundlePolicy,
+      rtcpMuxPolicy: 'require' as RTCRtcpMuxPolicy,
+      iceTransportPolicy: (forceRelay ? 'relay' : 'all') as RTCIceTransportPolicy
+    };
+  } catch (e) {
+    console.warn('Error fetching TURN REST credentials, using static config:', e);
+    return getWebRTCConfiguration();
+  }
+};
+
 // Media constraints optimized for low latency and quality
 export const getMediaConstraints = (
   isVideoOn: boolean, 

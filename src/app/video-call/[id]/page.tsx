@@ -32,7 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HTTPSignaling, SignalingMessage, createHTTPSignaling } from '@/lib/http-signaling';
-import { getWebRTCConfiguration, getMediaConstraints, createConnectionMonitor, requestMediaAccess } from '@/lib/webrtc-config';
+import { getWebRTCConfiguration, getWebRTCConfigurationAsync, getMediaConstraints, createConnectionMonitor, requestMediaAccess } from '@/lib/webrtc-config';
 import { MediaPermissionCheck } from '@/components/ui/media-permission-check';
 import { WebRTCDebug } from '@/components/ui/webrtc-debug';
 
@@ -449,8 +449,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         }
       }
 
-      // Initialize peer connection with optimized configuration
-      const configuration = getWebRTCConfiguration();
+      // Initialize peer connection with optimized configuration (supports REST creds)
+      const configuration = await getWebRTCConfigurationAsync();
       console.log('Client creating peer connection with configuration:', configuration);
       peerConnectionRef.current = new RTCPeerConnection(configuration);
       console.log('Client peer connection created:', peerConnectionRef.current);
