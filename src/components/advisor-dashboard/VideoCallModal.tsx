@@ -236,13 +236,13 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
     };
   }, [isOpen, callState.isConnected]);
 
-  // Initialize WebRTC when signaling is connected
+  // Initialize WebRTC when signaling is connected and permissions are granted
   useEffect(() => {
-    if (isSignalingConnected && !peerConnectionRef.current) {
-      console.log('Signaling connected, initializing WebRTC for advisor');
+    if (isSignalingConnected && mediaPermissionGranted && !peerConnectionRef.current) {
+      console.log('🔗 Advisor signaling connected and permissions granted, initializing WebRTC...');
       initializeWebRTC();
     }
-  }, [isSignalingConnected]);
+  }, [isSignalingConnected, mediaPermissionGranted]);
 
   const initializeDevices = async () => {
     try {

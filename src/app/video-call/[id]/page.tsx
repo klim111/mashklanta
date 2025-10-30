@@ -238,8 +238,13 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     };
   }, [callState.isConnected]);
 
-  // Initialize WebRTC when signaling is connected - REMOVED to prevent race conditions
-  // WebRTC is now initialized directly in joinCall()
+  // Initialize WebRTC when signaling is connected and we have media permissions
+  useEffect(() => {
+    if (isSignalingConnected && mediaPermissionGranted && !peerConnectionRef.current) {
+      console.log('🔗 Signaling connected and permissions granted, initializing WebRTC...');
+      initializeWebRTC();
+    }
+  }, [isSignalingConnected, mediaPermissionGranted]);
 
   const initializeDevices = async () => {
     try {
@@ -314,7 +319,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'offer':
-        console.log('Client received offer from:', message.from, message.data);
+        console.log('📥 Client received offer from:', message.from);
+        console.log('📋 Offer details:', { 
+          type: message.data?.type, 
+          hasSdp: !!message.data?.sdp,
+          sdpLength: message.data?.sdp?.length 
+        });
         handleOffer(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -322,7 +332,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'answer':
-        console.log('Client received answer from:', message.from, message.data);
+        console.log('📥 Client received answer from:', message.from);
+        console.log('📋 Answer details:', { 
+          type: message.data?.type, 
+          hasSdp: !!message.data?.sdp,
+          sdpLength: message.data?.sdp?.length 
+        });
         handleAnswer(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -330,7 +345,12 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
         break;
         
       case 'ice-candidate':
-        console.log('Client received ICE candidate from:', message.from, message.data);
+        console.log('📥 Client received ICE candidate from:', message.from);
+        console.log('🧊 ICE candidate details:', { 
+          hasCandidate: !!message.data?.candidate,
+          sdpMid: message.data?.sdpMid,
+          sdpMLineIndex: message.data?.sdpMLineIndex 
+        });
         handleIceCandidate(message.data, message.from);
         if (message.from.includes('advisor')) {
           lastAdvisorActivityRef.current = Date.now();
@@ -724,7 +744,7 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
       // Handle ICE candidates with detailed logging
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('Client ICE candidate:', {
+          console.log('🧊 Client ICE candidate generated:', {
             type: event.candidate.type,
             protocol: event.candidate.protocol,
             address: event.candidate.address,
@@ -732,22 +752,43 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
             candidate: event.candidate.candidate
           });
           if (signalingRef.current) {
+            console.log('📤 Client sending ICE candidate via signaling...');
             signalingRef.current.sendIceCandidate(event.candidate, 'broadcast');
+          } else {
+            console.error('❌ Client signaling not available to send ICE candidate');
           }
         } else {
-          console.log('Client ICE gathering complete');
+          console.log('✅ Client ICE gathering complete');
           // If ICE gathering completes but we still don't have connection, try restart
           setTimeout(() => {
             const pc = peerConnectionRef.current;
             if (pc && (pc.iceConnectionState === 'new' || pc.iceConnectionState === 'checking')) {
-              console.log('Client ICE gathering complete but no connection, attempting restart...');
+              console.log('⚠️ Client ICE gathering complete but no connection, attempting restart...');
               restartIce();
             }
           }, 3000);
         }
       };
 
-      console.log('WebRTC initialized for client');
+      console.log('✅ WebRTC initialized for client');
+
+      // Client initiates the connection by creating an offer after initialization
+      setTimeout(async () => {
+        if (peerConnectionRef.current && signalingRef.current && !peerConnectionRef.current.localDescription) {
+          try {
+            console.log('🚀 Client creating initial offer...');
+            const offer = await peerConnectionRef.current.createOffer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: true
+            });
+            await peerConnectionRef.current.setLocalDescription(offer);
+            signalingRef.current.sendOffer(offer, 'broadcast');
+            console.log('📤 Client sent initial offer');
+          } catch (error) {
+            console.error('❌ Client failed to create initial offer:', error);
+          }
+        }
+      }, 1000); // Wait 1 second for everything to be ready
 
     } catch (error) {
       console.error('Error initializing WebRTC:', error);
@@ -1303,14 +1344,8 @@ export default function VideoCallPage({ params }: { params: Promise<{ id: string
     console.log('Client joining call');
     console.log('Client video element ref during join:', remoteVideoRef.current);
     
-    // Initialize WebRTC immediately when joining the call
-    console.log('Client initializing WebRTC for call...');
-    try {
-      await initializeWebRTC();
-      console.log('Client WebRTC initialized successfully');
-    } catch (error) {
-      console.error('Client WebRTC initialization failed:', error);
-    }
+    // WebRTC will be initialized when both signaling is connected and permissions are granted
+    console.log('Client call joined - waiting for signaling and permissions before WebRTC init');
     
     // Ensure video can play after user interaction
     if (remoteVideoRef.current) {
