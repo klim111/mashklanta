@@ -323,8 +323,22 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
         break;
         
       case 'offer':
-        console.log('Advisor received offer from:', message.from, message.data);
-        handleOffer(message.data, message.from);
+        console.log('📥 Advisor received offer from:', message.from);
+        console.log('📋 Advisor offer details:', { 
+          type: message.data?.type, 
+          hasSdp: !!message.data?.sdp,
+          sdpLength: message.data?.sdp?.length 
+        });
+        
+        // Auto-initialize WebRTC if we haven't already and we receive an offer
+        if (!peerConnectionRef.current && mediaPermissionGranted) {
+          console.log('🚀 Advisor auto-initializing WebRTC in response to client offer');
+          await initializeWebRTC();
+          // Wait a moment for WebRTC to be ready, then handle the offer
+          setTimeout(() => handleOffer(message.data, message.from), 500);
+        } else {
+          handleOffer(message.data, message.from);
+        }
         break;
         
       case 'answer':
@@ -344,18 +358,35 @@ export default function VideoCallModal({ isOpen, onClose, client, advisor }: Vid
   };
 
   const handleOffer = async (offer: RTCSessionDescriptionInit, from: string) => {
-    console.log('Advisor received offer from:', from);
+    console.log('🔄 Advisor handling offer from:', from);
+    console.log('🔗 Advisor peer connection exists:', !!peerConnectionRef.current);
+    
     if (peerConnectionRef.current) {
       try {
+        console.log('📝 Advisor setting remote description...');
         await peerConnectionRef.current.setRemoteDescription(offer);
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('✅ Advisor remote description set');
         
+        console.log('📝 Advisor creating answer...');
+        const answer = await peerConnectionRef.current.createAnswer();
+        console.log('✅ Advisor answer created:', { 
+          type: answer.type, 
+          hasSdp: !!answer.sdp,
+          sdpLength: answer.sdp?.length 
+        });
+        
+        console.log('📝 Advisor setting local description...');
+        await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('✅ Advisor local description set');
+        
+        console.log('📤 Advisor sending answer to:', from);
         signalingRef.current?.sendAnswer(answer, from);
-        console.log('Advisor sent answer to:', from);
+        console.log('✅ Advisor answer sent successfully');
       } catch (error) {
-        console.error('Error handling offer:', error);
+        console.error('❌ Advisor error handling offer:', error);
       }
+    } else {
+      console.error('❌ Advisor peer connection not available for offer');
     }
   };
 
