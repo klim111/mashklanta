@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { createSocketIOSignaling, SignalingMessage, SocketIOSignaling } from '@/lib/socketio-signaling';
+import { createHTTPSignaling, HTTPSignaling } from '@/lib/http-signaling';
 import { getWebRTCConfigurationAsync } from '@/lib/webrtc-config';
 
 interface PageProps {
@@ -52,7 +53,7 @@ export default function VideoCallClient({ params }: PageProps) {
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const signalingRef = useRef<SocketIOSignaling | null>(null);
+  const signalingRef = useRef<SocketIOSignaling | HTTPSignaling | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
@@ -72,38 +73,116 @@ export default function VideoCallClient({ params }: PageProps) {
       return;
     }
 
-    const signaling = createSocketIOSignaling(
-      callId,
-      `client_${crypto.randomUUID()}`,
-      'client',
-      handleSignalingMessage,
-      (connected) => {
-        setSignalingReady(connected);
-        if (!connected) {
-          setError('מתחבר לשרת השיחה...');
-              } else {
-          setError(null);
-        }
-      }
-    );
+    // Request media access immediately for preview
+    requestInitialMediaAccess();
 
-    signaling
-      .connect()
-      .then(() => {
+    // Try Socket.IO first, fallback to HTTP signaling
+    const trySocketIO = async () => {
+      const signaling = createSocketIOSignaling(
+        callId,
+        `client_${crypto.randomUUID()}`,
+        'client',
+        handleSignalingMessage,
+        (connected) => {
+          setSignalingReady(connected);
+          if (!connected) {
+            setError('מתחבר לשרת השיחה...');
+          } else {
+            setError(null);
+            console.log('Client signaling connected successfully');
+          }
+        }
+      );
+
+      try {
+        await signaling.connect();
         signalingRef.current = signaling;
-      })
-      .catch((err) => {
-        console.error('Failed to connect to signaling server', err);
-        setError('לא ניתן להתחבר לשרת השיחה.');
-      });
+        console.log('Client Socket.IO signaling connection established');
+        return true;
+      } catch (err) {
+        console.warn('Socket.IO connection failed, trying HTTP signaling fallback:', err);
+        return false;
+      }
+    };
+
+    // Try HTTP signaling as fallback
+    const tryHTTPSignaling = async () => {
+      const userId = `client_${crypto.randomUUID()}`;
+      const signaling = createHTTPSignaling(
+        callId,
+        userId,
+        'client',
+        handleSignalingMessage,
+        (connected) => {
+          setSignalingReady(connected);
+          if (!connected) {
+            setError('מתחבר לשרת השיחה...');
+          } else {
+            setError(null);
+            console.log('Client HTTP signaling connected successfully');
+          }
+        }
+      );
+
+      try {
+        await signaling.connect();
+        signalingRef.current = signaling;
+        console.log('Client HTTP signaling connection established');
+        return true;
+      } catch (err) {
+        console.error('HTTP signaling also failed:', err);
+        setError('לא ניתן להתחבר לשרת השיחה. נסה לרענן את הדף.');
+        return false;
+      }
+    };
+
+    // Try Socket.IO first, then fallback to HTTP
+    trySocketIO().then((success) => {
+      if (!success) {
+        console.log('Falling back to HTTP signaling...');
+        tryHTTPSignaling();
+      }
+    });
     
     return () => {
-      signaling.disconnect();
+      if (signalingRef.current) {
+        signalingRef.current.disconnect();
+      }
       signalingRef.current = null;
       cleanupMedia();
       resetCall();
     };
   }, [callId]);
+
+  // Request media access immediately for preview
+  const requestInitialMediaAccess = async () => {
+    try {
+      console.log('Requesting initial media access for client preview...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      localStreamRef.current = stream;
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        try {
+          await localVideoRef.current.play();
+          console.log('Client local video preview started');
+        } catch (playError) {
+          console.warn('Video play blocked:', playError);
+        }
+      }
+
+      // Set initial track states
+      stream.getVideoTracks()[0] && (stream.getVideoTracks()[0].enabled = callState.isVideoOn);
+      stream.getAudioTracks()[0] && (stream.getAudioTracks()[0].enabled = callState.isAudioOn);
+    } catch (error) {
+      console.error('Failed to request initial media access:', error);
+      setError('לא ניתן לגשת למצלמה/מיקרופון. אנא בדוק את ההרשאות.');
+    }
+  };
 
   useEffect(() => () => cleanupMedia(), []);
 
@@ -176,10 +255,15 @@ export default function VideoCallClient({ params }: PageProps) {
   };
 
   const prepareLocalStream = async () => {
+    // Reuse existing stream if available
     if (localStreamRef.current) {
+      // Update track states
+      localStreamRef.current.getVideoTracks()[0] && (localStreamRef.current.getVideoTracks()[0].enabled = callState.isVideoOn);
+      localStreamRef.current.getAudioTracks()[0] && (localStreamRef.current.getAudioTracks()[0].enabled = callState.isAudioOn);
       return localStreamRef.current;
     }
 
+    // Request new stream if not available
     const stream = await navigator.mediaDevices.getUserMedia({
       video: true,
       audio: true,
@@ -370,21 +454,73 @@ export default function VideoCallClient({ params }: PageProps) {
         {error && <div className="bg-red-500/20 px-4 py-2 text-center text-sm text-red-200">{error}</div>}
 
         <div className="relative flex-1 bg-black">
-          <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
+          {/* Remote Video - Only show when connected */}
+          {callState.isConnected && (
+            <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
+          )}
 
-          <div className="absolute bottom-4 left-4 flex w-72 flex-col gap-2 rounded-xl bg-gray-900/80 p-4 backdrop-blur">
-            <div className="flex items-center gap-2 text-sm text-gray-300">
-              <User className="h-4 w-4" /> אתה
+          {/* Local Video Preview - Always visible when stream is available */}
+          {localStreamRef.current && (
+            <>
+              {!callState.isConnected && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  <video 
+                    ref={localVideoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className="h-full w-full object-cover"
+                  />
+                  {!callState.isVideoOn && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/70">
+                      <VideoOff className="h-16 w-16 text-white" />
                     </div>
-            <div className="aspect-video overflow-hidden rounded-lg border border-gray-800">
-              <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-              {!callState.isVideoOn && (
-                <div className="flex h-full w-full items-center justify-center bg-gray-900/70">
-                  <VideoOff className="h-8 w-8" />
+                  )}
+                  {!signalingReady && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                          <Phone className="w-10 h-10" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">מתחבר לשרת...</h3>
+                        <p className="text-gray-300">ממתין לחיבור</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Local Video - Small preview when connected */}
+              {callState.isConnected && (
+                <div className="absolute bottom-4 left-4 flex w-72 flex-col gap-2 rounded-xl bg-gray-900/80 p-4 backdrop-blur">
+                  <div className="flex items-center gap-2 text-sm text-gray-300">
+                    <User className="h-4 w-4" /> אתה
                   </div>
-            )}
-          </div>
+                  <div className="aspect-video overflow-hidden rounded-lg border border-gray-800">
+                    <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+                    {!callState.isVideoOn && (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-900/70">
+                        <VideoOff className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* No stream state */}
+          {!localStreamRef.current && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="text-center text-white">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Video className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">מתחבר...</h3>
+                <p className="text-gray-300">מאפשר גישה למצלמה ומיקרופון</p>
               </div>
+            </div>
+          )}
               
           <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-4">
             <Button
