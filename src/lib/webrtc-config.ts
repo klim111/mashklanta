@@ -73,21 +73,57 @@ export const getWebRTCConfigurationAsync = async (): Promise<RTCConfiguration> =
   // If static creds are provided, reuse the sync version
   const hasStatic = !!(process.env.NEXT_PUBLIC_TURN_URL && process.env.NEXT_PUBLIC_TURN_USERNAME && process.env.NEXT_PUBLIC_TURN_CREDENTIAL);
   if (hasStatic) {
+    console.log('Using static TURN credentials');
     return getWebRTCConfiguration();
   }
 
   try {
-    const res = await fetch('/api/turn/credentials', { cache: 'no-store' });
+    // Use absolute URL on server, relative on client
+    const baseUrl = typeof window !== 'undefined' 
+      ? window.location.origin 
+      : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    
+    const credentialsUrl = `${baseUrl}/api/turn/credentials`;
+    console.log('Fetching TURN credentials from:', credentialsUrl);
+    
+    const res = await fetch(credentialsUrl, { 
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      }
+    });
+    
     if (!res.ok) {
-      console.warn('Failed to fetch TURN REST credentials, falling back to static config.');
+      const errorText = await res.text();
+      console.warn('Failed to fetch TURN REST credentials:', res.status, errorText);
+      console.warn('Falling back to static config or STUN only.');
       return getWebRTCConfiguration();
     }
+    
     const data = await res.json();
+    console.log('TURN credentials fetched successfully:', {
+      hasUrls: !!data.urls,
+      hasUsername: !!data.username,
+      hasCredential: !!data.credential,
+      realm: data.realm
+    });
+    
     const { urls, username, credential, forceRelay } = data || {};
 
     const iceServers: RTCIceServer[] = [];
-    if (Array.isArray(urls) && username && credential) {
-      iceServers.push({ urls, username, credential } as any);
+    
+    // Handle both single URL string and array of URLs
+    if (urls) {
+      const urlList = Array.isArray(urls) ? urls : [urls];
+      urlList.forEach(url => {
+        if (username && credential) {
+          iceServers.push({ 
+            urls: url, 
+            username, 
+            credential 
+          } as any);
+        }
+      });
     }
 
     // Always append baseline STUN servers

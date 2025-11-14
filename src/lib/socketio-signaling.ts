@@ -50,10 +50,19 @@ export class SocketIOSignaling {
           forceNew: true
         });
 
-        console.log('Attempting to connect to WebSocket server:', serverUrl);
+        console.log(`[SocketIOSignaling] Attempting to connect to WebSocket server: ${serverUrl}`, {
+          callId: this.callId,
+          userId: this.userId,
+          userType: this.userType
+        });
 
         this.socket.on('connect', () => {
-          console.log('Socket.IO connected:', this.socket?.id);
+          console.log(`[SocketIOSignaling] Connected successfully`, {
+            socketId: this.socket?.id,
+            callId: this.callId,
+            userId: this.userId,
+            userType: this.userType
+          });
           this.reconnectAttempts = 0;
           this.onConnectionChange(true);
           
@@ -64,23 +73,36 @@ export class SocketIOSignaling {
             userType: this.userType
           });
           
+          console.log(`[SocketIOSignaling] Sent join-call event`, {
+            callId: this.callId,
+            userId: this.userId
+          });
+          
           // Set up ping/pong for connection health
           this.setupPingPong();
           
           resolve();
         });
 
-        this.socket.on('disconnect', () => {
-          console.log('Socket.IO disconnected');
+        this.socket.on('disconnect', (reason) => {
+          console.log(`[SocketIOSignaling] Disconnected`, {
+            callId: this.callId,
+            userId: this.userId,
+            reason,
+            socketId: this.socket?.id
+          });
           this.onConnectionChange(false);
           this.attemptReconnect();
         });
 
         this.socket.on('connect_error', (error) => {
-          console.error('Socket.IO connection error:', error);
-          console.error('Connection details:', {
+          console.error(`[SocketIOSignaling] Connection error`, {
+            callId: this.callId,
+            userId: this.userId,
             serverUrl,
-            errorMessage: error.message
+            errorMessage: error.message,
+            errorType: error.type,
+            errorDescription: error.description
           });
           this.onConnectionChange(false);
           this.attemptReconnect();
@@ -88,7 +110,15 @@ export class SocketIOSignaling {
 
         // Handle signaling messages
         this.socket.on('webrtc-signal', (data) => {
-          console.log('Received WebRTC signal:', data);
+          console.log(`[SocketIOSignaling] Received WebRTC signal`, {
+            callId: this.callId,
+            userId: this.userId,
+            signalType: data.type,
+            from: data.from,
+            hasSdp: !!data.signal?.sdp,
+            hasCandidate: !!data.signal?.candidate,
+            candidateType: data.signal?.candidate?.type
+          });
           const message: SignalingMessage = {
             type: data.type,
             data: data.signal,
@@ -194,30 +224,67 @@ export class SocketIOSignaling {
 
   sendOffer(offer: RTCSessionDescriptionInit, to: string = 'broadcast') {
     if (this.socket) {
+      console.log(`[SocketIOSignaling] Sending offer`, {
+        callId: this.callId,
+        userId: this.userId,
+        target: to,
+        hasSdp: !!offer.sdp,
+        sdpType: offer.type
+      });
       this.socket.emit('webrtc-signal', {
         type: 'offer',
         target: to,
         signal: offer
+      });
+    } else {
+      console.warn(`[SocketIOSignaling] Cannot send offer - socket not connected`, {
+        callId: this.callId,
+        userId: this.userId
       });
     }
   }
 
   sendAnswer(answer: RTCSessionDescriptionInit, to: string = 'broadcast') {
     if (this.socket) {
+      console.log(`[SocketIOSignaling] Sending answer`, {
+        callId: this.callId,
+        userId: this.userId,
+        target: to,
+        hasSdp: !!answer.sdp,
+        sdpType: answer.type
+      });
       this.socket.emit('webrtc-signal', {
         type: 'answer',
         target: to,
         signal: answer
+      });
+    } else {
+      console.warn(`[SocketIOSignaling] Cannot send answer - socket not connected`, {
+        callId: this.callId,
+        userId: this.userId
       });
     }
   }
 
   sendIceCandidate(candidate: RTCIceCandidateInit, to: string = 'broadcast') {
     if (this.socket) {
+      console.log(`[SocketIOSignaling] Sending ICE candidate`, {
+        callId: this.callId,
+        userId: this.userId,
+        target: to,
+        candidateType: candidate.type,
+        candidateProtocol: candidate.protocol,
+        candidateAddress: candidate.address
+      });
       this.socket.emit('webrtc-signal', {
         type: 'ice-candidate',
         target: to,
         signal: candidate
+      });
+    } else {
+      console.warn(`[SocketIOSignaling] Cannot send ICE candidate - socket not connected`, {
+        callId: this.callId,
+        userId: this.userId
       });
     }
   }
