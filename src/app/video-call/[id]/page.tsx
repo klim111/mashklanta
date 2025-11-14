@@ -52,6 +52,7 @@ export default function VideoCallClient({ params }: PageProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [hasLocalStream, setHasLocalStream] = useState(false);
 
   const signalingRef = useRef<SocketIOSignaling | HTTPSignaling | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -67,6 +68,38 @@ export default function VideoCallClient({ params }: PageProps) {
   useEffect(() => {
     params.then(({ id }) => setCallId(id));
   }, [params]);
+
+  // Request media access immediately for preview
+  const requestInitialMediaAccess = async () => {
+    try {
+      console.log('Requesting initial media access for client preview...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      localStreamRef.current = stream;
+      setHasLocalStream(true);
+      
+      // Force update to show video
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        try {
+          await localVideoRef.current.play();
+          console.log('Client local video preview started');
+        } catch (playError) {
+          console.warn('Video play blocked:', playError);
+        }
+      }
+
+      // Set initial track states
+      stream.getVideoTracks()[0] && (stream.getVideoTracks()[0].enabled = callState.isVideoOn);
+      stream.getAudioTracks()[0] && (stream.getAudioTracks()[0].enabled = callState.isAudioOn);
+    } catch (error) {
+      console.error('Failed to request initial media access:', error);
+      setError('לא ניתן לגשת למצלמה/מיקרופון. אנא בדוק את ההרשאות.');
+    }
+  };
 
   useEffect(() => {
     if (!callId) {
@@ -154,37 +187,30 @@ export default function VideoCallClient({ params }: PageProps) {
     };
   }, [callId]);
 
-  // Request media access immediately for preview
-  const requestInitialMediaAccess = async () => {
-    try {
-      console.log('Requesting initial media access for client preview...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      localStreamRef.current = stream;
-      
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        try {
-          await localVideoRef.current.play();
-          console.log('Client local video preview started');
-        } catch (playError) {
-          console.warn('Video play blocked:', playError);
-        }
-      }
-
-      // Set initial track states
-      stream.getVideoTracks()[0] && (stream.getVideoTracks()[0].enabled = callState.isVideoOn);
-      stream.getAudioTracks()[0] && (stream.getAudioTracks()[0].enabled = callState.isAudioOn);
-    } catch (error) {
-      console.error('Failed to request initial media access:', error);
-      setError('לא ניתן לגשת למצלמה/מיקרופון. אנא בדוק את ההרשאות.');
-    }
-  };
 
   useEffect(() => () => cleanupMedia(), []);
+
+  // Auto-create offer when advisor joins and signaling is ready
+  useEffect(() => {
+    if (callState.advisorConnected && signalingReady && !callState.isConnected && !peerConnectionRef.current) {
+      console.log('Advisor connected, auto-creating offer...');
+      const createOffer = async () => {
+        try {
+          const peer = await ensurePeerConnection();
+          const offer = await peer.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          await peer.setLocalDescription(offer);
+          signalingRef.current?.sendOffer(offer, 'broadcast');
+          console.log('Client auto-sent offer to advisor');
+        } catch (error) {
+          console.error('Failed to auto-create offer:', error);
+        }
+      };
+      createOffer();
+    }
+  }, [callState.advisorConnected, signalingReady, callState.isConnected]);
 
   const resetCall = () => {
     setCallState(INITIAL_STATE);
@@ -212,6 +238,7 @@ export default function VideoCallClient({ params }: PageProps) {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
+      setHasLocalStream(false);
     }
 
     if (remoteStreamRef.current) {
@@ -224,7 +251,9 @@ export default function VideoCallClient({ params }: PageProps) {
     switch (message.type) {
       case 'user-joined':
         if (message.from.includes('advisor')) {
+          console.log('Advisor joined the call');
           setCallState((prev) => ({ ...prev, advisorConnected: true }));
+          // Offer will be created automatically by useEffect when advisorConnected changes
         }
         break;
       case 'user-left':
@@ -286,26 +315,48 @@ export default function VideoCallClient({ params }: PageProps) {
       return peerConnectionRef.current;
     }
 
-      const configuration = await getWebRTCConfigurationAsync();
+    console.log('Creating peer connection for client...');
+    const configuration = await getWebRTCConfigurationAsync();
     const peer = new RTCPeerConnection(configuration);
 
     peer.onicecandidate = (event) => {
       if (event.candidate) {
-        signalingRef.current?.sendIceCandidate(event.candidate);
+        console.log('Client ICE candidate:', event.candidate.type);
+        signalingRef.current?.sendIceCandidate(event.candidate, 'broadcast');
+      } else {
+        console.log('Client ICE gathering complete');
       }
     };
 
     peer.ontrack = (event) => {
+      console.log('Client received remote track:', event.track.kind);
       const [stream] = event.streams;
       remoteStreamRef.current = stream;
-        if (remoteVideoRef.current) {
+      if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = stream;
         remoteVideoRef.current.play().catch(() => undefined);
+        setCallState((prev) => ({ ...prev, isConnected: true }));
+        startTimer();
       }
     };
 
+    // Connection state monitoring
+    peer.onconnectionstatechange = () => {
+      console.log('Client connection state:', peer.connectionState);
+      if (peer.connectionState === 'connected') {
+        setCallState((prev) => ({ ...prev, isConnected: true }));
+      }
+    };
+
+    peer.oniceconnectionstatechange = () => {
+      console.log('Client ICE connection state:', peer.iceConnectionState);
+    };
+
     const stream = await prepareLocalStream();
-    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    stream.getTracks().forEach((track) => {
+      peer.addTrack(track, stream);
+      console.log('Client added track:', track.kind);
+    });
 
     peerConnectionRef.current = peer;
     return peer;
@@ -343,14 +394,26 @@ export default function VideoCallClient({ params }: PageProps) {
   const joinCall = async () => {
     if (!signalingReady) {
       setError('מתחבר לשרת השיחה...');
-        return;
-      }
+      return;
+    }
       
     try {
-      await ensurePeerConnection();
-      setCallState((prev) => ({ ...prev, isConnected: true }));
+      console.log('Client joining call, creating peer connection...');
+      const peer = await ensurePeerConnection();
+      
+      // If advisor is already connected, create offer immediately
+      if (callState.advisorConnected) {
+        console.log('Advisor already connected, creating offer...');
+        const offer = await peer.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
+        await peer.setLocalDescription(offer);
+        signalingRef.current?.sendOffer(offer, 'broadcast');
+        console.log('Client sent offer to advisor');
+      }
+      
       setError(null);
-      startTimer();
     } catch (err) {
       console.error('Failed to join call', err);
       setError('לא הצלחנו להפעיל את המצלמה/מיקרופון.');
@@ -460,7 +523,7 @@ export default function VideoCallClient({ params }: PageProps) {
           )}
 
           {/* Local Video Preview - Always visible when stream is available */}
-          {localStreamRef.current && (
+          {(localStreamRef.current || hasLocalStream) ? (
             <>
               {!callState.isConnected && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black">
@@ -470,20 +533,32 @@ export default function VideoCallClient({ params }: PageProps) {
                     playsInline 
                     muted 
                     className="h-full w-full object-cover"
+                    key="local-preview"
                   />
                   {!callState.isVideoOn && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/70">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/70 z-10">
                       <VideoOff className="h-16 w-16 text-white" />
                     </div>
                   )}
                   {!signalingReady && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
                       <div className="text-center text-white">
                         <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                           <Phone className="w-10 h-10" />
                         </div>
                         <h3 className="text-xl font-semibold mb-2">מתחבר לשרת...</h3>
                         <p className="text-gray-300">ממתין לחיבור</p>
+                      </div>
+                    </div>
+                  )}
+                  {signalingReady && !callState.advisorConnected && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-20">
+                      <div className="text-center text-white">
+                        <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Phone className="w-10 h-10" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">ממתין ליועץ...</h3>
+                        <p className="text-gray-300">השיחה תתחיל ברגע שהיועץ יתחבר</p>
                       </div>
                     </div>
                   )}
@@ -507,13 +582,11 @@ export default function VideoCallClient({ params }: PageProps) {
                 </div>
               )}
             </>
-          )}
-
-          {/* No stream state */}
-          {!localStreamRef.current && (
+          ) : (
+            /* No stream state */
             <div className="absolute inset-0 flex items-center justify-center bg-black">
               <div className="text-center text-white">
-                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                   <Video className="w-10 h-10" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">מתחבר...</h3>
