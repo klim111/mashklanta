@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
     const username = (currentTimestamp + ttlSeconds).toString();
 
     // HMAC-SHA1 over username with shared secret
-    const hmac = crypto.createHmac('sha1', secret);
+    // At this point, secret is guaranteed to be defined (checked above)
+    const hmac = crypto.createHmac('sha1', secret as string);
     hmac.update(username);
     const credential = hmac.digest('base64');
 

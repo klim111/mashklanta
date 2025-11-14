@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest) {
       allConfigured: !!(realm && secret && urlList.length > 0)
     };
 
-    if (!configStatus.allConfigured) {
+    if (!configStatus.allConfigured || !secret) {
       return NextResponse.json({
         status: 'error',
         message: 'TURN server not fully configured',
@@ -32,6 +32,7 @@ export async function GET(_req: NextRequest) {
     }
 
     // Validate credential generation works
+    // At this point, secret is guaranteed to be defined
     const username = Math.floor(Date.now() / 1000) + ttlSeconds + '';
     const hmac = crypto.createHmac('sha1', secret);
     hmac.update(username);

@@ -95,14 +95,14 @@ export class SocketIOSignaling {
           this.attemptReconnect();
         });
 
-        this.socket.on('connect_error', (error) => {
+        this.socket.on('connect_error', (error: any) => {
           console.error(`[SocketIOSignaling] Connection error`, {
             callId: this.callId,
             userId: this.userId,
             serverUrl,
-            errorMessage: error.message,
-            errorType: error.type,
-            errorDescription: error.description
+            errorMessage: error?.message || String(error),
+            errorType: error?.type,
+            errorDescription: error?.description
           });
           this.onConnectionChange(false);
           this.attemptReconnect();
@@ -272,9 +272,9 @@ export class SocketIOSignaling {
         callId: this.callId,
         userId: this.userId,
         target: to,
-        candidateType: candidate.type,
-        candidateProtocol: candidate.protocol,
-        candidateAddress: candidate.address
+        hasCandidate: !!candidate.candidate,
+        candidateProtocol: (candidate as any).protocol,
+        candidateAddress: (candidate as any).address
       });
       this.socket.emit('webrtc-signal', {
         type: 'ice-candidate',
