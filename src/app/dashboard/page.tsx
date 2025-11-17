@@ -29,7 +29,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [mortgages, setMortgages] = useState<any[]>([]);
+  const [mortgages, setMortgages] = useState<any[]>([{ id: 1, active: true }]); // Mock data for demonstration
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -226,10 +226,18 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">המשכנתאות שלי</h2>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
-                  <Plus className="w-5 h-5" />
-                  התחל תהליך חדש
-                </button>
+                <div className="flex gap-2">
+                  <Link href="/mortgage-dashboard">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-teal-700 transition-all">
+                      <BarChart3 className="w-5 h-5" />
+                      דאשבורד משכנתא
+                    </button>
+                  </Link>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
+                    <Plus className="w-5 h-5" />
+                    התחל תהליך חדש
+                  </button>
+                </div>
               </div>
 
               {mortgages.length === 0 ? (
@@ -237,16 +245,63 @@ export default function DashboardPage() {
                   <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                     <FileText className="w-10 h-10 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">אין משכנתאות פעילות</h3>
-                  <p className="text-gray-600 mb-6">התחל תהליך חדש כדי לנהל את המשכנתא שלך</p>
-                  <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
-                    <Plus className="w-5 h-5" />
-                    התחל תהליך חדש
-                  </button>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">ניהול משכנתא חכם</h3>
+                  <p className="text-gray-600 mb-6">עקוב אחר המשכנתא שלך, צפה בלוח סילוקין ובדוק אפשרויות מחזור</p>
+                  <div className="flex gap-3 justify-center">
+                    <Link href="/mortgage-dashboard">
+                      <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-teal-700 transition-all">
+                        <BarChart3 className="w-5 h-5" />
+                        צפה בדאשבורד
+                      </button>
+                    </Link>
+                    <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
+                      <Plus className="w-5 h-5" />
+                      הוסף משכנתא
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {/* Mortgage items will be displayed here */}
+                  {/* Display active mortgage */}
+                  <Link href="/mortgage-dashboard">
+                    <div className="border-2 border-purple-200 rounded-lg p-6 hover:border-purple-400 transition-colors cursor-pointer bg-gradient-to-r from-purple-50 to-blue-50">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">משכנתא פעילה</h3>
+                          <p className="text-gray-600 mt-1">רחוב הרצל 123, תל אביב</p>
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                          פעילה
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-600">סכום מקורי</p>
+                          <p className="font-semibold">₪1,750,000</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">יתרת קרן</p>
+                          <p className="font-semibold">₪1,450,000</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">תשלום חודשי</p>
+                          <p className="font-semibold">₪7,845</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">התקדמות</p>
+                          <p className="font-semibold">17.1%</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-purple-600 font-medium">
+                          לחץ לצפייה בדאשבורד המלא →
+                        </span>
+                        <ChevronRight className="w-5 h-5 text-purple-600" />
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               )}
             </div>
