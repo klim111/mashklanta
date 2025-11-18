@@ -110,6 +110,11 @@ export default function UnifiedMortgageOverview({
     }
   };
 
+  const handleScheduleToggle = (scheduleKey: string | 'full') => {
+    setScheduleCurrentPage(0);
+    setExpandedSchedule(prev => (prev === scheduleKey ? null : scheduleKey));
+  };
+
   // Calculate overall progress based on selected date
   const overallProgress = snapshot ? 
     ((snapshot.totalPaidPrincipal / mortgage.originalAmount) * 100).toFixed(1) : '0';
@@ -165,13 +170,14 @@ export default function UnifiedMortgageOverview({
 
     return (
       <motion.div
+        key={`schedule-${trackId}`}
         initial={{ height: 0, opacity: 0 }}
         animate={{ height: 'auto', opacity: 1 }}
         exit={{ height: 0, opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="overflow-hidden"
+        className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
       >
-        <div className="bg-gray-50 border-t-2 border-gray-200 p-6">
+        <div className="bg-gray-50 p-6">
           {/* Schedule Header */}
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-gray-900">
@@ -510,37 +516,45 @@ export default function UnifiedMortgageOverview({
           </div>
 
           {/* Total Mortgage Summary Row */}
-          <div 
-            onClick={() => setExpandedSchedule(expandedSchedule === 'full' ? null : 'full')}
-            className="bg-white/90 text-gray-900 rounded-lg p-4 mb-3 cursor-pointer hover:bg-white transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">סך המשכנתא</p>
-                  <p className="text-2xl font-bold">₪{mortgage.originalAmount.toLocaleString()}</p>
+            <div 
+              onClick={() => handleScheduleToggle('full')}
+              className="bg-white/90 text-gray-900 rounded-lg p-5 mb-3 cursor-pointer hover:bg-white transition-colors"
+            >
+              <div className="flex flex-col items-center gap-4 text-center">
+                <p className="text-sm font-medium text-gray-600">סיכום המשכנתא הכללית</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full text-center">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">סך המשכנתא</p>
+                    <p className="text-2xl font-bold">₪{mortgage.originalAmount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">נותר לתשלום</p>
+                    <p className="text-2xl font-bold">
+                      ₪{snapshot ? snapshot.totalRemainingPrincipal.toLocaleString() : '0'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">התקדמות</p>
+                    <p className="text-2xl font-bold">{overallProgress}%</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">תשלום חודשי כולל</p>
+                    <p className="text-2xl font-bold">₪{mortgage.totalMonthlyPayment.toLocaleString()}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">נותר לתשלום</p>
-                  <p className="text-2xl font-bold">
-                    ₪{snapshot ? snapshot.totalRemainingPrincipal.toLocaleString() : '0'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">התקדמות</p>
-                  <p className="text-2xl font-bold">{overallProgress}%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">תשלום חודשי כולל</p>
-                  <p className="text-2xl font-bold">₪{mortgage.totalMonthlyPayment.toLocaleString()}</p>
-                </div>
+                <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform ${expandedSchedule === 'full' ? 'rotate-180' : ''}`} />
               </div>
-              <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform ${expandedSchedule === 'full' ? 'rotate-180' : ''}`} />
             </div>
-          </div>
+            <AnimatePresence>
+              {expandedSchedule === 'full' && (
+                <div className="mt-2">
+                  {renderAmortizationSchedule('full')}
+                </div>
+              )}
+            </AnimatePresence>
 
           {/* All Mortgage Tracks */}
-          <div className="space-y-2">
+            <div className="space-y-2">
             {mortgage.tracks.map((track) => {
               const dynamicValues = calculateDynamicValues(track);
               const trackTypeColor = {
@@ -551,60 +565,64 @@ export default function UnifiedMortgageOverview({
                 eligibility: 'bg-pink-50 text-pink-900 border-pink-200'
               }[track.type];
 
-              return (
-                <div
-                  key={track.id}
-                  onClick={() => setExpandedSchedule(expandedSchedule === track.id ? null : track.id)}
-                  className={`${trackTypeColor} border rounded-lg p-3 cursor-pointer hover:shadow-md transition-all`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="min-w-[150px]">
-                        <p className="font-semibold">{track.name}</p>
-                        <p className="text-xs opacity-75">
-                          {dynamicValues.isCompleted ? 'הושלם' : `${dynamicValues.remainingMonths} חודשים`}
-                        </p>
+                return (
+                  <div key={track.id} className="space-y-2">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      onClick={() => handleScheduleToggle(track.id)}
+                      className={`${trackTypeColor} border rounded-lg p-3 cursor-pointer transition-all ${expandedSchedule === track.id ? 'shadow-md ring-1 ring-purple-200' : 'hover:shadow-md'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="min-w-[150px]">
+                            <p className="font-semibold">{track.name}</p>
+                            <p className="text-xs opacity-75">
+                              {dynamicValues.isCompleted ? 'הושלם' : `${dynamicValues.remainingMonths} חודשים`}
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-5 gap-4 flex-1">
+                            <div>
+                              <p className="text-xs opacity-75">סכום מקורי</p>
+                              <p className="font-semibold">₪{track.principal.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs opacity-75">יתרה</p>
+                              <p className="font-semibold">₪{dynamicValues.remainingPrincipal.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs opacity-75">ריבית</p>
+                              <p className="font-semibold">{track.interestRate}%</p>
+                            </div>
+                            <div>
+                              <p className="text-xs opacity-75">תשלום חודשי</p>
+                              <p className="font-semibold">₪{track.monthlyPayment.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs opacity-75">תשלום הבא</p>
+                              <p className="font-semibold">
+                                {dynamicValues.nextPayment 
+                                  ? format(dynamicValues.nextPayment.date, 'dd/MM', { locale: he })
+                                  : '-'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 transition-transform ${expandedSchedule === track.id ? 'rotate-180' : ''}`} />
                       </div>
-                      <div className="grid grid-cols-5 gap-4 flex-1">
-                        <div>
-                          <p className="text-xs opacity-75">סכום מקורי</p>
-                          <p className="font-semibold">₪{track.principal.toLocaleString()}</p>
+                    </motion.div>
+                    <AnimatePresence>
+                      {expandedSchedule === track.id && (
+                        <div className="mt-2">
+                          {renderAmortizationSchedule(track.id)}
                         </div>
-                        <div>
-                          <p className="text-xs opacity-75">יתרה</p>
-                          <p className="font-semibold">₪{dynamicValues.remainingPrincipal.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs opacity-75">ריבית</p>
-                          <p className="font-semibold">{track.interestRate}%</p>
-                        </div>
-                        <div>
-                          <p className="text-xs opacity-75">תשלום חודשי</p>
-                          <p className="font-semibold">₪{track.monthlyPayment.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs opacity-75">תשלום הבא</p>
-                          <p className="font-semibold">
-                            {dynamicValues.nextPayment 
-                              ? format(dynamicValues.nextPayment.date, 'dd/MM', { locale: he })
-                              : '-'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronDown className={`w-5 h-5 transition-transform ${expandedSchedule === track.id ? 'rotate-180' : ''}`} />
+                      )}
+                    </AnimatePresence>
                   </div>
-                </div>
-              );
+                );
             })}
           </div>
         </div>
-
-        {/* Expandable Amortization Schedule */}
-        <AnimatePresence>
-          {expandedSchedule && renderAmortizationSchedule(expandedSchedule)}
-        </AnimatePresence>
 
         {/* Rest of the content */}
         <div className="bg-gray-50 p-6">
