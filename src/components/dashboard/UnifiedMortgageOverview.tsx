@@ -20,12 +20,15 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Filter
+  Filter,
+  Zap
 } from 'lucide-react';
 import { MortgageSummary, MortgageTrack, Payment, DateSnapshot } from '@/types/mortgage';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, differenceInMonths, isAfter, isBefore } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { calculateDateSnapshot } from '@/lib/mortgage-utils';
+import MortgageInfographic from './MortgageInfographic';
+import TrackInfographic from './TrackInfographic';
 
 interface UnifiedMortgageOverviewProps {
   mortgage: MortgageSummary;
@@ -191,33 +194,14 @@ export default function UnifiedMortgageOverview({
             </button>
           </div>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-3 border border-blue-200">
-              <p className="text-xs text-blue-600 mb-1">קרן ששולמה</p>
-              <p className="text-lg font-bold text-gray-900">
-                ₪{totals.paidPrincipal.toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-green-200">
-              <p className="text-xs text-green-600 mb-1">קרן נותרת</p>
-              <p className="text-lg font-bold text-gray-900">
-                ₪{totals.remainingPrincipal.toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-orange-200">
-              <p className="text-xs text-orange-600 mb-1">ריבית ששולמה</p>
-              <p className="text-lg font-bold text-gray-900">
-                ₪{totals.paidInterest.toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-purple-200">
-              <p className="text-xs text-purple-600 mb-1">תשלומים נותרים</p>
-              <p className="text-lg font-bold text-gray-900">
-                {upcomingPayments.length}
-              </p>
-            </div>
-          </div>
+          {/* Track Infographic - Only show for individual tracks, not for 'full' */}
+          {trackId !== 'full' && track && (
+            <TrackInfographic
+              track={track}
+              trackPayments={trackPayments[trackId] || []}
+              selectedDate={selectedDate}
+            />
+          )}
 
           {/* View Controls */}
           <div className="flex items-center justify-between mb-4">
@@ -408,20 +392,22 @@ export default function UnifiedMortgageOverview({
               <button
                 onClick={() => setScheduleCurrentPage(prev => Math.max(0, prev - 1))}
                 disabled={scheduleCurrentPage === 0}
-                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors font-medium"
               >
                 <ChevronRight className="w-5 h-5" />
+                <span>הקודם</span>
               </button>
               
-              <span className="text-sm text-gray-600">
+              <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-4 py-2 rounded-lg">
                 עמוד {scheduleCurrentPage + 1} מתוך {totalPages}
               </span>
               
               <button
                 onClick={() => setScheduleCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
                 disabled={scheduleCurrentPage === totalPages - 1}
-                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors font-medium"
               >
+                <span>הבא</span>
                 <ChevronLeft className="w-5 h-5" />
               </button>
             </div>
@@ -608,7 +594,25 @@ export default function UnifiedMortgageOverview({
                             </div>
                           </div>
                         </div>
-                        <ChevronDown className={`w-5 h-5 transition-transform ${expandedSchedule === track.id ? 'rotate-180' : ''}`} />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle early payment option
+                              const remainingPrincipal = dynamicValues.remainingPrincipal;
+                              if (window.confirm(`האם ברצונך לבצע פרעון מוקדם של ₪${remainingPrincipal.toLocaleString()} למסלול ${track.name}?`)) {
+                                // In production, this would call an API
+                                alert(`פרעון מוקדם של ₪${remainingPrincipal.toLocaleString()} יבוצע למסלול ${track.name}`);
+                              }
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-xs font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm"
+                            title="פרעון מוקדם"
+                          >
+                            <Zap className="w-3.5 h-3.5" />
+                            פרעון מוקדם
+                          </button>
+                          <ChevronDown className={`w-5 h-5 transition-transform ${expandedSchedule === track.id ? 'rotate-180' : ''}`} />
+                        </div>
                       </div>
                     </motion.div>
                     <AnimatePresence>
@@ -626,50 +630,13 @@ export default function UnifiedMortgageOverview({
 
         {/* Rest of the content */}
         <div className="bg-gray-50 p-6">
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg p-4 border border-blue-200 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-                <span className="text-xs text-blue-600 font-medium">מקורי</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">₪{mortgage.originalAmount.toLocaleString()}</p>
-              <p className="text-xs text-gray-600 mt-1">סכום ההלוואה</p>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-xs text-green-600 font-medium">נותר</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                ₪{snapshot ? snapshot.totalRemainingPrincipal.toLocaleString() : '0'}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">יתרת קרן</p>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <Check className="w-5 h-5 text-purple-600" />
-                <span className="text-xs text-purple-600 font-medium">שולם</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                ₪{snapshot ? (snapshot.totalPaidPrincipal + snapshot.totalPaidInterest).toLocaleString() : '0'}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">סה"כ שולם</p>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 border border-orange-200 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <Clock className="w-5 h-5 text-orange-600" />
-                <span className="text-xs text-orange-600 font-medium">נותרו</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">
-                {snapshot ? snapshot.totalRemainingPayments : 0}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">תשלומים</p>
-            </div>
-          </div>
+          {/* Modern Infographic Bar */}
+          <MortgageInfographic
+            mortgage={mortgage}
+            trackPayments={trackPayments}
+            snapshot={snapshot}
+            selectedDate={selectedDate}
+          />
 
           {/* Detailed Tracks Section */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
@@ -902,8 +869,11 @@ export default function UnifiedMortgageOverview({
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 
-                <h4 className="font-semibold">
-                  {format(calendarMonth, 'MMMM yyyy', { locale: he })}
+                <h4 className="font-semibold text-gray-900">
+                  {showScheduleCalendar 
+                    ? format(calendarMonth, 'yyyy', { locale: he })
+                    : format(calendarMonth, 'MMMM yyyy', { locale: he })
+                  }
                 </h4>
                 
                 <button
@@ -930,10 +900,10 @@ export default function UnifiedMortgageOverview({
                           setShowScheduleCalendar(false);
                           setScheduleCurrentPage(0);
                         }}
-                        className={`p-2 rounded-lg text-sm transition-all ${
+                        className={`p-3 rounded-lg text-sm font-medium transition-all ${
                           isSelected
-                            ? 'bg-purple-600 text-white'
-                            : 'hover:bg-gray-100'
+                            ? 'bg-purple-600 text-white shadow-md'
+                            : 'bg-white border border-gray-200 hover:bg-gray-50 hover:border-purple-300'
                         }`}
                       >
                         {format(monthDate, 'MMM', { locale: he })}
