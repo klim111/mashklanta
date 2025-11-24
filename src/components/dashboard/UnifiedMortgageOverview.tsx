@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
@@ -21,7 +21,11 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
-  Zap
+  Zap,
+  FileText,
+  BarChart3,
+  Calculator,
+  ArrowLeftRight
 } from 'lucide-react';
 import { MortgageSummary, MortgageTrack, Payment, DateSnapshot } from '@/types/mortgage';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, differenceInMonths, isAfter, isBefore } from 'date-fns';
@@ -29,6 +33,7 @@ import { he } from 'date-fns/locale';
 import { calculateDateSnapshot } from '@/lib/mortgage-utils';
 import MortgageInfographic from './MortgageInfographic';
 import TrackInfographic from './TrackInfographic';
+import EarlyRepaymentSimulation from './EarlyRepaymentSimulation';
 
 interface UnifiedMortgageOverviewProps {
   mortgage: MortgageSummary;
@@ -45,11 +50,16 @@ export default function UnifiedMortgageOverview({
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [expandedSchedule, setExpandedSchedule] = useState<string | 'full' | null>(null);
+  const [expandedDetails, setExpandedDetails] = useState<string | null>(null);
+  const [expandedGeneralDetails, setExpandedGeneralDetails] = useState(false);
   const [snapshot, setSnapshot] = useState<DateSnapshot | null>(null);
   const [scheduleViewMode, setScheduleViewMode] = useState<'list' | 'timeline'>('list');
   const [scheduleCurrentPage, setScheduleCurrentPage] = useState(0);
   const [scheduleFilterDate, setScheduleFilterDate] = useState<Date | null>(null);
   const [showScheduleCalendar, setShowScheduleCalendar] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [showEarlyRepaymentSimulation, setShowEarlyRepaymentSimulation] = useState(false);
 
   // Calculate snapshot when date changes
   useEffect(() => {
@@ -113,6 +123,76 @@ export default function UnifiedMortgageOverview({
     }
   };
 
+  const updateDateFromPosition = (clientX: number) => {
+    if (!sliderRef.current) return;
+    
+    const rect = sliderRef.current.getBoundingClientRect();
+    // In RTL layout: 
+    // - x=0 (left edge) should correspond to endDate (100% progress)
+    // - x=width (right edge) should correspond to startDate (0% progress)
+    const x = clientX - rect.left;
+    // Reverse calculation: left edge (x=0) = 100%, right edge (x=width) = 0%
+    const percentage = Math.max(0, Math.min(100, 100 - (x / rect.width) * 100));
+    
+    const totalTime = mortgage.endDate.getTime() - mortgage.startDate.getTime();
+    // percentage 0 = startDate, percentage 100 = endDate
+    const newTime = mortgage.startDate.getTime() + (totalTime * percentage / 100);
+    const newDate = new Date(newTime);
+    
+    if (newDate >= mortgage.startDate && newDate <= mortgage.endDate) {
+      setSelectedDate(newDate);
+    }
+  };
+
+  const handleSliderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    updateDateFromPosition(e.clientX);
+  };
+
+  const handleSliderTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    if (e.touches[0]) {
+      updateDateFromPosition(e.touches[0].clientX);
+    }
+  };
+
+  // Global mouse/touch handlers for dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      updateDateFromPosition(e.clientX);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) {
+        updateDateFromPosition(e.touches[0].clientX);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, mortgage.startDate, mortgage.endDate]);
+
   const handleScheduleToggle = (scheduleKey: string | 'full') => {
     setScheduleCurrentPage(0);
     setExpandedSchedule(prev => (prev === scheduleKey ? null : scheduleKey));
@@ -129,6 +209,25 @@ export default function UnifiedMortgageOverview({
   const totalMonths = Math.floor(
     (mortgage.endDate.getTime() - mortgage.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
   );
+
+  // Calculate dynamic monthly payment based on selected date
+  // Sum up monthly payments of all active tracks at the selected date
+  const calculateDynamicMonthlyPayment = (): number => {
+    return mortgage.tracks.reduce((sum, track) => {
+      const payments = trackPayments[track.id] || [];
+      // Find the next payment after selected date
+      const nextPayment = payments.find(p => p.date > selectedDate);
+      
+      if (nextPayment) {
+        // Track is still active, add its monthly payment
+        return sum + track.monthlyPayment;
+      }
+      // Track is completed, don't add to monthly payment
+      return sum;
+    }, 0);
+  };
+
+  const dynamicMonthlyPayment = calculateDynamicMonthlyPayment();
 
   // Get all payments for full amortization
   const allPayments = Object.values(trackPayments).flat().sort((a, b) => 
@@ -194,15 +293,6 @@ export default function UnifiedMortgageOverview({
             </button>
           </div>
 
-          {/* Track Infographic - Only show for individual tracks, not for 'full' */}
-          {trackId !== 'full' && track && (
-            <TrackInfographic
-              track={track}
-              trackPayments={trackPayments[trackId] || []}
-              selectedDate={selectedDate}
-            />
-          )}
-
           {/* View Controls */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-2">
@@ -231,9 +321,9 @@ export default function UnifiedMortgageOverview({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowScheduleCalendar(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-900"
               >
-                <CalendarDays className="w-4 h-4" />
+                <CalendarDays className="w-4 h-4 text-gray-700" />
                 {scheduleFilterDate ? format(scheduleFilterDate, 'MM/yyyy', { locale: he }) : 'סנן לפי תאריך'}
               </button>
               {scheduleFilterDate && (
@@ -274,8 +364,8 @@ export default function UnifiedMortgageOverview({
                         payment.isPaid 
                           ? 'bg-gray-50 text-gray-600' 
                           : isNext
-                            ? 'bg-purple-50'
-                            : 'bg-white'
+                            ? 'bg-purple-50 text-gray-900'
+                            : 'bg-white text-gray-900'
                       }`}
                     >
                       <div className="font-medium">
@@ -286,11 +376,11 @@ export default function UnifiedMortgageOverview({
                           </span>
                         )}
                       </div>
-                      <div>{format(payment.date, 'dd/MM/yyyy', { locale: he })}</div>
-                      <div>₪{payment.principal.toLocaleString()}</div>
-                      <div>₪{payment.interest.toLocaleString()}</div>
-                      <div className="font-semibold">₪{payment.totalPayment.toLocaleString()}</div>
-                      <div>₪{payment.remainingBalance.toLocaleString()}</div>
+                      <div className="text-gray-900">{format(payment.date, 'dd/MM/yyyy', { locale: he })}</div>
+                      <div className="text-gray-900">₪{payment.principal.toLocaleString()}</div>
+                      <div className="text-gray-900">₪{payment.interest.toLocaleString()}</div>
+                      <div className="font-semibold text-gray-900">₪{payment.totalPayment.toLocaleString()}</div>
+                      <div className="text-gray-900">₪{payment.remainingBalance.toLocaleString()}</div>
                       <div>
                         {payment.isPaid ? (
                           <span className="flex items-center gap-1 text-green-600">
@@ -298,7 +388,7 @@ export default function UnifiedMortgageOverview({
                             שולם
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-gray-500">
+                          <span className="flex items-center gap-1 text-gray-700">
                             <Clock className="w-4 h-4" />
                             ממתין
                           </span>
@@ -340,14 +430,14 @@ export default function UnifiedMortgageOverview({
                         
                         <div className={`flex-1 p-3 rounded-lg border ${
                           payment.isPaid 
-                            ? 'bg-gray-50 border-gray-200' 
+                            ? 'bg-gray-50 border-gray-200 text-gray-700' 
                             : isNext
-                              ? 'bg-purple-50 border-purple-300'
-                              : 'bg-white border-gray-200'
+                              ? 'bg-purple-50 border-purple-300 text-gray-900'
+                              : 'bg-white border-gray-200 text-gray-900'
                         }`}>
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <span className="font-semibold">תשלום #{payment.paymentNumber}</span>
+                              <span className="font-semibold text-gray-900">תשלום #{payment.paymentNumber}</span>
                               {isNext && (
                                 <span className="mr-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
                                   הבא
@@ -362,19 +452,19 @@ export default function UnifiedMortgageOverview({
                           <div className="grid grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-gray-600">קרן: </span>
-                              <span className="font-medium">₪{payment.principal.toLocaleString()}</span>
+                              <span className="font-medium text-gray-900">₪{payment.principal.toLocaleString()}</span>
                             </div>
                             <div>
                               <span className="text-gray-600">ריבית: </span>
-                              <span className="font-medium">₪{payment.interest.toLocaleString()}</span>
+                              <span className="font-medium text-gray-900">₪{payment.interest.toLocaleString()}</span>
                             </div>
                             <div>
                               <span className="text-gray-600">סה"כ: </span>
-                              <span className="font-medium">₪{payment.totalPayment.toLocaleString()}</span>
+                              <span className="font-medium text-gray-900">₪{payment.totalPayment.toLocaleString()}</span>
                             </div>
                             <div>
                               <span className="text-gray-600">יתרה: </span>
-                              <span className="font-medium">₪{payment.remainingBalance.toLocaleString()}</span>
+                              <span className="font-medium text-gray-900">₪{payment.remainingBalance.toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -478,17 +568,28 @@ export default function UnifiedMortgageOverview({
               </button>
             </div>
 
-            {/* Timeline Progress */}
+            {/* Timeline Progress - Draggable Slider */}
             <div className="relative">
-              <div className="w-full bg-white/20 rounded-full h-2">
+              <div 
+                ref={sliderRef}
+                className="w-full bg-white/20 rounded-full h-2 cursor-pointer relative select-none"
+                onMouseDown={handleSliderMouseDown}
+                onTouchStart={handleSliderTouchStart}
+              >
                 <motion.div
                   animate={{ 
                     width: `${((selectedDate.getTime() - mortgage.startDate.getTime()) / 
                       (mortgage.endDate.getTime() - mortgage.startDate.getTime())) * 100}%` 
                   }}
-                  className="bg-white rounded-full h-2"
-                  transition={{ duration: 0.3 }}
-                />
+                  className="bg-white rounded-full h-2 relative"
+                  transition={{ duration: isDragging ? 0 : 0.3 }}
+                  style={{ direction: 'rtl' }}
+                >
+                  {/* Draggable Handle - positioned at the left edge (end of filled bar in RTL) */}
+                  <div 
+                    className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg cursor-grab active:cursor-grabbing hover:scale-110 transition-transform z-10 border-2 border-purple-600"
+                  />
+                </motion.div>
               </div>
               
               <div className="flex justify-between text-xs text-purple-200 mt-2">
@@ -503,8 +604,7 @@ export default function UnifiedMortgageOverview({
 
           {/* Total Mortgage Summary Row */}
             <div 
-              onClick={() => handleScheduleToggle('full')}
-              className="bg-white/90 text-gray-900 rounded-lg p-5 mb-3 cursor-pointer hover:bg-white transition-colors"
+              className="bg-white/90 text-gray-900 rounded-lg p-5 mb-3 transition-colors"
             >
               <div className="flex flex-col items-center gap-4 text-center">
                 <p className="text-sm font-medium text-gray-600">סיכום המשכנתא הכללית</p>
@@ -525,10 +625,49 @@ export default function UnifiedMortgageOverview({
                   </div>
                   <div>
                     <p className="text-xs text-gray-600 mb-1">תשלום חודשי כולל</p>
-                    <p className="text-2xl font-bold">₪{mortgage.totalMonthlyPayment.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">₪{dynamicMonthlyPayment.toLocaleString()}</p>
                   </div>
                 </div>
-                <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform ${expandedSchedule === 'full' ? 'rotate-180' : ''}`} />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (expandedSchedule === 'full') {
+                        setExpandedSchedule(null);
+                      } else {
+                        setExpandedSchedule('full');
+                        setExpandedGeneralDetails(false);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
+                      expandedSchedule === 'full'
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                    title="לוח סילוקין"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    לוח סילוקין
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (expandedGeneralDetails) {
+                        setExpandedGeneralDetails(false);
+                      } else {
+                        setExpandedGeneralDetails(true);
+                        setExpandedSchedule(null);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
+                      expandedGeneralDetails
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                    title="פרטים"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    פרטים
+                  </button>
+                </div>
               </div>
             </div>
             <AnimatePresence>
@@ -536,6 +675,22 @@ export default function UnifiedMortgageOverview({
                 <div className="mt-2">
                   {renderAmortizationSchedule('full')}
                 </div>
+              )}
+              {expandedGeneralDetails && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-2 overflow-hidden"
+                >
+                  <MortgageInfographic
+                    mortgage={mortgage}
+                    trackPayments={trackPayments}
+                    snapshot={snapshot}
+                    selectedDate={selectedDate}
+                  />
+                </motion.div>
               )}
             </AnimatePresence>
 
@@ -555,8 +710,7 @@ export default function UnifiedMortgageOverview({
                   <div key={track.id} className="space-y-2">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
-                      onClick={() => handleScheduleToggle(track.id)}
-                      className={`${trackTypeColor} border rounded-lg p-3 cursor-pointer transition-all ${expandedSchedule === track.id ? 'shadow-md ring-1 ring-purple-200' : 'hover:shadow-md'}`}
+                      className={`${trackTypeColor} border rounded-lg p-3 transition-all ${expandedSchedule === track.id || expandedDetails === track.id ? 'shadow-md ring-1 ring-purple-200' : 'hover:shadow-md'}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
@@ -596,22 +750,43 @@ export default function UnifiedMortgageOverview({
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Handle early payment option
-                              const remainingPrincipal = dynamicValues.remainingPrincipal;
-                              if (window.confirm(`האם ברצונך לבצע פרעון מוקדם של ₪${remainingPrincipal.toLocaleString()} למסלול ${track.name}?`)) {
-                                // In production, this would call an API
-                                alert(`פרעון מוקדם של ₪${remainingPrincipal.toLocaleString()} יבוצע למסלול ${track.name}`);
+                            onClick={() => {
+                              if (expandedSchedule === track.id) {
+                                setExpandedSchedule(null);
+                              } else {
+                                setExpandedSchedule(track.id);
+                                setExpandedDetails(null);
                               }
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-xs font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm"
-                            title="פרעון מוקדם"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
+                              expandedSchedule === track.id
+                                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                            title="לוח סילוקין"
                           >
-                            <Zap className="w-3.5 h-3.5" />
-                            פרעון מוקדם
+                            <FileText className="w-3.5 h-3.5" />
+                            לוח סילוקין
                           </button>
-                          <ChevronDown className={`w-5 h-5 transition-transform ${expandedSchedule === track.id ? 'rotate-180' : ''}`} />
+                          <button
+                            onClick={() => {
+                              if (expandedDetails === track.id) {
+                                setExpandedDetails(null);
+                              } else {
+                                setExpandedDetails(track.id);
+                                setExpandedSchedule(null);
+                              }
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
+                              expandedDetails === track.id
+                                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                            title="פרטים"
+                          >
+                            <BarChart3 className="w-3.5 h-3.5" />
+                            פרטים
+                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -620,6 +795,21 @@ export default function UnifiedMortgageOverview({
                         <div className="mt-2">
                           {renderAmortizationSchedule(track.id)}
                         </div>
+                      )}
+                      {expandedDetails === track.id && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-2 overflow-hidden"
+                        >
+                          <TrackInfographic
+                            track={track}
+                            trackPayments={trackPayments[track.id] || []}
+                            selectedDate={selectedDate}
+                          />
+                        </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
@@ -630,13 +820,28 @@ export default function UnifiedMortgageOverview({
 
         {/* Rest of the content */}
         <div className="bg-gray-50 p-6">
-          {/* Modern Infographic Bar */}
-          <MortgageInfographic
-            mortgage={mortgage}
-            trackPayments={trackPayments}
-            snapshot={snapshot}
-            selectedDate={selectedDate}
-          />
+          {/* Actions on Mortgage Section */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">פעולות על המשכנתא</h3>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => setShowEarlyRepaymentSimulation(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm font-medium"
+              >
+                <Calculator className="w-5 h-5" />
+                סימולציית פירעון מוקדם
+              </button>
+              <button
+                onClick={() => {
+                  onRefinance('all');
+                }}
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm font-medium"
+              >
+                <ArrowLeftRight className="w-5 h-5" />
+                סימולציית מחזור
+              </button>
+            </div>
+          </div>
 
           {/* Detailed Tracks Section */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
@@ -816,7 +1021,7 @@ export default function UnifiedMortgageOverview({
                 </div>
                 <div className="pt-3 border-t">
                   <div className="text-xs text-gray-500 text-center">
-                    התשלום החודשי הממוצע: ₪{mortgage.totalMonthlyPayment.toLocaleString()}
+                    התשלום החודשי הממוצע: ₪{dynamicMonthlyPayment.toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -903,7 +1108,7 @@ export default function UnifiedMortgageOverview({
                         className={`p-3 rounded-lg text-sm font-medium transition-all ${
                           isSelected
                             ? 'bg-purple-600 text-white shadow-md'
-                            : 'bg-white border border-gray-200 hover:bg-gray-50 hover:border-purple-300'
+                            : 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 hover:border-purple-300'
                         }`}
                       >
                         {format(monthDate, 'MMM', { locale: he })}
@@ -945,7 +1150,7 @@ export default function UnifiedMortgageOverview({
                               ? 'bg-purple-100 text-purple-700 font-semibold'
                               : isDisabled
                                 ? 'text-gray-300 cursor-not-allowed'
-                                : 'hover:bg-gray-100'
+                                : 'text-gray-900 hover:bg-gray-100'
                           }
                         `}
                       >
@@ -990,6 +1195,16 @@ export default function UnifiedMortgageOverview({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Early Repayment Simulation Modal */}
+      {showEarlyRepaymentSimulation && (
+        <EarlyRepaymentSimulation
+          mortgage={mortgage}
+          trackPayments={trackPayments}
+          onClose={() => setShowEarlyRepaymentSimulation(false)}
+          selectedDate={selectedDate}
+        />
+      )}
     </div>
   );
 }
