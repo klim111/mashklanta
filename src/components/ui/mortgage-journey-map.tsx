@@ -112,14 +112,44 @@ export default function MortgageJourneyMap({
   const [overallProgress, setOverallProgress] = useState(0);
 
   useEffect(() => {
-    const calculatedSteps = calculateDates(steps);
+    if (!steps.length) {
+      setStepsWithDates([]);
+      setOverallProgress(0);
+      return;
+    }
+
+    const currentIndex = currentStep
+      ? steps.findIndex((step) => step.id === currentStep)
+      : -1;
+
+    const enhancedSteps: JourneyStep[] = steps.map((step, index) => {
+      if (step.status) {
+        return step;
+      }
+
+      if (currentIndex === -1) {
+        return step;
+      }
+
+      if (index < currentIndex) {
+        return { ...step, status: 'completed' };
+      }
+
+      if (index === currentIndex) {
+        return { ...step, status: 'in_progress' };
+      }
+
+      return { ...step, status: 'pending' };
+    });
+
+    const calculatedSteps = calculateDates(enhancedSteps);
     setStepsWithDates(calculatedSteps);
     
     // חישוב התקדמות כללית
-    const completedSteps = calculatedSteps.filter(s => s.status === 'completed').length;
+    const completedSteps = calculatedSteps.filter((s) => s.status === 'completed').length;
     const progress = (completedSteps / calculatedSteps.length) * 100;
     setOverallProgress(progress);
-  }, [steps]);
+  }, [steps, currentStep]);
 
   const handleStepClick = (step: JourneyStep) => {
     setSelectedStep(step);
@@ -127,7 +157,7 @@ export default function MortgageJourneyMap({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6">
+    <div dir="rtl" className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 px-4 py-8 sm:px-6 lg:px-8">
       {/* כותרת ומד התקדמות כללי */}
       <div className="max-w-7xl mx-auto mb-8">
         <motion.div
@@ -269,14 +299,14 @@ export default function MortgageJourneyMap({
                   r="4"
                   fill="#FBBF24"
                   initial={{ opacity: 0 }}
-                  animate={{ 
+                  animate={{
                     opacity: [0, 1, 0],
-                    r: [2, 6, 2]
+                    r: [2, 6, 2],
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 1.5,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: "easeInOut",
                   }}
                 >
                   <animateMotion
@@ -288,45 +318,50 @@ export default function MortgageJourneyMap({
               )}
             </svg>
 
-            {/* שלבי המפה */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
-              {stepsWithDates.map((step, index) => (
-                <motion.div
-                  key={step.id}
-                  initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: index * 0.1, duration: 0.5 }}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative"
-                >
-                  {/* כרטיס השלב */}
-                  <Card 
-                    className={`cursor-pointer transition-all duration-500 hover:shadow-2xl border-2 backdrop-blur-sm ${
-                      step.status === 'completed' 
-                        ? 'border-green-400 bg-gradient-to-br from-green-50/90 to-emerald-50/90 shadow-green-200/50' 
-                        : step.status === 'in_progress'
-                        ? 'border-blue-400 bg-gradient-to-br from-blue-50/90 to-cyan-50/90 shadow-blue-200/50 shadow-lg ring-2 ring-blue-300/30'
-                        : step.status === 'blocked'
-                        ? 'border-red-400 bg-gradient-to-br from-red-50/90 to-pink-50/90 shadow-red-200/50'
-                        : 'border-gray-200 bg-gradient-to-br from-white/90 to-gray-50/90'
-                    } hover:scale-105 hover:-translate-y-2 group`}
-                    onClick={() => handleStepClick(step)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        {/* אייקון הסטטוס */}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 ${getStatusColor(step.status || 'pending')} ${
-                          step.status === 'in_progress' ? 'animate-pulse shadow-lg' : ''
-                        } ${
-                          step.status === 'completed' ? 'shadow-green-300/50' : ''
-                        }`}>
-                          <motion.div
-                            animate={step.status === 'in_progress' ? { rotate: [0, 5, -5, 0] } : {}}
-                            transition={{ duration: 2, repeat: Infinity }}
-                          >
-                            {getStepIcon(step.id)}
-                          </motion.div>
+              {/* שלבי המפה */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
+                {stepsWithDates.map((step, index) => {
+                  const isActiveStep = currentStep === step.id;
+
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                      whileHover={{ scale: 1.05, y: -5 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="relative"
+                    >
+                    {/* כרטיס השלב */}
+                    <Card
+                      data-active={isActiveStep ? 'true' : undefined}
+                      className={`cursor-pointer transition-all duration-500 hover:shadow-2xl border-2 backdrop-blur-sm ${
+                        step.status === 'completed' 
+                          ? 'border-green-400 bg-gradient-to-br from-green-50/90 to-emerald-50/90 shadow-green-200/50' 
+                          : step.status === 'in_progress'
+                          ? 'border-blue-400 bg-gradient-to-br from-blue-50/90 to-cyan-50/90 shadow-blue-200/50 shadow-lg ring-2 ring-blue-300/30'
+                          : step.status === 'blocked'
+                          ? 'border-red-400 bg-gradient-to-br from-red-50/90 to-pink-50/90 shadow-red-200/50'
+                          : 'border-gray-200 bg-gradient-to-br from-white/90 to-gray-50/90'
+                      } ${isActiveStep ? 'ring-2 ring-indigo-400/60 shadow-indigo-200/70' : ''} hover:scale-105 hover:-translate-y-2 group`}
+                      onClick={() => handleStepClick(step)}
+                      aria-label={`פרטי שלב ${step.order} - ${step.title}`}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between gap-4">
+                          {/* אייקון הסטטוס */}
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 ${getStatusColor(step.status || 'pending')} ${
+                            step.status === 'in_progress' ? 'animate-pulse shadow-lg' : ''
+                          } ${
+                            step.status === 'completed' ? 'shadow-green-300/50' : ''
+                          }`}>
+                            <motion.div
+                              animate={step.status === 'in_progress' ? { rotate: [0, 5, -5, 0] } : {}}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              {getStepIcon(step.id)}
+                            </motion.div>
                           
                           {/* אפקט זוהר לשלב בתהליך */}
                           {step.status === 'in_progress' && (
@@ -345,11 +380,18 @@ export default function MortgageJourneyMap({
                             </motion.div>
                           )}
                         </div>
-                        
-                        {/* מספר השלב */}
-                        <Badge variant="outline" className="text-xs font-bold">
-                          שלב {step.order}
-                        </Badge>
+                          {/* מספר השלב */}
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs font-bold">
+                              שלב {step.order}
+                            </Badge>
+                            {isActiveStep && (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600">
+                                <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                                נוכחי
+                              </span>
+                            )}
+                          </div>
                       </div>
                       
                       <CardTitle className="text-lg font-bold text-gray-900 leading-tight">
@@ -520,7 +562,8 @@ export default function MortgageJourneyMap({
                     </motion.div>
                   )}
                 </motion.div>
-              ))}
+              );
+            })}
             </div>
           </div>
         </div>
