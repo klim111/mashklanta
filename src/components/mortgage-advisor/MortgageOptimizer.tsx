@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -116,11 +117,10 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
               <Label htmlFor="totalAmount" className="text-base font-semibold">
                 סכום המשכנתא (₪)
               </Label>
-              <Input
+              <FormattedNumberValueInput
                 id="totalAmount"
-                type="number"
                 value={inputs.totalAmount}
-                onChange={(e) => setInputs({ ...inputs, totalAmount: parseFloat(e.target.value) || 0 })}
+                onValueChange={(v) => setInputs({ ...inputs, totalAmount: v })}
                 className="text-lg"
               />
             </div>
@@ -130,11 +130,10 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
               <Label htmlFor="maxMonthlyPayment" className="text-base font-semibold">
                 החזר חודשי מקסימלי (₪)
               </Label>
-              <Input
+              <FormattedNumberValueInput
                 id="maxMonthlyPayment"
-                type="number"
                 value={inputs.maxMonthlyPayment}
-                onChange={(e) => setInputs({ ...inputs, maxMonthlyPayment: parseFloat(e.target.value) || 0 })}
+                onValueChange={(v) => setInputs({ ...inputs, maxMonthlyPayment: v })}
                 className="text-lg"
               />
             </div>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Edit, Check, X, Calculator, TrendingUp } from 'lucide-react';
@@ -165,10 +166,9 @@ export function MortgageTrackCard({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>סכום (₪)</Label>
-              <Input
-                type="number"
+              <FormattedNumberValueInput
                 value={editData.amount}
-                onChange={(e) => handleAmountChange(parseFloat(e.target.value) || 0)}
+                onValueChange={handleAmountChange}
               />
             </div>
             

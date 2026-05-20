@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
+import { parseFormattedNumberInput } from "@/lib/currency";
 import { Calculator } from "lucide-react";
 import Link from "next/link";
 
@@ -41,12 +43,11 @@ export default function CapitalPlanningCalculator() {
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => {
-    const num = parseFloat(exp.amount);
-    return sum + (isNaN(num) ? 0 : num);
+    return sum + parseFormattedNumberInput(exp.amount);
   }, 0);
 
-  const numericPrice = parseFloat(propertyPrice) || 0;
-  const numericEquity = parseFloat(equity) || 0;
+  const numericPrice = parseFormattedNumberInput(propertyPrice);
+  const numericEquity = parseFormattedNumberInput(equity);
 
   const getMinEquity = () => {
     let minEquityPercent = 0.5;
@@ -98,23 +99,21 @@ export default function CapitalPlanningCalculator() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div>
           <label className="block mb-1 text-right">מחיר הנכס</label>
-          <Input
+          <FormattedNumberInput
             className="text-right"
             placeholder="₪"
             value={propertyPrice}
-            type="number"
-            onChange={(e) => setPropertyPrice(e.target.value)}
+            onValueChange={setPropertyPrice}
           />
         </div>
 
         <div>
           <label className="block mb-1 text-right">הון עצמי</label>
-          <Input
+          <FormattedNumberInput
             className="text-right"
             placeholder="₪"
-            type="number"
             value={equity}
-            onChange={(e) => setEquity(e.target.value)}
+            onValueChange={setEquity}
           />
           {propertyPrice && selectedType && minEquity > 0 && (
             <p className="text-sm mt-1 text-gray-600 text-right">
@@ -153,11 +152,10 @@ export default function CapitalPlanningCalculator() {
                   />
                 </td>
                 <td className="border border-gray-300 p-2">
-                  <Input
-                    type="number"
+                  <FormattedNumberInput
                     className="text-right"
                     value={row.amount}
-                    onChange={(e) => handleAmountChange(index, e.target.value)}
+                    onValueChange={(value) => handleAmountChange(index, value)}
                   />
                 </td>
                 <td className="border border-gray-300 p-2">{row.description}</td>

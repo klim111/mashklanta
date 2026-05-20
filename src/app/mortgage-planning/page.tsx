@@ -7,50 +7,56 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
+import { formatMoneyFields, parseFormattedNumberInput } from '@/lib/currency';
 import NavBar from '@/components/ui/navbar';
 import EquityCalculator from '@/components/ui/equitycalc';
 import MortgageTermsTable from '@/components/mortgage-application/MortgageTermsTable';
+import { BorrowerTypeSelection } from '@/components/mortgage-planning/BorrowerTypeSelection';
+import { CouplePersonalInfoForm } from '@/components/mortgage-planning/CouplePersonalInfoForm';
+import { FormSubmitButton } from '@/components/mortgage-planning/FormSubmitButton';
+import {
+  fieldErrorClassName,
+  fieldErrorsFromList,
+  getExistingPropertyFormErrors,
+  getIndividualFormErrors,
+} from '@/lib/mortgage-planning-validation';
+import { cn } from '@/lib/utils';
+import {
+  calculateMaxProperty,
+  getAffordabilityInputs,
+  defaultMortgagePlanningUserData,
+  emptyBorrower,
+  createEmptyLoan,
+  type MortgagePlanningUserData,
+} from '@/lib/mortgage-affordability';
+import { migrateMortgagePlanningUserData, sumIndividualLoanPayments } from '@/lib/borrower-loans';
+import { LoanManagementOffer } from '@/components/mortgage-planning/LoanManagementOffer';
+import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoansSection';
 
-interface UserData {
-  propertyType: string;
-  calculationType: string;
-  ownCapital: string;
-  age: string;
-  monthlyIncome: string;
-  hasLoans: boolean;
-  monthlyLoanPayment: string;
-  propertyPrice: string;
-  wantsLoanManagement: boolean;
-  // New fields for reverse mortgage
-  currentPropertyPrice: string;
-  hasCurrentMortgage: boolean;
-  remainingMortgageAmount: string;
-  isOver55: boolean;
-}
+type UserData = MortgagePlanningUserData;
 
 export default function MortgagePlanning() {
-  const [currentStep, setCurrentStep] = useState<'property-type' | 'calculation-type' | 'personal-info' | 'existing-property' | 'reverse-mortgage' | 'offer-analysis' | 'results'>('property-type');
-  const [userData, setUserData] = useState<UserData>({
-    propertyType: '',
-    calculationType: '',
-    ownCapital: '',
-    age: '',
-    monthlyIncome: '',
-    hasLoans: false,
-    monthlyLoanPayment: '',
-    propertyPrice: '',
-    wantsLoanManagement: false,
-    currentPropertyPrice: '',
-    hasCurrentMortgage: false,
-    remainingMortgageAmount: '',
-    isOver55: false
-  });
+  const [currentStep, setCurrentStep] = useState<
+    | 'property-type'
+    | 'calculation-type'
+    | 'borrower-type'
+    | 'personal-info'
+    | 'personal-info-couple'
+    | 'existing-property'
+    | 'reverse-mortgage'
+    | 'offer-analysis'
+    | 'results'
+  >('property-type');
+  const [userData, setUserData] = useState<UserData>(defaultMortgagePlanningUserData());
   const [showEquityCalculator, setShowEquityCalculator] = useState(false);
   const [showCapitalWarning, setShowCapitalWarning] = useState(false);
   const [analyzedTerms, setAnalyzedTerms] = useState<any>(null);
   const [extractedText, setExtractedText] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [personalInfoFieldErrors, setPersonalInfoFieldErrors] = useState<Record<string, boolean>>({});
+  const [existingPropertyFieldErrors, setExistingPropertyFieldErrors] = useState<Record<string, boolean>>({});
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -58,7 +64,11 @@ export default function MortgagePlanning() {
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        setUserData(parsedData.userData || userData);
+        const migrated = migrateMortgagePlanningUserData({
+          ...defaultMortgagePlanningUserData(),
+          ...parsedData.userData,
+        });
+        setUserData(formatMoneyFields(migrated as unknown as Record<string, unknown>) as unknown as MortgagePlanningUserData);
         setCurrentStep(parsedData.currentStep || 'property-type');
       } catch (error) {
         console.error('Error loading saved data:', error);
@@ -95,8 +105,8 @@ export default function MortgagePlanning() {
   // Check capital sufficiency when property price or own capital changes
   useEffect(() => {
     if (currentStep === 'existing-property' && userData.propertyPrice && userData.ownCapital && userData.propertyType) {
-      const propertyPrice = parseFloat(userData.propertyPrice);
-      const ownCapital = parseFloat(userData.ownCapital);
+      const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+      const ownCapital = parseFormattedNumberInput(userData.ownCapital);
       
       if (!isNaN(propertyPrice) && !isNaN(ownCapital) && propertyPrice > 0 && ownCapital > 0) {
         const capitalCheck = checkCapitalSufficiency(propertyPrice, ownCapital, userData.propertyType);
@@ -109,21 +119,7 @@ export default function MortgagePlanning() {
 
   const clearSavedData = () => {
     localStorage.removeItem('mortgagePlanningData');
-    setUserData({
-      propertyType: '',
-      calculationType: '',
-      ownCapital: '',
-      age: '',
-      monthlyIncome: '',
-      hasLoans: false,
-      monthlyLoanPayment: '',
-      propertyPrice: '',
-      wantsLoanManagement: false,
-      currentPropertyPrice: '',
-      hasCurrentMortgage: false,
-      remainingMortgageAmount: '',
-      isOver55: false
-    });
+    setUserData(defaultMortgagePlanningUserData());
     setCurrentStep('property-type');
   };
 
@@ -159,101 +155,20 @@ export default function MortgagePlanning() {
   const handleCalculationTypeSelect = (type: string) => {
     setUserData({ ...userData, calculationType: type });
     if (type === 'תחשב מה אני יכול להרשות לעצמי') {
-      setCurrentStep('personal-info');
+      setCurrentStep('borrower-type');
     } else {
       setCurrentStep('existing-property');
     }
   };
 
-  const calculateMaxProperty = () => {
-    const income = parseFloat(userData.monthlyIncome) || 0;
-    const loanPayment = parseFloat(userData.monthlyLoanPayment) || 0;
-    const ownCapital = parseFloat(userData.ownCapital) || 0;
-    const age = parseInt(userData.age) || 0;
-
-    // Calculate max monthly payment (40% of net income after loan payments)
-    const maxMonthlyPayment = (income - loanPayment) * 0.4;
-    
-    // Calculate max loan period (80 - age, max 30 years)
-    const maxLoanPeriod = Math.min(30, Math.max(1, 80 - age));
-    
-    // Get max LTV based on property type
-    let maxLTVRatio = 0.5; // Default for investment
-    switch (userData.propertyType) {
-      case 'דירה ראשונה':
-        maxLTVRatio = 0.75;
-        break;
-      case 'דירה חליפית':
-        maxLTVRatio = 0.7;
-        break;
-      case 'דירה להשקעה':
-        maxLTVRatio = 0.5;
-        break;
-    }
-
-    // Use current average interest rate of 5.2%
-    const annualRate = 0.052;
-    const monthlyRate = annualRate / 12;
-    const numPayments = maxLoanPeriod * 12;
-    
-    // Calculate max loan amount based on monthly payment capability
-    let maxLoanFromPayment = 0;
-    if (monthlyRate > 0 && numPayments > 0) {
-      maxLoanFromPayment = maxMonthlyPayment * ((1 - Math.pow(1 + monthlyRate, -numPayments)) / monthlyRate);
-    } else {
-      maxLoanFromPayment = maxMonthlyPayment * numPayments;
-    }
-    
-    // Calculate max property price based on payment capability
-    const maxPropertyFromPayment = maxLoanFromPayment + ownCapital;
-    
-    // Calculate max property price based on LTV constraint
-    let maxPropertyFromLTV = 0;
-    if (ownCapital > 0) {
-      // If we have own capital, max property = ownCapital / (1 - LTV)
-      maxPropertyFromLTV = ownCapital / (1 - maxLTVRatio);
-    } else {
-      // If no own capital, we can't buy anything (need at least 25% for first home, 30% for replacement, 50% for investment)
-      maxPropertyFromLTV = 0;
-    }
-    
-    // Take the smaller of the two constraints
-    let actualPropertyPrice = Math.min(maxPropertyFromPayment, maxPropertyFromLTV);
-    let actualLoanAmount = actualPropertyPrice - ownCapital;
-    let actualLTV = actualPropertyPrice > 0 ? (actualLoanAmount / actualPropertyPrice) * 100 : 0;
-    
-    // Determine which constraint was limiting
-    let limitingFactor = '';
-    if (maxPropertyFromPayment < maxPropertyFromLTV) {
-      limitingFactor = 'payment'; // Limited by monthly payment capability
-    } else {
-      limitingFactor = 'ltv'; // Limited by LTV constraint
-    }
-    
-    // Validate that we have sufficient capital
-    const requiredCapital = actualPropertyPrice - actualLoanAmount;
-    const isCapitalSufficient = ownCapital >= requiredCapital;
-    
-    // Calculate the actual monthly payment for the final loan amount
-    let actualMonthlyPayment = 0;
-    if (monthlyRate > 0 && numPayments > 0 && actualLoanAmount > 0) {
-      actualMonthlyPayment = actualLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1);
-    }
-    
-    return {
-      maxPropertyPrice: Math.floor(actualPropertyPrice),
-      maxLoanAmount: Math.floor(actualLoanAmount),
-      maxMonthlyPayment: Math.floor(maxMonthlyPayment),
-      actualMonthlyPayment: Math.floor(actualMonthlyPayment),
-      maxLTV: Math.round(actualLTV * 10) / 10,
-      maxLoanPeriod,
-      ownCapitalUsed: Math.floor(requiredCapital),
-      hasValidResult: actualPropertyPrice > 0 && actualLoanAmount > 0,
-      isCapitalSufficient,
-      limitingFactor,
-      interestRate: annualRate * 100,
-      warnings: []
-    };
+  const handleBorrowerTypeSelect = (type: 'individual' | 'couple') => {
+    setUserData({
+      ...userData,
+      applicationType: type,
+      borrower1: type === 'couple' ? emptyBorrower() : userData.borrower1,
+      borrower2: type === 'couple' ? emptyBorrower() : userData.borrower2,
+    });
+    setCurrentStep(type === 'couple' ? 'personal-info-couple' : 'personal-info');
   };
 
   const renderPropertyTypeSelection = () => (
@@ -267,7 +182,7 @@ export default function MortgagePlanning() {
         <div className="mb-6 flex justify-between items-center w-full max-w-4xl">
           <Link href="/">
             <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4 mr-2" />
               חזור לעמוד הבית
             </Button>
           </Link>
@@ -375,7 +290,7 @@ export default function MortgagePlanning() {
               </div>
               <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
                 <span>התחל כאן</span>
-                <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
+                <ArrowLeft className="w-5 h-5 ml-2 group-hover:-translate-x-1 transition-transform" />
               </div>
             </CardContent>
           </Card>
@@ -402,7 +317,7 @@ export default function MortgagePlanning() {
               </div>
               <div className="flex items-center justify-center text-green-600 group-hover:text-green-700 font-semibold">
                 <span>התחל כאן</span>
-                <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
+                <ArrowLeft className="w-5 h-5 ml-2 group-hover:-translate-x-1 transition-transform" />
               </div>
             </CardContent>
           </Card>
@@ -429,7 +344,7 @@ export default function MortgagePlanning() {
               </div>
               <div className="flex items-center justify-center text-purple-600 group-hover:text-purple-700 font-semibold">
                 <span>בדוק הצעה</span>
-                <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
+                <ArrowLeft className="w-5 h-5 ml-2 group-hover:-translate-x-1 transition-transform" />
               </div>
             </CardContent>
           </Card>
@@ -442,7 +357,7 @@ export default function MortgagePlanning() {
           onClick={() => setCurrentStep('property-type')}
           className="px-6 py-3"
         >
-          <ArrowLeft className="w-5 h-5 ml-2" />
+          <ArrowRight className="w-5 h-5 mr-2" />
           חזור
         </Button>
       </div>
@@ -591,7 +506,7 @@ export default function MortgagePlanning() {
           onClick={() => setCurrentStep('calculation-type')}
           className="px-6 py-3"
         >
-          <ArrowLeft className="w-5 h-5 ml-2" />
+          <ArrowRight className="w-5 h-5 mr-2" />
           חזור
         </Button>
       </div>
@@ -619,13 +534,15 @@ export default function MortgagePlanning() {
           <Label htmlFor="ownCapital" className="text-right block mb-2 text-lg font-medium">
             מה הוא ההון העצמי שלך?
           </Label>
-          <Input
+          <FormattedNumberInput
             id="ownCapital"
-            type="number"
             placeholder="₪"
             value={userData.ownCapital}
-            onChange={(e) => setUserData({ ...userData, ownCapital: e.target.value })}
-            className="text-right text-lg p-4 max-w-sm mx-auto"
+            onValueChange={(value) => setUserData({ ...userData, ownCapital: value })}
+            className={cn(
+              'text-right text-lg p-4 max-w-sm mx-auto',
+              personalInfoFieldErrors.ownCapital && fieldErrorClassName
+            )}
           />
         </div>
 
@@ -639,7 +556,10 @@ export default function MortgagePlanning() {
             placeholder="גיל"
             value={userData.age}
             onChange={(e) => setUserData({ ...userData, age: e.target.value })}
-            className="text-right text-lg p-4 max-w-sm mx-auto"
+            className={cn(
+              'text-right text-lg p-4 max-w-sm mx-auto',
+              personalInfoFieldErrors.age && fieldErrorClassName
+            )}
           />
         </div>
 
@@ -647,13 +567,15 @@ export default function MortgagePlanning() {
           <Label htmlFor="monthlyIncome" className="text-right block mb-2 text-lg font-medium">
             מה ההכנסה החודשית שלך?
           </Label>
-          <Input
+          <FormattedNumberInput
             id="monthlyIncome"
-            type="number"
             placeholder="₪"
             value={userData.monthlyIncome}
-            onChange={(e) => setUserData({ ...userData, monthlyIncome: e.target.value })}
-            className="text-right text-lg p-4 max-w-sm mx-auto"
+            onValueChange={(value) => setUserData({ ...userData, monthlyIncome: value })}
+            className={cn(
+              'text-right text-lg p-4 max-w-sm mx-auto',
+              personalInfoFieldErrors.monthlyIncome && fieldErrorClassName
+            )}
           />
         </div>
 
@@ -663,15 +585,24 @@ export default function MortgagePlanning() {
           </Label>
           <div className="flex gap-4 justify-center">
             <Button
-              variant={userData.hasLoans ? "default" : "outline"}
-              onClick={() => setUserData({ ...userData, hasLoans: true })}
+              variant={userData.loans.length > 0 ? "default" : "outline"}
+              onClick={() =>
+                setUserData({ ...userData, hasLoans: true, loans: [createEmptyLoan()] })
+              }
               className="px-8 py-3"
             >
               כן
             </Button>
             <Button
-              variant={!userData.hasLoans ? "default" : "outline"}
-              onClick={() => setUserData({ ...userData, hasLoans: false })}
+              variant={userData.loans.length === 0 ? "default" : "outline"}
+              onClick={() =>
+                setUserData({
+                  ...userData,
+                  hasLoans: false,
+                  loans: [],
+                  monthlyLoanPayment: '',
+                })
+              }
               className="px-8 py-3"
             >
               לא
@@ -679,70 +610,49 @@ export default function MortgagePlanning() {
           </div>
         </div>
 
-        {userData.hasLoans && (
+        {userData.loans.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             transition={{ duration: 0.3 }}
-            className="space-y-4"
+            className="space-y-4 max-w-sm mx-auto"
           >
-            <div>
-              <Label htmlFor="monthlyLoanPayment" className="text-right block mb-2 text-lg font-medium">
-                מה גובה ההחזר החודשי?
-              </Label>
-              <Input
-                id="monthlyLoanPayment"
-                type="number"
-                placeholder="₪"
-                value={userData.monthlyLoanPayment}
-                onChange={(e) => setUserData({ ...userData, monthlyLoanPayment: e.target.value })}
-                className="text-right text-lg p-4 max-w-sm mx-auto"
-              />
-            </div>
+            <BorrowerLoansSection
+              loans={userData.loans}
+              fieldKeyPrefix="individual"
+              fieldErrors={personalInfoFieldErrors}
+              onLoansChange={(loans) =>
+                setUserData({ ...userData, loans, hasLoans: loans.length > 0 })
+              }
+            />
 
-            <div className="text-center">
-              <p className="text-gray-600 mb-4">רוצה שמשכלנתא תעזור לך עם ההלוואות?</p>
-              <p className="text-sm text-gray-500 mb-4">(לאחד, לקחת הלוואה משתלמת יותר במקום?)</p>
-              <div className="flex gap-4 justify-center">
-                <Button
-                  variant={userData.wantsLoanManagement ? "default" : "outline"}
-                  onClick={() => {
-                    setUserData({ ...userData, wantsLoanManagement: true });
-                    // Redirect to consumer loans page
-                    window.location.href = '/consumer-loans';
-                  }}
-                  className="px-6 py-2"
-                >
-                  עזרו לי עם ההלוואות שלי
-                </Button>
-                <Button
-                  variant={!userData.wantsLoanManagement ? "default" : "outline"}
-                  onClick={() => setUserData({ ...userData, wantsLoanManagement: false })}
-                  className="px-6 py-2"
-                >
-                  לא, תודה
-                </Button>
-              </div>
-            </div>
+            <LoanManagementOffer
+              userData={userData}
+              mode="individual"
+              planningStep="personal-info"
+              onUserDataChange={setUserData}
+            />
           </motion.div>
         )}
 
         <div className="flex gap-4 justify-center pt-6">
           <Button
             variant="outline"
-            onClick={() => setCurrentStep('calculation-type')}
+            onClick={() => setCurrentStep('borrower-type')}
             className="px-6 py-3"
           >
-            <ArrowLeft className="w-5 h-5 ml-2" />
+            <ArrowRight className="w-5 h-5 mr-2" />
             חזור
           </Button>
-          <Button
-            onClick={() => setCurrentStep('results')}
-            disabled={!userData.ownCapital || !userData.age || !userData.monthlyIncome}
+          <FormSubmitButton
+            label="הצג אפשרויות משכנתא"
+            errors={getIndividualFormErrors(userData)}
+            onInvalidAttempt={() =>
+              setPersonalInfoFieldErrors(fieldErrorsFromList(getIndividualFormErrors(userData)))
+            }
+            onValidClick={() => setCurrentStep('results')}
             className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            הצג אפשרויות משכנתא
-          </Button>
+          />
         </div>
       </div>
     </motion.div>
@@ -775,7 +685,10 @@ export default function MortgagePlanning() {
             placeholder="₪"
             value={userData.propertyPrice}
             onChange={(e) => setUserData({ ...userData, propertyPrice: e.target.value })}
-            className="text-right text-lg p-4 max-w-sm mx-auto"
+            className={cn(
+              'text-right text-lg p-4 max-w-sm mx-auto',
+              existingPropertyFieldErrors.propertyPrice && fieldErrorClassName
+            )}
           />
         </div>
 
@@ -790,7 +703,10 @@ export default function MortgagePlanning() {
               placeholder="₪"
               value={userData.ownCapital}
               onChange={(e) => setUserData({ ...userData, ownCapital: e.target.value })}
-              className="text-right text-lg p-4 flex-1"
+              className={cn(
+                'text-right text-lg p-4 flex-1',
+                existingPropertyFieldErrors.ownCapitalExisting && fieldErrorClassName
+              )}
             />
             <div className="flex gap-2">
               <Button
@@ -882,16 +798,20 @@ export default function MortgagePlanning() {
             onClick={() => setCurrentStep('calculation-type')}
             className="px-6 py-3"
           >
-            <ArrowLeft className="w-5 h-5 ml-2" />
+            <ArrowRight className="w-5 h-5 mr-2" />
             חזור
           </Button>
-          <Button
-            onClick={() => setCurrentStep('results')}
-            disabled={!userData.propertyPrice || !userData.ownCapital}
+          <FormSubmitButton
+            label="הצג אפשרויות משכנתא"
+            errors={getExistingPropertyFormErrors(userData)}
+            onInvalidAttempt={() =>
+              setExistingPropertyFieldErrors(
+                fieldErrorsFromList(getExistingPropertyFormErrors(userData))
+              )
+            }
+            onValidClick={() => setCurrentStep('results')}
             className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            הצג אפשרויות משכנתא
-          </Button>
+          />
         </div>
       </div>
     </motion.div>
@@ -1077,7 +997,7 @@ export default function MortgagePlanning() {
             onClick={() => setCurrentStep('property-type')}
             className="px-6 py-3"
           >
-            <ArrowLeft className="w-5 h-5 ml-2" />
+            <ArrowRight className="w-5 h-5 mr-2" />
             חזור
           </Button>
           <Button
@@ -1205,7 +1125,7 @@ export default function MortgagePlanning() {
                 onClick={() => setCurrentStep('reverse-mortgage')}
                 className="px-6 py-3"
               >
-                <ArrowLeft className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-5 h-5 mr-2" />
                 חזור
               </Button>
               <Link href="/uniform-mixes">
@@ -1232,7 +1152,9 @@ export default function MortgagePlanning() {
     }
     
     if (userData.calculationType === 'תחשב מה אני יכול להרשות לעצמי') {
-      const results = calculateMaxProperty();
+      const results = calculateMaxProperty(userData);
+      const aggregated = getAffordabilityInputs(userData);
+      const isCouple = userData.applicationType === 'couple';
       
       return (
         <motion.div
@@ -1256,11 +1178,19 @@ export default function MortgagePlanning() {
                 {userData.propertyType === 'משכנתא לכל מטרה' && 'עם 50% מימון מקסימלי'}
               </p>
               <p className="text-blue-600 text-sm mt-1">
-                תקופת משכנתא מקסימלית: {results.maxLoanPeriod} שנים (80 - גילך) | ריבית ממוצעת: {results.interestRate}%
+                תקופת משכנתא מקסימלית: {results.maxLoanPeriod} שנים
+                {isCouple ? ' (לפי גיל הלווה הצעיר)' : ' (80 - גילך)'}
+                {' '}| ריבית ממוצעת: {results.interestRate}%
+                {isCouple && ' (תנאי זוג)'}
               </p>
             </div>
+            {isCouple && (
+              <p className="text-sm text-green-700 mb-4">
+                חישוב משוקלל לזוג — ריבית מועדפת בזכות פיזור הסיכון בבנקים
+              </p>
+            )}
             <p className="text-lg text-gray-600">
-              בהתבסס על הנתונים שהזנת, הנה מה שאתה יכול להרשות לעצמך
+              בהתבסס על הנתונים שהזנת, הנה מה ש{isCouple ? 'אתם יכולים' : 'אתה יכול'} להרשות לעצמ{isCouple ? 'כם' : 'ך'}
             </p>
           </div>
 
@@ -1385,7 +1315,9 @@ export default function MortgagePlanning() {
                     {results.maxLoanPeriod} שנים
                   </p>
                 </div>
-                <p className="text-gray-600 text-sm">תקופת המשכנתא המקסימלית לפי גילך</p>
+                <p className="text-gray-600 text-sm">
+                  {isCouple ? 'תקופת המשכנתא המקסימלית לפי גיל הלווה הצעיר' : 'תקופת המשכנתא המקסימלית לפי גילך'}
+                </p>
               </Card>
             </motion.div>
 
@@ -1396,13 +1328,29 @@ export default function MortgagePlanning() {
               className="md:col-span-2"
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">פרטים נוספים</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  {isCouple ? 'סיכום נתונים מצרפיים' : 'פרטים נוספים'}
+                </h3>
                 <div className="space-y-3">
                   <p><span className="font-semibold">אחוז מימון בפועל:</span> {results.maxLTV}%</p>
-                  <p><span className="font-semibold">ההון העצמי שלך:</span> ₪{parseFloat(userData.ownCapital).toLocaleString()}</p>
-                  <p><span className="font-semibold">הכנסה חודשית:</span> ₪{parseFloat(userData.monthlyIncome).toLocaleString()}</p>
-                  {parseFloat(userData.monthlyLoanPayment || '0') > 0 && (
-                    <p><span className="font-semibold">החזר הלוואות קיימות:</span> ₪{parseFloat(userData.monthlyLoanPayment).toLocaleString()}</p>
+                  {isCouple ? (
+                    <>
+                      <p><span className="font-semibold">הון עצמי משפחתי:</span> ₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}</p>
+                      <p><span className="font-semibold">סה״כ הכנסה חודשית:</span> ₪{aggregated.income.toLocaleString()}</p>
+                      <p><span className="font-semibold">הכנסה פנויה:</span> ₪{aggregated.disposableIncome.toLocaleString()}</p>
+                      {aggregated.loanPayment > 0 && (
+                        <p><span className="font-semibold">סה״כ החזרי הלוואות:</span> ₪{aggregated.loanPayment.toLocaleString()}</p>
+                      )}
+                      <p><span className="font-semibold">גיל לחישוב תקופה:</span> {aggregated.age}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p><span className="font-semibold">ההון העצמי שלך:</span> ₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}</p>
+                      <p><span className="font-semibold">הכנסה חודשית:</span> ₪{parseFormattedNumberInput(userData.monthlyIncome).toLocaleString()}</p>
+                      {aggregated.loanPayment > 0 && (
+                        <p><span className="font-semibold">החזר הלוואות קיימות:</span> ₪{aggregated.loanPayment.toLocaleString()}</p>
+                      )}
+                    </>
                   )}
                 </div>
               </Card>
@@ -1493,10 +1441,12 @@ export default function MortgagePlanning() {
             <div className="flex gap-4 justify-center">
               <Button
                 variant="outline"
-                onClick={() => setCurrentStep('personal-info')}
+                onClick={() =>
+                  setCurrentStep(isCouple ? 'personal-info-couple' : 'personal-info')
+                }
                 className="px-6 py-3"
               >
-                <ArrowLeft className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-5 h-5 mr-2" />
                 חזור לעריכה
               </Button>
               <Link href="/uniform-mixes">
@@ -1505,7 +1455,7 @@ export default function MortgagePlanning() {
                   className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg"
                 >
                   בוא המשך לתכנון המשכנתא
-                  <ArrowRight className="w-5 h-5 mr-2" />
+                  <ArrowLeft className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -1584,7 +1534,7 @@ export default function MortgagePlanning() {
                 onClick={() => setCurrentStep('existing-property')}
                 className="px-6 py-3"
               >
-                <ArrowLeft className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-5 h-5 mr-2" />
                 חזור לעריכה
               </Button>
               <Link href="/uniform-mixes">
@@ -1593,7 +1543,7 @@ export default function MortgagePlanning() {
                   className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg"
                 >
                   בוא המשך לתכנון המשכנתא
-                  <ArrowRight className="w-5 h-5 mr-2" />
+                  <ArrowLeft className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -1613,7 +1563,21 @@ export default function MortgagePlanning() {
       <div className="container mx-auto px-6 py-12">
         {currentStep === 'property-type' && renderPropertyTypeSelection()}
         {currentStep === 'calculation-type' && renderCalculationTypeSelection()}
+        {currentStep === 'borrower-type' && (
+          <BorrowerTypeSelection
+            onSelect={handleBorrowerTypeSelect}
+            onBack={() => setCurrentStep('calculation-type')}
+          />
+        )}
         {currentStep === 'personal-info' && renderPersonalInfoForm()}
+        {currentStep === 'personal-info-couple' && (
+          <CouplePersonalInfoForm
+            userData={userData}
+            onUserDataChange={setUserData}
+            onBack={() => setCurrentStep('borrower-type')}
+            onContinue={() => setCurrentStep('results')}
+          />
+        )}
         {currentStep === 'existing-property' && renderExistingPropertyForm()}
         {currentStep === 'reverse-mortgage' && renderReverseMortgageForm()}
         {currentStep === 'offer-analysis' && renderOfferAnalysisStep()}

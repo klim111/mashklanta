@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import { LoanPlanner } from '@/components/consumer-loans/LoanPlanner';
 
 export const metadata: Metadata = {
@@ -8,5 +9,15 @@ export const metadata: Metadata = {
 };
 
 export default function ConsumerLoansPage() {
-  return <LoanPlanner />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-500">
+          טוען...
+        </div>
+      }
+    >
+      <LoanPlanner />
+    </Suspense>
+  );
 }

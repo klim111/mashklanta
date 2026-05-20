@@ -114,15 +114,125 @@ export default function MortgageInfographic({
 
   const indexationData = calculateIndexation();
 
+  // Calculate dynamic monthly payment based on selected date
+  // Sum up monthly payments of all active tracks at the selected date
+  const calculateDynamicMonthlyPayment = (): number => {
+    return mortgage.tracks.reduce((sum, track) => {
+      const payments = trackPayments[track.id] || [];
+      // Find the next payment after selected date
+      const nextPayment = payments.find(p => p.date > selectedDate);
+      
+      if (nextPayment) {
+        // Track is still active, add its monthly payment
+        return sum + track.monthlyPayment;
+      }
+      // Track is completed, don't add to monthly payment
+      return sum;
+    }, 0);
+  };
+
+  const dynamicMonthlyPayment = calculateDynamicMonthlyPayment();
+
   // Calculate percentages for visualization
   const paidPercentage = originalAmount > 0 ? (totalPaid / originalAmount) * 100 : 0;
   const principalPercentage = originalAmount > 0 ? (paidPrincipal / originalAmount) * 100 : 0;
   const interestPercentage = originalAmount > 0 ? (paidInterest / originalAmount) * 100 : 0;
   const remainingPercentage = originalAmount > 0 ? (remainingPrincipal / originalAmount) * 100 : 0;
   
-  // Calculate percentages for each section
+  // Minimum width for each section to display text properly (in percentage)
+  // This ensures text is always visible until the very last payment
+  const MIN_SECTION_WIDTH = 15; // Minimum 15% for text to fit comfortably
+  
+  // Smart adjustment: ensure each section has minimum width for text
+  // Only hide remaining section when it's exactly zero
+  const isRemainingZero = remainingPrincipal <= 0;
+  
+  let adjustedPrincipalPercentage = principalPercentage;
+  let adjustedInterestPercentage = interestPercentage;
+  let adjustedRemainingPercentage = remainingPercentage;
+  let adjustedPaidPercentage = paidPercentage;
+  
+  // If remaining is zero, hide it and show all paid amount
+  // Calculate principal and interest as percentages of the paid amount (100%)
+  if (isRemainingZero) {
+    adjustedRemainingPercentage = 0;
+    adjustedPaidPercentage = 100;
+    // Calculate principal and interest as percentages of total paid amount
+    // These will be used to divide the 100% paid section
+    const principalRatio = totalPaid > 0 ? paidPrincipal / totalPaid : 0;
+    const interestRatio = totalPaid > 0 ? paidInterest / totalPaid : 0;
+    // Convert to percentages of the original amount for consistency
+    adjustedPrincipalPercentage = principalRatio * 100;
+    adjustedInterestPercentage = interestRatio * 100;
+  } else {
+    // Adjust remaining section if too small (but not zero)
+    if (remainingPercentage > 0 && remainingPercentage < MIN_SECTION_WIDTH) {
+      const neededIncrease = MIN_SECTION_WIDTH - remainingPercentage;
+      adjustedRemainingPercentage = MIN_SECTION_WIDTH;
+      // Reduce paid percentage to make room
+      adjustedPaidPercentage = Math.max(0, paidPercentage - neededIncrease);
+      
+      // Adjust principal and interest proportionally within paid section
+      if (paidPercentage > 0 && adjustedPaidPercentage > 0) {
+        const scale = adjustedPaidPercentage / paidPercentage;
+        adjustedPrincipalPercentage = principalPercentage * scale;
+        adjustedInterestPercentage = interestPercentage * scale;
+      }
+    }
+    
+    // Adjust principal section within paid if too small
+    const principalInPaidWidth = adjustedPaidPercentage > 0 ? (adjustedPrincipalPercentage / adjustedPaidPercentage) * 100 : 0;
+    if (principalInPaidWidth > 0 && principalInPaidWidth < MIN_SECTION_WIDTH && adjustedPaidPercentage > 0) {
+      const minPrincipalWidth = (MIN_SECTION_WIDTH / 100) * adjustedPaidPercentage;
+      adjustedPrincipalPercentage = Math.max(adjustedPrincipalPercentage, minPrincipalWidth);
+      // Adjust interest to fit
+      adjustedInterestPercentage = Math.max(0, adjustedPaidPercentage - adjustedPrincipalPercentage);
+    }
+    
+    // Adjust interest section within paid if too small
+    const interestInPaidWidth = adjustedPaidPercentage > 0 ? (adjustedInterestPercentage / adjustedPaidPercentage) * 100 : 0;
+    if (interestInPaidWidth > 0 && interestInPaidWidth < MIN_SECTION_WIDTH && adjustedPaidPercentage > 0) {
+      const minInterestWidth = (MIN_SECTION_WIDTH / 100) * adjustedPaidPercentage;
+      adjustedInterestPercentage = Math.max(adjustedInterestPercentage, minInterestWidth);
+      // Adjust principal to fit
+      adjustedPrincipalPercentage = Math.max(0, adjustedPaidPercentage - adjustedInterestPercentage);
+    }
+    
+    // Ensure total doesn't exceed 100%
+    const totalAdjusted = adjustedPaidPercentage + adjustedRemainingPercentage;
+    if (totalAdjusted > 100) {
+      const scale = 100 / totalAdjusted;
+      adjustedPaidPercentage *= scale;
+      adjustedRemainingPercentage *= scale;
+      adjustedPrincipalPercentage *= scale;
+      adjustedInterestPercentage *= scale;
+    }
+  }
+  
+  // Ensure percentages don't exceed 100% and bar stays within bounds
+  const clampedPaidPercentage = Math.min(adjustedPaidPercentage, 100);
+  const clampedRemainingPercentage = Math.min(adjustedRemainingPercentage, 100);
+  
+  // Calculate percentages for each section (for display labels)
   const principalPaidPercentage = principalPercentage;
   const interestPaidPercentage = interestPercentage;
+  
+  // Adjusted percentages for display within paid section
+  // If remaining is zero, use the ratios directly (they're already percentages of paid amount)
+  let adjustedPrincipalInPaid: number;
+  let adjustedInterestInPaid: number;
+  
+  if (isRemainingZero) {
+    // When remaining is zero, paid section is 100%, so use ratios directly
+    const principalRatio = totalPaid > 0 ? paidPrincipal / totalPaid : 0;
+    const interestRatio = totalPaid > 0 ? paidInterest / totalPaid : 0;
+    adjustedPrincipalInPaid = principalRatio * 100;
+    adjustedInterestInPaid = interestRatio * 100;
+  } else {
+    // Normal case: calculate as percentage of the paid section
+    adjustedPrincipalInPaid = clampedPaidPercentage > 0 ? (adjustedPrincipalPercentage / clampedPaidPercentage) * 100 : 0;
+    adjustedInterestInPaid = clampedPaidPercentage > 0 ? (adjustedInterestPercentage / clampedPaidPercentage) * 100 : 0;
+  }
 
   // Visual representation: paid amount "cut out" from total
   const visualBarHeight = 120;
@@ -141,7 +251,7 @@ export default function MortgageInfographic({
       </div>
 
       {/* Main Visual Bar - Showing paid amount "cut out" */}
-      <div className="mb-8">
+      <div className="mb-8 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-gray-700">סכום מקורי של המשכנתא</span>
           <span className="text-2xl font-bold text-gray-900">
@@ -149,85 +259,128 @@ export default function MortgageInfographic({
           </span>
         </div>
         
-        <div className="relative" style={{ height: `${visualBarHeight}px` }}>
+        <div className="relative overflow-hidden rounded-xl" style={{ height: `${visualBarHeight}px`, maxWidth: '100%' }}>
           {/* Background - Total Amount (Full Bar) */}
           <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl overflow-hidden shadow-inner">
           </div>
 
-          {/* Remaining Principal - Right side */}
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${remainingPercentage}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="absolute right-0 top-0 bottom-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-r-xl"
-            style={{ 
-              boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            {remainingPercentage > 8 && (
+          {/* Remaining Principal - Right side, no gap from interest - Only show if not zero */}
+          {!isRemainingZero && (
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${clampedRemainingPercentage}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute top-0 bottom-0 bg-gradient-to-r from-blue-500 to-blue-600"
+              style={{ 
+                boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.1)',
+                maxWidth: '100%',
+                right: 0, // Align to right edge
+                borderTopRightRadius: '0.75rem',
+                borderBottomRightRadius: '0.75rem',
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+              }}
+            >
+              {remainingPrincipal > 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-white font-bold text-lg mb-1 drop-shadow-lg">
+                <span 
+                  className="text-white font-bold mb-1 drop-shadow-lg whitespace-nowrap"
+                  style={{ 
+                    fontSize: clampedRemainingPercentage > 15 ? '1.125rem' : clampedRemainingPercentage > 8 ? '0.875rem' : '0.75rem',
+                    lineHeight: '1.2'
+                  }}
+                >
                   ₪{remainingPrincipal.toLocaleString()}
                 </span>
-                <span className="text-white font-bold text-sm drop-shadow-md">
-                  {remainingPercentage.toFixed(1)}%
+                <span 
+                  className="text-white font-bold drop-shadow-md whitespace-nowrap"
+                  style={{ 
+                    fontSize: clampedRemainingPercentage > 15 ? '0.875rem' : clampedRemainingPercentage > 8 ? '0.75rem' : '0.625rem'
+                  }}
+                >
+                  {clampedRemainingPercentage.toFixed(1)}%
                 </span>
               </div>
-            )}
-          </motion.div>
+              )}
+            </motion.div>
+          )}
 
-          {/* Paid Amount - "Cut out" effect with diagonal cut */}
+          {/* Paid Amount - No diagonal cut, straight vertical line */}
           <motion.div
-            initial={{ width: 0, clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
+            initial={{ width: 0 }}
             animate={{ 
-              width: `${paidPercentage}%`,
-              clipPath: 'polygon(0 0, 100% 0, calc(100% - 15px) 100%, 0 100%)'
+              width: `${clampedPaidPercentage}%`
             }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
             className="absolute left-0 top-0 bottom-0"
             style={{
               boxShadow: 'inset 2px 0 4px rgba(0,0,0,0.1), -2px 0 8px rgba(0,0,0,0.15)',
+              maxWidth: '100%',
+              borderTopLeftRadius: '0.75rem',
+              borderBottomLeftRadius: '0.75rem',
+              borderTopRightRadius: isRemainingZero ? '0.75rem' : 0, // Round right side if remaining is zero
+              borderBottomRightRadius: isRemainingZero ? '0.75rem' : 0, // Round right side if remaining is zero
             }}
           >
             {/* Principal portion */}
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${paidPercentage > 0 ? (principalPercentage / paidPercentage) * 100 : 0}%` }}
+              animate={{ width: `${adjustedPrincipalInPaid}%` }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
               className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-green-500 to-green-600"
+              style={{ maxWidth: '100%' }}
             >
-              {principalPaidPercentage > 8 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-white font-bold text-lg mb-1 drop-shadow-lg">
-                    ₪{paidPrincipal.toLocaleString()}
-                  </span>
-                  <span className="text-white font-bold text-sm drop-shadow-md">
-                    {principalPaidPercentage.toFixed(1)}%
-                  </span>
-                </div>
-              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span 
+                  className="text-white font-bold mb-1 drop-shadow-lg whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedPrincipalInPaid > 15 ? '1.125rem' : adjustedPrincipalInPaid > 8 ? '0.875rem' : '0.75rem',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  ₪{paidPrincipal.toLocaleString()}
+                </span>
+                <span 
+                  className="text-white font-bold drop-shadow-md whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedPrincipalInPaid > 15 ? '0.875rem' : adjustedPrincipalInPaid > 8 ? '0.75rem' : '0.625rem'
+                  }}
+                >
+                  {principalPaidPercentage.toFixed(1)}%
+                </span>
+              </div>
             </motion.div>
             
-            {/* Interest portion */}
+            {/* Interest portion - Straight vertical line, no gap */}
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${paidPercentage > 0 ? (interestPercentage / paidPercentage) * 100 : 0}%` }}
+              animate={{ width: `${adjustedInterestInPaid}%` }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
-              className="absolute right-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-orange-600"
+              className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-orange-600"
               style={{ 
-                left: `${paidPercentage > 0 ? (principalPercentage / paidPercentage) * 100 : 0}%`,
+                left: `${adjustedPrincipalInPaid}%`,
+                maxWidth: '100%',
               }}
             >
-              {interestPaidPercentage > 8 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-white font-bold text-lg mb-1 drop-shadow-lg">
-                    ₪{paidInterest.toLocaleString()}
-                  </span>
-                  <span className="text-white font-bold text-sm drop-shadow-md">
-                    {interestPaidPercentage.toFixed(1)}%
-                  </span>
-                </div>
-              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span 
+                  className="text-white font-bold mb-1 drop-shadow-lg whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedInterestInPaid > 15 ? '1.125rem' : adjustedInterestInPaid > 8 ? '0.875rem' : '0.75rem',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  ₪{paidInterest.toLocaleString()}
+                </span>
+                <span 
+                  className="text-white font-bold drop-shadow-md whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedInterestInPaid > 15 ? '0.875rem' : adjustedInterestInPaid > 8 ? '0.75rem' : '0.625rem'
+                  }}
+                >
+                  {interestPaidPercentage.toFixed(1)}%
+                </span>
+              </div>
             </motion.div>
           </motion.div>
         </div>
@@ -249,75 +402,105 @@ export default function MortgageInfographic({
         </div>
       </div>
 
-      {/* Detailed Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {/* Remaining Principal */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl p-4 border-2 border-blue-200 shadow-sm hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <DollarSign className="w-5 h-5 text-blue-600" />
-            <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-1 rounded">יתרה</span>
+      {/* Breakdown Pie Chart Representation */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-5 border border-gray-200">
+          <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <PieChart className="w-4 h-4" />
+            התפלגות התשלומים ששולמו
+          </h4>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">קרן</span>
+                <span className="font-semibold">₪{paidPrincipal.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${totalPaid > 0 ? (paidPrincipal / totalPaid) * 100 : 0}%` }}
+                  transition={{ duration: 0.8, delay: 0.7 }}
+                  className="bg-green-500 h-2 rounded-full"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {totalPaid > 0 ? ((paidPrincipal / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
+              </p>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600">ריבית</span>
+                <span className="font-semibold">₪{paidInterest.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${totalPaid > 0 ? (paidInterest / totalPaid) * 100 : 0}%` }}
+                  transition={{ duration: 0.8, delay: 0.8 }}
+                  className="bg-orange-500 h-2 rounded-full"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {totalPaid > 0 ? ((paidInterest / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
+              </p>
+            </div>
+            <div className="pt-3 border-t mt-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-700 font-medium">שולם על כל שקל קרן שהוחזר:</span>
+                <span className="text-lg font-bold text-purple-600">
+                  ₪{(paidPrincipal > 0 ? (totalPaid / paidPrincipal) : 0).toFixed(3)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                כולל קרן + ריבית על ₪{paidPrincipal.toLocaleString()} קרן ששולמה
+              </p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">
-            ₪{remainingPrincipal.toLocaleString()}
-          </p>
-          <p className="text-xs text-gray-600">חוב קרן נותר</p>
-        </motion.div>
+        </div>
 
-        {/* Estimated Interest */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl p-4 border-2 border-purple-200 shadow-sm hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <Percent className="w-5 h-5 text-purple-600" />
-            <span className="text-xs text-purple-600 font-medium bg-purple-50 px-2 py-1 rounded">ריבית</span>
+        <div className="bg-white rounded-xl p-5 border border-gray-200">
+          <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            סיכום כללי
+          </h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">סכום מקורי:</span>
+              <span className="font-semibold">₪{originalAmount.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">שולם (קרן + ריבית):</span>
+              <span className="font-semibold text-green-600">₪{totalPaid.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">יתרת קרן:</span>
+              <span className="font-semibold text-blue-600">₪{remainingPrincipal.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">ריבית משוערת נותרת:</span>
+              <span className="font-semibold text-purple-600">₪{estimatedRemainingInterest.toLocaleString()}</span>
+            </div>
+            <div className="pt-2 border-t mt-2">
+              <div className="flex justify-between font-bold">
+                <span className="text-gray-900">סה"כ תשלומים צפויים:</span>
+                <span className="text-purple-600">
+                  ₪{(remainingPrincipal + estimatedRemainingInterest).toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <div className="pt-2 border-t mt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-700 font-medium">משוער להיות משולם על כל שקל:</span>
+                <span className="text-lg font-bold text-purple-600">
+                  ₪{(originalAmount > 0 ? ((totalPaid + remainingPrincipal + estimatedRemainingInterest) / originalAmount) : 0).toFixed(3)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                כולל שולם עד כה + נותר לשלם
+              </p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">
-            ₪{estimatedRemainingInterest.toLocaleString()}
-          </p>
-          <p className="text-xs text-gray-600">ערך משוערך של ריבית נותרת</p>
-        </motion.div>
-
-        {/* Remaining Payments */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-xl p-4 border-2 border-green-200 shadow-sm hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <Calendar className="w-5 h-5 text-green-600" />
-            <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">תשלומים</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">
-            {remainingPayments}
-          </p>
-          <p className="text-xs text-gray-600">תשלומים נותרים</p>
-        </motion.div>
-
-        {/* Total Paid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-xl p-4 border-2 border-orange-200 shadow-sm hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-5 h-5 text-orange-600" />
-            <span className="text-xs text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded">שולם</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-900 mb-1">
-            ₪{totalPaid.toLocaleString()}
-          </p>
-          <p className="text-xs text-gray-600">סה"כ שולם עד כה</p>
-        </motion.div>
+        </div>
       </div>
 
       {/* Indexation Section - Only show if there are index-linked tracks */}
@@ -395,85 +578,6 @@ export default function MortgageInfographic({
           </div>
         </motion.div>
       )}
-
-      {/* Breakdown Pie Chart Representation */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <PieChart className="w-4 h-4" />
-            התפלגות התשלומים ששולמו
-          </h4>
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">קרן</span>
-                <span className="font-semibold">₪{paidPrincipal.toLocaleString()}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(paidPrincipal / totalPaid) * 100}%` }}
-                  transition={{ duration: 0.8, delay: 0.7 }}
-                  className="bg-green-500 h-2 rounded-full"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {totalPaid > 0 ? ((paidPrincipal / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
-              </p>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">ריבית</span>
-                <span className="font-semibold">₪{paidInterest.toLocaleString()}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(paidInterest / totalPaid) * 100}%` }}
-                  transition={{ duration: 0.8, delay: 0.8 }}
-                  className="bg-orange-500 h-2 rounded-full"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {totalPaid > 0 ? ((paidInterest / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            סיכום כללי
-          </h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">סכום מקורי:</span>
-              <span className="font-semibold">₪{originalAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">שולם (קרן + ריבית):</span>
-              <span className="font-semibold text-green-600">₪{totalPaid.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">יתרת קרן:</span>
-              <span className="font-semibold text-blue-600">₪{remainingPrincipal.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">ריבית משוערת נותרת:</span>
-              <span className="font-semibold text-purple-600">₪{estimatedRemainingInterest.toLocaleString()}</span>
-            </div>
-            <div className="pt-2 border-t mt-2">
-              <div className="flex justify-between font-bold">
-                <span className="text-gray-900">סה"כ תשלומים צפויים:</span>
-                <span className="text-purple-600">
-                  ₪{(remainingPrincipal + estimatedRemainingInterest).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

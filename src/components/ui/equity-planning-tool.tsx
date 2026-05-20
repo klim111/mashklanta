@@ -37,7 +37,9 @@ import {
 } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
+import { FormattedNumberInput } from "./formatted-number-input";
 import { Label } from "./label";
+import { formatNumberInput, parseFormattedNumberInput } from "@/lib/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Badge } from "./badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
@@ -595,14 +597,13 @@ export default function EquityPlanningTool() {
             <div className="lg:col-span-2 space-y-6">
               <div>
                 <Label htmlFor="propertyPrice" className="text-lg font-medium">מחיר הנכס</Label>
-                <Input
+                <FormattedNumberInput
                   id="propertyPrice"
-                  type="number"
                   placeholder="₪"
-                  value={data.propertyData.price || ''}
-                  onChange={(e) => setData(prev => ({
+                  value={data.propertyData.price ? formatNumberInput(String(data.propertyData.price)) : ''}
+                  onValueChange={(value) => setData(prev => ({
                     ...prev,
-                    propertyData: { ...prev.propertyData, price: parseFloat(e.target.value) || 0 }
+                    propertyData: { ...prev.propertyData, price: parseFormattedNumberInput(value) }
                   }))}
                   className="text-right text-lg mt-2"
                 />
@@ -1106,10 +1107,9 @@ export default function EquityPlanningTool() {
                                   <div className="space-y-2">
                                     {/* Amount */}
                                     <div className="relative">
-                                      <Input
-                                        type="number"
-                                        value={equityExpense.amount || ''}
-                                        onChange={(e) => updateExpenseInline(equityExpense.id, 'amount', parseFloat(e.target.value) || 0)}
+                                      <FormattedNumberInput
+                                        value={equityExpense.amount ? formatNumberInput(String(equityExpense.amount)) : ''}
+                                        onValueChange={(value) => updateExpenseInline(equityExpense.id, 'amount', parseFormattedNumberInput(value))}
                                         className={`text-right text-xl font-bold border-2 ${equityStatus.borderClass} bg-white transition-colors pr-10 w-48 ${equityStatus.textClass}`}
                                       />
                                       <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${equityStatus.noteClass} font-bold`}>₪</span>
@@ -1126,10 +1126,9 @@ export default function EquityPlanningTool() {
                                   </div>
                                 ) : isEditingEquity ? (
                                   <div className="relative">
-                                    <Input
-                                      type="number"
-                                      value={equityExpense.amount || ''}
-                                      onChange={(e) => updateExpenseInline(equityExpense.id, 'amount', parseFloat(e.target.value) || 0)}
+                                    <FormattedNumberInput
+                                      value={equityExpense.amount ? formatNumberInput(String(equityExpense.amount)) : ''}
+                                      onValueChange={(value) => updateExpenseInline(equityExpense.id, 'amount', parseFormattedNumberInput(value))}
                                       onBlur={() => setIsEditingEquity(false)}
                                       autoFocus
                                       className={`text-right text-xl font-bold border-2 ${equityStatus.borderClass} bg-white transition-colors pr-10 w-48 ${equityStatus.textClass}`}
@@ -1265,10 +1264,9 @@ export default function EquityPlanningTool() {
                                         <div className="space-y-2">
                                           {/* Amount */}
                                           <div className="relative">
-                                            <Input
-                                              type="number"
-                                              value={expense.amount || ''}
-                                              onChange={(e) => updateExpenseInline(expense.id, 'amount', parseFloat(e.target.value) || 0)}
+                                            <FormattedNumberInput
+                                              value={expense.amount ? formatNumberInput(String(expense.amount)) : ''}
+                                              onValueChange={(value) => updateExpenseInline(expense.id, 'amount', parseFormattedNumberInput(value))}
                                               placeholder="0"
                                               className={`text-right text-base font-bold border-0 bg-transparent hover:bg-white focus:bg-white transition-colors pr-2 ${
                                                 expense.status === 'paid' ? 'text-green-600 line-through' : 'text-gray-900'
@@ -2314,12 +2312,11 @@ export default function EquityPlanningTool() {
                 </div>
                 <div>
                   <Label>סכום</Label>
-                  <Input
-                    type="number"
-                    value={editingItem.amount}
-                    onChange={(e) => setEditingItem({
+                  <FormattedNumberInput
+                    value={editingItem.amount ? formatNumberInput(String(editingItem.amount)) : ''}
+                    onValueChange={(value) => setEditingItem({
                       ...editingItem,
-                      amount: parseFloat(e.target.value) || 0
+                      amount: parseFormattedNumberInput(value)
                     })}
                     className="text-right"
                   />

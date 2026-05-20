@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import NavBar from '@/components/ui/navbar';
@@ -542,13 +543,12 @@ export default function MortgageRefinancePage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="totalAmount">סכום המשכנתא הכולל</Label>
-                <Input
+                <FormattedNumberValueInput
                   id="totalAmount"
-                  type="number"
                   value={editingMixData.totalAmount}
-                  onChange={(e) => setEditingMixData(prev => ({
+                  onValueChange={(v) => setEditingMixData(prev => ({
                     ...prev,
-                    totalAmount: Number(e.target.value)
+                    totalAmount: v
                   }))}
                   placeholder="הזן סכום"
                 />
@@ -620,12 +620,10 @@ export default function MortgageRefinancePage() {
               
               <div>
                 <Label htmlFor="remainingAmount">סכום נותר</Label>
-                <Input
+                <FormattedNumberValueInput
                   id="remainingAmount"
-                  type="number"
                   value={editingTrack.remainingAmount}
-                  onChange={(e) => {
-                    const amount = Number(e.target.value);
+                  onValueChange={(amount) => {
                     const monthlyPayment = calculateMonthlyPayment(amount, editingTrack.interestRate, editingTrack.remainingPeriod);
                     setEditingTrack(prev => prev ? { ...prev, remainingAmount: amount, monthlyPayment } : null);
                   }}
@@ -746,26 +744,24 @@ export default function MortgageRefinancePage() {
               </div>
               <div>
                 <Label htmlFor="remainingAmount">יתרה נוכחית</Label>
-                <Input
+                <FormattedNumberValueInput
                   id="remainingAmount"
-                  type="number"
                   placeholder="הזן יתרה"
-                  value={isEditing ? (editingTrack?.remainingAmount || '') : (newTrack.remainingAmount || '')}
-                  onChange={(e) => {
-                    const amount = parseFloat(e.target.value) || 0;
+                  value={isEditing ? editingTrack?.remainingAmount : newTrack.remainingAmount}
+                  onValueChange={(amount) => {
                     const rate = isEditing ? (editingTrack?.interestRate || 0) : (newTrack.interestRate || 0);
                     const period = isEditing ? (editingTrack?.remainingPeriod || 0) : (newTrack.remainingPeriod || 0);
                     const monthlyPayment = calculateMonthlyPayment(amount, rate, period);
-                    
+
                     if (isEditing && editingTrack) {
-                      setEditingTrack(prev => prev ? { 
-                        ...prev, 
+                      setEditingTrack(prev => prev ? {
+                        ...prev,
                         remainingAmount: amount,
                         monthlyPayment: monthlyPayment
                       } : null);
                     } else {
-                      setNewTrack(prev => ({ 
-                        ...prev, 
+                      setNewTrack(prev => ({
+                        ...prev,
                         remainingAmount: amount,
                         monthlyPayment: monthlyPayment
                       }));

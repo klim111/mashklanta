@@ -47,9 +47,99 @@ export default function TrackInfographic({
   const interestPercentage = originalAmount > 0 ? (paidInterest / originalAmount) * 100 : 0;
   const remainingPercentage = originalAmount > 0 ? (remainingPrincipal / originalAmount) * 100 : 0;
   
-  // Calculate percentages for each section
+  // Minimum width for each section to display text properly (in percentage)
+  const MIN_SECTION_WIDTH = 15; // Minimum 15% for text to fit comfortably
+  
+  // Smart adjustment: ensure each section has minimum width for text
+  // Only hide remaining section when it's exactly zero
+  const isRemainingZero = remainingPrincipal <= 0;
+  
+  let adjustedPrincipalPercentage = principalPercentage;
+  let adjustedInterestPercentage = interestPercentage;
+  let adjustedRemainingPercentage = remainingPercentage;
+  let adjustedPaidPercentage = paidPercentage;
+  
+  // If remaining is zero, hide it and show all paid amount
+  // Calculate principal and interest as percentages of the paid amount (100%)
+  if (isRemainingZero) {
+    adjustedRemainingPercentage = 0;
+    adjustedPaidPercentage = 100;
+    // Calculate principal and interest as percentages of total paid amount
+    // These will be used to divide the 100% paid section
+    const principalRatio = totalPaid > 0 ? paidPrincipal / totalPaid : 0;
+    const interestRatio = totalPaid > 0 ? paidInterest / totalPaid : 0;
+    // Convert to percentages of the original amount for consistency
+    adjustedPrincipalPercentage = principalRatio * 100;
+    adjustedInterestPercentage = interestRatio * 100;
+  } else {
+    // Adjust remaining section if too small (but not zero)
+    if (remainingPercentage > 0 && remainingPercentage < MIN_SECTION_WIDTH) {
+      const neededIncrease = MIN_SECTION_WIDTH - remainingPercentage;
+      adjustedRemainingPercentage = MIN_SECTION_WIDTH;
+      // Reduce paid percentage to make room
+      adjustedPaidPercentage = Math.max(0, paidPercentage - neededIncrease);
+      
+      // Adjust principal and interest proportionally within paid section
+      if (paidPercentage > 0 && adjustedPaidPercentage > 0) {
+        const scale = adjustedPaidPercentage / paidPercentage;
+        adjustedPrincipalPercentage = principalPercentage * scale;
+        adjustedInterestPercentage = interestPercentage * scale;
+      }
+    }
+    
+    // Adjust principal section within paid if too small
+    const principalInPaidWidth = adjustedPaidPercentage > 0 ? (adjustedPrincipalPercentage / adjustedPaidPercentage) * 100 : 0;
+    if (principalInPaidWidth > 0 && principalInPaidWidth < MIN_SECTION_WIDTH && adjustedPaidPercentage > 0) {
+      const minPrincipalWidth = (MIN_SECTION_WIDTH / 100) * adjustedPaidPercentage;
+      adjustedPrincipalPercentage = Math.max(adjustedPrincipalPercentage, minPrincipalWidth);
+      // Adjust interest to fit
+      adjustedInterestPercentage = Math.max(0, adjustedPaidPercentage - adjustedPrincipalPercentage);
+    }
+    
+    // Adjust interest section within paid if too small
+    const interestInPaidWidth = adjustedPaidPercentage > 0 ? (adjustedInterestPercentage / adjustedPaidPercentage) * 100 : 0;
+    if (interestInPaidWidth > 0 && interestInPaidWidth < MIN_SECTION_WIDTH && adjustedPaidPercentage > 0) {
+      const minInterestWidth = (MIN_SECTION_WIDTH / 100) * adjustedPaidPercentage;
+      adjustedInterestPercentage = Math.max(adjustedInterestPercentage, minInterestWidth);
+      // Adjust principal to fit
+      adjustedPrincipalPercentage = Math.max(0, adjustedPaidPercentage - adjustedInterestPercentage);
+    }
+    
+    // Ensure total doesn't exceed 100%
+    const totalAdjusted = adjustedPaidPercentage + adjustedRemainingPercentage;
+    if (totalAdjusted > 100) {
+      const scale = 100 / totalAdjusted;
+      adjustedPaidPercentage *= scale;
+      adjustedRemainingPercentage *= scale;
+      adjustedPrincipalPercentage *= scale;
+      adjustedInterestPercentage *= scale;
+    }
+  }
+  
+  // Ensure percentages don't exceed 100% and bar stays within bounds
+  const clampedPaidPercentage = Math.min(adjustedPaidPercentage, 100);
+  const clampedRemainingPercentage = Math.min(adjustedRemainingPercentage, 100);
+  
+  // Calculate percentages for each section (for display labels)
   const principalPaidPercentage = principalPercentage;
   const interestPaidPercentage = interestPercentage;
+  
+  // Adjusted percentages for display within paid section
+  // If remaining is zero, use the ratios directly (they're already percentages of paid amount)
+  let adjustedPrincipalInPaid: number;
+  let adjustedInterestInPaid: number;
+  
+  if (isRemainingZero) {
+    // When remaining is zero, paid section is 100%, so use ratios directly
+    const principalRatio = totalPaid > 0 ? paidPrincipal / totalPaid : 0;
+    const interestRatio = totalPaid > 0 ? paidInterest / totalPaid : 0;
+    adjustedPrincipalInPaid = principalRatio * 100;
+    adjustedInterestInPaid = interestRatio * 100;
+  } else {
+    // Normal case: calculate as percentage of the paid section
+    adjustedPrincipalInPaid = clampedPaidPercentage > 0 ? (adjustedPrincipalPercentage / clampedPaidPercentage) * 100 : 0;
+    adjustedInterestInPaid = clampedPaidPercentage > 0 ? (adjustedInterestPercentage / clampedPaidPercentage) * 100 : 0;
+  }
 
   // Calculate indexation data if track is index-linked (check if "צמוד" is in track name)
   const isIndexLinked = track.name.includes('צמוד') || track.name.includes('צמודי');
@@ -109,7 +199,7 @@ export default function TrackInfographic({
       </div>
 
       {/* Main Visual Bar - Showing paid amount "cut out" */}
-      <div className="mb-6">
+      <div className="mb-6 overflow-hidden">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-gray-700">סכום מקורי של המסלול</span>
           <span className="text-xl font-bold text-gray-900">
@@ -117,85 +207,126 @@ export default function TrackInfographic({
           </span>
         </div>
         
-        <div className="relative" style={{ height: `${visualBarHeight}px` }}>
+        <div className="relative overflow-hidden rounded-xl" style={{ height: `${visualBarHeight}px`, maxWidth: '100%' }}>
           {/* Background - Total Amount (Full Bar) */}
           <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl overflow-hidden shadow-inner">
           </div>
 
-          {/* Remaining Principal - Right side */}
+          {/* Remaining Principal - Right side, no gap from interest - Only show if not zero */}
+          {!isRemainingZero && (
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${clampedRemainingPercentage}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute top-0 bottom-0 bg-gradient-to-r from-blue-500 to-blue-600"
+              style={{ 
+                boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.1)',
+                maxWidth: '100%',
+                right: 0, // Align to right edge
+                borderTopRightRadius: '0.75rem',
+                borderBottomRightRadius: '0.75rem',
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+              }}
+            >
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span 
+                className="text-white font-bold mb-1 drop-shadow-lg"
+                style={{ 
+                  fontSize: clampedRemainingPercentage > 15 ? '1rem' : clampedRemainingPercentage > 8 ? '0.875rem' : '0.75rem',
+                  lineHeight: '1.2'
+                }}
+              >
+                ₪{remainingPrincipal.toLocaleString()}
+              </span>
+              <span 
+                className="text-white font-bold drop-shadow-md"
+                style={{ 
+                  fontSize: clampedRemainingPercentage > 15 ? '0.75rem' : clampedRemainingPercentage > 8 ? '0.625rem' : '0.5rem'
+                }}
+              >
+                {clampedRemainingPercentage.toFixed(1)}%
+              </span>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Paid Amount - No diagonal cut, straight vertical line */}
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${remainingPercentage}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="absolute right-0 top-0 bottom-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-r-xl"
-            style={{ 
-              boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            {remainingPercentage > 8 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-white font-bold text-base mb-1 drop-shadow-lg">
-                  ₪{remainingPrincipal.toLocaleString()}
-                </span>
-                <span className="text-white font-bold text-xs drop-shadow-md">
-                  {remainingPercentage.toFixed(1)}%
-                </span>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Paid Amount - "Cut out" effect with diagonal cut */}
-          <motion.div
-            initial={{ width: 0, clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
             animate={{ 
-              width: `${paidPercentage}%`,
-              clipPath: 'polygon(0 0, 100% 0, calc(100% - 15px) 100%, 0 100%)'
+              width: `${clampedPaidPercentage}%`
             }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
             className="absolute left-0 top-0 bottom-0"
             style={{
               boxShadow: 'inset 2px 0 4px rgba(0,0,0,0.1), -2px 0 8px rgba(0,0,0,0.15)',
+              maxWidth: '100%',
+              borderTopLeftRadius: '0.75rem',
+              borderBottomLeftRadius: '0.75rem',
+              borderTopRightRadius: isRemainingZero ? '0.75rem' : 0, // Round right side if remaining is zero
+              borderBottomRightRadius: isRemainingZero ? '0.75rem' : 0, // Round right side if remaining is zero
             }}
           >
             {/* Principal portion */}
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${paidPercentage > 0 ? (principalPercentage / paidPercentage) * 100 : 0}%` }}
+              animate={{ width: `${adjustedPrincipalInPaid}%` }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
               className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-green-500 to-green-600"
+              style={{ maxWidth: '100%' }}
             >
-              {principalPaidPercentage > 8 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-white font-bold text-base mb-1 drop-shadow-lg">
-                    ₪{paidPrincipal.toLocaleString()}
-                  </span>
-                  <span className="text-white font-bold text-xs drop-shadow-md">
-                    {principalPaidPercentage.toFixed(1)}%
-                  </span>
-                </div>
-              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span 
+                  className="text-white font-bold mb-1 drop-shadow-lg whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedPrincipalInPaid > 15 ? '1rem' : adjustedPrincipalInPaid > 8 ? '0.875rem' : '0.75rem',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  ₪{paidPrincipal.toLocaleString()}
+                </span>
+                <span 
+                  className="text-white font-bold drop-shadow-md whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedPrincipalInPaid > 15 ? '0.75rem' : adjustedPrincipalInPaid > 8 ? '0.625rem' : '0.5rem'
+                  }}
+                >
+                  {principalPaidPercentage.toFixed(1)}%
+                </span>
+              </div>
             </motion.div>
             
-            {/* Interest portion */}
+            {/* Interest portion - Straight vertical line, no gap */}
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${paidPercentage > 0 ? (interestPercentage / paidPercentage) * 100 : 0}%` }}
+              animate={{ width: `${adjustedInterestInPaid}%` }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.6 }}
-              className="absolute right-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-orange-600"
+              className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-orange-600"
               style={{ 
-                left: `${paidPercentage > 0 ? (principalPercentage / paidPercentage) * 100 : 0}%`,
+                left: `${adjustedPrincipalInPaid}%`,
+                maxWidth: '100%',
               }}
             >
-              {interestPaidPercentage > 8 && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-white font-bold text-base mb-1 drop-shadow-lg">
-                    ₪{paidInterest.toLocaleString()}
-                  </span>
-                  <span className="text-white font-bold text-xs drop-shadow-md">
-                    {interestPaidPercentage.toFixed(1)}%
-                  </span>
-                </div>
-              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span 
+                  className="text-white font-bold mb-1 drop-shadow-lg whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedInterestInPaid > 15 ? '1rem' : adjustedInterestInPaid > 8 ? '0.875rem' : '0.75rem',
+                    lineHeight: '1.2'
+                  }}
+                >
+                  ₪{paidInterest.toLocaleString()}
+                </span>
+                <span 
+                  className="text-white font-bold drop-shadow-md whitespace-nowrap"
+                  style={{ 
+                    fontSize: adjustedInterestInPaid > 15 ? '0.75rem' : adjustedInterestInPaid > 8 ? '0.625rem' : '0.5rem'
+                  }}
+                >
+                  {interestPaidPercentage.toFixed(1)}%
+                </span>
+              </div>
             </motion.div>
           </motion.div>
         </div>
@@ -406,6 +537,17 @@ export default function TrackInfographic({
                 {totalPaid > 0 ? ((paidInterest / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
               </p>
             </div>
+            <div className="pt-2 border-t mt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-700 font-medium">שולם על כל שקל קרן שהוחזר:</span>
+                <span className="text-sm font-bold text-purple-600">
+                  ₪{(paidPrincipal > 0 ? (totalPaid / paidPrincipal) : 0).toFixed(3)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                כולל קרן + ריבית על ₪{paidPrincipal.toLocaleString()} קרן ששולמה
+              </p>
+            </div>
           </div>
         </div>
 
@@ -438,6 +580,17 @@ export default function TrackInfographic({
                   ₪{(remainingPrincipal + remainingInterest).toLocaleString()}
                 </span>
               </div>
+            </div>
+            <div className="pt-1.5 border-t mt-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-700 font-medium">משוער להיות משולם על כל שקל:</span>
+                <span className="text-sm font-bold text-purple-600">
+                  ₪{(originalAmount > 0 ? ((totalPaid + remainingPrincipal + remainingInterest) / originalAmount) : 0).toFixed(3)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                כולל שולם עד כה + נותר לשלם
+              </p>
             </div>
           </div>
         </div>

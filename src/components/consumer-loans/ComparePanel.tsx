@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
 import { TrendingUp, Merge, Calculator, PiggyBank } from 'lucide-react';
 import type { Loan } from './types';
 import { calculateLoanSummary, buildAmortSchedule } from './loanMath';
-import { formatILS } from '@/lib/currency';
+import { formatILS, parseFormattedNumberInput } from '@/lib/currency';
 
 interface ComparePanelProps {
   loans: Loan[];
@@ -97,11 +98,13 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
   };
   const consolidatedSummary = calculateLoanSummary(consolidatedLoan);
 
+  const prepaymentParsed = parseFormattedNumberInput(prepaymentAmount);
+
   // חישוב הצעת פרעון מוקדם
   const prepaymentSuggestion = (() => {
-    if (!prepaymentAmount || parseFloat(prepaymentAmount) <= 0) return null;
+    if (prepaymentParsed <= 0) return null;
     
-    const amount = parseFloat(prepaymentAmount);
+    const amount = prepaymentParsed;
     
     // מציאת ההלוואה עם הריבית הגבוהה ביותר
     const highestInterestLoan = selectedLoans.reduce((prev, curr) => 
@@ -365,16 +368,15 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="prepayment-amount">סכום זמין במזומן (₪)</Label>
-                  <Input
+                  <FormattedNumberInput
                     id="prepayment-amount"
-                    type="number"
                     value={prepaymentAmount}
-                    onChange={(e) => setPrepaymentAmount(e.target.value)}
+                    onValueChange={setPrepaymentAmount}
                     placeholder="הכנס סכום זמין"
                   />
                 </div>
                 
-                {prepaymentAmount && parseFloat(prepaymentAmount) > 0 && (
+                {prepaymentParsed > 0 && (
                   <div className="p-4 bg-blue-100 rounded">
                     <h5 className="font-semibold text-blue-700 mb-2">המלצת המערכת</h5>
                     <p className="text-sm text-blue-600 mb-2">
@@ -382,9 +384,9 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
                       (ריבית {selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).apr}% - הגבוהה ביותר)
                     </p>
                     <div className="text-sm">
-                      <div>סכום פרעון: {formatILS(Math.min(parseFloat(prepaymentAmount), selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).principal))}</div>
-                      {parseFloat(prepaymentAmount) > selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).principal && (
-                        <div>יתרה זמינה: {formatILS(parseFloat(prepaymentAmount) - selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).principal)}</div>
+                      <div>סכום פרעון: {formatILS(Math.min(prepaymentParsed, selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).principal))}</div>
+                      {prepaymentParsed > selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).principal && (
+                        <div>יתרה זמינה: {formatILS(prepaymentParsed - selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev).principal)}</div>
                       )}
                     </div>
                   </div>
@@ -393,7 +395,7 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
             </div>
             
             <div>
-              {prepaymentAmount && parseFloat(prepaymentAmount) > 0 && (
+              {prepaymentParsed > 0 && (
                 <div>
                   <h5 className="font-semibold mb-3">השוואת מצב לאחר פרעון</h5>
                   <div className="space-y-3">
@@ -407,7 +409,7 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
                       <div className="p-3 bg-green-100 rounded">
                         <div className="font-semibold text-green-700">אחרי פרעון</div>
                         {(() => {
-                          const amount = parseFloat(prepaymentAmount);
+                          const amount = prepaymentParsed;
                           const highestInterestLoan = selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev);
                           const maxPayoff = Math.min(amount, highestInterestLoan.principal);
                           const remainingPrincipal = highestInterestLoan.principal - maxPayoff;
@@ -442,7 +444,7 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
                     <div className="p-3 bg-blue-100 rounded">
                       <div className="font-semibold text-blue-700">חיסכון כולל</div>
                       {(() => {
-                        const amount = parseFloat(prepaymentAmount);
+                        const amount = prepaymentParsed;
                         const highestInterestLoan = selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev);
                         const maxPayoff = Math.min(amount, highestInterestLoan.principal);
                         const remainingPrincipal = highestInterestLoan.principal - maxPayoff;
@@ -480,7 +482,7 @@ export function ComparePanel({ loans, selectedIds, onClearSelection, activeActio
                     </div>
 
                     {(() => {
-                      const amount = parseFloat(prepaymentAmount);
+                      const amount = prepaymentParsed;
                       const highestInterestLoan = selectedLoans.reduce((prev, curr) => curr.apr > prev.apr ? curr : prev);
                       const maxPayoff = Math.min(amount, highestInterestLoan.principal);
                       const remainingPrincipal = highestInterestLoan.principal - maxPayoff;

@@ -22,6 +22,20 @@ export function annuityPayment(P: number, apr: number, n: number): number {
   return (P * r * factor) / (factor - 1);
 }
 
+/** קרן לפי תשלום חודשי, ריבית ותקופה (הפוך מ-annuityPayment) */
+export function principalFromAnnuityPayment(payment: number, apr: number, n: number): number {
+  if (payment <= 0 || n <= 0) return 0;
+
+  const r = apr / 100 / 12;
+
+  if (Math.abs(r) < 1e-12) {
+    return payment * n;
+  }
+
+  const factor = Math.pow(1 + r, n);
+  return (payment * (factor - 1)) / (r * factor);
+}
+
 /**
  * בניית טבלת סילוקין עם אפשרות לפרעון מוקדם
  */

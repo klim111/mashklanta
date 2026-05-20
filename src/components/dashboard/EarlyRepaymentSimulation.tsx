@@ -36,6 +36,8 @@ import {
 import { MortgageSummary, MortgageTrack, Payment } from '@/types/mortgage';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, differenceInMonths } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
+import { parseFormattedNumberInput } from '@/lib/currency';
 
 interface EarlyRepaymentSimulationProps {
   mortgage: MortgageSummary;
@@ -91,7 +93,7 @@ export default function EarlyRepaymentSimulation({
 
   // Calculate simulation when parameters change
   useEffect(() => {
-    if (repaymentAmount && parseFloat(repaymentAmount) > 0) {
+    if (repaymentAmount && parseFormattedNumberInput(repaymentAmount) > 0) {
       calculateSimulations();
     } else {
       setSimulatedTracks([]);
@@ -99,8 +101,8 @@ export default function EarlyRepaymentSimulation({
   }, [repaymentAmount, repaymentDate, earlyRepaymentFee, repaymentStrategy]);
 
   const calculateSimulations = () => {
-    const grossAmount = parseFloat(repaymentAmount);
-    const fee = parseFloat(earlyRepaymentFee) || 0;
+    const grossAmount = parseFormattedNumberInput(repaymentAmount);
+    const fee = parseFormattedNumberInput(earlyRepaymentFee);
     const netAmount = grossAmount - fee; // Actual amount after fee deduction
     
     if (netAmount <= 0) {
@@ -434,8 +436,8 @@ export default function EarlyRepaymentSimulation({
   };
 
   const getNetAmount = () => {
-    const gross = parseFloat(repaymentAmount) || 0;
-    const fee = parseFloat(earlyRepaymentFee) || 0;
+    const gross = parseFormattedNumberInput(repaymentAmount);
+    const fee = parseFormattedNumberInput(earlyRepaymentFee);
     return Math.max(0, gross - fee);
   };
 
@@ -496,10 +498,9 @@ export default function EarlyRepaymentSimulation({
                     סכום פנוי לפירעון
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <FormattedNumberInput
                       value={repaymentAmount}
-                      onChange={(e) => setRepaymentAmount(e.target.value)}
+                      onValueChange={setRepaymentAmount}
                       placeholder="הכנס סכום"
                       className="w-full px-4 py-3 pr-8 border-2 border-purple-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all text-lg font-semibold"
                     />
@@ -514,10 +515,9 @@ export default function EarlyRepaymentSimulation({
                     עמלת פירעון מוקדם
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <FormattedNumberInput
                       value={earlyRepaymentFee}
-                      onChange={(e) => setEarlyRepaymentFee(e.target.value)}
+                      onValueChange={setEarlyRepaymentFee}
                       placeholder="הכנס סכום"
                       className="w-full px-4 py-3 pr-8 border-2 border-purple-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all text-lg font-semibold"
                     />

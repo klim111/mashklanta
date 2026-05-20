@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Calculator, TrendingUp, Merge, PiggyBank, GripVertical } from 'lucide-react';
@@ -22,6 +23,11 @@ import { LoanCard } from './LoanCard';
 import { AmortTable } from './AmortTable';
 import { ComparePanel } from './ComparePanel';
 import { OptimizePanel } from './OptimizePanel';
+import { LoanPlanningImportWizard } from './LoanPlanningImportWizard';
+import {
+  clearConsumerLoansImportSession,
+  readConsumerLoansImportSession,
+} from '@/lib/consumer-loans-import';
 
 // Component for droppable zones
 function DroppableZone({ id, children, className = '' }: { 
@@ -51,6 +57,7 @@ const defaultLoan: Omit<Loan, 'id'> = {
 };
 
 export function LoanPlanner() {
+  const searchParams = useSearchParams();
   const [state, setState] = useState<LoanPlannerState>({
     loans: [],
     selectedForComparison: [],
@@ -61,6 +68,10 @@ export function LoanPlanner() {
   const [activeCompareAction, setActiveCompareAction] = useState<'summary' | 'consolidation' | 'prepayment' | null>(null);
   const [activeTab, setActiveTab] = useState('loans');
   const [draggedLoan, setDraggedLoan] = useState<Loan | null>(null);
+  const [importSession, setImportSession] = useState<ReturnType<
+    typeof readConsumerLoansImportSession
+  >>(null);
+  const [importChecked, setImportChecked] = useState(false);
   
   // Drag and drop sensors
   const sensors = useSensors(
@@ -70,9 +81,33 @@ export function LoanPlanner() {
     })
   );
 
-  // טעינה משמירה מקומית
+  const finishPlanningImport = useCallback((importedLoans: Loan[]) => {
+    setState((prev) => ({
+      ...prev,
+      loans: [...prev.loans, ...importedLoans],
+    }));
+    clearConsumerLoansImportSession();
+    setImportSession(null);
+    setActiveTab('loans');
+  }, []);
+
+  const cancelPlanningImport = useCallback(() => {
+    clearConsumerLoansImportSession();
+    setImportSession(null);
+  }, []);
+
+  // טעינה משמירה מקומית + אשף ייבוא ממסך ההכרות
   useEffect(() => {
     try {
+      const fromPlanning = searchParams.get('import') === 'planning';
+      const session = fromPlanning ? readConsumerLoansImportSession() : null;
+
+      if (session) {
+        setImportSession(session);
+        setImportChecked(true);
+        return;
+      }
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsedState = JSON.parse(saved);
@@ -80,17 +115,26 @@ export function LoanPlanner() {
       }
     } catch (error) {
       console.error('שגיאה בטעינת נתונים מקומיים:', error);
+    } finally {
+      setImportChecked(true);
     }
-  }, []);
+  }, [searchParams]);
 
-  // שמירה מקומית
   useEffect(() => {
+    if (importSession) {
+      setActiveTab('loans');
+    }
+  }, [importSession]);
+
+  // שמירה מקומית (לא במהלך אשף הייבוא)
+  useEffect(() => {
+    if (importSession) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('שגיאה בשמירת נתונים מקומיים:', error);
     }
-  }, [state]);
+  }, [state, importSession]);
 
   const addLoan = () => {
     const newLoan: Loan = {
@@ -245,6 +289,16 @@ export function LoanPlanner() {
           </TabsList>
 
           <TabsContent value="loans" className="space-y-6">
+            {importSession && (
+              <LoanPlanningImportWizard
+                loans={importSession.loans}
+                onComplete={finishPlanningImport}
+                onCancel={cancelPlanningImport}
+              />
+            )}
+
+            {!importSession && importChecked && (
+              <>
             {/* כפתור הוספת הלוואה */}
             <div className="text-center">
               <Button onClick={addLoan} className="px-6 py-3">
@@ -370,6 +424,8 @@ export function LoanPlanner() {
                   </div>
                 )}
               </div>
+            )}
+              </>
             )}
           </TabsContent>
 

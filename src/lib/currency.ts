@@ -37,3 +37,45 @@ export function formatNumber(num: number, decimals = 0): string {
     maximumFractionDigits: decimals,
   }).format(num);
 }
+
+/** מעצב מספר בזמן הקלדה עם פסיקים (למשל 100000 → 100,000) */
+export function formatNumberInput(value: string): string {
+  const cleanValue = value.replace(/[^\d]/g, '');
+  if (cleanValue === '') return '';
+  const numValue = parseInt(cleanValue, 10);
+  if (isNaN(numValue)) return '';
+  return new Intl.NumberFormat('he-IL').format(numValue);
+}
+
+/** מפרסר ערך מעוצב עם פסיקים למספר */
+export function parseFormattedNumberInput(value: string | number | undefined | null): number {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  const cleanValue = String(value).replace(/[^\d]/g, '');
+  return parseInt(cleanValue, 10) || 0;
+}
+
+const MONEY_FIELD_KEYS = [
+  'ownCapital',
+  'monthlyIncome',
+  'monthlyLoanPayment',
+  'propertyPrice',
+  'currentPropertyPrice',
+  'remainingMortgageAmount',
+  'allowanceAmount',
+  'expectedLumpSum',
+] as const;
+
+export type MoneyFieldKey = (typeof MONEY_FIELD_KEYS)[number];
+
+/** מעצב שדות כספיים בטעינה מ-localStorage */
+export function formatMoneyFields<T extends Record<string, unknown>>(data: T): T {
+  const formatted = { ...data };
+  for (const key of MONEY_FIELD_KEYS) {
+    const val = formatted[key];
+    if (typeof val === 'string' && val !== '') {
+      (formatted as Record<string, unknown>)[key] = formatNumberInput(val);
+    }
+  }
+  return formatted;
+}

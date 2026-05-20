@@ -9,22 +9,16 @@ import NavBar from '@/components/ui/navbar';
 import { MortgageMixCard } from '@/components/mortgage-advisor/MortgageMixCard';
 import { MortgageDetailsModal } from '@/components/mortgage-advisor/MortgageDetailsModal';
 import type { MortgageMix, MortgageTrack } from '@/components/mortgage-advisor/types';
+import { formatMoneyFields, parseFormattedNumberInput } from '@/lib/currency';
+import {
+  calculateMaxProperty,
+  getAffordabilityInputs,
+  defaultMortgagePlanningUserData,
+  type MortgagePlanningUserData,
+} from '@/lib/mortgage-affordability';
+import { migrateMortgagePlanningUserData } from '@/lib/borrower-loans';
 
-interface UserData {
-  propertyType: string;
-  calculationType: string;
-  ownCapital: string;
-  age: string;
-  monthlyIncome: string;
-  hasLoans: boolean;
-  monthlyLoanPayment: string;
-  propertyPrice: string;
-  wantsLoanManagement: boolean;
-  currentPropertyPrice: string;
-  hasCurrentMortgage: boolean;
-  remainingMortgageAmount: string;
-  isOver55: boolean;
-}
+type UserData = MortgagePlanningUserData;
 
 export default function UniformMixes() {
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -38,8 +32,13 @@ export default function UniformMixes() {
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        setUserData(parsedData.userData);
-        generateUniformMixes(parsedData.userData);
+        const migrated = migrateMortgagePlanningUserData({
+          ...defaultMortgagePlanningUserData(),
+          ...parsedData.userData,
+        });
+        const formattedUserData = formatMoneyFields(migrated as unknown as Record<string, unknown>) as unknown as MortgagePlanningUserData;
+        setUserData(formattedUserData);
+        generateUniformMixes(formattedUserData);
       } catch (error) {
         console.error('Error loading saved data:', error);
       }
@@ -59,16 +58,10 @@ export default function UniformMixes() {
       const results = calculateMaxProperty(data);
       loanAmount = results.maxLoanAmount;
       // Calculate max loan period based on age - minimum between age limit and 30 years
-      const age = parseInt(data.age) || 0;
-      if (age > 0) {
-        const maxLoanPeriodByAge = Math.min(30, Math.max(1, 80 - age));
-        optimalYears = Math.min(maxLoanPeriodByAge, 30);
-      } else {
-        optimalYears = 30;
-      }
+      optimalYears = results.maxLoanPeriod;
     } else if (data.calculationType === 'תחשב משכנתא לנכס קיים') {
-      const propertyPrice = parseFloat(data.propertyPrice) || 0;
-      const ownCapital = parseFloat(data.ownCapital) || 0;
+      const propertyPrice = parseFormattedNumberInput(data.propertyPrice);
+      const ownCapital = parseFormattedNumberInput(data.ownCapital);
       loanAmount = propertyPrice - ownCapital;
       // For existing property, use age-based calculation - minimum between age limit and 30 years
       const age = parseInt(data.age) || 0;
@@ -79,8 +72,8 @@ export default function UniformMixes() {
         optimalYears = 30;
       }
     } else if (data.propertyType === 'משכנתא לכל מטרה') {
-      const currentPropertyPrice = parseFloat(data.currentPropertyPrice) || 0;
-      const remainingMortgage = parseFloat(data.remainingMortgageAmount) || 0;
+      const currentPropertyPrice = parseFormattedNumberInput(data.currentPropertyPrice);
+      const remainingMortgage = parseFormattedNumberInput(data.remainingMortgageAmount);
       const ownedValue = currentPropertyPrice - remainingMortgage;
       loanAmount = ownedValue * 0.6; // 60% for reverse mortgage
       // For reverse mortgage, maximum 30 years
@@ -178,55 +171,6 @@ export default function UniformMixes() {
 
     mixes.push(mix1, mix2, mix3);
     setUniformMixes(mixes);
-  };
-
-  // Copy of calculation function from mortgage-planning
-  const calculateMaxProperty = (data: UserData) => {
-    const income = parseFloat(data.monthlyIncome) || 0;
-    const loanPayment = parseFloat(data.monthlyLoanPayment) || 0;
-    const ownCapital = parseFloat(data.ownCapital) || 0;
-    const age = parseInt(data.age) || 0;
-
-    const maxMonthlyPayment = (income - loanPayment) * 0.4;
-    const maxLoanPeriod = Math.min(30, Math.max(1, 80 - age));
-    
-    let maxLTVRatio = 0.5;
-    switch (data.propertyType) {
-      case 'דירה ראשונה':
-        maxLTVRatio = 0.75;
-        break;
-      case 'דירה חליפית':
-        maxLTVRatio = 0.7;
-        break;
-      case 'דירה להשקעה':
-        maxLTVRatio = 0.5;
-        break;
-    }
-
-    const annualRate = 0.052;
-    const monthlyRate = annualRate / 12;
-    const numPayments = maxLoanPeriod * 12;
-    
-    let maxLoanFromPayment = 0;
-    if (monthlyRate > 0 && numPayments > 0) {
-      maxLoanFromPayment = maxMonthlyPayment * ((1 - Math.pow(1 + monthlyRate, -numPayments)) / monthlyRate);
-    } else {
-      maxLoanFromPayment = maxMonthlyPayment * numPayments;
-    }
-    
-    const maxPropertyFromPayment = maxLoanFromPayment + ownCapital;
-    let maxPropertyFromLTV = 0;
-    if (ownCapital > 0) {
-      maxPropertyFromLTV = ownCapital / (1 - maxLTVRatio);
-    }
-    
-    let actualPropertyPrice = Math.min(maxPropertyFromPayment, maxPropertyFromLTV);
-    let actualLoanAmount = actualPropertyPrice - ownCapital;
-    
-    return {
-      maxPropertyPrice: Math.floor(actualPropertyPrice),
-      maxLoanAmount: Math.floor(actualLoanAmount)
-    };
   };
 
   const showDetails = (mix: MortgageMix) => {
@@ -347,7 +291,9 @@ export default function UniformMixes() {
                 transition={{ duration: 0.6, delay: 0.4 }}
                 className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-6 mb-8 inline-block shadow-lg"
               >
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">הנתונים שלך</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  {userData.applicationType === 'couple' ? 'הנתונים המצרפיים שלכם' : 'הנתונים שלך'}
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">סוג נכס:</span>
@@ -356,13 +302,13 @@ export default function UniformMixes() {
                   {userData.propertyPrice && (
                     <div>
                       <span className="text-gray-600">מחיר נכס:</span>
-                      <div className="font-medium">₪{parseFloat(userData.propertyPrice).toLocaleString()}</div>
+                      <div className="font-medium">₪{parseFormattedNumberInput(userData.propertyPrice).toLocaleString()}</div>
                     </div>
                   )}
                   {userData.ownCapital && (
                     <div>
                       <span className="text-gray-600">הון עצמי:</span>
-                      <div className="font-medium">₪{parseFloat(userData.ownCapital).toLocaleString()}</div>
+                      <div className="font-medium">₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}</div>
                     </div>
                   )}
                   {uniformMixes.length > 0 && (

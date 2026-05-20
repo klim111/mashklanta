@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Save, Calculator, AlertCircle } from 'lucide-react';
@@ -123,11 +124,10 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
             
             <div>
               <Label htmlFor="totalAmount">סך המשכנתא (₪)</Label>
-              <Input
+              <FormattedNumberValueInput
                 id="totalAmount"
-                type="number"
                 value={totalAmount}
-                onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
+                onValueChange={setTotalAmount}
                 placeholder="סך המשכנתא"
               />
             </div>
