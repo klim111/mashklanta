@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit, Check, X, Copy, Calculator, TrendingUp, PieChart } from 'lucide-react';
 import type { MortgageMix } from './types';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
-import { TRACK_TYPES } from './types';
+import { TRACK_TYPES, formatTrackTypeWithAmortization } from './types';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
 
@@ -22,6 +22,16 @@ interface MortgageMixCardProps {
   onToggleSelect?: (id: string) => void;
   onEdit?: (mix: MortgageMix) => void;
   isSelected?: boolean;
+  /** When true, hides only Copy / Edit / Delete (the 3 management buttons on the left). */
+  hideManagementButtons?: boolean;
+  /** Uniform-mixes layout: loan amount + track count centered in header, utility buttons below. */
+  showSummaryHeader?: boolean;
+  summaryHeaderConfig?: {
+    title: string;
+    description: string;
+    iconName?: 'pie' | 'trend' | 'calculator';
+    iconClassName?: string;
+  };
 }
 
 export function MortgageMixCard({ 
@@ -33,7 +43,10 @@ export function MortgageMixCard({
   onAnalyzeScenarios,
   onToggleSelect,
   onEdit,
-  isSelected = false
+  isSelected = false,
+  hideManagementButtons = false,
+  showSummaryHeader = false,
+  summaryHeaderConfig
 }: MortgageMixCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({ name: mix.name, notes: mix.notes || '' });
@@ -56,14 +69,33 @@ export function MortgageMixCard({
 
   const calculation = calculateMortgageMix(mix);
   const { summary } = calculation;
+  const SummaryIcon =
+    summaryHeaderConfig?.iconName === 'trend'
+      ? TrendingUp
+      : summaryHeaderConfig?.iconName === 'calculator'
+        ? Calculator
+        : PieChart;
+  const isSelectableCard = Boolean(onToggleSelect) && !isEditing;
+
+  const handleCardSelect = () => {
+    if (!isSelectableCard) return;
+    onToggleSelect?.(mix.id);
+  };
+
+  const stopPropagation = (event: React.MouseEvent) => {
+    event.stopPropagation();
+  };
 
   return (
-    <Card className={`hover:shadow-lg transition-all duration-200 border-2 ${
-      isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-    }`}>
+    <Card
+      className={`hover:shadow-lg transition-all duration-200 border-2 ${
+        isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+      } ${isSelectableCard ? 'cursor-pointer' : ''}`}
+      onClick={handleCardSelect}
+    >
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center justify-between">
-          {isEditing ? (
+        {isEditing ? (
+          <CardTitle className="flex items-center justify-between">
             <div className="flex-1 flex items-center gap-2">
               <Input
                 value={editData.name}
@@ -80,26 +112,44 @@ export function MortgageMixCard({
                 </Button>
               </div>
             </div>
-          ) : (
-            <>
-              <div 
-                className={`flex items-center gap-2 ${onToggleSelect ? 'cursor-pointer' : ''}`}
-                onClick={() => onToggleSelect?.(mix.id)}
-              >
-                <PieChart className="h-5 w-5 text-blue-600" />
-                <span className="text-lg">{mix.name}</span>
-                {isSelected && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    נבחר
-                  </Badge>
-                )}
-              </div>
-              <div className="flex gap-1">
+          </CardTitle>
+        ) : showSummaryHeader ? (
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="w-full flex justify-start">
+              <SummaryIcon className={`w-5 h-5 ${summaryHeaderConfig?.iconClassName || 'text-blue-600'}`} />
+            </div>
+            <div className="space-y-2">
+              {summaryHeaderConfig ? (
+                <>
+                  <h4 className="text-3xl font-bold text-gray-900">{summaryHeaderConfig.title}</h4>
+                  <p className="text-base text-gray-500">{summaryHeaderConfig.description}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-semibold text-gray-900">
+                    סכום משכנתא: {formatCurrency(mix.totalAmount)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    מספר מסלולים בסל: {mix.tracks.length}
+                  </p>
+                </>
+              )}
+              {isSelected && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  נבחר
+                </Badge>
+              )}
+            </div>
+            {(onShowDetails || onAnalyzeScenarios || (!hideManagementButtons && (onEdit || onDuplicate || onDelete))) && (
+              <div className="flex gap-1 justify-center">
                 {onShowDetails && (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="ghost"
-                    onClick={() => onShowDetails(mix)}
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      onShowDetails(mix);
+                    }}
                     className="text-blue-600 hover:text-blue-800"
                     title="פירוט מלא"
                   >
@@ -107,71 +157,194 @@ export function MortgageMixCard({
                   </Button>
                 )}
                 {onAnalyzeScenarios && (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="ghost"
-                    onClick={() => onAnalyzeScenarios(mix)}
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      onAnalyzeScenarios(mix);
+                    }}
                     className="text-purple-600 hover:text-purple-800"
                     title="ניתוח תרחישים"
                   >
                     <TrendingUp className="h-4 w-4" />
                   </Button>
                 )}
-                <Button 
-                  size="sm" 
+                {!hideManagementButtons && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        stopPropagation(e);
+                        onDuplicate(mix);
+                      }}
+                      className="text-green-600 hover:text-green-800"
+                      title="שכפל תמהיל"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    {onEdit && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          stopPropagation(e);
+                          onEdit(mix);
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="עריכת תמהיל מלא (כל המסלולים)"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        stopPropagation(e);
+                        setIsEditing(true);
+                      }}
+                      className="text-gray-600 hover:text-gray-800"
+                      title="עריכת שם והערות"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        stopPropagation(e);
+                        onDelete(mix.id);
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                      title="מחק תמהיל"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <CardTitle className="flex items-center justify-between">
+            <div
+              className={`flex items-center gap-2 ${onToggleSelect ? 'cursor-pointer' : ''}`}
+              onClick={(e) => {
+                stopPropagation(e);
+                onToggleSelect?.(mix.id);
+              }}
+            >
+              <PieChart className="h-5 w-5 text-blue-600" />
+              <span className="text-lg">{mix.name}</span>
+              {isSelected && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  נבחר
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-1">
+              {onShowDetails && (
+                <Button
+                  size="sm"
                   variant="ghost"
-                  onClick={() => onDuplicate(mix)}
-                  className="text-green-600 hover:text-green-800"
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      onShowDetails(mix);
+                    }}
+                  className="text-blue-600 hover:text-blue-800"
+                  title="פירוט מלא"
                 >
-                  <Copy className="h-4 w-4" />
+                  <Calculator className="h-4 w-4" />
                 </Button>
-                {onEdit && (
-                  <Button 
-                    size="sm" 
+              )}
+              {onAnalyzeScenarios && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      onAnalyzeScenarios(mix);
+                    }}
+                  className="text-purple-600 hover:text-purple-800"
+                  title="ניתוח תרחישים"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                </Button>
+              )}
+              {!hideManagementButtons && (
+                <>
+                  <Button
+                    size="sm"
                     variant="ghost"
-                    onClick={() => onEdit(mix)}
-                    className="text-blue-600 hover:text-blue-800"
-                    title="עריכת תמהיל מלא (כל המסלולים)"
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      onDuplicate(mix);
+                    }}
+                    className="text-green-600 hover:text-green-800"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {onEdit && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        stopPropagation(e);
+                        onEdit(mix);
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="עריכת תמהיל מלא (כל המסלולים)"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      setIsEditing(true);
+                    }}
+                    className="text-gray-600 hover:text-gray-800"
+                    title="עריכת שם והערות"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                )}
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  onClick={() => setIsEditing(true)}
-                  className="text-gray-600 hover:text-gray-800"
-                  title="עריכת שם והערות"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  onClick={() => onDelete(mix.id)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </>
-          )}
-        </CardTitle>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      stopPropagation(e);
+                      onDelete(mix.id);
+                    }}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardTitle>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
         {/* פרטי התמהיל הכללי */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">סך המשכנתא:</span>
-            <span className="font-bold text-lg">{formatCurrency(mix.totalAmount)}</span>
+        {!showSummaryHeader && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">סך המשכנתא:</span>
+              <span className="font-bold text-lg">{formatCurrency(mix.totalAmount)}</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">מספר מסלולים:</span>
+              <span className="font-medium">{mix.tracks.length}</span>
+            </div>
           </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">מספר מסלולים:</span>
-            <span className="font-medium">{mix.tracks.length}</span>
-          </div>
-        </div>
+        )}
 
         {/* סיכום חישובים */}
         <div className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -214,7 +387,7 @@ export function MortgageMixCard({
                     track.type === 'grant' ? 'bg-teal-500' :
                     'bg-gray-400'
                   }`} />
-                  <span className="font-medium">{TRACK_TYPES[track.type]}</span>
+                  <span className="font-medium">{formatTrackTypeWithAmortization(track)}</span>
                 </div>
                 <div className="text-left">
                   <div>{formatCurrency(track.amount)}</div>

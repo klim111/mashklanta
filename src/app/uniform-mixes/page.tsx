@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, PieChart, Calculator, TrendingUp, Target } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Calculator, Target, PieChart, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import NavBar from '@/components/ui/navbar';
@@ -17,17 +17,81 @@ import {
   type MortgagePlanningUserData,
 } from '@/lib/mortgage-affordability';
 import { migrateMortgagePlanningUserData } from '@/lib/borrower-loans';
+import { INTEREST_RATES } from '@/lib/interest-rates';
 
 type UserData = MortgagePlanningUserData;
+
+/**
+ * Selection carried over from the affordability results page slider.
+ * When present, the uniform mixes are generated against the user's slider-chosen
+ * property price (and loan amount / period) instead of recomputing the maximum
+ * affordable property from scratch.
+ */
+type MortgagePlanningSelection = {
+  source: 'affordability-slider';
+  propertyPrice: number;
+  loanAmount: number;
+  loanPeriod: number;
+  ownCapital: number;
+  interestRate: number;
+  timestamp: number;
+};
+
+/**
+ * How long after being written a selection is still trusted as "fresh".
+ * Selections older than this are ignored on read (e.g. a stale visit via NavBar
+ * after the user changed their planning data without going through the slider).
+ */
+const SELECTION_STALE_THRESHOLD_MS = 30 * 60 * 1000;
+
+function readPlanningSelection(): MortgagePlanningSelection | null {
+  try {
+    const raw = localStorage.getItem('mortgagePlanningSelection');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<MortgagePlanningSelection>;
+    if (
+      parsed &&
+      typeof parsed.loanAmount === 'number' &&
+      Number.isFinite(parsed.loanAmount) &&
+      parsed.loanAmount > 0 &&
+      typeof parsed.loanPeriod === 'number' &&
+      parsed.loanPeriod > 0
+    ) {
+      if (
+        typeof parsed.timestamp === 'number' &&
+        Date.now() - parsed.timestamp > SELECTION_STALE_THRESHOLD_MS
+      ) {
+        return null;
+      }
+      return parsed as MortgagePlanningSelection;
+    }
+  } catch (error) {
+    console.error('Could not parse mortgage planning selection:', error);
+  }
+  return null;
+}
 
 export default function UniformMixes() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [uniformMixes, setUniformMixes] = useState<MortgageMix[]>([]);
   const [showDetailsModal, setShowDetailsModal] = useState<MortgageMix | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // The slider-driven selection carried over from the results screen, if any.
+  const [selection, setSelection] = useState<MortgagePlanningSelection | null>(null);
 
   useEffect(() => {
-    // Load data from localStorage
+    // Read the affordability-results slider selection (if the user clicked through from there).
+    // We deliberately do NOT remove the value from localStorage here: React StrictMode runs
+    // useEffect twice in development, and removing it on the first run would cause the second
+    // run (and the generateUniformMixes call inside it) to fall back to the default maximum
+    // loan amount, overwriting the correct slider-driven mixes. Staleness is instead handled
+    // by the timestamp check inside `readPlanningSelection`.
+    const savedSelection = readPlanningSelection();
+    if (savedSelection) {
+      setSelection(savedSelection);
+    }
+
+    // Load form data from localStorage
     const savedData = localStorage.getItem('mortgagePlanningData');
     if (savedData) {
       try {
@@ -38,7 +102,7 @@ export default function UniformMixes() {
         });
         const formattedUserData = formatMoneyFields(migrated as unknown as Record<string, unknown>) as unknown as MortgagePlanningUserData;
         setUserData(formattedUserData);
-        generateUniformMixes(formattedUserData);
+        generateUniformMixes(formattedUserData, savedSelection);
       } catch (error) {
         console.error('Error loading saved data:', error);
       }
@@ -46,18 +110,25 @@ export default function UniformMixes() {
     setIsLoading(false);
   }, []);
 
-  const generateUniformMixes = (data: UserData) => {
+  const generateUniformMixes = (
+    data: UserData,
+    override: MortgagePlanningSelection | null = null
+  ) => {
     if (!data) return;
 
-    // Calculate loan amount and optimal loan period
+    // Calculate loan amount and optimal loan period.
     let loanAmount = 0;
     let optimalYears = 30; // Default to 30 years
-    
-    if (data.calculationType === 'תחשב מה אני יכול להרשות לעצמי') {
-      // Use calculated max property price
+
+    if (override) {
+      // The user came from the affordability results screen and picked a specific property
+      // price via the slider - honor that selection instead of recomputing the maximum.
+      loanAmount = override.loanAmount;
+      optimalYears = override.loanPeriod;
+    } else if (data.calculationType === 'תחשב מה אני יכול להרשות לעצמי') {
+      // Fall back to the calculated maximum (user did not pass through the results slider).
       const results = calculateMaxProperty(data);
       loanAmount = results.maxLoanAmount;
-      // Calculate max loan period based on age - minimum between age limit and 30 years
       optimalYears = results.maxLoanPeriod;
     } else if (data.calculationType === 'תחשב משכנתא לנכס קיים') {
       const propertyPrice = parseFormattedNumberInput(data.propertyPrice);
@@ -76,7 +147,6 @@ export default function UniformMixes() {
       const remainingMortgage = parseFormattedNumberInput(data.remainingMortgageAmount);
       const ownedValue = currentPropertyPrice - remainingMortgage;
       loanAmount = ownedValue * 0.6; // 60% for reverse mortgage
-      // For reverse mortgage, maximum 30 years
       optimalYears = 30;
     }
 
@@ -84,10 +154,9 @@ export default function UniformMixes() {
 
     const mixes: MortgageMix[] = [];
 
-    // תמהיל 1: 100% ריבית קבועה לא צמודה (5%)
     const mix1: MortgageMix = {
       id: 'uniform-mix-1',
-      name: 'תמהיל אחיד 1 - ריבית קבועה',
+      name: '',
       totalAmount: loanAmount,
       tracks: [{
         id: 'track-1-1',
@@ -95,17 +164,16 @@ export default function UniformMixes() {
         type: 'fixed_unlinked',
         amount: loanAmount,
         percentage: 100,
-        interestRate: 5.0,
+        interestRate: INTEREST_RATES.fixed_unlinked,
         years: optimalYears
       }],
       createdAt: new Date(),
       notes: '100% של המשכנתא בריבית קבועה לא צמודה'
     };
 
-    // תמהיל 2: 50% ריבית קבועה + 50% פריים
     const mix2: MortgageMix = {
       id: 'uniform-mix-2',
-      name: 'תמהיל אחיד 2 - קבועה + פריים',
+      name: '',
       totalAmount: loanAmount,
       tracks: [
         {
@@ -114,7 +182,7 @@ export default function UniformMixes() {
           type: 'fixed_unlinked',
           amount: loanAmount * 0.5,
           percentage: 50,
-          interestRate: 5.0,
+          interestRate: INTEREST_RATES.fixed_unlinked,
           years: optimalYears
         },
         {
@@ -123,7 +191,7 @@ export default function UniformMixes() {
           type: 'prime',
           amount: loanAmount * 0.5,
           percentage: 50,
-          interestRate: 5.7,
+          interestRate: INTEREST_RATES.prime,
           years: optimalYears
         }
       ],
@@ -131,10 +199,9 @@ export default function UniformMixes() {
       notes: '50% ריבית קבועה לא צמודה ו-50% ריבית פריים'
     };
 
-    // תמהיל 3: שליש-שליש-שליש
     const mix3: MortgageMix = {
       id: 'uniform-mix-3',
-      name: 'תמהיל אחיד 3 - מגוון מלא',
+      name: '',
       totalAmount: loanAmount,
       tracks: [
         {
@@ -143,7 +210,7 @@ export default function UniformMixes() {
           type: 'fixed_unlinked',
           amount: loanAmount * (1/3),
           percentage: 33.33,
-          interestRate: 5.0,
+          interestRate: INTEREST_RATES.fixed_unlinked,
           years: optimalYears
         },
         {
@@ -152,21 +219,22 @@ export default function UniformMixes() {
           type: 'prime',
           amount: loanAmount * (1/3),
           percentage: 33.33,
-          interestRate: 5.7,
+          interestRate: INTEREST_RATES.prime,
           years: optimalYears
         },
         {
           id: 'track-3-3',
-          name: 'ריבית משתנה צמודה מדד',
-          type: 'fixed_linked',
+          name: 'משתנה לא צמודה כל 5 שנים',
+          type: 'variable_unlinked',
           amount: loanAmount * (1/3),
           percentage: 33.34,
-          interestRate: 6.0,
+          interestRate: INTEREST_RATES.variable_unlinked_5y,
+          variablePeriod: 5,
           years: optimalYears
         }
       ],
       createdAt: new Date(),
-      notes: 'שליש ריבית קבועה, שליש פריים ושליש משתנה צמודה מדד'
+      notes: 'שליש ריבית קבועה לא צמודה (קל"צ), שליש פריים ושליש משתנה לא צמודה כל 5 שנים'
     };
 
     mixes.push(mix1, mix2, mix3);
@@ -177,20 +245,35 @@ export default function UniformMixes() {
     setShowDetailsModal(mix);
   };
 
+  // Storage key used by the mortgage-advisor tool to persist its state across reloads.
+  // MUST stay in sync with `STORAGE_KEY` in `src/components/mortgage-advisor/MortgageAdvisorTool.tsx`.
+  const ADVISOR_STORAGE_KEY = 'mortgage-advisor-state';
+
   const handleContinueToAdvisor = () => {
-    // Save uniform mixes to localStorage for mortgage advisor
-    const existingAdvisorData = localStorage.getItem('mortgageAdvisorData');
-    let advisorData: { mixes: MortgageMix[], selectedForComparison: any[], activeTab: string } = { mixes: [], selectedForComparison: [], activeTab: 'builder' };
-    
+    // Save uniform mixes to localStorage so the mortgage-advisor screen finds them on mount.
+    const existingAdvisorData = localStorage.getItem(ADVISOR_STORAGE_KEY);
+    let advisorData: { mixes: MortgageMix[]; selectedForComparison: string[]; activeTab: string } = {
+      mixes: [],
+      selectedForComparison: [],
+      activeTab: 'builder',
+    };
+
     if (existingAdvisorData) {
       try {
-        advisorData = JSON.parse(existingAdvisorData);
+        const parsed = JSON.parse(existingAdvisorData);
+        if (parsed && Array.isArray(parsed.mixes)) {
+          advisorData = {
+            mixes: parsed.mixes,
+            selectedForComparison: Array.isArray(parsed.selectedForComparison) ? parsed.selectedForComparison : [],
+            activeTab: parsed.activeTab ?? 'builder',
+          };
+        }
       } catch (error) {
         console.error('Error parsing advisor data:', error);
       }
     }
 
-    // Add uniform mixes to advisor data
+    // Merge the uniform mixes into the advisor state (update if id already exists, else append).
     uniformMixes.forEach(mix => {
       const existingIndex = advisorData.mixes.findIndex((m: MortgageMix) => m.id === mix.id);
       if (existingIndex >= 0) {
@@ -200,9 +283,8 @@ export default function UniformMixes() {
       }
     });
 
-    localStorage.setItem('mortgageAdvisorData', JSON.stringify(advisorData));
-    
-    // Navigate to mortgage advisor
+    localStorage.setItem(ADVISOR_STORAGE_KEY, JSON.stringify(advisorData));
+
     window.location.href = '/mortgage-advisor';
   };
 
@@ -276,10 +358,10 @@ export default function UniformMixes() {
                 סלים אחידים
               </h1>
               <p className="text-xl text-gray-600 mb-4">
-                3 תמהילי משכנתא מומלצים המותאמים לנתונים שלך
+                הסלים האחידים הם 3 תמהילי משכנתא שהבנק מחויב להציג ללקוח על פי הנחיית בנק ישראל
               </p>
               <p className="text-lg text-gray-500">
-                תמהילים סטנדרטיים שנבנו על פי השיטות המקובלות בשוק
+                התמהילים מוצגים להמחשה והשוואה בלבד — לבניית תמהיל משתלם ומותאם אישית עבורך באמצעות כלי בניית התמהילים של משכלנתא או בעזרת מומחה משכלנתא
               </p>
             </motion.div>
 
@@ -294,21 +376,36 @@ export default function UniformMixes() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                   {userData.applicationType === 'couple' ? 'הנתונים המצרפיים שלכם' : 'הנתונים שלך'}
                 </h3>
+                {selection && (
+                  <p className="text-xs text-emerald-700 mb-3 -mt-2">
+                    התמהילים מותאמים למחיר הנכס שבחרת בסליידר במסך התוצאות
+                  </p>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">סוג נכס:</span>
                     <div className="font-medium">{userData.propertyType}</div>
                   </div>
-                  {userData.propertyPrice && (
+                  {(selection?.propertyPrice || userData.propertyPrice) && (
                     <div>
                       <span className="text-gray-600">מחיר נכס:</span>
-                      <div className="font-medium">₪{parseFormattedNumberInput(userData.propertyPrice).toLocaleString()}</div>
+                      <div className="font-medium">
+                        ₪{(
+                          selection?.propertyPrice ??
+                          parseFormattedNumberInput(userData.propertyPrice)
+                        ).toLocaleString()}
+                      </div>
                     </div>
                   )}
-                  {userData.ownCapital && (
+                  {(selection?.ownCapital || userData.ownCapital) && (
                     <div>
                       <span className="text-gray-600">הון עצמי:</span>
-                      <div className="font-medium">₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}</div>
+                      <div className="font-medium">
+                        ₪{(
+                          selection?.ownCapital ??
+                          parseFormattedNumberInput(userData.ownCapital)
+                        ).toLocaleString()}
+                      </div>
                     </div>
                   )}
                   {uniformMixes.length > 0 && (
@@ -328,25 +425,76 @@ export default function UniformMixes() {
             )}
           </div>
 
-          {/* Uniform Mixes Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            {uniformMixes.map((mix, index) => (
-              <motion.div
-                key={mix.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 + (index * 0.1) }}
+          {/* Uniform Mixes Grid.
+              The page is rendered RTL, so the first DOM child lands in the rightmost column.
+              The "Build custom mix" CTA below is placed first so it sits to the RIGHT of the
+              rightmost uniform mix on the screen. */}
+          <div className="text-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">סלים אחידים</h2>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {uniformMixes.map((mix, index) => {
+              const headerConfig =
+                index === 0
+                  ? {
+                      Icon: PieChart,
+                      iconClassName: 'text-blue-600',
+                      title: 'תמהיל 1',
+                      description: '100% ריבית קבועה לא צמודה - יציבות מקסימלית',
+                    }
+                  : index === 1
+                    ? {
+                        Icon: TrendingUp,
+                        iconClassName: 'text-green-600',
+                        title: 'תמהיל 2',
+                        description: '50% קבועה + 50% פריים - איזון בין יציבות לגמישות',
+                      }
+                    : {
+                        Icon: Calculator,
+                        iconClassName: 'text-purple-600',
+                        title: 'תמהיל 3',
+                        description: '33% קל"צ + 33% פריים + 33% משתנה לא צמודה כל 5 שנים',
+                      };
+
+              return (
+                <motion.div
+                  key={mix.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 + (index * 0.1) }}
+                  className="space-y-4"
+                >
+                  <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 text-center">
+                    <headerConfig.Icon className={`w-12 h-12 mx-auto mb-4 ${headerConfig.iconClassName}`} />
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{headerConfig.title}</h4>
+                    <p className="text-sm text-gray-600">{headerConfig.description}</p>
+                  </div>
+
+                  <MortgageMixCard
+                    mix={mix}
+                    onUpdate={() => {}} // Read-only display
+                    onDelete={() => {}} // Read-only display
+                    onDuplicate={() => {}} // Will be handled in advisor
+                    onShowDetails={showDetails}
+                    onAnalyzeScenarios={() => {}} // Will be handled in advisor
+                    hideManagementButtons={true}
+                    showSummaryHeader={true}
+                  />
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="text-center mb-8">
+            <Link href="/custom-mix-builder">
+              <Button
+                size="lg"
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <MortgageMixCard
-                  mix={mix}
-                  onUpdate={() => {}} // Read-only display
-                  onDelete={() => {}} // Read-only display
-                  onDuplicate={() => {}} // Will be handled in advisor
-                  onShowDetails={showDetails}
-                  onAnalyzeScenarios={() => {}} // Will be handled in advisor
-                />
-              </motion.div>
-            ))}
+                <Target className="w-5 h-5 ml-2" />
+                הוסף תמהיל מותאם אישית
+              </Button>
+            </Link>
           </div>
 
           {/* Action Buttons */}
@@ -357,39 +505,15 @@ export default function UniformMixes() {
             className="text-center space-y-6"
           >
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-blue-900 mb-3">
-                מה הלאה?
-              </h3>
-              <p className="text-blue-800 mb-4">
-                התמהילים האחידים הם נקודת התחלה מצוינת. תוכל להעביר אותם ליועץ המשכנתא שלנו לעיבוד נוסף, השוואות ואופטימיזציה
-              </p>
-              {uniformMixes.length > 0 && (
-                <div className="bg-white/80 border border-blue-300 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-blue-700">
-                    <strong>תקופת הפירעון ({uniformMixes[0].tracks[0].years} שנים)</strong> חושבה לפי המינימום בין: 
-                    התקופה המקסימלית לפי גילך (80 - גיל) או 30 שנה - מקסימום 30 שנה בכל מקרה
-                  </p>
-                </div>
-              )}
-              
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/custom-mix-builder">
-                  <Button
-                    size="lg"
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
-                    <Target className="w-5 h-5 ml-2" />
-                    בנה תמהיל מותאם אישית בשבילך
-                  </Button>
-                </Link>
-                
                 <Button
                   onClick={handleContinueToAdvisor}
                   size="lg"
                   className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={uniformMixes.length === 0}
                 >
                   <Calculator className="w-5 h-5 ml-2" />
-                  העבר ליועץ המשכנתא
+                  העזר במומחה משכלנתא
                 </Button>
                 
                 <Link href="/mortgage-planning">
@@ -405,26 +529,6 @@ export default function UniformMixes() {
               </div>
             </div>
 
-            {/* Info Cards */}
-            <div className="grid md:grid-cols-3 gap-6 mt-8">
-              <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 text-center">
-                <PieChart className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">תמהיל 1</h4>
-                <p className="text-sm text-gray-600">100% ריבית קבועה לא צמודה - יציבות מקסימלית</p>
-              </div>
-              
-              <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 text-center">
-                <TrendingUp className="w-12 h-12 text-green-600 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">תמהיל 2</h4>
-                <p className="text-sm text-gray-600">50% קבועה + 50% פריים - איזון בין יציבות לגמישות</p>
-              </div>
-              
-              <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 text-center">
-                <Calculator className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">תמהיל 3</h4>
-                <p className="text-sm text-gray-600">מגוון מלא - פיזור סיכונים מקסימלי</p>
-              </div>
-            </div>
           </motion.div>
         </motion.div>
       </div>

@@ -603,11 +603,20 @@ html {
   font-weight: 600;
 }
 
-/* Hebrew text styling */
-p, span, div {
+/* Hebrew text styling — only apply to elements without an explicit dir attribute,
+   so any `dir="ltr"` (e.g. on slider scales) is honored instead of being overridden. */
+p:not([dir]), span:not([dir]), div:not([dir]) {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   direction: rtl;
   text-align: center;
+}
+
+/* Make sure explicit direction attributes always win over the default RTL above. */
+[dir="ltr"] {
+  direction: ltr;
+}
+[dir="rtl"] {
+  direction: rtl;
 }
 
 /* Custom Animations */

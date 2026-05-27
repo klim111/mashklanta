@@ -36,7 +36,7 @@ import {
   compareMortgageMixes,
   calculateMortgageMix 
 } from './mortgageCalculations';
-import { TRACK_TYPES } from './types';
+import { TRACK_TYPES, formatTrackTypeWithAmortization } from './types';
 import { useCPI } from '@/hooks/useCPI';
 
 interface ComparisonPanelProps {
@@ -133,7 +133,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
                         'bg-purple-500'
                       }`} />
                       <span className="font-semibold">{trackCalc.track.name}</span>
-                      <Badge variant="secondary">{TRACK_TYPES[trackCalc.track.type]}</Badge>
+                      <Badge variant="secondary">{formatTrackTypeWithAmortization(trackCalc.track)}</Badge>
                     </div>
                     <span className="text-lg font-bold">
                       {formatCurrency(trackCalc.monthlyPayment)}

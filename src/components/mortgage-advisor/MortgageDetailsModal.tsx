@@ -42,7 +42,7 @@ import {
   generateAverageInterestChart,
   generatePaymentBreakdownChart
 } from './mortgageCalculations';
-import { TRACK_TYPES } from './types';
+import { TRACK_TYPES, formatTrackTypeWithAmortization } from './types';
 import { useCPI } from '@/hooks/useCPI';
 
 interface MortgageDetailsModalProps {
@@ -209,7 +209,7 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                       <span>{trackCalc.track.name}</span>
                     </div>
                     <Badge variant="secondary">
-                      {TRACK_TYPES[trackCalc.track.type]}
+                      {formatTrackTypeWithAmortization(trackCalc.track)}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
@@ -293,7 +293,7 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                     }`} />
                     לוח סילוקין - {trackCalc.track.name}
                     <Badge variant="secondary">
-                      {TRACK_TYPES[trackCalc.track.type]}
+                      {formatTrackTypeWithAmortization(trackCalc.track)}
                     </Badge>
                   </CardTitle>
                 </CardHeader>

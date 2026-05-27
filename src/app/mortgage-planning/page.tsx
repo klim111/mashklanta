@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Target, TrendingUp, Calculator, Banknote, FileText, Upload } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Target, TrendingUp, Calculator, Banknote, FileText, Upload, Pencil, RotateCcw, X as XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { formatMoneyFields, parseFormattedNumberInput } from '@/lib/currency';
 import NavBar from '@/components/ui/navbar';
 import EquityCalculator from '@/components/ui/equitycalc';
@@ -25,13 +26,16 @@ import {
 import { cn } from '@/lib/utils';
 import {
   calculateMaxProperty,
+  calculateHealthInsuranceMonthly,
   getAffordabilityInputs,
+  getHealthInsuranceRatePer100k,
   defaultMortgagePlanningUserData,
   emptyBorrower,
   createEmptyLoan,
   type MortgagePlanningUserData,
 } from '@/lib/mortgage-affordability';
 import { migrateMortgagePlanningUserData, sumIndividualLoanPayments } from '@/lib/borrower-loans';
+import { INTEREST_RATES } from '@/lib/interest-rates';
 import { LoanManagementOffer } from '@/components/mortgage-planning/LoanManagementOffer';
 import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoansSection';
 
@@ -57,6 +61,27 @@ export default function MortgagePlanning() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [personalInfoFieldErrors, setPersonalInfoFieldErrors] = useState<Record<string, boolean>>({});
   const [existingPropertyFieldErrors, setExistingPropertyFieldErrors] = useState<Record<string, boolean>>({});
+  // Whether to deduct insurance costs from disposable income when computing max monthly payment.
+  // Default: include insurance (per product requirement). User can toggle this off in the results view.
+  const [includeInsurance, setIncludeInsurance] = useState(true);
+  // User-overridden loan period (years) from the results-view slider. When null, the calculated
+  // results.maxLoanPeriod is used as the effective period.
+  const [selectedLoanPeriod, setSelectedLoanPeriod] = useState<number | null>(null);
+  // User-overridden loan amount, controlled by the LTV / loan-amount / monthly-payment sliders
+  // in the results view. When null, the calculated results.maxLoanAmount is used.
+  const [selectedLoanAmount, setSelectedLoanAmount] = useState<number | null>(null);
+  // User-overridden annual interest rate (as a percentage, e.g. 4.85). When null, the default
+  // קל"צ rate from the central rates file is used. Allows users to plug in a personal bank quote
+  // and see all results recalculate accordingly.
+  const [userInterestRateOverride, setUserInterestRateOverride] = useState<number | null>(null);
+  // Whether the inline rate-editor popover (next to the displayed rate) is open.
+  const [isRateEditorOpen, setIsRateEditorOpen] = useState(false);
+  // Local draft value for the rate input while the popover is open.
+  const [rateEditorDraft, setRateEditorDraft] = useState<string>('');
+  // Validation error message for the rate input (e.g. when out of range).
+  const [rateEditorError, setRateEditorError] = useState<string>('');
+  // Ref used to close the popover when the user clicks outside it.
+  const rateEditorRef = useRef<HTMLDivElement | null>(null);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -92,6 +117,31 @@ export default function MortgagePlanning() {
       console.error('Error loading analyzed data:', error);
     }
   }, []);
+
+  // Close the rate-editor popover on outside-click or Escape key for a natural popover UX.
+  useEffect(() => {
+    if (!isRateEditorOpen) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (rateEditorRef.current && target && !rateEditorRef.current.contains(target)) {
+        setIsRateEditorOpen(false);
+      }
+    };
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsRateEditorOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [isRateEditorOpen]);
 
   // Save data to localStorage whenever userData or currentStep changes
   useEffect(() => {
@@ -679,12 +729,11 @@ export default function MortgagePlanning() {
           <Label htmlFor="propertyPrice" className="text-right block mb-2 text-lg font-medium">
             מחיר הנכס
           </Label>
-          <Input
+          <FormattedNumberInput
             id="propertyPrice"
-            type="number"
             placeholder="₪"
             value={userData.propertyPrice}
-            onChange={(e) => setUserData({ ...userData, propertyPrice: e.target.value })}
+            onValueChange={(value) => setUserData({ ...userData, propertyPrice: value })}
             className={cn(
               'text-right text-lg p-4 max-w-sm mx-auto',
               existingPropertyFieldErrors.propertyPrice && fieldErrorClassName
@@ -697,12 +746,11 @@ export default function MortgagePlanning() {
             ההון העצמי שלך
           </Label>
           <div className="flex gap-2 max-w-md mx-auto">
-            <Input
+            <FormattedNumberInput
               id="ownCapitalExisting"
-              type="number"
               placeholder="₪"
               value={userData.ownCapital}
-              onChange={(e) => setUserData({ ...userData, ownCapital: e.target.value })}
+              onValueChange={(value) => setUserData({ ...userData, ownCapital: value })}
               className={cn(
                 'text-right text-lg p-4 flex-1',
                 existingPropertyFieldErrors.ownCapitalExisting && fieldErrorClassName
@@ -745,8 +793,8 @@ export default function MortgagePlanning() {
                     </p>
                     
                     {(() => {
-                      const propertyPrice = parseFloat(userData.propertyPrice);
-                      const ownCapital = parseFloat(userData.ownCapital);
+                      const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+                      const ownCapital = parseFormattedNumberInput(userData.ownCapital);
                       const capitalCheck = checkCapitalSufficiency(propertyPrice, ownCapital, userData.propertyType);
                       
                       const ltvExplanations = {
@@ -1152,10 +1200,170 @@ export default function MortgagePlanning() {
     }
     
     if (userData.calculationType === 'תחשב מה אני יכול להרשות לעצמי') {
-      const results = calculateMaxProperty(userData);
+      const results = calculateMaxProperty(userData, {
+        includeInsurance,
+        interestRateOverride: userInterestRateOverride ?? undefined,
+        // Use the user-selected loan period from the slider so the max property / loan
+        // values shrink for shorter periods (and grow for longer ones, up to the bank max).
+        loanPeriodOverride: selectedLoanPeriod ?? undefined,
+      });
       const aggregated = getAffordabilityInputs(userData);
+      const defaultRate = INTEREST_RATES.fixed_unlinked;
+      const isRateOverridden = userInterestRateOverride !== null;
+
+      // Open the rate-editor popover, pre-filling the input with the currently-effective rate.
+      const openRateEditor = () => {
+        setRateEditorDraft(results.interestRate.toFixed(2));
+        setRateEditorError('');
+        setIsRateEditorOpen(true);
+      };
+
+      // Validate the draft and persist it as the new override; closes the popover on success.
+      const submitRateEditor = () => {
+        const normalized = rateEditorDraft.trim().replace(',', '.');
+        const value = Number(normalized);
+        if (!Number.isFinite(value) || value <= 0) {
+          setRateEditorError('יש להזין ערך מספרי גדול מ-0');
+          return;
+        }
+        if (value > 20) {
+          setRateEditorError('ערך גבוה מדי - יש להזין ריבית שנתית באחוזים (לדוגמה: 4.85)');
+          return;
+        }
+        setUserInterestRateOverride(Math.round(value * 100) / 100);
+        setIsRateEditorOpen(false);
+      };
+
+      // Clear the override and fall back to the central default rate.
+      const resetRateEditor = () => {
+        setUserInterestRateOverride(null);
+        setIsRateEditorOpen(false);
+      };
       const isCouple = userData.applicationType === 'couple';
-      
+
+      // Effective loan period: user override from slider, else the bank-allowed maximum.
+      const effectiveLoanPeriod = selectedLoanPeriod ?? results.maxLoanPeriod;
+
+      // Effective loan amount: user override from any of the three sliders below,
+      // else the calculated maximum. All other displayed values derive from this.
+      const effectiveLoanAmount = Math.max(
+        0,
+        selectedLoanAmount ?? results.maxLoanAmount
+      );
+      const effectivePropertyPrice = aggregated.ownCapital + effectiveLoanAmount;
+      const effectiveLTV =
+        effectivePropertyPrice > 0
+          ? (effectiveLoanAmount / effectivePropertyPrice) * 100
+          : 0;
+
+      // Bank-of-Israel maximum LTV per property type.
+      const maxLTVByPropertyType: Record<string, number> = {
+        'דירה ראשונה': 75,
+        'דירה חליפית': 70,
+        'דירה להשקעה': 50,
+        'משכנתא לכל מטרה': 50,
+      };
+      const maxLTVPct = maxLTVByPropertyType[userData.propertyType] ?? 50;
+
+      // PMT-based monthly payment for the (variable) loan amount at the chosen period.
+      const calcMonthlyPmt = (principal: number, annualRate: number, years: number) => {
+        if (principal <= 0 || years <= 0) return 0;
+        const r = annualRate / 12;
+        const n = years * 12;
+        if (r === 0) return principal / n;
+        return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+      };
+      const displayMonthlyPayment = Math.floor(
+        calcMonthlyPmt(effectiveLoanAmount, results.interestRate / 100, effectiveLoanPeriod)
+      );
+
+      // Insurance breakdown.
+      // - Property insurance is fixed (it depends on apartment area and reinstatement value, not the loan).
+      // - Health/life insurance scales linearly with the insured loan amount.
+      const propertyInsuranceMonthly = results.includesInsurance
+        ? results.propertyInsuranceMonthly
+        : 0;
+      const healthInsuranceRatePer100k = results.includesInsurance
+        ? getHealthInsuranceRatePer100k(aggregated.age)
+        : 0;
+      const effectiveHealthInsuranceMonthly = results.includesInsurance
+        ? Math.round(calculateHealthInsuranceMonthly(effectiveLoanAmount, aggregated.age))
+        : 0;
+      const effectiveTotalInsuranceMonthly =
+        propertyInsuranceMonthly + effectiveHealthInsuranceMonthly;
+      const displayTotalMonthly = displayMonthlyPayment + effectiveTotalInsuranceMonthly;
+
+      // Bank-of-Israel limit violations (used to color values red and explain the breach).
+      const exceedsMaxPayment = displayMonthlyPayment > results.maxMonthlyPayment;
+      const exceedsMaxLoan = effectiveLoanAmount > results.maxLoanAmount + 0.5;
+      const exceedsMaxLTV = effectiveLTV > maxLTVPct + 0.05;
+      const anyLimitBreached = exceedsMaxPayment || exceedsMaxLoan || exceedsMaxLTV;
+
+      // Annuity factor at the current rate and period (used by the payment slider to map a chosen
+      // monthly payment back to a loan amount).
+      const monthlyInterestRate = results.interestRate / 100 / 12;
+      const numPaymentsCount = effectiveLoanPeriod * 12;
+      const annuityFactor =
+        monthlyInterestRate > 0 && numPaymentsCount > 0
+          ? (1 - Math.pow(1 + monthlyInterestRate, -numPaymentsCount)) / monthlyInterestRate
+          : numPaymentsCount;
+
+      // Slider handlers — every slider funnels into selectedLoanAmount so all values stay in sync.
+      const handleLTVSliderChange = (newPct: number) => {
+        if (aggregated.ownCapital <= 0) return;
+        const newLtvRatio = Math.min(0.99, Math.max(0, newPct / 100));
+        const newLoan = (aggregated.ownCapital * newLtvRatio) / (1 - newLtvRatio);
+        setSelectedLoanAmount(Math.max(0, Math.round(newLoan)));
+      };
+      const handleLoanAmountSliderChange = (newLoan: number) => {
+        setSelectedLoanAmount(Math.max(0, Math.round(newLoan)));
+      };
+      // The payment slider operates on the TOTAL monthly payment (bank installment + health/life
+      // insurance + property insurance) — i.e. the same figure that the Bank-of-Israel 40% rule
+      // applies to. Given a desired total T, solve for the loan L such that:
+      //   T = L / annuityFactor + L × healthRate / 100,000 + propertyInsurance
+      // ⇒ L = (T − propertyInsurance) / (1/annuityFactor + healthRate / 100,000)
+      const handleMonthlyPaymentSliderChange = (newTotal: number) => {
+        if (annuityFactor <= 0) return;
+        const denominator =
+          1 / annuityFactor + healthInsuranceRatePer100k / 100_000;
+        if (denominator <= 0) return;
+        const bankAndHealth = Math.max(0, newTotal - propertyInsuranceMonthly);
+        const newLoan = bankAndHealth / denominator;
+        setSelectedLoanAmount(Math.max(0, Math.round(newLoan)));
+      };
+
+      // Slider upper bounds (per the user's requirements).
+      const ltvSliderMax = maxLTVPct;
+      const loanSliderMax = Math.max(0, results.maxLoanAmount);
+      // The payment slider's natural max is the maximum TOTAL monthly payment that can actually
+      // be reached given ALL Bank-of-Israel constraints (the 40% income rule AND the LTV cap).
+      // It is computed as the total payment when the loan equals results.maxLoanAmount — i.e. the
+      // upper-bound loan we already enforce on the loan-amount slider. This guarantees the user
+      // cannot drag the payment slider to a value that would push the property price above its
+      // calculated maximum.
+      const maxBankPaymentAtMaxLoan = Math.floor(
+        calcMonthlyPmt(
+          results.maxLoanAmount,
+          results.interestRate / 100,
+          effectiveLoanPeriod
+        )
+      );
+      const paymentSliderMax = Math.max(
+        0,
+        maxBankPaymentAtMaxLoan + results.totalInsuranceMonthly
+      );
+      // Step sizes that feel natural for each domain.
+      const loanSliderStep = Math.max(1000, Math.round(loanSliderMax / 500 / 1000) * 1000);
+      const paymentSliderStep = Math.max(50, Math.round(paymentSliderMax / 500 / 50) * 50);
+
+      // Slider values clamped into their visual range. When a derived value exceeds the slider's
+      // upper bound (only the LTV slider can drive this), the thumb sits at the maximum and a red
+      // overflow value is displayed beside it.
+      const ltvSliderValue = Math.min(ltvSliderMax, Math.max(0, effectiveLTV));
+      const loanSliderValue = Math.min(loanSliderMax, effectiveLoanAmount);
+      const paymentSliderValue = Math.min(paymentSliderMax, displayTotalMonthly);
+
       return (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1163,110 +1371,259 @@ export default function MortgagePlanning() {
           transition={{ duration: 0.6 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
               התוצאות שלך
             </h2>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 inline-block shadow-sm">
-              <h3 className="text-xl font-bold text-blue-800 mb-2">
-                חישוב עבור {userData.propertyType}
-              </h3>
-              <p className="text-blue-700 font-medium">
-                {userData.propertyType === 'דירה ראשונה' && 'עם 75% מימון מקסימלי'}
-                {userData.propertyType === 'דירה חליפית' && 'עם 70% מימון מקסימלי'}
-                {userData.propertyType === 'דירה להשקעה' && 'עם 50% מימון מקסימלי'}
-                {userData.propertyType === 'משכנתא לכל מטרה' && 'עם 50% מימון מקסימלי'}
-              </p>
-              <p className="text-blue-600 text-sm mt-1">
-                תקופת משכנתא מקסימלית: {results.maxLoanPeriod} שנים
-                {isCouple ? ' (לפי גיל הלווה הצעיר)' : ' (80 - גילך)'}
-                {' '}| ריבית ממוצעת: {results.interestRate}%
-                {isCouple && ' (תנאי זוג)'}
-              </p>
-            </div>
+            <p className="text-sm md:text-base text-gray-700 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <span className="font-bold">הנתונים שלך:</span>
+              <span>
+                גיל <span className="font-semibold">{aggregated.age || '—'}</span>
+                {isCouple ? ' (הלווה הצעיר)' : ''}
+              </span>
+              <span className="text-gray-400">|</span>
+              <span>
+                הון עצמי{' '}
+                <span className="font-semibold">
+                  ₪{aggregated.ownCapital.toLocaleString()}
+                </span>
+              </span>
+              <span className="text-gray-400">|</span>
+              <span>
+                הכנסה פנויה{' '}
+                <span className="font-semibold">
+                  ₪{aggregated.disposableIncome.toLocaleString()}
+                </span>
+              </span>
+            </p>
             {isCouple && (
-              <p className="text-sm text-green-700 mb-4">
-                חישוב משוקלל לזוג — ריבית מועדפת בזכות פיזור הסיכון בבנקים
+              <p className="text-xs text-green-700 mt-1">
+                חישוב משוקלל לזוג — הכנסה משותפת ופיזור סיכון בין שני הלווים
               </p>
             )}
-            <p className="text-lg text-gray-600">
-              בהתבסס על הנתונים שהזנת, הנה מה ש{isCouple ? 'אתם יכולים' : 'אתה יכול'} להרשות לעצמ{isCouple ? 'כם' : 'ך'}
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* Simulation rate note — sits above the row of result cards.
+              The rate is clickable: opens an inline editor that lets the user plug in a
+              personal bank quote; all downstream results recalculate accordingly. The number
+              of years is bound to the loan-period slider so it stays in sync. */}
+          <div className="text-center mb-3 text-xs text-gray-600 flex items-center justify-center gap-1.5 flex-wrap">
+            <span>
+              הסימולציה מחושבת לפי ריבית קבוע לא צמודה (קל&quot;ץ){' '}
+              {isRateOverridden ? 'שהזנת' : 'משוערת'} של{' '}
+              <span ref={rateEditorRef} className="relative inline-block align-middle">
+                <button
+                  type="button"
+                  onClick={() => (isRateEditorOpen ? setIsRateEditorOpen(false) : openRateEditor())}
+                  className={cn(
+                    'font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-dashed transition-colors duration-150 cursor-pointer',
+                    isRateOverridden
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      : 'border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100'
+                  )}
+                  title="לחץ כדי להזין את הריבית שקיבלת מהבנק"
+                  aria-haspopup="dialog"
+                  aria-expanded={isRateEditorOpen}
+                >
+                  {results.interestRate.toFixed(2)}%
+                  <Pencil className="w-3 h-3 opacity-70" aria-hidden="true" />
+                </button>
+
+                <AnimatePresence>
+                  {isRateEditorOpen && (
+                    <motion.div
+                      role="dialog"
+                      aria-label="עריכת ריבית הסימולציה"
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-40 top-full mt-2 left-1/2 -translate-x-1/2 w-[20rem] max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-xl shadow-xl p-4 text-right text-gray-800 font-normal"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900">
+                            הזן את הריבית שקיבלת מהבנק
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            כל החישובים יתעדכנו אוטומטית לפי הריבית שתזין
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsRateEditorOpen(false)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          aria-label="סגור"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="relative mt-2">
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.01"
+                          min="0"
+                          autoFocus
+                          value={rateEditorDraft}
+                          onChange={(event) => {
+                            setRateEditorDraft(event.target.value);
+                            if (rateEditorError) setRateEditorError('');
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              submitRateEditor();
+                            }
+                          }}
+                          placeholder="לדוגמה: 4.85"
+                          className="pr-8 text-right font-semibold text-base"
+                          aria-invalid={Boolean(rateEditorError)}
+                          aria-describedby={rateEditorError ? 'rate-editor-error' : undefined}
+                        />
+                        <span className="absolute inset-y-0 right-3 flex items-center text-gray-500 text-sm pointer-events-none">
+                          %
+                        </span>
+                      </div>
+
+                      {rateEditorError && (
+                        <p
+                          id="rate-editor-error"
+                          className="text-xs text-red-600 mt-1.5"
+                          role="alert"
+                        >
+                          {rateEditorError}
+                        </p>
+                      )}
+
+                      <div className="flex flex-col gap-2 mt-3">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={submitRateEditor}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          שמור וחשב מחדש
+                        </Button>
+                        {isRateOverridden && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={resetRateEditor}
+                            className="w-full text-gray-700 border-gray-300 hover:bg-gray-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 ml-1.5" />
+                            חזור לריבית המשוערת ({defaultRate.toFixed(2)}%)
+                          </Button>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </span>{' '}
+              ל-<span className="font-semibold">{effectiveLoanPeriod}</span> שנים
+            </span>
+            <span className="relative group inline-block align-middle cursor-pointer">
+              <span className="w-4 h-4 bg-gray-200 hover:bg-gray-300 rounded-full inline-flex items-center justify-center transition-colors duration-200 align-middle">
+                <svg
+                  className="w-3 h-3 text-gray-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+              <span className="absolute left-1/2 -translate-x-1/2 top-6 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-30 text-sm text-gray-700 font-normal text-right whitespace-normal">
+                לחיצה על הריבית מאפשרת להזין את ההצעה שקיבלת מהבנק - כל החישובים יתעדכנו בהתאם.
+                הריבית המשוערת נועדה לסימולציה בלבד; הריביות הסופיות כפופות להיסטוריית האשראי של
+                הלקוח, לאופן בניית התמהיל, אחוז המימון, תקופת המשכנתא ולתוצאות תהליך המיקוח מול
+                הגופים הממנים.
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-200 transform rotate-45" />
+              </span>
+            </span>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 lg:grid-flow-row-dense gap-3 mb-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-between">
+              <Card className="p-4 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-900">מחיר נכס מקסימלי</h3>
-                    {results.limitingFactor === 'payment' && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.3, delay: 0.5 }}
-                        className="relative group cursor-pointer"
-                      >
-                        <div className="w-6 h-6 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors duration-200">
-                          <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        
-                        {/* Tooltip on hover */}
-                        <div className="absolute right-0 top-8 w-80 bg-white border border-gray-200 rounded-lg shadow-lg p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
-                          <div className="text-sm">
-                            <p className="font-semibold text-gray-900 mb-2">למה הסכום הזה?</p>
-                            <p className="text-gray-700 mb-2">
-                              המחיר מוגבל לפי יכולת ההחזר החודשי שלך (₪{results.maxMonthlyPayment.toLocaleString()}) 
-                              בריבית של {results.interestRate}%.
-                            </p>
-                            <p className="text-blue-600 font-medium">
-                              שיפור בריביות יכול להגדיל את הסכום!
-                            </p>
-                          </div>
-                          <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                  
-                  <p className="text-3xl font-bold text-blue-600 mb-4">
-                    ₪{results.maxPropertyPrice.toLocaleString()}
-                  </p>
-                  
-                  <p className="text-gray-600 text-sm mb-4">זה המחיר המקסימלי של נכס שאתה יכול להרשות לעצמך</p>
-                  
-                  {results.limitingFactor === 'payment' && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      transition={{ duration: 0.4, delay: 0.6 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                        <p className="text-sm text-blue-800 font-medium mb-2">
-                          המחיר מוגבל לפי החזר חודשי מקסימלי
-                        </p>
-                        <p className="text-xs text-blue-700">
-                          החזר מקסימלי: ₪{results.maxMonthlyPayment.toLocaleString()} | ריבית: {results.interestRate}% | תקופה: {results.maxLoanPeriod} שנים
-                        </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {effectivePropertyPrice >= results.maxPropertyPrice && !exceedsMaxLoan && !exceedsMaxLTV
+                        ? 'מחיר נכס מקסימלי'
+                        : 'מחיר הנכס'}
+                    </h3>
+                    <div className="relative group cursor-pointer">
+                      <div className="w-5 h-5 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors duration-200">
+                        <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
                       </div>
-                      <Link href="/uniform-mixes">
-                        <Button
-                          size="sm"
-                          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm py-2 shadow-md hover:shadow-lg transition-all duration-300"
-                        >
-                          <Target className="w-4 h-4 ml-2" />
-                          בוא המשך לתכנון המשכנתא
-                        </Button>
-                      </Link>
-                    </motion.div>
-                  )}
+                      <div className="absolute right-0 top-7 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-10">
+                        <div className="text-xs text-right">
+                          <p className="font-semibold text-gray-900 mb-1">איך זה מחושב?</p>
+                          <p className="text-gray-700 mb-1">
+                            מחיר הנכס נגזר מההון העצמי שלך ומאחוז המימון שתבחר —
+                            מחיר נכס = הון עצמי ÷ (1 - אחוז מימון).
+                          </p>
+                          <p className="text-blue-600 font-medium">
+                            הזזת הסליידר תשנה את כל הערכים בעמוד בהתאם.
+                          </p>
+                        </div>
+                        <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-2xl font-bold text-blue-600 mb-1">
+                    ₪{effectivePropertyPrice.toLocaleString()}
+                  </p>
+
+                  <p className="text-gray-600 text-xs mb-2">
+                    אחוז מימון מקסימלי מותר ל
+                    {userData.propertyType ? userData.propertyType : 'נכס'}:{' '}
+                    <span className="font-semibold text-gray-800">{maxLTVPct}%</span>
+                  </p>
+
+                  <div className="mb-1">
+                    <div className="flex justify-between items-baseline mb-2.5">
+                      <span className="text-xs text-gray-700">
+                        אחוז מימון נבחר:{' '}
+                        <span className="font-semibold text-blue-700">
+                          {effectiveLTV.toFixed(1)}%
+                        </span>
+                      </span>
+                      <span className="text-xs text-gray-500">עד {maxLTVPct}%</span>
+                    </div>
+                    <div dir="ltr">
+                      <Slider
+                        dir="ltr"
+                        value={[ltvSliderValue]}
+                        onValueChange={([v]) => handleLTVSliderChange(v)}
+                        min={0}
+                        max={ltvSliderMax}
+                        step={0.5}
+                        disabled={aggregated.ownCapital <= 0}
+                      />
+                      <div
+                        className="flex justify-between text-xs text-gray-500 mt-1"
+                        dir="ltr"
+                      >
+                        <span>0%</span>
+                        <span>{maxLTVPct}%</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Card>
             </motion.div>
@@ -1276,14 +1633,97 @@ export default function MortgagePlanning() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-between">
+              <Card
+                className={`p-4 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between ${
+                  exceedsMaxLoan ? 'border-2 border-red-300 bg-red-50/30' : ''
+                }`}
+              >
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">סכום משכנתא מקסימלי</h3>
-                  <p className="text-3xl font-bold text-green-600 mb-2">
-                    ₪{results.maxLoanAmount.toLocaleString()}
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    {effectiveLoanAmount >= loanSliderMax && !exceedsMaxLoan
+                      ? 'סכום משכנתא מקסימלי'
+                      : 'סכום משכנתא'}
+                  </h3>
+                  <p
+                    className={`text-2xl font-bold mb-1 ${
+                      exceedsMaxLoan ? 'text-red-600' : 'text-green-600'
+                    }`}
+                  >
+                    ₪{effectiveLoanAmount.toLocaleString()}
                   </p>
+                  {(() => {
+                    const totalPaid = displayMonthlyPayment * 12 * effectiveLoanPeriod;
+                    const totalInterest = Math.max(0, totalPaid - effectiveLoanAmount);
+                    return (
+                      <div className="space-y-0.5 text-xs mb-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">
+                            לאורך {effectiveLoanPeriod} שנים ישולמו
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            ₪{Math.round(totalPaid).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">מתוכם תשלום עבור הריביות</span>
+                          <span className="font-semibold text-gray-900">
+                            ₪{Math.round(totalInterest).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="mb-1">
+                    <div className="flex justify-between items-baseline mb-2.5">
+                      <span className="text-xs text-gray-700">סכום משכנתא נבחר</span>
+                      <span className="text-xs text-gray-500">
+                        עד ₪{loanSliderMax.toLocaleString()}
+                      </span>
+                    </div>
+                    <div dir="ltr">
+                      <Slider
+                        dir="ltr"
+                        value={[loanSliderValue]}
+                        onValueChange={([v]) => handleLoanAmountSliderChange(v)}
+                        min={0}
+                        max={loanSliderMax}
+                        step={loanSliderStep}
+                        disabled={loanSliderMax <= 0}
+                      />
+                      <div
+                        className="flex justify-between text-xs text-gray-500 mt-1"
+                        dir="ltr"
+                      >
+                        <span>₪0</span>
+                        <span>₪{loanSliderMax.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-gray-600 text-sm">זה הסכום המקסימלי שתוכל לקחת במשכנתא</p>
+
+                {exceedsMaxLoan && (
+                  <div className="mt-3 flex items-start gap-2 bg-red-100 border border-red-300 rounded-md p-2">
+                    <svg
+                      className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <p className="text-xs text-red-800 leading-snug">
+                      חרגת ממגבלת בנק ישראל — סכום המשכנתא חורג מהמותר ביחס להחזר חודשי
+                      (לא יותר מ-40% מההכנסה הפנויה).
+                      <span className="block text-red-700 mt-0.5">
+                        סכום מקסימלי מאושר: ₪{results.maxLoanAmount.toLocaleString()}
+                      </span>
+                    </p>
+                  </div>
+                )}
               </Card>
             </motion.div>
 
@@ -1292,14 +1732,167 @@ export default function MortgagePlanning() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-between">
+              <Card
+                className={`p-4 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between ${
+                  exceedsMaxPayment ? 'border-2 border-red-300 bg-red-50/30' : ''
+                }`}
+              >
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">החזר חודשי בפועל</h3>
-                  <p className="text-3xl font-bold text-purple-600 mb-2">
-                    ₪{results.actualMonthlyPayment.toLocaleString()}
-                  </p>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">החזר חודשי צפוי</h3>
+                  {results.includesInsurance ? (
+                    <>
+                      <p
+                        className={`text-2xl font-bold mb-1 ${
+                          exceedsMaxPayment ? 'text-red-600' : 'text-purple-600'
+                        }`}
+                      >
+                        ₪{displayTotalMonthly.toLocaleString()}
+                      </p>
+                      <div className="space-y-0.5 text-xs mb-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">החזר על חשבון לבנק</span>
+                          <span
+                            className={`font-medium ${
+                              exceedsMaxPayment ? 'text-red-700' : 'text-gray-900'
+                            }`}
+                          >
+                            ₪{displayMonthlyPayment.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">תשלום עבור ביטוחים</span>
+                          <span className="font-medium text-gray-900">
+                            ₪{effectiveTotalInsuranceMonthly.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-200 pt-0.5 mt-0.5">
+                          <span className="font-semibold text-gray-700">סה״כ חודשי</span>
+                          <span
+                            className={`font-bold ${
+                              exceedsMaxPayment ? 'text-red-600' : 'text-purple-600'
+                            }`}
+                          >
+                            ₪{displayTotalMonthly.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p
+                      className={`text-2xl font-bold mb-1 ${
+                        exceedsMaxPayment ? 'text-red-600' : 'text-purple-600'
+                      }`}
+                    >
+                      ₪{displayMonthlyPayment.toLocaleString()}
+                    </p>
+                  )}
+
+                  <div className="mb-1">
+                    <div className="flex justify-between items-baseline mb-2.5">
+                      <span className="text-xs text-gray-700">
+                        החזר חודשי נבחר:{' '}
+                        <span
+                          className={`font-semibold ${
+                            exceedsMaxPayment ? 'text-red-700' : 'text-purple-700'
+                          }`}
+                        >
+                          ₪{displayTotalMonthly.toLocaleString()}
+                        </span>
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        עד ₪{paymentSliderMax.toLocaleString()}
+                      </span>
+                    </div>
+                    <div dir="ltr">
+                      <Slider
+                        dir="ltr"
+                        value={[paymentSliderValue]}
+                        onValueChange={([v]) => handleMonthlyPaymentSliderChange(v)}
+                        min={0}
+                        max={paymentSliderMax}
+                        step={paymentSliderStep}
+                        disabled={paymentSliderMax <= 0}
+                      />
+                      <div
+                        className="flex justify-between text-xs text-gray-500 mt-1"
+                        dir="ltr"
+                      >
+                        <span>₪0</span>
+                        <span>₪{paymentSliderMax.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      מקסימום לפי בנק ישראל: 40% מההכנסה הפנויה
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIncludeInsurance((prev) => !prev)}
+                        className={`whitespace-nowrap text-xs h-6 px-2 ${
+                          results.includesInsurance
+                            ? 'border-indigo-300 text-indigo-700 hover:bg-indigo-100'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {results.includesInsurance
+                          ? 'התעלם מעלויות הביטוח'
+                          : 'כלול עלויות ביטוחים'}
+                      </Button>
+                      <div className="relative group inline-block align-middle cursor-pointer">
+                        <span className="w-5 h-5 bg-indigo-100 hover:bg-indigo-200 rounded-full inline-flex items-center justify-center transition-colors duration-200">
+                          <svg className="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-7 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-20 text-sm text-gray-700 font-normal text-right whitespace-normal">
+                          {results.includesInsurance ? (
+                            <>
+                              <span className="block font-medium text-indigo-800 mb-1">
+                                ההחזר החודשי המקסימלי חושב בהתחשב בעלויות הביטוח
+                              </span>
+                              <span className="block text-xs text-indigo-600">
+                                לפי שטח דירה של {results.apartmentAreaSqm} מ״ר וערך כינון ממוצע של
+                                ₪{results.reinstatementCostPerSqm.toLocaleString()} למטר.
+                              </span>
+                            </>
+                          ) : (
+                            <span className="block font-medium text-gray-700">
+                              ההחזר החודשי המקסימלי חושב ללא עלויות ביטוח
+                            </span>
+                          )}
+                          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-200 transform rotate-45" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-gray-600 text-sm">ההחזר החודשי בפועל עבור המשכנתא המחושבת</p>
+
+                {exceedsMaxPayment ? (
+                  <div className="mt-3 flex items-start gap-2 bg-red-100 border border-red-300 rounded-md p-2">
+                    <svg
+                      className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <p className="text-xs text-red-800 leading-snug">
+                      חרגת ממגבלת בנק ישראל — יחס ההחזר החודשי לא יעלה על 40% מההכנסה הפנויה.
+                      <span className="block text-red-700 mt-0.5">
+                        החזר חודשי מקסימלי מאושר: ₪{results.maxMonthlyPayment.toLocaleString()}
+                      </span>
+                    </p>
+                  </div>
+                ) : null}
               </Card>
             </motion.div>
 
@@ -1307,17 +1900,38 @@ export default function MortgagePlanning() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
+              className="md:col-span-2 lg:col-span-3"
             >
-              <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">תקופת משכנתא מקסימלית</h3>
-                  <p className="text-3xl font-bold text-orange-600 mb-2">
-                    {results.maxLoanPeriod} שנים
-                  </p>
+              <Card className="p-3 hover:shadow-lg transition-shadow duration-300">
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
+                  <div className="md:w-1/4 md:flex-shrink-0 flex items-baseline gap-2">
+                    <h3 className="text-lg font-bold text-gray-900">תקופת משכנתא:</h3>
+                    <p className="text-xl font-bold text-orange-600">
+                      {effectiveLoanPeriod} שנים
+                    </p>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div dir="ltr">
+                      <Slider
+                        dir="ltr"
+                        value={[effectiveLoanPeriod]}
+                        onValueChange={([v]) => setSelectedLoanPeriod(v)}
+                        min={5}
+                        max={30}
+                        step={1}
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-0.5" dir="ltr">
+                        <span>5</span>
+                        <span>30</span>
+                      </div>
+                    </div>
+                    <p className="text-gray-600 text-xs mt-1">
+                      התקופה המקסימלית שהבנק יאשר:{' '}
+                      <span className="font-semibold">{results.maxLoanPeriod} שנים</span>
+                      {isCouple ? ' (לפי גיל הלווה הצעיר)' : ' (80 פחות גילך)'}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-gray-600 text-sm">
-                  {isCouple ? 'תקופת המשכנתא המקסימלית לפי גיל הלווה הצעיר' : 'תקופת המשכנתא המקסימלית לפי גילך'}
-                </p>
               </Card>
             </motion.div>
 
@@ -1325,137 +1939,231 @@ export default function MortgagePlanning() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="md:col-span-2"
+              className="md:col-span-2 lg:col-span-3"
             >
-              <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">
-                  {isCouple ? 'סיכום נתונים מצרפיים' : 'פרטים נוספים'}
+              <Card className="p-4 hover:shadow-lg transition-shadow duration-300">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  {isCouple ? 'סיכום נתונים מצרפיים' : 'סיכום פרטים'}
                 </h3>
-                <div className="space-y-3">
-                  <p><span className="font-semibold">אחוז מימון בפועל:</span> {results.maxLTV}%</p>
-                  {isCouple ? (
+                {(() => {
+                  const loanCount = isCouple
+                    ? (userData.borrower1.loans?.length || 0) + (userData.borrower2.loans?.length || 0)
+                    : (userData.loans?.length || 0);
+                  const loansLabel =
+                    (isCouple ? 'סה״כ הלוואות קיימות' : 'הלוואות קיימות') +
+                    (loanCount > 1 ? ` (${loanCount})` : '');
+                  const remainingAfterMortgage =
+                    aggregated.disposableIncome -
+                    displayMonthlyPayment -
+                    effectiveTotalInsuranceMonthly;
+                  const totalPaidOverPeriod =
+                    displayMonthlyPayment * 12 * effectiveLoanPeriod;
+                  const totalInterestOverPeriod = Math.max(
+                    0,
+                    totalPaidOverPeriod - effectiveLoanAmount
+                  );
+                  return (
                     <>
-                      <p><span className="font-semibold">הון עצמי משפחתי:</span> ₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}</p>
-                      <p><span className="font-semibold">סה״כ הכנסה חודשית:</span> ₪{aggregated.income.toLocaleString()}</p>
-                      <p><span className="font-semibold">הכנסה פנויה:</span> ₪{aggregated.disposableIncome.toLocaleString()}</p>
-                      {aggregated.loanPayment > 0 && (
-                        <p><span className="font-semibold">סה״כ החזרי הלוואות:</span> ₪{aggregated.loanPayment.toLocaleString()}</p>
-                      )}
-                      <p><span className="font-semibold">גיל לחישוב תקופה:</span> {aggregated.age}</p>
+                      {/* Top row — inputs with vertical separators and a light tinted background
+                          (mirrors the data line under "התוצאות שלך"). */}
+                      <div className="bg-blue-50 border border-blue-100 rounded-md px-3 py-2 mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+                        <span>
+                          <span className="font-semibold">
+                            {isCouple ? 'הון עצמי משפחתי:' : 'ההון העצמי שלך:'}
+                          </span>{' '}
+                          ₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}
+                        </span>
+                        <span className="text-gray-400" aria-hidden="true">|</span>
+                        <span>
+                          <span className="font-semibold">
+                            {isCouple ? 'סה״כ הכנסה חודשית:' : 'הכנסה חודשית:'}
+                          </span>{' '}
+                          ₪{aggregated.income.toLocaleString()}
+                        </span>
+                        <span className="text-gray-400" aria-hidden="true">|</span>
+                        <span>
+                          <span className="font-semibold">{loansLabel}:</span>{' '}
+                          ₪{aggregated.loanPayment.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Second row — computed ratios + disposable income, styled like the
+                          first row but in an indigo tint so the two pill-rows feel related yet distinct. */}
+                      <div className="bg-indigo-50 border border-indigo-100 rounded-md px-3 py-2 mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+                        <span>
+                          <span className="font-semibold">אחוז מימון נבחר:</span>{' '}
+                          <span className={exceedsMaxLTV ? 'text-red-600 font-semibold' : ''}>
+                            {effectiveLTV.toFixed(1)}%
+                          </span>
+                        </span>
+                        <span className="text-gray-400" aria-hidden="true">|</span>
+                        <span>
+                          <span className="font-semibold">יחס החזר מההכנסה הפנויה:</span>{' '}
+                          {aggregated.disposableIncome > 0 ? (
+                            <span className={exceedsMaxPayment ? 'text-red-600 font-semibold' : ''}>
+                              {Math.round((displayMonthlyPayment / aggregated.disposableIncome) * 1000) / 10}%
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </span>
+                        <span className="text-gray-400" aria-hidden="true">|</span>
+                        <span>
+                          <span className="font-semibold">
+                            {isCouple
+                              ? 'יש לכם כסף פנוי בלי משכנתא:'
+                              : 'יש לך כסף פנוי בלי משכנתא:'}
+                          </span>{' '}
+                          ₪{aggregated.disposableIncome.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Third row — bottom-line outcomes: money left after the mortgage,
+                          total paid over the loan period, and the interest portion of that total.
+                          Same pill shape as the rows above, in an emerald tint for distinction. */}
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-md px-3 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+                        <span>
+                          <span className="font-semibold">
+                            {isCouple
+                              ? 'נשאר לכם לאחר תשלומי המשכנתא:'
+                              : 'נשאר לך לאחר תשלומי המשכנתא:'}
+                          </span>{' '}
+                          <span
+                            className={
+                              remainingAfterMortgage < 0 ? 'text-red-600 font-semibold' : ''
+                            }
+                          >
+                            ₪{Math.round(remainingAfterMortgage).toLocaleString()}
+                          </span>
+                        </span>
+                        <span className="text-gray-400" aria-hidden="true">|</span>
+                        <span>
+                          <span className="font-semibold">
+                            לאורך {effectiveLoanPeriod} שנים ישולמו:
+                          </span>{' '}
+                          ₪{Math.round(totalPaidOverPeriod).toLocaleString()}
+                        </span>
+                        <span className="text-gray-400" aria-hidden="true">|</span>
+                        <span>
+                          <span className="font-semibold">מתוכם עבור הריביות:</span>{' '}
+                          ₪{Math.round(totalInterestOverPeriod).toLocaleString()}
+                        </span>
+                      </div>
                     </>
-                  ) : (
-                    <>
-                      <p><span className="font-semibold">ההון העצמי שלך:</span> ₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}</p>
-                      <p><span className="font-semibold">הכנסה חודשית:</span> ₪{parseFormattedNumberInput(userData.monthlyIncome).toLocaleString()}</p>
-                      {aggregated.loanPayment > 0 && (
-                        <p><span className="font-semibold">החזר הלוואות קיימות:</span> ₪{aggregated.loanPayment.toLocaleString()}</p>
-                      )}
-                    </>
-                  )}
-                </div>
+                  );
+                })()}
+
+                {anyLimitBreached && (
+                  <div className="mt-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-md p-3">
+                    <svg
+                      className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div className="text-sm text-red-800 leading-snug">
+                      <p className="font-semibold mb-1">חרגת ממגבלות בנק ישראל</p>
+                      <ul className="list-disc pr-5 space-y-0.5">
+                        {exceedsMaxLTV && (
+                          <li>
+                            אחוז המימון ({effectiveLTV.toFixed(1)}%) חורג מהמקסימום המותר לנכס
+                            מסוג {userData.propertyType} ({maxLTVPct}%).
+                          </li>
+                        )}
+                        {exceedsMaxPayment && (
+                          <li>
+                            ההחזר החודשי חורג מ-40% מההכנסה הפנויה (מקסימום מאושר: ₪
+                            {results.maxMonthlyPayment.toLocaleString()}).
+                          </li>
+                        )}
+                        {exceedsMaxLoan && !exceedsMaxPayment && (
+                          <li>
+                            סכום המשכנתא חורג מהסכום המקסימלי המאושר (₪
+                            {results.maxLoanAmount.toLocaleString()}).
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </Card>
             </motion.div>
           </div>
-
-          {/* Explanation of calculation basis */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className={`border rounded-lg p-4 mb-6 ${
-              results.limitingFactor === 'payment' 
-                ? 'bg-blue-50 border-blue-200' 
-                : 'bg-green-50 border-green-200'
-            }`}
-          >
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                {results.limitingFactor === 'payment' ? (
-                  <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-green-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </div>
-              <div className="mr-3">
-                <h3 className={`text-sm font-medium ${
-                  results.limitingFactor === 'payment' ? 'text-blue-800' : 'text-green-800'
-                }`}>
-                  {results.limitingFactor === 'payment' 
-                    ? 'המחיר חושב לפי מגבלת ההחזר החודשי' 
-                    : 'המחיר חושב לפי מגבלת אחוז המימון'}
-                </h3>
-                <div className={`mt-2 text-sm ${
-                  results.limitingFactor === 'payment' ? 'text-blue-700' : 'text-green-700'
-                }`}>
-                  {results.limitingFactor === 'payment' ? (
-                    <p>
-                      המחיר המקסימלי נקבע לפי יכולת ההחזר החודשי שלך (₪{results.maxMonthlyPayment.toLocaleString()}) 
-                      בריבית ממוצעת של {results.interestRate}% לתקופה של {results.maxLoanPeriod} שנים.
-                    </p>
-                  ) : (
-                    <p>
-                      המחיר המקסימלי נקבע לפי ההון העצמי שלך ואחוז המימון המקסימלי 
-                      עבור {userData.propertyType} ({results.maxLTV}% מימון).
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
 
           {!results.isCapitalSufficient && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.8 }}
-              className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6"
+              className="bg-orange-50 border border-orange-200 rounded-lg p-2 mb-3"
             >
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-orange-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-orange-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="mr-3">
-                  <h3 className="text-sm font-medium text-orange-800">
+                <div className="mr-2">
+                  <h3 className="text-xs font-medium text-orange-800">
                     שים לב - יידרש הון עצמי נוסף
                   </h3>
-                  <div className="mt-2 text-sm text-orange-700">
-                    <p>
-                      ההון העצמי הנוכחי שלך (₪{parseFloat(userData.ownCapital).toLocaleString()}) 
-                      אינו מספיק. יידרש הון עצמי של ₪{results.ownCapitalUsed.toLocaleString()}.
-                    </p>
-                  </div>
+                  <p className="text-xs text-orange-700 mt-0.5">
+                    ההון העצמי הנוכחי שלך (₪{parseFormattedNumberInput(userData.ownCapital).toLocaleString()}){' '}
+                    אינו מספיק. יידרש הון עצמי של ₪{results.ownCapitalUsed.toLocaleString()}.
+                  </p>
                 </div>
               </div>
             </motion.div>
           )}
 
 
-          <div className="text-center space-y-4">
-            <div className="flex gap-4 justify-center">
+          <div className="text-center">
+            <div className="flex gap-3 justify-center">
               <Button
                 variant="outline"
                 onClick={() =>
                   setCurrentStep(isCouple ? 'personal-info-couple' : 'personal-info')
                 }
-                className="px-6 py-3"
+                className="px-4 py-2 h-9"
               >
-                <ArrowRight className="w-5 h-5 mr-2" />
+                <ArrowRight className="w-4 h-4 mr-2" />
                 חזור לעריכה
               </Button>
-              <Link href="/uniform-mixes">
+              <Link
+                href="/uniform-mixes"
+                onClick={() => {
+                  // Persist the slider-driven selection so the uniform-mixes screen can
+                  // generate the mixes against the property price the user actually chose
+                  // here (rather than recomputing the calculated maximum from scratch).
+                  try {
+                    localStorage.setItem(
+                      'mortgagePlanningSelection',
+                      JSON.stringify({
+                        source: 'affordability-slider',
+                        propertyPrice: effectivePropertyPrice,
+                        loanAmount: effectiveLoanAmount,
+                        loanPeriod: effectiveLoanPeriod,
+                        ownCapital: aggregated.ownCapital,
+                        interestRate: results.interestRate,
+                        timestamp: Date.now(),
+                      })
+                    );
+                  } catch (error) {
+                    console.error('Could not persist mortgage planning selection:', error);
+                  }
+                }}
+              >
                 <Button
-                  size="lg"
-                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg"
+                  size="sm"
+                  className="px-5 py-2 h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm"
                 >
                   בוא המשך לתכנון המשכנתא
-                  <ArrowLeft className="w-5 h-5 ml-2" />
+                  <ArrowLeft className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -1464,8 +2172,8 @@ export default function MortgagePlanning() {
       );
     } else {
       // Results for existing property
-      const propertyPrice = parseFloat(userData.propertyPrice) || 0;
-      const ownCapital = parseFloat(userData.ownCapital) || 0;
+      const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+      const ownCapital = parseFormattedNumberInput(userData.ownCapital);
       const loanAmount = propertyPrice - ownCapital;
       const ltv = propertyPrice > 0 ? (loanAmount / propertyPrice) * 100 : 0;
 
@@ -1560,7 +2268,11 @@ export default function MortgagePlanning() {
         <NavBar />
       </div>
       
-      <div className="container mx-auto px-6 py-12">
+      <div
+        className={`container mx-auto px-6 ${
+          currentStep === 'results' ? 'py-3' : 'py-12'
+        }`}
+      >
         {currentStep === 'property-type' && renderPropertyTypeSelection()}
         {currentStep === 'calculation-type' && renderCalculationTypeSelection()}
         {currentStep === 'borrower-type' && (

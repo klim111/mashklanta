@@ -121,11 +121,12 @@ export default function Home() {
               whileTap={{ scale: 0.95 }}
             >
               <Button
+                asChild
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm"
               >
-                למד איך זה עובד
+                <Link href="/how-it-works">למד איך זה עובד</Link>
               </Button>
             </motion.div>
             

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calculator, TrendingUp, PieChart, Home, Users, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { Plus, Calculator, TrendingUp, PieChart, Home, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type { MortgageMix, MortgageAdvisorState } from './types';
 import { MortgageMixBuilder } from './MortgageMixBuilder';
 import { MortgageMixCard } from './MortgageMixCard';
@@ -15,6 +16,7 @@ import { MortgageOptimizer } from './MortgageOptimizer';
 const STORAGE_KEY = 'mortgage-advisor-state';
 
 export function MortgageAdvisorTool() {
+  const router = useRouter();
   const [state, setState] = useState<MortgageAdvisorState>({
     mixes: [],
     selectedForComparison: [],
@@ -57,11 +59,6 @@ export function MortgageAdvisorTool() {
     setBuilderMode('create');
     setShowBuilder(true);
     navigateTo('builder');
-  };
-
-  const openOptimizer = () => {
-    setShowOptimizer(true);
-    navigateTo('optimizer');
   };
 
   const editMix = (mix: MortgageMix) => {
@@ -120,6 +117,8 @@ export function MortgageAdvisorTool() {
         // אם אין מסך קודם ספציפי, חזור למסך הראשי
         setState(prev => ({ ...prev, activeTab: 'builder' }));
       }
+    } else {
+      router.back();
     }
   };
 
@@ -139,6 +138,10 @@ export function MortgageAdvisorTool() {
       selectedForComparison: [],
       activeTab: 'builder'
     }));
+  };
+
+  const goToMainPage = () => {
+    router.push('/');
   };
 
   const updateMix = (updatedMix: MortgageMix) => {
@@ -215,7 +218,6 @@ export function MortgageAdvisorTool() {
             <Button 
               variant="outline" 
               onClick={goBack}
-              disabled={navigationHistory.length === 0}
               className="flex items-center gap-2"
             >
               <ArrowRight className="h-4 w-4" />
@@ -224,7 +226,7 @@ export function MortgageAdvisorTool() {
             <div></div>
             <Button 
               variant="outline" 
-              onClick={goToHome}
+              onClick={goToMainPage}
               className="flex items-center gap-2"
             >
               <Home className="h-4 w-4" />
@@ -247,7 +249,6 @@ export function MortgageAdvisorTool() {
             <Button 
               variant="outline" 
               onClick={goBack}
-              disabled={navigationHistory.length === 0}
               className="flex items-center gap-2"
             >
               <ArrowRight className="h-4 w-4" />
@@ -256,7 +257,7 @@ export function MortgageAdvisorTool() {
             <div></div>
             <Button 
               variant="outline" 
-              onClick={goToHome}
+              onClick={goToMainPage}
               className="flex items-center gap-2"
             >
               <Home className="h-4 w-4" />
@@ -277,6 +278,7 @@ export function MortgageAdvisorTool() {
             onSave={saveMix}
             editingMix={editingMix}
             onCancel={cancelEdit}
+            existingMixes={state.mixes}
           />
         </div>
       </div>
@@ -292,7 +294,6 @@ export function MortgageAdvisorTool() {
             <Button 
               variant="outline" 
               onClick={goBack}
-              disabled={navigationHistory.length === 0}
               className="flex items-center gap-2"
             >
               <ArrowRight className="h-4 w-4" />
@@ -301,7 +302,7 @@ export function MortgageAdvisorTool() {
             <div></div>
             <Button 
               variant="outline" 
-              onClick={goToHome}
+              onClick={goToMainPage}
               className="flex items-center gap-2"
             >
               <Home className="h-4 w-4" />
@@ -329,7 +330,6 @@ export function MortgageAdvisorTool() {
           <Button 
             variant="outline" 
             onClick={goBack}
-            disabled={navigationHistory.length === 0}
             className="flex items-center gap-2"
           >
             <ArrowRight className="h-4 w-4" />
@@ -338,7 +338,7 @@ export function MortgageAdvisorTool() {
           <div></div>
           <Button 
             variant="outline" 
-            onClick={goToHome}
+            onClick={goToMainPage}
             className="flex items-center gap-2"
           >
             <Home className="h-4 w-4" />
@@ -355,12 +355,6 @@ export function MortgageAdvisorTool() {
             כלי מתקדם ליועצי משכנתא לבניית תמהילי משכנתא מותאמים אישית, 
             השוואות מקצועיות והדמיות פיננסיות מדויקות
           </p>
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <Users className="h-5 w-5 text-blue-600" />
-            <span className="text-sm text-blue-600 font-medium">
-              מיועד ליועצי משכנתא מקצועיים
-            </span>
-          </div>
         </div>
 
         <Tabs value={state.activeTab} onValueChange={handleTabChange} className="w-full">
@@ -381,32 +375,6 @@ export function MortgageAdvisorTool() {
           </TabsList>
 
           <TabsContent value="builder" className="space-y-6">
-            {/* כפתורי בניית תמהיל */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-              <Button 
-                onClick={addMix} 
-                variant="outline"
-                className="px-6 py-6 text-lg h-auto flex-col gap-2 border-2 hover:border-blue-500 hover:bg-blue-50"
-              >
-                <Plus className="h-8 w-8" />
-                <div className="flex flex-col gap-1">
-                  <span className="font-bold">בנייה ידנית</span>
-                  <span className="text-sm text-gray-600 font-normal">בנה תמהיל בהתאמה אישית מלאה</span>
-                </div>
-              </Button>
-              
-              <Button 
-                onClick={openOptimizer} 
-                className="px-6 py-6 text-lg h-auto flex-col gap-2 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 border-2 border-purple-400"
-              >
-                <TrendingUp className="h-8 w-8" />
-                <div className="flex flex-col gap-1">
-                  <span className="font-bold">אופטימיזציית תמהיל</span>
-                  <span className="text-sm text-purple-100 font-normal">קבל המלצות חכמות מותאמות אישית</span>
-                </div>
-              </Button>
-            </div>
-
             {/* רשימת תמהילים */}
             {state.mixes.length === 0 ? (
               <div className="text-center py-12">
@@ -415,67 +383,84 @@ export function MortgageAdvisorTool() {
                   אין תמהילי משכנתא במערכת
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  התחל על ידי בניית תמהיל חדש או קבל המלצה אוטומטית
+                  התחל על ידי בניית תמהיל חדש בהתאמה אישית
                 </p>
                 <div className="flex gap-4 justify-center">
                   <Button onClick={addMix} variant="outline" className="px-6 py-3">
                     <Plus className="h-5 w-5 ml-2" />
-                    בנה תמהיל ידנית
-                  </Button>
-                  <Button onClick={openOptimizer} className="px-6 py-3 bg-purple-600 hover:bg-purple-700">
-                    <TrendingUp className="h-5 w-5 ml-2" />
-                    אופטימיזציית תמהיל
+                    הוסף תמהיל מותאם אישית
                   </Button>
                 </div>
               </div>
             ) : (
               <>
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {state.mixes.map((mix) => (
-                    <MortgageMixCard
-                      key={mix.id}
-                      mix={mix}
-                      onUpdate={updateMix}
-                      onDelete={deleteMix}
-                      onDuplicate={duplicateMix}
-                      onShowDetails={showDetails}
-                      onAnalyzeScenarios={showScenarios}
-                      onToggleSelect={toggleMixSelection}
-                      onEdit={editMix}
-                      isSelected={state.selectedForComparison.includes(mix.id)}
-                    />
-                  ))}
-                </div>
-
-                {/* הסבר על בחירת תמהילים להשוואה */}
-                {state.mixes.length > 1 && (
-                  <div className="text-center p-6 bg-blue-50 rounded-lg">
-                    <div className="flex items-center justify-center gap-2 mb-3">
-                      <TrendingUp className="h-5 w-5 text-blue-600" />
-                      <h4 className="text-lg font-semibold text-blue-800">השוואת תמהילים</h4>
-                    </div>
-                    <p className="text-sm text-blue-700 mb-4">
-                      💡 לחץ על שם התמהיל כדי לבחור אותו להשוואה. 
-                      נבחרו {state.selectedForComparison.length} תמהילים להשוואה.
-                    </p>
-                    
-                    {state.selectedForComparison.length >= 2 && (
-                      <Button 
-                        onClick={() => setState(prev => ({ ...prev, activeTab: 'compare' }))}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <TrendingUp className="h-4 w-4 ml-2" />
-                        עבור להשוואה ({state.selectedForComparison.length} תמהילים)
-                      </Button>
-                    )}
-                    
-                    {state.selectedForComparison.length === 1 && (
-                      <p className="text-xs text-blue-600 mt-2">
-                        🖱️ בחר תמהיל נוסף כדי להשוות ביניהם
+                {state.mixes.length >= 3 && (
+                  <div className="text-center space-y-3">
+                    <h3 className="text-2xl font-bold text-gray-900">סלים אחידים</h3>
+                    <div className="max-w-3xl mx-auto p-4 rounded-lg bg-blue-50 border border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        לחץ על התמהילים שברצונך להשוות ועבור ללשונית השוואה לקבלת השוואה מפורטת בין התמהילים
                       </p>
-                    )}
+                    </div>
                   </div>
                 )}
+
+                <div className="flex justify-center">
+                  <Button 
+                    onClick={addMix} 
+                    variant="outline"
+                    className="px-6 py-6 text-lg h-auto flex-col gap-2 border-2 hover:border-blue-500 hover:bg-blue-50"
+                  >
+                    <Plus className="h-8 w-8" />
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold">הוסף תמהיל מותאם אישית</span>
+                      <span className="text-sm text-gray-600 font-normal">בנה תמהיל בהתאמה אישית מלאה</span>
+                    </div>
+                  </Button>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {state.mixes.map((mix, index) => {
+                    const summaryHeaderConfig =
+                      index === 0
+                        ? {
+                            title: 'סל אחיד מס\' 1',
+                            description: '100% ריבית קבועה לא צמודה - יציבות מקסימלית',
+                          }
+                        : index === 1
+                          ? {
+                              title: 'סל אחיד מס\' 2',
+                              description: '50% קבועה + 50% פריים - איזון בין יציבות לגמישות',
+                            }
+                          : index === 2
+                            ? {
+                                title: 'סל אחיד מס\' 3',
+                                description: '33% קל"צ + 33% פריים + 33% משתנה לא צמודה כל 5 שנים',
+                              }
+                            : {
+                                title: `תמהיל מותאם אישית ${index - 2}`,
+                                description: 'תמהיל מותאם אישית',
+                              };
+                    return (
+                      <div key={mix.id}>
+                        <MortgageMixCard
+                          mix={mix}
+                          onUpdate={updateMix}
+                          onDelete={deleteMix}
+                          onDuplicate={duplicateMix}
+                          onShowDetails={showDetails}
+                          onAnalyzeScenarios={showScenarios}
+                          onToggleSelect={toggleMixSelection}
+                          onEdit={editMix}
+                          isSelected={state.selectedForComparison.includes(mix.id)}
+                          showSummaryHeader={true}
+                          summaryHeaderConfig={summaryHeaderConfig}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
               </>
             )}
           </TabsContent>
