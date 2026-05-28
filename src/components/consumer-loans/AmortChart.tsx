@@ -150,63 +150,41 @@ export function AmortChart({
             />
             <Tooltip content={<AmortTooltip />} />
             {showLegend && (
-              <Legend
-                wrapperStyle={{ direction: 'rtl' }}
-                payload={[
-                  {
-                    value: BALANCE_LINE_KEY,
-                    type: 'line',
-                    color: colors.balance,
-                    id: BALANCE_LINE_KEY,
-                  },
-                  {
-                    value: `${BALANCE_AREA_KEY} (קרן שעדיין לא שולמה)`,
-                    type: 'square',
-                    color: colors.principal,
-                    id: BALANCE_AREA_KEY,
-                  },
-                  {
-                    value: `${INTEREST_AREA_KEY} (אבודה)`,
-                    type: 'square',
-                    color: colors.interest,
-                    id: INTEREST_AREA_KEY,
-                  },
-                ]}
-              />
+              <Legend wrapperStyle={{ direction: 'rtl' }} />
             )}
 
             {/* אזור ירוק - יתרת הקרן הנותרת, ממלא את השטח מתחת לקו ירידת הקרן */}
             <Area
               type="monotone"
               dataKey={BALANCE_AREA_KEY}
+              name={`${BALANCE_AREA_KEY} (קרן שעדיין לא שולמה)`}
               stackId="loan"
               stroke="none"
               fill="url(#amort-grad-balance)"
               isAnimationActive={false}
-              legendType="none"
             />
 
             {/* אזור אדום - ריבית מצטברת ששולמה, ממלא את השטח מעל קו הקרן היורדת */}
             <Area
               type="monotone"
               dataKey={INTEREST_AREA_KEY}
+              name={`${INTEREST_AREA_KEY} (אבודה)`}
               stackId="loan"
               stroke={colors.interest}
               strokeWidth={1.25}
               fill="url(#amort-grad-interest)"
               isAnimationActive={false}
-              legendType="none"
             />
 
             {/* קו הקרן היורד - מצויר מעל הצביעה כדי שיהיה בולט */}
             <Line
               type="monotone"
               dataKey={BALANCE_LINE_KEY}
+              name={BALANCE_LINE_KEY}
               stroke={colors.balance}
               strokeWidth={2.5}
               dot={false}
               isAnimationActive={false}
-              legendType="none"
             />
           </ComposedChart>
         </ResponsiveContainer>

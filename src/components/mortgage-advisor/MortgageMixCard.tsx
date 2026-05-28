@@ -140,7 +140,7 @@ export function MortgageMixCard({
                 </Badge>
               )}
             </div>
-            {(onShowDetails || onAnalyzeScenarios || (!hideManagementButtons && (onEdit || onDuplicate || onDelete))) && (
+            {(onShowDetails || onAnalyzeScenarios || !hideManagementButtons) && (
               <div className="flex gap-1 justify-center">
                 {onShowDetails && (
                   <Button

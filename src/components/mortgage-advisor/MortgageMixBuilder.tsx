@@ -238,7 +238,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
             <p className="text-gray-500 mb-6">
               התחל על ידי הוספת המסלול הראשון שלך
             </p>
-            <Button onClick={addTrack} className="px-6 py-3">
+            <Button onClick={() => addTrack()} className="px-6 py-3">
               <Plus className="h-5 w-5 ml-2" />
               הוסף מסלול ראשון
             </Button>
