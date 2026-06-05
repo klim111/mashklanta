@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
-import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Shield, TrendingUp, Users, Zap, Target, BarChart3, HeartHandshake, CheckCircle, Menu, Map, Calculator, Banknote, CreditCard, UserCheck, Activity } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RefreshCw, Shield, TrendingUp, Users, Zap, Target, BarChart3, HeartHandshake, CheckCircle, Menu, Map, Calculator, Banknote, CreditCard, UserCheck, Activity } from 'lucide-react';
 import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
@@ -357,53 +357,86 @@ export default function Home() {
         className="relative min-h-screen py-20 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden"
       >
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* New Mortgage Card */}
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -5 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  >
-                    <Link href="/mortgage-planning">
-                      <Card className="group relative overflow-hidden border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer">
-                        <CardContent className="p-8 text-center">
-                          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                            <HomeIcon className="w-10 h-10 text-white" />
-                          </div>
-                          <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
-                            לקחת משכנתא חדשה
-                          </h3>
-                          <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                            מציאת המשכנתא המושלמת עם התמהיל הטוב ביותר והתנאים המיטביים עבורך
-                          </p>
-                          <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
-                            <span>התחל עכשיו</span>
-                            <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </motion.div>
-
-            {/* Existing Mortgage Card */}
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Affordability */}
             <motion.div
               whileHover={{ scale: 1.02, y: -5 }}
               whileTap={{ scale: 0.98 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <Link href="/existing-mortgage">
-                <Card className="group relative overflow-hidden border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10">
-                  <CardContent className="p-8 text-center">
-                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <RefreshCw className="w-10 h-10 text-white" />
+              <Link href="/mortgage-planning?flow=affordability">
+                <Card className="group relative overflow-hidden border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer h-full">
+                  <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+                    <div>
+                      <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <Calculator className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+                        מה אני יכול להרשות לעצמי
+                      </h3>
+                      <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                        חישוב ערך הנכס המקסימלי לפי נתוני ההכנסה והמשך תכנון המשכנתא
+                      </p>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
-                      פעולות על משכנתא קיימת
-                    </h3>
-                    <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                      אופטימיזציה, מיחזור, ניהול וייעוץ למשכנתא הקיימת שלך לחיסכון מקסימלי
-                    </p>
+                    <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
+                      <span>התחל עכשיו</span>
+                      <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Existing property mortgage */}
+            <motion.div
+              whileHover={{ scale: 1.02, y: -5 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <Link href="/mortgage-planning?flow=existing">
+                <Card className="group relative overflow-hidden border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer h-full">
+                  <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+                    <div>
+                      <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <Banknote className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
+                        משכנתא לנכס קיים
+                      </h3>
+                      <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                        יודעים את מחיר הנכס? נלווה אתכם צעד אחר צעד עד המשכנתא המשתלמת ביותר
+                      </p>
+                    </div>
                     <div className="flex items-center justify-center text-green-600 group-hover:text-green-700 font-semibold">
+                      <span>התחל עכשיו</span>
+                      <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Refinance */}
+            <motion.div
+              whileHover={{ scale: 1.02, y: -5 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <Link href="/mortgage-refinance">
+                <Card className="group relative overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer h-full">
+                  <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+                    <div>
+                      <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <RefreshCw className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+                        מיחזור משכנתא
+                      </h3>
+                      <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                        שפר את תנאי המשכנתא הקיימת שלך — הקטנת תשלום חודשי או קיצור תקופה
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center text-purple-600 group-hover:text-purple-700 font-semibold">
                       <span>התחל עכשיו</span>
                       <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
                     </div>

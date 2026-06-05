@@ -16,7 +16,7 @@ interface MortgageMixCardProps {
   mix: MortgageMix;
   onUpdate: (mix: MortgageMix) => void;
   onDelete: (id: string) => void;
-  onDuplicate: (mix: MortgageMix) => void;
+  onDuplicate?: (mix: MortgageMix) => void;
   onShowDetails?: (mix: MortgageMix) => void;
   onAnalyzeScenarios?: (mix: MortgageMix) => void;
   onToggleSelect?: (id: string) => void;
@@ -24,6 +24,10 @@ interface MortgageMixCardProps {
   isSelected?: boolean;
   /** When true, hides only Copy / Edit / Delete (the 3 management buttons on the left). */
   hideManagementButtons?: boolean;
+  /** Hides the duplicate (copy) button. */
+  hideDuplicateButton?: boolean;
+  /** Hides inline edit for mix name and notes. */
+  hideNameNotesEdit?: boolean;
   /** Uniform-mixes layout: loan amount + track count centered in header, utility buttons below. */
   showSummaryHeader?: boolean;
   summaryHeaderConfig?: {
@@ -45,6 +49,8 @@ export function MortgageMixCard({
   onEdit,
   isSelected = false,
   hideManagementButtons = false,
+  hideDuplicateButton = false,
+  hideNameNotesEdit = false,
   showSummaryHeader = false,
   summaryHeaderConfig
 }: MortgageMixCardProps) {
@@ -172,18 +178,20 @@ export function MortgageMixCard({
                 )}
                 {!hideManagementButtons && (
                   <>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        stopPropagation(e);
-                        onDuplicate(mix);
-                      }}
-                      className="text-green-600 hover:text-green-800"
-                      title="שכפל תמהיל"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                    {!hideDuplicateButton && onDuplicate && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          stopPropagation(e);
+                          onDuplicate(mix);
+                        }}
+                        className="text-green-600 hover:text-green-800"
+                        title="שכפל תמהיל"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    )}
                     {onEdit && (
                       <Button
                         size="sm"
@@ -198,18 +206,20 @@ export function MortgageMixCard({
                         <Edit className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        stopPropagation(e);
-                        setIsEditing(true);
-                      }}
-                      className="text-gray-600 hover:text-gray-800"
-                      title="עריכת שם והערות"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    {!hideNameNotesEdit && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          stopPropagation(e);
+                          setIsEditing(true);
+                        }}
+                        className="text-gray-600 hover:text-gray-800"
+                        title="עריכת שם והערות"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -275,17 +285,19 @@ export function MortgageMixCard({
               )}
               {!hideManagementButtons && (
                 <>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      stopPropagation(e);
-                      onDuplicate(mix);
-                    }}
-                    className="text-green-600 hover:text-green-800"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  {!hideDuplicateButton && onDuplicate && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        stopPropagation(e);
+                        onDuplicate(mix);
+                      }}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
                   {onEdit && (
                     <Button
                       size="sm"
@@ -300,18 +312,20 @@ export function MortgageMixCard({
                       <Edit className="h-4 w-4" />
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      stopPropagation(e);
-                      setIsEditing(true);
-                    }}
-                    className="text-gray-600 hover:text-gray-800"
-                    title="עריכת שם והערות"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  {!hideNameNotesEdit && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        stopPropagation(e);
+                        setIsEditing(true);
+                      }}
+                      className="text-gray-600 hover:text-gray-800"
+                      title="עריכת שם והערות"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

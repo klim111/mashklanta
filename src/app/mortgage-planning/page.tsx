@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Target, TrendingUp, Calculator, Banknote, FileText, Upload, Pencil, RotateCcw, X as XIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,7 +42,21 @@ import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoa
 
 type UserData = MortgagePlanningUserData;
 
-export default function MortgagePlanning() {
+type EntryFlow = 'affordability' | 'existing' | 'refinance';
+
+const AFFORDABILITY_CALCULATION = 'תחשב מה אני יכול להרשות לעצמי';
+const EXISTING_PROPERTY_CALCULATION = 'תחשב משכנתא לנכס קיים';
+
+function parseEntryFlow(value: string | null): EntryFlow | null {
+  if (value === 'affordability' || value === 'existing' || value === 'refinance') {
+    return value;
+  }
+  return null;
+}
+
+function MortgagePlanningContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<
     | 'property-type'
     | 'calculation-type'
@@ -53,6 +68,7 @@ export default function MortgagePlanning() {
     | 'offer-analysis'
     | 'results'
   >('property-type');
+  const [entryFlow, setEntryFlow] = useState<EntryFlow | null>(null);
   const [userData, setUserData] = useState<UserData>(defaultMortgagePlanningUserData());
   const [showEquityCalculator, setShowEquityCalculator] = useState(false);
   const [showCapitalWarning, setShowCapitalWarning] = useState(false);
@@ -83,8 +99,14 @@ export default function MortgagePlanning() {
   // Ref used to close the popover when the user clicks outside it.
   const rateEditorRef = useRef<HTMLDivElement | null>(null);
 
+  // Entry flow from home page (?flow=affordability|existing|refinance)
+  useEffect(() => {
+    setEntryFlow(parseEntryFlow(searchParams.get('flow')));
+  }, [searchParams]);
+
   // Load data from localStorage on component mount
   useEffect(() => {
+    const flowFromUrl = parseEntryFlow(searchParams.get('flow'));
     const savedData = localStorage.getItem('mortgagePlanningData');
     if (savedData) {
       try {
@@ -94,12 +116,16 @@ export default function MortgagePlanning() {
           ...parsedData.userData,
         });
         setUserData(formatMoneyFields(migrated as unknown as Record<string, unknown>) as unknown as MortgagePlanningUserData);
-        setCurrentStep(parsedData.currentStep || 'property-type');
+        let step = parsedData.currentStep || 'property-type';
+        if (flowFromUrl && step === 'calculation-type') {
+          step = 'property-type';
+        }
+        setCurrentStep(step);
       } catch (error) {
         console.error('Error loading saved data:', error);
       }
     }
-  }, []);
+  }, [searchParams]);
 
   // Load analyzed terms if available
   useEffect(() => {
@@ -173,6 +199,10 @@ export default function MortgagePlanning() {
     setCurrentStep('property-type');
   };
 
+  const goBackFromCalculationFlow = () => {
+    setCurrentStep(entryFlow ? 'property-type' : 'calculation-type');
+  };
+
   // Function to check if own capital is sufficient
   const checkCapitalSufficiency = (propertyPrice: number, ownCapital: number, propertyType: string) => {
     const ltvLimits = {
@@ -193,13 +223,34 @@ export default function MortgagePlanning() {
   };
 
   const handlePropertyTypeSelect = (type: string) => {
-    setUserData({ ...userData, propertyType: type });
+    const nextUserData = { ...userData, propertyType: type };
+
     if (type === 'משכנתא לכל מטרה') {
-      // Handle special case for "any purpose" - go directly to reverse mortgage form
+      setUserData(nextUserData);
       setCurrentStep('reverse-mortgage');
-    } else {
-      setCurrentStep('calculation-type');
+      return;
     }
+
+    if (entryFlow === 'affordability') {
+      setUserData({ ...nextUserData, calculationType: AFFORDABILITY_CALCULATION });
+      setCurrentStep('borrower-type');
+      return;
+    }
+
+    if (entryFlow === 'existing') {
+      setUserData({ ...nextUserData, calculationType: EXISTING_PROPERTY_CALCULATION });
+      setCurrentStep('existing-property');
+      return;
+    }
+
+    if (entryFlow === 'refinance') {
+      setUserData(nextUserData);
+      router.push('/mortgage-refinance');
+      return;
+    }
+
+    setUserData(nextUserData);
+    setCurrentStep('calculation-type');
   };
 
   const handleCalculationTypeSelect = (type: string) => {
@@ -553,7 +604,7 @@ export default function MortgagePlanning() {
       <div className="text-center mt-10">
         <Button
           variant="outline"
-          onClick={() => setCurrentStep('calculation-type')}
+          onClick={goBackFromCalculationFlow}
           className="px-6 py-3"
         >
           <ArrowRight className="w-5 h-5 mr-2" />
@@ -843,7 +894,7 @@ export default function MortgagePlanning() {
         <div className="flex gap-4 justify-center pt-6">
           <Button
             variant="outline"
-            onClick={() => setCurrentStep('calculation-type')}
+            onClick={goBackFromCalculationFlow}
             className="px-6 py-3"
           >
             <ArrowRight className="w-5 h-5 mr-2" />
@@ -2278,7 +2329,7 @@ export default function MortgagePlanning() {
         {currentStep === 'borrower-type' && (
           <BorrowerTypeSelection
             onSelect={handleBorrowerTypeSelect}
-            onBack={() => setCurrentStep('calculation-type')}
+            onBack={goBackFromCalculationFlow}
           />
         )}
         {currentStep === 'personal-info' && renderPersonalInfoForm()}
@@ -2332,5 +2383,19 @@ export default function MortgagePlanning() {
         </motion.div>
       )}
     </div>
+  );
+}
+
+export default function MortgagePlanning() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 flex items-center justify-center text-gray-500">
+          טוען...
+        </div>
+      }
+    >
+      <MortgagePlanningContent />
+    </Suspense>
   );
 }

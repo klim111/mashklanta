@@ -1,11 +1,23 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   TrendingUp,
   TrendingDown,
@@ -18,21 +30,30 @@ import {
   ArrowLeftRight,
   Banknote,
   Layers,
+  LineChart as LineChartIcon,
+  Wallet,
+  ChevronDown,
 } from 'lucide-react';
 import type { MortgageMix, MortgageTrack } from './types';
-import { formatTrackTypeWithAmortization } from './types';
-import { calculateMortgageMix, formatCurrency, formatPercentage } from './mortgageCalculations';
+import { TRACK_TYPES } from './types';
+import { formatCurrency, formatPercentage } from './mortgageCalculations';
 import {
   getTrackScenarioKind,
-  getDefaultTrackScenario,
-  getOptimisticTrackScenario,
-  getPessimisticTrackScenario,
-  calculateMixWithScenarios,
-  calculateTrackWithScenario,
-  buildScenariosMap,
-  SCENARIO_RATE_DELTA,
-  SCENARIO_CPI_ANNUAL,
-  type TrackScenarioValues,
+  isRateVariable,
+  isIndexLinked,
+  calculateTrackScenario,
+  calculateMixScenario,
+  buildScenarioSeries,
+  buildTrackSeries,
+  getRateVariableTypes,
+  mixHasIndexLinked,
+  makeBaseScenario,
+  buildPresetScenario,
+  effectiveRateForTrack,
+  SCENARIO_RANGES,
+  PRESET_SCENARIOS,
+  type GlobalScenario,
+  type ScenarioSeriesPoint,
   type TrackScenarioKind,
 } from './scenarioCalculations';
 
@@ -40,6 +61,14 @@ interface ScenarioAnalysisProps {
   baseMix: MortgageMix;
   onClose?: () => void;
 }
+
+const COLORS = {
+  current: '#3b82f6',
+  worse: '#ef4444',
+  better: '#10b981',
+  principal: '#3b82f6',
+  interest: '#ef4444',
+};
 
 function trackColor(type: MortgageTrack['type']): string {
   if (type === 'fixed_unlinked') return 'bg-blue-500';
@@ -51,7 +80,7 @@ function trackColor(type: MortgageTrack['type']): string {
   return 'bg-slate-500';
 }
 
-function DeltaBadge({ value, suffix = '' }: { value: number; suffix?: string }) {
+function DeltaBadge({ value }: { value: number }) {
   if (Math.abs(value) < 1) {
     return <span className="text-xs text-muted-foreground">ללא שינוי</span>;
   }
@@ -59,242 +88,370 @@ function DeltaBadge({ value, suffix = '' }: { value: number; suffix?: string }) 
   return (
     <span className={`text-xs font-semibold ${positive ? 'text-red-600' : 'text-emerald-600'}`}>
       {positive ? '+' : ''}
-      {suffix === '%' ? `${value.toFixed(1)}%` : formatCurrency(value)}
-      {suffix && suffix !== '%' ? ` ${suffix}` : ''}
+      {formatCurrency(value)}
     </span>
   );
 }
 
-interface TrackScenarioCardProps {
-  track: MortgageTrack;
-  baseCalc: { monthlyPayment: number; totalInterest: number };
-  scenario: TrackScenarioValues;
-  onScenarioChange: (values: TrackScenarioValues) => void;
+const compactCurrency = (v: number) => {
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${Math.round(v / 1000)}K`;
+  return String(Math.round(v));
+};
+
+const tooltipFormatter = (value: number | string) =>
+  typeof value === 'number' ? formatCurrency(value) : value;
+const yearLabelFormatter = (label: number | string) => `שנה ${label}`;
+
+interface LineRow {
+  year: number;
+  baseBalance: number | null;
+  scenBalance: number | null;
+  basePay: number | null;
+  scenPay: number | null;
 }
 
-function TrackScenarioCard({ track, baseCalc, scenario, onScenarioChange }: TrackScenarioCardProps) {
-  const kind = getTrackScenarioKind(track.type);
-  const optimistic = getOptimisticTrackScenario(track);
-  const pessimistic = getPessimisticTrackScenario(track);
+function mergeSeries(base: ScenarioSeriesPoint[], scen: ScenarioSeriesPoint[]): LineRow[] {
+  const maxLen = Math.max(base.length, scen.length);
+  const rows: LineRow[] = [];
+  for (let y = 0; y < maxLen; y++) {
+    rows.push({
+      year: y,
+      baseBalance: base[y]?.balance ?? null,
+      scenBalance: scen[y]?.balance ?? null,
+      basePay: base[y]?.payment ?? null,
+      scenPay: scen[y]?.payment ?? null,
+    });
+  }
+  return rows;
+}
 
-  const scenarioCalc = useMemo(
-    () => calculateTrackWithScenario(track, scenario),
-    [track, scenario]
+/* ------------------------------------------------------------------ */
+/* Reusable slider controls                                            */
+/* ------------------------------------------------------------------ */
+
+function RateSliderControl({
+  type,
+  value,
+  onChange,
+}: {
+  type: MortgageTrack['type'];
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
+          <Percent className="h-3.5 w-3.5 text-blue-600" />
+          {TRACK_TYPES[type]}
+        </span>
+        <span
+          className={`text-sm font-bold ${
+            value > 0 ? 'text-red-600' : value < 0 ? 'text-emerald-600' : 'text-slate-700'
+          }`}
+        >
+          {value > 0 ? '+' : ''}
+          {value.toFixed(2)}%
+        </span>
+      </div>
+      <Slider
+        dir="ltr"
+        value={[value]}
+        onValueChange={([v]) => onChange(v)}
+        min={SCENARIO_RANGES.rateDelta.min}
+        max={SCENARIO_RANGES.rateDelta.max}
+        step={SCENARIO_RANGES.rateDelta.step}
+      />
+      <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
+        <span className="flex items-center gap-1">
+          <TrendingDown className="h-3 w-3 text-emerald-500" />
+          ירידה {SCENARIO_RANGES.rateDelta.min}%
+        </span>
+        <span className="flex items-center gap-1">
+          עלייה +{SCENARIO_RANGES.rateDelta.max}%
+          <TrendingUp className="h-3 w-3 text-red-500" />
+        </span>
+      </div>
+    </div>
   );
+}
 
-  const monthlyDelta = scenarioCalc.monthlyPayment - baseCalc.monthlyPayment;
-  const interestDelta = scenarioCalc.totalInterest - baseCalc.totalInterest;
+function InflationSliderControl({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
+          <BarChart3 className="h-3.5 w-3.5 text-violet-600" />
+          מדד / אינפלציה שנתית
+        </span>
+        <span className="text-sm font-bold text-slate-700">{formatPercentage(value)}</span>
+      </div>
+      <Slider
+        dir="ltr"
+        value={[value]}
+        onValueChange={([v]) => onChange(v)}
+        min={SCENARIO_RANGES.inflation.min}
+        max={SCENARIO_RANGES.inflation.max}
+        step={SCENARIO_RANGES.inflation.step}
+      />
+      <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
+        <span className="flex items-center gap-1">
+          <TrendingDown className="h-3 w-3 text-emerald-500" />
+          מדד יורד {SCENARIO_RANGES.inflation.min}%
+        </span>
+        <span className="flex items-center gap-1">
+          מדד עולה +{SCENARIO_RANGES.inflation.max}%
+          <TrendingUp className="h-3 w-3 text-red-500" />
+        </span>
+      </div>
+    </div>
+  );
+}
 
-  const rateMin = Math.max(0.1, track.interestRate + SCENARIO_RATE_DELTA.optimistic);
-  const rateMax = track.interestRate + SCENARIO_RATE_DELTA.pessimistic;
-  const currentRate = scenario.interestRate ?? track.interestRate;
+/* ------------------------------------------------------------------ */
+/* Charts                                                              */
+/* ------------------------------------------------------------------ */
 
-  const cpiMin = SCENARIO_CPI_ANNUAL.optimistic;
-  const cpiMax = SCENARIO_CPI_ANNUAL.pessimistic;
-  const currentCpi = scenario.annualInflation ?? SCENARIO_CPI_ANNUAL.base;
+function ChartPanel({ title, hint, children }: { title: string; hint: string; children: React.ReactElement }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <p className="text-sm font-semibold text-slate-800">{title}</p>
+      <p className="text-[11px] text-slate-500 mb-2 leading-snug">{hint}</p>
+      <ResponsiveContainer width="100%" height={230}>
+        {children}
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
-  const sliderPercent =
-    kind === 'rate'
-      ? ((currentRate - rateMin) / (rateMax - rateMin)) * 100
-      : kind === 'cpi'
-        ? ((currentCpi - cpiMin) / (cpiMax - cpiMin)) * 100
-        : 0;
+function ScenarioCharts({
+  lineData,
+  scenarioChanged,
+  scenarioColor,
+  scenarioLineName,
+  principal,
+  interest,
+}: {
+  lineData: LineRow[];
+  scenarioChanged: boolean;
+  scenarioColor: string;
+  scenarioLineName: string;
+  principal: number;
+  interest: number;
+}) {
+  const pieData = [
+    { name: 'קרן', value: Math.max(0, principal), color: COLORS.principal },
+    { name: 'ריבית', value: Math.max(0, interest), color: COLORS.interest },
+  ];
 
   return (
-    <Card className="overflow-hidden border-0 shadow-md ring-1 ring-slate-200/80 bg-white">
-      <div className={`h-1 ${trackColor(track.type)}`} />
-      <CardHeader className="pb-2 pt-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="text-base font-bold truncate">{track.name}</CardTitle>
-            <CardDescription className="text-xs mt-0.5 line-clamp-2">
-              {formatTrackTypeWithAmortization(track)} · {formatCurrency(track.amount)} ·{' '}
-              {track.years} שנים
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="shrink-0 text-[10px]">
-            {Math.round(track.percentage)}%
-          </Badge>
-        </div>
-      </CardHeader>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <ChartPanel title="יתרת קרן" hint="התקדמות החזר הקרן. כשהמדד עולה הקרן גדלה וקצב הסילוק מואט.">
+        <LineChart data={lineData} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={40} />
+          <Tooltip formatter={tooltipFormatter} labelFormatter={yearLabelFormatter} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line type="monotone" dataKey="baseBalance" name="מצב נוכחי" stroke={COLORS.current} strokeWidth={2.5} dot={false} connectNulls />
+          {scenarioChanged && (
+            <Line type="monotone" dataKey="scenBalance" name={scenarioLineName} stroke={scenarioColor} strokeWidth={2.5} dot={false} connectNulls />
+          )}
+        </LineChart>
+      </ChartPanel>
 
-      <CardContent className="space-y-4 pb-4">
-        {kind === 'stable' && (
-          <div className="flex items-start gap-3 rounded-xl bg-slate-50 border border-slate-200 p-4">
-            <div className="rounded-lg bg-slate-200 p-2">
-              <Shield className="h-5 w-5 text-slate-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-800 text-sm">מסלול יציב</p>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                ריבית קבועה לא צמודה — המסלול אינו עתיד להשתנות בכל אופן. התשלום החודשי וסך
-                הריביות נשארים קבועים לאורך כל התקופה.
-              </p>
-            </div>
-          </div>
-        )}
+      <ChartPanel title="החזר חודשי" hint="ההחזר החודשי לאורך התקופה. במסלולים צמודי מדד ההחזר עולה עם המדד.">
+        <LineChart data={lineData} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={40} />
+          <Tooltip formatter={tooltipFormatter} labelFormatter={yearLabelFormatter} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line type="monotone" dataKey="basePay" name="מצב נוכחי" stroke={COLORS.current} strokeWidth={2.5} dot={false} connectNulls />
+          {scenarioChanged && (
+            <Line type="monotone" dataKey="scenPay" name={scenarioLineName} stroke={scenarioColor} strokeWidth={2.5} dot={false} connectNulls />
+          )}
+        </LineChart>
+      </ChartPanel>
 
-        {kind === 'rate' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Percent className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-slate-800">ריבית למסלול</span>
-            </div>
-            <p className="text-xs text-slate-500 -mt-1">
-              שינוי הריבית משפיע על התשלום החודשי ועל סך הריביות שישולמו
-            </p>
-            <div className="flex justify-between items-baseline">
-              <span className="text-2xl font-bold text-slate-900">{formatPercentage(currentRate)}</span>
-              <div className="flex gap-3 text-[10px]">
-                <span className="text-emerald-600 font-medium">
-                  אופטימי {formatPercentage(optimistic.interestRate!)}
-                </span>
-                <span className="text-red-600 font-medium">
-                  פסימי {formatPercentage(pessimistic.interestRate!)}
-                </span>
-              </div>
-            </div>
-            <Slider
-              value={[currentRate]}
-              onValueChange={([v]) => onScenarioChange({ interestRate: v })}
-              min={rateMin}
-              max={rateMax}
-              step={0.05}
-              className="py-1"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400">
-              <span className="flex items-center gap-1">
-                <TrendingDown className="h-3 w-3 text-emerald-500" />
-                תרחיש אופטימי
-              </span>
-              <span className="flex items-center gap-1">
-                תרחיש פסימי
-                <TrendingUp className="h-3 w-3 text-red-500" />
-              </span>
-            </div>
-          </div>
-        )}
-
-        {kind === 'cpi' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-violet-600" />
-              <span className="text-sm font-medium text-slate-800">מדד המחירים (אינפלציה שנתית)</span>
-            </div>
-            <p className="text-xs text-slate-500 -mt-1">
-              עליית המדד מגדילה את גובה הקרן ואת סך הריביות לאורך התקופה
-            </p>
-            <div className="flex justify-between items-baseline">
-              <span className="text-2xl font-bold text-slate-900">{formatPercentage(currentCpi)}</span>
-              <div className="flex gap-3 text-[10px]">
-                <span className="text-emerald-600 font-medium">
-                  אופטימי {formatPercentage(SCENARIO_CPI_ANNUAL.optimistic)}
-                </span>
-                <span className="text-red-600 font-medium">
-                  פסימי {formatPercentage(SCENARIO_CPI_ANNUAL.pessimistic)}
-                </span>
-              </div>
-            </div>
-            <Slider
-              value={[currentCpi]}
-              onValueChange={([v]) => onScenarioChange({ annualInflation: v })}
-              min={cpiMin}
-              max={cpiMax}
-              step={0.1}
-              className="py-1"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400">
-              <span>אינפלציה נמוכה</span>
-              <span>אינפלציה גבוהה</span>
-            </div>
-          </div>
-        )}
-
-        {kind !== 'stable' && (
-          <>
-            <div className="relative h-1.5 rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-400 via-blue-500 to-red-500 transition-all"
-                style={{ width: `${sliderPercent}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-slate-50 p-2.5 text-center">
-                <p className="text-[10px] text-slate-500 mb-0.5">תשלום חודשי</p>
-                <p className="text-sm font-bold">{formatCurrency(scenarioCalc.monthlyPayment)}</p>
-                <DeltaBadge value={monthlyDelta} />
-              </div>
-              <div className="rounded-lg bg-slate-50 p-2.5 text-center">
-                <p className="text-[10px] text-slate-500 mb-0.5">סך ריבית</p>
-                <p className="text-sm font-bold">{formatCurrency(scenarioCalc.totalInterest)}</p>
-                <DeltaBadge value={interestDelta} />
-              </div>
-            </div>
-          </>
-        )}
-
-        {kind === 'stable' && (
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg bg-slate-50 p-2.5 text-center">
-              <p className="text-[10px] text-slate-500 mb-0.5">תשלום חודשי</p>
-              <p className="text-sm font-bold">{formatCurrency(baseCalc.monthlyPayment)}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 p-2.5 text-center">
-              <p className="text-[10px] text-slate-500 mb-0.5">סך ריבית</p>
-              <p className="text-sm font-bold">{formatCurrency(baseCalc.totalInterest)}</p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <ChartPanel title="קרן מול ריבית" hint="חלוקת סך התשלום: כמה מהקרן הולך לתשלום ריבית לאורך התקופה.">
+        <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <Pie
+            data={pieData}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={45}
+            outerRadius={78}
+            paddingAngle={2}
+            label={({ percent }) => `${Math.round((percent ?? 0) * 100)}%`}
+            labelLine={false}
+          >
+            {pieData.map((entry) => (
+              <Cell key={entry.name} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip formatter={tooltipFormatter} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+        </PieChart>
+      </ChartPanel>
+    </div>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Per-track expandable row                                            */
+/* ------------------------------------------------------------------ */
+
+function TrackRow({
+  track,
+  scenario,
+  baseScenario,
+  onRateChange,
+  onInflationChange,
+}: {
+  track: MortgageTrack;
+  scenario: GlobalScenario;
+  baseScenario: GlobalScenario;
+  onRateChange: (type: string, v: number) => void;
+  onInflationChange: (v: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const rateVar = isRateVariable(track.type);
+  const idx = isIndexLinked(track.type);
+  const kind = getTrackScenarioKind(track.type);
+
+  const baseCalc = useMemo(() => calculateTrackScenario(track, baseScenario), [track, baseScenario]);
+  const curCalc = useMemo(() => calculateTrackScenario(track, scenario), [track, scenario]);
+
+  const mDelta = curCalc.monthlyPayment - baseCalc.monthlyPayment;
+  const iDelta = curCalc.totalInterest - baseCalc.totalInterest;
+
+  const trackChanged =
+    (rateVar && Math.abs((scenario.rateDeltas[track.type] ?? 0) - 0) > 0.001) ||
+    (idx && Math.abs(scenario.annualInflation - baseScenario.annualInflation) > 0.001);
+  const trackWorse = curCalc.totalInterest > baseCalc.totalInterest + 1;
+  const scenarioColor = trackWorse ? COLORS.worse : COLORS.better;
+  const scenarioLineName = trackWorse ? 'תרחיש (פסימי)' : 'תרחיש (אופטימי)';
+
+  const baseTrackSeries = useMemo(() => (open ? buildTrackSeries(track, baseScenario) : []), [open, track, baseScenario]);
+  const scenTrackSeries = useMemo(() => (open ? buildTrackSeries(track, scenario) : []), [open, track, scenario]);
+  const lineData = useMemo(() => mergeSeries(baseTrackSeries, scenTrackSeries), [baseTrackSeries, scenTrackSeries]);
+
+  return (
+    <div className="border-b border-slate-100 last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors text-right"
+      >
+        <span className={`w-1.5 h-9 rounded-full shrink-0 ${trackColor(track.type)}`} />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
+          <p className="text-[11px] text-slate-500 truncate">
+            {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {track.years} שנים
+            {rateVar ? ` · ${formatPercentage(effectiveRateForTrack(track, scenario))}` : ''}
+          </p>
+        </div>
+
+        <div className="text-center hidden sm:block min-w-[92px]">
+          <p className="text-[10px] text-slate-400">החזר חודשי</p>
+          <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.monthlyPayment)}</p>
+          <DeltaBadge value={mDelta} />
+        </div>
+        <div className="text-center hidden sm:block min-w-[92px]">
+          <p className="text-[10px] text-slate-400">סך ריבית</p>
+          <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.totalInterest)}</p>
+          <DeltaBadge value={iDelta} />
+        </div>
+
+        <Badge variant="outline" className="shrink-0 text-[10px]">
+          {Math.round(track.percentage)}%
+        </Badge>
+        <ChevronDown
+          className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="p-3 sm:p-4 bg-slate-50/60 border-t border-slate-100 space-y-4">
+          {/* mobile summary of the figures hidden in the header */}
+          <div className="grid grid-cols-2 gap-2 sm:hidden">
+            <div className="rounded-lg bg-white p-2.5 text-center border border-slate-200">
+              <p className="text-[10px] text-slate-400">החזר חודשי</p>
+              <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.monthlyPayment)}</p>
+              <DeltaBadge value={mDelta} />
+            </div>
+            <div className="rounded-lg bg-white p-2.5 text-center border border-slate-200">
+              <p className="text-[10px] text-slate-400">סך ריבית</p>
+              <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.totalInterest)}</p>
+              <DeltaBadge value={iDelta} />
+            </div>
+          </div>
+
+          {kind === 'stable' ? (
+            <div className="flex items-start gap-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+              <Shield className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-emerald-700 leading-relaxed">
+                מסלול מוגן לחלוטין — ריבית קבועה לא צמודה שאינה מושפעת משינוי בריבית או במדד ואינה
+                משתנה לאורך כל התקופה.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+              {rateVar && (
+                <RateSliderControl
+                  type={track.type}
+                  value={scenario.rateDeltas[track.type] ?? 0}
+                  onChange={(v) => onRateChange(track.type, v)}
+                />
+              )}
+              {idx && (
+                <InflationSliderControl value={scenario.annualInflation} onChange={onInflationChange} />
+              )}
+            </div>
+          )}
+
+          {idx && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
+              <Shield className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                הגנת קרן: אם המדד יורד, ערך הקרן לא יקטן מתחת לערכה המקורי במועד נטילת ההלוואה.
+              </p>
+            </div>
+          )}
+
+          <ScenarioCharts
+            lineData={lineData}
+            scenarioChanged={trackChanged}
+            scenarioColor={scenarioColor}
+            scenarioLineName={scenarioLineName}
+            principal={track.amount}
+            interest={curCalc.totalInterest}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Main screen                                                         */
+/* ------------------------------------------------------------------ */
+
 export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
-  const baseCalculation = useMemo(() => calculateMortgageMix(baseMix), [baseMix]);
+  const rateTypes = useMemo(() => getRateVariableTypes(baseMix), [baseMix]);
+  const hasIndex = useMemo(() => mixHasIndexLinked(baseMix), [baseMix]);
+  const hasControls = rateTypes.length > 0 || hasIndex;
 
-  const [trackScenarios, setTrackScenarios] = useState<Record<string, TrackScenarioValues>>(() =>
-    buildScenariosMap(baseMix.tracks, getDefaultTrackScenario)
-  );
+  const baseScenario = useMemo(() => makeBaseScenario(baseMix), [baseMix]);
+  const [scenario, setScenario] = useState<GlobalScenario>(() => makeBaseScenario(baseMix));
 
-  const updateTrackScenario = useCallback((trackId: string, values: TrackScenarioValues) => {
-    setTrackScenarios((prev) => ({ ...prev, [trackId]: values }));
-  }, []);
-
-  const applyPreset = useCallback(
-    (picker: (track: MortgageTrack) => TrackScenarioValues) => {
-      setTrackScenarios(buildScenariosMap(baseMix.tracks, picker));
-    },
-    [baseMix.tracks]
-  );
-
-  const currentCalculation = useMemo(
-    () => calculateMixWithScenarios(baseMix, trackScenarios),
-    [baseMix, trackScenarios]
-  );
-
-  const optimisticCalculation = useMemo(
-    () =>
-      calculateMixWithScenarios(
-        baseMix,
-        buildScenariosMap(baseMix.tracks, getOptimisticTrackScenario)
-      ),
-    [baseMix]
-  );
-
-  const pessimisticCalculation = useMemo(
-    () =>
-      calculateMixWithScenarios(
-        baseMix,
-        buildScenariosMap(baseMix.tracks, getPessimisticTrackScenario)
-      ),
-    [baseMix]
-  );
-
-  const monthlyDelta =
-    currentCalculation.summary.totalMonthlyPayment - baseCalculation.summary.totalMonthlyPayment;
-  const interestDelta =
-    currentCalculation.summary.totalInterest - baseCalculation.summary.totalInterest;
+  useEffect(() => {
+    setScenario(makeBaseScenario(baseMix));
+  }, [baseMix]);
 
   const trackStats = useMemo(() => {
     const counts: Record<TrackScenarioKind, number> = { stable: 0, rate: 0, cpi: 0 };
@@ -304,23 +461,34 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
     return counts;
   }, [baseMix.tracks]);
 
-  const monthlyDeltaPercent =
-    baseCalculation.summary.totalMonthlyPayment > 0
-      ? (monthlyDelta / baseCalculation.summary.totalMonthlyPayment) * 100
-      : 0;
+  const baseCalculation = useMemo(() => calculateMixScenario(baseMix, baseScenario), [baseMix, baseScenario]);
+  const currentCalculation = useMemo(() => calculateMixScenario(baseMix, scenario), [baseMix, scenario]);
 
-  const scenarioPositionOnScale = useMemo(() => {
-    const opt = optimisticCalculation.summary.totalMonthlyPayment;
-    const pes = pessimisticCalculation.summary.totalMonthlyPayment;
-    const cur = currentCalculation.summary.totalMonthlyPayment;
-    if (pes === opt) return 50;
-    return Math.min(100, Math.max(0, ((cur - opt) / (pes - opt)) * 100));
-  }, [optimisticCalculation, pessimisticCalculation, currentCalculation]);
+  const scenarioChanged = useMemo(() => {
+    if (Math.abs(scenario.annualInflation - baseScenario.annualInflation) > 0.001) return true;
+    return rateTypes.some((t) => Math.abs((scenario.rateDeltas[t] ?? 0) - 0) > 0.001);
+  }, [scenario, baseScenario, rateTypes]);
 
-  const baseTrackCalcs = useMemo(
-    () => Object.fromEntries(baseCalculation.trackCalculations.map((c) => [c.track.id, c])),
-    [baseCalculation]
-  );
+  const scenarioWorse =
+    currentCalculation.summary.totalInterest > baseCalculation.summary.totalInterest + 1;
+  const scenarioColor = scenarioWorse ? COLORS.worse : COLORS.better;
+  const scenarioLineName = scenarioWorse ? 'תרחיש (פסימי)' : 'תרחיש (אופטימי)';
+
+  const monthlyDelta =
+    currentCalculation.summary.totalMonthlyPayment - baseCalculation.summary.totalMonthlyPayment;
+  const interestDelta =
+    currentCalculation.summary.totalInterest - baseCalculation.summary.totalInterest;
+
+  const baseSeries = useMemo(() => buildScenarioSeries(baseMix, baseScenario), [baseMix, baseScenario]);
+  const scenarioSeries = useMemo(() => buildScenarioSeries(baseMix, scenario), [baseMix, scenario]);
+  const lineData = useMemo(() => mergeSeries(baseSeries, scenarioSeries), [baseSeries, scenarioSeries]);
+
+  const setRateDelta = useCallback((type: string, value: number) => {
+    setScenario((prev) => ({ ...prev, rateDeltas: { ...prev.rateDeltas, [type]: value } }));
+  }, []);
+  const setInflation = useCallback((value: number) => {
+    setScenario((prev) => ({ ...prev, annualInflation: value }));
+  }, []);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -331,244 +499,168 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
             <Layers className="h-6 w-6 text-blue-600" />
             <h2 className="text-2xl font-bold text-slate-900">ניתוח תרחישים</h2>
           </div>
-          <p className="text-slate-600 text-sm">{baseMix.name}</p>
+          <p className="text-slate-600 text-sm">
+            השוואת השפעת עליית וירידת הריבית והמדד על {baseMix.name}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => applyPreset(getDefaultTrackScenario)}>
-            <RotateCcw className="h-3.5 w-3.5 ml-1" />
-            איפוס
+        {onClose && (
+          <Button variant="default" size="sm" onClick={onClose}>
+            חזור
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-            onClick={() => applyPreset(getOptimisticTrackScenario)}
-          >
-            <Sparkles className="h-3.5 w-3.5 ml-1" />
-            הכל אופטימי
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-red-200 text-red-700 hover:bg-red-50"
-            onClick={() => applyPreset(getPessimisticTrackScenario)}
-          >
-            <AlertTriangle className="h-3.5 w-3.5 ml-1" />
-            הכל פסימי
-          </Button>
-          {onClose && (
-            <Button variant="default" size="sm" onClick={onClose}>
-              חזור
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* KPI Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-2 border-0 shadow-lg bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-          <CardContent className="pt-6 pb-5">
-            <p className="text-slate-300 text-xs mb-1">תשלום חודשי — תרחיש נוכחי</p>
-            <p className="text-3xl font-bold">
-              {formatCurrency(currentCalculation.summary.totalMonthlyPayment)}
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-slate-400 text-xs">בסיס:</span>
-              <span className="text-sm">{formatCurrency(baseCalculation.summary.totalMonthlyPayment)}</span>
-              <DeltaBadge value={monthlyDelta} />
+      {/* ===== Scenario control box ===== */}
+      <Card className="border-0 shadow-lg overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-emerald-400 via-blue-500 to-red-500" />
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ArrowLeftRight className="h-4 w-4 text-blue-600" />
+                בקרת תרחישים
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                גררו את הסליידרים כדי לבחון טווח ריביות ומדדים. הערכים מוחלים על המסלולים הרלוונטיים בלבד.
+              </CardDescription>
             </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                <span>אופטימי</span>
-                <span>פסימי</span>
-              </div>
-              <div className="relative h-2 rounded-full bg-slate-700">
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-lg border-2 border-blue-400 transition-all"
-                  style={{ right: `calc(${scenarioPositionOnScale}% - 6px)` }}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => setScenario(buildPresetScenario(baseMix, PRESET_SCENARIOS.optimistic))}
+              >
+                <Sparkles className="h-3.5 w-3.5 ml-1" />
+                אופטימי
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setScenario(makeBaseScenario(baseMix))}>
+                <RotateCcw className="h-3.5 w-3.5 ml-1" />
+                בסיס
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-200 text-red-700 hover:bg-red-50"
+                onClick={() => setScenario(buildPresetScenario(baseMix, PRESET_SCENARIOS.pessimistic))}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 ml-1" />
+                פסימי
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Composition row */}
+          <div className="flex items-center flex-wrap gap-2 border-b border-slate-100 pb-3">
+            <span className="text-xs font-medium text-slate-500">הרכב מסלולים:</span>
+            {trackStats.stable > 0 && (
+              <Badge variant="secondary" className="text-[10px]">
+                {trackStats.stable} מוגנים
+              </Badge>
+            )}
+            {trackStats.rate > 0 && (
+              <Badge className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100">
+                {trackStats.rate} ריבית
+              </Badge>
+            )}
+            {trackStats.cpi > 0 && (
+              <Badge className="text-[10px] bg-violet-100 text-violet-800 hover:bg-violet-100">
+                {trackStats.cpi} צמודי מדד
+              </Badge>
+            )}
+            <span className="text-[10px] text-slate-400 mr-auto">{baseMix.tracks.length} מסלולים בתמהיל</span>
+          </div>
+
+          {!hasControls ? (
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+              <Shield className="h-5 w-5 text-emerald-600 shrink-0" />
+              <p className="text-sm text-emerald-800">
+                כל המסלולים בתמהיל קבועים ולא צמודים — התמהיל מוגן לחלוטין מכל שינוי בריבית או במדד.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+              {rateTypes.map((type) => (
+                <RateSliderControl
+                  key={type}
+                  type={type}
+                  value={scenario.rateDeltas[type] ?? 0}
+                  onChange={(v) => setRateDelta(type, v)}
                 />
-              </div>
+              ))}
+              {hasIndex && <InflationSliderControl value={scenario.annualInflation} onChange={setInflation} />}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-              <Banknote className="h-3.5 w-3.5" />
-              סך ריבית — תרחיש נוכחי
-            </div>
-            <p className="text-xl font-bold">{formatCurrency(currentCalculation.summary.totalInterest)}</p>
-            <DeltaBadge value={interestDelta} />
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="pt-5 pb-4">
-            <p className="text-slate-500 text-xs mb-2">הרכב מסלולים</p>
-            <div className="flex flex-wrap gap-1.5">
-              {trackStats.stable > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
-                  {trackStats.stable} יציבים
-                </Badge>
-              )}
-              {trackStats.rate > 0 && (
-                <Badge className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100">
-                  {trackStats.rate} ריבית
-                </Badge>
-              )}
-              {trackStats.cpi > 0 && (
-                <Badge className="text-[10px] bg-violet-100 text-violet-800 hover:bg-violet-100">
-                  {trackStats.cpi} מדד
-                </Badge>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-400 mt-2">{baseMix.tracks.length} מסלולים בתמהיל</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Scenario comparison strip */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {[
-          {
-            label: 'תרחיש אופטימי',
-            calc: optimisticCalculation,
-            icon: TrendingDown,
-            color: 'emerald',
-            desc: 'ריבית −1% · אינפלציה 1%',
-          },
-          {
-            label: 'תרחיש נוכחי',
-            calc: currentCalculation,
-            icon: ArrowLeftRight,
-            color: 'blue',
-            desc: 'לפי הסליידרים שהגדרת',
-          },
-          {
-            label: 'תרחיש פסימי',
-            calc: pessimisticCalculation,
-            icon: TrendingUp,
-            color: 'red',
-            desc: 'ריבית +2% · אינפלציה 5%',
-          },
-        ].map(({ label, calc, icon: Icon, color, desc }) => {
-          const mDelta = calc.summary.totalMonthlyPayment - baseCalculation.summary.totalMonthlyPayment;
-          const iDelta = calc.summary.totalInterest - baseCalculation.summary.totalInterest;
-          const bg =
-            color === 'emerald'
-              ? 'from-emerald-50 to-white border-emerald-200'
-              : color === 'red'
-                ? 'from-red-50 to-white border-red-200'
-                : 'from-blue-50 to-white border-blue-200';
-          const iconColor =
-            color === 'emerald' ? 'text-emerald-600' : color === 'red' ? 'text-red-600' : 'text-blue-600';
-
-          return (
-            <Card key={label} className={`border bg-gradient-to-b ${bg}`}>
-              <CardContent className="pt-4 pb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className={`h-4 w-4 ${iconColor}`} />
-                  <span className="font-semibold text-sm">{label}</span>
-                </div>
-                <p className="text-[10px] text-slate-500 mb-2">{desc}</p>
-                <p className="text-lg font-bold">{formatCurrency(calc.summary.totalMonthlyPayment)}</p>
-                <p className="text-xs text-slate-500">לחודש · שינוי: <DeltaBadge value={mDelta} /></p>
-                <p className="text-xs text-slate-500 mt-1">
-                  סך ריבית: {formatCurrency(calc.summary.totalInterest)}{' '}
-                  (<DeltaBadge value={iDelta} />)
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Sensitivity bar */}
-      <Card className="border-0 shadow-sm bg-slate-50">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-slate-700">רגישות תשלום חודשי לתרחיש</span>
-            <span className="text-xs text-slate-500">
-              {monthlyDeltaPercent >= 0 ? '+' : ''}
-              {monthlyDeltaPercent.toFixed(1)}% מהבסיס
-            </span>
-          </div>
-          <Progress value={scenarioPositionOnScale} className="h-2" />
-          <div className="flex justify-between mt-1 text-[10px] text-slate-400">
-            <span>{formatCurrency(optimisticCalculation.summary.totalMonthlyPayment)}</span>
-            <span>{formatCurrency(pessimisticCalculation.summary.totalMonthlyPayment)}</span>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Per-track cards */}
-      <div>
-        <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-blue-600" />
-          פרמטרים לפי מסלול
-        </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {baseMix.tracks.map((track) => {
-            const baseTrack = baseTrackCalcs[track.id];
-            return (
-              <TrackScenarioCard
-                key={track.id}
-                track={track}
-                baseCalc={{
-                  monthlyPayment: baseTrack?.monthlyPayment ?? 0,
-                  totalInterest: baseTrack?.totalInterest ?? 0,
-                }}
-                scenario={trackScenarios[track.id] ?? getDefaultTrackScenario(track)}
-                onScenarioChange={(values) => updateTrackScenario(track.id, values)}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Summary table */}
+      {/* ===== Graphs box (incl. per-track rows) ===== */}
       <Card className="border-0 shadow-md">
-        <CardHeader>
-          <CardTitle className="text-base">סיכום השוואה</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <LineChartIcon className="h-5 w-5 text-blue-600" />
+            השוואה גרפית בין המצב הנוכחי לתרחיש
+          </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-slate-500">
-                <th className="text-right p-2 font-medium">תרחיש</th>
-                <th className="text-right p-2 font-medium">תשלום חודשי</th>
-                <th className="text-right p-2 font-medium">שינוי מהבסיס</th>
-                <th className="text-right p-2 font-medium">סך ריבית</th>
-                <th className="text-right p-2 font-medium">שינוי ריבית</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { name: 'בסיס (נוכחי)', calc: baseCalculation, highlight: '' },
-                { name: 'תרחיש מותאם', calc: currentCalculation, highlight: 'text-blue-700' },
-                { name: 'אופטימי', calc: optimisticCalculation, highlight: 'text-emerald-700' },
-                { name: 'פסימי', calc: pessimisticCalculation, highlight: 'text-red-700' },
-              ].map(({ name, calc, highlight }) => {
-                const mD =
-                  calc.summary.totalMonthlyPayment - baseCalculation.summary.totalMonthlyPayment;
-                const iD = calc.summary.totalInterest - baseCalculation.summary.totalInterest;
-                return (
-                  <tr key={name} className="border-b hover:bg-slate-50/80">
-                    <td className={`p-2 font-medium ${highlight}`}>{name}</td>
-                    <td className="p-2">{formatCurrency(calc.summary.totalMonthlyPayment)}</td>
-                    <td className="p-2">
-                      {name === 'בסיס (נוכחי)' ? '—' : <DeltaBadge value={mD} />}
-                    </td>
-                    <td className="p-2">{formatCurrency(calc.summary.totalInterest)}</td>
-                    <td className="p-2">
-                      {name === 'בסיס (נוכחי)' ? '—' : <DeltaBadge value={iD} />}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <CardContent className="space-y-4">
+          {/* KPI boxes — both prominent, close shades */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-slate-900 to-indigo-900 text-white p-4 shadow-md">
+              <div className="flex items-center gap-2 text-slate-300 text-xs mb-1">
+                <Wallet className="h-3.5 w-3.5" />
+                החזר חודשי — תרחיש נבחר
+              </div>
+              <p className="text-2xl font-bold">{formatCurrency(currentCalculation.summary.totalMonthlyPayment)}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-slate-400 text-[11px]">מצב נוכחי:</span>
+                <span className="text-xs">{formatCurrency(baseCalculation.summary.totalMonthlyPayment)}</span>
+                <DeltaBadge value={monthlyDelta} />
+              </div>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-slate-900 to-blue-900 text-white p-4 shadow-md">
+              <div className="flex items-center gap-2 text-slate-300 text-xs mb-1">
+                <Banknote className="h-3.5 w-3.5" />
+                סך ריבית — תרחיש נבחר
+              </div>
+              <p className="text-2xl font-bold">{formatCurrency(currentCalculation.summary.totalInterest)}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-slate-400 text-[11px]">מצב נוכחי:</span>
+                <span className="text-xs">{formatCurrency(baseCalculation.summary.totalInterest)}</span>
+                <DeltaBadge value={interestDelta} />
+              </div>
+            </div>
+          </div>
+
+          {/* Global charts */}
+          <ScenarioCharts
+            lineData={lineData}
+            scenarioChanged={scenarioChanged}
+            scenarioColor={scenarioColor}
+            scenarioLineName={scenarioLineName}
+            principal={baseMix.totalAmount}
+            interest={currentCalculation.summary.totalInterest}
+          />
+
+          {/* Per-track rows */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-blue-600" />
+              פירוט לפי מסלול
+            </h3>
+            <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+              {baseMix.tracks.map((track) => (
+                <TrackRow
+                  key={track.id}
+                  track={track}
+                  scenario={scenario}
+                  baseScenario={baseScenario}
+                  onRateChange={setRateDelta}
+                  onInflationChange={setInflation}
+                />
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
