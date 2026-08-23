@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Banknote,
   BarChart3,
+  BookmarkCheck,
   Settings,
   ChevronRight,
   Loader2
@@ -22,6 +23,7 @@ import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import MortgageCalculator from '@/components/mortgagecalculator';
 import CapitalPlanningCalculator from '@/components/ui/equitycalc';
+import { SavedMixesWidget } from '@/components/mortgage-advisor/SavedMixesWidget';
 
 type TabType = 'overview' | 'calculators' | 'my-mortgages' | 'settings';
 
@@ -185,17 +187,20 @@ export default function DashboardPage() {
                     </span>
                     <ChevronRight className="w-4 h-4 text-blue-600" />
                   </button>
+                  <Link
+                    href="/saved-mixes"
+                    className="w-full flex items-center justify-between p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <BookmarkCheck className="w-5 h-5 text-emerald-600" />
+                      <span className="text-sm font-medium">תמהילים שמורים</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-emerald-600" />
+                  </Link>
                 </div>
               </div>
 
-              {/* Recent Activity */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">פעילות אחרונה</h3>
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">אין פעילות אחרונה</p>
-                </div>
-              </div>
+              <SavedMixesWidget />
             </div>
           )}
 

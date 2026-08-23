@@ -245,8 +245,8 @@ export default function UniformMixes() {
     setShowDetailsModal(mix);
   };
 
-  // Storage key used by the mortgage-advisor tool to persist its state across reloads.
-  // MUST stay in sync with `STORAGE_KEY` in `src/components/mortgage-advisor/MortgageAdvisorTool.tsx`.
+  // Handoff key read once by the advisor workspace on load, then cleared.
+  // MUST stay in sync with `LEGACY_KEY` in `src/components/mortgage-advisor/workspace/legacy.ts`.
   const ADVISOR_STORAGE_KEY = 'mortgage-advisor-state';
 
   const handleContinueToAdvisor = () => {

@@ -27,6 +27,7 @@ import {
   DollarSign,
   FileText,
   BarChart3,
+  BookmarkCheck,
   PieChart,
   Activity,
   Video
@@ -36,6 +37,7 @@ import { signOut } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
+import { SavedMixesWidget } from '@/components/mortgage-advisor/SavedMixesWidget';
 
 type ClientStatus = 'POTENTIAL' | 'ACTIVE' | 'IN_PROCESS';
 type TabType = 'clients' | 'calendar' | 'analytics' | 'settings';
@@ -213,6 +215,20 @@ export default function AdvisorDashboardPage() {
             </div>
 
             <div className="flex items-center gap-4">
+              <Link
+                href="/saved-mixes"
+                className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors"
+              >
+                <BookmarkCheck className="w-4 h-4" />
+                תמהילים שמורים
+              </Link>
+              <Link
+                href="/mortgage-advisor"
+                className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors"
+              >
+                <PieChart className="w-4 h-4" />
+                כלי התכנון
+              </Link>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-blue-600" />
@@ -299,6 +315,10 @@ export default function AdvisorDashboardPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <SavedMixesWidget />
         </div>
 
         {/* Tabs */}

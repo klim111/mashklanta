@@ -109,10 +109,14 @@ function generateIndexedAmortizationSchedule(
   const schedule: AmortRow[] = [];
 
   let balance = principal;
+  /** ריבית שנצברה ולא שולמה — קיימת רק בגרייס מלא */
+  let deferredInterest = 0;
   let indexLevel = 1;
   let effectivePrev = 1;
 
   const isEqualPrincipal = amortizationType === 'equal_principal';
+  const isPartialGrace = amortizationType === 'partial_grace';
+  const isFullGrace = amortizationType === 'full_grace';
 
   for (let month = 1; month <= numPayments; month++) {
     indexLevel *= 1 + monthlyInflation;
@@ -121,13 +125,31 @@ function generateIndexedAmortizationSchedule(
     balance = balance * linkageFactor;
     effectivePrev = effective;
 
-    const interestPayment = balance * monthlyRate;
+    // בגרייס מלא הריבית שנצברה היא חלק מהחוב וצוברת ריבית בעצמה
+    const interestPayment = (balance + deferredInterest) * monthlyRate;
+    const debtStart = balance + deferredInterest;
     const remainingMonths = numPayments - month + 1;
+    const isLastMonth = remainingMonths <= 1;
 
-    let principalPayment: number;
-    let actualPayment: number;
+    let principalPayment = 0;
+    let actualPayment = 0;
+    let deferredPaid = 0;
 
-    if (isEqualPrincipal) {
+    if (isFullGrace) {
+      // אין תשלום שוטף; הקרן וכל הריבית שנצברה נפרעות בתשלום אחד בסוף התקופה
+      if (isLastMonth) {
+        deferredPaid = deferredInterest;
+        principalPayment = balance;
+        actualPayment = principalPayment + deferredPaid + interestPayment;
+        deferredInterest = 0;
+      } else {
+        deferredInterest += interestPayment;
+      }
+    } else if (isPartialGrace) {
+      // הריבית משולמת כל חודש, והקרן נפרעת בסוף התקופה
+      principalPayment = isLastMonth ? balance : 0;
+      actualPayment = principalPayment + interestPayment;
+    } else if (isEqualPrincipal) {
       principalPayment = Math.min(balance, remainingMonths > 0 ? balance / remainingMonths : balance);
       actualPayment = principalPayment + interestPayment;
     } else {
@@ -143,14 +165,15 @@ function generateIndexedAmortizationSchedule(
     const newBalance = Math.max(0, balance - principalPayment);
     schedule.push({
       month,
-      balanceStart: balance,
+      balanceStart: debtStart,
       payment: actualPayment,
       interest: interestPayment,
       principal: principalPayment,
-      balanceEnd: newBalance,
+      deferredInterest: deferredPaid,
+      balanceEnd: newBalance + deferredInterest,
     });
     balance = newBalance;
-    if (balance <= 0.01) break;
+    if (balance + deferredInterest <= 0.01) break;
   }
 
   return schedule;

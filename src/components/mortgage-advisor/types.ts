@@ -20,6 +20,27 @@ export interface MortgageTrack {
   amortizationType?: 'spitzer' | 'equal_principal' | 'partial_grace' | 'full_grace' | 'ability_based' | 'secured';
 }
 
+/** סוג העסקה — קובע את תקרת המימון של בנק ישראל */
+export type DealType = 'first_home' | 'replacement_home' | 'second_home' | 'any_purpose';
+
+export const DEAL_TYPES = {
+  first_home: 'דירה ראשונה',
+  replacement_home: 'דירה חליפית',
+  second_home: 'דירה שנייה',
+  any_purpose: 'משכנתא לכל מטרה',
+} as const;
+
+/** תקרת המימון (LTV) של בנק ישראל לכל סוג עסקה, באחוזים משווי הנכס */
+export const MAX_LTV_PERCENT: Record<DealType, number> = {
+  first_home: 75,
+  replacement_home: 70,
+  second_home: 50,
+  any_purpose: 50,
+};
+
+/** בנק ישראל מחייב לקחת לפחות שליש מהמשכנתא בריבית קבועה לא צמודה */
+export const MIN_FIXED_UNLINKED_PERCENT = 33;
+
 export const MORTGAGE_BANKS = [
   'לאומי',
   'הפועלים',
@@ -68,10 +89,14 @@ export interface TrackCalculation {
 
 export interface AmortRow {
   month: number;
+  /** יתרת החוב בתחילת החודש, כולל ריבית שנצברה ועוד לא שולמה */
   balanceStart: number;
   payment: number;
+  /** הריבית שנצברה באותו חודש */
   interest: number;
   principal: number;
+  /** ריבית מחודשים קודמים שנצברה בגרייס מלא ומשולמת עכשיו */
+  deferredInterest?: number;
   balanceEnd: number;
 }
 

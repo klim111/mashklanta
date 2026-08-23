@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { MortgageAdvisorTool } from '@/components/mortgage-advisor/MortgageAdvisorTool';
+import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
 
 export const metadata: Metadata = {
   title: 'כלי יועצי משכנתא | משכלנתא',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function MortgageAdvisorPage() {
-  return <MortgageAdvisorTool />;
+  return <MortgageWorkspace />;
 }

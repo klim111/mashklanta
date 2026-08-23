@@ -46,31 +46,37 @@ export function generateAmortizationSchedule(
   
   const schedule: AmortRow[] = [];
   let balance = principal;
+  /** ריבית שנצברה ולא שולמה — קיימת רק בגרייס מלא */
+  let deferredInterest = 0;
   const equalPrincipalPayment = numPayments > 0 ? principal / numPayments : 0;
   const isPartialGrace = amortizationType === 'partial_grace';
   const isFullGrace = amortizationType === 'full_grace';
-  
+
   for (let month = 1; month <= numPayments; month++) {
-    const interestPayment = balance * monthlyRate;
+    // בגרייס מלא הריבית שנצברה היא חלק מהחוב וצוברת ריבית בעצמה
+    const interestPayment = (balance + deferredInterest) * monthlyRate;
+    const debtStart = balance + deferredInterest;
+    const isLastMonth = month === numPayments;
+
     let principalPayment = 0;
     let actualPayment = 0;
+    let deferredPaid = 0;
     let newBalance = balance;
 
     if (isFullGrace) {
-      if (month === numPayments) {
-        // בחודש האחרון משלמים את כל הקרן המקורית + הריבית שנצברה (ריבית דריבית).
-        actualPayment = balance + interestPayment;
+      if (isLastMonth) {
+        // אין תשלום שוטף לאורך התקופה, ובסופה נפרעים הקרן וכל הריבית שנצברה
+        deferredPaid = deferredInterest;
         principalPayment = balance;
+        actualPayment = principalPayment + deferredPaid + interestPayment;
+        deferredInterest = 0;
         newBalance = 0;
       } else {
-        // אין תשלום שוטף, והריבית מצטרפת לקרן.
-        actualPayment = 0;
-        principalPayment = 0;
-        newBalance = balance + interestPayment;
+        deferredInterest += interestPayment;
       }
     } else {
       principalPayment = isPartialGrace
-        ? (month === numPayments ? balance : 0)
+        ? (isLastMonth ? balance : 0)
         : amortizationType === 'equal_principal'
           ? Math.min(equalPrincipalPayment, balance)
           : monthlyPayment - interestPayment;
@@ -82,22 +88,23 @@ export function generateAmortizationSchedule(
           : monthlyPayment;
       newBalance = Math.max(0, balance - principalPayment);
     }
-    
+
     schedule.push({
       month,
-      balanceStart: balance,
+      balanceStart: debtStart,
       payment: actualPayment,
       interest: interestPayment,
       principal: principalPayment,
-      balanceEnd: newBalance
+      deferredInterest: deferredPaid,
+      balanceEnd: newBalance + deferredInterest
     });
-    
+
     balance = newBalance;
-    
-    // הפסקה אם היתרה הגיעה לאפס
-    if (balance <= 0.01) break;
+
+    // הפסקה אם החוב נסגר במלואו
+    if (balance + deferredInterest <= 0.01) break;
   }
-  
+
   return schedule;
 }
 
