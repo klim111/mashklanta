@@ -1,153 +1,268 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { computeMix, sanitizeMix } from './engine';
-import type { MixSummary, WorkspaceMix } from './engine';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { computeMix } from './engine';
+import type { WorkspaceMix } from './engine';
+import { toSavedMix } from './mixRecord';
+import type { SavedMix } from './mixRecord';
 
-const STORAGE_KEY = 'mashklanta:saved-mixes';
-const CHANGE_EVENT = 'mashklanta:saved-mixes-changed';
-
-export interface SavedMix {
-  mix: WorkspaceMix;
-  /** תמונת מצב של הסיכום בזמן השמירה, לתצוגה מהירה ברשימות */
-  summary: MixSummary;
-  savedAt: string;
-}
-
-/** האם הסיכום ששמור לצד התמהיל שלם, או שצריך לחשב אותו מחדש. */
-function summaryIsUsable(summary: unknown): summary is MixSummary {
-  if (!summary || typeof summary !== 'object') return false;
-  const required: Array<keyof MixSummary> = [
-    'monthlyPayment',
-    'totalInterest',
-    'totalPaid',
-    'averageRate',
-    'months',
-    'costPerShekel',
-  ];
-  return required.every((key) => {
-    const value = (summary as Record<string, unknown>)[key];
-    return typeof value === 'number' && Number.isFinite(value);
-  });
-}
+export type { SavedMix } from './mixRecord';
 
 /**
- * תמהילים שנשמרו בגרסאות קודמות עלולים להכיל שדות חסרים או פגומים, ולכן כל
- * קריאה מהאחסון עוברת תיקון לפני שהיא מגיעה לתצוגה או לחישוב.
+ * התמהילים נשמרים בבסיס הנתונים, ולכן הם זמינים בכל מכשיר ומשותפים בין הלקוח
+ * ליועץ שלו. אחסון הדפדפן נשאר רק עבור מי שעדיין לא התחבר, ומה שנשמר בו מיובא
+ * לחשבון בפעם הראשונה שמתחברים.
  */
-function read(): SavedMix[] {
+const LOCAL_KEY = 'mashklanta:saved-mixes';
+const IMPORTED_KEY = 'mashklanta:saved-mixes-imported';
+const CHANGE_EVENT = 'mashklanta:saved-mixes-changed';
+
+function readLocal(): SavedMix[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(LOCAL_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-
-    return parsed.flatMap((item): SavedMix[] => {
-      const mix = sanitizeMix(item?.mix);
-      if (!mix) return [];
-      const summary = summaryIsUsable(item?.summary) ? item.summary : computeMix(mix).summary;
-      const savedAt = typeof item?.savedAt === 'string' ? item.savedAt : mix.updatedAt;
-      return [{ mix, summary, savedAt }];
+    return parsed.flatMap((item) => {
+      const saved = toSavedMix(item);
+      return saved ? [saved] : [];
     });
   } catch {
     return [];
   }
 }
 
-function write(items: SavedMix[]) {
+function writeLocal(items: SavedMix[]) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  window.localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-/**
- * שמירת עותק על השרת היא "מיטב המאמץ": התמהילים נשמרים מקומית תמיד, וגם אם
- * המשתמש לא מחובר או שהשרת אינו זמין השמירה מצליחה ולא נאבד מידע.
- */
-async function pushToServer(saved: SavedMix): Promise<void> {
-  try {
-    await fetch('/api/calculations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        inputsJson: { kind: 'mortgage-mix', mix: saved.mix },
-        resultsJson: saved.summary,
-      }),
-    });
-  } catch {
-    // נשמר מקומית — אין צורך להפריע ליועץ
-  }
-}
-
-export function listSavedMixes(): SavedMix[] {
-  return read();
-}
-
-export function persistMix(mix: WorkspaceMix): SavedMix {
-  const summary = computeMix(mix).summary;
-  const saved: SavedMix = {
+function snapshot(mix: WorkspaceMix): SavedMix {
+  return {
     mix: { ...mix, updatedAt: new Date().toISOString() },
-    summary,
+    summary: computeMix(mix).summary,
     savedAt: new Date().toISOString(),
   };
-
-  const items = read();
-  const index = items.findIndex((item) => item.mix.id === mix.id);
-  if (index >= 0) items[index] = saved;
-  else items.unshift(saved);
-
-  write(items);
-  void pushToServer(saved);
-  return saved;
 }
 
-export function removeSavedMix(id: string) {
-  write(read().filter((item) => item.mix.id !== id));
+function upsert(items: SavedMix[], saved: SavedMix): SavedMix[] {
+  const index = items.findIndex((item) => item.mix.id === saved.mix.id);
+  if (index < 0) return [saved, ...items];
+  const next = [...items];
+  next[index] = { ...saved, recordId: saved.recordId ?? items[index].recordId };
+  return next;
 }
 
-export function renameSavedMix(id: string, name: string) {
-  write(
-    read().map((item) =>
-      item.mix.id === id ? { ...item, mix: { ...item.mix, name, updatedAt: new Date().toISOString() } } : item
-    )
-  );
+async function fetchMixes(clientId?: string): Promise<SavedMix[]> {
+  const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
+  const response = await fetch(`/api/mixes${query}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`failed to load mixes: ${response.status}`);
+  const body = await response.json();
+  if (!Array.isArray(body)) return [];
+  return body.flatMap((item) => {
+    const saved = toSavedMix(item);
+    return saved ? [saved] : [];
+  });
 }
 
-/** רשימת התמהילים השמורים, מסונכרנת בין הטאבים ובין רכיבים באותו עמוד. */
-export function useSavedMixes() {
+async function postMix(mix: WorkspaceMix, clientId?: string | null): Promise<SavedMix | null> {
+  const response = await fetch('/api/mixes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(clientId === undefined ? { mix } : { mix, clientId }),
+  });
+  if (!response.ok) throw new Error(`failed to save mix: ${response.status}`);
+  return toSavedMix(await response.json());
+}
+
+/**
+ * תמהילים ששמורים בדפדפן מגרסה קודמת עוברים לחשבון בפעם הראשונה שמתחברים,
+ * ואז נמחקים מהדפדפן כדי שלא יישארו שני מקורות אמת.
+ */
+async function importLocalMixes(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (window.localStorage.getItem(IMPORTED_KEY) === 'done') return false;
+
+  const local = readLocal();
+  if (local.length === 0) {
+    window.localStorage.setItem(IMPORTED_KEY, 'done');
+    return false;
+  }
+
+  try {
+    // הישן נשמר אחרון כדי שהחדש יופיע בראש הרשימה
+    for (const item of [...local].reverse()) {
+      await postMix(item.mix);
+    }
+  } catch {
+    return false;
+  }
+
+  window.localStorage.removeItem(LOCAL_KEY);
+  window.localStorage.setItem(IMPORTED_KEY, 'done');
+  return true;
+}
+
+interface UseSavedMixesOptions {
+  /** הצגת התמהילים של לקוח מסוים במקום כל התמהילים של המשתמש */
+  clientId?: string;
+}
+
+/**
+ * רשימת התמהילים השמורים. מחוברים — מבסיס הנתונים; לא מחוברים — מהדפדפן, עם
+ * סימון ברור שהשמירה עדיין מקומית.
+ */
+export function useSavedMixes(options: UseSavedMixesOptions = {}) {
+  const { clientId } = options;
+  const { status } = useSession();
+  const signedIn = status === 'authenticated';
+
   const [saved, setSaved] = useState<SavedMix[]>([]);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(() => setSaved(read()), []);
+  const refresh = useCallback(async () => {
+    if (!signedIn) {
+      setSaved(readLocal());
+      setReady(true);
+      return;
+    }
+    try {
+      setSaved(await fetchMixes(clientId));
+      setError(null);
+    } catch {
+      setError('לא הצלחנו לטעון את התמהילים מהחשבון');
+    } finally {
+      setReady(true);
+    }
+  }, [signedIn, clientId]);
 
+  const imported = useRef(false);
   useEffect(() => {
-    refresh();
-    setReady(true);
-    const onChange = () => refresh();
+    if (status === 'loading') return;
+
+    let cancelled = false;
+    const load = async () => {
+      if (signedIn && !imported.current) {
+        imported.current = true;
+        await importLocalMixes();
+      }
+      if (!cancelled) await refresh();
+    };
+    void load();
+
+    const onChange = () => void refresh();
     window.addEventListener(CHANGE_EVENT, onChange);
     window.addEventListener('storage', onChange);
     return () => {
+      cancelled = true;
       window.removeEventListener(CHANGE_EVENT, onChange);
       window.removeEventListener('storage', onChange);
     };
-  }, [refresh]);
+  }, [status, signedIn, refresh]);
 
-  const save = useCallback((mix: WorkspaceMix) => {
-    const result = persistMix(mix);
-    refresh();
-    return result;
-  }, [refresh]);
+  const save = useCallback(
+    async (mix: WorkspaceMix, targetClientId?: string | null): Promise<SavedMix> => {
+      const optimistic = snapshot(mix);
+      // התצוגה מתעדכנת מיד, והשרת מחזיר אחר כך את הרשומה עם המזהה שלה
+      setSaved((items) => upsert(items, optimistic));
 
-  const remove = useCallback((id: string) => {
-    removeSavedMix(id);
-    refresh();
-  }, [refresh]);
+      if (!signedIn) {
+        writeLocal(upsert(readLocal(), optimistic));
+        return optimistic;
+      }
 
-  const rename = useCallback((id: string, name: string) => {
-    renameSavedMix(id, name);
-    refresh();
-  }, [refresh]);
+      try {
+        const stored = await postMix(mix, targetClientId ?? clientId);
+        if (stored) setSaved((items) => upsert(items, stored));
+        setError(null);
+        return stored ?? optimistic;
+      } catch {
+        setError('התמהיל לא נשמר בחשבון. בדקו את החיבור ונסו שוב.');
+        return optimistic;
+      }
+    },
+    [signedIn, clientId]
+  );
 
-  return { saved, ready, save, remove, rename, refresh };
+  const recordIdOf = useCallback(
+    (mixId: string) => saved.find((item) => item.mix.id === mixId)?.recordId,
+    [saved]
+  );
+
+  const remove = useCallback(
+    async (mixId: string) => {
+      setSaved((items) => items.filter((item) => item.mix.id !== mixId));
+
+      if (!signedIn) {
+        writeLocal(readLocal().filter((item) => item.mix.id !== mixId));
+        return;
+      }
+
+      const recordId = recordIdOf(mixId);
+      if (!recordId) return;
+      try {
+        await fetch(`/api/mixes/${recordId}`, { method: 'DELETE' });
+      } catch {
+        setError('המחיקה לא הושלמה בשרת');
+      }
+      await refresh();
+    },
+    [signedIn, recordIdOf, refresh]
+  );
+
+  const rename = useCallback(
+    async (mixId: string, name: string) => {
+      setSaved((items) =>
+        items.map((item) =>
+          item.mix.id === mixId ? { ...item, mix: { ...item.mix, name } } : item
+        )
+      );
+
+      if (!signedIn) {
+        writeLocal(
+          readLocal().map((item) =>
+            item.mix.id === mixId
+              ? { ...item, mix: { ...item.mix, name, updatedAt: new Date().toISOString() } }
+              : item
+          )
+        );
+        return;
+      }
+
+      const recordId = recordIdOf(mixId);
+      if (!recordId) return;
+      try {
+        await fetch(`/api/mixes/${recordId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+      } catch {
+        setError('שינוי השם לא נשמר בשרת');
+      }
+    },
+    [signedIn, recordIdOf]
+  );
+
+  /** שיוך תמהיל קיים ללקוח, או ניתוק השיוך */
+  const assign = useCallback(
+    async (mixId: string, targetClientId: string | null) => {
+      if (!signedIn) return;
+      const recordId = recordIdOf(mixId);
+      if (!recordId) return;
+      await fetch(`/api/mixes/${recordId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: targetClientId }),
+      });
+      await refresh();
+    },
+    [signedIn, recordIdOf, refresh]
+  );
+
+  return { saved, ready, error, signedIn, save, remove, rename, assign, refresh };
 }

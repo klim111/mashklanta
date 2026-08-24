@@ -2,9 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertTriangle,
   Banknote,
@@ -16,8 +18,13 @@ import {
   ShieldAlert,
   Table2,
   Target,
+  UserRound,
+  Users,
   X,
 } from 'lucide-react';
+import { ClientList } from '@/components/advisor/ClientList';
+import { useAdvisorClients } from '@/components/advisor/useAdvisorClients';
+import type { AdvisorClient } from '@/components/advisor/useAdvisorClients';
 import type { OptimizationConstraints, WorkspaceMix } from './engine';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
@@ -61,7 +68,23 @@ function signatureOf(mix: WorkspaceMix): string {
  */
 export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
-  const { saved, save, remove, rename } = useSavedMixes();
+  const { data: session } = useSession();
+  const isAdvisor = session?.user?.role === 'ADVISOR';
+  const personalAreaHref = isAdvisor ? '/advisor-dashboard' : '/dashboard';
+
+  /** הלקוח שהתמהילים נשמרים עבורו. ריק כשעובדים בלי שיוך ללקוח */
+  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const clients = useAdvisorClients(isAdvisor);
+
+  const { saved, save, remove, rename, signedIn } = useSavedMixes(
+    activeClientId ? { clientId: activeClientId } : {}
+  );
+
+  // כניסה מדף הלקוח: הכלי נפתח כשהלקוח כבר נבחר, וכל שמירה נרשמת עליו
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('client');
+    if (requested) setActiveClientId(requested);
+  }, []);
 
   const [phase, setPhase] = useState<Phase>(initialMix ? 'ready' : 'landing');
   const [pendingDraft, setPendingDraft] = useState<WorkspaceDraft | null>(null);
@@ -180,6 +203,8 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   const openSavedMix = useCallback(
     (item: SavedMix) => {
       keepCurrentMix();
+      // התמהיל נשאר משויך ללקוח שלו, גם כשמגיעים אליו מהאזור האישי
+      if (item.clientId) setActiveClientId(item.clientId);
       openMix(item.mix);
     },
     [keepCurrentMix, openMix]
@@ -240,10 +265,35 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   if (phase === 'landing') {
     return (
       <div className="min-h-screen bg-slate-50" dir="rtl">
-        <WorkspaceTopBar />
+        <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />
         <div className="container mx-auto px-4 py-6">
           <WorkspaceLanding
             saved={saved}
+            signedIn={signedIn}
+            clientsPanel={
+              isAdvisor ? (
+                <Card className="border-slate-200 shadow-sm">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-blue-600" />
+                        הלקוחות שלי
+                      </p>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
+                        <Link href="/advisor-dashboard">לאזור האישי</Link>
+                      </Button>
+                    </div>
+                    <ClientList
+                      clients={clients.clients}
+                      ready={clients.ready}
+                      error={clients.error}
+                      onAddClient={clients.addClient}
+                      emptyHint="עדיין אין לקוחות. צרפו לקוח לפי האימייל שאיתו נרשם, ואז כל תמהיל שתשמרו יופיע גם אצלו."
+                    />
+                  </CardContent>
+                </Card>
+              ) : undefined
+            }
             draftMix={pendingDraft?.mix ?? null}
             onCreateNew={() => {
               setSetupSeed(undefined);
@@ -266,7 +316,7 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   if (phase === 'setup') {
     return (
       <div className="min-h-screen bg-slate-50" dir="rtl">
-        <WorkspaceTopBar />
+        <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />
         <div className="container mx-auto px-4 py-6">
           <MixSetupWizard
             onBack={backToLanding}
@@ -303,6 +353,21 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
             <BookmarkCheck className="h-4 w-4 ml-1" />
             טען תמהיל שמור
           </Button>
+
+          <Button variant="ghost" size="sm" className="h-9" asChild>
+            <Link href={personalAreaHref}>
+              {isAdvisor ? <Users className="h-4 w-4 ml-1" /> : <UserRound className="h-4 w-4 ml-1" />}
+              {isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}
+            </Link>
+          </Button>
+
+          {isAdvisor && (
+            <ClientSelector
+              clients={clients.clients}
+              activeClientId={activeClientId}
+              onSelect={setActiveClientId}
+            />
+          )}
 
           <div className="flex items-center gap-2 sm:mr-auto">
             <Popover>
@@ -516,7 +581,13 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   );
 }
 
-function WorkspaceTopBar() {
+function WorkspaceTopBar({
+  personalAreaHref,
+  isAdvisor,
+}: {
+  personalAreaHref: string;
+  isAdvisor: boolean;
+}) {
   return (
     <div className="border-b border-slate-200 bg-white">
       <div className="container mx-auto px-4 py-2.5 flex items-center gap-2">
@@ -527,13 +598,85 @@ function WorkspaceTopBar() {
           </Link>
         </Button>
         <Button variant="ghost" size="sm" className="h-9" asChild>
+          <Link href={personalAreaHref}>
+            {isAdvisor ? <Users className="h-4 w-4 ml-1" /> : <UserRound className="h-4 w-4 ml-1" />}
+            {isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" className="h-9" asChild>
           <Link href="/saved-mixes">
             <BookmarkCheck className="h-4 w-4 ml-1" />
-            האזור האישי
+            התמהילים השמורים
           </Link>
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * בורר הלקוח שהתמהילים נשמרים עבורו. בלי בחירה התמהיל נשמר ליועץ בלבד, וניתן
+ * לשייך אותו ללקוח מאוחר יותר.
+ */
+function ClientSelector({
+  clients,
+  activeClientId,
+  onSelect,
+}: {
+  clients: AdvisorClient[];
+  activeClientId: string | null;
+  onSelect: (clientId: string | null) => void;
+}) {
+  const active = clients.find((client) => client.id === activeClientId) ?? null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-9 max-w-[220px]">
+          <UserRound className="h-4 w-4 ml-1 shrink-0" />
+          <span className="truncate">{active ? active.name : 'ללא שיוך ללקוח'}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent dir="rtl" align="end" className="w-72 p-2">
+        <p className="px-2 py-1.5 text-[11px] font-semibold text-slate-500">
+          שמירת התמהילים עבור
+        </p>
+        <button
+          type="button"
+          onClick={() => onSelect(null)}
+          className={`w-full rounded-lg p-2 text-right text-xs transition-colors hover:bg-slate-50 ${
+            activeClientId === null ? 'bg-blue-50 font-semibold text-blue-700' : 'text-slate-700'
+          }`}
+        >
+          ללא שיוך ללקוח
+        </button>
+        {clients.length === 0 ? (
+          <p className="px-2 py-2 text-[11px] text-slate-500">
+            עדיין אין לקוחות. אפשר לצרף לקוח מהאזור האישי.
+          </p>
+        ) : (
+          clients.map((client) => (
+            <button
+              key={client.id}
+              type="button"
+              onClick={() => onSelect(client.id)}
+              className={`w-full rounded-lg p-2 text-right transition-colors hover:bg-slate-50 ${
+                activeClientId === client.id ? 'bg-blue-50' : ''
+              }`}
+            >
+              <span
+                className={`block text-xs ${
+                  activeClientId === client.id ? 'font-semibold text-blue-700' : 'text-slate-800'
+                }`}
+              >
+                {client.name}
+              </span>
+              <span className="block text-[10px] text-slate-500">{client.email}</span>
+            </button>
+          ))
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 

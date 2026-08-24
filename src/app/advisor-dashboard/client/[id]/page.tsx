@@ -1,669 +1,584 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  ArrowRight,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  DollarSign,
-  FileText,
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Plus,
-  Edit,
-  Trash2,
-  Download,
-  Upload,
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  PieChart,
-  Activity,
-  Home as HomeIcon,
-  LogOut,
-  ChevronLeft,
-  Video
-} from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Banknote,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  Circle,
+  FileText,
+  Home as HomeIcon,
+  Mail,
+  Pencil,
+  Phone,
+  PieChart,
+  TrendingUp,
+  Undo2,
+  UserRound,
+  Users,
+  Video,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
+import { ClientDetailsForm } from '@/components/advisor/ClientDetailsForm';
+import { SavedMixesBoard } from '@/components/mortgage-advisor/SavedMixesBoard';
+import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import { stageMixForWorkspace } from '@/components/mortgage-advisor/workspace/draft';
+import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
+import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
+import {
+  CLIENT_STAGES,
+  DOCUMENT_STATUS_LABELS,
+  STAGE_LABELS,
+  stageIndex,
+} from '@/lib/client-process';
+import type { ClientDocumentStatus, ClientStage } from '@/lib/client-process';
 
-type ClientStatus = 'POTENTIAL' | 'ACTIVE' | 'IN_PROCESS';
-type ActionType = 'CALL' | 'EMAIL' | 'MEETING' | 'DOCUMENT_REVIEW' | 'RATE_NEGOTIATION' | 'APPLICATION_SUBMISSION' | 'FOLLOW_UP';
-type ActionStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+interface ClientDocumentView {
+  id: string;
+  key: string;
+  name: string;
+  stage: ClientStage;
+  status: ClientDocumentStatus;
+  required: boolean;
+  note: string | null;
+  submittedAt: string | null;
+}
 
-interface Client {
+interface ClientDetail {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  address?: string;
-  status: ClientStatus;
+  phone: string | null;
+  address: string | null;
+  stage: ClientStage;
   progress: number;
-  income?: number;
-  expenses?: number;
-  creditScore?: number;
-  downPayment?: number;
-  propertyValue?: number;
-  mortgageMixes?: any;
-  bankRates?: any;
-  createdAt: string;
-  updatedAt: string;
+  household: 'SINGLE' | 'COUPLE';
+  age: number | null;
+  partnerName: string | null;
+  partnerAge: number | null;
+  income: number | null;
+  partnerIncome: number | null;
+  expenses: number | null;
+  existingLoans: number | null;
+  creditScore: number | null;
+  downPayment: number | null;
+  propertyValue: number | null;
+  propertyAddress: string | null;
+  mortgageAmount: number | null;
+  dealType: keyof typeof DEAL_TYPES | null;
+  notes: string | null;
+  plannedMonthlyPayment: number | null;
+  projectedCashFlow: number | null;
+  documents: ClientDocumentView[];
 }
 
-interface ClientAction {
-  id: string;
-  type: ActionType;
-  description: string;
-  status: ActionStatus;
-  dueDate?: string;
-  completedAt?: string;
-  createdAt: string;
-}
-
-interface Reminder {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate: string;
-  isCompleted: boolean;
-  createdAt: string;
-}
-
-export default function ClientProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { data: session, status } = useSession();
+/**
+ * דף הלקוח באזור היועץ: הפרטים הכלליים, השלב בתהליך והמסמכים למעלה, ומתחתיהם
+ * אזור התמהילים של הלקוח — אותו לוח שהלקוח רואה באזור האישי שלו.
+ */
+export default function AdvisorClientPage() {
+  const params = useParams<{ id: string }>();
+  const clientId = typeof params?.id === 'string' ? params.id : '';
   const router = useRouter();
-  const [client, setClient] = useState<Client | null>(null);
-  const [actions, setActions] = useState<ClientAction[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'actions' | 'documents' | 'mortgage-mixes' | 'bank-rates'>('overview');
-  const [videoCallModal, setVideoCallModal] = useState<{isOpen: boolean, client: Client | null}>({
-    isOpen: false,
-    client: null
-  });
-  const [clientId, setClientId] = useState<string>('');
+  const { data: session, status } = useSession();
 
-  // Get client ID from params
-  useEffect(() => {
-    const getClientId = async () => {
-      const resolvedParams = await params;
-      setClientId(resolvedParams.id);
-    };
-    getClientId();
-  }, [params]);
+  const [client, setClient] = useState<ClientDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [callOpen, setCallOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const { saved, ready, remove, rename } = useSavedMixes({ clientId });
 
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session) {
-      router.push('/auth/login');
-    } else if (session.user?.role !== 'ADVISOR') {
-      router.push('/dashboard');
-    }
+    if (!session) router.push('/auth/login');
+    else if (session.user?.role !== 'ADVISOR') router.push('/dashboard');
   }, [session, status, router]);
 
-  // Mock data - replace with real API calls
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!clientId) return;
-    
-    // Mock client data
-    setClient({
-      id: clientId,
-      name: 'דוד כהן',
-      email: 'david@example.com',
-      phone: '050-1234567',
-      address: 'רחוב הרצל 123, תל אביב',
-      status: 'ACTIVE',
-      progress: 75,
-      income: 25000,
-      expenses: 15000,
-      creditScore: 750,
-      downPayment: 400000,
-      propertyValue: 2000000,
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-15'
-    });
-
-    // Mock actions
-    setActions([
-      {
-        id: '1',
-        type: 'CALL',
-        description: 'שיחה עם הלקוח לגבי מסמכים חסרים',
-        status: 'COMPLETED',
-        dueDate: '2024-01-10',
-        completedAt: '2024-01-10',
-        createdAt: '2024-01-08'
-      },
-      {
-        id: '2',
-        type: 'DOCUMENT_REVIEW',
-        description: 'בדיקת מסמכי הכנסה ותעסוקה',
-        status: 'IN_PROGRESS',
-        dueDate: '2024-01-20',
-        createdAt: '2024-01-12'
-      },
-      {
-        id: '3',
-        type: 'RATE_NEGOTIATION',
-        description: 'משא ומתן על ריביות עם הבנקים',
-        status: 'PENDING',
-        dueDate: '2024-01-25',
-        createdAt: '2024-01-15'
-      }
-    ]);
-
-    // Mock reminders
-    setReminders([
-      {
-        id: '1',
-        title: 'הגשת מסמכים לבנק',
-        description: 'להעביר את כל המסמכים הנדרשים לבנק לאומי',
-        dueDate: '2024-01-22',
-        isCompleted: false,
-        createdAt: '2024-01-15'
-      },
-      {
-        id: '2',
-        title: 'פגישה עם הלקוח',
-        description: 'פגישת המשך לדיון על התנאים הסופיים',
-        dueDate: '2024-01-28',
-        isCompleted: false,
-        createdAt: '2024-01-16'
-      }
-    ]);
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(String(response.status));
+      setClient(await response.json());
+      setError(null);
+    } catch {
+      setError('לא הצלחנו לטעון את פרטי הלקוח');
+    } finally {
+      setLoading(false);
+    }
   }, [clientId]);
 
-  if (status === 'loading') {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const patch = async (body: Record<string, unknown>) => {
+    const response = await fetch(`/api/clients/${clientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (response.ok) setClient(await response.json());
+  };
+
+  const setDocumentStatus = async (documentId: string, next: ClientDocumentStatus) => {
+    const response = await fetch(`/api/clients/${clientId}/documents`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId, status: next }),
+    });
+    if (!response.ok) return;
+    // רק המסמך שהשתנה מתעדכן, כדי שהסימון יגיב מיד בלי טעינה מחדש של הדף
+    const updated = await response.json();
+    setClient((current) =>
+      current
+        ? {
+            ...current,
+            documents: current.documents.map((doc) =>
+              doc.id === updated.id
+                ? { ...doc, status: updated.status, submittedAt: updated.submittedAt }
+                : doc
+            ),
+          }
+        : current
+    );
+  };
+
+  const openMixInTool = (item: SavedMix) => {
+    stageMixForWorkspace(item.mix);
+    router.push(`/mortgage-advisor?client=${clientId}`);
+  };
+
+  if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
       </div>
     );
   }
 
-  if (!session || session.user?.role !== 'ADVISOR') {
-    return null;
+  if (!session || session.user?.role !== 'ADVISOR') return null;
+
+  if (error || !client) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-10 text-center space-y-3">
+            <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto" />
+            <p className="text-sm text-slate-700">{error ?? 'הלקוח לא נמצא'}</p>
+            <Button variant="outline" asChild>
+              <Link href="/advisor-dashboard">חזרה לרשימת הלקוחות</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  const getStatusColor = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800';
-      case 'POTENTIAL': return 'bg-yellow-100 text-yellow-800';
-      case 'IN_PROCESS': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return <CheckCircle className="w-4 h-4" />;
-      case 'POTENTIAL': return <AlertCircle className="w-4 h-4" />;
-      case 'IN_PROCESS': return <Clock className="w-4 h-4" />;
-      default: return <XCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getStatusText = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return 'אקטיבי';
-      case 'POTENTIAL': return 'פוטנציאלי';
-      case 'IN_PROCESS': return 'בתהליך';
-      default: return 'לא ידוע';
-    }
-  };
-
-  const getActionTypeText = (type: ActionType) => {
-    switch (type) {
-      case 'CALL': return 'שיחה';
-      case 'EMAIL': return 'מייל';
-      case 'MEETING': return 'פגישה';
-      case 'DOCUMENT_REVIEW': return 'בדיקת מסמכים';
-      case 'RATE_NEGOTIATION': return 'משא ומתן ריביות';
-      case 'APPLICATION_SUBMISSION': return 'הגשת בקשה';
-      case 'FOLLOW_UP': return 'מעקב';
-      default: return 'פעולה';
-    }
-  };
-
-  const getActionStatusColor = (status: ActionStatus) => {
-    switch (status) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'CANCELLED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const startVideoCall = () => {
-    if (client) {
-      setVideoCallModal({
-        isOpen: true,
-        client: client
-      });
-    }
-  };
-
-  const closeVideoCall = () => {
-    setVideoCallModal({
-      isOpen: false,
-      client: null
-    });
-  };
-
-  const tabs = [
-    { id: 'overview', label: 'סקירה כללית', icon: User },
-    { id: 'actions', label: 'פעולות', icon: Activity },
-    { id: 'documents', label: 'מסמכים', icon: FileText },
-    { id: 'mortgage-mixes', label: 'תמהילים', icon: PieChart },
-    { id: 'bank-rates', label: 'ריביות בנקים', icon: TrendingUp },
-  ];
+  const submitted = client.documents.filter((doc) => doc.status !== 'PENDING');
+  const remaining = client.documents.filter((doc) => doc.status === 'PENDING');
+  const householdLabel = client.household === 'COUPLE' ? 'זוג' : 'יחיד';
+  const ages = [client.age, client.household === 'COUPLE' ? client.partnerAge : null]
+    .filter((age): age is number => typeof age === 'number' && age > 0)
+    .join(' / ');
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/advisor-dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-                <ChevronLeft className="w-5 h-5" />
-                חזרה לדשבורד
-              </Link>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <HomeIcon className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-bold text-xl">משכנתא - יועצים</span>
-              </Link>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <span className="text-sm font-medium">{session.user?.name || session.user?.email}</span>
-              </div>
-              <button
-                onClick={() => signOut({ callbackUrl: '/' })}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                יציאה
-              </button>
-            </div>
+    <div className="min-h-screen bg-slate-50" dir="rtl">
+      <header className="border-b bg-white">
+        <div className="container mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+          <Button variant="ghost" size="sm" className="h-9" asChild>
+            <Link href="/advisor-dashboard">
+              <ArrowRight className="h-4 w-4 ml-1" />
+              הלקוחות שלי
+            </Link>
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold text-slate-900 truncate">{client.name}</h1>
+            <p className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-3">
+              <span className="flex items-center gap-1">
+                <Mail className="h-3 w-3" />
+                {client.email}
+              </span>
+              {client.phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {client.phone}
+                </span>
+              )}
+            </p>
           </div>
+          <Button variant="outline" size="sm" className="h-9" onClick={() => setCallOpen(true)}>
+            <Video className="h-4 w-4 ml-1" />
+            שיחת וידאו
+          </Button>
+          <Button size="sm" className="h-9" asChild>
+            <Link href={`/mortgage-advisor?client=${client.id}`}>
+              <PieChart className="h-4 w-4 ml-1" />
+              בנה תמהיל ללקוח
+            </Link>
+          </Button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {client && (
-          <>
-            {/* Client Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
-            >
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-xl">
-                        {client.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(client.status)}`}>
-                          {getStatusIcon(client.status)}
-                          {getStatusText(client.status)}
-                        </span>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span>התקדמות:</span>
-                          <div className="w-32 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full transition-all"
-                              style={{ width: `${client.progress}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium">{client.progress}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={startVideoCall}
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                    >
-                      <Video className="w-4 h-4" />
-                      שיחת וידאו
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <Edit className="w-4 h-4" />
-                      ערוך
-                    </Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      פעולה חדשה
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+      <div className="container mx-auto px-4 py-5 space-y-5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-slate-800">פרטי הלקוח</p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => setEditing((open) => !open)}
+          >
+            <Pencil className="h-3.5 w-3.5 ml-1" />
+            {editing ? 'סגור עריכה' : 'ערוך פרטים'}
+          </Button>
+        </div>
 
-            {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm border mb-6">
-              <div className="flex border-b overflow-x-auto">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
-                      className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
-                        activeTab === tab.id
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
+        {editing && (
+          <Card className="border-blue-200 bg-blue-50/30">
+            <CardContent className="p-4">
+              <ClientDetailsForm
+                values={{
+                  phone: client.phone,
+                  household: client.household,
+                  age: client.age,
+                  partnerName: client.partnerName,
+                  partnerAge: client.partnerAge,
+                  income: client.income,
+                  partnerIncome: client.partnerIncome,
+                  expenses: client.expenses,
+                  existingLoans: client.existingLoans,
+                  propertyValue: client.propertyValue,
+                  propertyAddress: client.propertyAddress,
+                  mortgageAmount: client.mortgageAmount,
+                  dealType: client.dealType,
+                  notes: client.notes,
+                }}
+                onSubmit={async (values) => {
+                  await patch(values);
+                  setEditing(false);
+                }}
+                onCancel={() => setEditing(false)}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* הפרטים הכלליים */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailCard
+            icon={<HomeIcon className="h-4 w-4" />}
+            label="הנכס"
+            value={client.propertyAddress || (client.propertyValue ? 'ללא כתובת' : 'טרם הוגדר')}
+            hint={
+              [
+                client.propertyValue ? `עלות ${formatShekel(client.propertyValue)}` : null,
+                client.dealType ? DEAL_TYPES[client.dealType] : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || undefined
+            }
+          />
+          <DetailCard
+            icon={client.household === 'COUPLE' ? <Users className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
+            label="הרכב וגיל"
+            value={ages ? `${householdLabel} · גיל ${ages}` : householdLabel}
+            hint={client.household === 'COUPLE' && client.partnerName ? `עם ${client.partnerName}` : undefined}
+          />
+          <DetailCard
+            icon={<Banknote className="h-4 w-4" />}
+            label="גובה המשכנתא"
+            value={client.mortgageAmount ? formatShekel(client.mortgageAmount) : 'טרם נקבע'}
+            hint={
+              client.plannedMonthlyPayment
+                ? `החזר מתוכנן ${formatShekel(client.plannedMonthlyPayment)}`
+                : undefined
+            }
+          />
+          <DetailCard
+            icon={<TrendingUp className="h-4 w-4" />}
+            label="צפי תזרים חודשי"
+            value={
+              client.projectedCashFlow === null
+                ? 'חסרים נתוני הכנסה'
+                : formatShekel(client.projectedCashFlow)
+            }
+            hint={
+              client.projectedCashFlow === null
+                ? 'הזינו הכנסות והוצאות'
+                : client.projectedCashFlow >= 0
+                  ? 'נשאר חופשי אחרי המשכנתא וההלוואות'
+                  : 'התזרים שלילי — ההחזר גבוה מדי'
+            }
+            tone={
+              client.projectedCashFlow !== null && client.projectedCashFlow < 0 ? 'danger' : 'default'
+            }
+          />
+        </div>
+
+        {/* השלב בתהליך */}
+        <Card className="border-slate-200">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-800">שלב בתהליך</p>
+              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[11px]">
+                {STAGE_LABELS[client.stage]} · {client.progress}%
+              </Badge>
+            </div>
+            <StageTrack stage={client.stage} onSelect={(stage) => void patch({ stage })} />
+            <p className="text-[11px] text-slate-500">
+              לחיצה על שלב מעדכנת את מקומו של הלקוח בתהליך ופותחת את המסמכים שנדרשים בו.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* המסמכים */}
+        <Card className="border-slate-200">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-blue-600" />
+                מסמכים
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px]">
+                  {submitted.length} הוגשו
+                </Badge>
+                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">
+                  {remaining.length} נותרו
+                </Badge>
               </div>
             </div>
 
-            {/* Tab Content */}
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Overview Tab */}
-              {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Client Info */}
-                  <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פרטי לקוח</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center gap-3">
-                            <Mail className="w-5 h-5 text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-600">מייל</p>
-                              <p className="font-medium">{client.email}</p>
-                            </div>
-                          </div>
-                          {client.phone && (
-                            <div className="flex items-center gap-3">
-                              <Phone className="w-5 h-5 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-600">טלפון</p>
-                                <p className="font-medium">{client.phone}</p>
-                              </div>
-                            </div>
-                          )}
-                          {client.address && (
-                            <div className="flex items-center gap-3 md:col-span-2">
-                              <MapPin className="w-5 h-5 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-600">כתובת</p>
-                                <p className="font-medium">{client.address}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פרטים פיננסיים</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {client.income && (
-                            <div className="text-center p-4 bg-green-50 rounded-lg">
-                              <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">הכנסה חודשית</p>
-                              <p className="text-xl font-bold text-green-600">₪{client.income.toLocaleString()}</p>
-                            </div>
-                          )}
-                          {client.expenses && (
-                            <div className="text-center p-4 bg-red-50 rounded-lg">
-                              <TrendingDown className="w-8 h-8 text-red-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">הוצאות חודשיות</p>
-                              <p className="text-xl font-bold text-red-600">₪{client.expenses.toLocaleString()}</p>
-                            </div>
-                          )}
-                          {client.creditScore && (
-                            <div className="text-center p-4 bg-blue-50 rounded-lg">
-                              <BarChart3 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">ציון אשראי</p>
-                              <p className="text-xl font-bold text-blue-600">{client.creditScore}</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פרטי הנכס</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {client.propertyValue && (
-                            <div className="text-center p-4 bg-purple-50 rounded-lg">
-                              <HomeIcon className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">ערך הנכס</p>
-                              <p className="text-xl font-bold text-purple-600">₪{client.propertyValue.toLocaleString()}</p>
-                            </div>
-                          )}
-                          {client.downPayment && (
-                            <div className="text-center p-4 bg-orange-50 rounded-lg">
-                              <DollarSign className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">מקדמה</p>
-                              <p className="text-xl font-bold text-orange-600">₪{client.downPayment.toLocaleString()}</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Sidebar */}
-                  <div className="space-y-6">
-                    {/* Recent Actions */}
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פעולות אחרונות</h3>
-                        <div className="space-y-3">
-                          {actions.slice(0, 3).map((action) => (
-                            <div key={action.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <div>
-                                <p className="font-medium text-sm">{getActionTypeText(action.type)}</p>
-                                <p className="text-xs text-gray-600">{action.description}</p>
-                              </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionStatusColor(action.status)}`}>
-                                {action.status === 'COMPLETED' ? 'הושלם' : 
-                                 action.status === 'IN_PROGRESS' ? 'בתהליך' : 
-                                 action.status === 'PENDING' ? 'ממתין' : 'בוטל'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <Button variant="outline" className="w-full mt-4" onClick={() => setActiveTab('actions')}>
-                          צפה בכל הפעולות
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    {/* Upcoming Reminders */}
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">תזכורות קרובות</h3>
-                        <div className="space-y-3">
-                          {reminders.filter(r => !r.isCompleted).slice(0, 3).map((reminder) => (
-                            <div key={reminder.id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                              <p className="font-medium text-sm">{reminder.title}</p>
-                              <p className="text-xs text-gray-600 mb-2">{reminder.description}</p>
-                              <p className="text-xs text-yellow-600">
-                                {new Date(reminder.dueDate).toLocaleDateString('he-IL')}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              )}
-
-              {/* Actions Tab */}
-              {activeTab === 'actions' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">פעולות</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
-                        פעולה חדשה
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {actions.map((action) => (
-                        <div key={action.id} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Activity className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <h3 className="font-semibold">{getActionTypeText(action.type)}</h3>
-                                <p className="text-gray-600 text-sm">{action.description}</p>
-                                <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                                  <span>נוצר: {new Date(action.createdAt).toLocaleDateString('he-IL')}</span>
-                                  {action.dueDate && (
-                                    <span>תאריך יעד: {new Date(action.dueDate).toLocaleDateString('he-IL')}</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getActionStatusColor(action.status)}`}>
-                                {action.status === 'COMPLETED' ? 'הושלם' : 
-                                 action.status === 'IN_PROGRESS' ? 'בתהליך' : 
-                                 action.status === 'PENDING' ? 'ממתין' : 'בוטל'}
-                              </span>
-                              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                                <Edit className="w-4 h-4 text-gray-400" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+            {client.documents.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">
+                אין עדיין מסמכים פתוחים. הם ייפתחו לפי השלב בתהליך.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {CLIENT_STAGES.filter((stage) =>
+                  client.documents.some((doc) => doc.stage === stage)
+                ).map((stage) => (
+                  <div key={stage} className="space-y-1.5">
+                    <p className="text-[11px] font-semibold text-slate-600">{STAGE_LABELS[stage]}</p>
+                    {client.documents
+                      .filter((doc) => doc.stage === stage)
+                      .map((doc) => (
+                        <DocumentRow
+                          key={doc.id}
+                          document={doc}
+                          onChange={(next) => void setDocumentStatus(doc.id, next)}
+                        />
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-              {/* Documents Tab */}
-              {activeTab === 'documents' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">מסמכים</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Upload className="w-4 h-4 mr-2" />
-                        העלה מסמך
-                      </Button>
-                    </div>
-                    
-                    <div className="text-center py-16 text-gray-500">
-                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p>אין מסמכים עדיין</p>
-                      <p className="text-sm">העלה מסמכים כדי להתחיל</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+        {/* התמהילים של הלקוח */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-blue-600" />
+              התמהילים של {client.name}
+            </h2>
+            <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
+              <Link href={`/mortgage-advisor?client=${client.id}`}>הוסף תמהיל</Link>
+            </Button>
+          </div>
 
-              {/* Mortgage Mixes Tab */}
-              {activeTab === 'mortgage-mixes' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">תמהילי משכנתא</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
-                        צור תמהיל חדש
-                      </Button>
-                    </div>
-                    
-                    <div className="text-center py-16 text-gray-500">
-                      <PieChart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p>אין תמהילים עדיין</p>
-                      <p className="text-sm">צור תמהיל משכנתא מותאם ללקוח</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Bank Rates Tab */}
-              {activeTab === 'bank-rates' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">ריביות בנקים</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
-                        הוסף ריבית
-                      </Button>
-                    </div>
-                    
-                    <div className="text-center py-16 text-gray-500">
-                      <TrendingUp className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p>אין ריביות עדיין</p>
-                      <p className="text-sm">הוסף ריביות שהתקבלו מהבנקים</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
-          </>
-        )}
-
-        {/* Video Call Modal */}
-        {videoCallModal.client && (
-          <VideoCallModal
-            isOpen={videoCallModal.isOpen}
-            onClose={closeVideoCall}
-            client={videoCallModal.client}
-            advisor={{
-              name: session.user?.name || 'יועץ',
-              email: session.user?.email || ''
-            }}
+          <SavedMixesBoard
+            saved={saved}
+            ready={ready}
+            onOpen={openMixInTool}
+            onDelete={remove}
+            onRename={rename}
+            emptyState={
+              <Card className="border-slate-200">
+                <CardContent className="py-12 text-center">
+                  <PieChart className="h-11 w-11 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm text-slate-600">עוד לא נשמרו תמהילים ללקוח הזה.</p>
+                  <p className="text-xs text-slate-500 mt-1 mb-4">
+                    כל תמהיל שתשמרו בכלי התכנון עבורו יופיע כאן וגם באזור האישי שלו.
+                  </p>
+                  <Button size="sm" asChild>
+                    <Link href={`/mortgage-advisor?client=${client.id}`}>בנה תמהיל ראשון</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            }
           />
-        )}
+        </div>
       </div>
+
+      <VideoCallModal
+        isOpen={callOpen}
+        onClose={() => setCallOpen(false)}
+        client={{
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone ?? undefined,
+          status: 'ACTIVE',
+          progress: client.progress,
+          propertyValue: client.propertyValue ?? undefined,
+          downPayment: client.downPayment ?? undefined,
+          income: client.income ?? undefined,
+          creditScore: client.creditScore ?? undefined,
+        }}
+        advisor={{
+          name: session.user?.name || 'יועץ',
+          email: session.user?.email || '',
+        }}
+      />
     </div>
   );
 }
 
+function DetailCard({
+  icon,
+  label,
+  value,
+  hint,
+  tone = 'default',
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'default' | 'danger';
+}) {
+  return (
+    <Card className="border-slate-200">
+      <CardContent className="p-3.5">
+        <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+          <span className="text-blue-600">{icon}</span>
+          {label}
+        </p>
+        <p
+          className={`mt-1 text-base font-bold truncate ${
+            tone === 'danger' ? 'text-red-600' : 'text-slate-900'
+          }`}
+          title={value}
+        >
+          {value}
+        </p>
+        {hint && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{hint}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** רצף השלבים. השלבים שהושלמו מסומנים, והלחיצה מעבירה את הלקוח לשלב אחר */
+function StageTrack({
+  stage,
+  onSelect,
+}: {
+  stage: ClientStage;
+  onSelect: (stage: ClientStage) => void;
+}) {
+  const current = stageIndex(stage);
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {CLIENT_STAGES.map((item, index) => {
+        const done = index < current;
+        const active = index === current;
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onSelect(item)}
+            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+              active
+                ? 'border-blue-500 bg-blue-50 font-semibold text-blue-700'
+                : done
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+            }`}
+          >
+            {done ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+            {STAGE_LABELS[item]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DocumentRow({
+  document,
+  onChange,
+}: {
+  document: ClientDocumentView;
+  onChange: (status: ClientDocumentStatus) => void;
+}) {
+  const submitted = document.status !== 'PENDING';
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5">
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+          document.status === 'APPROVED'
+            ? 'bg-emerald-100 text-emerald-700'
+            : document.status === 'REJECTED'
+              ? 'bg-red-100 text-red-700'
+              : document.status === 'SUBMITTED'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-slate-100 text-slate-400'
+        }`}
+      >
+        {submitted ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-800">
+          {document.name}
+          {!document.required && <span className="text-slate-400"> (לא חובה)</span>}
+        </p>
+        <p className="text-[10px] text-slate-500">
+          {DOCUMENT_STATUS_LABELS[document.status]}
+          {document.submittedAt &&
+            ` · ${new Date(document.submittedAt).toLocaleDateString('he-IL')}`}
+        </p>
+      </div>
+
+      {document.status === 'PENDING' ? (
+        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onChange('SUBMITTED')}>
+          סמן כהוגש
+        </Button>
+      ) : (
+        <div className="flex items-center gap-1">
+          {document.status !== 'APPROVED' && (
+            <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onChange('APPROVED')}>
+              אושר
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-[11px] text-slate-500"
+            title="החזר לרשימת המסמכים החסרים"
+            onClick={() => onChange('PENDING')}
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -4,70 +4,33 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  UserPlus, 
-  Calendar, 
-  Clock, 
-  TrendingUp, 
-  TrendingDown,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  MoreHorizontal,
-  Filter,
-  Search,
-  Plus,
+import {
+  Users,
+  Calendar,
+  Clock,
   LogOut,
   Home as HomeIcon,
   User,
-  Phone,
-  Mail,
-  MapPin,
-  DollarSign,
   FileText,
   BarChart3,
   BookmarkCheck,
   PieChart,
-  Activity,
-  Video
 } from 'lucide-react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
 import { SavedMixesWidget } from '@/components/mortgage-advisor/SavedMixesWidget';
+import { ClientList } from '@/components/advisor/ClientList';
+import { useAdvisorClients } from '@/components/advisor/useAdvisorClients';
 
-type ClientStatus = 'POTENTIAL' | 'ACTIVE' | 'IN_PROCESS';
 type TabType = 'clients' | 'calendar' | 'analytics' | 'settings';
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  status: ClientStatus;
-  progress: number;
-  lastContact: string;
-  nextAction?: string;
-  propertyValue?: number;
-  downPayment?: number;
-  income?: number;
-  creditScore?: number;
-}
 
 export default function AdvisorDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('clients');
-  const [clients, setClients] = useState<Client[]>([]);
-  const [filterStatus, setFilterStatus] = useState<ClientStatus | 'ALL'>('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [videoCallModal, setVideoCallModal] = useState<{isOpen: boolean, client: Client | null}>({
-    isOpen: false,
-    client: null
-  });
+  const isAdvisor = session?.user?.role === 'ADVISOR';
+  const { clients, ready, error, addClient } = useAdvisorClients(isAdvisor);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -77,54 +40,6 @@ export default function AdvisorDashboardPage() {
       router.push('/dashboard');
     }
   }, [session, status, router]);
-
-  // Mock data - replace with real API calls
-  useEffect(() => {
-    setClients([
-      {
-        id: '1',
-        name: 'דוד כהן',
-        email: 'david@example.com',
-        phone: '050-1234567',
-        status: 'ACTIVE',
-        progress: 75,
-        lastContact: '2024-01-15',
-        nextAction: 'הגשת מסמכים לבנק',
-        propertyValue: 2000000,
-        downPayment: 400000,
-        income: 25000,
-        creditScore: 750
-      },
-      {
-        id: '2',
-        name: 'שרה לוי',
-        email: 'sarah@example.com',
-        phone: '052-9876543',
-        status: 'POTENTIAL',
-        progress: 25,
-        lastContact: '2024-01-10',
-        nextAction: 'פגישת ייעוץ',
-        propertyValue: 1500000,
-        downPayment: 300000,
-        income: 18000,
-        creditScore: 680
-      },
-      {
-        id: '3',
-        name: 'משה ישראלי',
-        email: 'moshe@example.com',
-        phone: '054-5555555',
-        status: 'IN_PROCESS',
-        progress: 90,
-        lastContact: '2024-01-14',
-        nextAction: 'חתימה על חוזה',
-        propertyValue: 3000000,
-        downPayment: 600000,
-        income: 35000,
-        creditScore: 800
-      }
-    ]);
-  }, []);
 
   if (status === 'loading') {
     return (
@@ -137,60 +52,6 @@ export default function AdvisorDashboardPage() {
   if (!session || session.user?.role !== 'ADVISOR') {
     return null;
   }
-
-  const filteredClients = clients.filter(client => {
-    const matchesStatus = filterStatus === 'ALL' || client.status === filterStatus;
-    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
-
-  const getStatusColor = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800';
-      case 'POTENTIAL': return 'bg-yellow-100 text-yellow-800';
-      case 'IN_PROCESS': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return <CheckCircle className="w-4 h-4" />;
-      case 'POTENTIAL': return <AlertCircle className="w-4 h-4" />;
-      case 'IN_PROCESS': return <Clock className="w-4 h-4" />;
-      default: return <XCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getStatusText = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return 'אקטיבי';
-      case 'POTENTIAL': return 'פוטנציאלי';
-      case 'IN_PROCESS': return 'בתהליך';
-      default: return 'לא ידוע';
-    }
-  };
-
-  const startVideoCall = (client: Client) => {
-    console.log('🎥 Starting video call for client:', client.name);
-    console.log('👤 Advisor session:', { 
-      user: session?.user, 
-      role: session?.user?.role,
-      email: session?.user?.email 
-    });
-    setVideoCallModal({
-      isOpen: true,
-      client: client
-    });
-  };
-
-  const closeVideoCall = () => {
-    setVideoCallModal({
-      isOpen: false,
-      client: null
-    });
-  };
 
   const tabs = [
     { id: 'clients', label: 'לקוחות', icon: Users },
@@ -278,23 +139,9 @@ export default function AdvisorDashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">לקוחות אקטיביים</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {clients.filter(c => c.status === 'ACTIVE').length}
-                  </p>
-                </div>
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm font-medium text-gray-600">בתהליך</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {clients.filter(c => c.status === 'IN_PROCESS').length}
+                    {clients.filter(c => c.stage !== 'INTAKE' && c.stage !== 'COMPLETED').length}
                   </p>
                 </div>
                 <Clock className="w-8 h-8 text-blue-600" />
@@ -306,12 +153,26 @@ export default function AdvisorDashboardPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">פוטנציאליים</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {clients.filter(c => c.status === 'POTENTIAL').length}
+                  <p className="text-sm font-medium text-gray-600">תמהילים שמורים</p>
+                  <p className="text-2xl font-bold text-violet-600">
+                    {clients.reduce((total, client) => total + client.mixCount, 0)}
                   </p>
                 </div>
-                <AlertCircle className="w-8 h-8 text-yellow-600" />
+                <PieChart className="w-8 h-8 text-violet-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">מסמכים שממתינים</p>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {clients.reduce((total, client) => total + client.openDocuments, 0)}
+                  </p>
+                </div>
+                <FileText className="w-8 h-8 text-amber-600" />
               </div>
             </CardContent>
           </Card>
@@ -353,121 +214,8 @@ export default function AdvisorDashboardPage() {
         >
           {/* Clients Tab */}
           {activeTab === 'clients' && (
-            <div className="space-y-6">
-              {/* Filters and Search */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="text"
-                        placeholder="חיפוש לקוחות..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value as ClientStatus | 'ALL')}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="ALL">כל הסטטוסים</option>
-                      <option value="ACTIVE">אקטיבי</option>
-                      <option value="POTENTIAL">פוטנציאלי</option>
-                      <option value="IN_PROCESS">בתהליך</option>
-                    </select>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                      <Plus className="w-4 h-4 mr-2" />
-                      לקוח חדש
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Clients List */}
-              <div className="grid gap-4">
-                {filteredClients.map((client) => (
-                  <Link key={client.id} href={`/advisor-dashboard/client/${client.id}`}>
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                      <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold text-lg">
-                              {client.name.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{client.name}</h3>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span className="flex items-center gap-1">
-                                <Mail className="w-4 h-4" />
-                                {client.email}
-                              </span>
-                              {client.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="w-4 h-4" />
-                                  {client.phone}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(client.status)}`}>
-                              {getStatusIcon(client.status)}
-                              {getStatusText(client.status)}
-                            </div>
-                            <div className="mt-2">
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <span>התקדמות:</span>
-                                <div className="w-20 bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-blue-600 h-2 rounded-full transition-all"
-                                    style={{ width: `${client.progress}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-xs">{client.progress}%</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right text-sm text-gray-600">
-                            <div>מגע אחרון: {new Date(client.lastContact).toLocaleDateString('he-IL')}</div>
-                            {client.nextAction && (
-                              <div className="text-blue-600 font-medium">פעולה הבאה: {client.nextAction}</div>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                startVideoCall(client);
-                              }}
-                              className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700"
-                              title="התחל שיחת וידאו"
-                            >
-                              <Video className="w-5 h-5" />
-                            </button>
-                            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                              <MoreHorizontal className="w-5 h-5 text-gray-400" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <ClientList clients={clients} ready={ready} error={error} onAddClient={addClient} />
             </div>
           )}
 
@@ -539,18 +287,6 @@ export default function AdvisorDashboardPage() {
         </motion.div>
       </div>
 
-      {/* Video Call Modal */}
-      {videoCallModal.client && (
-        <VideoCallModal
-          isOpen={videoCallModal.isOpen}
-          onClose={closeVideoCall}
-          client={videoCallModal.client}
-          advisor={{
-            name: session.user?.name || 'יועץ',
-            email: session.user?.email || 'advisor@example.com'
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -5,7 +5,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // החיבור השוטף עובר דרך ה-pooler של Neon, אבל מיגרציות דורשות חיבור ישיר
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // NextAuth core models
@@ -22,7 +24,12 @@ model User {
   sessions       Session[]
   documents      Document[]
   calculations   Calculation[]
+  /** הלקוחות שהמשתמש מלווה כיועץ */
   clients        Client[]  @relation("AdvisorClients")
+  /** רשומות הליווי שבהן המשתמש הוא הלקוח */
+  advisedAs      Client[]  @relation("ClientAccount")
+  /** תמהילים שהמשתמש שמר, בין כיועץ ובין כלקוח */
+  mortgageMixes  MortgageMix[] @relation("MixOwner")
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -100,48 +107,171 @@ model Calculation {
   createdAt   DateTime @default(now())
 }
 
+/**
+ * ליווי של יועץ ללקוח. הלקוח הוא תמיד משתמש רשום שפתח חשבון בעצמו, ורשומה זו
+ * היא הקישור בין היועץ לחשבון הזה — ולכן היועץ רואה רק לקוחות שיש להם חשבון.
+ */
 model Client {
   id                String        @id @default(cuid())
   advisorId         String
-  advisor           User          @relation("AdvisorClients", fields: [advisorId], references: [id])
-  
+  advisor           User          @relation("AdvisorClients", fields: [advisorId], references: [id], onDelete: Cascade)
+  /** חשבון הלקוח עצמו — דרכו הלקוח רואה את אותם נתונים באזור האישי שלו */
+  userId            String
+  user              User          @relation("ClientAccount", fields: [userId], references: [id], onDelete: Cascade)
+
   // פרטי לקוח
   name              String
   email             String
   phone             String?
   address           String?
-  
-  // סטטוס לקוח
+
+  // סטטוס והתקדמות בתהליך
   status            ClientStatus  @default(POTENTIAL)
+  stage             ClientStage   @default(INTAKE)
   progress          Int           @default(0) // 0-100
-  
+
+  // הרכב משק הבית
+  household         HouseholdType @default(SINGLE)
+  age               Int?
+  partnerName       String?
+  partnerAge        Int?
+
   // פרטים פיננסיים
   income            Float?
+  partnerIncome     Float?
   expenses          Float?
+  existingLoans     Float?        // סך ההחזרים החודשיים על הלוואות קיימות
   creditScore       Int?
   downPayment       Float?
+
+  // העסקה
   propertyValue     Float?
-  
-  // תמהילים
-  mortgageMixes     Json?
-  
+  propertyAddress   String?
+  mortgageAmount    Float?
+  dealType          DealType?
+
+  notes             String?
+
   // ריביות מהבנקים
   bankRates         Json?
-  
-  // פעולות
+
+  mixes             MortgageMix[]
+  documents         ClientDocument[]
   actions           ClientAction[]
-  
-  // תזכורות
   reminders         Reminder[]
-  
+
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  /** יועץ מלווה לקוח פעם אחת בלבד */
+  @@unique([advisorId, userId])
+  @@index([userId])
 }
 
 enum ClientStatus {
   POTENTIAL
   ACTIVE
   IN_PROCESS
+}
+
+enum HouseholdType {
+  SINGLE
+  COUPLE
+}
+
+/** סוג העסקה — קובע את תקרת המימון. הערכים זהים לאלה שבקוד הכלי */
+enum DealType {
+  first_home
+  replacement_home
+  second_home
+  any_purpose
+}
+
+/** שלבי הליווי. לכל שלב רשימת מסמכים משלו, שנפתחת כשמגיעים אליו */
+enum ClientStage {
+  INTAKE
+  DOCUMENTS
+  PLANNING
+  BANK_SUBMISSION
+  APPROVAL
+  NEGOTIATION
+  SIGNING
+  FUNDING
+  COMPLETED
+}
+
+/**
+ * מסמך ברשימת המסמכים של הלקוח. הרשומות נוצרות מקטלוג המסמכים של כל שלב ברגע
+ * שהלקוח מגיע לשלב, ומכאן ואילך הן מחזיקות את הסטטוס בפועל.
+ */
+model ClientDocument {
+  id          String               @id @default(cuid())
+  clientId    String
+  client      Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /** מזהה קבוע מהקטלוג, כדי שלא ייווצרו כפילויות בכל פתיחת שלב */
+  key         String
+  name        String
+  stage       ClientStage
+  status      ClientDocumentStatus @default(PENDING)
+  required    Boolean              @default(true)
+  note        String?
+  submittedAt DateTime?
+  /** קובץ שהועלה למערכת עבור המסמך */
+  documentId  String?
+
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([clientId, key])
+  @@index([clientId, stage])
+}
+
+enum ClientDocumentStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+/**
+ * תמהיל שנשמר. זהו מקור האמת היחיד לתמהילים — הן באזור האישי של הלקוח והן
+ * בדף הלקוח אצל היועץ. שדות הסיכום משוכפלים לעמודות כדי שרשימות ייטענו בלי
+ * לחשב מחדש את כל לוח הסילוקין.
+ */
+model MortgageMix {
+  id              String    @id @default(cuid())
+  /** מזהה התמהיל בכלי התכנון, לשמירה חוזרת של אותו תמהיל */
+  mixKey          String
+  ownerId         String
+  owner           User      @relation("MixOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /** הלקוח שהתמהיל שייך לו. ריק כשהתמהיל עדיין לא שויך */
+  clientId        String?
+  client          Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  name            String
+  totalAmount     Float
+  propertyValue   Float?
+  propertyAddress String?
+  dealType        DealType?
+
+  // תמונת מצב של הסיכום בזמן השמירה
+  monthlyPayment  Float
+  totalInterest   Float
+  totalPaid       Float
+  averageRate     Float
+  months          Int
+
+  /** התמהיל המלא כפי שהכלי מכיר אותו */
+  mixJson         Json
+  summaryJson     Json
+
+  savedAt         DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([ownerId, mixKey])
+  @@index([clientId])
+  @@index([ownerId])
 }
 
 model ClientAction {

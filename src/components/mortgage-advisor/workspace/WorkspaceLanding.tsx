@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { BookmarkCheck, FolderOpen, History, Home, PieChart, Plus, X } from 'lucide-react';
+import { BookmarkCheck, FolderOpen, History, Home, LogIn, PieChart, Plus, X } from 'lucide-react';
 import { MixSummaryCard } from '../MixSummaryCard';
 import type { SavedMix } from '../savedMixes';
 import type { WorkspaceMix } from '../engine';
@@ -15,6 +15,10 @@ interface WorkspaceLandingProps {
   saved: SavedMix[];
   /** טיוטה מהפעם הקודמת, אם היועץ עזב את המסך בלי לשמור */
   draftMix: WorkspaceMix | null;
+  /** רשימת הלקוחות, ליועץ. זהו מסך הפתיחה שלו */
+  clientsPanel?: React.ReactNode;
+  /** האם התמהילים נשמרים לחשבון. אחרת הם נשארים בדפדפן הזה בלבד */
+  signedIn?: boolean;
   onCreateNew: () => void;
   onOpenSaved: (item: SavedMix) => void;
   onResumeDraft: () => void;
@@ -28,6 +32,8 @@ interface WorkspaceLandingProps {
 export function WorkspaceLanding({
   saved,
   draftMix,
+  clientsPanel,
+  signedIn = true,
   onCreateNew,
   onOpenSaved,
   onResumeDraft,
@@ -41,9 +47,27 @@ export function WorkspaceLanding({
       <div className="text-center pt-4">
         <h1 className="text-2xl font-bold text-slate-900">כלי תכנון המשכנתא</h1>
         <p className="text-sm text-slate-600 mt-1">
-          בנו תמהיל חדש מאפס, או המשיכו לעבוד על תמהיל ששמרתם.
+          {clientsPanel
+            ? 'בחרו לקוח כדי לראות את התיק שלו, או בנו תמהיל חדש.'
+            : 'בנו תמהיל חדש מאפס, או המשיכו לעבוד על תמהיל ששמרתם.'}
         </p>
       </div>
+
+      {!signedIn && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <LogIn className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-900 leading-relaxed">
+            אתם לא מחוברים, ולכן התמהילים נשמרים בדפדפן הזה בלבד.{' '}
+            <Link href="/auth/login" className="font-semibold underline">
+              התחברו
+            </Link>{' '}
+            כדי לשמור אותם בחשבון — הם יעברו אליו אוטומטית ויהיו זמינים בכל מכשיר.
+          </p>
+        </div>
+      )}
+
+      {/* ליועץ, מסך הפתיחה הוא רשימת הלקוחות */}
+      {clientsPanel}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <button
