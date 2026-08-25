@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
-import { ArrowRight, ArrowLeft, RefreshCw, Shield, TrendingUp, Users, Zap, Target, BarChart3, HeartHandshake, CheckCircle, Menu, Map, Calculator, Banknote, CreditCard, UserCheck, Activity } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RefreshCw, Shield, TrendingUp, Users, Zap, Target, BarChart3, HeartHandshake, CheckCircle, Menu, Map, Calculator, Banknote, CreditCard, UserCheck, Activity, Tag } from 'lucide-react';
 import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
@@ -114,8 +114,8 @@ export default function Home() {
         </div>
 
         {/* Buttons Section - Bottom */}
-        <div className="h-1/5 flex items-center justify-center px-6 pb-16">
-          <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6">
+        <div className="flex min-h-[18%] items-center justify-center px-6 pb-10 pt-2">
+          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4">
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -127,6 +127,23 @@ export default function Home() {
                 className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm"
               >
                 <Link href="/how-it-works">למד איך זה עובד</Link>
+              </Button>
+            </motion.div>
+
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-white/90 border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 shadow-lg backdrop-blur-sm"
+              >
+                <Link href="/pricing">
+                  <Tag className="w-5 h-5 ml-2" />
+                  תמחור
+                </Link>
               </Button>
             </motion.div>
             
@@ -679,6 +696,57 @@ export default function Home() {
           </div>
         </div>
         </motion.section>
+
+      {/* Pricing teaser */}
+      <motion.section
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 py-20 px-6 text-white"
+      >
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-16 right-[12%] h-72 w-72 rounded-full bg-violet-500/20 blur-3xl animate-blob" />
+          <div className="absolute -bottom-20 left-[10%] h-80 w-80 rounded-full bg-blue-500/20 blur-3xl animate-blob [animation-delay:3s]" />
+        </div>
+        <div className="relative mx-auto max-w-6xl">
+          <div className="mb-12 text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+              <Tag className="h-4 w-4" />
+              מודל התמחור
+            </div>
+            <h2 className="mb-4 text-3xl font-black text-white md:text-5xl">
+              משלמים על שלב, לא על חבילה
+            </h2>
+            <p className="mx-auto max-w-2xl text-lg text-slate-100">
+              כל אחד מחמשת שלבי המשכנתא מתומחר בנפרד. עשיתם לבד — לא שילמתם. רוצים יועץ על הכל — מקבלים מחיר חבילה.
+            </p>
+          </div>
+          <div className="mb-10 grid gap-5 md:grid-cols-3">
+            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10">
+              <div className="text-sm font-bold text-cyan-200">עצמאי</div>
+              <div className="my-2 text-4xl font-black text-white">₪120</div>
+              <div className="text-sm text-slate-100">לחודש, עד קבלת המשכנתא — כל הכלים פתוחים</div>
+            </Link>
+            <Link href="/pricing#builder" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15">
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-500 px-3 py-0.5 text-[11px] font-black text-white">הכי נבחר</span>
+              <div className="text-sm font-bold text-violet-200">היברידי</div>
+              <div className="my-2 text-4xl font-black text-white">לפי שלב</div>
+              <div className="text-sm text-slate-100">אתם עושים מה שאתם יודעים, היועץ נכנס בדיוק היכן שצריך</div>
+            </Link>
+            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10">
+              <div className="text-sm font-bold text-amber-200">ליווי מלא</div>
+              <div className="my-2 text-4xl font-black text-white">₪6,000</div>
+              <div className="text-sm text-slate-100">חמשת השלבים מקצה לקצה, כולל גישה לפלטפורמה</div>
+            </Link>
+          </div>
+          <div className="text-center">
+            <Button asChild size="lg" className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900">
+              <Link href="/pricing">למודל התמחור המלא ולמחשבון החבילה</Link>
+            </Button>
+          </div>
+        </div>
+      </motion.section>
 
       {/* Statistics Section */}
         <motion.section

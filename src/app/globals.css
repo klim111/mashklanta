@@ -113,6 +113,23 @@
   animation: float-slow 10s ease-in-out infinite 1s;
 }
 
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(28px, -18px) scale(1.08);
+  }
+  66% {
+    transform: translate(-22px, 16px) scale(0.94);
+  }
+}
+
+.animate-blob {
+  animation: blob 12s ease-in-out infinite;
+}
+
 /* Financial Graphics Carousel */
 @keyframes carousel-slide {
   0%, 22% { 

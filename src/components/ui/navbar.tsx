@@ -35,15 +35,13 @@ export default function NavBar() {
       </div>
 
       <nav className="hidden md:flex items-center gap-8">
+        <Link href="/how-it-works" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">איך זה עובד</Link>
+        <Link href="/pricing" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">תמחור</Link>
         <Link href="/interactive-mortgage-journey" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">מפת תהליך</Link>
-        <a href="#process" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">תהליך</a>
-        <a href="#benefits" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">יתרונות</a>
-        <a href="#stats" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">נתונים</a>
         <Link href="/equity-planning" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">תכנון הון עצמי</Link>
         <Link href="/consumer-loans" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">הלוואות צרכניות</Link>
         <Link href="/mortgage-advisor" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">כלי יועצי משכנתא</Link>
         <Link href="/mortgage-application" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">בקשת משכנתא</Link>
-        <a href="#contact" className="text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105">צור קשר</a>
       </nav>
 
       {/* Desktop buttons */}
@@ -109,14 +107,14 @@ export default function NavBar() {
             </div>
             
             <nav className="flex flex-col gap-4">
+              <Link href="/how-it-works" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">איך זה עובד</Link>
+              <Link href="/pricing" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">תמחור</Link>
               <Link href="/interactive-mortgage-journey" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">מפת תהליך</Link>
-              <a href="#process" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">תהליך</a>
-              <a href="#benefits" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">יתרונות</a>
-              <a href="#stats" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">נתונים</a>
+              <Link href="/equity-planning" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">תכנון הון עצמי</Link>
               <Link href="/consumer-loans" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">הלוואות צרכניות</Link>
               <Link href="/mortgage-advisor" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">כלי יועצי משכנתא</Link>
               <Link href="/mortgage-application" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">בקשת משכנתא</Link>
-              <a href="#contact" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">צור קשר</a>
+              <Link href="/learn" className="text-gray-700 hover:text-blue-600 font-semibold text-lg transition-colors">מרכז למידה</Link>
             </nav>
 
             <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
