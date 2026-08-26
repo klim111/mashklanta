@@ -25,7 +25,7 @@ import {
 import { ClientList } from '@/components/advisor/ClientList';
 import { useAdvisorClients } from '@/components/advisor/useAdvisorClients';
 import type { AdvisorClient } from '@/components/advisor/useAdvisorClients';
-import type { OptimizationConstraints, WorkspaceMix } from './engine';
+import type { MixEvent, OptimizationConstraints, WorkspaceMix } from './engine';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, sameProperty } from './propertyContext';
@@ -53,6 +53,16 @@ type Phase = 'landing' | 'setup' | 'ready';
 
 interface MortgageWorkspaceProps {
   initialMix?: WorkspaceMix;
+  /** בתוך דשבורד התהליך — בלי סרגל ניווט כפול */
+  embedded?: boolean;
+  /** כשמוטמע בתהליך בלי תמהיל שמור — לפתוח ישר באשף תמהיל חדש */
+  startInSetup?: boolean;
+  /** ערכי ברירת מחדל לאשף (סוג עסקה ותקרת החזר מהפרופיל) */
+  defaultSetupSeed?: Partial<PropertySetup>;
+  /** אירועים שמצטרפים לכל תמהיל חדש — למשל פירעון מוקדם מהכנסה עתידית שהוצהרה */
+  defaultEvents?: MixEvent[];
+  /** כשנשמר או נטען תמהיל — כדי שהתהליך יקבל את פרטי הנכס והסכום */
+  onActiveMix?: (item: SavedMix) => void;
 }
 
 /** חתימת התמהיל לזיהוי שינויים שלא נשמרו. חותמות הזמן לא נחשבות שינוי. */
@@ -66,7 +76,14 @@ function signatureOf(mix: WorkspaceMix): string {
  * תמהיל שמור; משהתמהיל קיים, כל הבקרים, הסיכום, הגרפים וההשוואה חיים באותו מסך
  * וכל שינוי מחשב מחדש את התמונה כולה.
  */
-export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
+export function MortgageWorkspace({
+  initialMix,
+  embedded = false,
+  startInSetup = false,
+  defaultSetupSeed,
+  defaultEvents,
+  onActiveMix,
+}: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
   const { data: session } = useSession();
   const isAdvisor = session?.user?.role === 'ADVISOR';
@@ -86,10 +103,12 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
     if (requested) setActiveClientId(requested);
   }, []);
 
-  const [phase, setPhase] = useState<Phase>(initialMix ? 'ready' : 'landing');
+  const [phase, setPhase] = useState<Phase>(
+    initialMix ? 'ready' : startInSetup ? 'setup' : 'landing'
+  );
   const [pendingDraft, setPendingDraft] = useState<WorkspaceDraft | null>(null);
   /** פרטי נכס שממולאים מראש באשף, כשבונים תמהיל נוסף לאותו נכס */
-  const [setupSeed, setSetupSeed] = useState<Partial<PropertySetup> | undefined>();
+  const [setupSeed, setSetupSeed] = useState<Partial<PropertySetup> | undefined>(defaultSetupSeed);
 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [amortizationTarget, setAmortizationTarget] = useState<{ trackId?: string } | null>(null);
@@ -134,6 +153,9 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
     }
     bootstrapped.current = true;
 
+    // בתהליך התכנון לא שואבים תמהיל ששוגר מכלי אחר — הלקוח מזין נכס ומשכנתא מאפס
+    if (embedded) return;
+
     const staged = consumeStagedMix();
     if (staged) {
       openMix(staged);
@@ -149,14 +171,15 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
     }
 
     setPendingDraft(readDraft());
-  }, [initialMix, save, actions, openMix]);
+  }, [initialMix, save, actions, openMix, embedded]);
 
   // הטיוטה נשמרת רק כשיש תמהיל בעבודה, כדי שהכלי ייפתח נקי בפעם הבאה אלא אם
   // היועץ יבחר במפורש להמשיך ממנה
   useEffect(() => {
     if (phase !== 'ready') return;
+    if (embedded) return;
     writeDraft({ mix, constraints: state.constraints });
-  }, [phase, mix, state.constraints]);
+  }, [phase, mix, state.constraints, embedded]);
 
   /**
    * כפתור השמירה מהבהב פעם אחת כשנוצר שינוי, ולא באופן מתמשך. בזמן גרירת
@@ -179,13 +202,27 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
     return () => window.clearTimeout(timer);
   }, [phase, signature, savedSignature]);
 
+  const notifyActive = useCallback(
+    (item: SavedMix) => {
+      onActiveMix?.(item);
+    },
+    [onActiveMix]
+  );
+
+  const persistMix = useCallback(
+    (next: WorkspaceMix) => {
+      void save(next).then((stored) => notifyActive(stored));
+    },
+    [save, notifyActive]
+  );
+
   const handleSave = useCallback(() => {
-    save(mix);
+    persistMix(mix);
     setSavedSignature(signatureOf(mix));
     setFlashSave(false);
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 2200);
-  }, [save, mix]);
+  }, [persistMix, mix]);
 
   /**
    * תמהיל חדש נוסף לרשימה ולא מחליף את הקודם, ולכן כל מעבר לתמהיל אחר שומר
@@ -194,30 +231,31 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   const keepCurrentMix = useCallback((): boolean => {
     if (phase !== 'ready' || mix.tracks.length === 0) return false;
     if (dirty) {
-      save(mix);
+      persistMix(mix);
       setSavedSignature(signatureOf(mix));
     }
     return true;
-  }, [phase, mix, dirty, save]);
+  }, [phase, mix, dirty, persistMix]);
 
   const openSavedMix = useCallback(
     (item: SavedMix) => {
       keepCurrentMix();
       // התמהיל נשאר משויך ללקוח שלו, גם כשמגיעים אליו מהאזור האישי
       if (item.clientId) setActiveClientId(item.clientId);
+      notifyActive(item);
       openMix(item.mix);
     },
-    [keepCurrentMix, openMix]
+    [keepCurrentMix, openMix, notifyActive]
   );
 
 
   const startNewMix = useCallback(
     (seed?: Partial<PropertySetup>) => {
       keepCurrentMix();
-      setSetupSeed(seed);
+      setSetupSeed(seed ?? defaultSetupSeed);
       setPhase('setup');
     },
-    [keepCurrentMix]
+    [keepCurrentMix, defaultSetupSeed]
   );
 
   /** תמהיל נוסף לאותו נכס — פרטי הנכס והעסקה עוברים כמו שהם */
@@ -234,9 +272,9 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   const backToLanding = useCallback(() => {
     // תמהיל שנשמר אינו טיוטה, ולכן מסך הפתיחה לא יציע להמשיך ממנו
     if (keepCurrentMix()) clearDraft();
-    setPendingDraft(readDraft());
+    setPendingDraft(embedded ? null : readDraft());
     setPhase('landing');
-  }, [keepCurrentMix]);
+  }, [keepCurrentMix, embedded]);
 
   /**
    * השוואה נעשית רק בין תמהילים לאותו נכס — או לאותו סכום משכנתא כשלא הוזנה
@@ -264,8 +302,8 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
 
   if (phase === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-50" dir="rtl">
-        <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />
+      <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
+        {!embedded && <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />}
         <div className="container mx-auto px-4 py-6">
           <WorkspaceLanding
             saved={saved}
@@ -295,10 +333,7 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
               ) : undefined
             }
             draftMix={pendingDraft?.mix ?? null}
-            onCreateNew={() => {
-              setSetupSeed(undefined);
-              setPhase('setup');
-            }}
+            onCreateNew={() => startNewMix()}
             onOpenSaved={openSavedMix}
             onResumeDraft={() => {
               if (pendingDraft) openMix(pendingDraft.mix, pendingDraft.constraints);
@@ -315,15 +350,19 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
 
   if (phase === 'setup') {
     return (
-      <div className="min-h-screen bg-slate-50" dir="rtl">
-        <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />
+      <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
+        {!embedded && <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />}
         <div className="container mx-auto px-4 py-6">
           <MixSetupWizard
             onBack={backToLanding}
             initialProperty={setupSeed}
-            onComplete={(next) => {
-              // התמהיל נשמר מיד, ולכן הוא מתווסף לרשימת התמהילים של הנכס
-              save(next);
+            onComplete={(created) => {
+              // אירועים שהוגדרו כבר בפרופיל (פירעון מוקדם צפוי) נכנסים לתמהיל החדש
+              const next =
+                defaultEvents && defaultEvents.length > 0
+                  ? { ...created, events: [...created.events, ...defaultEvents] }
+                  : created;
+              persistMix(next);
               openMix(next);
               setSetupSeed(undefined);
             }}
@@ -334,15 +373,17 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50" dir="rtl">
+    <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="container mx-auto px-4 py-2.5 flex flex-wrap items-center gap-2">
+          {!embedded && (
           <Button variant="ghost" size="sm" className="h-9" asChild>
             <Link href="/">
               <Home className="h-4 w-4 ml-1" />
               עמוד ראשי
             </Link>
           </Button>
+          )}
 
           <Button variant="ghost" size="sm" className="h-9" onClick={() => startNewMix()}>
             <Plus className="h-4 w-4 ml-1" />
@@ -354,12 +395,14 @@ export function MortgageWorkspace({ initialMix }: MortgageWorkspaceProps) {
             טען תמהיל שמור
           </Button>
 
+          {!embedded && (
           <Button variant="ghost" size="sm" className="h-9" asChild>
             <Link href={personalAreaHref}>
               {isAdvisor ? <Users className="h-4 w-4 ml-1" /> : <UserRound className="h-4 w-4 ml-1" />}
               {isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}
             </Link>
           </Button>
+          )}
 
           {isAdvisor && (
             <ClientSelector

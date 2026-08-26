@@ -31,6 +31,8 @@ interface CouplePersonalInfoFormProps {
   onUserDataChange: (data: MortgagePlanningUserData) => void;
   onBack: () => void;
   onContinue: () => void;
+  continueLabel?: string;
+  subtitle?: string;
 }
 
 export function CouplePersonalInfoForm({
@@ -38,6 +40,8 @@ export function CouplePersonalInfoForm({
   onUserDataChange,
   onBack,
   onContinue,
+  continueLabel = 'הצג אפשרויות משכנתא',
+  subtitle,
 }: CouplePersonalInfoFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
   const aggregated = getAffordabilityInputs(userData);
@@ -65,7 +69,7 @@ export function CouplePersonalInfoForm({
       <div className="text-center mb-10">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">בוא נכיר — זוג</h2>
         <p className="text-lg text-gray-600 mb-4">
-          הזינו את נתוני שני הלווים לחישוב משוקלל של יכולת ההחזר
+          {subtitle ?? 'הזינו את נתוני שני הלווים לחישוב משוקלל של יכולת ההחזר'}
         </p>
         <motion.div layout className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm text-green-800">
           <Info className="w-4 h-4 shrink-0" />
@@ -170,7 +174,7 @@ export function CouplePersonalInfoForm({
             חזור
           </Button>
           <FormSubmitButton
-            label="הצג אפשרויות משכנתא"
+            label={continueLabel}
             errors={getCoupleFormErrors(userData)}
             onInvalidAttempt={() =>
               setFieldErrors(fieldErrorsFromList(getCoupleFormErrors(userData)))

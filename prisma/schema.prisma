@@ -30,6 +30,8 @@ model User {
   advisedAs      Client[]  @relation("ClientAccount")
   /** תמהילים שהמשתמש שמר, בין כיועץ ובין כלקוח */
   mortgageMixes  MortgageMix[] @relation("MixOwner")
+  /** תהליכי תכנון המשכנתא שהמשתמש פתח באזור האישי */
+  mortgagePlans  MortgagePlan[] @relation("PlanOwner")
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -136,13 +138,20 @@ model Client {
   partnerName       String?
   partnerAge        Int?
 
-  // פרטים פיננסיים
-  income            Float?
-  partnerIncome     Float?
-  expenses          Float?
-  existingLoans     Float?        // סך ההחזרים החודשיים על הלוואות קיימות
-  creditScore       Int?
-  downPayment       Float?
+  // פרטים פיננסיים — מוצפנים ברמת השדה (ראה src/lib/crypto.ts).
+  // הערכים המדויקים אינם ניתנים לסינון ב-SQL; incomeBucket הוא העמודה הגלויה היחידה.
+  incomeEnc         String?
+  partnerIncomeEnc  String?
+  expensesEnc       String?
+  existingLoansEnc  String?
+  creditScoreEnc    String?
+  downPaymentEnc    String?
+
+  /**
+   * טווח ההכנסה של משק הבית, גלוי בכוונה. השדות המוצפנים אינם ניתנים לסינון או
+   * למיון ב-SQL, ולכן זהו הערך היחיד שרשימת הלקוחות יכולה לסנן לפיו.
+   */
+  incomeBucket      IncomeBucket?
 
   // העסקה
   propertyValue     Float?
@@ -159,6 +168,7 @@ model Client {
   documents         ClientDocument[]
   actions           ClientAction[]
   reminders         Reminder[]
+  plans             MortgagePlan[]
 
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -166,12 +176,22 @@ model Client {
   /** יועץ מלווה לקוח פעם אחת בלבד */
   @@unique([advisorId, userId])
   @@index([userId])
+  @@index([advisorId, incomeBucket])
 }
 
 enum ClientStatus {
   POTENTIAL
   ACTIVE
   IN_PROCESS
+}
+
+/** טווחי הכנסה חודשית של משק הבית, בשקלים */
+enum IncomeBucket {
+  UNDER_10K
+  FROM_10K_TO_15K
+  FROM_15K_TO_25K
+  FROM_25K_TO_40K
+  ABOVE_40K
 }
 
 enum HouseholdType {
@@ -272,6 +292,83 @@ model MortgageMix {
   @@unique([ownerId, mixKey])
   @@index([clientId])
   @@index([ownerId])
+}
+
+/**
+ * תהליך תכנון משכנתא של הלקוח, מחולק לחמשת השלבים של עמוד "איך זה עובד".
+ *
+ * זהו מקור האמת להתקדמות הלקוח: הנתונים שהוזנו בכל שלב יושבים ברשומת השלב,
+ * ועמודות הסיכום משוכפלות לכאן כדי שרשימת התהליכים תיטען בלי לפרש JSON.
+ */
+model MortgagePlan {
+  id              String        @id @default(cuid())
+  ownerId         String
+  owner           User          @relation("PlanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /** רשומת הליווי אצל היועץ, כשקיימת — כדי שהיועץ יראה את אותה התקדמות */
+  clientId        String?
+  client          Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  name            String
+  status          PlanStatus    @default(IN_PROGRESS)
+  currentStage    PlanStage     @default(ANALYSIS)
+  progress        Int           @default(0) // 0-100
+
+  // תמונת מצב לכרטיס התהליך באזור האישי
+  propertyValue   Float?
+  propertyAddress String?
+  mortgageAmount  Float?
+  monthlyPayment  Float?
+
+  completedAt     DateTime?
+
+  stages          MortgagePlanStage[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([ownerId])
+  @@index([clientId])
+}
+
+/**
+ * שלב בודד בתהליך. הנתונים שהלקוח הזין בשלב נשמרים ב-dataJson ונמשכים מכאן
+ * לשלבים הבאים, כך שאין צורך להזין את אותו נתון פעמיים.
+ */
+model MortgagePlanStage {
+  id          String          @id @default(cuid())
+  planId      String
+  plan        MortgagePlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  stage       PlanStage
+  status      PlanStageStatus @default(PENDING)
+  dataJson    Json?
+  completedAt DateTime?
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([planId, stage])
+}
+
+/** חמשת השלבים כפי שהם מוגדרים בעמוד "איך זה עובד" */
+enum PlanStage {
+  ANALYSIS
+  MIX
+  APPLICATIONS
+  AUCTION
+  SIGNING
+}
+
+enum PlanStatus {
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum PlanStageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
 }
 
 model ClientAction {

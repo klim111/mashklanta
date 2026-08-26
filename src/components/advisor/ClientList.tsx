@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { STAGE_LABELS } from '@/lib/client-process';
+import { INCOME_BUCKET_LABELS, INCOME_BUCKETS } from '@/lib/income-buckets';
 import type { AdvisorClient } from './useAdvisorClients';
 
 interface ClientListProps {
@@ -47,6 +48,7 @@ export function ClientList({
   emptyHint,
 }: ClientListProps) {
   const [query, setQuery] = useState('');
+  const [incomeBucket, setIncomeBucket] = useState<string>('');
   const [adding, setAdding] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -56,13 +58,14 @@ export function ClientList({
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return clients;
-    return clients.filter((client) =>
-      [client.name, client.email, client.phone ?? ''].some((field) =>
+    return clients.filter((client) => {
+      if (incomeBucket && client.incomeBucket !== incomeBucket) return false;
+      if (!term) return true;
+      return [client.name, client.email, client.phone ?? ''].some((field) =>
         field.toLowerCase().includes(term)
-      )
-    );
-  }, [clients, query]);
+      );
+    });
+  }, [clients, query, incomeBucket]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -93,6 +96,19 @@ export function ClientList({
             className="pr-9 h-9 text-sm"
           />
         </div>
+        <select
+          value={incomeBucket}
+          onChange={(event) => setIncomeBucket(event.target.value)}
+          className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          aria-label="סינון לפי טווח הכנסה"
+        >
+          <option value="">כל טווחי ההכנסה</option>
+          {INCOME_BUCKETS.map((bucket) => (
+            <option key={bucket} value={bucket}>
+              {INCOME_BUCKET_LABELS[bucket]}
+            </option>
+          ))}
+        </select>
         <Button size="sm" className="h-9" onClick={() => setAdding((open) => !open)}>
           <UserPlus className="h-4 w-4 ml-1" />
           צרף לקוח

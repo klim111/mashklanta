@@ -4,34 +4,35 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Calculator, 
-  Home as HomeIcon, 
-  FileText, 
-  Plus, 
-  User, 
+import {
+  Calculator,
+  FileText,
+  User,
   LogOut,
-  TrendingUp,
-  Banknote,
-  BarChart3,
-  BookmarkCheck,
   Settings,
-  ChevronRight,
-  Loader2
+  Loader2,
+  Home as HomeIcon,
+  BookmarkCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import MortgageCalculator from '@/components/mortgagecalculator';
 import CapitalPlanningCalculator from '@/components/ui/equitycalc';
 import { SavedMixesWidget } from '@/components/mortgage-advisor/SavedMixesWidget';
+import { PlansOverview } from '@/components/plan/PlansOverview';
 
-type TabType = 'overview' | 'calculators' | 'my-mortgages' | 'settings';
+type TabType = 'plans' | 'tools' | 'settings';
+
+const tabs: Array<{ id: TabType; label: string; icon: typeof FileText }> = [
+  { id: 'plans', label: 'המשכנתאות שלי', icon: FileText },
+  { id: 'tools', label: 'מחשבונים וכלים', icon: Calculator },
+  { id: 'settings', label: 'הגדרות', icon: Settings },
+];
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [mortgages, setMortgages] = useState<any[]>([{ id: 1, active: true }]); // Mock data for demonstration
+  const [activeTab, setActiveTab] = useState<TabType>('plans');
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -44,319 +45,187 @@ export default function DashboardPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
       </div>
     );
   }
 
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
-  const tabs = [
-    { id: 'overview', label: 'סקירה כללית', icon: HomeIcon },
-    { id: 'calculators', label: 'מחשבונים', icon: Calculator },
-    { id: 'my-mortgages', label: 'המשכנתאות שלי', icon: FileText },
-    { id: 'settings', label: 'הגדרות', icon: Settings },
-  ];
+  const displayName = session.user?.name || session.user?.email || 'אורח';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                  <HomeIcon className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-bold text-xl">Nadlanium</span>
-              </Link>
-            </div>
+    <div dir="rtl" className="min-h-screen bg-slate-50">
+      <header className="relative overflow-hidden bg-slate-950">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/30 blur-3xl" />
+          <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-violet-600/25 blur-3xl" />
+          <div className="absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
+        </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-purple-600" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg">
+                <HomeIcon className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-black text-white">משכלתנא</span>
+            </Link>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-full bg-white/10 py-1 pl-3 pr-1">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15">
+                  <User className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium">{session.user?.name || session.user?.email}</span>
+                <span className="hidden max-w-[12rem] truncate text-sm font-semibold text-white/80 sm:block">
+                  {displayName}
+                </span>
               </div>
               <button
+                type="button"
                 onClick={() => signOut({ callbackUrl: '/' })}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
               >
-                <LogOut className="w-4 h-4" />
-                יציאה
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">יציאה</span>
               </button>
+            </div>
+          </div>
+
+          <div className="pb-8 pt-4">
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+              <p className="text-xs font-bold tracking-wide text-white/40">האזור האישי</p>
+              <h1 className="mt-1 text-3xl font-black text-white md:text-4xl">
+                שלום, {session.user?.name?.split(' ')[0] || 'ברוכים הבאים'}
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/55">
+                מכאן מנהלים את תכנון המשכנתא — חמישה שלבים, מהניתוח הפיננסי ועד החתימה. כל נתון
+                נשמר בחשבון ועובר אוטומטית לשלב הבא.
+              </p>
+            </motion.div>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all ${
+                      active
+                        ? 'bg-white text-slate-900 shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/15 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900">
-            שלום, {session.user?.name || 'משתמש יקר'}!
-          </h1>
-          <p className="text-gray-600 mt-2">ברוך הבא למרכז הניהול האישי שלך</p>
-        </motion.div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border mb-6">
-          <div className="flex border-b">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'text-purple-600 border-b-2 border-purple-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tab Content */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <motion.div
           key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28 }}
         >
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Quick Stats */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">סטטיסטיקות</h3>
-                  <BarChart3 className="w-5 h-5 text-gray-400" />
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">חישובים שנשמרו</span>
-                    <span className="font-semibold">0</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">משכנתאות פעילות</span>
-                    <span className="font-semibold">0</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">מסמכים שהועלו</span>
-                    <span className="font-semibold">0</span>
-                  </div>
-                </div>
-              </div>
+          {activeTab === 'plans' && <PlansOverview />}
 
-              {/* Quick Actions */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">פעולות מהירות</h3>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setActiveTab('calculators')}
-                    className="w-full flex items-center justify-between p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Calculator className="w-5 h-5 text-purple-600" />
-                      <span className="text-sm font-medium">חשב משכנתא</span>
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-purple-600" />
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('my-mortgages')}
-                    className="w-full flex items-center justify-between p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Plus className="w-5 h-5 text-blue-600" />
-                      <span className="text-sm font-medium">התחל תהליך חדש</span>
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-blue-600" />
-                  </button>
-                  <Link
-                    href="/saved-mixes"
-                    className="w-full flex items-center justify-between p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
-                  >
-                    <span className="flex items-center gap-2">
-                      <BookmarkCheck className="w-5 h-5 text-emerald-600" />
-                      <span className="text-sm font-medium">תמהילים שמורים</span>
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-emerald-600" />
-                  </Link>
-                </div>
-              </div>
-
+          {activeTab === 'tools' && (
+            <div className="space-y-6">
               <SavedMixesWidget />
-            </div>
-          )}
 
-          {/* Calculators Tab */}
-          {activeTab === 'calculators' && (
-            <div className="space-y-8">
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h2 className="text-2xl font-bold mb-6">מחשבון משכנתא</h2>
-                <MortgageCalculator />
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">מחשבון הון עצמי</h2>
-                  <Link href="/equity-planning">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all">
-                      <Calculator className="w-5 h-5" />
-                      תכנון מתקדם
-                    </button>
-                  </Link>
-                </div>
-                <CapitalPlanningCalculator />
-              </div>
-            </div>
-          )}
-
-          {/* My Mortgages Tab */}
-          {activeTab === 'my-mortgages' && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">המשכנתאות שלי</h2>
-                <div className="flex gap-2">
-                  <Link href="/mortgage-dashboard">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-teal-700 transition-all">
-                      <BarChart3 className="w-5 h-5" />
-                      דאשבורד משכנתא
-                    </button>
-                  </Link>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
-                    <Plus className="w-5 h-5" />
-                    התחל תהליך חדש
-                  </button>
-                </div>
-              </div>
-
-              {mortgages.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-10 h-10 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">ניהול משכנתא חכם</h3>
-                  <p className="text-gray-600 mb-6">עקוב אחר המשכנתא שלך, צפה בלוח סילוקין ובדוק אפשרויות מחזור</p>
-                  <div className="flex gap-3 justify-center">
-                    <Link href="/mortgage-dashboard">
-                      <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-teal-700 transition-all">
-                        <BarChart3 className="w-5 h-5" />
-                        צפה בדאשבורד
-                      </button>
-                    </Link>
-                    <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
-                      <Plus className="w-5 h-5" />
-                      הוסף משכנתא
-                    </button>
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
+                    <Calculator className="h-5 w-5 text-white" />
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900">מחשבון משכנתא</h2>
+                    <p className="text-sm text-slate-500">חישוב מהיר מחוץ לתהליך התכנון</p>
                   </div>
                 </div>
-              ) : (
-                <div className="grid gap-4">
-                  {/* Display active mortgage */}
-                  <Link href="/mortgage-dashboard">
-                    <div className="border-2 border-purple-200 rounded-lg p-6 hover:border-purple-400 transition-colors cursor-pointer bg-gradient-to-r from-purple-50 to-blue-50">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">משכנתא פעילה</h3>
-                          <p className="text-gray-600 mt-1">רחוב הרצל 123, תל אביב</p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                          פעילה
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-gray-600">סכום מקורי</p>
-                          <p className="font-semibold">₪1,750,000</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">יתרת קרן</p>
-                          <p className="font-semibold">₪1,450,000</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">תשלום חודשי</p>
-                          <p className="font-semibold">₪7,845</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">התקדמות</p>
-                          <p className="font-semibold">17.1%</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-purple-600 font-medium">
-                          לחץ לצפייה בדאשבורד המלא →
-                        </span>
-                        <ChevronRight className="w-5 h-5 text-purple-600" />
-                      </div>
-                    </div>
-                  </Link>
+                <div className="p-6">
+                  <MortgageCalculator />
                 </div>
-              )}
-            </div>
-          )}
+              </div>
 
-          {/* Settings Tab */}
-          {activeTab === 'settings' && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-2xl font-bold mb-6">הגדרות</h2>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">פרטים אישיים</h3>
-                  <div className="space-y-3">
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600">
+                      <BookmarkCheck className="h-5 w-5 text-white" />
+                    </span>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">שם מלא</label>
+                      <h2 className="text-lg font-black text-slate-900">מחשבון הון עצמי</h2>
+                      <p className="text-sm text-slate-500">מקדמה, מס רכישה והוצאות נלוות</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/equity-planning"
+                    className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
+                  >
+                    תכנון מתקדם
+                  </Link>
+                </div>
+                <div className="p-6">
+                  <CapitalPlanningCalculator />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+              <h2 className="text-2xl font-black text-slate-900">הגדרות החשבון</h2>
+              <div className="mt-6 space-y-6">
+                <div>
+                  <h3 className="mb-3 font-bold text-slate-900">פרטים אישיים</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-600">שם מלא</label>
                       <input
                         type="text"
                         defaultValue={session.user?.name || ''}
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">כתובת מייל</label>
+                      <label className="mb-1 block text-sm font-medium text-slate-600">
+                        כתובת מייל
+                      </label>
                       <input
                         type="email"
                         defaultValue={session.user?.email || ''}
                         disabled
-                        className="w-full px-4 py-2 border rounded-lg bg-gray-50"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t">
-                  <h3 className="font-semibold text-gray-900 mb-3">אבטחה</h3>
-                  <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="border-t border-slate-100 pt-6">
+                  <h3 className="mb-3 font-bold text-slate-900">אבטחה</h3>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                  >
                     שנה סיסמה
-                  </button>
-                </div>
-
-                <div className="pt-6 border-t">
-                  <button className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                    שמור שינויים
                   </button>
                 </div>
               </div>
             </div>
           )}
         </motion.div>
-      </div>
+      </main>
     </div>
   );
 }

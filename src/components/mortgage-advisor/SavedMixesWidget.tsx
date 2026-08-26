@@ -1,20 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookmarkCheck, ChevronLeft, PieChart } from 'lucide-react';
+import { BookmarkCheck, ChevronLeft, Home, MapPin, PieChart } from 'lucide-react';
 import { useSavedMixes } from './savedMixes';
 import { stageMixForWorkspace } from './workspace/draft';
+import { groupByProperty } from './propertyContext';
 import { CompositionBar, formatShekel } from './workspace/primitives';
 
 /**
- * תצוגה מקוצרת של התמהילים השמורים לדשבורד. כל תמהיל מוצג באותו אופן שבו הוא
- * מוצג בכל שאר המסכים — שם, הרכב והחזר חודשי — ולחיצה פותחת אותו בכלי התכנון.
+ * תצוגה מקוצרת של התמהילים השמורים לדשבורד, מקובצים לפי נכס — או לפי סכום
+ * המשכנתא אם לא הוזנה כתובת — כמו בלוח התמהילים המלא.
  */
 export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
   const router = useRouter();
   const { saved, ready } = useSavedMixes();
+  const groups = useMemo(() => groupByProperty(saved, (item) => item.mix), [saved]);
 
   const open = (id: string) => {
     const item = saved.find((s) => s.mix.id === id);
@@ -22,6 +24,14 @@ export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
     stageMixForWorkspace(item.mix);
     router.push('/mortgage-advisor');
   };
+
+  const visible: typeof groups = [];
+  let remaining = limit;
+  for (const group of groups) {
+    if (remaining <= 0) break;
+    visible.push({ ...group, items: group.items.slice(0, remaining) });
+    remaining -= group.items.length;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6" dir="rtl">
@@ -46,38 +56,49 @@ export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-2">
-          {saved.slice(0, limit).map((item) => (
-            <button
-              key={item.mix.id}
-              type="button"
-              onClick={() => open(item.mix.id)}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-right hover:border-blue-400 hover:bg-blue-50/40 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-slate-900 truncate">
-                    {item.mix.name}
-                  </span>
-                  <span className="block text-[11px] text-slate-500 truncate">
-                    {item.mix.propertyAddress?.trim()
-                      ? `${item.mix.propertyAddress.trim()} · `
-                      : ''}
-                    {formatShekel(item.mix.totalAmount)} · {item.mix.tracks.length} מסלולים
-                  </span>
+        <div className="space-y-4">
+          {visible.map((group) => (
+            <div key={group.key} className="space-y-2">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                {group.address ? (
+                  <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                ) : (
+                  <Home className="h-3.5 w-3.5 text-slate-400" />
+                )}
+                <span className="truncate">
+                  {group.address || `משכנתא ${formatShekel(group.totalAmount)}`}
                 </span>
-                <span className="text-left shrink-0">
-                  <span className="block text-[10px] text-slate-400">החזר חודשי</span>
-                  <span className="block text-sm font-bold text-blue-600">
-                    {formatShekel(item.summary.monthlyPayment)}
+              </p>
+              {group.items.map((item) => (
+                <button
+                  key={item.mix.id}
+                  type="button"
+                  onClick={() => open(item.mix.id)}
+                  className="w-full rounded-lg border border-slate-200 p-2.5 text-right hover:border-blue-400 hover:bg-blue-50/40 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-slate-900 truncate">
+                        {item.mix.name}
+                      </span>
+                      <span className="block text-[11px] text-slate-500 truncate">
+                        {formatShekel(item.mix.totalAmount)} · {item.mix.tracks.length} מסלולים
+                      </span>
+                    </span>
+                    <span className="text-left shrink-0">
+                      <span className="block text-[10px] text-slate-400">החזר חודשי</span>
+                      <span className="block text-sm font-bold text-blue-600">
+                        {formatShekel(item.summary.monthlyPayment)}
+                      </span>
+                    </span>
+                    <ChevronLeft className="w-4 h-4 text-slate-300 shrink-0" />
+                  </div>
+                  <span className="block mt-2">
+                    <CompositionBar tracks={item.mix.tracks} height={6} />
                   </span>
-                </span>
-                <ChevronLeft className="w-4 h-4 text-slate-300 shrink-0" />
-              </div>
-              <span className="block mt-2">
-                <CompositionBar tracks={item.mix.tracks} height={6} />
-              </span>
-            </button>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

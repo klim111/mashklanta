@@ -2,6 +2,14 @@ import type { Client, Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { documentsUpToStage, stageProgress } from './client-process';
 import type { ClientStage } from './client-process';
+import {
+  ENCRYPTED_FINANCIAL_FIELDS,
+  decryptFinancials,
+  encryptFinancialField,
+  encryptedColumnFor,
+  incomeBucketFor,
+} from './client-financials';
+import type { ClientFinancials, EncryptedFinancialField } from './client-financials';
 import { listMixesForClient } from './mixes';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
@@ -25,6 +33,7 @@ export interface ClientListItem {
   progress: number;
   propertyValue: number | null;
   mortgageAmount: number | null;
+  incomeBucket: Client['incomeBucket'];
   mixCount: number;
   /** מסמכים שנותרו להגשה מתוך אלה שכבר נפתחו */
   openDocuments: number;
@@ -52,6 +61,7 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
     progress: row.progress,
     propertyValue: row.propertyValue,
     mortgageAmount: row.mortgageAmount,
+    incomeBucket: row.incomeBucket,
     mixCount: row._count.mixes,
     openDocuments: row.documents.filter((doc) => doc.required && doc.status === 'PENDING').length,
     updatedAt: row.updatedAt.toISOString(),
@@ -125,6 +135,7 @@ export interface ClientDetail {
   propertyAddress: string | null;
   mortgageAmount: number | null;
   dealType: Client['dealType'];
+  incomeBucket: Client['incomeBucket'];
   notes: string | null;
   /** ההחזר החודשי של התמהיל האחרון שנשמר ללקוח */
   plannedMonthlyPayment: number | null;
@@ -140,12 +151,14 @@ export interface ClientDetail {
  * על הלוואות קיימות יורדים מההכנסות. בלי נתוני הכנסה אין מה לחשב.
  */
 function projectCashFlow(
-  client: Pick<Client, 'income' | 'partnerIncome' | 'expenses' | 'existingLoans'>,
+  financials: ClientFinancials,
   plannedMonthlyPayment: number | null
 ): number | null {
-  const income = (client.income ?? 0) + (client.partnerIncome ?? 0);
+  const income = (financials.income ?? 0) + (financials.partnerIncome ?? 0);
   if (income <= 0) return null;
-  return income - (client.expenses ?? 0) - (client.existingLoans ?? 0) - (plannedMonthlyPayment ?? 0);
+  return (
+    income - (financials.expenses ?? 0) - (financials.existingLoans ?? 0) - (plannedMonthlyPayment ?? 0)
+  );
 }
 
 /** כל מה שדף הלקוח מציג, בקריאה אחת */
@@ -158,6 +171,7 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
 
   const mixes = await listMixesForClient(clientId);
   const plannedMonthlyPayment = mixes[0]?.summary.monthlyPayment ?? null;
+  const financials = decryptFinancials(client);
 
   return {
     id: client.id,
@@ -174,19 +188,20 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     age: client.age,
     partnerName: client.partnerName,
     partnerAge: client.partnerAge,
-    income: client.income,
-    partnerIncome: client.partnerIncome,
-    expenses: client.expenses,
-    existingLoans: client.existingLoans,
-    creditScore: client.creditScore,
-    downPayment: client.downPayment,
+    income: financials.income,
+    partnerIncome: financials.partnerIncome,
+    expenses: financials.expenses,
+    existingLoans: financials.existingLoans,
+    creditScore: financials.creditScore,
+    downPayment: financials.downPayment,
     propertyValue: client.propertyValue,
     propertyAddress: client.propertyAddress,
     mortgageAmount: client.mortgageAmount,
     dealType: client.dealType,
+    incomeBucket: client.incomeBucket,
     notes: client.notes,
     plannedMonthlyPayment,
-    projectedCashFlow: projectCashFlow(client, plannedMonthlyPayment),
+    projectedCashFlow: projectCashFlow(financials, plannedMonthlyPayment),
     documents: client.documents.map((doc) => ({
       id: doc.id,
       key: doc.key,
@@ -202,8 +217,23 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
   };
 }
 
-/** השדות שהיועץ יכול לעדכן בדף הלקוח */
-export function clientUpdateData(input: Record<string, unknown>): Prisma.ClientUpdateInput {
+/** ערך מספרי שהתקבל מהלקוח: מספר תקין, null מפורש, או כלום — כלומר "אל תיגע" */
+function readNumberInput(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return undefined;
+}
+
+/**
+ * השדות שהיועץ יכול לעדכן בדף הלקוח.
+ *
+ * currentFinancials נדרש כי טווח ההכנסה מחושב מההכנסה של שני בני הזוג יחד, וגם
+ * עדכון של אחד מהם לבדו מחייב את הערך הנוכחי של השני כדי לגזור אותו מחדש.
+ */
+export function clientUpdateData(
+  input: Record<string, unknown>,
+  currentFinancials: ClientFinancials
+): Prisma.ClientUpdateInput {
   const data: Prisma.ClientUpdateInput = {};
 
   // שם הלקוח חייב להישאר מלא, ולכן שם ריק אינו נחשב עדכון
@@ -215,25 +245,28 @@ export function clientUpdateData(input: Record<string, unknown>): Prisma.ClientU
     if (typeof value === 'string') data[key] = value.trim() || null;
   });
 
-  const numbers = [
-    'age',
-    'partnerAge',
-    'income',
-    'partnerIncome',
-    'expenses',
-    'existingLoans',
-    'creditScore',
-    'downPayment',
-    'propertyValue',
-    'mortgageAmount',
-  ] as const;
+  const numbers = ['age', 'partnerAge', 'propertyValue', 'mortgageAmount'] as const;
   numbers.forEach((key) => {
-    const value = input[key];
-    if (value === null) data[key] = null;
-    else if (typeof value === 'number' && Number.isFinite(value)) {
-      data[key] = key === 'age' || key === 'partnerAge' || key === 'creditScore' ? Math.round(value) : value;
-    }
+    const value = readNumberInput(input[key]);
+    if (value === undefined) return;
+    data[key] = value === null || (key !== 'age' && key !== 'partnerAge') ? value : Math.round(value);
   });
+
+  const nextFinancials: ClientFinancials = { ...currentFinancials };
+  let financialsChanged = false;
+
+  ENCRYPTED_FINANCIAL_FIELDS.forEach((field: EncryptedFinancialField) => {
+    const value = readNumberInput(input[field]);
+    if (value === undefined) return;
+
+    financialsChanged = true;
+    nextFinancials[field] = value;
+    data[encryptedColumnFor(field)] = encryptFinancialField(field, value);
+  });
+
+  if (financialsChanged) {
+    data.incomeBucket = incomeBucketFor(nextFinancials.income, nextFinancials.partnerIncome);
+  }
 
   if (input.household === 'SINGLE' || input.household === 'COUPLE') data.household = input.household;
   if (input.status === 'POTENTIAL' || input.status === 'ACTIVE' || input.status === 'IN_PROCESS') {

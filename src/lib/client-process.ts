@@ -49,6 +49,33 @@ export interface StageDocument {
   required?: boolean;
 }
 
+/** אופן ההעסקה של לווה — קובע אילו מסמכים הבנק ידרוש ממנו */
+export const EMPLOYMENT_TYPES = ['SALARIED', 'SELF_EMPLOYED'] as const;
+export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+
+export const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
+  SALARIED: 'שכיר',
+  SELF_EMPLOYED: 'עצמאי',
+};
+
+/**
+ * המסמכים שנדרשים מלווה לפי אופן ההעסקה שלו. כשבני הזוג מועסקים אחרת זה מזה,
+ * כל אחד מביא רשימה משלו — ולכן הרשימות נפרדות ולא מאוחדות.
+ */
+export const EMPLOYMENT_DOCUMENTS: Record<EmploymentType, StageDocument[]> = {
+  SALARIED: [
+    { key: 'payslips', name: '3 תלושי שכר אחרונים' },
+    { key: 'form_106', name: 'טופס 106 של השנה שהסתיימה' },
+    { key: 'employment_letter', name: 'אישור העסקה ותק', required: false },
+  ],
+  SELF_EMPLOYED: [
+    { key: 'self_employed_tax', name: 'שומת מס אחרונה ואישור רו"ח' },
+    { key: 'profit_loss', name: 'דוח רווח והפסד לשנה השוטפת' },
+    { key: 'advance_payments', name: 'אישור תשלום מקדמות מס וביטוח לאומי' },
+    { key: 'business_account', name: 'תדפיסי חשבון העסק ל-3 החודשים האחרונים' },
+  ],
+};
+
 export const STAGE_DOCUMENTS: Record<ClientStage, StageDocument[]> = {
   INTAKE: [
     { key: 'id_card', name: 'תעודת זהות + ספח של כל הלווים' },

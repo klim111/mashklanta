@@ -8,6 +8,7 @@ import {
   setClientStage,
   syncStageDocuments,
 } from '@/lib/clients';
+import { decryptFinancials } from '@/lib/client-financials';
 import { CLIENT_STAGES } from '@/lib/client-process';
 import type { ClientStage } from '@/lib/client-process';
 
@@ -52,7 +53,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  const data = clientUpdateData(body as Record<string, unknown>);
+  const data = clientUpdateData(body as Record<string, unknown>, decryptFinancials(client));
   if (Object.keys(data).length > 0) {
     await prisma.client.update({ where: { id }, data });
   }

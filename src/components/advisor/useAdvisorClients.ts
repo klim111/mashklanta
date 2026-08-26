@@ -14,6 +14,7 @@ export interface AdvisorClient {
   propertyValue: number | null;
   mortgageAmount: number | null;
   mixCount: number;
+  incomeBucket: 'UNDER_10K' | 'FROM_10K_TO_15K' | 'FROM_15K_TO_25K' | 'FROM_25K_TO_40K' | 'ABOVE_40K' | null;
   openDocuments: number;
   updatedAt: string;
 }
