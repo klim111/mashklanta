@@ -77,6 +77,8 @@ interface MixSetupWizardProps {
   initialProperty?: Partial<PropertySetup>;
   /** עקום הפריים החי — כשחסר משתמשים בנתוני נפילה */
   primeForecast?: PrimeForecast;
+  /** מתהליך חמשת השלבים: מדלגים על מסך הנכס כי הנתונים כבר הוזנו */
+  skipPropertyStep?: boolean;
 }
 
 interface TrackForm {
@@ -122,7 +124,13 @@ function mortgageFromEquity(
  * אחר כך מסלול אחרי מסלול עד שכל הסכום מכוסה, ולבסוף שם התמהיל. כל שלב נחשף
  * רק אחרי שהקודם הושלם.
  */
-export function MixSetupWizard({ onComplete, onBack, initialProperty, primeForecast }: MixSetupWizardProps) {
+export function MixSetupWizard({
+  onComplete,
+  onBack,
+  initialProperty,
+  primeForecast,
+  skipPropertyStep = false,
+}: MixSetupWizardProps) {
   const seedEquity = initialProperty?.equity ?? null;
   const forecast = primeForecast ?? fallbackPrimeForecast();
   const mixAssumptions = { ...DEFAULT_ASSUMPTIONS, primeForecast: forecast };
@@ -140,7 +148,8 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty, primeForec
     };
   });
   const [amountTouched, setAmountTouched] = useState(false);
-  const [propertyConfirmed, setPropertyConfirmed] = useState(false);
+  /** מתהליך חמשת השלבים הנתונים כבר הוזנו — לא מחזירים את טופס הנכס */
+  const [propertyConfirmed, setPropertyConfirmed] = useState(skipPropertyStep);
   const [showMaxPayment, setShowMaxPayment] = useState(false);
 
   const [tracks, setTracks] = useState<MortgageTrack[]>([]);
@@ -317,7 +326,8 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty, primeForec
         <h1 className="text-lg font-bold text-slate-900">תמהיל חדש</h1>
       </div>
 
-      {/* שלב 1 — הנכס והעסקה */}
+      {/* שלב 1 — הנכס והעסקה. בכלי עצמו נשאר; מתהליך חמשת השלבים מדלגים כי הנתונים כבר הוזנו */}
+      {!skipPropertyStep && (
       <Card className="border-slate-200 shadow-sm">
         <CardContent className="p-4">
           {propertyConfirmed ? (
@@ -492,14 +502,23 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty, primeForec
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* שלב 2 — מסלולים, אחד אחרי השני, עד שכל הסכום מכוסה */}
       {propertyConfirmed && (
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="p-4 space-y-3">
+            {skipPropertyStep && (
+              <p className="text-xs text-slate-500">
+                {DEAL_TYPES[property.dealType]}
+                {property.propertyAddress.trim() && ` · ${property.propertyAddress.trim()}`}
+                {' · '}
+                משכנתא {formatShekel(totalAmount)} · נכס {formatShekel(property.propertyValue)}
+              </p>
+            )}
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-bold shrink-0">
-                2
+                {skipPropertyStep ? 1 : 2}
               </span>
               <Label className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
                 <Layers className="h-4 w-4 text-blue-600" />
@@ -723,7 +742,7 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty, primeForec
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-bold shrink-0">
-                3
+                {skipPropertyStep ? 2 : 3}
               </span>
               <Label className="text-sm font-semibold text-slate-800">שם התמהיל</Label>
             </div>

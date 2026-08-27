@@ -36,12 +36,13 @@ import type {
   PreApprovalData,
   UniformBasket,
 } from '@/lib/mortgage-plan';
-import { formatDuration } from '@/components/mortgage-advisor/engine';
+import { formatDuration, computeMixWithForecast, createTrack, createWorkspaceMix, mixWithPrimeForecast } from '@/components/mortgage-advisor/engine';
+import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { DEAL_TYPES, MAX_LTV_PERCENT, TRACK_TYPES } from '@/components/mortgage-advisor/types';
-import { computeMix, createTrack, createWorkspaceMix } from '@/components/mortgage-advisor/engine';
-import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import { usePrimeForecast } from '@/hooks/use-prime-forecast';
+import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import {
   DateField,
   EmptyHint,
@@ -65,7 +66,8 @@ function basketOf(value: PreApprovalData, basketId: string): PreApprovalBasket {
 function basketMix(
   uniform: UniformBasket,
   basket: PreApprovalBasket,
-  data: PlanData
+  data: PlanData,
+  forecast: PrimeForecast
 ): WorkspaceMix | null {
   const amount = preApprovalAmount(data) ?? 0;
   if (amount <= 0) return null;
@@ -82,37 +84,47 @@ function basketMix(
   );
 
   const bank = data.APPLICATIONS.bank;
-  return createWorkspaceMix({
-    ...(basket.mixKey ? { id: basket.mixKey } : {}),
-    name: bank ? `${uniform.shortName} · אישור עקרוני ${bank}` : uniform.shortName,
-    totalAmount: amount,
-    tracks,
-    notes: uniform.description,
-    propertyValue: profile.propertyValue ?? undefined,
-    propertyAddress: profile.propertyAddress.trim() || undefined,
-    dealType: profile.dealType ?? undefined,
-  });
+  return mixWithPrimeForecast(
+    createWorkspaceMix({
+      ...(basket.mixKey ? { id: basket.mixKey } : {}),
+      name: bank ? `${uniform.shortName} · אישור עקרוני ${bank}` : uniform.shortName,
+      totalAmount: amount,
+      tracks,
+      notes: uniform.description,
+      propertyValue: profile.propertyValue ?? undefined,
+      propertyAddress: profile.propertyAddress.trim() || undefined,
+      dealType: profile.dealType ?? undefined,
+      maxMonthlyPayment: analyzeProfile(profile).maxMonthlyPayment || undefined,
+    }),
+    forecast
+  );
 }
 
 /**
  * המספרים של הסל מחושבים בכל שינוי ריבית ונשמרים בשלב, כדי ששלב המכרז יוכל
  * להשוות כל הצעה מול מה שהבנק כבר נתן — גם לפני שהסלים נשמרו כתמהילים.
+ * מסלולים משתנים מתומחרים לפי עקום הפורוורד, כמו בכלי בניית התמהיל.
  */
 function priced(
   uniform: UniformBasket,
   basket: PreApprovalBasket,
-  data: PlanData
+  data: PlanData,
+  forecast: PrimeForecast
 ): PreApprovalBasket {
-  const mix = basketIsFilled(basket, uniform) ? basketMix(uniform, basket, data) : null;
+  const mix = basketIsFilled(basket, uniform) ? basketMix(uniform, basket, data, forecast) : null;
   if (!mix) return { ...basket, monthlyPayment: null, averageRate: null, totalPaid: null };
 
-  const summary = computeMix(mix).summary;
+  const summary = computeMixWithForecast(mix, forecast).summary;
   return {
     ...basket,
     monthlyPayment: summary.monthlyPayment,
     averageRate: summary.averageRate,
     totalPaid: summary.totalPaid,
   };
+}
+
+function basketHasVariableTrack(uniform: UniformBasket): boolean {
+  return uniform.tracks.some((track) => track.type === 'prime' || track.type === 'variable_unlinked');
 }
 
 /** רשימת מסמכים של לווה אחד או של משק הבית, עם סימון מה כבר נאסף */
@@ -219,6 +231,7 @@ export function PreApprovalStage({
   const profile = data.ANALYSIS;
   const analysis = analyzeProfile(profile);
   const { save } = useSavedMixes();
+  const forecast = usePrimeForecast();
   const [saving, setSaving] = useState(false);
 
   const couple = profile.household === 'COUPLE';
@@ -243,7 +256,7 @@ export function PreApprovalStage({
     onChange({
       ...next,
       baskets: UNIFORM_BASKETS.map((uniform) =>
-        priced(uniform, basketOf(next, uniform.id), withPatch)
+        priced(uniform, basketOf(next, uniform.id), withPatch, forecast)
       ),
     });
   };
@@ -254,7 +267,7 @@ export function PreApprovalStage({
     if (rate === null) delete rates[trackType];
     else rates[trackType] = rate;
 
-    const next = priced(uniform, { ...current, rates }, data);
+    const next = priced(uniform, { ...current, rates }, data, forecast);
     onChange({
       ...value,
       baskets: UNIFORM_BASKETS.map((entry) =>
@@ -276,8 +289,8 @@ export function PreApprovalStage({
     try {
       const stored: PreApprovalBasket[] = [];
       for (const uniform of UNIFORM_BASKETS) {
-        const basket = priced(uniform, basketOf(value, uniform.id), data);
-        const mix = basketIsFilled(basket, uniform) ? basketMix(uniform, basket, data) : null;
+        const basket = priced(uniform, basketOf(value, uniform.id), data, forecast);
+        const mix = basketIsFilled(basket, uniform) ? basketMix(uniform, basket, data, forecast) : null;
         if (!mix) {
           stored.push(basket);
           continue;
@@ -636,8 +649,10 @@ export function PreApprovalStage({
             <>
               <div className="grid gap-3 lg:grid-cols-3">
                 {UNIFORM_BASKETS.map((uniform) => {
-                  const basket = basketOf(value, uniform.id);
+                  const stored = basketOf(value, uniform.id);
+                  const basket = priced(uniform, stored, data, forecast);
                   const filled = basketIsFilled(basket, uniform);
+                  const hasForwardTracks = basketHasVariableTrack(uniform);
 
                   return (
                     <div
@@ -696,6 +711,12 @@ export function PreApprovalStage({
                           </div>
                         </div>
                       </div>
+                      {hasForwardTracks && filled && (
+                        <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+                          סך התשלומים כולל קרן וריבית. במסלולים משתנים הריבית בהמשך התקופה מחושבת לפי
+                          עקום הפורוורד, כמו בכלי בניית התמהיל.
+                        </p>
+                      )}
 
                       {basket.mixKey && (
                         <p className="mt-2 flex items-center gap-1 text-[10px] font-bold text-emerald-600">

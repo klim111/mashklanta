@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit, Check, X, Copy, Calculator, TrendingUp, PieChart } from 'lucide-react';
 import type { MortgageMix } from './types';
-import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
-import { formatDuration } from './engine';
+import { formatCurrency, formatPercentage } from './mortgageCalculations';
+import { computeMixWithForecast, formatDuration, toWorkspaceMix } from './engine';
 import { yearsToMonths } from '@/lib/mortgage-plan';
-import { TRACK_TYPES, formatTrackTypeWithAmortization } from './types';
+import { formatTrackTypeWithAmortization } from './types';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
+import { usePrimeForecast } from '@/hooks/use-prime-forecast';
 
 interface MortgageMixCardProps {
   mix: MortgageMix;
@@ -60,6 +61,10 @@ export function MortgageMixCard({
   const [editData, setEditData] = useState({ name: mix.name, notes: mix.notes || '' });
   const { cpiData, loading: cpiLoading } = useCPI();
   const { currencyRates, loading: currencyLoading } = useCurrencyRates();
+  const forecast = usePrimeForecast();
+  const hasForwardTracks = mix.tracks.some(
+    (track) => track.type === 'prime' || track.type === 'variable_unlinked'
+  );
 
   const handleSave = () => {
     onUpdate({
@@ -75,8 +80,16 @@ export function MortgageMixCard({
     setIsEditing(false);
   };
 
-  const calculation = calculateMortgageMix(mix);
-  const { summary } = calculation;
+  const summary = useMemo(() => {
+    const result = computeMixWithForecast(toWorkspaceMix(mix), forecast).summary;
+    return {
+      totalMonthlyPayment: result.monthlyPayment,
+      totalInterest: result.totalInterest,
+      totalPaid: result.totalPaid,
+      averageRate: result.averageRate,
+      weightedAverageYears: result.weightedAverageYears,
+    };
+  }, [mix, forecast]);
   const SummaryIcon =
     summaryHeaderConfig?.iconName === 'trend'
       ? TrendingUp
@@ -457,6 +470,12 @@ export function MortgageMixCard({
               <span>סך הריבית: {formatCurrency(summary.totalInterest)}</span>
             </div>
           </div>
+          {hasForwardTracks && (
+            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+              סך התשלומים {formatCurrency(summary.totalPaid)} כולל קרן וריבית. במסלולים משתנים הריבית
+              בהמשך התקופה מחושבת לפי עקום הפורוורד.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

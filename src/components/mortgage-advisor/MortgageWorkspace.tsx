@@ -58,6 +58,12 @@ interface MortgageWorkspaceProps {
   embedded?: boolean;
   /** כשמוטמע בתהליך בלי תמהיל שמור — לפתוח ישר באשף תמהיל חדש */
   startInSetup?: boolean;
+  /** מתהליך חמשת השלבים: מדלגים על מסך הנכס והעסקה באשף */
+  skipPropertySetup?: boolean;
+  /** תמהילי הסלים האחידים שנשמרו בשלב הקודם — נפתחים ברשימה */
+  preferredMixIds?: string[];
+  /** התמהיל הפעיל בתהליך, אם כבר נבחר אחד */
+  activeMixKey?: string | null;
   /** ערכי ברירת מחדל לאשף (סוג עסקה ותקרת החזר מהפרופיל) */
   defaultSetupSeed?: Partial<PropertySetup>;
   /** אירועים שמצטרפים לכל תמהיל חדש — למשל פירעון מוקדם מהכנסה עתידית שהוצהרה */
@@ -81,6 +87,9 @@ export function MortgageWorkspace({
   initialMix,
   embedded = false,
   startInSetup = false,
+  skipPropertySetup = false,
+  preferredMixIds,
+  activeMixKey,
   defaultSetupSeed,
   defaultEvents,
   onActiveMix,
@@ -94,7 +103,7 @@ export function MortgageWorkspace({
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const clients = useAdvisorClients(isAdvisor);
 
-  const { saved, save, remove, rename, signedIn } = useSavedMixes(
+  const { saved, save, remove, rename, signedIn, ready } = useSavedMixes(
     activeClientId ? { clientId: activeClientId } : {}
   );
 
@@ -248,6 +257,26 @@ export function MortgageWorkspace({
     [onActiveMix]
   );
 
+  const preferredKey = (preferredMixIds ?? []).join('|');
+  const basketsOpened = useRef(false);
+  useEffect(() => {
+    if (basketsOpened.current || initialMix || !ready) return;
+    const ids = preferredKey ? preferredKey.split('|') : [];
+    if (ids.length === 0) return;
+
+    const matches = ids
+      .map((id) => saved.find((item) => item.mix.id === id))
+      .filter((item): item is SavedMix => Boolean(item));
+    if (matches.length === 0) return;
+
+    basketsOpened.current = true;
+    const selected =
+      (activeMixKey ? matches.find((item) => item.mix.id === activeMixKey) : undefined) ?? matches[0];
+    notifyActive(selected);
+    openMix(selected.mix);
+    actions.setCompared(matches.map((item) => item.mix.id));
+  }, [ready, saved, preferredKey, activeMixKey, initialMix, openMix, actions, notifyActive]);
+
   const persistMix = useCallback(
     (next: WorkspaceMix) => {
       void save(next).then((stored) => notifyActive(stored));
@@ -395,6 +424,7 @@ export function MortgageWorkspace({
           <MixSetupWizard
             onBack={backToLanding}
             initialProperty={setupSeed}
+            skipPropertyStep={skipPropertySetup}
             primeForecast={mix.assumptions.primeForecast ?? primeForecastRef.current}
             onComplete={(created) => {
               // אירועים שהוגדרו כבר בפרופיל (פירעון מוקדם צפוי) נכנסים לתמהיל החדש

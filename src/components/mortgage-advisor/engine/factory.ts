@@ -122,6 +122,14 @@ export function createEmptyMix(overrides: Partial<WorkspaceMix> = {}): Workspace
   };
 }
 
+/** מדביק עקום פריים לתמהיל, בלי לדרוס שאר ההנחות */
+export function mixWithPrimeForecast(mix: WorkspaceMix, forecast: PrimeForecast): WorkspaceMix {
+  return {
+    ...mix,
+    assumptions: { ...mix.assumptions, primeForecast: forecast },
+  };
+}
+
 /**
  * מיישר את התמהיל: אחוזי המסלולים נגזרים מסכום המשכנתא.
  *

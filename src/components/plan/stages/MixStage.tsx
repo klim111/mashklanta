@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Sparkles, TrendingUp } from 'lucide-react';
 import { analyzeProfile, mortgageFromProperty } from '@/lib/mortgage-plan';
 import type { MixData, PlanData } from '@/lib/mortgage-plan';
@@ -66,6 +66,15 @@ export function MixStage({
    * כדי שהלקוח יתחיל מהסלים שקיבל בפועל ולא יזין הכול מחדש.
    */
   const basketsSaved = preApproval.baskets.some((basket) => basket.mixKey);
+  const preferredMixIds = useMemo(() => {
+    const fromBaskets = preApproval.baskets.flatMap((basket) =>
+      basket.mixKey ? [basket.mixKey] : []
+    );
+    if (data.MIX.mixKey && !fromBaskets.includes(data.MIX.mixKey)) {
+      return [data.MIX.mixKey, ...fromBaskets];
+    }
+    return fromBaskets;
+  }, [preApproval.baskets, data.MIX.mixKey]);
   const prepayments = plannedPrepayments(data);
   const hasFutureIncome = prepayments.length > 0 || Boolean(profile.futureMonthlyIncrease);
   /** ברירת מחדל: מחיר הנכס פחות ההון העצמי שהוזן בפרופיל */
@@ -113,7 +122,10 @@ export function MixStage({
 
       <MortgageWorkspace
         embedded
+        skipPropertySetup
         startInSetup={!data.MIX.mixKey && !basketsSaved}
+        preferredMixIds={preferredMixIds}
+        activeMixKey={data.MIX.mixKey}
         defaultSetupSeed={{
           dealType: profile.dealType ?? undefined,
           maxMonthlyPayment: Math.round(analysis.maxMonthlyPayment) || undefined,

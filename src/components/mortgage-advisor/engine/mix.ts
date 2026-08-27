@@ -8,6 +8,8 @@ import type {
   WorkspaceMix,
 } from './types';
 import { paymentProfile, simulateTrack } from './schedule';
+import { mixWithPrimeForecast } from './factory';
+import type { PrimeForecast } from '@/lib/prime-forward-curve';
 
 type DistributedMap = Map<number, { amount: number; mode: PrepaymentEvent['mode'] }>;
 
@@ -178,6 +180,11 @@ export function computeMix(mix: WorkspaceMix): MixResult {
   const tracks = simulateAll(mix, distributed);
   const schedule = aggregate(tracks, mix.startDate);
   return { mix, tracks, schedule, summary: summarize(mix, tracks, schedule) };
+}
+
+/** אותו חישוב, עם עקום הפריים — לסלים אחידים ולמסלולים משתנים */
+export function computeMixWithForecast(mix: WorkspaceMix, forecast: PrimeForecast): MixResult {
+  return computeMix(mixWithPrimeForecast(mix, forecast));
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { annuityPayment, monthsToPayOff } from './schedule';
-import { computeMix, snapshotAt } from './mix';
+import { computeMix, computeMixWithForecast, snapshotAt } from './mix';
 import {
   createTrack,
   createWorkspaceMix,
@@ -300,6 +300,31 @@ describe('variable rate reset', () => {
     expect(withCurve.tracks[0].schedule[119].annualRate).not.toBeCloseTo(4.5, 1);
     expect(withCurve.tracks[0].schedule).toHaveLength(240);
     expect(withCurve.summary.totalInterest).not.toBeCloseTo(flat.summary.totalInterest, 0);
+  });
+
+  it('prices a uniform-style basket total paid with forwards on variable tracks', () => {
+    const mix = createWorkspaceMix({
+      totalAmount: 900_000,
+      tracks: [
+        createTrack({ type: 'fixed_unlinked', amount: 300_000, interestRate: 5, years: 20 }),
+        createTrack({ type: 'prime', amount: 300_000, interestRate: 6, years: 20 }),
+        createTrack({
+          type: 'variable_unlinked',
+          amount: 300_000,
+          interestRate: 4.6,
+          years: 20,
+          variablePeriod: 5,
+        }),
+      ],
+      assumptions: { rateDeltas: {}, annualInflation: 0 },
+    });
+    const forecast = fallbackPrimeForecast();
+    const flat = computeMix(mix);
+    const withFwd = computeMixWithForecast(mix, forecast);
+
+    expect(withFwd.summary.totalPaid).toBeGreaterThan(mix.totalAmount);
+    expect(withFwd.summary.totalPaid).not.toBeCloseTo(flat.summary.totalPaid, 0);
+    expect(withFwd.summary.totalInterest).not.toBeCloseTo(flat.summary.totalInterest, 0);
   });
 });
 
