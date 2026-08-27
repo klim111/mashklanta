@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -31,11 +32,8 @@ import {
   EMPLOYMENT_LABELS,
   EMPLOYMENT_TYPES,
   analyzeProfile,
-  clampDealMortgage,
   dealMaxLtv,
-  dealMaxMortgage,
-  ltvPercentOf,
-  mortgageFromLtvPercent,
+  maxPropertyForEquity,
   mortgageFromProperty,
   profileLoanTotal,
   profileRequirements,
@@ -776,7 +774,7 @@ function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId
   );
 }
 
-/** פרטי הנכס והעסקה — מחיר הנכס קובע את סכום המשכנתא בתוך תקרת סוג העסקה */
+/** פרטי הנכס והעסקה — כתובת, סוג עסקה, ואז מחיר שממנו נגזרות המשכנתא ואחוז המימון */
 function PropertyPanel({
   profile,
   patch,
@@ -784,68 +782,49 @@ function PropertyPanel({
   profile: AnalysisData;
   patch: (next: Partial<AnalysisData>) => void;
 }) {
+  const [priceCapped, setPriceCapped] = useState(false);
   const analysis = analyzeProfile(profile);
+  const dealType = profile.dealType;
   const propertyValue = profile.propertyValue ?? 0;
-  const dealType = profile.dealType ?? 'first_home';
-  const maxLtv = dealMaxLtv(dealType);
-  const maxMortgage = dealMaxMortgage(propertyValue, dealType);
-  const mortgage = profile.mortgageAmount;
-  const defaultMortgage = mortgageFromProperty(propertyValue, profile.equity, dealType);
-  const effectiveMortgage = mortgage ?? defaultMortgage;
-  const ltvValue = propertyValue > 0 ? ltvPercentOf(propertyValue, effectiveMortgage ?? 0) : null;
-  const leftoverEquity = propertyValue > 0 ? Math.max(0, propertyValue - (effectiveMortgage ?? 0)) : 0;
+  const maxLtv = dealType ? dealMaxLtv(dealType) : null;
+  const maxPrice = dealType ? maxPropertyForEquity(profile.equity, dealType) : null;
+  const computedMortgage = mortgageFromProperty(propertyValue, profile.equity, dealType);
+  const leftoverEquity = propertyValue > 0 ? Math.max(0, propertyValue - (computedMortgage ?? 0)) : 0;
 
-  const setPropertyValue = (value: number | null) => {
-    const nextPrice = value ?? 0;
+  const applyPropertyValue = (value: number | null, nextDeal: DealType | null) => {
+    const cap = maxPropertyForEquity(profile.equity, nextDeal);
+    const exceeded = value !== null && cap !== null && value > cap;
+    const nextPrice = exceeded ? cap : value;
+    setPriceCapped(Boolean(exceeded));
     patch({
-      propertyValue: value,
-      mortgageAmount: mortgageFromProperty(nextPrice, profile.equity, dealType),
-    });
-  };
-
-  const setDealType = (next: DealType) => {
-    patch({
-      dealType: next,
-      mortgageAmount:
-        propertyValue > 0
-          ? mortgageFromProperty(propertyValue, profile.equity, next)
-          : profile.mortgageAmount,
-    });
-  };
-
-  const setLtv = (ltv: number | null) => {
-    if (ltv === null) {
-      patch({ mortgageAmount: null });
-      return;
-    }
-    patch({
-      mortgageAmount: mortgageFromLtvPercent(propertyValue, ltv, dealType),
-    });
-  };
-
-  const setMortgage = (value: number | null) => {
-    if (value === null) {
-      patch({ mortgageAmount: null });
-      return;
-    }
-    patch({
-      mortgageAmount: clampDealMortgage(value, propertyValue, dealType),
+      dealType: nextDeal,
+      propertyValue: nextPrice,
+      mortgageAmount: mortgageFromProperty(nextPrice ?? 0, profile.equity, nextDeal),
     });
   };
 
   return (
     <Panel
       title="הנכס והעסקה"
-      description="מחיר הנכס ממלא את סכום המשכנתא. סוג העסקה קובע את תקרת המימון, ואפשר לבחור אחוז נמוך יותר או לערוך את הסכום ידנית בתוך התקרה."
+      description="קודם הכתובת וסוג העסקה. אחרי הבחירה מופיע מחיר הנכס המרבי מול ההון העצמי — והמשכנתא מחושבת לבד."
     >
       <div className="space-y-5">
-        <NumberField
-          label="מחיר הנכס"
-          value={profile.propertyValue}
-          onChange={setPropertyValue}
-          suffix="₪"
-          placeholder="2,000,000"
-        />
+        <div>
+          <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+            <MapPin className="h-3.5 w-3.5 text-slate-400" />
+            כתובת הנכס
+          </span>
+          <AddressAutocomplete
+            className="h-[42px] rounded-xl border-slate-200"
+            placeholder="התחילו להקליד רחוב או עיר"
+            value={profile.propertyAddress}
+            onChange={(propertyAddress) => patch({ propertyAddress })}
+          />
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+            תמהילים לאותה כתובת מקובצים ומושווים יחד באזור האישי. בלי כתובת הם מקובצים לפי סכום
+            המשכנתא.
+          </p>
+        </div>
 
         <div>
           <span className="mb-1.5 block text-xs font-bold text-slate-600">סוג העסקה</span>
@@ -856,7 +835,7 @@ function PropertyPanel({
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setDealType(key)}
+                  onClick={() => applyPropertyValue(profile.propertyValue, key)}
                   className={`rounded-2xl border-2 px-4 py-3 text-right transition-all ${
                     selected
                       ? 'border-blue-500 bg-blue-50 shadow-sm'
@@ -879,67 +858,43 @@ function PropertyPanel({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField
-            label="אחוז מימון"
-            hint={`אפשר לבחור אחוז נמוך יותר מתקרת ${DEAL_TYPES[dealType]}. לא ניתן לחרוג מ-${maxLtv}%.`}
-            value={ltvValue}
-            onChange={setLtv}
-            suffix="%"
-            max={maxLtv}
-            integer={false}
-            placeholder={String(maxLtv)}
-          />
-          <NumberField
-            label="סכום המשכנתא"
-            hint="ברירת המחדל היא מחיר הנכס פחות ההון העצמי שהוזן בפרופיל, בתוך תקרת סוג העסקה."
-            value={mortgage}
-            onChange={setMortgage}
-            suffix="₪"
-            max={maxMortgage > 0 ? maxMortgage : undefined}
-            placeholder={
-              defaultMortgage
-                ? defaultMortgage.toLocaleString('he-IL')
-                : maxMortgage
-                  ? maxMortgage.toLocaleString('he-IL')
-                  : '1,500,000'
-            }
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
+        {dealType && (
           <div>
-            <TermMonthsSlider
-              label="תקופת המשכנתא המבוקשת"
-              years={profile.years}
-              onChange={(years) => patch({ years })}
+            <NumberField
+              label="מחיר הנכס"
+              hint={
+                maxPrice !== null
+                  ? `מקסימום ל${DEAL_TYPES[dealType]} מול הון עצמי ${formatShekel(profile.equity)}: ${formatShekel(maxPrice)} (מימון עד ${maxLtv}%).`
+                  : 'כדי לחשב את מחיר הנכס המרבי הזינו הון עצמי במסך מי לוקח המשכנתא.'
+              }
+              value={profile.propertyValue}
+              onChange={(value) => applyPropertyValue(value, dealType)}
+              suffix="₪"
+              placeholder={maxPrice ? maxPrice.toLocaleString('he-IL') : '2,000,000'}
             />
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              להערכת ההחזר בלבד — בתמהיל עצמו לכל מסלול תקופה משלו. אפשר לבחור כל מספר חודשים בין 48
-              ל-360.
-            </p>
+            {priceCapped && maxPrice !== null && (
+              <p className="mt-2 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                המחיר גבוה מהמותר לסוג העסקה עם ההון העצמי שהוזן. הסכום חזר למקסימום האפשרי:{' '}
+                {formatShekel(maxPrice)}.
+              </p>
+            )}
           </div>
+        )}
 
-          <div>
-            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-              <MapPin className="h-3.5 w-3.5 text-slate-400" />
-              כתובת הנכס (לא חובה)
-            </span>
-            <AddressAutocomplete
-              className="h-[42px] rounded-xl border-slate-200"
-              placeholder="התחילו להקליד רחוב או עיר"
-              value={profile.propertyAddress}
-              onChange={(propertyAddress) => patch({ propertyAddress })}
-            />
-            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
-              תמהילים לאותה כתובת מקובצים ומושווים יחד באזור האישי. בלי כתובת הם מקובצים לפי סכום
-              המשכנתא.
-            </p>
-          </div>
-        </div>
-
-        {propertyValue > 0 && (
+        {dealType && propertyValue > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric
+              label="סכום המשכנתא"
+              value={formatShekel(computedMortgage)}
+              note="מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה"
+            />
+            <Metric
+              label="אחוז מימון"
+              value={formatPercent(analysis.ltv)}
+              note={maxLtv !== null ? `תקרה ${maxLtv}%` : undefined}
+              tone={analysis.ltvOk ? 'good' : 'bad'}
+            />
             <Metric
               label="הון עצמי בעסקה"
               value={formatShekel(leftoverEquity)}
@@ -949,16 +904,6 @@ function PropertyPanel({
                   : 'מחיר הנכס פחות המשכנתא'
               }
               tone={analysis.equityGap > 0 ? 'warn' : 'good'}
-            />
-            <Metric
-              label="אחוז מימון"
-              value={formatPercent(analysis.ltv)}
-              note={`תקרה ${maxLtv}%`}
-              tone={analysis.ltvOk ? 'good' : 'bad'}
-            />
-            <Metric
-              label={`מימון מרבי ל${DEAL_TYPES[dealType]}`}
-              value={formatShekel(maxMortgage)}
             />
             <Metric
               label="החזר חודשי משוער"
@@ -973,19 +918,33 @@ function PropertyPanel({
           </div>
         )}
 
+        {dealType && (
+          <div>
+            <TermMonthsSlider
+              label="תקופת המשכנתא המבוקשת"
+              years={profile.years}
+              onChange={(years) => patch({ years })}
+            />
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              להערכת ההחזר בלבד — בתמהיל עצמו לכל מסלול תקופה משלו. אפשר לבחור כל מספר חודשים בין 48
+              ל-360.
+            </p>
+          </div>
+        )}
+
         {analysis.equityGap > 0 && (
           <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             לפי ההון העצמי שהוצהר חסרים {formatShekel(analysis.equityGap)} כדי לעמוד בתקרת המימון.
-            אפשר להגדיל את ההון או להקטין את סכום המשכנתא.
+            אפשר להגדיל את ההון או להקטין את מחיר הנכס.
           </p>
         )}
 
-        {!analysis.ratioOk && (
+        {!analysis.ratioOk && propertyValue > 0 && (
           <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            יחס ההחזר המשוער חורג מהמקובל בבנקים. אפשר להאריך את התקופה, להקטין את סכום המשכנתא
-            או לסגור הלוואות קיימות לפני ההגשה.
+            יחס ההחזר המשוער חורג מהמקובל בבנקים. אפשר להאריך את התקופה, להקטין את מחיר הנכס או לסגור
+            הלוואות קיימות לפני ההגשה.
           </p>
         )}
       </div>

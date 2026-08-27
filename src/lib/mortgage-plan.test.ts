@@ -11,6 +11,7 @@ import {
   monthsToYears,
   mortgageFromLtvPercent,
   mortgageFromProperty,
+  maxPropertyForEquity,
   parseStageData,
   planProgress,
   planSnapshot,
@@ -98,7 +99,8 @@ describe('ניתוח הפרופיל הפיננסי', () => {
 
     expect(result.maxLtv).toBe(50);
     expect(result.equityGap).toBe(2_400_000 * 0.5 - 700_000);
-    expect(result.ltvOk).toBe(false);
+    expect(result.requiredLoan).toBe(1_200_000);
+    expect(result.ltv).toBeCloseTo(50, 5);
   });
 
   it('יחס ההחזר נמדד אחרי ניכוי ההלוואות הקיימות', () => {
@@ -406,11 +408,15 @@ describe('גזירה מכלי בניית הפרופיל', () => {
     expect(stageIsComplete('ANALYSIS', { ...emptyPlanData(), ANALYSIS: edited })).toBe(true);
   });
 
-  it('סכום משכנתא שהוזן ידנית גובר על ההפרש בין מחיר הנכס להון העצמי', () => {
+  it('סכום המשכנתא הוא מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה', () => {
     const data = profile().ANALYSIS;
 
     expect(analyzeProfile(data).requiredLoan).toBe(1_700_000);
-    expect(analyzeProfile({ ...data, mortgageAmount: 1_500_000 }).requiredLoan).toBe(1_500_000);
+    expect(analyzeProfile({ ...data, mortgageAmount: 1_500_000 }).requiredLoan).toBe(1_700_000);
+
+    const cheaper = analyzeProfile({ ...data, propertyValue: 2_000_000 });
+    expect(cheaper.requiredLoan).toBe(1_300_000);
+    expect(cheaper.ltv).toBeCloseTo(65, 5);
   });
 
   it('סכום המשכנתא נחתך לתקרת המימון של סוג העסקה', () => {
@@ -420,8 +426,9 @@ describe('גזירה מכלי בניית הפרופיל', () => {
     expect(mortgageFromProperty(2_400_000, null, 'first_home')).toBe(1_800_000);
     expect(mortgageFromLtvPercent(2_400_000, 60, 'first_home')).toBe(1_440_000);
     expect(mortgageFromLtvPercent(2_400_000, 90, 'first_home')).toBe(1_800_000);
-    expect(analyzeProfile({ ...profile().ANALYSIS, mortgageAmount: 2_000_000 }).requiredLoan).toBe(
-      1_800_000
+    expect(maxPropertyForEquity(700_000, 'first_home')).toBe(2_800_000);
+    expect(parseStageData('ANALYSIS', { ...profile().ANALYSIS, propertyValue: 3_500_000 }).propertyValue).toBe(
+      2_800_000
     );
   });
 

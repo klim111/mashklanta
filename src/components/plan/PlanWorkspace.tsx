@@ -120,9 +120,11 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const save = saveLabels[saveState];
   /** כלי בניית התמהיל רחב מדי לפריסה עם סרגל צדדי; שלב הפרופיל מקבל את כל הרוחב כדי שהשאלה הראשונה תישב במרכז */
   const usesExistingTool = stage === 'MIX' || stage === 'ANALYSIS';
-  const analysisOnIntent =
-    stage === 'ANALYSIS' &&
-    (!plan.data.ANALYSIS.intent || plan.data.ANALYSIS.profileScreen === 'intent');
+  const analysisOnLastSubstep =
+    stage !== 'ANALYSIS' ||
+    (Boolean(plan.data.ANALYSIS.intent) &&
+      (plan.data.ANALYSIS.profileScreen || 'borrowers') === 'deal');
+  const showStageFooter = !isPreview && analysisOnLastSubstep && (canComplete || isDone);
 
   const selectStage = (nextStage: PlanStageId) => {
     if (unfinishedPrerequisites(nextStage, statuses).length > 0) {
@@ -391,7 +393,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     />
                   </>
                 )}
-                {!isPreview && !analysisOnIntent && stageFooter}
+                {showStageFooter && stageFooter}
               </div>
             ) : (
             <div className="grid gap-6 lg:grid-cols-3">
@@ -416,7 +418,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   />
                 )}
 
-                {!isPreview && stageFooter}
+                {showStageFooter && stageFooter}
               </div>
 
               <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">

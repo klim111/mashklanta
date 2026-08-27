@@ -367,7 +367,7 @@ const EMPTY: PlanData = {
     partnerLoans: [],
     existingLoans: null,
     equity: null,
-    dealType: 'first_home',
+    dealType: null,
     propertyValue: null,
     mortgageAmount: null,
     propertyAddress: '',
@@ -585,12 +585,14 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           ? (source.dealType as DealType)
           : null
         : seed.dealType;
-      const propertyValue = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
-      const rawMortgage = has('mortgageAmount') ? num(source.mortgageAmount) : seed.mortgageAmount;
-      const mortgageAmount =
-        propertyValue && rawMortgage
-          ? clampDealMortgage(rawMortgage, propertyValue, dealType) || null
-          : rawMortgage;
+      const equity = has('equity') ? num(source.equity) : seed.equity;
+      const maxPrice = maxPropertyForEquity(equity, dealType);
+      const propertyValueRaw = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
+      const propertyValue =
+        propertyValueRaw && maxPrice !== null && propertyValueRaw > maxPrice
+          ? maxPrice
+          : propertyValueRaw;
+      const mortgageAmount = mortgageFromProperty(propertyValue ?? 0, equity, dealType);
 
       const borrowerLoans = carry.borrowerLoans ?? seed.borrowerLoans;
       const partnerLoans = couple ? (carry.partnerLoans ?? seed.partnerLoans) : [];
@@ -619,7 +621,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         borrowerLoans: seededBorrowerLoans,
         partnerLoans,
         existingLoans,
-        equity: has('equity') ? num(source.equity) : seed.equity,
+        equity,
         profileScreen:
           carry.profileScreen ??
           (carry.intent || seed.intent
@@ -1022,6 +1024,20 @@ export function dealMaxMortgage(propertyValue: number, dealType: DealType | null
   return Math.round((propertyValue * dealMaxLtv(dealType)) / 100);
 }
 
+/**
+ * מחיר הנכס המרבי שאפשר לרכוש עם ההון העצמי שהוזן, לפי תקרת המימון של סוג
+ * העסקה. בלי הון עצמי או בלי סוג עסקה אין מה לחשב.
+ */
+export function maxPropertyForEquity(
+  equity: number | null,
+  dealType: DealType | null
+): number | null {
+  if (!dealType || equity === null || !Number.isFinite(equity) || equity < 0) return null;
+  const minEquityRatio = 1 - dealMaxLtv(dealType) / 100;
+  if (minEquityRatio <= 0) return null;
+  return Math.round(equity / minEquityRatio);
+}
+
 /** חיתוך סכום המשכנתא לתקרת סוג העסקה — אי אפשר לחרוג ממנה גם בהזנה ידנית */
 export function clampDealMortgage(
   amount: number,
@@ -1108,12 +1124,7 @@ export function analyzeProfile(data: AnalysisData): AnalysisResult {
   const equity = data.equity ?? 0;
   const maxLtv = MAX_LTV_PERCENT[data.dealType ?? 'first_home'];
 
-  /** הסכום שהלקוח ביקש גובר על ההפרש בין מחיר הנכס להון העצמי — יש מי שמשאיר הון בצד */
-  const requested = data.mortgageAmount;
-  const requiredLoan =
-    requested !== null && requested >= 0
-      ? clampDealMortgage(requested, propertyValue, data.dealType)
-      : Math.max(0, propertyValue - equity);
+  const requiredLoan = mortgageFromProperty(propertyValue, data.equity, data.dealType) ?? 0;
   const requiredEquity = propertyValue > 0 ? propertyValue * (1 - maxLtv / 100) : 0;
   const equityGap = Math.max(0, requiredEquity - equity);
   const ltv = propertyValue > 0 ? (requiredLoan / propertyValue) * 100 : null;
