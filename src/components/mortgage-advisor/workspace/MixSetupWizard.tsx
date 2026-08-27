@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -151,6 +151,14 @@ export function MixSetupWizard({
   /** מתהליך חמשת השלבים הנתונים כבר הוזנו — לא מחזירים את טופס הנכס */
   const [propertyConfirmed, setPropertyConfirmed] = useState(skipPropertyStep);
   const [showMaxPayment, setShowMaxPayment] = useState(false);
+
+  useEffect(() => {
+    const cap = initialProperty?.maxMonthlyPayment;
+    if (!cap || cap <= 0) return;
+    setProperty((current) =>
+      current.maxMonthlyPayment > 0 ? current : { ...current, maxMonthlyPayment: cap }
+    );
+  }, [initialProperty?.maxMonthlyPayment]);
 
   const [tracks, setTracks] = useState<MortgageTrack[]>([]);
   const [form, setForm] = useState<TrackForm>(() => emptyForm());
@@ -468,7 +476,9 @@ export function MixSetupWizard({
                   </Button>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  החישוב נעשה לפי נתוני הלקוח — הכנסות, גיל וניתוח ההלוואות הקיימות.
+                  {initialProperty?.maxMonthlyPayment
+                    ? 'מחושב אוטומטית כ-40% מההכנסה הפנויה של היחיד או מסכום ההכנסות הפנויות של הזוג. אפשר לערוך.'
+                    : 'החישוב נעשה לפי נתוני הלקוח — הכנסות, גיל וניתוח ההלוואות הקיימות.'}
                 </p>
               </div>
 

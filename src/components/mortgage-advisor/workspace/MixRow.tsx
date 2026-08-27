@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Banknote, ChevronDown, Coins, Pencil, Percent, Wallet } from 'lucide-react';
@@ -24,6 +24,11 @@ interface MixRowProps {
   /** לחיצה על השורה — מעלה את התמהיל לראש הרשימה ופותחת אותו */
   onClick?: () => void;
   onRename?: (name: string) => void;
+  /** פותח את שדה השם מיד — למשל אחרי שכפול */
+  startRenaming?: boolean;
+  /** לא סוגרים את שדה השם בלי שם תקין */
+  requireName?: boolean;
+  namePlaceholder?: string;
   /** תג כמו "התמהיל הזול ביותר" */
   highlight?: string;
   /** פעולות שמוצגות בשורה הסגורה עצמה */
@@ -52,16 +57,25 @@ export function MixRow({
   expanded = false,
   onClick,
   onRename,
+  startRenaming = false,
+  requireName = false,
+  namePlaceholder,
   highlight,
   actions,
   detail,
   hint,
   note,
 }: MixRowProps) {
-  const [renaming, setRenaming] = useState(false);
-  const [draftName, setDraftName] = useState(mix.name);
+  const [renaming, setRenaming] = useState(startRenaming);
+  const [draftName, setDraftName] = useState(startRenaming ? '' : mix.name);
 
   const unallocated = remainingAmount(mix);
+
+  useEffect(() => {
+    if (!startRenaming) return;
+    setDraftName('');
+    setRenaming(true);
+  }, [startRenaming]);
 
   const startRename = () => {
     setDraftName(mix.name);
@@ -70,6 +84,10 @@ export function MixRow({
 
   const commitRename = () => {
     const trimmed = draftName.trim();
+    if (requireName && !trimmed) {
+      setRenaming(true);
+      return;
+    }
     if (trimmed && trimmed !== mix.name) onRename?.(trimmed);
     setRenaming(false);
   };
@@ -124,15 +142,20 @@ export function MixRow({
                 <input
                   value={draftName}
                   autoFocus
+                  placeholder={namePlaceholder}
                   onClick={stopRowClick}
                   onChange={(e) => setDraftName(e.target.value)}
                   onBlur={commitRename}
                   onKeyDown={(e) => {
                     e.stopPropagation();
                     if (e.key === 'Enter') commitRename();
-                    if (e.key === 'Escape') setRenaming(false);
+                    if (e.key === 'Escape') {
+                      if (requireName && !draftName.trim()) return;
+                      setDraftName(mix.name);
+                      setRenaming(false);
+                    }
                   }}
-                  className="w-full max-w-xs text-sm font-bold text-slate-900 border-b border-blue-400 outline-none bg-transparent"
+                  className="w-full max-w-xs text-sm font-bold text-slate-900 border-b border-blue-400 outline-none bg-transparent placeholder:font-medium placeholder:text-slate-400"
                 />
               ) : (
                 <>
@@ -165,6 +188,11 @@ export function MixRow({
                 </Badge>
               )}
             </div>
+            {renaming && requireName && (
+              <p className="text-[10px] text-blue-700">
+                תנו שם לתמהיל המשוכפל — אחרי השמירה הוא ייפתח באזור העבודה
+              </p>
+            )}
 
             <p className="text-[11px] text-slate-500 truncate">
               {formatShekel(mix.totalAmount)} · {mix.tracks.length} מסלולים ·{' '}

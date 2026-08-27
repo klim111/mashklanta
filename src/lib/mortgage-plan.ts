@@ -1135,7 +1135,7 @@ export function analyzeProfile(data: AnalysisData): AnalysisResult {
     data.years || DEFAULT_PLAN_YEARS
   );
 
-  // יחס ההחזר נמדד מול ההכנסה הפנויה, כפי שהבנק בוחן אותו
+  // יחס ההחזר בבנק נמדד מול ההכנסה אחרי הלוואות קיימות
   const ratioBase = totalIncome - (data.existingLoans ?? 0);
   const repaymentRatio =
     ratioBase > 0 ? (estimatedMonthlyPayment / ratioBase) * 100 : null;
@@ -1143,7 +1143,8 @@ export function analyzeProfile(data: AnalysisData): AnalysisResult {
   return {
     totalIncome,
     disposableIncome,
-    maxMonthlyPayment: Math.max(0, ratioBase * (REPAYMENT_RATIO_LIMIT / 100)),
+    // תקרת ההחזר לבניית תמהיל: 40% מההכנסה הפנויה של היחיד, או מסכום ההכנסות הפנויות של הזוג
+    maxMonthlyPayment: Math.max(0, disposableIncome * (REPAYMENT_RATIO_LIMIT / 100)),
     requiredLoan,
     requiredEquity,
     equityGap,

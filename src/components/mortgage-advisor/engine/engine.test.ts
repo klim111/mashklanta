@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { annuityPayment, monthsToPayOff } from './schedule';
 import { computeMix, computeMixWithForecast, snapshotAt, prepaymentCapacity, recurringPaymentAfter } from './mix';
 import {
+  cloneWorkspaceMix,
   createTrack,
   createWorkspaceMix,
   normalizeMix,
@@ -749,6 +750,33 @@ describe('normalizeMix', () => {
     );
     expect(mix.totalAmount).toBe(800_000);
     expect(remainingAmount(mix)).toBe(0);
+  });
+});
+
+describe('cloneWorkspaceMix', () => {
+  it('copies tracks, events and property fields onto a new mix with an empty name', () => {
+    const source = createWorkspaceMix({
+      name: 'מקור',
+      totalAmount: 900_000,
+      maxMonthlyPayment: 7_200,
+      propertyAddress: 'הרצל 1',
+      tracks: [
+        createTrack({ id: 'a', type: 'fixed_unlinked', amount: 900_000, years: 20 }),
+      ],
+      events: [{ id: 'e1', kind: 'prepayment', month: 12, amount: 50_000, mode: 'shorten_term' }],
+    });
+
+    const clone = cloneWorkspaceMix(source);
+
+    expect(clone.id).not.toBe(source.id);
+    expect(clone.name).toBe('');
+    expect(clone.totalAmount).toBe(900_000);
+    expect(clone.maxMonthlyPayment).toBe(7_200);
+    expect(clone.propertyAddress).toBe('הרצל 1');
+    expect(clone.tracks).toEqual(source.tracks);
+    expect(clone.events).toEqual(source.events);
+    clone.tracks[0].amount = 1;
+    expect(source.tracks[0].amount).toBe(900_000);
   });
 });
 

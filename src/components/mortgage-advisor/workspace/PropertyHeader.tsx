@@ -37,6 +37,8 @@ interface PropertyHeaderProps {
   monthlyPayment: number;
   /** מספר התמהילים שכבר קיימים לנכס הזה */
   mixCount: number;
+  /** תקרה שחושבה מהפרופיל — 40% מההכנסה הפנויה של היחיד או של הזוג */
+  profileMaxMonthlyPayment?: number;
   onPatch: (patch: Partial<WorkspaceMix>) => void;
   onTotalAmountChange: (amount: number) => void;
 }
@@ -50,6 +52,7 @@ export function PropertyHeader({
   mix,
   monthlyPayment,
   mixCount,
+  profileMaxMonthlyPayment,
   onPatch,
   onTotalAmountChange,
 }: PropertyHeaderProps) {
@@ -198,8 +201,12 @@ export function PropertyHeader({
           }
           hint={
             (mix.maxMonthlyPayment ?? 0) > 0
-              ? `בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
-              : 'לחצו על "חשב" לפי נתוני הלקוח'
+              ? profileMaxMonthlyPayment
+                ? `40% מההכנסה הפנויה · בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
+                : `בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
+              : profileMaxMonthlyPayment
+                ? 'מחושב אוטומטית כ-40% מההכנסה הפנויה'
+                : 'לחצו על "חשב" לפי נתוני הלקוח'
           }
         />
       </div>

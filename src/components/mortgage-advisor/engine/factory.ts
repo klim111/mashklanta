@@ -122,6 +122,31 @@ export function createEmptyMix(overrides: Partial<WorkspaceMix> = {}): Workspace
   };
 }
 
+/**
+ * עותק עצמאי של תמהיל — מזהה חדש ושם ריק, ושאר הפרמטרים כמו במקור.
+ * המסלולים והאירועים מועתקים כדי שעריכה באחד לא תשנה את השני.
+ */
+export function cloneWorkspaceMix(
+  source: WorkspaceMix,
+  overrides: Partial<WorkspaceMix> = {}
+): WorkspaceMix {
+  const now = new Date().toISOString();
+  return normalizeMix({
+    ...source,
+    tracks: source.tracks.map((track) => ({ ...track })),
+    events: source.events.map((event) => ({ ...event })),
+    assumptions: {
+      ...source.assumptions,
+      rateDeltas: { ...source.assumptions.rateDeltas },
+    },
+    ...overrides,
+    id: nextId('mix'),
+    name: overrides.name ?? '',
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
 /** מדביק עקום פריים לתמהיל, בלי לדרוס שאר ההנחות */
 export function mixWithPrimeForecast(mix: WorkspaceMix, forecast: PrimeForecast): WorkspaceMix {
   return {

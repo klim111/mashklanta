@@ -108,7 +108,16 @@ describe('ניתוח הפרופיל הפיננסי', () => {
     const base = 30_000 - 2_000;
 
     expect(result.repaymentRatio).toBeCloseTo((result.estimatedMonthlyPayment / base) * 100, 5);
-    expect(result.maxMonthlyPayment).toBeCloseTo(base * 0.4, 5);
+  });
+
+  it('תקרת ההחזר היא 40% מההכנסה הפנויה של היחיד או של סכום ההכנסות הפנויות של הזוג', () => {
+    const couple = analyzeProfile(profile().ANALYSIS);
+    expect(couple.disposableIncome).toBe(20_000);
+    expect(couple.maxMonthlyPayment).toBeCloseTo(20_000 * 0.4, 5);
+
+    const single = analyzeProfile({ ...profile().ANALYSIS, household: 'SINGLE' });
+    expect(single.disposableIncome).toBe(8_000);
+    expect(single.maxMonthlyPayment).toBeCloseTo(8_000 * 0.4, 5);
   });
 
   it('בלי נתונים אין מה לחשב, ולא נופלים על חלוקה באפס', () => {

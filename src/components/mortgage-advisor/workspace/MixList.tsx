@@ -4,7 +4,7 @@ import React from 'react';
 import { LayoutGroup, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GitCompareArrows, Layers, Plus, SquarePen, Trash2 } from 'lucide-react';
+import { Copy, GitCompareArrows, Layers, Plus, SquarePen, Trash2 } from 'lucide-react';
 import type { MixResult } from '../engine';
 import type { SavedMix } from '../savedMixes';
 import { MixRow } from './MixRow';
@@ -30,6 +30,10 @@ interface MixListProps {
   onRenameActive: (name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (item: SavedMix) => void;
+  onDuplicateActive: () => void;
+  /** תמהיל ששוכפל ומחכה לשם — שדה השם נפתח ריק */
+  pendingRenameId?: string | null;
   onCreateForProperty: () => void;
 }
 
@@ -55,6 +59,9 @@ export function MixList({
   onRenameActive,
   onRename,
   onDelete,
+  onDuplicate,
+  onDuplicateActive,
+  pendingRenameId,
   onCreateForProperty,
 }: MixListProps) {
   const scope = address?.trim()
@@ -110,7 +117,19 @@ export function MixList({
                   expanded={expanded}
                   onClick={onToggleExpanded}
                   onRename={onRenameActive}
-                  actions={activeActions}
+                  actions={
+                    <>
+                      <button
+                        type="button"
+                        onClick={onDuplicateActive}
+                        title="שכפול התמהיל"
+                        className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                      {activeActions}
+                    </>
+                  }
                   detail={editor}
                   hint="לחצו לעריכת המסלולים"
                   note={scenarioActive ? 'תרחיש פעיל' : undefined}
@@ -144,18 +163,37 @@ export function MixList({
                         summary={item.summary}
                         selected={comparedIds.includes(item.mix.id)}
                         onToggleSelect={() => onToggleCompare(item.mix.id)}
-                        onClick={() => onActivate(item)}
+                        onClick={
+                          item.mix.id === pendingRenameId ? undefined : () => onActivate(item)
+                        }
                         onRename={(name) => onRename(item.mix.id, name)}
-                        hint="לחצו להעברה לאזור העבודה"
+                        startRenaming={item.mix.id === pendingRenameId}
+                        requireName={item.mix.id === pendingRenameId}
+                        namePlaceholder="תנו שם לתמהיל המשוכפל"
+                        hint={
+                          item.mix.id === pendingRenameId
+                            ? 'שמרו שם כדי לפתוח את התמהיל באזור העבודה'
+                            : 'לחצו להעברה לאזור העבודה'
+                        }
                         actions={
-                          <button
-                            type="button"
-                            onClick={() => onDelete(item.mix.id)}
-                            title="מחיקת התמהיל"
-                            className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onDuplicate(item)}
+                              title="שכפול התמהיל"
+                              className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDelete(item.mix.id)}
+                              title="מחיקת התמהיל"
+                              className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
                         }
                       />
                     </motion.div>

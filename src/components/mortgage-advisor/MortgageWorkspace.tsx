@@ -26,6 +26,7 @@ import { ClientList } from '@/components/advisor/ClientList';
 import { useAdvisorClients } from '@/components/advisor/useAdvisorClients';
 import type { AdvisorClient } from '@/components/advisor/useAdvisorClients';
 import type { MixEvent, OptimizationConstraints, WorkspaceMix } from './engine';
+import { cloneWorkspaceMix } from './engine';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, sameProperty } from './propertyContext';
@@ -187,9 +188,20 @@ export function MortgageWorkspace({
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [flashSave, setFlashSave] = useState(false);
+  /** תמהיל ששוכפל ומחכה לשם לפני שהוא עולה לאזור העבודה */
+  const [pendingCloneId, setPendingCloneId] = useState<string | null>(null);
 
   const signature = useMemo(() => signatureOf(mix), [mix]);
   const dirty = phase === 'ready' && signature !== savedSignature;
+
+  const profileCap = defaultSetupSeed?.maxMonthlyPayment;
+  const withProfileCap = useCallback(
+    (next: WorkspaceMix): WorkspaceMix => {
+      if (!profileCap || profileCap <= 0 || (next.maxMonthlyPayment ?? 0) > 0) return next;
+      return { ...next, maxMonthlyPayment: profileCap };
+    },
+    [profileCap]
+  );
 
   const openMix = useCallback(
     (next: WorkspaceMix, constraints?: OptimizationConstraints) => {
@@ -197,19 +209,20 @@ export function MortgageWorkspace({
       const withCurve = forecast
         ? { ...next, assumptions: { ...next.assumptions, primeForecast: forecast } }
         : next;
+      const withCap = withProfileCap(withCurve);
       // תקרת ההחזר שנקבעה ללקוח היא גם התקרה שהאופטימיזציה עובדת מולה
       actions.load(
-        withCurve,
+        withCap,
         constraints ?? {
           ...DEFAULT_CONSTRAINTS,
-          maxMonthlyPayment: withCurve.maxMonthlyPayment,
+          maxMonthlyPayment: withCap.maxMonthlyPayment,
         }
       );
-      setSavedSignature(signatureOf(withCurve));
+      setSavedSignature(signatureOf(withCap));
       setSelectedMonth(null);
       setPhase('ready');
     },
-    [actions]
+    [actions, withProfileCap]
   );
 
   // תמהילים שהגיעו משלב אחר: פתיחת תמהיל שמור מהאזור האישי, או הסלים האחידים
@@ -304,6 +317,15 @@ export function MortgageWorkspace({
     [save, notifyActive]
   );
 
+  // מתהליך חמשת השלבים: אם לתמהיל אין תקרת החזר, ממלאים 40% מההכנסה הפנויה
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    if (!profileCap || profileCap <= 0) return;
+    if ((mix.maxMonthlyPayment ?? 0) > 0) return;
+    actions.patchMix({ maxMonthlyPayment: profileCap });
+    actions.setConstraints({ maxMonthlyPayment: profileCap });
+  }, [phase, mix.id, mix.maxMonthlyPayment, profileCap, actions]);
+
   const handleSave = useCallback(() => {
     persistMix(mix);
     setSavedSignature(signatureOf(mix));
@@ -334,6 +356,31 @@ export function MortgageWorkspace({
       openMix(item.mix);
     },
     [keepCurrentMix, openMix, notifyActive]
+  );
+
+  /**
+   * שכפול: אותם פרמטרים, שם ריק. אחרי שמירת השם התמהיל עולה לאזור העבודה.
+   */
+  const duplicateMix = useCallback(
+    (source: WorkspaceMix) => {
+      keepCurrentMix();
+      const clone = cloneWorkspaceMix(source, { name: '' });
+      setPendingCloneId(clone.id);
+      void save(clone);
+    },
+    [keepCurrentMix, save]
+  );
+
+  const renameMix = useCallback(
+    (id: string, name: string) => {
+      void rename(id, name);
+      if (id !== pendingCloneId) return;
+      setPendingCloneId(null);
+      const item = saved.find((entry) => entry.mix.id === id);
+      if (!item) return;
+      openSavedMix({ ...item, mix: { ...item.mix, name } });
+    },
+    [rename, pendingCloneId, saved, openSavedMix]
   );
 
   const plannedPrepay = useMemo(() => {
@@ -596,6 +643,7 @@ export function MortgageWorkspace({
           mix={mix}
           monthlyPayment={result.summary.monthlyPayment}
           mixCount={propertyMixes.length + 1}
+          profileMaxMonthlyPayment={profileCap}
           onPatch={actions.patchMix}
           onTotalAmountChange={actions.setTotalAmount}
         />
@@ -629,8 +677,11 @@ export function MortgageWorkspace({
           onActivate={openSavedMix}
           onToggleCompare={actions.toggleCompared}
           onRenameActive={(name) => actions.patchMix({ name })}
-          onRename={rename}
+          onRename={renameMix}
           onDelete={remove}
+          onDuplicate={(item) => duplicateMix(item.mix)}
+          onDuplicateActive={() => duplicateMix(mix)}
+          pendingRenameId={pendingCloneId}
           onCreateForProperty={startMixForSameProperty}
           activeActions={
             <>
