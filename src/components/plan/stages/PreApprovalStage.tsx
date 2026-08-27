@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import {
   ArrowLeft,
   Briefcase,
   Building2,
   Check,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Landmark,
   Loader2,
@@ -50,6 +52,7 @@ import {
   NumberField,
   Panel,
   TextField,
+  formatDate,
   formatPercent,
   formatShekel,
 } from '../ui';
@@ -233,6 +236,10 @@ export function PreApprovalStage({
   const { save } = useSavedMixes();
   const forecast = usePrimeForecast();
   const [saving, setSaving] = useState(false);
+  const [slide, setSlide] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [showSummary, setShowSummary] = useState(false);
+  const navCount = useRef(0);
 
   const couple = profile.household === 'COUPLE';
   const requirements = preApprovalRequirements(data);
@@ -309,6 +316,10 @@ export function PreApprovalStage({
   ).length;
   const savedBaskets = UNIFORM_BASKETS.filter((uniform) => basketOf(value, uniform.id).mixKey).length;
 
+  useEffect(() => {
+    if (value.approved) setShowSummary(true);
+  }, [value.approved]);
+
   const goToProfile = (
     <button
       type="button"
@@ -320,8 +331,110 @@ export function PreApprovalStage({
     </button>
   );
 
+  const slideCount = value.approved ? 6 : 5;
+  const safeSlide = Math.min(slide, slideCount - 1);
+
+  const goTo = (next: number) => {
+    const clamped = Math.max(0, Math.min(slideCount - 1, next));
+    if (clamped === safeSlide) return;
+    const forward = clamped > safeSlide;
+    setDirection(forward ? 1 : -1);
+    navCount.current += 1;
+    if (navCount.current === 1 && forward) setShowSummary(true);
+    setSlide(clamped);
+  };
+
+  const slideLabels = [
+    'פרופיל הלקוח',
+    'פרופיל העסקה',
+    'תיק המסמכים',
+    'הבנק',
+    'האישור העקרוני',
+    ...(value.approved ? ['הסלים האחידים'] : []),
+  ];
+
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {slideLabels.map((label, index) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => goTo(index)}
+              className={`rounded-full px-3 py-1 text-[11px] font-black transition-all ${
+                index === safeSlide
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : index < safeSlide || showSummary
+                    ? 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-400'
+                    : 'bg-slate-100 text-slate-400'
+              }`}
+            >
+              {index + 1}. {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={safeSlide <= 0}
+            onClick={() => goTo(safeSlide - 1)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-all hover:border-slate-400 disabled:opacity-30"
+            aria-label="התיבה הקודמת"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            disabled={safeSlide >= slideCount - 1}
+            onClick={() => goTo(safeSlide + 1)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-md transition-all hover:bg-slate-700 disabled:opacity-30"
+            aria-label="התיבה הבאה"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden [perspective:1400px]">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={slideLabels[safeSlide]}
+            custom={direction}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            variants={{
+              enter: (dir: number) => ({
+                x: dir > 0 ? -160 : 160,
+                opacity: 0,
+                rotateY: dir > 0 ? 22 : -22,
+                scale: 0.9,
+                filter: 'blur(10px)',
+              }),
+              center: {
+                x: 0,
+                opacity: 1,
+                rotateY: 0,
+                scale: 1,
+                filter: 'blur(0px)',
+              },
+              exit: (dir: number) => ({
+                x: dir > 0 ? 160 : -160,
+                opacity: 0,
+                rotateY: dir > 0 ? -16 : 16,
+                scale: 0.9,
+                filter: 'blur(8px)',
+              }),
+            }}
+            transition={
+              navCount.current <= 1
+                ? { type: 'spring', stiffness: 70, damping: 16, mass: 0.9 }
+                : { type: 'spring', stiffness: 260, damping: 28 }
+            }
+            className="origin-center"
+          >
+      {safeSlide === 0 && (
       <Panel
         title="פרופיל הלקוח"
         description="הנתונים שהזנתם בשלב הפרופיל הפיננסי, כפי שהם יוגשו לבנק. כל שינוי נעשה שם ומתעדכן כאן."
@@ -409,7 +522,9 @@ export function PreApprovalStage({
           </div>
         )}
       </Panel>
+      )}
 
+      {safeSlide === 1 && (
       <Panel
         title="פרופיל העסקה"
         description="הנכס וסכום המשכנתא כפי שהוזנו בשלב הפרופיל. זה הבסיס לבקשה ולחישוב הסלים האחידים."
@@ -474,7 +589,9 @@ export function PreApprovalStage({
           </p>
         )}
       </Panel>
+      )}
 
+      {safeSlide === 2 && (
       <Panel
         title="תיק המסמכים לאישור עקרוני"
         description="הרשימה נבנית לפי אופן ההעסקה של כל לווה. סמנו מה כבר אספתם — מסמך חסר הוא הסיבה הנפוצה ביותר לעיכוב בבקשה."
@@ -525,7 +642,9 @@ export function PreApprovalStage({
           </div>
         </div>
       </Panel>
+      )}
 
+      {safeSlide === 3 && (
       <Panel
         title="הבנק שאליו מוגשת הבקשה"
         description="הבקשה לאישור עקרוני מוגשת לבנק אחד. הריביות שתקבלו ממנו הן נקודת הפתיחה למכרז מול שאר הבנקים."
@@ -569,7 +688,9 @@ export function PreApprovalStage({
           <EmptyHint>בחרו את הבנק שאליו תגישו את הבקשה לאישור עקרוני.</EmptyHint>
         )}
       </Panel>
+      )}
 
+      {safeSlide === 4 && (
       <Panel
         title="האישור העקרוני"
         description="השלב נסגר כשהאישור בידכם. מכאן ואילך יש לכם סכום מאושר ותוקף — ואפשר לצאת להתמחרות."
@@ -630,8 +751,9 @@ export function PreApprovalStage({
             </p>
           )}
       </Panel>
+      )}
 
-      {value.approved && (
+      {value.approved && safeSlide === 5 && (
         <Panel
           title="הריביות שקיבלתם לסלים האחידים"
           description="שלושת הסלים האחידים הם ההרכב שכל בנק מחויב להציע. הזינו לכל מסלול את הריבית שנקובה באישור העקרוני — משם הם ממשיכים כתמהילים שמורים לשלב בניית התמהיל."
@@ -749,6 +871,212 @@ export function PreApprovalStage({
           )}
         </Panel>
       )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {showSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: 28, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 90, damping: 18, delay: 0.12 }}
+          >
+            <PreApprovalSummary
+              data={data}
+              couple={couple}
+              missing={missing}
+              collected={collected}
+              requiredOpen={requiredOpen}
+              allDocuments={allDocuments.length}
+              filledBaskets={filledBaskets}
+              forecast={forecast}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function PreApprovalSummary({
+  data,
+  couple,
+  missing,
+  collected,
+  requiredOpen,
+  allDocuments,
+  filledBaskets,
+  forecast,
+}: {
+  data: PlanData;
+  couple: boolean;
+  missing: Set<string>;
+  collected: number;
+  requiredOpen: number;
+  allDocuments: number;
+  filledBaskets: number;
+  forecast: PrimeForecast;
+}) {
+  const profile = data.ANALYSIS;
+  const value = data.APPLICATIONS;
+  const amount = preApprovalAmount(data);
+
+  return (
+    <Panel
+      title="סיכום הפרטים"
+      description="כל מה שהוזן בתיבות שלמעלה מתרכז כאן. הריביות של הסלים האחידים מוצגות לקריאה בלבד."
+    >
+      <div className="space-y-4">
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid gap-3 md:grid-cols-2"
+        >
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <h4 className="mb-2 text-xs font-black text-slate-700">{couple ? 'לווה 1' : 'הלווה'}</h4>
+            <Row label="גיל" value={profile.age} missing={missing.has('age')} />
+            <Row label="הכנסה" value={formatShekel(profile.income)} missing={missing.has('income')} />
+            <Row
+              label="העסקה"
+              value={profile.employmentType ? EMPLOYMENT_LABELS[profile.employmentType] : '—'}
+              missing={missing.has('employmentType')}
+            />
+          </div>
+          {couple && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <h4 className="mb-2 text-xs font-black text-slate-700">לווה 2</h4>
+              <Row label="גיל" value={profile.partnerAge} missing={missing.has('partnerAge')} />
+              <Row
+                label="הכנסה"
+                value={formatShekel(profile.partnerIncome)}
+                missing={missing.has('partnerIncome')}
+              />
+              <Row
+                label="העסקה"
+                value={
+                  profile.partnerEmploymentType
+                    ? EMPLOYMENT_LABELS[profile.partnerEmploymentType]
+                    : '—'
+                }
+                missing={missing.has('partnerEmploymentType')}
+              />
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06 }}
+          className="rounded-2xl border border-slate-200 bg-white p-3"
+        >
+          <h4 className="mb-2 text-xs font-black text-slate-700">העסקה</h4>
+          <Row
+            label="סוג העסקה"
+            value={profile.dealType ? DEAL_TYPES[profile.dealType] : '—'}
+            missing={missing.has('dealType')}
+          />
+          <Row
+            label="מחיר הנכס"
+            value={formatShekel(profile.propertyValue)}
+            missing={missing.has('propertyValue')}
+          />
+          <Row label="הון עצמי" value={formatShekel(profile.equity)} missing={missing.has('equity')} />
+          <Row label="משכנתא מבוקשת" value={formatShekel(amount)} />
+        </motion.div>
+
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid gap-3 sm:grid-cols-3"
+        >
+          <Metric label="מסמכים שנאספו" value={`${collected} / ${allDocuments}`} />
+          <Metric
+            label="מסמכי חובה חסרים"
+            value={String(requiredOpen)}
+            tone={requiredOpen > 0 ? 'warn' : 'good'}
+          />
+          <Metric label="הבנק" value={value.bank || 'טרם נבחר'} />
+        </motion.div>
+
+        {value.approved && (
+          <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="flex items-start gap-3 rounded-2xl border-2 border-emerald-300 bg-gradient-to-l from-emerald-50 to-teal-50 p-4"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black text-emerald-900">האישור העקרוני התקבל</p>
+              <p className="text-xs text-emerald-800">
+                {value.approvedAmount
+                  ? `הסכום שאושר: ${formatShekel(value.approvedAmount)}`
+                  : 'הסכום המבוקש עדיין בתוקף עד שיוזן סכום אחר מהבנק.'}
+                {value.validUntil ? ` · תוקף עד ${formatDate(value.validUntil)}` : ''}
+                {value.bank ? ` · ${value.bank}` : ''}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {value.approved && filledBaskets > 0 && (
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+          >
+            <h4 className="mb-2 text-xs font-black text-slate-700">הסלים האחידים — לקריאה בלבד</h4>
+            <div className="grid gap-3 lg:grid-cols-3">
+              {UNIFORM_BASKETS.map((uniform) => {
+                const basket = priced(uniform, basketOf(value, uniform.id), data, forecast);
+                const filled = basketIsFilled(basket, uniform);
+                if (!filled) return null;
+                return (
+                  <div
+                    key={uniform.id}
+                    className="rounded-2xl border border-violet-200 bg-violet-50/50 p-3"
+                  >
+                    <p className="mb-2 text-xs font-black text-slate-900">{uniform.shortName}</p>
+                    <div className="space-y-1">
+                      {uniform.tracks.map((track) => (
+                        <div key={track.type} className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-500">{TRACK_TYPES[track.type]}</span>
+                          <span className="font-black tabular-nums text-slate-900">
+                            {formatPercent(basketRate(basket, track))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 border-t border-violet-200 pt-2">
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400">החזר חודשי</div>
+                        <div className="text-sm font-black tabular-nums text-slate-900">
+                          {formatShekel(basket.monthlyPayment)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400">סך התשלומים</div>
+                        <div className="text-sm font-black tabular-nums text-slate-900">
+                          {formatShekel(basket.totalPaid)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </Panel>
   );
 }

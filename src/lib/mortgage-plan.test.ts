@@ -201,6 +201,33 @@ describe('סגירת שלבים', () => {
     expect(preApprovalDocuments(data).every((doc) => !doc.key.includes(':'))).toBe(true);
   });
 
+  it('חשבון משותף שם את תדפיס העו"ש בראש מסמכי משק הבית', () => {
+    const data = profile();
+    data.ANALYSIS.bankAccountMode = 'JOINT';
+    const shared = preApprovalDocumentGroups(data).find((group) => group.id === 'shared');
+    const keys = shared?.documents.map((doc) => doc.key) ?? [];
+
+    expect(keys.slice(0, 3)).toEqual(['bank_statements', 'account_management', 'loans_report']);
+    expect(preApprovalDocuments(data).some((doc) => doc.key === 'b1:bank_statements')).toBe(false);
+  });
+
+  it('חשבונות נפרדים דורשים תדפיס עו"ש ואישור ניהול חשבון לכל לווה', () => {
+    const data = profile();
+    data.ANALYSIS.bankAccountMode = 'SEPARATE';
+    const groups = preApprovalDocumentGroups(data);
+    const shared = groups.find((group) => group.id === 'shared');
+    const b1 = groups.find((group) => group.id === 'b1');
+    const b2 = groups.find((group) => group.id === 'b2');
+
+    expect(shared?.documents.some((doc) => doc.key === 'bank_statements')).toBe(false);
+    expect(b1?.documents.map((doc) => doc.key)).toEqual(
+      expect.arrayContaining(['b1:bank_statements', 'b1:account_management', 'b1:loans_report'])
+    );
+    expect(b2?.documents.map((doc) => doc.key)).toEqual(
+      expect.arrayContaining(['b2:bank_statements', 'b2:account_management', 'b2:loans_report'])
+    );
+  });
+
   it('שלב המכרז נסגר רק כשנבחרה הצעה זוכה', () => {
     const data = profile();
     data.AUCTION.offers = [
@@ -455,5 +482,16 @@ describe('גזירה מכלי בניית הפרופיל', () => {
     expect(parsed.existingLoans).toBe(2_500);
     expect(parsed.borrowerLoans).toHaveLength(2);
     expect(parsed.partnerLoans).toHaveLength(1);
+  });
+
+  it('הלוואה משותפת וחשבון בנק נשמרים בפרופיל', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      household: 'COUPLE',
+      bankAccountMode: 'SEPARATE',
+      borrowerLoans: [{ id: 'a', monthlyPayment: 1_000, shared: true }],
+    });
+
+    expect(parsed.bankAccountMode).toBe('SEPARATE');
+    expect(parsed.borrowerLoans[0].shared).toBe(true);
   });
 });

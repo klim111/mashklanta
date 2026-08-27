@@ -70,6 +70,8 @@ export function unfinishedPrerequisites(
 // ───────────────────────────── נתוני השלבים ─────────────────────────────
 
 export type Household = 'SINGLE' | 'COUPLE';
+/** זוג: חשבון בנק משותף או חשבון נפרד לכל לווה */
+export type BankAccountMode = 'JOINT' | 'SEPARATE';
 
 export type { EmploymentType } from './client-process';
 export { EMPLOYMENT_LABELS, EMPLOYMENT_TYPES } from './client-process';
@@ -101,6 +103,8 @@ export type ProfileScreen = (typeof PROFILE_SCREENS)[number];
 export interface ProfileLoan {
   id: string;
   monthlyPayment: number | null;
+  /** הלוואה משותפת לשני בני הזוג — מוצגת על פני שתי העמודות */
+  shared?: boolean;
 }
 
 export function sumProfileLoans(loans: ProfileLoan[]): number {
@@ -113,6 +117,8 @@ export interface AnalysisData {
   /** המסך הפנימי שהלקוח נמצא בו עכשיו */
   profileScreen: ProfileScreen;
   household: Household;
+  /** איך הזוג מנהל חשבון בנק — רלוונטי רק כשהלווים הם זוג */
+  bankAccountMode: BankAccountMode | null;
   age: number | null;
   partnerAge: number | null;
   income: number | null;
@@ -209,6 +215,7 @@ export function analysisFromPlanning(
     intent: carry?.intent ?? (propertyValue ? 'HAS_PROPERTY' : null),
     profileScreen: carry?.profileScreen ?? 'intent',
     household: couple ? 'COUPLE' : 'SINGLE',
+    bankAccountMode: couple ? (carry?.bankAccountMode ?? null) : null,
     age: parseInt(ageRaw, 10) || null,
     partnerAge: parseInt(partnerAgeRaw, 10) || null,
     income,
@@ -356,6 +363,7 @@ const EMPTY: PlanData = {
     intent: null,
     profileScreen: 'intent',
     household: 'SINGLE',
+    bankAccountMode: null,
     age: null,
     partnerAge: null,
     income: null,
@@ -492,6 +500,7 @@ function parseProfileLoans(value: unknown): ProfileLoan[] {
       {
         id: typeof row.id === 'string' && row.id ? row.id : rowId('loan'),
         monthlyPayment: num(row.monthlyPayment),
+        shared: row.shared === true,
       },
     ];
   });
@@ -555,6 +564,12 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         futureMonthlyIncreaseInYears: num(source.futureMonthlyIncreaseInYears),
         borrowerLoans: has('borrowerLoans') ? parseProfileLoans(source.borrowerLoans) : undefined,
         partnerLoans: has('partnerLoans') ? parseProfileLoans(source.partnerLoans) : undefined,
+        bankAccountMode:
+          source.bankAccountMode === 'SEPARATE'
+            ? 'SEPARATE'
+            : source.bankAccountMode === 'JOINT'
+              ? 'JOINT'
+              : undefined,
       };
 
       /**
@@ -579,6 +594,13 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           : 'SINGLE'
         : seed.household;
       const couple = household === 'COUPLE';
+      const bankAccountMode: BankAccountMode | null = couple
+        ? source.bankAccountMode === 'SEPARATE'
+          ? 'SEPARATE'
+          : source.bankAccountMode === 'JOINT'
+            ? 'JOINT'
+            : seed.bankAccountMode
+        : null;
       const years = num(source.years);
       const dealType = has('dealType')
         ? (DEAL_TYPES as Record<string, string>)[source.dealType as string]
@@ -612,6 +634,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         ...seed,
         ...carry,
         household,
+        bankAccountMode,
         partnerEmploymentType: couple ? carry.partnerEmploymentType ?? null : null,
         age: has('age') ? num(source.age) : seed.age,
         partnerAge: has('partnerAge') ? num(source.partnerAge) : seed.partnerAge,
@@ -754,15 +777,26 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
 export const PLAN_BANKS: readonly string[] = MORTGAGE_BANKS;
 
 /**
- * המסמכים שהבנק דורש מכל בקשה, ללא תלות באופן ההעסקה של הלווים. הרשימה נגזרת
- * מקטלוג המסמכים של תהליך הליווי, כדי שהלקוח באזור האישי והיועץ בכרטיס הלקוח
- * יעבדו מול אותה רשימה בדיוק. מסמכי הנכס עצמו אינם נדרשים בשלב הזה — הם
- * נדרשים רק כשהעסקה מבשילה לתיק חתום.
+ * מסמכי חשבון הבנק: תדפיס עובר ושב, אישור ניהול חשבון, ודוח ריכוז יתרות.
+ * בחשבון משותף הם בראש תיק משק הבית; בחשבונות נפרדים — לכל לווה בנפרד.
+ */
+export const BANK_ACCOUNT_DOCUMENTS: StageDocument[] = [
+  { key: 'bank_statements', name: 'תדפיס עובר ושב ל-3 חודשים אחרונים' },
+  { key: 'account_management', name: 'אישור ניהול חשבון' },
+  { key: 'loans_report', name: 'דוח ריכוז יתרות והלוואות' },
+];
+
+/**
+ * המסמכים שהבנק דורש מכל בקשה, ללא תלות באופן ההעסקה של הלווים ובלי מסמכי
+ * חשבון הבנק — אלה מצטרפים לפי חשבון משותף או נפרד. הרשימה נגזרת מקטלוג
+ * המסמכים של תהליך הליווי, כדי שהלקוח באזור האישי והיועץ בכרטיס הלקוח יעבדו
+ * מול אותה רשימה בדיוק. מסמכי הנכס עצמו אינם נדרשים בשלב הזה.
  */
 export const SHARED_PRE_APPROVAL_DOCUMENTS: StageDocument[] = [
   ...STAGE_DOCUMENTS.INTAKE,
   ...STAGE_DOCUMENTS.DOCUMENTS.filter(
-    (doc) => !['payslips', 'self_employed_tax'].includes(doc.key)
+    (doc) =>
+      !['payslips', 'self_employed_tax', 'bank_statements', 'loans_report'].includes(doc.key)
   ),
   ...STAGE_DOCUMENTS.BANK_SUBMISSION,
 ];
@@ -775,15 +809,20 @@ function borrowerDocKey(borrower: BorrowerKey, key: string): string {
   return `${borrower}:${key}`;
 }
 
+export function usesSeparateBankAccounts(profile: Pick<AnalysisData, 'household' | 'bankAccountMode'>): boolean {
+  return profile.household === 'COUPLE' && profile.bankAccountMode === 'SEPARATE';
+}
+
 /**
  * כל המפתחות האפשריים. הרשימה קבועה ואינה תלויה בפרופיל, כדי שסימון שנשמר
  * לפני שינוי אופן ההעסקה לא יימחק בקריאה הבאה מבסיס הנתונים.
  */
 export const ALL_PRE_APPROVAL_DOCUMENT_KEYS: string[] = [
   ...SHARED_PRE_APPROVAL_DOCUMENTS.map((doc) => doc.key),
+  ...BANK_ACCOUNT_DOCUMENTS.map((doc) => doc.key),
   ...BORROWER_KEYS.flatMap((borrower) =>
-    EMPLOYMENT_TYPES.flatMap((type) =>
-      EMPLOYMENT_DOCUMENTS[type].map((doc) => borrowerDocKey(borrower, doc.key))
+    [...BANK_ACCOUNT_DOCUMENTS, ...EMPLOYMENT_TYPES.flatMap((type) => EMPLOYMENT_DOCUMENTS[type])].map(
+      (doc) => borrowerDocKey(borrower, doc.key)
     )
   ),
 ];
@@ -805,17 +844,19 @@ export interface DocumentGroup {
 export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
   const profile = data.ANALYSIS;
   const couple = profile.household === 'COUPLE';
+  const separateAccounts = usesSeparateBankAccounts(profile);
+
+  const tagged = (borrower: BorrowerKey, docs: StageDocument[]) =>
+    docs.map((doc) => ({ ...doc, key: borrowerDocKey(borrower, doc.key) }));
 
   const personal = (borrower: BorrowerKey, type: EmploymentType | null, title: string) => ({
     id: borrower,
     title,
     subtitle: type ? EMPLOYMENT_LABELS[type] : null,
-    documents: type
-      ? EMPLOYMENT_DOCUMENTS[type].map((doc) => ({
-          ...doc,
-          key: borrowerDocKey(borrower, doc.key),
-        }))
-      : [],
+    documents: [
+      ...(separateAccounts ? tagged(borrower, BANK_ACCOUNT_DOCUMENTS) : []),
+      ...(type ? tagged(borrower, EMPLOYMENT_DOCUMENTS[type]) : []),
+    ],
   });
 
   return [
@@ -823,7 +864,9 @@ export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
       id: 'shared',
       title: 'מסמכי משק הבית והעסקה',
       subtitle: null,
-      documents: SHARED_PRE_APPROVAL_DOCUMENTS,
+      documents: separateAccounts
+        ? SHARED_PRE_APPROVAL_DOCUMENTS
+        : [...BANK_ACCOUNT_DOCUMENTS, ...SHARED_PRE_APPROVAL_DOCUMENTS],
     },
     personal('b1', profile.employmentType, couple ? 'מסמכים של לווה 1' : 'מסמכים לפי אופן ההעסקה'),
     ...(couple ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2')] : []),

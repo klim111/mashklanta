@@ -14,7 +14,6 @@ import {
   Loader2,
   PartyPopper,
   Pencil,
-  Sparkles,
 } from 'lucide-react';
 import {
   PLAN_STAGES,
@@ -396,8 +395,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 {showStageFooter && stageFooter}
               </div>
             ) : (
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="space-y-5 lg:col-span-2">
+              <div className="space-y-5">
                 {stage === 'APPLICATIONS' && (
                   <PreApprovalStage
                     data={plan.data}
@@ -420,31 +418,6 @@ export function PlanWorkspace({ planId }: { planId: string }) {
 
                 {showStageFooter && stageFooter}
               </div>
-
-              <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h4 className="mb-2 flex items-center gap-2 text-sm font-black text-slate-900">
-                    <Sparkles className="h-4 w-4 text-violet-500" />
-                    מה הפלטפורמה עושה בשלב הזה
-                  </h4>
-                  <p className="text-xs leading-relaxed text-slate-500">
-                    {journey.selfServiceSummary}
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {journey.selfServiceSteps.map((step, i) => (
-                      <li key={step} className="flex items-start gap-2">
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[9px] font-black text-white">
-                          {i + 1}
-                        </span>
-                        <span className="text-xs leading-relaxed text-slate-600">{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <StageTools stage={stage} data={plan.data} planId={plan.id} />
-              </aside>
-            </div>
             )}
               </div>
             </div>

@@ -35,7 +35,6 @@ import {
   dealMaxLtv,
   maxPropertyForEquity,
   mortgageFromProperty,
-  profileLoanTotal,
   profileRequirements,
   sumProfileLoans,
 } from '@/lib/mortgage-plan';
@@ -181,6 +180,7 @@ export function AnalysisStage({
                       partnerAge: household === 'COUPLE' ? profile.partnerAge : null,
                       partnerEmploymentType:
                         household === 'COUPLE' ? profile.partnerEmploymentType : null,
+                      bankAccountMode: household === 'COUPLE' ? profile.bankAccountMode : null,
                       ...syncedLoans(
                         { ...profile, household },
                         profile.borrowerLoans,
@@ -210,6 +210,42 @@ export function AnalysisStage({
                 )}
               </div>
 
+              {couple && (
+                <div className="mt-5 max-w-lg">
+                  <span className="mb-2 block text-xs font-bold text-slate-600">
+                    מנהלים חשבון בנק משותף או כל אחד בנפרד?
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => patch({ bankAccountMode: 'JOINT' })}
+                      className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-bold transition-all ${
+                        profile.bankAccountMode === 'JOINT'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+                      }`}
+                    >
+                      חשבון משותף
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => patch({ bankAccountMode: 'SEPARATE' })}
+                      className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-bold transition-all ${
+                        profile.bankAccountMode === 'SEPARATE'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+                      }`}
+                    >
+                      כל אחד בנפרד
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                    קובע אם תדפיס עובר ושב, אישור ניהול חשבון ודוח יתרות יופיעו כמסמכים משותפים או
+                    לכל לווה בנפרד.
+                  </p>
+                </div>
+              )}
+
               <div className="mt-5 max-w-sm">
                 <NumberField
                   label="הון עצמי פנוי לעסקה"
@@ -237,24 +273,120 @@ export function AnalysisStage({
                 <BorrowerWorkCard
                   title={couple ? 'לווה 1' : undefined}
                   employment={profile.employmentType}
-                  loans={profile.borrowerLoans}
+                  loans={
+                    couple ? profile.borrowerLoans.filter((loan) => !loan.shared) : profile.borrowerLoans
+                  }
+                  hasLoans={profile.borrowerLoans.length > 0}
+                  allowShared={couple}
                   onEmployment={(employmentType) => patch({ employmentType })}
-                  onLoansChange={(borrowerLoans) =>
-                    patch(syncedLoans(profile, borrowerLoans, profile.partnerLoans))
+                  onLoansChange={(next) =>
+                    patch(
+                      syncedLoans(
+                        profile,
+                        next.length === 0
+                          ? []
+                          : [...profile.borrowerLoans.filter((loan) => loan.shared), ...next],
+                        profile.partnerLoans
+                      )
+                    )
+                  }
+                  onToggleShared={(loan, shared) =>
+                    patch(
+                      syncedLoans(
+                        profile,
+                        profile.borrowerLoans.map((item) =>
+                          item.id === loan.id ? { ...item, shared } : item
+                        ),
+                        profile.partnerLoans
+                      )
+                    )
                   }
                 />
                 {couple && (
                   <BorrowerWorkCard
                     title="לווה 2"
                     employment={profile.partnerEmploymentType}
-                    loans={profile.partnerLoans}
+                    loans={profile.partnerLoans.filter((loan) => !loan.shared)}
+                    hasLoans={profile.partnerLoans.length > 0}
+                    allowShared
                     onEmployment={(partnerEmploymentType) => patch({ partnerEmploymentType })}
-                    onLoansChange={(partnerLoans) =>
-                      patch(syncedLoans(profile, profile.borrowerLoans, partnerLoans))
+                    onLoansChange={(next) =>
+                      patch(
+                        syncedLoans(
+                          profile,
+                          profile.borrowerLoans,
+                          next.length === 0
+                            ? []
+                            : [...profile.partnerLoans.filter((loan) => loan.shared), ...next]
+                        )
+                      )
+                    }
+                    onToggleShared={(loan, shared) =>
+                      patch(
+                        syncedLoans(
+                          profile,
+                          profile.borrowerLoans,
+                          profile.partnerLoans.map((item) =>
+                            item.id === loan.id ? { ...item, shared } : item
+                          )
+                        )
+                      )
                     }
                   />
                 )}
               </div>
+
+              {couple &&
+                [...profile.borrowerLoans, ...profile.partnerLoans].some((loan) => loan.shared) && (
+                  <div className="mt-4 space-y-2.5 rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-4">
+                    <p className="text-xs font-black text-blue-900">הלוואות משותפות</p>
+                    {[...profile.borrowerLoans, ...profile.partnerLoans]
+                      .filter((loan) => loan.shared)
+                      .map((loan, index, list) => (
+                        <SharedLoanRow
+                          key={loan.id}
+                          loan={loan}
+                          index={index}
+                          count={list.length}
+                          onChange={(monthlyPayment) => {
+                            patch(
+                              syncedLoans(
+                                profile,
+                                profile.borrowerLoans.map((item) =>
+                                  item.id === loan.id ? { ...item, monthlyPayment } : item
+                                ),
+                                profile.partnerLoans.map((item) =>
+                                  item.id === loan.id ? { ...item, monthlyPayment } : item
+                                )
+                              )
+                            );
+                          }}
+                          onUnshare={() => {
+                            patch(
+                              syncedLoans(
+                                profile,
+                                profile.borrowerLoans.map((item) =>
+                                  item.id === loan.id ? { ...item, shared: false } : item
+                                ),
+                                profile.partnerLoans.map((item) =>
+                                  item.id === loan.id ? { ...item, shared: false } : item
+                                )
+                              )
+                            );
+                          }}
+                          onRemove={() => {
+                            patch(
+                              syncedLoans(
+                                profile,
+                                profile.borrowerLoans.filter((item) => item.id !== loan.id),
+                                profile.partnerLoans.filter((item) => item.id !== loan.id)
+                              )
+                            );
+                          }}
+                        />
+                      ))}
+                  </div>
+                )}
 
               {(profile.employmentType === 'SELF_EMPLOYED' ||
                 profile.partnerEmploymentType === 'SELF_EMPLOYED') && (
@@ -265,7 +397,7 @@ export function AnalysisStage({
                 </p>
               )}
 
-              {profileLoanTotal(profile) > 0 && (
+              {(profile.borrowerLoans.length > 0 || profile.partnerLoans.length > 0) && (
                 <ConsumerLoansOffer profile={profile} planId={planId} />
               )}
 
@@ -582,17 +714,23 @@ function BorrowerWorkCard({
   title,
   employment,
   loans,
+  hasLoans: declaredHasLoans,
+  allowShared = false,
   onEmployment,
   onLoansChange,
+  onToggleShared,
 }: {
   title?: string;
   employment: EmploymentType | null;
   loans: ProfileLoan[];
+  hasLoans?: boolean;
+  allowShared?: boolean;
   onEmployment: (value: EmploymentType) => void;
   onLoansChange: (loans: ProfileLoan[]) => void;
+  onToggleShared?: (loan: ProfileLoan, shared: boolean) => void;
 }) {
-  const hasLoans = loans.length > 0;
-  const canAddAnother = hasLoans && loans.every((loan) => (loan.monthlyPayment ?? 0) > 0);
+  const hasLoans = declaredHasLoans ?? loans.length > 0;
+  const canAddAnother = hasLoans && (loans.length === 0 || loans.every((loan) => (loan.monthlyPayment ?? 0) > 0));
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/80 to-white p-4 shadow-sm">
@@ -664,29 +802,42 @@ function BorrowerWorkCard({
       {hasLoans && (
         <div className="mt-3 space-y-2.5">
           {loans.map((loan, index) => (
-            <div key={loan.id} className="flex items-end gap-2">
-              <div className="min-w-0 flex-1">
-                <NumberField
-                  label={loans.length > 1 ? `הלוואה ${index + 1} — החזר חודשי` : 'החזר חודשי'}
-                  value={loan.monthlyPayment}
-                  onChange={(monthlyPayment) =>
-                    onLoansChange(
-                      loans.map((item) => (item.id === loan.id ? { ...item, monthlyPayment } : item))
-                    )
-                  }
-                  suffix="₪"
-                  placeholder="2,500"
-                />
+            <div key={loan.id} className="space-y-1.5">
+              <div className="flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <NumberField
+                    label={loans.length > 1 ? `הלוואה ${index + 1} — החזר חודשי` : 'החזר חודשי'}
+                    value={loan.monthlyPayment}
+                    onChange={(monthlyPayment) =>
+                      onLoansChange(
+                        loans.map((item) => (item.id === loan.id ? { ...item, monthlyPayment } : item))
+                      )
+                    }
+                    suffix="₪"
+                    placeholder="2,500"
+                  />
+                </div>
+                {(loans.length > 1 || allowShared) && (
+                  <button
+                    type="button"
+                    onClick={() => onLoansChange(loans.filter((item) => item.id !== loan.id))}
+                    aria-label="מחיקת הלוואה"
+                    className="mb-1 rounded-lg p-2.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              {loans.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => onLoansChange(loans.filter((item) => item.id !== loan.id))}
-                  aria-label="מחיקת הלוואה"
-                  className="mb-1 rounded-lg p-2.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+              {allowShared && onToggleShared && (
+                <label className="flex cursor-pointer items-center gap-2 text-[11px] font-bold text-slate-500">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(loan.shared)}
+                    onChange={(event) => onToggleShared(loan, event.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600"
+                  />
+                  הלוואה משותפת לשני הלווים
+                </label>
               )}
             </div>
           ))}
@@ -702,6 +853,55 @@ function BorrowerWorkCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SharedLoanRow({
+  loan,
+  index,
+  count,
+  onChange,
+  onUnshare,
+  onRemove,
+}: {
+  loan: ProfileLoan;
+  index: number;
+  count: number;
+  onChange: (monthlyPayment: number | null) => void;
+  onUnshare: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-blue-200 bg-white p-3">
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <NumberField
+            label={count > 1 ? `הלוואה משותפת ${index + 1} — החזר חודשי` : 'החזר חודשי משותף'}
+            value={loan.monthlyPayment}
+            onChange={onChange}
+            suffix="₪"
+            placeholder="2,500"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="מחיקת הלוואה משותפת"
+          className="mb-1 rounded-lg p-2.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+      <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] font-bold text-blue-800">
+        <input
+          type="checkbox"
+          checked
+          onChange={() => onUnshare()}
+          className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600"
+        />
+        הלוואה משותפת — מוצגת על פני שני הלווים
+      </label>
     </div>
   );
 }
@@ -745,8 +945,8 @@ function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-black text-slate-900">
             {couple
-              ? 'רוצים שמשכלנתא תעזור לכם עם ההלוואות?'
-              : 'רוצה שמשכלנתא תעזור לך עם ההלוואות?'}
+              ? 'תנו למשכלנתא לעזור לכם עם ההלוואות הצרכניות שלכם'
+              : 'תן למשכלנתא לעזור לך עם ההלוואות הצרכניות שלך'}
           </h4>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
             איחוד, סגירה מוקדמת או מיחזור לפני הפנייה לבנק מגדילים את יכולת ההחזר שיאשרו לכם.
@@ -758,15 +958,9 @@ function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId
               onClick={goToPlanner}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-orange-600 to-amber-600 px-4 py-2 text-xs font-black text-white shadow-md transition-all hover:brightness-110"
             >
-              {couple ? 'עזרו לנו עם ההלוואות שלנו' : 'עזרו לי עם ההלוואות שלי'}
+              לכלי תכנון ההלוואות הצרכניות
               <ArrowUpLeft className="h-3.5 w-3.5" />
             </button>
-            <Link
-              href={href}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900"
-            >
-              לכלי תכנון הלוואות צרכניות
-            </Link>
           </div>
         </div>
       </div>
