@@ -397,6 +397,36 @@ describe('prepayment', () => {
     expect(withReduce.schedule[24].payment).toBeLessThan(withoutPrepay.schedule[24].payment);
   });
 
+  it('keeps a 25-year index-linked track at 25 years when reducing the payment', () => {
+    const mix = createWorkspaceMix({
+      totalAmount: 500_000,
+      tracks: [
+        createTrack({
+          id: 'a',
+          type: 'variable_linked',
+          amount: 500_000,
+          interestRate: 3.86,
+          years: 25,
+          variablePeriod: 5,
+        }),
+      ],
+      assumptions: { rateDeltas: {}, annualInflation: 2 },
+    });
+    const withoutPrepay = computeMix(mix);
+    const withReduce = computeMix({
+      ...mix,
+      events: [
+        { id: 'p1', kind: 'prepayment', month: 24, amount: 200_000, mode: 'reduce_payment', trackId: 'a' },
+      ],
+    });
+
+    expect(withoutPrepay.summary.months).toBe(300);
+    expect(withReduce.summary.months).toBe(300);
+    expect(withReduce.schedule[30].payment - withReduce.schedule[30].prepayment).toBeLessThan(
+      withoutPrepay.schedule[30].payment - withoutPrepay.schedule[30].prepayment
+    );
+  });
+
   it('spreads an unassigned prepayment across open balances', () => {
     const mix = createWorkspaceMix({
       tracks: [

@@ -345,7 +345,11 @@ export function PrepaymentDialog({
                 <TrendingDown className="h-3.5 w-3.5" />
                 השפעת הפרעון
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div
+                className={`grid gap-2 ${
+                  mode === 'reduce_payment' ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+                }`}
+              >
                 <PreviewStat label="חיסכון בריבית" value={formatShekel(interestSaved)} highlight />
                 {mode === 'shorten_term' ? (
                   <PreviewStat
@@ -366,19 +370,13 @@ export function PrepaymentDialog({
                   label={mode === 'reduce_payment' ? 'החזר חודשי חדש' : 'החזר חודשי'}
                   value={formatShekel(mode === 'reduce_payment' ? newMonthly : preview.summary.monthlyPayment)}
                 />
-                <PreviewStat
-                  label="משך"
-                  value={
-                    mode === 'reduce_payment'
-                      ? formatDuration(baseResult.summary.months)
-                      : formatDuration(preview.summary.months)
-                  }
-                />
+                {mode === 'shorten_term' && (
+                  <PreviewStat label="משך חדש" value={formatDuration(preview.summary.months)} />
+                )}
               </div>
               {mode === 'reduce_payment' && (
                 <p className="text-[10px] text-emerald-800 leading-relaxed">
-                  התקופה נשמרת במלואה — {formatDuration(baseResult.summary.months)}. רק ההחזר החודשי
-                  קטן.
+                  אורך ההלוואה לא משתנה. רק ההחזר החודשי קטן.
                 </p>
               )}
             </div>

@@ -154,8 +154,11 @@ export function simulateTrack({
   let currentType: TrackType = track.type;
   let amortType: AmortizationType = track.amortizationType || 'spitzer';
   let remainingMonths = Math.max(1, Math.round(track.years * 12));
-  /** חודש הסיום שננעל בהקטנת החזר — מונע קיצור תקופה בגלל שינוי ריבית או עיגול */
-  let lockedEndMonth: number | null = null;
+  /**
+   * חודש הסיום החוזי של המסלול. נשמר תמיד, חוץ מקיצור תקופה בפרעון מוקדם,
+   * כדי שמסלול של 25 שנים יישאר 25 שנים גם עם מדד, פריים או הקטנת החזר.
+   */
+  let lockedEndMonth: number | null = remainingMonths;
   let variablePeriod = track.variablePeriod;
   /** החודש שממנו נמדדת תקופת המסלול הנוכחית (משתנה אחרי מחזור) */
   let termAnchorMonth = 1;
@@ -266,8 +269,9 @@ export function simulateTrack({
       principal = Math.min(balance, balance / remainingMonths);
       actualPayment = principal + interest;
     } else {
-      // שפיצר וכל הווריאנטים המבוססים עליו
-      if (paymentDirty) {
+      // שפיצר וכל הווריאנטים המבוססים עליו. כשהתקופה נעולה מחשבים את ההחזר
+      // מחדש לפי מספר החודשים שנותרו עד הסיום החוזי — בלי לקצר את התקופה.
+      if (paymentDirty || lockedEndMonth != null) {
         payment = annuityPayment(balance, annualRate, remainingMonths);
         paymentDirty = false;
       }
