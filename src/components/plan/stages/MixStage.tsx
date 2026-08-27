@@ -1,12 +1,23 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Sparkles, TrendingUp } from 'lucide-react';
 import { analyzeProfile, mortgageFromProperty } from '@/lib/mortgage-plan';
 import type { MixData, PlanData } from '@/lib/mortgage-plan';
-import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
-import type { PrepaymentEvent } from '@/components/mortgage-advisor/engine';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
+import type { PendingPrepay } from '@/components/mortgage-advisor/MortgageWorkspace';
+import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import type { PrepaymentEvent } from '@/components/mortgage-advisor/engine';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { formatShekel } from '../ui';
 
 function toMixData(saved: SavedMix, notes: string): MixData {
@@ -27,8 +38,8 @@ function toMixData(saved: SavedMix, notes: string): MixData {
 }
 
 /**
- * הכנסה חד-פעמית שהוצהרה בפרופיל הופכת לפירעון מוקדם מתוכנן בתמהיל החדש:
- * קיצור תקופה הוא מה שחוסך הכי הרבה ריבית, ולכן זו ברירת המחדל.
+ * הכנסה חד-פעמית שהוצהרה בפרופיל הופכת לפירעון מוקדם מתוכנן:
+ * הסכום והמועד נשמרים, והלקוח בוחר לאיזה מסלול לייעד אותם.
  */
 function plannedPrepayments(data: PlanData): PrepaymentEvent[] {
   return data.ANALYSIS.futureLumpSums.flatMap((item) => {
@@ -46,6 +57,62 @@ function plannedPrepayments(data: PlanData): PrepaymentEvent[] {
   });
 }
 
+function FutureLumpAssign({
+  event,
+  mixes,
+  onAssign,
+}: {
+  event: PrepaymentEvent;
+  mixes: SavedMix[];
+  onAssign: (next: PendingPrepay) => void;
+}) {
+  const withTracks = mixes.filter((item) => item.mix.tracks.length > 0);
+
+  const [resetKey, setResetKey] = useState(0);
+
+  return (
+    <div className="mt-2">
+      <Select
+        key={resetKey}
+        onValueChange={(value) => {
+          const separator = value.indexOf('::');
+          if (separator <= 0) return;
+          onAssign({
+            mixId: value.slice(0, separator),
+            trackId: value.slice(separator + 2),
+            amount: event.amount,
+            month: event.month,
+            label: event.label,
+          });
+          setResetKey((current) => current + 1);
+        }}
+      >
+        <SelectTrigger className="h-9 max-w-lg bg-white text-xs">
+          <SelectValue placeholder="לאיזה מסלול לייעד את הסכום?" />
+        </SelectTrigger>
+        <SelectContent>
+          {withTracks.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-slate-500">שמרו תמהיל כדי לייעד את הסכום למסלול.</div>
+          ) : (
+            withTracks.map((item) => (
+              <SelectGroup key={item.mix.id}>
+                <SelectLabel className="pr-3 text-right text-[11px] font-black text-slate-700">
+                  {item.mix.name || 'תמהיל ללא שם'}
+                </SelectLabel>
+                {item.mix.tracks.map((track) => (
+                  <SelectItem key={`${item.mix.id}::${track.id}`} value={`${item.mix.id}::${track.id}`}>
+                    {track.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 export function MixStage({
   data,
   onChange,
@@ -60,6 +127,10 @@ export function MixStage({
   persist.current = onChange;
   const notes = useRef(data.MIX.notes);
   notes.current = data.MIX.notes;
+
+  const { saved } = useSavedMixes();
+  const [pendingPrepay, setPendingPrepay] = useState<PendingPrepay | null>(null);
+  const clearPendingPrepay = useCallback(() => setPendingPrepay(null), []);
 
   /**
    * כשהסלים האחידים כבר נשמרו כתמהילים, השלב נפתח ברשימת התמהילים ולא באשף —
@@ -89,16 +160,19 @@ export function MixStage({
             <Sparkles className="h-4 w-4 text-violet-600" />
             <h4 className="text-sm font-black text-slate-900">מה שהצהרתם עליו לעתיד</h4>
           </div>
-          <ul className="space-y-1.5">
+          <ul className="space-y-2.5">
             {prepayments.map((event) => (
-              <li key={event.id} className="flex items-center gap-2 text-xs text-slate-600">
-                <TrendingUp className="h-3.5 w-3.5 shrink-0 text-violet-500" />
-                <span>
-                  <span className="font-bold text-slate-900">
-                    {event.label} · {formatShekel(event.amount)}
-                  </span>{' '}
-                  נכנס לתמהיל חדש כפירעון מוקדם בחודש {event.month}, בשיטת קיצור תקופה.
-                </span>
+              <li key={event.id} className="text-xs text-slate-600">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 shrink-0 text-violet-500" />
+                  <span>
+                    <span className="font-bold text-slate-900">
+                      {event.label} · {formatShekel(event.amount)}
+                    </span>{' '}
+                    צפוי בחודש {event.month}. בחרו מסלול כדי לפתוח פירעון מוקדם עם הסכום והמועד האלה.
+                  </span>
+                </div>
+                <FutureLumpAssign event={event} mixes={saved} onAssign={setPendingPrepay} />
               </li>
             ))}
             {profile.futureMonthlyIncrease ? (
@@ -135,6 +209,8 @@ export function MixStage({
           equity: profile.equity ?? undefined,
         }}
         defaultEvents={prepayments}
+        pendingPrepay={pendingPrepay}
+        onPendingPrepayHandled={clearPendingPrepay}
         onActiveMix={(item) => persist.current(toMixData(item, notes.current))}
       />
     </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { annuityPayment, monthsToPayOff } from './schedule';
-import { computeMix, computeMixWithForecast, snapshotAt } from './mix';
+import { computeMix, computeMixWithForecast, snapshotAt, prepaymentCapacity, recurringPaymentAfter } from './mix';
 import {
   createTrack,
   createWorkspaceMix,
@@ -358,6 +358,9 @@ describe('prepayment', () => {
     expect(result.schedule).toHaveLength(baseline.schedule.length);
     expect(result.schedule[24].payment).toBeLessThan(baseline.schedule[24].payment);
     expect(result.summary.totalInterest).toBeLessThan(baseline.summary.totalInterest);
+    expect(result.summary.monthlyPayment).toBeCloseTo(baseline.summary.monthlyPayment, 0);
+    expect(recurringPaymentAfter(result, 12)).toBeLessThan(baseline.summary.monthlyPayment);
+    expect(prepaymentCapacity(result, 12, 'a')).toBeLessThan(baseline.mix.totalAmount);
   });
 
   it('spreads an unassigned prepayment across open balances', () => {
@@ -373,6 +376,22 @@ describe('prepayment', () => {
 
     expect(result.tracks[0].totalPrepaid).toBeCloseTo(60_000, -1);
     expect(result.tracks[1].totalPrepaid).toBeCloseTo(40_000, -1);
+  });
+
+  it('caps prepayment capacity to the selected track rather than the whole mix', () => {
+    const mix = createWorkspaceMix({
+      totalAmount: 1_000_000,
+      tracks: [
+        createTrack({ id: 'a', type: 'fixed_unlinked', amount: 300_000, interestRate: 5, years: 20 }),
+        createTrack({ id: 'b', type: 'fixed_unlinked', amount: 700_000, interestRate: 5, years: 20 }),
+      ],
+      assumptions: { rateDeltas: {}, annualInflation: 0 },
+    });
+    const result = computeMix(mix);
+
+    expect(prepaymentCapacity(result, 1, 'a')).toBeCloseTo(300_000, 0);
+    expect(prepaymentCapacity(result, 1, 'b')).toBeCloseTo(700_000, 0);
+    expect(prepaymentCapacity(result, 1)).toBeCloseTo(1_000_000, 0);
   });
 });
 

@@ -52,6 +52,21 @@ import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
 
 type Phase = 'landing' | 'setup' | 'ready';
 
+export interface PendingPrepay {
+  mixId: string;
+  trackId: string;
+  amount: number;
+  month: number;
+  label?: string;
+}
+
+type PrepayTarget = {
+  trackId?: string;
+  amount?: number;
+  month?: number;
+  label?: string;
+};
+
 interface MortgageWorkspaceProps {
   initialMix?: WorkspaceMix;
   /** בתוך דשבורד התהליך — בלי סרגל ניווט כפול */
@@ -68,6 +83,9 @@ interface MortgageWorkspaceProps {
   defaultSetupSeed?: Partial<PropertySetup>;
   /** אירועים שמצטרפים לכל תמהיל חדש — למשל פירעון מוקדם מהכנסה עתידית שהוצהרה */
   defaultEvents?: MixEvent[];
+  /** ייעוד סכום עתידי למסלול בתמהיל שמור — פותח את התמהיל בניתוח ואת חלון הפרעון */
+  pendingPrepay?: PendingPrepay | null;
+  onPendingPrepayHandled?: () => void;
   /** כשנשמר או נטען תמהיל — כדי שהתהליך יקבל את פרטי הנכס והסכום */
   onActiveMix?: (item: SavedMix) => void;
 }
@@ -92,6 +110,8 @@ export function MortgageWorkspace({
   activeMixKey,
   defaultSetupSeed,
   defaultEvents,
+  pendingPrepay,
+  onPendingPrepayHandled,
   onActiveMix,
 }: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
@@ -122,7 +142,7 @@ export function MortgageWorkspace({
 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [amortizationTarget, setAmortizationTarget] = useState<{ trackId?: string } | null>(null);
-  const [prepayTarget, setPrepayTarget] = useState<{ trackId?: string } | null>(null);
+  const [prepayTarget, setPrepayTarget] = useState<PrepayTarget | null>(null);
   const [refinanceTarget, setRefinanceTarget] = useState<{ trackId?: string } | null>(null);
 
   const [showRisk, setShowRisk] = useState(false);
@@ -316,6 +336,43 @@ export function MortgageWorkspace({
     [keepCurrentMix, openMix, notifyActive]
   );
 
+  const plannedPrepay = useMemo(() => {
+    const event = defaultEvents?.find((item) => item.kind === 'prepayment');
+    return event && event.kind === 'prepayment' ? event : undefined;
+  }, [defaultEvents]);
+
+  const consumedPrepay = useRef<PendingPrepay | null>(null);
+  useEffect(() => {
+    if (!pendingPrepay) {
+      consumedPrepay.current = null;
+      return;
+    }
+    if (consumedPrepay.current === pendingPrepay) return;
+
+    const openDialog = () => {
+      consumedPrepay.current = pendingPrepay;
+      setPrepayTarget({
+        trackId: pendingPrepay.trackId,
+        amount: pendingPrepay.amount,
+        month: pendingPrepay.month,
+        label: pendingPrepay.label,
+      });
+      setEditorExpanded(true);
+      onPendingPrepayHandled?.();
+    };
+
+    if (mix.id === pendingPrepay.mixId) {
+      if (phase !== 'ready') openMix(mix);
+      openDialog();
+      return;
+    }
+
+    const item = saved.find((entry) => entry.mix.id === pendingPrepay.mixId);
+    if (!item) return;
+    openSavedMix(item);
+    openDialog();
+  }, [pendingPrepay, mix, phase, saved, openMix, openSavedMix, onPendingPrepayHandled]);
+
 
   const startNewMix = useCallback(
     (seed?: Partial<PropertySetup>) => {
@@ -427,13 +484,8 @@ export function MortgageWorkspace({
             skipPropertyStep={skipPropertySetup}
             primeForecast={mix.assumptions.primeForecast ?? primeForecastRef.current}
             onComplete={(created) => {
-              // אירועים שהוגדרו כבר בפרופיל (פירעון מוקדם צפוי) נכנסים לתמהיל החדש
-              const next =
-                defaultEvents && defaultEvents.length > 0
-                  ? { ...created, events: [...created.events, ...defaultEvents] }
-                  : created;
-              persistMix(next);
-              openMix(next);
+              persistMix(created);
+              openMix(created);
               setSetupSeed(undefined);
             }}
           />
@@ -678,6 +730,32 @@ export function MortgageWorkspace({
         mix={mix}
         baseResult={result}
         initialTrackId={prepayTarget?.trackId}
+        initialAmount={prepayTarget?.amount ?? plannedPrepay?.amount}
+        initialMonth={prepayTarget?.month ?? plannedPrepay?.month}
+        initialLabel={prepayTarget?.label ?? plannedPrepay?.label}
+        otherMixes={propertyMixes}
+        onContinueToMix={(item, trackId, leftover, month, events) => {
+          persistMix({
+            ...mix,
+            events: [
+              ...mix.events,
+              ...events.map((event, index) => ({
+                ...event,
+                id: `prepay-${Date.now()}-${index}`,
+                kind: 'prepayment' as const,
+              })),
+            ],
+          });
+          if (item.clientId) setActiveClientId(item.clientId);
+          notifyActive(item);
+          openMix(item.mix);
+          setPrepayTarget({
+            trackId,
+            amount: leftover,
+            month,
+            label: prepayTarget?.label ?? plannedPrepay?.label,
+          });
+        }}
         onClose={() => setPrepayTarget(null)}
         onConfirm={actions.addPrepayment}
       />

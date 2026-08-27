@@ -30,10 +30,34 @@ function simulateAll(
   );
 }
 
-function balanceAtMonth(result: TrackResult, month: number): number {
+export function balanceAtMonth(result: TrackResult, month: number): number {
   if (month <= 1) return result.track.amount;
   const row = result.schedule[month - 2];
   return row ? row.balanceEnd : 0;
+}
+
+/**
+ * יתרת החוב שניתן לפרוע בחודש נתון: של מסלול אחד, או של כל התמהיל כשמפזרים.
+ * זו יתרת סוף החודש שלפני מועד הפרעון — הסכום שעדיין פתוח באותו רגע.
+ */
+export function prepaymentCapacity(
+  result: MixResult,
+  month: number,
+  trackId?: string
+): number {
+  if (trackId) {
+    const track = result.tracks.find((entry) => entry.track.id === trackId);
+    return track ? Math.max(0, balanceAtMonth(track, month)) : 0;
+  }
+  if (month <= 1) return Math.max(0, result.mix.totalAmount);
+  return Math.max(0, result.schedule[Math.max(0, month - 2)]?.balanceEnd ?? result.mix.totalAmount);
+}
+
+/** ההחזר החודשי השוטף אחרי חודש הפרעון — בלי סכום הפרעון עצמו ובלי בלון */
+export function recurringPaymentAfter(result: MixResult, month: number): number {
+  const row = result.schedule[month];
+  if (!row) return result.summary.lastMonthlyPayment;
+  return Math.max(0, row.payment - row.prepayment - row.balloon);
 }
 
 /**
