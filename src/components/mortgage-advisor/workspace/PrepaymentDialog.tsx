@@ -366,8 +366,21 @@ export function PrepaymentDialog({
                   label={mode === 'reduce_payment' ? 'החזר חודשי חדש' : 'החזר חודשי'}
                   value={formatShekel(mode === 'reduce_payment' ? newMonthly : preview.summary.monthlyPayment)}
                 />
-                <PreviewStat label="משך חדש" value={formatDuration(preview.summary.months)} />
+                <PreviewStat
+                  label="משך"
+                  value={
+                    mode === 'reduce_payment'
+                      ? formatDuration(baseResult.summary.months)
+                      : formatDuration(preview.summary.months)
+                  }
+                />
               </div>
+              {mode === 'reduce_payment' && (
+                <p className="text-[10px] text-emerald-800 leading-relaxed">
+                  התקופה נשמרת במלואה — {formatDuration(baseResult.summary.months)}. רק ההחזר החודשי
+                  קטן.
+                </p>
+              )}
             </div>
           )}
         </div>

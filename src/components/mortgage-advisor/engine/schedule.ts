@@ -154,6 +154,8 @@ export function simulateTrack({
   let currentType: TrackType = track.type;
   let amortType: AmortizationType = track.amortizationType || 'spitzer';
   let remainingMonths = Math.max(1, Math.round(track.years * 12));
+  /** חודש הסיום שננעל בהקטנת החזר — מונע קיצור תקופה בגלל שינוי ריבית או עיגול */
+  let lockedEndMonth: number | null = null;
   let variablePeriod = track.variablePeriod;
   /** החודש שממנו נמדדת תקופת המסלול הנוכחית (משתנה אחרי מחזור) */
   let termAnchorMonth = 1;
@@ -185,9 +187,14 @@ export function simulateTrack({
       amortType = refinance.newAmortizationType ?? amortType;
       variablePeriod = refinance.newType ? undefined : variablePeriod;
       remainingMonths = Math.max(1, Math.round(refinance.newYears * 12));
+      lockedEndMonth = month + remainingMonths - 1;
       termAnchorMonth = month;
       if (refinance.fee) balance += refinance.fee;
       paymentDirty = true;
+    }
+
+    if (lockedEndMonth != null) {
+      remainingMonths = Math.max(1, lockedEndMonth - month + 1);
     }
 
     // --- הצמדה למדד: הקרן נצמדת, עם הגנה מפני ירידת המדד מתחת לבסיס ---
@@ -224,6 +231,7 @@ export function simulateTrack({
     // מהבסיס לחישוב הריבית החודשית. בכל שאר הלוחות היא תמיד אפס.
     const interest = (balance + deferredInterest) * monthlyRate;
     const balanceStart = balance + deferredInterest;
+    const remainingBeforePrepay = remainingMonths;
     const finalMonth = remainingMonths <= 1;
 
     let principal = 0;
@@ -283,6 +291,7 @@ export function simulateTrack({
       if (newBalance > 0.01) {
         if (prepay.mode === 'shorten_term') {
           // ההחזר החודשי נשמר — התקופה מתקצרת
+          lockedEndMonth = null;
           if (amortType === 'spitzer' || amortType === 'ability_based' || amortType === 'secured') {
             const months = monthsToPayOff(newBalance, annualRate, payment);
             remainingMonths = Number.isFinite(months) ? months + 1 : remainingMonths;
@@ -291,7 +300,10 @@ export function simulateTrack({
             remainingMonths = Math.max(1, Math.ceil(newBalance / monthlyPrincipal) + 1);
           }
         } else {
-          // התקופה נשמרת — ההחזר החודשי קטן
+          // התקופה נשמרת — ההחזר החודשי קטן. נועלים את חודש הסיום המקורי
+          // כדי שמספר השנים לא יתקצר גם כשהריבית המשתנה מתעדכנת.
+          lockedEndMonth = month + remainingBeforePrepay - 1;
+          remainingMonths = remainingBeforePrepay;
           paymentDirty = true;
         }
       }

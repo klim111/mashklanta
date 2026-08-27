@@ -363,6 +363,40 @@ describe('prepayment', () => {
     expect(prepaymentCapacity(result, 12, 'a')).toBeLessThan(baseline.mix.totalAmount);
   });
 
+  it('keeps the original term on reduce_payment even with a prime forward curve', () => {
+    const forecast = fallbackPrimeForecast();
+    const mix = createWorkspaceMix({
+      totalAmount: 1_000_000,
+      tracks: [
+        createTrack({
+          id: 'a',
+          type: 'prime',
+          amount: 1_000_000,
+          interestRate: 6,
+          years: 25,
+        }),
+      ],
+      assumptions: { rateDeltas: {}, annualInflation: 0, primeForecast: forecast },
+    });
+    const withoutPrepay = computeMix(mix);
+    const withReduce = computeMix({
+      ...mix,
+      events: [
+        { id: 'p1', kind: 'prepayment', month: 13, amount: 250_000, mode: 'reduce_payment', trackId: 'a' },
+      ],
+    });
+    const withShorten = computeMix({
+      ...mix,
+      events: [
+        { id: 'p1', kind: 'prepayment', month: 13, amount: 250_000, mode: 'shorten_term', trackId: 'a' },
+      ],
+    });
+
+    expect(withReduce.schedule).toHaveLength(withoutPrepay.schedule.length);
+    expect(withShorten.schedule.length).toBeLessThan(withoutPrepay.schedule.length);
+    expect(withReduce.schedule[24].payment).toBeLessThan(withoutPrepay.schedule[24].payment);
+  });
+
   it('spreads an unassigned prepayment across open balances', () => {
     const mix = createWorkspaceMix({
       tracks: [
