@@ -1,7 +1,8 @@
 import type { DealType, MortgageMix, MortgageTrack } from '../types';
 import { AMORTIZATION_TYPES, DEAL_TYPES, DEFAULT_INTEREST_RATES, TRACK_TYPES } from '../types';
 import { DEFAULT_ASSUMPTIONS } from './types';
-import type { Assumptions, TrackType, WorkspaceMix } from './types';
+import type { PrimeForecast } from '@/lib/prime-forward-curve';
+import type { TrackType, WorkspaceMix } from './types';
 
 let counter = 0;
 function nextId(prefix: string): string {
@@ -22,11 +23,30 @@ function finiteNumber(value: unknown, fallback: number): number {
   return fallback;
 }
 
+function sanitizePrimeForecast(value: unknown): PrimeForecast | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const source = value as Partial<PrimeForecast>;
+  if (!Array.isArray(source.spots) || source.spots.length < 2) return undefined;
+  const spots = source.spots
+    .map((spot) => ({
+      years: finiteNumber((spot as { years?: unknown }).years, 0),
+      yieldPct: finiteNumber((spot as { yieldPct?: unknown }).yieldPct, 0),
+    }))
+    .filter((spot) => spot.years > 0 && spot.yieldPct > 0);
+  if (spots.length < 2) return undefined;
+  return {
+    asOf: typeof source.asOf === 'string' ? source.asOf : '',
+    source: source.source === 'boi' ? 'boi' : 'fallback',
+    boiRate: finiteNumber(source.boiRate, 3.5),
+    spots,
+  };
+}
+
 /** שם ברירת מחדל למסלול, נגזר מהרכבו כך שהוא מתעדכן עם כל שינוי. */
 export function autoTrackName(track: Pick<MortgageTrack, 'type' | 'years' | 'interestRate' | 'amortizationType'>): string {
   const typeLabel = (TRACK_TYPES[track.type] || 'מסלול').replace(/^ריבית\s+/, '');
   const amort = AMORTIZATION_TYPES[track.amortizationType || 'spitzer'];
-  return `${typeLabel} · ${track.years} שנים · ${finiteNumber(track.interestRate, 0).toFixed(2)}% · ${amort}`;
+  return `${typeLabel} · ${formatDuration(Math.round(finiteNumber(track.years, 25) * 12))} · ${finiteNumber(track.interestRate, 0).toFixed(2)}% · ${amort}`;
 }
 
 /**
@@ -164,6 +184,7 @@ export function sanitizeMix(raw: unknown): WorkspaceMix | null {
     assumptions: {
       rateDeltas: rateDeltas && typeof rateDeltas === 'object' ? rateDeltas : {},
       annualInflation: finiteNumber(source.assumptions?.annualInflation, DEFAULT_ASSUMPTIONS.annualInflation),
+      primeForecast: sanitizePrimeForecast(source.assumptions?.primeForecast),
     },
     startDate: typeof source.startDate === 'string' ? source.startDate : firstOfNextMonth(),
     propertyValue:
@@ -237,7 +258,8 @@ export function formatFullDate(iso: string): string {
 export function formatDuration(months: number): string {
   const years = Math.floor(months / 12);
   const rest = months % 12;
-  if (years === 0) return `${rest} חודשים`;
-  if (rest === 0) return `${years} שנים`;
-  return `${years} שנים ו-${rest} חודשים`;
+  if (years === 0) return rest === 1 ? 'חודש אחד' : `${rest} חודשים`;
+  const yearsLabel = years === 1 ? 'שנה' : `${years} שנים`;
+  if (rest === 0) return yearsLabel;
+  return `${yearsLabel} ו-${rest} חודשים`;
 }

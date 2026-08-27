@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Banknote, CalendarClock, RefreshCcw, Trash2 } from 'lucide-react';
 import { formatPercentage } from '../mortgageCalculations';
-import { formatFullDate } from '../engine';
+import { formatFullDate, formatDuration } from '../engine';
 import type { MixResult } from '../engine';
 import { formatShekel } from './primitives';
 
@@ -84,7 +84,7 @@ export function EventsPanel({ result, onRemove, onAddPrepayment, onAddRefinance 
                     <RefreshCcw className="h-4 w-4 text-blue-600 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-slate-800">
-                        מחזור ל-{formatPercentage(event.newRate)} · {event.newYears} שנים
+                        מחזור ל-{formatPercentage(event.newRate)} · {formatDuration(Math.round(event.newYears * 12))}
                       </p>
                       <p className="text-[10px] text-slate-500 truncate">
                         {dateFor(event.month)} · {trackName(event.trackId)}

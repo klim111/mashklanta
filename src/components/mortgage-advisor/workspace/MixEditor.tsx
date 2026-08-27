@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Plus } from 'lucide-react';
-import { MIN_FIXED_UNLINKED_PERCENT, TRACK_TYPES } from '../types';
+import { DEFAULT_INTEREST_RATES, MIN_FIXED_UNLINKED_PERCENT, TRACK_TYPES } from '../types';
 import type { MortgageTrack } from '../types';
 import { allocatedAmount, remainingAmount } from '../engine';
 import type { MixResult, TrackType } from '../engine';
@@ -15,7 +15,14 @@ import {
   minFixedUnlinkedAmount,
 } from '../propertyContext';
 import { TrackEditor } from './TrackEditor';
+import {
+  PrimeForwardChart,
+  VariableForwardChart,
+  previewPrimeForwardPoints,
+  previewVariableForwardPoints,
+} from './PrimeForwardChart';
 import { formatShekel } from './primitives';
+import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
 
 interface MixEditorProps {
   result: MixResult;
@@ -49,6 +56,27 @@ export function MixEditor({
   const fixedShareOk = meetsFixedUnlinkedRequirement(mix);
   const remaining = remainingAmount(mix);
   const allocated = allocatedAmount(mix);
+
+  const newPrimePreview = useMemo(() => {
+    if (newType !== 'prime') return [];
+    const forecast = mix.assumptions.primeForecast ?? fallbackPrimeForecast();
+    return previewPrimeForwardPoints(
+      DEFAULT_INTEREST_RATES.prime,
+      mix.tracks[0]?.years ?? 25,
+      forecast
+    );
+  }, [newType, mix.assumptions.primeForecast, mix.tracks]);
+
+  const newVariablePreview = useMemo(() => {
+    if (newType !== 'variable_unlinked') return [];
+    const forecast = mix.assumptions.primeForecast ?? fallbackPrimeForecast();
+    return previewVariableForwardPoints(
+      DEFAULT_INTEREST_RATES.variable_unlinked,
+      mix.tracks[0]?.years ?? 25,
+      5,
+      forecast
+    );
+  }, [newType, mix.assumptions.primeForecast, mix.tracks]);
 
   return (
     <div className="border-t border-slate-100 p-3 space-y-3">
@@ -120,6 +148,20 @@ export function MixEditor({
               הוסף מסלול על {formatShekel(remaining)}
             </Button>
           </div>
+          {newType === 'prime' && (
+            <PrimeForwardChart
+              previewPoints={newPrimePreview}
+              quotedRate={DEFAULT_INTEREST_RATES.prime}
+              height={160}
+            />
+          )}
+          {newType === 'variable_unlinked' && (
+            <VariableForwardChart
+              previewPoints={newVariablePreview}
+              quotedRate={DEFAULT_INTEREST_RATES.variable_unlinked}
+              height={160}
+            />
+          )}
         </div>
       )}
     </div>

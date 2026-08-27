@@ -219,15 +219,18 @@ export function calculateMaxProperty(
   // so the UI can show it as the upper bound for the period slider.
   const maxLoanPeriod = Math.min(30, Math.max(1, 80 - age));
 
-  // The period actually used inside the calculation. When the user picks a shorter
-  // period via the results-page slider, the affordable loan shrinks accordingly.
+  // The period actually used inside the calculation (4–30 years = 48–360 months).
+  // When the user picks a period via the results-page slider, the affordable loan
+  // is recomputed at that length, including month-level values like 20.5 years.
+  const TERM_YEARS_MIN = 4;
+  const TERM_YEARS_MAX = 30;
   const isValidPeriodOverride =
     typeof loanPeriodOverride === 'number' &&
     Number.isFinite(loanPeriodOverride) &&
     loanPeriodOverride > 0;
   const effectivePeriodYears = isValidPeriodOverride
-    ? Math.min(maxLoanPeriod, Math.max(1, Math.round(loanPeriodOverride as number)))
-    : maxLoanPeriod;
+    ? Math.min(TERM_YEARS_MAX, Math.max(TERM_YEARS_MIN, loanPeriodOverride as number))
+    : Math.min(TERM_YEARS_MAX, Math.max(TERM_YEARS_MIN, maxLoanPeriod));
 
   let maxLTVRatio = 0.5;
   switch (data.propertyType) {
@@ -254,7 +257,7 @@ export function calculateMaxProperty(
     : INTEREST_RATES.fixed_unlinked;
   const annualRate = annualRatePct / 100;
   const monthlyRate = annualRate / 12;
-  const numPayments = effectivePeriodYears * 12;
+  const numPayments = Math.round(effectivePeriodYears * 12);
 
   // Annuity factor: present value of 1 ILS monthly payment over numPayments months
   const annuityFactor =

@@ -90,6 +90,7 @@ function aggregate(tracks: TrackResult[], startDate: string): MixScheduleRow[] {
     let balanceEnd = 0;
     let weightedRateSum = 0;
     let date = '';
+    let isRateStation = false;
 
     tracks.forEach((t) => {
       const row = t.schedule[i];
@@ -105,6 +106,7 @@ function aggregate(tracks: TrackResult[], startDate: string): MixScheduleRow[] {
       balanceEnd += row.balanceEnd;
       weightedRateSum += row.balanceStart * row.annualRate;
       date = row.date;
+      if (row.isRateStation) isRateStation = true;
     });
 
     cumulativeInterest += interest;
@@ -128,6 +130,7 @@ function aggregate(tracks: TrackResult[], startDate: string): MixScheduleRow[] {
       cumulativePrincipal,
       cumulativePaid,
       weightedRate: balanceStart > 0 ? weightedRateSum / balanceStart : 0,
+      isRateStation,
     });
   }
 

@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Calculator,
+  CalendarClock,
   Check,
   CheckCircle2,
   Home,
@@ -32,7 +33,14 @@ import {
   VARIABLE_PERIODS,
 } from '../types';
 import type { DealType, MortgageTrack } from '../types';
-import { computeMix, createEmptyMix, createTrack, normalizeMix } from '../engine';
+import {
+  computeMix,
+  createEmptyMix,
+  createTrack,
+  DEFAULT_ASSUMPTIONS,
+  formatDuration,
+  normalizeMix,
+} from '../engine';
 import type { TrackType, WorkspaceMix } from '../engine';
 import {
   DEAL_TYPE_KEYS,
@@ -42,7 +50,11 @@ import {
   minFixedUnlinkedAmount,
 } from '../propertyContext';
 import { MaxPaymentDialog } from './MaxPaymentDialog';
-import { AmountAndPercent, formatShekel, trackColor } from './primitives';
+import { NumericInput } from '@/components/ui/numeric-input';
+import { AmountAndPercent, TermMonthsSlider, formatShekel, trackColor } from './primitives';
+import { PrimeForwardChart, VariableForwardChart, previewPrimeForwardPoints, previewVariableForwardPoints, CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
+import type { PrimeForecast } from '@/lib/prime-forward-curve';
 
 /** מתחת לשקל אחד נחשב "כוסה במלואו" — שאריות עיגול לא אמורות לחסום את המשך התהליך. */
 const COVERED_EPSILON = 1;
@@ -54,6 +66,8 @@ export interface PropertySetup {
   totalAmount: number;
   maxMonthlyPayment: number;
   propertyAddress: string;
+  /** הון עצמי מהפרופיל — ברירת המחדל של סכום המשכנתא היא מחיר הנכס פחות הסכום הזה */
+  equity?: number;
 }
 
 interface MixSetupWizardProps {
@@ -61,6 +75,8 @@ interface MixSetupWizardProps {
   onBack: () => void;
   /** פרטי נכס שהוזנו כבר — לבניית תמהיל נוסף לאותו נכס בלי הזנה חוזרת */
   initialProperty?: Partial<PropertySetup>;
+  /** עקום הפריים החי — כשחסר משתמשים בנתוני נפילה */
+  primeForecast?: PrimeForecast;
 }
 
 interface TrackForm {
@@ -89,19 +105,41 @@ function emptyForm(type: TrackType = 'fixed_unlinked'): TrackForm {
   };
 }
 
+/** ברירת מחדל: מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה */
+function mortgageFromEquity(
+  propertyValue: number,
+  equity: number | null | undefined,
+  dealType: DealType
+): number {
+  if (propertyValue <= 0) return 0;
+  const max = maxMortgageFor(propertyValue, dealType);
+  if (equity == null) return 0;
+  return Math.min(max, Math.max(0, Math.round(propertyValue - equity)));
+}
+
 /**
  * הקמת תמהיל בשלבים: קודם הנכס והעסקה (עלות הנכס, סכום המשכנתא ותקרת ההחזר),
  * אחר כך מסלול אחרי מסלול עד שכל הסכום מכוסה, ולבסוף שם התמהיל. כל שלב נחשף
  * רק אחרי שהקודם הושלם.
  */
-export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetupWizardProps) {
-  const [property, setProperty] = useState<PropertySetup>(() => ({
-    propertyValue: initialProperty?.propertyValue ?? 0,
-    dealType: initialProperty?.dealType ?? DEFAULT_DEAL_TYPE,
-    totalAmount: initialProperty?.totalAmount ?? 0,
-    maxMonthlyPayment: initialProperty?.maxMonthlyPayment ?? 0,
-    propertyAddress: initialProperty?.propertyAddress ?? '',
-  }));
+export function MixSetupWizard({ onComplete, onBack, initialProperty, primeForecast }: MixSetupWizardProps) {
+  const seedEquity = initialProperty?.equity ?? null;
+  const forecast = primeForecast ?? fallbackPrimeForecast();
+  const mixAssumptions = { ...DEFAULT_ASSUMPTIONS, primeForecast: forecast };
+  const [property, setProperty] = useState<PropertySetup>(() => {
+    const propertyValue = initialProperty?.propertyValue ?? 0;
+    const dealType = initialProperty?.dealType ?? DEFAULT_DEAL_TYPE;
+    const fromEquity = mortgageFromEquity(propertyValue, initialProperty?.equity, dealType);
+    return {
+      propertyValue,
+      dealType,
+      totalAmount:
+        fromEquity > 0 ? fromEquity : initialProperty?.totalAmount ?? 0,
+      maxMonthlyPayment: initialProperty?.maxMonthlyPayment ?? 0,
+      propertyAddress: initialProperty?.propertyAddress ?? '',
+    };
+  });
+  const [amountTouched, setAmountTouched] = useState(false);
   const [propertyConfirmed, setPropertyConfirmed] = useState(false);
   const [showMaxPayment, setShowMaxPayment] = useState(false);
 
@@ -146,10 +184,25 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
   const paymentOf = (list: MortgageTrack[]) =>
     list.length === 0
       ? 0
-      : computeMix(normalizeMix(createEmptyMix({ totalAmount, tracks: list }))).summary
-          .monthlyPayment;
+      : computeMix(
+          normalizeMix(createEmptyMix({ totalAmount, tracks: list, assumptions: mixAssumptions }))
+        ).summary.monthlyPayment;
 
-  const monthlyPayment = useMemo(() => paymentOf(tracks), [tracks, totalAmount]);
+  const monthlyPayment = useMemo(() => paymentOf(tracks), [tracks, totalAmount, forecast]);
+
+  const primePreviewPoints = useMemo(
+    () =>
+      form.type === 'prime' ? previewPrimeForwardPoints(form.interestRate, form.years, forecast) : [],
+    [form.type, form.interestRate, form.years, forecast]
+  );
+
+  const variablePreviewPoints = useMemo(
+    () =>
+      form.type === 'variable_unlinked'
+        ? previewVariableForwardPoints(form.interestRate, form.years, form.variablePeriod, forecast)
+        : [],
+    [form.type, form.interestRate, form.years, form.variablePeriod, forecast]
+  );
   const overPayment =
     property.maxMonthlyPayment > 0 && monthlyPayment > property.maxMonthlyPayment + 1;
 
@@ -186,6 +239,7 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
    * שאינה תקפה לסכום החדש.
    */
   const setTotalAmount = (value: number, dealType?: DealType) => {
+    setAmountTouched(true);
     patchProperty({ totalAmount: value, ...(dealType ? { dealType } : {}) });
     if (tracks.length > 0 && Math.round(value) !== Math.round(totalAmount)) {
       setTracks([]);
@@ -247,6 +301,7 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
           dealType: property.dealType,
           propertyAddress: property.propertyAddress.trim() || undefined,
           maxMonthlyPayment: property.maxMonthlyPayment || undefined,
+          assumptions: mixAssumptions,
         })
       )
     );
@@ -311,7 +366,17 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
                   autoFocus
                   placeholder="לדוגמה 2,000,000"
                   value={property.propertyValue || ''}
-                  onValueChange={(propertyValue) => patchProperty({ propertyValue })}
+                  onValueChange={(propertyValue) => {
+                    const next: Partial<PropertySetup> = { propertyValue };
+                    if (!amountTouched) {
+                      next.totalAmount = mortgageFromEquity(
+                        propertyValue,
+                        seedEquity,
+                        property.dealType
+                      );
+                    }
+                    patchProperty(next);
+                  }}
                 />
               </div>
 
@@ -460,7 +525,7 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
                       <p className="text-[10px] text-slate-500 truncate">
                         {formatShekel(track.amount)} ·{' '}
                         {totalAmount > 0 ? ((track.amount / totalAmount) * 100).toFixed(1) : '0'}% ·{' '}
-                        {track.years} שנים · {track.interestRate.toFixed(2)}% ·{' '}
+                        {formatDuration(Math.round(track.years * 12))} · {track.interestRate.toFixed(2)}% ·{' '}
                         {AMORTIZATION_TYPES[track.amortizationType || 'spitzer']}
                       </p>
                     </div>
@@ -475,6 +540,13 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
                   </div>
                 ))}
               </div>
+            )}
+
+            {tracks.length > 0 && monthlyPayment > 0 && (
+              <p className="text-[11px] text-slate-500 leading-snug">
+                החזר חודשי {formatShekel(monthlyPayment)}
+                {tracks.some((t) => usesForwardPricedRate(t.type)) ? ` · ${CURRENT_RATE_PAYMENT_NOTE}` : ''}
+              </p>
             )}
 
             {covered ? (
@@ -571,31 +643,25 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
                       )}
                     </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">תקופה (שנים)</Label>
-                      <Input
-                        className="h-9"
-                        type="number"
-                        min={1}
-                        max={40}
-                        value={form.years}
-                        onChange={(e) =>
-                          patchForm({ years: Math.min(40, Math.max(1, parseInt(e.target.value, 10) || 0)) })
-                        }
+                    <div className="space-y-1 sm:col-span-2">
+                      <TermMonthsSlider
+                        label="תקופה"
+                        icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
+                        years={form.years}
+                        onChange={(years) => patchForm({ years })}
                       />
                     </div>
 
                     <div className="space-y-1">
                       <Label className="text-xs">ריבית שנתית (%)</Label>
-                      <Input
-                        className="h-9"
-                        type="number"
-                        step="0.05"
-                        min={0}
-                        max={15}
+                      <NumericInput
+                        className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
                         value={form.interestRate}
-                        onChange={(e) =>
-                          patchForm({ interestRate: parseFloat(e.target.value) || 0, rateTouched: true })
+                        onChange={(interestRate) =>
+                          patchForm({
+                            interestRate: interestRate ?? 0,
+                            rateTouched: true,
+                          })
                         }
                       />
                     </div>
@@ -616,6 +682,26 @@ export function MixSetupWizard({ onComplete, onBack, initialProperty }: MixSetup
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+
+                    {form.type === 'prime' && primePreviewPoints.length >= 2 && (
+                      <div className="sm:col-span-2">
+                        <PrimeForwardChart
+                          previewPoints={primePreviewPoints}
+                          quotedRate={form.interestRate}
+                          height={180}
+                        />
+                      </div>
+                    )}
+
+                    {form.type === 'variable_unlinked' && variablePreviewPoints.length >= 2 && (
+                      <div className="sm:col-span-2">
+                        <VariableForwardChart
+                          previewPoints={variablePreviewPoints}
+                          quotedRate={form.interestRate}
+                          height={180}
+                        />
                       </div>
                     )}
                   </div>

@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +31,13 @@ import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 import { formatPercentage } from '../mortgageCalculations';
 import { autoTrackName, formatDuration } from '../engine';
 import type { TrackResult } from '../engine';
-import { AmountAndPercent, SliderField, formatShekel, trackColor } from './primitives';
+import { AmountAndPercent, SliderField, TermMonthsSlider, formatShekel, trackColor } from './primitives';
+import {
+  CURRENT_RATE_PAYMENT_NOTE,
+  PrimeForwardChart,
+  VariableForwardChart,
+  usesForwardPricedRate,
+} from './PrimeForwardChart';
 
 interface TrackEditorProps {
   result: TrackResult;
@@ -49,9 +56,6 @@ interface TrackEditorProps {
   /** פותח את לוח ההחזרים כשהוא מסונן למסלול הזה בלבד */
   onAmortization: () => void;
 }
-
-const YEARS_RANGE = { min: 4, max: 30 };
-const RATE_RANGE = { min: 0, max: 12, step: 0.05 };
 
 export function TrackEditor({
   result,
@@ -142,7 +146,8 @@ export function TrackEditor({
             <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
             <p className="text-[11px] text-slate-500 truncate">
               {formatShekel(track.amount)} · {track.percentage.toFixed(1)}% · {formatPercentage(effectiveRate)}
-              {rateShifted && <span className="text-amber-600"> (בתרחיש)</span>} · {track.years} שנים
+              {rateShifted && <span className="text-amber-600"> (בתרחיש)</span>} ·{' '}
+              {formatDuration(Math.round(track.years * 12))}
             </p>
           </div>
           <div className="text-center hidden sm:block min-w-[104px]">
@@ -155,6 +160,11 @@ export function TrackEditor({
             )}
             {hasBalloon && (
               <p className="text-[10px] text-amber-700">בלון {formatShekel(result.balloonPayment)}</p>
+            )}
+            {usesForwardPricedRate(track.type) && (
+              <p className="text-[9px] text-slate-400 leading-tight mt-0.5 max-w-[140px]">
+                לפי הריבית התקפה כעת
+              </p>
             )}
           </div>
           <div className="text-center hidden md:block min-w-[86px]">
@@ -256,12 +266,10 @@ export function TrackEditor({
             {isForeign && (
               <div className="space-y-1">
                 <Label className="text-xs">שער {track.type === 'dollar' ? 'דולר' : 'יורו'}</Label>
-                <Input
-                  className="h-9"
-                  type="number"
-                  step="0.01"
-                  value={track.exchangeRate ?? ''}
-                  onChange={(e) => onUpdate({ exchangeRate: parseFloat(e.target.value) || 0 })}
+                <NumericInput
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  value={track.exchangeRate ?? null}
+                  onChange={(exchangeRate) => onUpdate({ exchangeRate: exchangeRate ?? 0 })}
                 />
               </div>
             )}
@@ -317,30 +325,26 @@ export function TrackEditor({
               }
             />
 
-            <SliderField
-              label="ריבית שנתית"
-              icon={<Coins className="h-3.5 w-3.5 text-amber-600" />}
-              value={track.interestRate}
-              onChange={(interestRate) => patchWithName({ interestRate })}
-              min={RATE_RANGE.min}
-              max={RATE_RANGE.max}
-              step={RATE_RANGE.step}
-              display={formatPercentage(track.interestRate)}
-              minLabel={`${RATE_RANGE.min}%`}
-              maxLabel={`${RATE_RANGE.max}%`}
-            />
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                  <Coins className="h-3.5 w-3.5 text-amber-600" />
+                  ריבית שנתית
+                </span>
+                <span className="text-sm font-bold text-slate-800">%</span>
+              </div>
+              <NumericInput
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                value={track.interestRate}
+                onChange={(interestRate) => patchWithName({ interestRate: interestRate ?? 0 })}
+              />
+            </div>
 
-            <SliderField
+            <TermMonthsSlider
               label="תקופה"
               icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
-              value={track.years}
+              years={track.years}
               onChange={(years) => patchWithName({ years })}
-              min={YEARS_RANGE.min}
-              max={YEARS_RANGE.max}
-              step={1}
-              display={`${track.years} שנים`}
-              minLabel={`${YEARS_RANGE.min} שנים`}
-              maxLabel={`${YEARS_RANGE.max} שנים`}
             />
 
             <div className="flex flex-col justify-end gap-2">
@@ -363,6 +367,13 @@ export function TrackEditor({
               </Button>
             </div>
           </div>
+
+          {track.type === 'prime' && result.schedule.length > 1 && (
+            <PrimeForwardChart tracks={[result]} quotedRate={track.interestRate} height={180} />
+          )}
+          {track.type === 'variable_unlinked' && result.schedule.length > 1 && (
+            <VariableForwardChart tracks={[result]} quotedRate={track.interestRate} height={180} />
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
             {declining ? (
@@ -390,6 +401,10 @@ export function TrackEditor({
             <TrackStat label="סך תשלום" value={formatShekel(result.totalPaid)} />
             <TrackStat label="משך בפועל" value={formatDuration(result.months)} />
           </div>
+
+          {usesForwardPricedRate(track.type) && !noMonthlyPayment && (
+            <p className="text-[11px] text-slate-500 leading-snug">{CURRENT_RATE_PAYMENT_NOTE}</p>
+          )}
 
           {isGrace && (
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
@@ -423,12 +438,59 @@ export function TrackEditor({
             </div>
           )}
 
-          {rateVariable && track.type.includes('variable') && (
+          {track.type === 'variable_unlinked' && (
+            <div className="flex items-start gap-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2.5">
+              <Shield className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-emerald-900 leading-relaxed">
+                הריבית מתעדכנת כל {track.variablePeriod ?? 5} שנים לפי הפורוורד לאותה תקופה מעקום התשואות
+                השקלי של בנק ישראל, עם המרווח שצוטט מהבנק. בתחנות היציאה יש פטור מעמלת פירעון מוקדם.
+                {result.schedule.length > 12 &&
+                  Math.abs(
+                    result.schedule[0].annualRate -
+                      result.schedule[Math.min((track.variablePeriod ?? 5) * 12, result.schedule.length - 1)]
+                        .annualRate
+                  ) > 0.02 && (
+                    <>
+                      {' '}
+                      חודש ראשון: {formatPercentage(result.schedule[0].annualRate)}, בתחנה הראשונה:{' '}
+                      {formatPercentage(
+                        result.schedule[
+                          Math.min((track.variablePeriod ?? 5) * 12, result.schedule.length - 1)
+                        ].annualRate
+                      )}
+                      , ובסוף התקופה:{' '}
+                      {formatPercentage(result.schedule[result.schedule.length - 1].annualRate)}.
+                    </>
+                  )}
+              </p>
+            </div>
+          )}
+
+          {rateVariable && track.type === 'variable_linked' && (
             <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 p-2.5">
               <Shield className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-blue-800 leading-relaxed">
                 הריבית מתעדכנת כל {track.variablePeriod ?? 5} שנים. שינוי ריבית בתרחיש נכנס לתוקף בתחנה הראשונה
                 ולא באופן מיידי.
+              </p>
+            </div>
+          )}
+
+          {track.type === 'prime' &&
+            result.schedule.length > 12 &&
+            Math.abs(
+              result.schedule[0].annualRate -
+                result.schedule[Math.min(119, result.schedule.length - 1)].annualRate
+            ) > 0.02 && (
+            <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-200 p-2.5">
+              <TrendingUp className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-orange-900 leading-relaxed">
+                ההחזרים וסך הריבית מחושבים לפי צפי הפריים שנגזר מעקום התשואות השקלי של בנק ישראל.
+                בכל תשלום הריבית היא הפורוורד לאותו חודש, עם המרווח שצוטט מהבנק. חודש ראשון:{' '}
+                {formatPercentage(result.schedule[0].annualRate)}, בעוד 10 שנים:{' '}
+                {formatPercentage(result.schedule[Math.min(119, result.schedule.length - 1)].annualRate)},
+                ובסוף התקופה:{' '}
+                {formatPercentage(result.schedule[result.schedule.length - 1].annualRate)}.
               </p>
             </div>
           )}

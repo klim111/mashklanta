@@ -22,6 +22,12 @@ import { LineChart as LineChartIcon, MousePointerClick } from 'lucide-react';
 import { yearlySeries } from '../engine';
 import type { MixResult } from '../engine';
 import { CHART_COLORS, compactCurrency, formatShekel, trackColor } from './primitives';
+import {
+  CURRENT_RATE_PAYMENT_NOTE,
+  PrimeForwardChart,
+  VariableForwardChart,
+  usesForwardPricedRate,
+} from './PrimeForwardChart';
 
 interface WorkspaceChartsProps {
   result: MixResult;
@@ -109,6 +115,12 @@ export function WorkspaceCharts({
     return row?.year ?? null;
   }, [rows, selectedMonth]);
 
+  const hasPrime = result.tracks.some((t) => t.track.type === 'prime' && t.schedule.length > 1);
+  const hasVariableUnlinked = result.tracks.some(
+    (t) => t.track.type === 'variable_unlinked' && t.schedule.length > 1
+  );
+  const hasForwardPriced = result.tracks.some((t) => usesForwardPricedRate(t.track.type));
+
   const handleClick = (event: unknown) => {
     const month = monthFromClick(event);
     if (month) onSelectMonth(month);
@@ -193,7 +205,11 @@ export function WorkspaceCharts({
 
         <ChartPanel
           title="החזר חודשי"
-          hint="ההחזר לאורך התקופה. בצמודי מדד ובמשתנות ההחזר משתנה בהתאם לתרחיש."
+          hint={
+            hasForwardPriced
+              ? `${CURRENT_RATE_PAYMENT_NOTE} בהמשך התקופה ההחזר החזוי מתעדכן לפי עקום הפורוורד.`
+              : 'ההחזר לאורך התקופה. בצמודי מדד ובמשתנות ההחזר משתנה בהתאם לתרחיש.'
+          }
         >
           <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -258,6 +274,33 @@ export function WorkspaceCharts({
             />
           </AreaChart>
         </ChartPanel>
+
+        {hasPrime && (
+          <div className="lg:col-span-2">
+            <PrimeForwardChart
+              tracks={result.tracks}
+              quotedRate={
+                result.tracks.filter((t) => t.track.type === 'prime').length === 1
+                  ? result.tracks.find((t) => t.track.type === 'prime')?.track.interestRate
+                  : undefined
+              }
+              height={230}
+            />
+          </div>
+        )}
+        {hasVariableUnlinked && (
+          <div className="lg:col-span-2">
+            <VariableForwardChart
+              tracks={result.tracks}
+              quotedRate={
+                result.tracks.filter((t) => t.track.type === 'variable_unlinked').length === 1
+                  ? result.tracks.find((t) => t.track.type === 'variable_unlinked')?.track.interestRate
+                  : undefined
+              }
+              height={230}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

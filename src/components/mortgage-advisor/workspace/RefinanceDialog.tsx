@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CalendarClock, Coins, RefreshCcw, TrendingDown } from 'lucide-react';
 import { AMORTIZATION_TYPES, DEFAULT_INTEREST_RATES, TRACK_TYPES } from '../types';
 import type { MortgageTrack } from '../types';
-import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, formatFullDate } from '../engine';
 import type { MixResult, RefinanceEvent, WorkspaceMix } from '../engine';
-import { SliderField, formatShekel } from './primitives';
+import { NumericInput } from '@/components/ui/numeric-input';
+import { SliderField, TermMonthsSlider, formatShekel } from './primitives';
 
 interface RefinanceDialogProps {
   open: boolean;
@@ -182,29 +182,25 @@ export function RefinanceDialog({
           </div>
 
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-            <SliderField
-              label="ריבית חדשה"
-              icon={<Coins className="h-3.5 w-3.5 text-amber-600" />}
-              value={newRate}
-              onChange={setNewRate}
-              min={0}
-              max={12}
-              step={0.05}
-              display={formatPercentage(newRate)}
-              minLabel="0%"
-              maxLabel="12%"
-            />
-            <SliderField
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                  <Coins className="h-3.5 w-3.5 text-amber-600" />
+                  ריבית חדשה
+                </span>
+                <span className="text-sm font-bold text-slate-800">%</span>
+              </div>
+              <NumericInput
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                value={newRate}
+                onChange={(value) => setNewRate(value ?? 0)}
+              />
+            </div>
+            <TermMonthsSlider
               label="תקופה חדשה"
               icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
-              value={newYears}
+              years={newYears}
               onChange={setNewYears}
-              min={2}
-              max={30}
-              step={1}
-              display={`${newYears} שנים`}
-              minLabel="2 שנים"
-              maxLabel="30 שנים"
             />
           </div>
 

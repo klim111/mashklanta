@@ -55,6 +55,22 @@ export function parseFormattedNumberInput(value: string | number | undefined | n
   return parseInt(cleanValue, 10) || 0;
 }
 
+/** משאיר רק ספרות ונקודה עשרונית אחת — כדי שאפשר יהיה להקליד 4.7 בלי שהנקודה תיעלם */
+export function sanitizeDecimalInput(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, '');
+  const first = cleaned.indexOf('.');
+  if (first === -1) return cleaned;
+  return cleaned.slice(0, first + 1) + cleaned.slice(first + 1).replace(/\./g, '');
+}
+
+/** מפרסר קלט עשרוני. מחרוזת ריקה או נקודה בלבד → null, לא אפס */
+export function parseDecimalInput(raw: string): number | null {
+  const cleaned = sanitizeDecimalInput(raw);
+  if (cleaned === '' || cleaned === '.') return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 const MONEY_FIELD_KEYS = [
   'ownCapital',
   'monthlyIncome',

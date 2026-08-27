@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { Sparkles, TrendingUp } from 'lucide-react';
-import { analyzeProfile } from '@/lib/mortgage-plan';
+import { analyzeProfile, mortgageFromProperty } from '@/lib/mortgage-plan';
 import type { MixData, PlanData } from '@/lib/mortgage-plan';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import type { PrepaymentEvent } from '@/components/mortgage-advisor/engine';
@@ -68,6 +68,9 @@ export function MixStage({
   const basketsSaved = preApproval.baskets.some((basket) => basket.mixKey);
   const prepayments = plannedPrepayments(data);
   const hasFutureIncome = prepayments.length > 0 || Boolean(profile.futureMonthlyIncrease);
+  /** ברירת מחדל: מחיר הנכס פחות ההון העצמי שהוזן בפרופיל */
+  const defaultMortgage =
+    mortgageFromProperty(profile.propertyValue ?? 0, profile.equity, profile.dealType) ?? undefined;
 
   return (
     <div className="space-y-4">
@@ -114,9 +117,10 @@ export function MixStage({
         defaultSetupSeed={{
           dealType: profile.dealType ?? undefined,
           maxMonthlyPayment: Math.round(analysis.maxMonthlyPayment) || undefined,
-          totalAmount: preApproval.approvedAmount ?? (analysis.requiredLoan || undefined),
+          totalAmount: defaultMortgage,
           propertyValue: profile.propertyValue ?? undefined,
           propertyAddress: profile.propertyAddress.trim() || undefined,
+          equity: profile.equity ?? undefined,
         }}
         defaultEvents={prepayments}
         onActiveMix={(item) => persist.current(toMixData(item, notes.current))}

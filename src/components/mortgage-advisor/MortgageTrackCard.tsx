@@ -11,6 +11,8 @@ import { Trash2, Edit, Check, X, Calculator, TrendingUp } from 'lucide-react';
 import type { MortgageTrack } from './types';
 import { TRACK_TYPES, DEFAULT_INTEREST_RATES, AMORTIZATION_TYPES, VARIABLE_PERIODS } from './types';
 import { formatCurrency, formatPercentage, calculateTrack } from './mortgageCalculations';
+import { formatDuration } from './engine';
+import { clampTermMonths, monthsToYears, yearsToMonths } from '@/lib/mortgage-plan';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
 
@@ -46,7 +48,7 @@ export function MortgageTrackCard({
     const rawTrackTypeLabel = TRACK_TYPES[data.type] || 'מסלול';
     const trackTypeLabel = rawTrackTypeLabel.replace(/^ריבית\s+/, '');
     const amountLabel = formatCurrency(data.amount || 0);
-    const yearsLabel = `${data.years || 0} שנים`;
+    const yearsLabel = formatDuration(yearsToMonths(data.years || 0));
     const interestLabel = `${(data.interestRate || 0).toFixed(2)}%`;
     const amortizationLabel = AMORTIZATION_TYPES[data.amortizationType || 'spitzer'];
     return `${trackTypeLabel} - ${amountLabel} - ${yearsLabel} - ${interestLabel} - ${amortizationLabel}`;
@@ -265,11 +267,12 @@ export function MortgageTrackCard({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>תקופה (שנים)</Label>
-              <Input
-                type="number"
-                value={editData.years}
-                onChange={(e) => setEditData({ ...editData, years: parseInt(e.target.value) || 0 })}
+              <Label>תקופה (חודשים)</Label>
+              <FormattedNumberValueInput
+                value={yearsToMonths(editData.years)}
+                onValueChange={(value) =>
+                  setEditData({ ...editData, years: monthsToYears(clampTermMonths(value)) })
+                }
               />
             </div>
             
@@ -432,7 +435,7 @@ export function MortgageTrackCard({
         
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">תקופה:</span>
-          <span className="font-medium">{track.years} שנים</span>
+          <span className="font-medium">{formatDuration(yearsToMonths(track.years))}</span>
         </div>
         
         {track.amortizationType && (

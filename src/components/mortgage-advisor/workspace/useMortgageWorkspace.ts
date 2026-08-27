@@ -4,7 +4,6 @@ import { useMemo, useReducer } from 'react';
 import type { MortgageTrack } from '../types';
 import { DEFAULT_INTEREST_RATES } from '../types';
 import {
-  BASE_ASSUMPTIONS,
   allocatedAmount,
   computeMix,
   createEmptyMix,
@@ -14,6 +13,7 @@ import {
   optimizeMix,
   pruneEvents,
   remainingAmount,
+  withBaseScenario,
 } from '../engine';
 import type {
   MixEvent,
@@ -26,6 +26,7 @@ import type {
   TrackType,
   WorkspaceMix,
 } from '../engine';
+import type { PrimeForecast } from '@/lib/prime-forward-curve';
 
 export interface WorkspaceState {
   mix: WorkspaceMix;
@@ -48,6 +49,7 @@ type Action =
   | { type: 'setRateDelta'; trackType: TrackType; delta: number }
   | { type: 'setInflation'; value: number }
   | { type: 'resetAssumptions' }
+  | { type: 'setPrimeForecast'; forecast: PrimeForecast }
   | { type: 'addEvent'; event: MixEvent }
   | { type: 'removeEvent'; id: string }
   | { type: 'setConstraints'; patch: Partial<OptimizationConstraints> }
@@ -201,7 +203,22 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
       };
 
     case 'resetAssumptions':
-      return { ...state, mix: touch({ ...state.mix, assumptions: { ...BASE_ASSUMPTIONS } }) };
+      return {
+        ...state,
+        mix: touch({
+          ...state.mix,
+          assumptions: withBaseScenario(state.mix.assumptions),
+        }),
+      };
+
+    case 'setPrimeForecast':
+      return {
+        ...state,
+        mix: touch({
+          ...state.mix,
+          assumptions: { ...state.mix.assumptions, primeForecast: action.forecast },
+        }),
+      };
 
     case 'addEvent':
       return { ...state, mix: touch({ ...state.mix, events: [...state.mix.events, action.event] }) };
@@ -278,6 +295,7 @@ export interface MortgageWorkspace {
     setRateDelta: (type: TrackType, delta: number) => void;
     setInflation: (value: number) => void;
     resetAssumptions: () => void;
+    setPrimeForecast: (forecast: PrimeForecast) => void;
     addPrepayment: (event: Omit<PrepaymentEvent, 'id' | 'kind'>) => void;
     addRefinance: (event: Omit<RefinanceEvent, 'id' | 'kind'>) => void;
     removeEvent: (id: string) => void;
@@ -307,7 +325,7 @@ export function useMortgageWorkspace(initialMix?: WorkspaceMix): MortgageWorkspa
   const baseResult = useMemo(
     () =>
       scenarioActive
-        ? computeMix({ ...state.mix, assumptions: { ...BASE_ASSUMPTIONS } })
+        ? computeMix({ ...state.mix, assumptions: withBaseScenario(state.mix.assumptions) })
         : result,
     [scenarioActive, state.mix, result]
   );
@@ -323,6 +341,7 @@ export function useMortgageWorkspace(initialMix?: WorkspaceMix): MortgageWorkspa
     setRateDelta: (trackType, delta) => dispatch({ type: 'setRateDelta', trackType, delta }),
     setInflation: (value) => dispatch({ type: 'setInflation', value }),
     resetAssumptions: () => dispatch({ type: 'resetAssumptions' }),
+    setPrimeForecast: (forecast) => dispatch({ type: 'setPrimeForecast', forecast }),
     addPrepayment: (event) => dispatch({ type: 'addEvent', event: { ...event, id: eventId(), kind: 'prepayment' } }),
     addRefinance: (event) => dispatch({ type: 'addEvent', event: { ...event, id: eventId(), kind: 'refinance' } }),
     removeEvent: (id) => dispatch({ type: 'removeEvent', id }),

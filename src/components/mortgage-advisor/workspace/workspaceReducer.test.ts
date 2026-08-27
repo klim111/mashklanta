@@ -262,4 +262,24 @@ describe('assumptions', () => {
     expect(reset.mix.assumptions.rateDeltas).toEqual({});
     expect(reset.mix.assumptions.annualInflation).toBe(2);
   });
+
+  it('keeps the prime forecast when the risk scenario is reset', () => {
+    const forecast = {
+      asOf: '2026-07',
+      source: 'boi' as const,
+      boiRate: 3.5,
+      spots: [
+        { years: 1, yieldPct: 3.2 },
+        { years: 10, yieldPct: 4.0 },
+      ],
+    };
+    const withCurve = run(stateWith([1_000_000]), { type: 'setPrimeForecast', forecast });
+    const reset = run(
+      withCurve,
+      { type: 'setRateDelta', trackType: 'prime', delta: 1 },
+      { type: 'resetAssumptions' }
+    );
+    expect(reset.mix.assumptions.primeForecast).toEqual(forecast);
+    expect(reset.mix.assumptions.rateDeltas).toEqual({});
+  });
 });

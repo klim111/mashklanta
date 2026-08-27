@@ -121,6 +121,7 @@ export function SigningStage({
             value={value.finalAverageRate}
             onChange={(next) => set('finalAverageRate', next)}
             suffix="%"
+            integer={false}
           />
         </div>
 

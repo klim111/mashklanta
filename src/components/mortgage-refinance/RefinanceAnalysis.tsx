@@ -36,6 +36,14 @@ import {
 import type { MortgageMix, MortgageTrack, MortgageCalculation, TrackCalculation } from '@/components/mortgage-advisor/types';
 import { TRACK_TYPES, DEFAULT_INTEREST_RATES } from '@/components/mortgage-advisor/types';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
+import { formatDuration } from '@/components/mortgage-advisor/engine';
+import {
+  PLAN_TERM_MONTHS_MAX,
+  PLAN_TERM_MONTHS_MIN,
+  clampTermMonths,
+  monthsToYears,
+  yearsToMonths,
+} from '@/lib/mortgage-plan';
 import { isRateVariable, isIndexLinked } from '@/components/mortgage-advisor/scenarioCalculations';
 import { MortgageMixBuilder } from '@/components/mortgage-advisor/MortgageMixBuilder';
 import {
@@ -335,7 +343,7 @@ function RefinanceTrackRow({
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
           <p className="text-[11px] text-slate-500 truncate">
-            {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {editable ? effectiveYears : track.years} שנים ·{' '}
+            {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {formatDuration(yearsToMonths(editable ? effectiveYears : track.years))} ·{' '}
             {formatPercentage(rate)}
           </p>
         </div>
@@ -394,12 +402,21 @@ function RefinanceTrackRow({
                     <Calendar className="h-3.5 w-3.5 text-violet-600" />
                     תקופת המסלול
                   </span>
-                  <span className="text-sm font-bold text-slate-800">{years} שנים</span>
+                  <span className="text-sm font-bold text-slate-800">
+                    {formatDuration(clampTermMonths(yearsToMonths(years)))}
+                  </span>
                 </div>
-                <Slider dir="ltr" value={[years]} onValueChange={([v]) => onYearsChange(v)} min={4} max={30} step={1} />
+                <Slider
+                  dir="ltr"
+                  value={[clampTermMonths(yearsToMonths(years))]}
+                  onValueChange={([v]) => onYearsChange(monthsToYears(v))}
+                  min={PLAN_TERM_MONTHS_MIN}
+                  max={PLAN_TERM_MONTHS_MAX}
+                  step={1}
+                />
                 <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
-                  <span>4 שנים</span>
-                  <span>30 שנים</span>
+                  <span>{PLAN_TERM_MONTHS_MIN} חודשים</span>
+                  <span>{PLAN_TERM_MONTHS_MAX} חודשים</span>
                 </div>
               </div>
             </div>

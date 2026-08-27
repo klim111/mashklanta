@@ -4,9 +4,11 @@ import {
   analysisFromPlanning,
   analyzeProfile,
   clampDealMortgage,
+  clampPlanYears,
   dealMaxMortgage,
   emptyPlanData,
   missingForStage,
+  monthsToYears,
   mortgageFromLtvPercent,
   mortgageFromProperty,
   parseStageData,
@@ -16,6 +18,7 @@ import {
   preApprovalDocuments,
   stageHints,
   stageIsComplete,
+  yearsToMonths,
 } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
@@ -42,6 +45,23 @@ function profile(): PlanData {
   };
   return data;
 }
+
+describe('סדר השלבים', () => {
+  it('בניית התמהיל באה אחרי האישור העקרוני ולפני מכרז הריביות', () => {
+    expect(PLAN_STAGES).toEqual(['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING']);
+  });
+});
+
+describe('תקופת המשכנתא בחודשים', () => {
+  it('חותכת לתחום 48–360 חודשים ושומרת כל חודש ביניים', () => {
+    expect(clampPlanYears(999)).toBe(30);
+    expect(clampPlanYears(2)).toBe(4);
+    expect(yearsToMonths(25)).toBe(300);
+    expect(monthsToYears(246)).toBe(20.5);
+    expect(clampPlanYears(20.5)).toBe(20.5);
+    expect(parseStageData('ANALYSIS', { years: 246 / 12 }).years).toBe(20.5);
+  });
+});
 
 describe('ניתוח הפרופיל הפיננסי', () => {
   it('סכום המשכנתא ואחוז המימון נגזרים משווי הנכס וההון העצמי', () => {
@@ -245,7 +265,7 @@ describe('ניקוי נתונים שהגיעו מבחוץ', () => {
     expect(parsed.income).toBeNull();
     expect(parsed.propertyValue).toBe(2_400_000);
     expect(parsed.dealType).toBeNull();
-    expect(parsed.years).toBe(40);
+    expect(parsed.years).toBe(30);
     expect(parsed.household).toBe('SINGLE');
   });
 

@@ -37,6 +37,14 @@ import {
 } from '@/lib/mortgage-affordability';
 import { migrateMortgagePlanningUserData, sumIndividualLoanPayments } from '@/lib/borrower-loans';
 import { INTEREST_RATES } from '@/lib/interest-rates';
+import {
+  PLAN_TERM_MONTHS_MAX,
+  PLAN_TERM_MONTHS_MIN,
+  clampPlanYears,
+  monthsToYears,
+  yearsToMonths,
+} from '@/lib/mortgage-plan';
+import { formatDuration } from '@/components/mortgage-advisor/engine';
 import { LoanManagementOffer } from '@/components/mortgage-planning/LoanManagementOffer';
 import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoansSection';
 
@@ -127,8 +135,8 @@ export function MortgagePlanningContent({
   // Whether to deduct insurance costs from disposable income when computing max monthly payment.
   // Default: include insurance (per product requirement). User can toggle this off in the results view.
   const [includeInsurance, setIncludeInsurance] = useState(true);
-  // User-overridden loan period (years) from the results-view slider. When null, the calculated
-  // results.maxLoanPeriod is used as the effective period.
+  // User-overridden loan period (years, from a 48–360 month slider). When null, the
+  // calculated results.maxLoanPeriod is used as the effective period.
   const [selectedLoanPeriod, setSelectedLoanPeriod] = useState<number | null>(null);
   // User-overridden loan amount, controlled by the LTV / loan-amount / monthly-payment sliders
   // in the results view. When null, the calculated results.maxLoanAmount is used.
@@ -1391,8 +1399,10 @@ export function MortgagePlanningContent({
       };
       const isCouple = userData.applicationType === 'couple';
 
-      // Effective loan period: user override from slider, else the bank-allowed maximum.
-      const effectiveLoanPeriod = selectedLoanPeriod ?? results.maxLoanPeriod;
+      // Effective loan period: user override from the months slider, else the bank-allowed maximum.
+      const effectiveLoanPeriod = clampPlanYears(selectedLoanPeriod ?? results.maxLoanPeriod);
+      const termMonths = yearsToMonths(effectiveLoanPeriod);
+      const termLabel = formatDuration(termMonths);
 
       // Effective loan amount: user override from any of the three sliders below,
       // else the calculated maximum. All other displayed values derive from this.
@@ -1419,7 +1429,7 @@ export function MortgagePlanningContent({
       const calcMonthlyPmt = (principal: number, annualRate: number, years: number) => {
         if (principal <= 0 || years <= 0) return 0;
         const r = annualRate / 12;
-        const n = years * 12;
+        const n = Math.round(years * 12);
         if (r === 0) return principal / n;
         return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
       };
@@ -1452,7 +1462,7 @@ export function MortgagePlanningContent({
       // Annuity factor at the current rate and period (used by the payment slider to map a chosen
       // monthly payment back to a loan amount).
       const monthlyInterestRate = results.interestRate / 100 / 12;
-      const numPaymentsCount = effectiveLoanPeriod * 12;
+      const numPaymentsCount = termMonths;
       const annuityFactor =
         monthlyInterestRate > 0 && numPaymentsCount > 0
           ? (1 - Math.pow(1 + monthlyInterestRate, -numPaymentsCount)) / monthlyInterestRate
@@ -1673,7 +1683,7 @@ export function MortgagePlanningContent({
                   )}
                 </AnimatePresence>
               </span>{' '}
-              ל-<span className="font-semibold">{effectiveLoanPeriod}</span> שנים
+              ל-<span className="font-semibold">{termLabel}</span>
             </span>
             <span className="relative group inline-block align-middle cursor-pointer">
               <span className="w-4 h-4 bg-gray-200 hover:bg-gray-300 rounded-full inline-flex items-center justify-center transition-colors duration-200 align-middle">
@@ -1802,13 +1812,13 @@ export function MortgagePlanningContent({
                     ₪{effectiveLoanAmount.toLocaleString()}
                   </p>
                   {(() => {
-                    const totalPaid = displayMonthlyPayment * 12 * effectiveLoanPeriod;
+                    const totalPaid = displayMonthlyPayment * termMonths;
                     const totalInterest = Math.max(0, totalPaid - effectiveLoanAmount);
                     return (
                       <div className="space-y-0.5 text-xs mb-2">
                         <div className="flex justify-between">
                           <span className="text-gray-600">
-                            לאורך {effectiveLoanPeriod} שנים ישולמו
+                            לאורך {termLabel} ישולמו
                           </span>
                           <span className="font-semibold text-gray-900">
                             ₪{Math.round(totalPaid).toLocaleString()}
@@ -2057,27 +2067,27 @@ export function MortgagePlanningContent({
                   <div className="md:w-1/4 md:flex-shrink-0 flex items-baseline gap-2">
                     <h3 className="text-lg font-bold text-gray-900">תקופת משכנתא:</h3>
                     <p className="text-xl font-bold text-orange-600">
-                      {effectiveLoanPeriod} שנים
+                      {termLabel}
                     </p>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div dir="ltr">
                       <Slider
                         dir="ltr"
-                        value={[effectiveLoanPeriod]}
-                        onValueChange={([v]) => setSelectedLoanPeriod(v)}
-                        min={5}
-                        max={30}
+                        value={[termMonths]}
+                        onValueChange={([v]) => setSelectedLoanPeriod(monthsToYears(v))}
+                        min={PLAN_TERM_MONTHS_MIN}
+                        max={PLAN_TERM_MONTHS_MAX}
                         step={1}
                       />
                       <div className="flex justify-between text-xs text-gray-500 mt-0.5" dir="ltr">
-                        <span>5</span>
-                        <span>30</span>
+                        <span>{PLAN_TERM_MONTHS_MIN}</span>
+                        <span>{PLAN_TERM_MONTHS_MAX}</span>
                       </div>
                     </div>
                     <p className="text-gray-600 text-xs mt-1">
                       התקופה המקסימלית שהבנק יאשר:{' '}
-                      <span className="font-semibold">{results.maxLoanPeriod} שנים</span>
+                      <span className="font-semibold">{formatDuration(yearsToMonths(results.maxLoanPeriod))}</span>
                       {isCouple ? ' (לפי גיל הלווה הצעיר)' : ' (80 פחות גילך)'}
                     </p>
                   </div>
@@ -2107,7 +2117,7 @@ export function MortgagePlanningContent({
                     displayMonthlyPayment -
                     effectiveTotalInsuranceMonthly;
                   const totalPaidOverPeriod =
-                    displayMonthlyPayment * 12 * effectiveLoanPeriod;
+                    displayMonthlyPayment * termMonths;
                   const totalInterestOverPeriod = Math.max(
                     0,
                     totalPaidOverPeriod - effectiveLoanAmount
@@ -2189,7 +2199,7 @@ export function MortgagePlanningContent({
                         <span className="text-gray-400" aria-hidden="true">|</span>
                         <span>
                           <span className="font-semibold">
-                            לאורך {effectiveLoanPeriod} שנים ישולמו:
+                            לאורך {termLabel} ישולמו:
                           </span>{' '}
                           ₪{Math.round(totalPaidOverPeriod).toLocaleString()}
                         </span>

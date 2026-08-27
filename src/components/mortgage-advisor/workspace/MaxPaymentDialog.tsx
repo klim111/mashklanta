@@ -24,6 +24,8 @@ import type { DealType } from '../types';
 import { planningPropertyType } from '../propertyContext';
 import { Calculator, Check, Users, User, Wallet } from 'lucide-react';
 import { formatShekel } from './primitives';
+import { formatDuration } from '../engine';
+import { yearsToMonths } from '@/lib/mortgage-plan';
 
 interface MaxPaymentDialogProps {
   open: boolean;
@@ -172,7 +174,7 @@ export function MaxPaymentDialog({
               <ResultCell label="הכנסה פנויה" value={formatShekel(result.disposableIncome)} />
               <ResultCell label="החזרי הלוואות" value={formatShekel(loanPayments)} />
               <ResultCell label="משכנתא מקסימלית" value={formatShekel(result.maxLoanAmount)} />
-              <ResultCell label="תקופה מקסימלית" value={`${result.maxLoanPeriod} שנים`} />
+              <ResultCell label="תקופה מקסימלית" value={formatDuration(yearsToMonths(result.maxLoanPeriod))} />
             </div>
             {result.includesInsurance && result.totalInsuranceMonthly > 0 && (
               <p className="text-[10px] text-blue-800">
@@ -222,13 +224,15 @@ function BorrowerFields({
         <div className="space-y-1">
           <Label className="text-xs">גיל</Label>
           <Input
-            className="h-9"
-            type="number"
+            dir="ltr"
+            className="h-9 text-right"
+            type="text"
+            inputMode="numeric"
             min={18}
             max={90}
             placeholder="לדוגמה 35"
             value={form.age}
-            onChange={(e) => onChange({ ...form, age: e.target.value })}
+            onChange={(e) => onChange({ ...form, age: e.target.value.replace(/[^\d]/g, '') })}
           />
         </div>
         <div className="space-y-1">

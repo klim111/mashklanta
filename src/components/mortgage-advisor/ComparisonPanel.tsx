@@ -33,6 +33,14 @@ import {
 import type { MortgageMix, MortgageCalculation } from './types';
 import { TRACK_TYPES } from './types';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
+import { formatDuration } from './engine';
+import {
+  PLAN_TERM_MONTHS_MAX,
+  PLAN_TERM_MONTHS_MIN,
+  clampTermMonths,
+  monthsToYears,
+  yearsToMonths,
+} from '@/lib/mortgage-plan';
 
 interface ComparisonPanelProps {
   mixes: MortgageMix[];
@@ -199,7 +207,7 @@ function MixRow({
           <Stat label="סך ריבית" value={formatCurrency(calc.summary.totalInterest)} best={best.interest} />
           <Stat label="סך תשלום" value={formatCurrency(calc.summary.totalPaid)} best={best.totalPaid} />
           <Stat label="ריבית ממוצעת" value={formatPercentage(calc.summary.averageRate)} best={best.rate} />
-          <Stat label="תקופה" value={`${calc.summary.weightedAverageYears.toFixed(1)} שנים`} />
+          <Stat label="תקופה" value={formatDuration(clampTermMonths(yearsToMonths(calc.summary.weightedAverageYears)))} />
         </div>
       </button>
 
@@ -241,14 +249,16 @@ function MixRow({
                         <Calendar className="h-3.5 w-3.5 text-violet-600" />
                         תקופה
                       </span>
-                      <span className="text-xs font-bold text-slate-800">{track.years} שנים</span>
+                      <span className="text-xs font-bold text-slate-800">
+                        {formatDuration(clampTermMonths(yearsToMonths(track.years)))}
+                      </span>
                     </div>
                     <Slider
                       dir="ltr"
-                      value={[track.years]}
-                      onValueChange={([v]) => onTrackChange(track.id, { years: v })}
-                      min={4}
-                      max={30}
+                      value={[clampTermMonths(yearsToMonths(track.years))]}
+                      onValueChange={([v]) => onTrackChange(track.id, { years: monthsToYears(v) })}
+                      min={PLAN_TERM_MONTHS_MIN}
+                      max={PLAN_TERM_MONTHS_MAX}
                       step={1}
                     />
                   </div>

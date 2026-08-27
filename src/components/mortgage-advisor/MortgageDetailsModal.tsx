@@ -43,6 +43,8 @@ import {
   generatePaymentBreakdownChart
 } from './mortgageCalculations';
 import { TRACK_TYPES, formatTrackTypeWithAmortization } from './types';
+import { formatDuration } from './engine';
+import { yearsToMonths } from '@/lib/mortgage-plan';
 import { useCPI } from '@/hooks/useCPI';
 
 interface MortgageDetailsModalProps {
@@ -247,10 +249,10 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                     <div>
                       <span className="text-sm text-gray-600">תקופה:</span>
                       <div className="text-lg font-semibold">
-                        {trackCalc.track.years} שנים
+                        {formatDuration(yearsToMonths(trackCalc.track.years))}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {trackCalc.track.years * 12} תשלומים
+                        {yearsToMonths(trackCalc.track.years)} תשלומים
                       </div>
                     </div>
                     
@@ -313,7 +315,7 @@ export function MortgageDetailsModal({ mix, isOpen, onClose }: MortgageDetailsMo
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-orange-600">
-                        {trackCalc.track.years} שנים
+                        {formatDuration(yearsToMonths(trackCalc.track.years))}
                       </div>
                       <div className="text-xs text-gray-600">תקופה</div>
                     </div>

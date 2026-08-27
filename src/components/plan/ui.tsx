@@ -4,6 +4,7 @@ import { useId } from 'react';
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Info } from 'lucide-react';
+import { NumericInput } from '@/components/ui/numeric-input';
 
 export function formatShekel(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
@@ -66,6 +67,7 @@ export function NumberField({
   suffix,
   placeholder,
   max,
+  integer = true,
 }: {
   label: string;
   hint?: string;
@@ -74,27 +76,22 @@ export function NumberField({
   suffix?: string;
   placeholder?: string;
   max?: number;
+  /** ברירת מחדל: סכום שלם. ריבית ואחוזים צריכים נקודה עשרונית */
+  integer?: boolean;
 }) {
   const id = useId();
-  const display = value === null ? '' : value.toLocaleString('he-IL');
 
   return (
     <Field label={label} hint={hint} htmlFor={id}>
       <div className="relative">
-        <input
+        <NumericInput
           id={id}
-          inputMode="numeric"
-          dir="ltr"
-          className={`${fieldShell} text-right ${suffix ? 'pl-10' : ''}`}
-          value={display}
+          integer={integer}
+          max={max}
+          value={value}
+          onChange={onChange}
           placeholder={placeholder}
-          onChange={(event) => {
-            const digits = event.target.value.replace(/[^\d.]/g, '');
-            if (digits === '') return onChange(null);
-            const parsed = Number(digits);
-            if (!Number.isFinite(parsed)) return;
-            onChange(max !== undefined ? Math.min(parsed, max) : parsed);
-          }}
+          className={`${fieldShell} ${suffix ? 'pl-10' : ''}`}
         />
         {suffix && (
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">

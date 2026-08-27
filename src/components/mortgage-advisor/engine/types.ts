@@ -1,4 +1,5 @@
 import type { DealType, MortgageBank, MortgageTrack } from '../types';
+import type { PrimeForecast } from '@/lib/prime-forward-curve';
 
 export type TrackType = MortgageTrack['type'];
 export type AmortizationType = NonNullable<MortgageTrack['amortizationType']>;
@@ -45,6 +46,11 @@ export interface Assumptions {
   rateDeltas: Partial<Record<TrackType, number>>;
   /** אינפלציה שנתית להצמדת מסלולים צמודי מדד */
   annualInflation: number;
+  /**
+   * עקום האפס השקלי של בנק ישראל. כשהוא קיים, מסלול פריים מתומחר חודש-חודש
+   * לפי הפורוורדים, ומסלול משתנה לא צמוד מתעדכן בתחנות לפי הפורוורד לתקופה.
+   */
+  primeForecast?: PrimeForecast;
 }
 
 /**
@@ -55,6 +61,14 @@ export const BASE_ASSUMPTIONS: Assumptions = {
   rateDeltas: {},
   annualInflation: 2,
 };
+
+/** שומר את צפי הפריים כשמאפסים תרחיש — זה בסיס השוק, לא תרחיש */
+export function withBaseScenario(assumptions: Assumptions): Assumptions {
+  return {
+    ...BASE_ASSUMPTIONS,
+    primeForecast: assumptions.primeForecast,
+  };
+}
 
 export const DEFAULT_ASSUMPTIONS = BASE_ASSUMPTIONS;
 
@@ -94,6 +108,8 @@ export interface ScheduleRow {
   date: string;
   /** הריבית השנתית בפועל באותו חודש (אחרי תרחיש / איפוס / מחזור) */
   annualRate: number;
+  /** תחנת יציאה במסלול משתנה לא צמוד — פטור מעמלת פירעון מוקדם */
+  isRateStation?: boolean;
   /** יתרת החוב בתחילת החודש, כולל ריבית שנצברה ועוד לא שולמה */
   balanceStart: number;
   payment: number;
@@ -154,6 +170,8 @@ export interface MixScheduleRow {
   cumulativePaid: number;
   /** ריבית משוקללת לפי יתרות באותו חודש */
   weightedRate: number;
+  /** יש תחנת יציאה במסלול משתנה לא צמוד בחודש הזה */
+  isRateStation?: boolean;
 }
 
 export interface MixSummary {

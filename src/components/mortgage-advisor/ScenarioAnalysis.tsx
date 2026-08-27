@@ -37,6 +37,7 @@ import {
 import type { MortgageMix, MortgageTrack } from './types';
 import { TRACK_TYPES } from './types';
 import { formatCurrency, formatPercentage } from './mortgageCalculations';
+import { formatDuration } from './engine';
 import {
   getTrackScenarioKind,
   isRateVariable,
@@ -351,7 +352,7 @@ function TrackRow({
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
           <p className="text-[11px] text-slate-500 truncate">
-            {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {track.years} שנים
+            {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {formatDuration(Math.round(track.years * 12))}
             {rateVar ? ` · ${formatPercentage(effectiveRateForTrack(track, scenario))}` : ''}
           </p>
         </div>

@@ -36,6 +36,8 @@ import type {
   PreApprovalData,
   UniformBasket,
 } from '@/lib/mortgage-plan';
+import { formatDuration } from '@/components/mortgage-advisor/engine';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { DEAL_TYPES, MAX_LTV_PERCENT, TRACK_TYPES } from '@/components/mortgage-advisor/types';
 import { computeMix, createTrack, createWorkspaceMix } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -418,7 +420,10 @@ export function PreApprovalStage({
               value={formatShekel(profile.equity)}
               missing={missing.has('equity')}
             />
-            <Row label="תקופה מבוקשת" value={`${profile.years} שנים`} />
+            <Row
+              label="תקופה מבוקשת"
+              value={formatDuration(Math.round(profile.years * 12))}
+            />
           </div>
 
           <div className="grid content-start gap-3">
@@ -659,20 +664,15 @@ export function PreApprovalStage({
                               </span>
                             </span>
                             <div className="relative">
-                              <input
-                                dir="ltr"
-                                inputMode="decimal"
+                              <NumericInput
                                 placeholder={String(basketRate(null, track))}
                                 value={
                                   basket.rates[track.type] === undefined
-                                    ? ''
-                                    : String(basket.rates[track.type])
+                                    ? null
+                                    : basket.rates[track.type]
                                 }
-                                onChange={(event) => {
-                                  const clean = event.target.value.replace(/[^\d.]/g, '');
-                                  setRate(uniform, track.type, clean === '' ? null : Number(clean));
-                                }}
-                                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 pl-7 text-right text-sm font-semibold text-slate-900 outline-none transition-all focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
+                                onChange={(rate) => setRate(uniform, track.type, rate)}
+                                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 pl-7 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10"
                               />
                               <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
                                 %

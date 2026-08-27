@@ -10,6 +10,7 @@ import {
 } from './factory';
 import { optimizeMix } from './optimize';
 import type { WorkspaceMix } from './types';
+import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
 
 function singleTrackMix(overrides: Partial<WorkspaceMix> = {}): WorkspaceMix {
   return createWorkspaceMix({
@@ -199,6 +200,106 @@ describe('variable rate reset', () => {
       })
     );
     expect(result.tracks[0].schedule[0].annualRate).toBeCloseTo(6, 6);
+  });
+
+    it('prices unlinked variable tracks off period forwards at each exit station', () => {
+      const forecast = fallbackPrimeForecast();
+      const withCurve = computeMix(
+        singleTrackMix({
+          tracks: [
+            createTrack({
+              id: 'a',
+              type: 'variable_unlinked',
+              amount: 500_000,
+              interestRate: 4.6,
+              years: 20,
+              variablePeriod: 5,
+            }),
+          ],
+          assumptions: { rateDeltas: {}, annualInflation: 0, primeForecast: forecast },
+        })
+      );
+      const flat = computeMix(
+        singleTrackMix({
+          tracks: [
+            createTrack({
+              id: 'a',
+              type: 'variable_unlinked',
+              amount: 500_000,
+              interestRate: 4.6,
+              years: 20,
+              variablePeriod: 5,
+            }),
+          ],
+          assumptions: { rateDeltas: {}, annualInflation: 0 },
+        })
+      );
+
+      expect(withCurve.tracks[0].schedule[0].annualRate).toBeCloseTo(4.6, 6);
+      expect(withCurve.tracks[0].schedule[59].annualRate).toBeCloseTo(4.6, 6);
+      expect(withCurve.tracks[0].schedule[60].isRateStation).toBe(true);
+      expect(withCurve.tracks[0].schedule[0].isRateStation).toBeFalsy();
+      expect(withCurve.tracks[0].schedule[60].annualRate).not.toBeCloseTo(4.6, 1);
+      expect(withCurve.tracks[0].schedule[61].annualRate).toBeCloseTo(
+        withCurve.tracks[0].schedule[60].annualRate,
+        8
+      );
+      expect(withCurve.summary.totalInterest).not.toBeCloseTo(flat.summary.totalInterest, 0);
+    });
+
+    it('uses a 2-year station calendar when the variable period is 2 years', () => {
+      const forecast = fallbackPrimeForecast();
+      const result = computeMix(
+        singleTrackMix({
+          tracks: [
+            createTrack({
+              id: 'a',
+              type: 'variable_unlinked',
+              amount: 400_000,
+              interestRate: 4.5,
+              years: 10,
+              variablePeriod: 2,
+            }),
+          ],
+          assumptions: { rateDeltas: {}, annualInflation: 0, primeForecast: forecast },
+        })
+      );
+      expect(result.tracks[0].schedule[23].isRateStation).toBeFalsy();
+      expect(result.tracks[0].schedule[24].isRateStation).toBe(true);
+      expect(result.tracks[0].schedule[24].annualRate).not.toBeCloseTo(
+        result.tracks[0].schedule[23].annualRate,
+        2
+      );
+    });
+
+  it('prices each prime payment off the government zero curve', () => {
+    const forecast = {
+      asOf: '2026-07',
+      source: 'fallback' as const,
+      boiRate: 3.5,
+      spots: [
+        { years: 1, yieldPct: 3.2 },
+        { years: 10, yieldPct: 4.0 },
+        { years: 15, yieldPct: 4.3 },
+      ],
+    };
+    const withCurve = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'prime', amount: 500_000, interestRate: 4.5, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 0, primeForecast: forecast },
+      })
+    );
+    const flat = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'prime', amount: 500_000, interestRate: 4.5, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 0 },
+      })
+    );
+
+    expect(withCurve.tracks[0].schedule[0].annualRate).toBeCloseTo(4.5, 6);
+    expect(withCurve.tracks[0].schedule[119].annualRate).not.toBeCloseTo(4.5, 1);
+    expect(withCurve.tracks[0].schedule).toHaveLength(240);
+    expect(withCurve.summary.totalInterest).not.toBeCloseTo(flat.summary.totalInterest, 0);
   });
 });
 

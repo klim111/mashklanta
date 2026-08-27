@@ -9,6 +9,7 @@ import { formatPercentage } from '../mortgageCalculations';
 import { formatDuration, remainingAmount } from '../engine';
 import type { MixSummary, WorkspaceMix } from '../engine';
 import { CompositionBar, formatShekel, trackColor } from './primitives';
+import { CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
 
 interface MixRowProps {
   mix: WorkspaceMix;
@@ -196,7 +197,7 @@ export function MixRow({
             value={
               summary.monthlyPayment > 0.01 ? formatShekel(summary.monthlyPayment) : 'אין החזר שוטף'
             }
-            hint={paymentHint(summary)}
+            hint={paymentHint(summary, mix)}
             emphasized
           />
           <RowStat
@@ -250,13 +251,16 @@ export function MixRow({
  * ההחזר החודשי אינו מספר אחד כשיש בתמהיל קרן שווה, תקופות שונות או גרייס.
  * ההערה מוסיפה את ההחזר האחרון ואת תשלום הבלון, כדי שהתמונה תהיה מלאה.
  */
-function paymentHint(summary: MixSummary): string | undefined {
+function paymentHint(summary: MixSummary, mix: WorkspaceMix): string | undefined {
   const parts: string[] = [];
   if (summary.lastMonthlyPayment > 0.01 && summary.monthlyPayment - summary.lastMonthlyPayment > 1) {
     parts.push(`יורד ל-${formatShekel(summary.lastMonthlyPayment)}`);
   }
   if (summary.balloonPayment > 1) {
     parts.push(`בלון ${formatShekel(summary.balloonPayment)} בסוף`);
+  }
+  if (mix.tracks.some((track) => usesForwardPricedRate(track.type))) {
+    parts.push(CURRENT_RATE_PAYMENT_NOTE);
   }
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }

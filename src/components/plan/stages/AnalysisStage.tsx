@@ -23,6 +23,7 @@ import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { DEAL_TYPES, MAX_LTV_PERCENT } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
 import { DEAL_TYPE_KEYS } from '@/components/mortgage-advisor/propertyContext';
+import { TermMonthsSlider } from '@/components/mortgage-advisor/workspace/primitives';
 import { planToolHref } from '@/data/platform/planStages';
 import { defaultMortgagePlanningUserData } from '@/lib/mortgage-affordability';
 import { startConsumerLoansImport } from '@/lib/consumer-loans-import';
@@ -216,7 +217,19 @@ export function AnalysisStage({
                   label="הון עצמי פנוי לעסקה"
                   hint="חיסכון, מתנה מההורים, תמורה ממכירת נכס — כל מה שייכנס לעסקה מחוץ למשכנתא."
                   value={profile.equity}
-                  onChange={(equity) => patch({ equity })}
+                  onChange={(equity) =>
+                    patch({
+                      equity,
+                      mortgageAmount:
+                        (profile.propertyValue ?? 0) > 0
+                          ? mortgageFromProperty(
+                              profile.propertyValue ?? 0,
+                              equity,
+                              profile.dealType
+                            )
+                          : profile.mortgageAmount,
+                    })
+                  }
                   suffix="₪"
                   placeholder="500,000"
                 />
@@ -777,8 +790,10 @@ function PropertyPanel({
   const maxLtv = dealMaxLtv(dealType);
   const maxMortgage = dealMaxMortgage(propertyValue, dealType);
   const mortgage = profile.mortgageAmount;
-  const ltvValue = propertyValue > 0 ? ltvPercentOf(propertyValue, mortgage ?? 0) : null;
-  const leftoverEquity = propertyValue > 0 ? Math.max(0, propertyValue - (mortgage ?? 0)) : 0;
+  const defaultMortgage = mortgageFromProperty(propertyValue, profile.equity, dealType);
+  const effectiveMortgage = mortgage ?? defaultMortgage;
+  const ltvValue = propertyValue > 0 ? ltvPercentOf(propertyValue, effectiveMortgage ?? 0) : null;
+  const leftoverEquity = propertyValue > 0 ? Math.max(0, propertyValue - (effectiveMortgage ?? 0)) : 0;
 
   const setPropertyValue = (value: number | null) => {
     const nextPrice = value ?? 0;
@@ -792,7 +807,9 @@ function PropertyPanel({
     patch({
       dealType: next,
       mortgageAmount:
-        propertyValue > 0 ? dealMaxMortgage(propertyValue, next) : profile.mortgageAmount,
+        propertyValue > 0
+          ? mortgageFromProperty(propertyValue, profile.equity, next)
+          : profile.mortgageAmount,
     });
   };
 
@@ -870,45 +887,36 @@ function PropertyPanel({
             onChange={setLtv}
             suffix="%"
             max={maxLtv}
+            integer={false}
             placeholder={String(maxLtv)}
           />
           <NumberField
             label="סכום המשכנתא"
-            hint={`נחתך אוטומטית לתקרה של ${formatShekel(maxMortgage)} לפי סוג העסקה.`}
+            hint="ברירת המחדל היא מחיר הנכס פחות ההון העצמי שהוזן בפרופיל, בתוך תקרת סוג העסקה."
             value={mortgage}
             onChange={setMortgage}
             suffix="₪"
             max={maxMortgage > 0 ? maxMortgage : undefined}
-            placeholder={maxMortgage ? maxMortgage.toLocaleString('he-IL') : '1,500,000'}
+            placeholder={
+              defaultMortgage
+                ? defaultMortgage.toLocaleString('he-IL')
+                : maxMortgage
+                  ? maxMortgage.toLocaleString('he-IL')
+                  : '1,500,000'
+            }
           />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <span className="mb-1.5 block text-xs font-bold text-slate-600">
-              תקופת המשכנתא המבוקשת
-            </span>
-            <div className="flex gap-2">
-              {[15, 20, 25, 30].map((years) => {
-                const selected = profile.years === years;
-                return (
-                  <button
-                    key={years}
-                    type="button"
-                    onClick={() => patch({ years })}
-                    className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-bold transition-all ${
-                      selected
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
-                    }`}
-                  >
-                    {years}
-                  </button>
-                );
-              })}
-            </div>
+            <TermMonthsSlider
+              label="תקופת המשכנתא המבוקשת"
+              years={profile.years}
+              onChange={(years) => patch({ years })}
+            />
             <p className="mt-1.5 text-[11px] text-slate-400">
-              להערכת ההחזר בלבד — בתמהיל עצמו לכל מסלול תקופה משלו.
+              להערכת ההחזר בלבד — בתמהיל עצמו לכל מסלול תקופה משלו. אפשר לבחור כל מספר חודשים בין 48
+              ל-360.
             </p>
           </div>
 

@@ -1,5 +1,6 @@
 import type { MortgageTrack } from '../types';
 import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
+import { expectedMarketPrimePath, isVariableRateStation, primeRateAtMonth, variableUnlinkedRateAtMonth } from '@/lib/prime-forward-curve';
 import type {
   AmortizationType,
   Assumptions,
@@ -46,14 +47,34 @@ function repricesContinuously(type: TrackType): boolean {
  *
  * במסלול משתנה עם תחנת יציאה (מל"צ / מ"צ) הריבית מתעדכנת רק בתחנה עצמה, ולכן
  * שינוי הריבית בתרחיש נכנס לתוקף מהתחנה הראשונה והלאה ולא באופן מיידי.
+ * במל"צ, כשיש עקום תשואות, כל תחנה מתומחרת לפי הפורוורד לאותה תקופה.
  */
 export function rateForMonth(
   baseRate: number,
   type: TrackType,
   variablePeriod: number | undefined,
-  month: number,
-  assumptions: Assumptions
+  monthWithinTerm: number,
+  assumptions: Assumptions,
+  primePath?: number[],
+  calendarMonth?: number
 ): number {
+  const lookupMonth = calendarMonth ?? monthWithinTerm;
+
+  if (type === 'prime' && primePath && primePath.length > 0) {
+    return primeRateAtMonth(baseRate, lookupMonth, primePath, assumptions.rateDeltas.prime ?? 0);
+  }
+
+  if (type === 'variable_unlinked' && assumptions.primeForecast) {
+    return variableUnlinkedRateAtMonth(
+      baseRate,
+      lookupMonth,
+      monthWithinTerm,
+      variablePeriod,
+      assumptions.primeForecast,
+      assumptions.rateDeltas.variable_unlinked ?? 0
+    );
+  }
+
   if (!isRateVariable(type)) return Math.max(MIN_RATE, baseRate);
 
   const delta = assumptions.rateDeltas[type] ?? 0;
@@ -63,7 +84,7 @@ export function rateForMonth(
 
   const periodYears = variablePeriod && variablePeriod > 0 ? variablePeriod : 5;
   const firstResetMonth = periodYears * 12 + 1;
-  return month < firstResetMonth ? Math.max(MIN_RATE, baseRate) : Math.max(MIN_RATE, baseRate + delta);
+  return monthWithinTerm < firstResetMonth ? Math.max(MIN_RATE, baseRate) : Math.max(MIN_RATE, baseRate + delta);
 }
 
 function addMonths(iso: string, months: number): string {
@@ -152,6 +173,9 @@ export function simulateTrack({
 
   const monthlyInflation = assumptions.annualInflation / 100 / 12;
   const hardLimit = stopAtMonth && stopAtMonth > 0 ? stopAtMonth : 12 * 40 + 12;
+  const primePath = assumptions.primeForecast
+    ? expectedMarketPrimePath(assumptions.primeForecast.spots, assumptions.primeForecast.boiRate)
+    : undefined;
 
   for (let month = 1; month <= hardLimit && balance > 0.01 && remainingMonths > 0; month++) {
     const refinance = refinances.get(month);
@@ -181,7 +205,15 @@ export function simulateTrack({
     totalIndexation += indexation;
 
     const monthWithinTerm = month - termAnchorMonth + 1;
-    const annualRate = rateForMonth(baseRate, currentType, variablePeriod, monthWithinTerm, assumptions);
+    const annualRate = rateForMonth(
+      baseRate,
+      currentType,
+      variablePeriod,
+      monthWithinTerm,
+      assumptions,
+      currentType === 'prime' ? primePath : undefined,
+      month
+    );
     if (Math.abs(annualRate - lastRate) > 1e-9) {
       paymentDirty = true;
       lastRate = annualRate;
@@ -283,6 +315,8 @@ export function simulateTrack({
       month,
       date: addMonths(startDate, month - 1),
       annualRate,
+      isRateStation:
+        currentType === 'variable_unlinked' && isVariableRateStation(monthWithinTerm, variablePeriod),
       balanceStart,
       payment: actualPayment,
       interest,

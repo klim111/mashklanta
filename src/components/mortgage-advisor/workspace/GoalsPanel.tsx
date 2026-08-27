@@ -13,7 +13,7 @@ import {
   formatDuration,
 } from '../engine';
 import type { MixResult, OptimizationConstraints, OptimizationGoal, OptimizationOutcome } from '../engine';
-import { SliderField, formatShekel } from './primitives';
+import { SliderField, TermMonthsSlider, formatShekel } from './primitives';
 
 const GOAL_ORDER: OptimizationGoal[] = [
   'lower_monthly',
@@ -75,12 +75,11 @@ export function GoalsPanel({
               onValueChange={(value) => onConstraintsChange({ maxMonthlyPayment: value > 0 ? value : undefined })}
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">תקופה מקסימלית (שנים)</Label>
-            <FormattedNumberValueInput
-              className="h-9"
-              value={constraints.maxYears ?? 30}
-              onValueChange={(value) => onConstraintsChange({ maxYears: Math.min(40, Math.max(4, value)) })}
+          <div className="space-y-1 sm:col-span-2">
+            <TermMonthsSlider
+              label="תקופה מקסימלית"
+              years={constraints.maxYears ?? 30}
+              onChange={(years) => onConstraintsChange({ maxYears: years })}
             />
           </div>
         </div>

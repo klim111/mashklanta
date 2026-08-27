@@ -5,6 +5,7 @@ import { Crown, Gavel, Plus, Trash2, TrendingDown } from 'lucide-react';
 import { PLAN_BANKS, UNIFORM_BASKETS, bestBasket, uniformBasket, winningOffer } from '@/lib/mortgage-plan';
 import type { AuctionData, BankOffer, PlanData } from '@/lib/mortgage-plan';
 import { EmptyHint, Metric, Panel, formatPercent, formatShekel } from '../ui';
+import { NumericInput } from '@/components/ui/numeric-input';
 
 function newOffer(bank: string, round: number): BankOffer {
   return {
@@ -203,57 +204,32 @@ export function AuctionStage({
                         <span className="mb-1 block text-[11px] font-bold text-slate-500">
                           החזר חודשי
                         </span>
-                        <input
-                          dir="ltr"
-                          inputMode="numeric"
-                          className={`${cellInput} text-right`}
-                          value={
-                            offer.monthlyPayment === null
-                              ? ''
-                              : offer.monthlyPayment.toLocaleString('he-IL')
-                          }
-                          onChange={(event) => {
-                            const digits = event.target.value.replace(/[^\d]/g, '');
-                            updateOffer(offer.id, {
-                              monthlyPayment: digits === '' ? null : Number(digits),
-                            });
-                          }}
+                        <NumericInput
+                          integer
+                          className={cellInput}
+                          value={offer.monthlyPayment}
+                          onChange={(monthlyPayment) => updateOffer(offer.id, { monthlyPayment })}
                         />
                       </label>
                       <label className="block">
                         <span className="mb-1 block text-[11px] font-bold text-slate-500">
                           ריבית ממוצעת משוקללת
                         </span>
-                        <input
-                          dir="ltr"
-                          inputMode="decimal"
-                          className={`${cellInput} text-right`}
-                          value={offer.averageRate === null ? '' : String(offer.averageRate)}
-                          onChange={(event) => {
-                            const clean = event.target.value.replace(/[^\d.]/g, '');
-                            updateOffer(offer.id, {
-                              averageRate: clean === '' ? null : Number(clean),
-                            });
-                          }}
+                        <NumericInput
+                          className={cellInput}
+                          value={offer.averageRate}
+                          onChange={(averageRate) => updateOffer(offer.id, { averageRate })}
                         />
                       </label>
                       <label className="block">
                         <span className="mb-1 block text-[11px] font-bold text-slate-500">
                           סך התשלומים לאורך התקופה
                         </span>
-                        <input
-                          dir="ltr"
-                          inputMode="numeric"
-                          className={`${cellInput} text-right`}
-                          value={
-                            offer.totalPaid === null ? '' : offer.totalPaid.toLocaleString('he-IL')
-                          }
-                          onChange={(event) => {
-                            const digits = event.target.value.replace(/[^\d]/g, '');
-                            updateOffer(offer.id, {
-                              totalPaid: digits === '' ? null : Number(digits),
-                            });
-                          }}
+                        <NumericInput
+                          integer
+                          className={cellInput}
+                          value={offer.totalPaid}
+                          onChange={(totalPaid) => updateOffer(offer.id, { totalPaid })}
                         />
                       </label>
                     </div>

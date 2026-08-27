@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit, Check, X, Copy, Calculator, TrendingUp, PieChart } from 'lucide-react';
 import type { MortgageMix } from './types';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
+import { formatDuration } from './engine';
+import { yearsToMonths } from '@/lib/mortgage-plan';
 import { TRACK_TYPES, formatTrackTypeWithAmortization } from './types';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
@@ -376,7 +378,7 @@ export function MortgageMixCard({
           
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">תקופה ממוצעת:</span>
-            <span className="font-medium">{summary.weightedAverageYears.toFixed(1)} שנים</span>
+            <span className="font-medium">{formatDuration(yearsToMonths(summary.weightedAverageYears))}</span>
           </div>
         </div>
 

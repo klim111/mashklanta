@@ -1,11 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { formatCurrency } from '../mortgageCalculations';
 import type { TrackType } from '../engine';
+import {
+  PLAN_TERM_MONTHS_MAX,
+  PLAN_TERM_MONTHS_MIN,
+  clampTermMonths,
+  monthsToYears,
+  yearsToMonths,
+} from '@/lib/mortgage-plan';
+import { formatDuration } from '../engine';
 
 export const TRACK_COLORS: Record<string, string> = {
   fixed_unlinked: '#2563eb',
@@ -151,6 +159,35 @@ export function SliderField({
   );
 }
 
+/** סליידר תקופה רציף בחודשים — מ-4 שנים עד 30, כל חודש ביניים */
+export function TermMonthsSlider({
+  years,
+  onChange,
+  label = 'תקופה',
+  icon,
+}: {
+  years: number;
+  onChange: (years: number) => void;
+  label?: string;
+  icon?: React.ReactNode;
+}) {
+  const months = clampTermMonths(yearsToMonths(years));
+  return (
+    <SliderField
+      label={label}
+      icon={icon}
+      value={months}
+      onChange={(next) => onChange(monthsToYears(next))}
+      min={PLAN_TERM_MONTHS_MIN}
+      max={PLAN_TERM_MONTHS_MAX}
+      step={1}
+      display={formatDuration(months)}
+      minLabel={`${PLAN_TERM_MONTHS_MIN} חודשים`}
+      maxLabel={`${PLAN_TERM_MONTHS_MAX} חודשים`}
+    />
+  );
+}
+
 /**
  * הסכום במסלול בשני תת-שדות: שקלים ואחוז מסכום המשכנתא. הזנה באחד מעדכנת את
  * השני, כך שהיועץ יכול לעבוד בשפה שנוחה לו באותו רגע.
@@ -180,19 +217,14 @@ export function AmountAndPercent({
         <p className="text-[10px] text-slate-400">סכום (₪)</p>
       </div>
       <div className="space-y-0.5">
-        <Input
-          className="h-9"
-          type="number"
-          step="0.5"
-          min={0}
-          max={100}
-          disabled={disabled}
+        <NumericInput
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
           value={Number(percent.toFixed(1))}
-          onChange={(e) => {
-            const next = parseFloat(e.target.value);
-            if (!Number.isFinite(next)) return;
+          onChange={(next) => {
+            if (next === null) return;
             onChange((Math.min(100, Math.max(0, next)) / 100) * totalAmount);
           }}
+          disabled={disabled}
         />
         <p className="text-[10px] text-slate-400">אחוז מהמשכנתא (%)</p>
       </div>

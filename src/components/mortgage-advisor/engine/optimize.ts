@@ -1,5 +1,6 @@
 import { isIndexLinked } from '../scenarioCalculations';
 import { computeMix } from './mix';
+import { formatDuration } from './factory';
 import type {
   MixSummary,
   OptimizationConstraints,
@@ -30,7 +31,9 @@ const DEFAULT_MIN_YEARS = 4;
 function clampYears(years: number, c: OptimizationConstraints): number {
   const min = c.minYears ?? DEFAULT_MIN_YEARS;
   const max = c.maxYears ?? DEFAULT_MAX_YEARS;
-  return Math.min(max, Math.max(min, Math.round(years)));
+  const months = Math.round(years * 12);
+  const clamped = Math.min(Math.round(max * 12), Math.max(Math.round(min * 12), months));
+  return clamped / 12;
 }
 
 function withYears(mix: WorkspaceMix, yearsById: Map<string, number>): WorkspaceMix {
@@ -123,7 +126,9 @@ function describeChanges(before: WorkspaceMix, after: WorkspaceMix): string[] {
     const original = before.tracks.find((t) => t.id === track.id);
     if (!original || original.years === track.years) return;
     const direction = track.years > original.years ? 'הוארך' : 'קוצר';
-    changes.push(`${track.name}: ${direction} מ-${original.years} ל-${track.years} שנים`);
+    changes.push(
+      `${track.name}: ${direction} מ-${formatDuration(Math.round(original.years * 12))} ל-${formatDuration(Math.round(track.years * 12))}`
+    );
   });
   return changes;
 }

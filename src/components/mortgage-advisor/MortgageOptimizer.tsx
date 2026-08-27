@@ -16,6 +16,14 @@ import { DEFAULT_INTEREST_RATES } from './types';
 import { calculateMortgageMix, formatCurrency, formatPercentage } from './mortgageCalculations';
 import { MortgageMixCard } from './MortgageMixCard';
 import { ComparisonPanel } from './ComparisonPanel';
+import { formatDuration } from './engine';
+import {
+  PLAN_TERM_MONTHS_MAX,
+  PLAN_TERM_MONTHS_MIN,
+  clampTermMonths,
+  monthsToYears,
+  yearsToMonths,
+} from '@/lib/mortgage-plan';
 
 interface OptimizerInputs {
   totalAmount: number;
@@ -278,21 +286,27 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
             {/* תקופת החזר מקסימלית */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label className="text-base font-semibold">תקופת החזר מקסימלית (שנים)</Label>
+                <Label className="text-base font-semibold">תקופת החזר מקסימלית</Label>
                 <Badge variant="outline" className="text-sm">
-                  {inputs.maxYears} שנים
+                  {formatDuration(clampTermMonths(yearsToMonths(inputs.maxYears)))}
                 </Badge>
               </div>
               <Slider
-                value={[inputs.maxYears]}
-                onValueChange={(value) => setInputs({ ...inputs, maxYears: value[0] })}
-                min={5}
-                max={Math.min(30, (80 - inputs.currentAge))}
+                dir="ltr"
+                value={[clampTermMonths(yearsToMonths(inputs.maxYears))]}
+                onValueChange={(value) => setInputs({ ...inputs, maxYears: monthsToYears(value[0]) })}
+                min={PLAN_TERM_MONTHS_MIN}
+                max={PLAN_TERM_MONTHS_MAX}
                 step={1}
                 className="w-full"
               />
+              <div dir="ltr" className="flex justify-between text-xs text-gray-500">
+                <span>{PLAN_TERM_MONTHS_MIN} חודשים</span>
+                <span>{PLAN_TERM_MONTHS_MAX} חודשים</span>
+              </div>
               <p className="text-xs text-gray-500">
-                מקסימום עד גיל 80: {Math.min(30, (80 - inputs.currentAge))} שנים
+                מקסימום עד גיל 80:{' '}
+                {formatDuration(Math.max(PLAN_TERM_MONTHS_MIN, (80 - inputs.currentAge) * 12))}
               </p>
             </div>
           </div>

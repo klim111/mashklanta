@@ -48,6 +48,7 @@ import { consumeLegacyAdvisorMixes } from './workspace/legacy';
 import { clearDraft, consumeStagedMix, readDraft, writeDraft } from './workspace/draft';
 import type { WorkspaceDraft } from './workspace/draft';
 import type { ComparisonEntry } from './MixComparison';
+import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
 
 type Phase = 'landing' | 'setup' | 'ready';
 
@@ -117,6 +118,40 @@ export function MortgageWorkspace({
 
   const [showRisk, setShowRisk] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
+
+  /** העקום האחרון שנטען — נשמר בנפרד כדי שלא ייעלם כשמחליפים תמהיל */
+  const primeForecastRef = useRef(mix.assumptions.primeForecast);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/boi/prime-curve')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const forecast =
+          !data?.spots || !Array.isArray(data.spots) || data.spots.length < 2
+            ? fallbackPrimeForecast()
+            : {
+                asOf: typeof data.asOf === 'string' ? data.asOf : '',
+                source: (data.source === 'boi' ? 'boi' : 'fallback') as 'boi' | 'fallback',
+                boiRate: Number(data.boiRate) || 3.5,
+                spots: data.spots,
+              };
+        primeForecastRef.current = forecast;
+        actions.setPrimeForecast(forecast);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const forecast = fallbackPrimeForecast();
+        primeForecastRef.current = forecast;
+        actions.setPrimeForecast(forecast);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // נטען פעם אחת בפתיחת הכלי. dispatch יציב, אין צורך לתלות ב-actions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   /** התמהיל שבניתוח נפתח סגור, כמו כל שאר התמהילים ברשימה */
   const [editorExpanded, setEditorExpanded] = useState(false);
 
@@ -129,15 +164,19 @@ export function MortgageWorkspace({
 
   const openMix = useCallback(
     (next: WorkspaceMix, constraints?: OptimizationConstraints) => {
+      const forecast = primeForecastRef.current;
+      const withCurve = forecast
+        ? { ...next, assumptions: { ...next.assumptions, primeForecast: forecast } }
+        : next;
       // תקרת ההחזר שנקבעה ללקוח היא גם התקרה שהאופטימיזציה עובדת מולה
       actions.load(
-        next,
+        withCurve,
         constraints ?? {
           ...DEFAULT_CONSTRAINTS,
-          maxMonthlyPayment: next.maxMonthlyPayment,
+          maxMonthlyPayment: withCurve.maxMonthlyPayment,
         }
       );
-      setSavedSignature(signatureOf(next));
+      setSavedSignature(signatureOf(withCurve));
       setSelectedMonth(null);
       setPhase('ready');
     },
@@ -356,6 +395,7 @@ export function MortgageWorkspace({
           <MixSetupWizard
             onBack={backToLanding}
             initialProperty={setupSeed}
+            primeForecast={mix.assumptions.primeForecast ?? primeForecastRef.current}
             onComplete={(created) => {
               // אירועים שהוגדרו כבר בפרופיל (פירעון מוקדם צפוי) נכנסים לתמהיל החדש
               const next =

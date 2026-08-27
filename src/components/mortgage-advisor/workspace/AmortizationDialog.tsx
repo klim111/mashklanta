@@ -24,6 +24,7 @@ interface DisplayRow {
   key: string;
   month: number;
   label: string;
+  annualRate: number;
   payment: number;
   interest: number;
   principal: number;
@@ -32,6 +33,7 @@ interface DisplayRow {
   indexation: number;
   prepayment: number;
   balanceEnd: number;
+  isRateStation: boolean;
 }
 
 export function AmortizationDialog({
@@ -54,6 +56,7 @@ export function AmortizationDialog({
       return result.schedule.map((row) => ({
         month: row.month,
         date: row.date,
+        annualRate: row.weightedRate,
         payment: row.payment,
         interest: row.interest,
         principal: row.principal,
@@ -61,12 +64,14 @@ export function AmortizationDialog({
         indexation: row.indexation,
         prepayment: row.prepayment,
         balanceEnd: row.balanceEnd,
+        isRateStation: Boolean(row.isRateStation),
       }));
     }
     const track = result.tracks.find((t) => t.track.id === trackId);
     return (track?.schedule ?? []).map((row) => ({
       month: row.month,
       date: row.date,
+      annualRate: row.annualRate,
       payment: row.payment,
       interest: row.interest,
       principal: row.principal,
@@ -74,6 +79,7 @@ export function AmortizationDialog({
       indexation: row.indexation,
       prepayment: row.prepayment,
       balanceEnd: row.balanceEnd,
+      isRateStation: Boolean(row.isRateStation),
     }));
   }, [result, trackId]);
 
@@ -83,6 +89,7 @@ export function AmortizationDialog({
         key: `m-${row.month}`,
         month: row.month,
         label: `${row.month} · ${formatFullDate(row.date)}`,
+        annualRate: row.annualRate,
         payment: row.payment,
         interest: row.interest,
         principal: row.principal,
@@ -90,18 +97,23 @@ export function AmortizationDialog({
         indexation: row.indexation,
         prepayment: row.prepayment,
         balanceEnd: row.balanceEnd,
+        isRateStation: row.isRateStation,
       }));
     }
 
     // תצוגה שנתית: סכימת התשלומים בשנה, והיתרה של החודש האחרון בשנה.
-    const byYear = new Map<number, DisplayRow>();
+    const byYear = new Map<number, DisplayRow & { rateWeight: number }>();
     source.forEach((row) => {
       const year = Math.ceil(row.month / 12);
       const existing = byYear.get(year);
-      const next: DisplayRow = {
+      const next = {
         key: `y-${year}`,
         month: row.month,
         label: `שנה ${year} · ${formatFullDate(row.date)}`,
+        annualRate:
+          ((existing?.annualRate ?? 0) * (existing?.rateWeight ?? 0) + row.annualRate) /
+          ((existing?.rateWeight ?? 0) + 1),
+        rateWeight: (existing?.rateWeight ?? 0) + 1,
         payment: (existing?.payment ?? 0) + row.payment,
         interest: (existing?.interest ?? 0) + row.interest,
         principal: (existing?.principal ?? 0) + row.principal,
@@ -109,6 +121,7 @@ export function AmortizationDialog({
         indexation: (existing?.indexation ?? 0) + row.indexation,
         prepayment: (existing?.prepayment ?? 0) + row.prepayment,
         balanceEnd: row.balanceEnd,
+        isRateStation: Boolean(existing?.isRateStation || row.isRateStation),
       };
       byYear.set(year, next);
     });
@@ -133,6 +146,12 @@ export function AmortizationDialog({
 
   // עמודת הריבית שנצברה נוספת רק כשיש גרייס מלא, כדי לא להעמיס על לוח רגיל
   const hasDeferred = totals.deferredInterest > 0.5;
+  const hasStations = rows.some((row) => row.isRateStation);
+  const ratesVary =
+    rows.length > 1 &&
+    (hasStations ||
+      Math.max(...rows.map((row) => row.annualRate)) - Math.min(...rows.map((row) => row.annualRate)) >
+        0.02);
 
   const scopeName =
     trackId === 'all'
@@ -140,10 +159,23 @@ export function AmortizationDialog({
       : result.tracks.find((t) => t.track.id === trackId)?.track.name ?? result.mix.name;
 
   const exportCsv = () => {
-    const header = ['תקופה', 'החזר', 'ריבית', 'ריבית שנצברה', 'קרן', 'הצמדה', 'פרעון מוקדם', 'יתרה'];
+    const header = [
+      'תקופה',
+      ...(ratesVary ? ['ריבית שנתית %'] : []),
+      ...(hasStations ? ['תחנת יציאה'] : []),
+      'החזר',
+      'ריבית',
+      'ריבית שנצברה',
+      'קרן',
+      'הצמדה',
+      'פרעון מוקדם',
+      'יתרה',
+    ];
     const body = rows.map((row) =>
       [
         row.label,
+        ...(ratesVary ? [row.annualRate.toFixed(3)] : []),
+        ...(hasStations ? [row.isRateStation ? 'תחנת יציאה — פטור מעמלת פירעון מוקדם' : ''] : []),
         Math.round(row.payment),
         Math.round(row.interest),
         Math.round(row.deferredInterest),
@@ -207,11 +239,19 @@ export function AmortizationDialog({
           <span className="text-[11px] text-slate-500 mr-auto">{rows.length} שורות</span>
         </div>
 
+        {hasStations && (
+          <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 leading-snug">
+            שורות ירוקות הן תחנות שינוי ריבית במסלול משתנה לא צמוד. בתחנות האלה יש פטור מעמלת פירעון
+            מוקדם.
+          </p>
+        )}
+
         <div className="flex-1 overflow-auto rounded-xl border border-slate-200">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-slate-50 z-10">
               <tr className="text-slate-500">
                 <th className="text-right font-medium p-2">תקופה</th>
+                {ratesVary && <th className="text-left font-medium p-2">ריבית</th>}
                 <th className="text-left font-medium p-2">החזר</th>
                 <th className="text-left font-medium p-2">ריבית</th>
                 {hasDeferred && <th className="text-left font-medium p-2">ריבית שנצברה</th>}
@@ -227,10 +267,24 @@ export function AmortizationDialog({
                   key={row.key}
                   onClick={() => onSelectMonth(row.month)}
                   className={`border-t border-slate-100 cursor-pointer hover:bg-blue-50 ${
-                    row.prepayment > 0 ? 'bg-emerald-50/60' : ''
+                    row.isRateStation
+                      ? 'bg-emerald-50/80'
+                      : row.prepayment > 0
+                        ? 'bg-emerald-50/60'
+                        : ''
                   }`}
                 >
-                  <td className="p-2 text-slate-700 whitespace-nowrap">{row.label}</td>
+                  <td className="p-2 text-slate-700">
+                    <span className="whitespace-nowrap">{row.label}</span>
+                    {row.isRateStation && (
+                      <span className="mr-1.5 inline-block rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-800">
+                        תחנת יציאה · פטור מעמלת פירעון מוקדם
+                      </span>
+                    )}
+                  </td>
+                  {ratesVary && (
+                    <td className="p-2 text-left text-orange-700">{row.annualRate.toFixed(2)}%</td>
+                  )}
                   <td className="p-2 text-left font-semibold text-slate-900">{formatShekel(row.payment)}</td>
                   <td className="p-2 text-left text-red-600">{formatShekel(row.interest)}</td>
                   {hasDeferred && (
@@ -252,6 +306,7 @@ export function AmortizationDialog({
             <tfoot className="sticky bottom-0 bg-slate-100 font-semibold">
               <tr>
                 <td className="p-2 text-slate-700">סה״כ</td>
+                {ratesVary && <td className="p-2" />}
                 <td className="p-2 text-left">{formatShekel(totals.payment)}</td>
                 <td className="p-2 text-left text-red-700">{formatShekel(totals.interest)}</td>
                 {hasDeferred && (

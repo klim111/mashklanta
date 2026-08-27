@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLAN_STAGES } from '@/lib/mortgage-plan';
-import { PLAN_STAGE_TOOLS, journeyStageFor, planToolHref, toolById } from './planStages';
+import { PLAN_STAGE_TOOLS, PLAN_JOURNEY_STAGES, journeyStageFor, planToolHref, toolById } from './planStages';
 
 describe('כלים לפי שלבי התהליך', () => {
   it('לכל שלב יש כלים חיוניים, וכולם קיימים בקטלוג', () => {
@@ -19,5 +19,12 @@ describe('כלים לפי שלבי התהליך', () => {
     expect(planToolHref('/mortgage-planning?flow=affordability', 'abc')).toBe(
       '/mortgage-planning?flow=affordability&fromPlan=abc'
     );
+  });
+
+  it('בניית התמהיל מופיעה לפני מכרז הריביות', () => {
+    const ids = PLAN_JOURNEY_STAGES.map((stage) => stage.id);
+    expect(ids.indexOf('mix')).toBeLessThan(ids.indexOf('auction'));
+    expect(journeyStageFor('MIX').number).toBe(3);
+    expect(journeyStageFor('AUCTION').number).toBe(4);
   });
 });

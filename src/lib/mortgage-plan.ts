@@ -28,12 +28,13 @@ import { parseFormattedNumberInput } from './currency';
 
 /**
  * סדר השלבים בתהליך. הבקשה לאישור עקרוני קודמת לבניית התמהיל, כי הריביות
- * שהבנק נוקב באישור העקרוני הן הבסיס שממנו נבנים התמהילים ושעליו מתמחרים.
+ * שהבנק נוקב באישור העקרוני הן הבסיס שממנו נבנים התמהילים. המכרז מגיע אחרי
+ * התמהיל — מתמחרים את מה שנבנה, לא רק את הסלים האחידים.
  *
  * המזהים הם ערכי enum בבסיס הנתונים ולכן נשארו כפי שהם: `APPLICATIONS` הוא
  * שלב האישור העקרוני ו-`AUCTION` הוא מכרז הריביות.
  */
-export const PLAN_STAGES = ['ANALYSIS', 'APPLICATIONS', 'AUCTION', 'MIX', 'SIGNING'] as const;
+export const PLAN_STAGES = ['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING'] as const;
 export type PlanStageId = (typeof PLAN_STAGES)[number];
 
 export type PlanStageStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
@@ -123,7 +124,7 @@ export interface AnalysisData {
   /** סכום המשכנתא המבוקש. ברירת המחדל היא מחיר הנכס פחות ההון העצמי */
   mortgageAmount: number | null;
   propertyAddress: string;
-  /** תקופת המשכנתא המבוקשת בשנים */
+  /** תקופת המשכנתא המבוקשת בשנים — נשמרת ברזולוציית חודשים (48–360) */
   years: number;
   futureLumpSums: FutureLumpSum[];
   /** תוספת חודשית צפויה להכנסה הפנויה, ובעוד כמה שנים */
@@ -217,7 +218,7 @@ export function analysisFromPlanning(
     propertyValue,
     mortgageAmount: carry?.mortgageAmount ?? null,
     propertyAddress: '',
-    years: calculated.maxLoanPeriod || 25,
+    years: clampPlanYears(calculated.maxLoanPeriod || 25),
     planning: userData,
     planningStep: currentStep,
   };
@@ -227,7 +228,7 @@ export function propertyTypeForDeal(dealType: DealType | null): string {
   return dealType ? DEAL_TO_PROPERTY_TYPE[dealType] : '';
 }
 
-/** שלב 4 — התמהיל שנבחר. הרשומה עצמה חיה בטבלת התמהילים */
+/** שלב 3 — התמהיל שנבחר. הרשומה עצמה חיה בטבלת התמהילים */
 export interface MixData {
   mixRecordId: string | null;
   mixKey: string | null;
@@ -287,7 +288,7 @@ export interface BankOffer {
   note: string;
 }
 
-/** שלב 3 — מכרז הריביות */
+/** שלב 4 — מכרז הריביות */
 export interface AuctionData {
   offers: BankOffer[];
   winnerOfferId: string | null;
@@ -320,6 +321,26 @@ export type PlanData = { [S in PlanStageId]: PlanStageDataMap[S] };
 // ───────────────────────────── ברירות מחדל ─────────────────────────────
 
 export const DEFAULT_PLAN_YEARS = 25;
+/** תקופת משכנתא מותרת: 4 עד 30 שנים, כל חודש ביניים */
+export const PLAN_TERM_MONTHS_MIN = 48;
+export const PLAN_TERM_MONTHS_MAX = 360;
+
+export function yearsToMonths(years: number): number {
+  return Math.round((Number.isFinite(years) ? years : 0) * 12);
+}
+
+export function monthsToYears(months: number): number {
+  return months / 12;
+}
+
+export function clampTermMonths(months: number): number {
+  if (!Number.isFinite(months) || months <= 0) return PLAN_TERM_MONTHS_MIN;
+  return Math.min(PLAN_TERM_MONTHS_MAX, Math.max(PLAN_TERM_MONTHS_MIN, Math.round(months)));
+}
+
+export function clampPlanYears(years: number): number {
+  return monthsToYears(clampTermMonths(yearsToMonths(years)));
+}
 
 const EMPTY: PlanData = {
   ANALYSIS: {
@@ -602,9 +623,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         mortgageAmount,
         propertyAddress: has('propertyAddress') ? str(source.propertyAddress) : seed.propertyAddress,
         years:
-          years && years > 0
-            ? Math.min(Math.round(years), 40)
-            : seed.years || DEFAULT_PLAN_YEARS,
+          years && years > 0 ? clampPlanYears(years) : seed.years || DEFAULT_PLAN_YEARS,
       } as PlanStageDataMap[S];
     }
 
