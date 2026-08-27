@@ -21,6 +21,7 @@ import {
   missingForStage,
   stageIndex,
   stageIsComplete,
+  unfinishedPrerequisites,
 } from '@/lib/mortgage-plan';
 import type {
   AnalysisData,
@@ -34,7 +35,9 @@ import type {
 import { PLAN_STAGE_ACTIONS, journeyStageFor } from '@/data/platform/planStages';
 import { usePlan } from './usePlan';
 import type { SaveState } from './usePlan';
+import Mashkalanta from '@/components/ui/mashkalanta';
 import { StageRail } from './StageRail';
+import { StageLockedPreview } from './StageLockedPreview';
 import { StageTools } from './StageTools';
 import { formatShekel } from './ui';
 import { AnalysisStage } from './stages/AnalysisStage';
@@ -44,7 +47,7 @@ import { AuctionStage } from './stages/AuctionStage';
 import { SigningStage } from './stages/SigningStage';
 
 const saveLabels: Record<SaveState, { label: string; className: string }> = {
-  idle: { label: 'הכל שמור', className: 'text-white/50' },
+  idle: { label: 'הכל שמור', className: 'text-white/80' },
   dirty: { label: 'שומר…', className: 'text-white/70' },
   saving: { label: 'שומר…', className: 'text-white/70' },
   saved: { label: 'נשמר בחשבון שלכם', className: 'text-emerald-300' },
@@ -67,6 +70,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const [completing, setCompleting] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
+  const [viewingStage, setViewingStage] = useState<PlanStageId | null>(null);
 
   const statuses = useMemo(() => {
     const map = {} as Record<PlanStageId, PlanStageStatus>;
@@ -101,12 +105,14 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     );
   }
 
-  const stage = plan.currentStage;
+  const stage = viewingStage ?? plan.currentStage;
+  const unfinished = unfinishedPrerequisites(stage, statuses);
+  const isPreview = unfinished.length > 0;
   const journey = journeyStageFor(stage);
   const action = PLAN_STAGE_ACTIONS[stage];
   const StageIcon = journey.icon;
   const index = stageIndex(stage);
-  const canComplete = stageIsComplete(stage, plan.data);
+  const canComplete = !isPreview && stageIsComplete(stage, plan.data);
   const missing = missingForStage(stage, plan.data);
   const isDone = statuses[stage] === 'COMPLETED';
   const previous = index > 0 ? PLAN_STAGES[index - 1] : null;
@@ -118,12 +124,21 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     stage === 'ANALYSIS' &&
     (!plan.data.ANALYSIS.intent || plan.data.ANALYSIS.profileScreen === 'intent');
 
+  const selectStage = (nextStage: PlanStageId) => {
+    if (unfinishedPrerequisites(nextStage, statuses).length > 0) {
+      setViewingStage(nextStage);
+      return;
+    }
+    setViewingStage(null);
+    void goToStage(nextStage);
+  };
+
   const stageFooter = (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                   <button
                     type="button"
                     disabled={!previous}
-                    onClick={() => previous && void goToStage(previous)}
+                    onClick={() => previous && selectStage(previous)}
                     className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -134,7 +149,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     {isDone && next ? (
                       <button
                         type="button"
-                        onClick={() => void goToStage(next)}
+                        onClick={() => selectStage(next)}
                         className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-black text-white transition-all hover:bg-slate-700"
                       >
                         המשיכו לשלב הבא
@@ -183,6 +198,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const onComplete = async () => {
     setCompleting(true);
     await completeStage(stage);
+    setViewingStage(null);
     setCompleting(false);
   };
 
@@ -196,11 +212,13 @@ export function PlanWorkspace({ planId }: { planId: string }) {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="min-w-0">
+          <div className="mb-6 grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <Mashkalanta variant="header" autoPlay />
+
+            <div className="min-w-0 md:text-center">
               <Link
                 href="/dashboard"
-                className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold text-white/50 transition-colors hover:text-white"
+                className="mb-2 inline-flex items-center gap-1.5 text-xs font-bold text-white/70 transition-colors hover:text-white"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
                 האזור האישי
@@ -216,7 +234,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     if (event.key === 'Enter') void submitName();
                     if (event.key === 'Escape') setEditingName(false);
                   }}
-                  className="w-full max-w-md rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-2xl font-black text-white outline-none focus:border-white/50"
+                  className="w-full max-w-md rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-2xl font-black text-white outline-none focus:border-white/50 md:mx-auto"
                 />
               ) : (
                 <button
@@ -225,28 +243,28 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     setDraftName(plan.name);
                     setEditingName(true);
                   }}
-                  className="group flex items-center gap-2 text-right"
+                  className="group flex items-center gap-2 md:mx-auto"
                 >
                   <h1 className="truncate text-2xl font-black text-white md:text-3xl">
                     {plan.name}
                   </h1>
-                  <Pencil className="h-4 w-4 shrink-0 text-white/30 transition-colors group-hover:text-white/70" />
+                  <Pencil className="h-4 w-4 shrink-0 text-white/50 transition-colors group-hover:text-white" />
                 </button>
               )}
 
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs md:justify-center">
                 {plan.propertyAddress && (
-                  <span className="rounded-full bg-white/10 px-3 py-1 font-semibold text-white/70">
+                  <span className="rounded-full bg-white/15 px-3 py-1 font-semibold text-white/80">
                     {plan.propertyAddress}
                   </span>
                 )}
                 {plan.mortgageAmount ? (
-                  <span className="rounded-full bg-white/10 px-3 py-1 font-semibold text-white/70">
+                  <span className="rounded-full bg-white/15 px-3 py-1 font-semibold text-white/80">
                     משכנתא {formatShekel(plan.mortgageAmount)}
                   </span>
                 ) : null}
                 {plan.monthlyPayment ? (
-                  <span className="rounded-full bg-white/10 px-3 py-1 font-semibold text-white/70">
+                  <span className="rounded-full bg-white/15 px-3 py-1 font-semibold text-white/80">
                     החזר {formatShekel(plan.monthlyPayment)}
                   </span>
                 ) : null}
@@ -266,7 +284,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
             <ProgressRing value={plan.progress} />
           </div>
 
-          <StageRail current={stage} statuses={statuses} onSelect={(next) => void goToStage(next)} />
+          <StageRail current={stage} statuses={statuses} onSelect={selectStage} />
         </div>
       </header>
 
@@ -321,6 +339,11 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                         הושלם
                       </span>
                     )}
+                    {isPreview && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">
+                        תצוגה מקדימה
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-lg font-black text-slate-900 md:text-xl">{journey.title}</h2>
                   <p className="text-sm text-slate-500">{action.hint}</p>
@@ -328,12 +351,28 @@ export function PlanWorkspace({ planId }: { planId: string }) {
               </div>
             </div>
 
-            {usesExistingTool && stage !== 'ANALYSIS' && (
-              <div className="mb-4">
-                <StageTools stage={stage} data={plan.data} planId={plan.id} compact />
-              </div>
+            {isPreview && (
+              <StageLockedPreview
+                stage={stage}
+                unfinished={unfinished}
+                onSelectStage={selectStage}
+              />
             )}
 
+            <div className={isPreview ? 'relative' : undefined}>
+              {isPreview && (
+                <div
+                  aria-hidden
+                  className="absolute inset-0 z-10 rounded-3xl bg-slate-50/10"
+                />
+              )}
+              <div
+                className={
+                  isPreview
+                    ? 'pointer-events-none select-none opacity-55 grayscale-[70%]'
+                    : undefined
+                }
+              >
             {usesExistingTool ? (
               <div className="space-y-5">
                 {stage === 'ANALYSIS' && (
@@ -344,12 +383,15 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   />
                 )}
                 {stage === 'MIX' && (
-                  <MixStage
-                    data={plan.data}
-                    onChange={(next: MixData) => updateStage('MIX', next)}
-                  />
+                  <>
+                    <StageTools stage={stage} data={plan.data} planId={plan.id} compact />
+                    <MixStage
+                      data={plan.data}
+                      onChange={(next: MixData) => updateStage('MIX', next)}
+                    />
+                  </>
                 )}
-                {!analysisOnIntent && stageFooter}
+                {!isPreview && !analysisOnIntent && stageFooter}
               </div>
             ) : (
             <div className="grid gap-6 lg:grid-cols-3">
@@ -358,7 +400,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   <PreApprovalStage
                     data={plan.data}
                     onChange={(next: PreApprovalData) => updateStage('APPLICATIONS', next)}
-                    onGoToProfile={() => void goToStage('ANALYSIS')}
+                    onGoToProfile={() => selectStage('ANALYSIS')}
                   />
                 )}
                 {stage === 'AUCTION' && (
@@ -374,7 +416,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   />
                 )}
 
-                {stageFooter}
+                {!isPreview && stageFooter}
               </div>
 
               <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
@@ -402,6 +444,8 @@ export function PlanWorkspace({ planId }: { planId: string }) {
               </aside>
             </div>
             )}
+              </div>
+            </div>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -416,7 +460,7 @@ function ProgressRing({ value }: { value: number }) {
   return (
     <div className="relative h-[76px] w-[76px] shrink-0">
       <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-        <circle cx="38" cy="38" r={radius} className="fill-none stroke-white/10" strokeWidth="7" />
+        <circle cx="38" cy="38" r={radius} className="fill-none stroke-white/35" strokeWidth="7" />
         <motion.circle
           cx="38"
           cy="38"

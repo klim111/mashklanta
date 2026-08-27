@@ -18,6 +18,7 @@ import {
   preApprovalDocuments,
   stageHints,
   stageIsComplete,
+  unfinishedPrerequisites,
   yearsToMonths,
 } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
@@ -49,6 +50,18 @@ function profile(): PlanData {
 describe('סדר השלבים', () => {
   it('בניית התמהיל באה אחרי האישור העקרוני ולפני מכרז הריביות', () => {
     expect(PLAN_STAGES).toEqual(['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING']);
+  });
+
+  it('שלבים קודמים שטרם נסגרו הם אלה שצריך להשלים לפני עבודה בשלב', () => {
+    const statuses = {
+      ANALYSIS: 'IN_PROGRESS',
+      APPLICATIONS: 'PENDING',
+      MIX: 'PENDING',
+      AUCTION: 'PENDING',
+      SIGNING: 'PENDING',
+    } as const;
+    expect(unfinishedPrerequisites('ANALYSIS', statuses)).toEqual([]);
+    expect(unfinishedPrerequisites('MIX', statuses)).toEqual(['ANALYSIS', 'APPLICATIONS']);
   });
 });
 

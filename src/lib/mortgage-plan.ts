@@ -58,6 +58,15 @@ export function stageIndex(stage: PlanStageId): number {
   return index < 0 ? 0 : index;
 }
 
+/** שלבים קודמים שטרם נסגרו — בלי אלה אי אפשר באמת לעבוד בשלב הנוכחי */
+export function unfinishedPrerequisites(
+  stage: PlanStageId,
+  statuses: Record<PlanStageId, PlanStageStatus>
+): PlanStageId[] {
+  const idx = stageIndex(stage);
+  return PLAN_STAGES.slice(0, idx).filter((prior) => statuses[prior] !== 'COMPLETED');
+}
+
 // ───────────────────────────── נתוני השלבים ─────────────────────────────
 
 export type Household = 'SINGLE' | 'COUPLE';
