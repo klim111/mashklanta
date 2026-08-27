@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
+import { findUserByLogin } from "@/lib/find-user-by-login";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -13,23 +14,23 @@ export const authOptions: NextAuthOptions = {
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email as string | undefined;
+        const identifier = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
-        if (!email || !password) return null;
-        const user = await prisma.user.findUnique({ where: { email } });
+        if (!identifier || !password) return null;
+        const user = await findUserByLogin(identifier);
         if (!user?.hashedPassword) return null;
         const isValid = await bcrypt.compare(password, user.hashedPassword);
         if (!isValid) return null;
-        return { 
-          id: user.id, 
-          email: user.email ?? undefined, 
-          name: user.name ?? undefined, 
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
           image: user.image ?? undefined,
-          role: user.role
+          role: user.role,
         } as any;
       },
     }),

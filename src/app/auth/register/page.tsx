@@ -11,6 +11,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -38,6 +39,10 @@ function RegisterForm() {
   const validateForm = () => {
     if (formData.name.length < 2) {
       setError('השם חייב להכיל לפחות 2 תווים');
+      return false;
+    }
+    if (formData.username.trim().length < 3) {
+      setError('שם המשתמש חייב להכיל לפחות 3 תווים');
       return false;
     }
     if (!formData.email.includes('@')) {
@@ -74,18 +79,25 @@ function RegisterForm() {
         },
         body: JSON.stringify({
           name: formData.name,
+          username: formData.username,
           email: formData.email,
           password: formData.password,
           role: formData.role,
         }),
       });
 
-      const data = await response.json();
+      const payload = await response.text();
+      let data: { error?: string } = {};
+      try {
+        data = payload ? JSON.parse(payload) : {};
+      } catch {
+        data = { error: 'השרת לא החזיר תשובה תקינה. נסו שוב.' };
+      }
 
       if (!response.ok) {
         setError(data.error || 'אירעה שגיאה בהרשמה');
       } else {
-        setSuccess('ההרשמה הושלמה בהצלחה! נשלח אליך מייל עם קישור לאימות');
+        setSuccess('ההרשמה הושלמה. אפשר להתחבר עכשיו עם שם המשתמש והסיסמה.');
         setTimeout(() => {
           if (formData.role === 'ADVISOR') {
             router.push('/auth/login?advisor=true');
@@ -189,6 +201,28 @@ function RegisterForm() {
                   placeholder="ישראל ישראלי"
                 />
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                שם משתמש
+              </label>
+              <div className="relative">
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  minLength={3}
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="למשל israel92"
+                  dir="ltr"
+                />
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
             </div>
 

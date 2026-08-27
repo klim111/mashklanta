@@ -29,21 +29,41 @@ export interface EmailOptions {
   text?: string;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Email send timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
 export async function sendEmail({ to, subject, html, text }: EmailOptions) {
   const from = process.env.EMAIL_FROM || 'noreply@nadlanium.com';
   const replyTo = process.env.EMAIL_REPLY_TO || 'support@nadlanium.com';
+  const timeoutMs = 8000;
 
   // Try Resend first
   if (resend) {
     try {
-      const result = await resend.emails.send({
-        from,
-        to,
-        subject,
-        html,
-        text,
-        replyTo,
-      });
+      const result = await withTimeout(
+        resend.emails.send({
+          from,
+          to,
+          subject,
+          html,
+          text,
+          replyTo,
+        }),
+        timeoutMs
+      );
       return { success: true, messageId: result.data?.id };
     } catch (error) {
       console.error('Resend email error:', error);
@@ -53,30 +73,26 @@ export async function sendEmail({ to, subject, html, text }: EmailOptions) {
   // Fallback to SMTP
   if (transporter) {
     try {
-      const result = await transporter.sendMail({
-        from,
-        to,
-        subject,
-        html,
-        text: text || html.replace(/<[^>]*>/g, ''),
-        replyTo,
-      });
+      const result = await withTimeout(
+        transporter.sendMail({
+          from,
+          to,
+          subject,
+          html,
+          text: text || html.replace(/<[^>]*>/g, ''),
+          replyTo,
+        }),
+        timeoutMs
+      );
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error('SMTP email error:', error);
     }
   }
 
-  // If no email service is configured, log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📧 Email would be sent:');
-    console.log('To:', to);
-    console.log('Subject:', subject);
-    console.log('Content:', text || html.substring(0, 200) + '...');
-    return { success: true, messageId: 'dev-' + Date.now() };
-  }
-
-  throw new Error('No email service configured');
+  // בלי שירות מייל מוגדר ההרשמה עדיין חייבת להצליח — המשתמש כבר נשמר במסד
+  console.warn('No email service configured; skipped send to', to);
+  return { success: false, messageId: 'skipped' };
 }
 
 // Email templates
