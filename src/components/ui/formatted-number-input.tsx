@@ -36,6 +36,7 @@ export function FormattedNumberValueInput({
   value,
   onValueChange,
   className,
+  max,
   ...props
 }: FormattedNumberValueInputProps) {
   const numeric =
@@ -44,11 +45,13 @@ export function FormattedNumberValueInput({
       : typeof value === 'number'
         ? value
         : parseFormattedNumberInput(value);
+  const numericMax = typeof max === 'number' ? max : undefined;
 
   return (
     <NumericInput
       {...props}
       integer
+      max={numericMax}
       value={numeric}
       onChange={(next) => onValueChange(next ?? 0)}
       className={cn(

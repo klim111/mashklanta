@@ -2,7 +2,7 @@ import type { DealType, MortgageMix, MortgageTrack } from '../types';
 import { AMORTIZATION_TYPES, DEAL_TYPES, DEFAULT_INTEREST_RATES, TRACK_TYPES } from '../types';
 import { DEFAULT_ASSUMPTIONS } from './types';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
-import type { TrackType, WorkspaceMix } from './types';
+import type { Assumptions, TrackType, WorkspaceMix } from './types';
 
 let counter = 0;
 function nextId(prefix: string): string {

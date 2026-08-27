@@ -5,7 +5,7 @@ import type { InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { formatNumberInput, parseDecimalInput, sanitizeDecimalInput } from '@/lib/currency';
 
-type NumericInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
+type NumericInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'max'> & {
   value: number | null;
   onChange: (value: number | null) => void;
   /** בלי נקודה עשרונית — סכומים בשקלים */
