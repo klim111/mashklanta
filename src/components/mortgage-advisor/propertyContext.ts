@@ -15,6 +15,40 @@ export function maxLtvPercent(dealType: DealType): number {
   return MAX_LTV_PERCENT[dealType] ?? MAX_LTV_PERCENT[DEFAULT_DEAL_TYPE];
 }
 
+/** מצב משולב: אחוז מימון שהלקוח מזין ידנית, בין 1% לתקרת בנק ישראל המוחלטת */
+export const COMBINED_LTV_MIN = 1;
+export const COMBINED_LTV_MAX = 75;
+
+export function clampCombinedLtv(percent: number): number {
+  if (!Number.isFinite(percent)) return COMBINED_LTV_MIN;
+  return Math.min(COMBINED_LTV_MAX, Math.max(COMBINED_LTV_MIN, Math.round(percent)));
+}
+
+/**
+ * סוג העסקה המינימלי שמאפשר את אחוז המימון שנבחר. מעל 70% רק דירה ראשונה,
+ * מעל 50% דירה ראשונה או חליפית.
+ */
+export function dealTypeForCombinedLtv(percent: number, current?: DealType | null): DealType {
+  const pct = clampCombinedLtv(percent);
+  if (pct > 70) return 'first_home';
+  if (pct > 50) {
+    if (current === 'first_home' || current === 'replacement_home') return current;
+    return 'first_home';
+  }
+  return current ?? DEFAULT_DEAL_TYPE;
+}
+
+/** סכום המשכנתא מאחוז מימון ידני, בתוך תקרת סוג העסקה */
+export function mortgageForLtvPercent(
+  propertyValue: number,
+  ltvPercent: number,
+  dealType: DealType
+): number {
+  if (!Number.isFinite(propertyValue) || propertyValue <= 0) return 0;
+  const capped = Math.min(clampCombinedLtv(ltvPercent), maxLtvPercent(dealType));
+  return Math.round((propertyValue * capped) / 100);
+}
+
 /** סכום המשכנתא הגבוה ביותר שבנק ישראל מתיר לנכס ולעסקה האלה */
 export function maxMortgageFor(propertyValue: number, dealType: DealType): number {
   if (!Number.isFinite(propertyValue) || propertyValue <= 0) return 0;

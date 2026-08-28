@@ -202,7 +202,7 @@ export function MixRow({
             </div>
             {renaming && requireName && (
               <p className="text-[10px] text-blue-700">
-                תנו שם לתמהיל המשוכפל — אחרי השמירה הוא ייפתח באזור העבודה
+                תנו שם לתמהיל המשוכפל כדי להמשיך לערוך אותו באזור העבודה
               </p>
             )}
 

@@ -17,6 +17,7 @@ import {
   planSnapshot,
   preApprovalDocumentGroups,
   preApprovalDocuments,
+  suggestedPreApprovalBank,
   stageHints,
   stageIsComplete,
   unfinishedPrerequisites,
@@ -493,5 +494,31 @@ describe('גזירה מכלי בניית הפרופיל', () => {
 
     expect(parsed.bankAccountMode).toBe('SEPARATE');
     expect(parsed.borrowerLoans[0].shared).toBe(true);
+  });
+
+  it('מצב משולב גוזר את המשכנתא מאחוז המימון שהוזן', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      ...profile().ANALYSIS,
+      targetLtvPercent: 60,
+    });
+
+    expect(parsed.targetLtvPercent).toBe(60);
+    expect(parsed.mortgageAmount).toBe(1_440_000);
+    expect(analyzeProfile(parsed).requiredLoan).toBe(1_440_000);
+    expect(analyzeProfile(parsed).ltv).toBeCloseTo(60, 5);
+  });
+
+  it('הבנק של החשבון הראשי נשמר ומוצע לאישור עקרוני לפי ההכנסה העיקרית', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      household: 'COUPLE',
+      income: 10_000,
+      partnerIncome: 18_000,
+      primaryBank: 'לאומי',
+      partnerPrimaryBank: 'הפועלים',
+    });
+
+    expect(parsed.primaryBank).toBe('לאומי');
+    expect(parsed.partnerPrimaryBank).toBe('הפועלים');
+    expect(suggestedPreApprovalBank(parsed)).toEqual({ bank: 'הפועלים', source: 'partner' });
   });
 });

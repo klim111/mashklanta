@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Sparkles, TrendingUp } from 'lucide-react';
-import { analyzeProfile, mortgageFromProperty } from '@/lib/mortgage-plan';
+import { analyzeProfile, requestedMortgage } from '@/lib/mortgage-plan';
 import type { MixData, PlanData } from '@/lib/mortgage-plan';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
 import type { PendingPrepay } from '@/components/mortgage-advisor/MortgageWorkspace';
@@ -148,9 +148,14 @@ export function MixStage({
   }, [preApproval.baskets, data.MIX.mixKey]);
   const prepayments = plannedPrepayments(data);
   const hasFutureIncome = prepayments.length > 0 || Boolean(profile.futureMonthlyIncrease);
-  /** ברירת מחדל: מחיר הנכס פחות ההון העצמי שהוזן בפרופיל */
+  /** ברירת מחדל: מחיר הנכס לפי אחוז המימון שהוזן בפרופיל, או פחות ההון העצמי */
   const defaultMortgage =
-    mortgageFromProperty(profile.propertyValue ?? 0, profile.equity, profile.dealType) ?? undefined;
+    requestedMortgage(
+      profile.propertyValue ?? 0,
+      profile.equity,
+      profile.dealType,
+      profile.targetLtvPercent
+    ) ?? undefined;
 
   return (
     <div className="space-y-4">

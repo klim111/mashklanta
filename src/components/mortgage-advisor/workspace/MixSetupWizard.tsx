@@ -43,11 +43,16 @@ import {
 } from '../engine';
 import type { TrackType, WorkspaceMix } from '../engine';
 import {
+  COMBINED_LTV_MAX,
+  COMBINED_LTV_MIN,
   DEAL_TYPE_KEYS,
   DEFAULT_DEAL_TYPE,
+  clampCombinedLtv,
+  dealTypeForCombinedLtv,
   fixedUnlinkedAmount,
   maxMortgageFor,
   minFixedUnlinkedAmount,
+  mortgageForLtvPercent,
 } from '../propertyContext';
 import { MaxPaymentDialog } from './MaxPaymentDialog';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -148,6 +153,8 @@ export function MixSetupWizard({
     };
   });
   const [amountTouched, setAmountTouched] = useState(false);
+  /** אחוז מימון ידני במצב משולב — null כשנבחרה תקרת סוג עסקה */
+  const [combinedLtv, setCombinedLtv] = useState<number | null>(null);
   /** מתהליך חמשת השלבים הנתונים כבר הוזנו — לא מחזירים את טופס הנכס */
   const [propertyConfirmed, setPropertyConfirmed] = useState(skipPropertyStep);
   const [showMaxPayment, setShowMaxPayment] = useState(false);
@@ -266,8 +273,22 @@ export function MixSetupWizard({
   };
 
   /** בחירת מימון מקסימלי קובעת גם את סוג העסקה וגם את סכום המשכנתא הנגזר ממנו */
-  const applyMaxFinancing = (dealType: DealType) =>
+  const applyMaxFinancing = (dealType: DealType) => {
+    setCombinedLtv(null);
     setTotalAmount(Math.round(maxMortgageFor(property.propertyValue, dealType)), dealType);
+  };
+
+  /** מצב משולב: אחוז מימון חופשי בין 1 ל-75, וכל הסכומים נגזרים ממנו */
+  const applyCombinedLtv = (raw: number | null) => {
+    if (raw === null || raw <= 0) {
+      setCombinedLtv(null);
+      return;
+    }
+    const percent = clampCombinedLtv(raw);
+    const dealType = dealTypeForCombinedLtv(percent, property.dealType);
+    setCombinedLtv(percent);
+    setTotalAmount(mortgageForLtvPercent(property.propertyValue, percent, dealType), dealType);
+  };
 
   const addTrack = () => {
     if (!canAddTrack) return;
@@ -386,7 +407,12 @@ export function MixSetupWizard({
                   value={property.propertyValue || ''}
                   onValueChange={(propertyValue) => {
                     const next: Partial<PropertySetup> = { propertyValue };
-                    if (!amountTouched) {
+                    if (combinedLtv !== null) {
+                      const dealType = dealTypeForCombinedLtv(combinedLtv, property.dealType);
+                      next.dealType = dealType;
+                      next.totalAmount = mortgageForLtvPercent(propertyValue, combinedLtv, dealType);
+                      setAmountTouched(true);
+                    } else if (!amountTouched) {
                       next.totalAmount = mortgageFromEquity(
                         propertyValue,
                         seedEquity,
@@ -406,7 +432,10 @@ export function MixSetupWizard({
                   className="h-10 text-base font-semibold w-full sm:w-56"
                   placeholder="לדוגמה 1,200,000"
                   value={totalAmount || ''}
-                  onValueChange={(value) => setTotalAmount(value)}
+                  onValueChange={(value) => {
+                    setCombinedLtv(null);
+                    setTotalAmount(value);
+                  }}
                 />
                 <p className="text-[11px] text-slate-500">
                   מימון מקסימלי לפי מגבלות בנק ישראל — לחיצה קובעת את סוג העסקה ואת הסכום:
@@ -417,7 +446,7 @@ export function MixSetupWizard({
                       key={key}
                       type="button"
                       size="sm"
-                      variant={property.dealType === key ? 'default' : 'outline'}
+                      variant={combinedLtv === null && property.dealType === key ? 'default' : 'outline'}
                       className="h-8 text-[11px]"
                       disabled={property.propertyValue <= 0}
                       onClick={() => applyMaxFinancing(key)}
@@ -425,6 +454,33 @@ export function MixSetupWizard({
                       {DEAL_TYPES[key]} · {MAX_LTV_PERCENT[key]}%
                     </Button>
                   ))}
+                </div>
+                <div
+                  className={`rounded-xl border p-3 space-y-2 ${
+                    combinedLtv !== null ? 'border-blue-400 bg-blue-50/70' : 'border-slate-200 bg-slate-50'
+                  }`}
+                >
+                  <Label className="text-xs font-semibold text-slate-800">מצב משולב — אחוז מימון ידני</Label>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    הזינו כל אחוז בין {COMBINED_LTV_MIN} ל-{COMBINED_LTV_MAX}. סכום המשכנתא, ההון העצמי
+                    ואחוז המימון יחושבו לפי האחוז שהוזן, בתוך מגבלות בנק ישראל.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <NumericInput
+                      className="h-9 w-24 rounded-lg border border-slate-200 bg-white px-2 text-sm font-semibold"
+                      integer
+                      max={COMBINED_LTV_MAX}
+                      value={combinedLtv}
+                      onChange={applyCombinedLtv}
+                      placeholder="60"
+                    />
+                    <span className="text-sm font-bold text-slate-600">%</span>
+                    {combinedLtv !== null && property.propertyValue > 0 && (
+                      <span className="text-[11px] text-slate-600">
+                        משכנתא {formatShekel(totalAmount)} · הון עצמי {formatShekel(equity)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {property.propertyValue > 0 && (

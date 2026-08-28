@@ -19,6 +19,10 @@ import type { EmploymentType, StageDocument } from './client-process';
 import { DEAL_TYPES, MAX_LTV_PERCENT, MORTGAGE_BANKS } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
 import {
+  clampCombinedLtv,
+  dealTypeForCombinedLtv,
+} from '@/components/mortgage-advisor/propertyContext';
+import {
   calculateMaxProperty,
   defaultMortgagePlanningUserData,
   getAffordabilityInputs,
@@ -138,6 +142,15 @@ export interface AnalysisData {
   propertyValue: number | null;
   /** סכום המשכנתא המבוקש. ברירת המחדל היא מחיר הנכס פחות ההון העצמי */
   mortgageAmount: number | null;
+  /**
+   * אחוז מימון ידני במצב משולב (1–75). כשהוא מוזן, המשכנתא והחישובים נגזרים
+   * ממנו במקום מתקרת סוג העסקה או מההפרש להון העצמי.
+   */
+  targetLtvPercent: number | null;
+  /** הבנק שבו מנוהל החשבון הראשי של הלווה — אליו מופקדת ההכנסה העיקרית */
+  primaryBank: string | null;
+  /** הבנק של החשבון הראשי של בן/בת הזוג */
+  partnerPrimaryBank: string | null;
   propertyAddress: string;
   /** תקופת המשכנתא המבוקשת בשנים — נשמרת ברזולוציית חודשים (48–360) */
   years: number;
@@ -216,6 +229,8 @@ export function analysisFromPlanning(
     profileScreen: carry?.profileScreen ?? 'intent',
     household: couple ? 'COUPLE' : 'SINGLE',
     bankAccountMode: couple ? (carry?.bankAccountMode ?? null) : null,
+    primaryBank: carry?.primaryBank ?? null,
+    partnerPrimaryBank: couple ? carry?.partnerPrimaryBank ?? null : null,
     age: parseInt(ageRaw, 10) || null,
     partnerAge: parseInt(partnerAgeRaw, 10) || null,
     income,
@@ -233,6 +248,7 @@ export function analysisFromPlanning(
     dealType: PROPERTY_TYPE_TO_DEAL[userData.propertyType] ?? null,
     propertyValue,
     mortgageAmount: carry?.mortgageAmount ?? null,
+    targetLtvPercent: carry?.targetLtvPercent ?? null,
     propertyAddress: '',
     years: clampPlanYears(calculated.maxLoanPeriod || 25),
     planning: userData,
@@ -378,6 +394,9 @@ const EMPTY: PlanData = {
     dealType: null,
     propertyValue: null,
     mortgageAmount: null,
+    targetLtvPercent: null,
+    primaryBank: null,
+    partnerPrimaryBank: null,
     propertyAddress: '',
     years: DEFAULT_PLAN_YEARS,
     futureLumpSums: [],
@@ -448,6 +467,11 @@ function bool(value: unknown): boolean {
 
 function pickBank(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function pickMortgageBank(value: unknown): string | null {
+  const bank = pickBank(value);
+  return bank && (MORTGAGE_BANKS as readonly string[]).includes(bank) ? bank : null;
 }
 
 function flagMap(value: unknown, keys: string[]): Record<string, boolean> {
@@ -570,6 +594,12 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
             : source.bankAccountMode === 'JOINT'
               ? 'JOINT'
               : undefined,
+        primaryBank: pickMortgageBank(source.primaryBank) ?? undefined,
+        partnerPrimaryBank: pickMortgageBank(source.partnerPrimaryBank) ?? undefined,
+        targetLtvPercent:
+          num(source.targetLtvPercent) !== null
+            ? clampCombinedLtv(num(source.targetLtvPercent) as number)
+            : undefined,
       };
 
       /**
@@ -602,11 +632,18 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
             : seed.bankAccountMode
         : null;
       const years = num(source.years);
-      const dealType = has('dealType')
+      const dealTypeRaw = has('dealType')
         ? (DEAL_TYPES as Record<string, string>)[source.dealType as string]
           ? (source.dealType as DealType)
           : null
         : seed.dealType;
+      const targetLtvRaw = has('targetLtvPercent')
+        ? num(source.targetLtvPercent)
+        : (seed.targetLtvPercent ?? null);
+      const targetLtvPercent =
+        targetLtvRaw !== null && targetLtvRaw > 0 ? clampCombinedLtv(targetLtvRaw) : null;
+      const dealType =
+        targetLtvPercent !== null ? dealTypeForCombinedLtv(targetLtvPercent, dealTypeRaw) : dealTypeRaw;
       const equity = has('equity') ? num(source.equity) : seed.equity;
       const maxPrice = maxPropertyForEquity(equity, dealType);
       const propertyValueRaw = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
@@ -614,7 +651,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         propertyValueRaw && maxPrice !== null && propertyValueRaw > maxPrice
           ? maxPrice
           : propertyValueRaw;
-      const mortgageAmount = mortgageFromProperty(propertyValue ?? 0, equity, dealType);
+      const mortgageAmount = requestedMortgage(propertyValue ?? 0, equity, dealType, targetLtvPercent);
 
       const borrowerLoans = carry.borrowerLoans ?? seed.borrowerLoans;
       const partnerLoans = couple ? (carry.partnerLoans ?? seed.partnerLoans) : [];
@@ -655,6 +692,13 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         dealType,
         propertyValue,
         mortgageAmount,
+        targetLtvPercent,
+        primaryBank: has('primaryBank') ? pickMortgageBank(source.primaryBank) : seed.primaryBank,
+        partnerPrimaryBank: couple
+          ? has('partnerPrimaryBank')
+            ? pickMortgageBank(source.partnerPrimaryBank)
+            : seed.partnerPrimaryBank
+          : null,
         propertyAddress: has('propertyAddress') ? str(source.propertyAddress) : seed.propertyAddress,
         years:
           years && years > 0 ? clampPlanYears(years) : seed.years || DEFAULT_PLAN_YEARS,
@@ -1118,6 +1162,44 @@ export function mortgageFromLtvPercent(
   return clampDealMortgage((propertyValue * capped) / 100, propertyValue, dealType);
 }
 
+/**
+ * המשכנתא המבוקשת בפרופיל: במצב משולב לפי האחוז שהוזן, אחרת לפי הון עצמי
+ * בתוך תקרת סוג העסקה.
+ */
+export function requestedMortgage(
+  propertyValue: number,
+  equity: number | null,
+  dealType: DealType | null,
+  targetLtvPercent: number | null
+): number | null {
+  if (propertyValue <= 0) return null;
+  if (targetLtvPercent !== null && targetLtvPercent > 0) {
+    const percent = clampCombinedLtv(targetLtvPercent);
+    const resolvedDeal = dealTypeForCombinedLtv(percent, dealType);
+    return mortgageFromLtvPercent(propertyValue, percent, resolvedDeal);
+  }
+  return mortgageFromProperty(propertyValue, equity, dealType);
+}
+
+/** הבנק המוצע לאישור עקרוני — החשבון שאליו מופקדת ההכנסה העיקרית */
+export function suggestedPreApprovalBank(profile: AnalysisData): {
+  bank: string | null;
+  source: 'borrower' | 'partner' | 'shared' | null;
+} {
+  const own = profile.primaryBank;
+  if (profile.household !== 'COUPLE') {
+    return { bank: own, source: own ? 'borrower' : null };
+  }
+  const partner = profile.partnerPrimaryBank;
+  if (!own && !partner) return { bank: null, source: null };
+  if (own && partner && own === partner) return { bank: own, source: 'shared' };
+  const ownIncome = profile.income ?? 0;
+  const partnerIncome = profile.partnerIncome ?? 0;
+  if (partner && partnerIncome > ownIncome) return { bank: partner, source: 'partner' };
+  if (own) return { bank: own, source: 'borrower' };
+  return { bank: partner, source: partner ? 'partner' : null };
+}
+
 export function ltvPercentOf(propertyValue: number, mortgageAmount: number): number | null {
   if (propertyValue <= 0) return null;
   return Math.round((mortgageAmount / propertyValue) * 1000) / 10;
@@ -1166,9 +1248,14 @@ export function analyzeProfile(data: AnalysisData): AnalysisResult {
   const propertyValue = data.propertyValue ?? 0;
   const equity = data.equity ?? 0;
   const maxLtv = MAX_LTV_PERCENT[data.dealType ?? 'first_home'];
+  const financingLtv =
+    data.targetLtvPercent !== null && data.targetLtvPercent > 0
+      ? Math.min(clampCombinedLtv(data.targetLtvPercent), maxLtv)
+      : maxLtv;
 
-  const requiredLoan = mortgageFromProperty(propertyValue, data.equity, data.dealType) ?? 0;
-  const requiredEquity = propertyValue > 0 ? propertyValue * (1 - maxLtv / 100) : 0;
+  const requiredLoan =
+    requestedMortgage(propertyValue, data.equity, data.dealType, data.targetLtvPercent) ?? 0;
+  const requiredEquity = propertyValue > 0 ? propertyValue * (1 - financingLtv / 100) : 0;
   const equityGap = Math.max(0, requiredEquity - equity);
   const ltv = propertyValue > 0 ? (requiredLoan / propertyValue) * 100 : null;
 

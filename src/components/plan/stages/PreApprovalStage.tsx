@@ -30,6 +30,7 @@ import {
   preApprovalDocumentGroups,
   preApprovalDocuments,
   preApprovalRequirements,
+  suggestedPreApprovalBank,
 } from '@/lib/mortgage-plan';
 import type {
   DocumentGroup,
@@ -256,6 +257,19 @@ export function PreApprovalStage({
 
   const amount = preApprovalAmount(data);
   const maxLtv = MAX_LTV_PERCENT[profile.dealType ?? 'first_home'];
+  const suggested = suggestedPreApprovalBank(profile);
+
+  const seededSuggestedBank = useRef(false);
+  useEffect(() => {
+    if (seededSuggestedBank.current) return;
+    if (value.bank) {
+      seededSuggestedBank.current = true;
+      return;
+    }
+    if (!suggested.bank) return;
+    seededSuggestedBank.current = true;
+    onChange({ ...value, bank: suggested.bank });
+  }, [onChange, suggested.bank, value]);
 
   const update = (patch: Partial<PreApprovalData>) => {
     const next = { ...value, ...patch };
@@ -649,9 +663,27 @@ export function PreApprovalStage({
         title="הבנק שאליו מוגשת הבקשה"
         description="הבקשה לאישור עקרוני מוגשת לבנק אחד. הריביות שתקבלו ממנו הן נקודת הפתיחה למכרז מול שאר הבנקים."
       >
+        {suggested.bank && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p className="text-sm font-black text-emerald-900">
+              מוצע כברירת מחדל: בנק {suggested.bank}
+              {suggested.source === 'partner'
+                ? ' — החשבון הראשי של לווה 2'
+                : suggested.source === 'borrower' && couple
+                  ? ' — החשבון הראשי של לווה 1'
+                  : ''}
+            </p>
+            <p className="mt-1.5 text-[12px] leading-relaxed text-emerald-800">
+              הבנק הזה מכיר את הלקוח כי אליו מועברת ההכנסה העיקרית בכל חודש. בסבירות גבוהה יותר הוא
+              ייתן תנאים טובים יותר — בתנאי שאין בעיות בחשבון. זו נקודת התחלה טובה יותר למכרז
+              הריביות, וחוסכת סבבי מיקוח וזמן יקר.
+            </p>
+          </div>
+        )}
         <div className="mb-4 flex flex-wrap gap-2">
           {PLAN_BANKS.map((bank) => {
             const selected = value.bank === bank;
+            const isSuggested = suggested.bank === bank;
             return (
               <button
                 key={bank}
@@ -660,11 +692,14 @@ export function PreApprovalStage({
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all ${
                   selected
                     ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
-                    : 'border-slate-300 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-emerald-400 hover:text-emerald-700 hover:shadow-sm'
+                    : isSuggested
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-800 hover:-translate-y-0.5 hover:shadow-sm'
+                      : 'border-slate-300 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-emerald-400 hover:text-emerald-700 hover:shadow-sm'
                 }`}
               >
                 {selected ? <Check className="h-3.5 w-3.5" /> : <Building2 className="h-3.5 w-3.5" />}
                 {bank}
+                {isSuggested && !selected ? ' · מוצע' : ''}
               </button>
             );
           })}

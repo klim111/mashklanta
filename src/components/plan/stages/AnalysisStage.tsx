@@ -21,9 +21,9 @@ import {
   User,
 } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
-import { DEAL_TYPES, MAX_LTV_PERCENT } from '@/components/mortgage-advisor/types';
+import { DEAL_TYPES, MAX_LTV_PERCENT, MORTGAGE_BANKS } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
-import { DEAL_TYPE_KEYS } from '@/components/mortgage-advisor/propertyContext';
+import { DEAL_TYPE_KEYS, clampCombinedLtv, dealTypeForCombinedLtv } from '@/components/mortgage-advisor/propertyContext';
 import { TermMonthsSlider } from '@/components/mortgage-advisor/workspace/primitives';
 import { planToolHref } from '@/data/platform/planStages';
 import { defaultMortgagePlanningUserData } from '@/lib/mortgage-affordability';
@@ -34,8 +34,8 @@ import {
   analyzeProfile,
   dealMaxLtv,
   maxPropertyForEquity,
-  mortgageFromProperty,
   profileRequirements,
+  requestedMortgage,
   sumProfileLoans,
 } from '@/lib/mortgage-plan';
 import type {
@@ -181,6 +181,7 @@ export function AnalysisStage({
                       partnerEmploymentType:
                         household === 'COUPLE' ? profile.partnerEmploymentType : null,
                       bankAccountMode: household === 'COUPLE' ? profile.bankAccountMode : null,
+                      partnerPrimaryBank: household === 'COUPLE' ? profile.partnerPrimaryBank : null,
                       ...syncedLoans(
                         { ...profile, household },
                         profile.borrowerLoans,
@@ -196,16 +197,20 @@ export function AnalysisStage({
                   title={couple ? 'לווה 1' : 'הפרטים שלי'}
                   age={profile.age}
                   income={profile.income}
+                  bank={profile.primaryBank}
                   onAge={(age) => patch({ age })}
                   onIncome={(income) => patch({ income })}
+                  onBank={(primaryBank) => patch({ primaryBank })}
                 />
                 {couple && (
                   <BorrowerBasicsCard
                     title="לווה 2"
                     age={profile.partnerAge}
                     income={profile.partnerIncome}
+                    bank={profile.partnerPrimaryBank}
                     onAge={(partnerAge) => patch({ partnerAge })}
                     onIncome={(partnerIncome) => patch({ partnerIncome })}
+                    onBank={(partnerPrimaryBank) => patch({ partnerPrimaryBank })}
                   />
                 )}
               </div>
@@ -256,10 +261,11 @@ export function AnalysisStage({
                       equity,
                       mortgageAmount:
                         (profile.propertyValue ?? 0) > 0
-                          ? mortgageFromProperty(
+                          ? requestedMortgage(
                               profile.propertyValue ?? 0,
                               equity,
-                              profile.dealType
+                              profile.dealType,
+                              profile.targetLtvPercent
                             )
                           : profile.mortgageAmount,
                     })
@@ -678,14 +684,18 @@ function BorrowerBasicsCard({
   title,
   age,
   income,
+  bank,
   onAge,
   onIncome,
+  onBank,
 }: {
   title: string;
   age: number | null;
   income: number | null;
+  bank: string | null;
   onAge: (value: number | null) => void;
   onIncome: (value: number | null) => void;
+  onBank: (value: string | null) => void;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/80 to-white p-4 shadow-sm">
@@ -705,6 +715,35 @@ function BorrowerBasicsCard({
           placeholder="15,000"
         />
         <NumberField label="גיל" value={age} onChange={onAge} max={90} placeholder="35" />
+      </div>
+
+      <div className="mt-4">
+        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+          <Building2 className="h-3.5 w-3.5 text-slate-400" />
+          הבנק של החשבון הראשי
+        </span>
+        <p className="mb-2 text-[11px] leading-relaxed text-slate-400">
+          החשבון שאליו מועברת ההכנסה העיקרית בכל חודש. יוצע כברירת מחדל באישור העקרוני.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {MORTGAGE_BANKS.map((item) => {
+            const selected = bank === item;
+            return (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onBank(selected ? null : item)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all ${
+                  selected
+                    ? 'border-blue-500 bg-blue-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+                }`}
+              >
+                {item}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -982,10 +1021,20 @@ function PropertyPanel({
   const propertyValue = profile.propertyValue ?? 0;
   const maxLtv = dealType ? dealMaxLtv(dealType) : null;
   const maxPrice = dealType ? maxPropertyForEquity(profile.equity, dealType) : null;
-  const computedMortgage = mortgageFromProperty(propertyValue, profile.equity, dealType);
+  const computedMortgage = requestedMortgage(
+    propertyValue,
+    profile.equity,
+    dealType,
+    profile.targetLtvPercent
+  );
   const leftoverEquity = propertyValue > 0 ? Math.max(0, propertyValue - (computedMortgage ?? 0)) : 0;
+  const combined = profile.targetLtvPercent !== null && profile.targetLtvPercent > 0;
 
-  const applyPropertyValue = (value: number | null, nextDeal: DealType | null) => {
+  const applyPropertyValue = (
+    value: number | null,
+    nextDeal: DealType | null,
+    nextLtv: number | null = profile.targetLtvPercent
+  ) => {
     const cap = maxPropertyForEquity(profile.equity, nextDeal);
     const exceeded = value !== null && cap !== null && value > cap;
     const nextPrice = exceeded ? cap : value;
@@ -993,8 +1042,19 @@ function PropertyPanel({
     patch({
       dealType: nextDeal,
       propertyValue: nextPrice,
-      mortgageAmount: mortgageFromProperty(nextPrice ?? 0, profile.equity, nextDeal),
+      targetLtvPercent: nextLtv,
+      mortgageAmount: requestedMortgage(nextPrice ?? 0, profile.equity, nextDeal, nextLtv),
     });
+  };
+
+  const applyCombinedLtv = (raw: number | null) => {
+    if (raw === null || raw <= 0) {
+      applyPropertyValue(profile.propertyValue, profile.dealType, null);
+      return;
+    }
+    const percent = clampCombinedLtv(raw);
+    const nextDeal = dealTypeForCombinedLtv(percent, profile.dealType);
+    applyPropertyValue(profile.propertyValue, nextDeal, percent);
   };
 
   return (
@@ -1024,12 +1084,12 @@ function PropertyPanel({
           <span className="mb-1.5 block text-xs font-bold text-slate-600">סוג העסקה</span>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {DEAL_TYPE_KEYS.map((key: DealType) => {
-              const selected = profile.dealType === key;
+              const selected = !combined && profile.dealType === key;
               return (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => applyPropertyValue(profile.propertyValue, key)}
+                  onClick={() => applyPropertyValue(profile.propertyValue, key, null)}
                   className={`rounded-2xl border-2 px-4 py-3 text-right transition-all ${
                     selected
                       ? 'border-blue-500 bg-blue-50 shadow-sm'
@@ -1049,6 +1109,28 @@ function PropertyPanel({
                 </button>
               );
             })}
+          </div>
+          <div
+            className={`mt-3 rounded-2xl border-2 p-4 ${
+              combined ? 'border-blue-500 bg-blue-50/70' : 'border-slate-200 bg-white'
+            }`}
+          >
+            <NumberField
+              label="מצב משולב — אחוז מימון ידני"
+              hint="כל אחוז בין 1 ל-75. סכום המשכנתא, ההון העצמי וההחזר המשוער יחושבו לפי האחוז שהוזן, בתוך מגבלות בנק ישראל."
+              value={profile.targetLtvPercent}
+              onChange={applyCombinedLtv}
+              suffix="%"
+              max={75}
+              placeholder="60"
+            />
+            {combined && propertyValue > 0 && (
+              <p className="mt-2 text-[11px] leading-relaxed text-blue-800">
+                מימון {profile.targetLtvPercent}% · משכנתא {formatShekel(computedMortgage)} · הון עצמי
+                בעסקה {formatShekel(leftoverEquity)}
+                {profile.dealType ? ` · לפי ${DEAL_TYPES[profile.dealType]}` : ''}
+              </p>
+            )}
           </div>
         </div>
 
@@ -1081,7 +1163,11 @@ function PropertyPanel({
             <Metric
               label="סכום המשכנתא"
               value={formatShekel(computedMortgage)}
-              note="מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה"
+              note={
+                combined
+                  ? `לפי מימון ${profile.targetLtvPercent}% שהוזן במצב משולב`
+                  : 'מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה'
+              }
             />
             <Metric
               label="אחוז מימון"

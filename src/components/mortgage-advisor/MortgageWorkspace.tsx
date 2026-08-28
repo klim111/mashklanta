@@ -361,28 +361,36 @@ export function MortgageWorkspace({
   );
 
   /**
-   * שכפול: אותם פרמטרים, שם ריק. אחרי שמירת השם התמהיל עולה לאזור העבודה.
+   * שכפול: אותם פרמטרים, שם ריק. העותק עולה מיד לאזור העבודה כדי שלא יישאר
+   * ריק עד בחירת תמהיל אחר, ושדה השם נפתח על השורה הפעילה.
    */
   const duplicateMix = useCallback(
     (source: WorkspaceMix) => {
       keepCurrentMix();
       const clone = cloneWorkspaceMix(source, { name: '' });
       setPendingCloneId(clone.id);
-      void save(clone);
+      openMix(clone);
+      setEditorExpanded(true);
+      void save(clone).then((stored) => notifyActive(stored));
     },
-    [keepCurrentMix, save]
+    [keepCurrentMix, openMix, save, notifyActive]
   );
 
   const renameMix = useCallback(
     (id: string, name: string) => {
       void rename(id, name);
-      if (id !== pendingCloneId) return;
-      setPendingCloneId(null);
-      const item = saved.find((entry) => entry.mix.id === id);
-      if (!item) return;
-      openSavedMix({ ...item, mix: { ...item.mix, name } });
+      if (id === pendingCloneId) setPendingCloneId(null);
     },
-    [rename, pendingCloneId, saved, openSavedMix]
+    [rename, pendingCloneId]
+  );
+
+  const renameActiveMix = useCallback(
+    (name: string) => {
+      actions.patchMix({ name });
+      persistMix({ ...mix, name });
+      if (pendingCloneId === mix.id) setPendingCloneId(null);
+    },
+    [actions, persistMix, mix, pendingCloneId]
   );
 
   const plannedPrepay = useMemo(() => {
@@ -676,7 +684,7 @@ export function MortgageWorkspace({
           onToggleExpanded={() => setEditorExpanded((open) => !open)}
           onActivate={openSavedMix}
           onToggleCompare={actions.toggleCompared}
-          onRenameActive={(name) => actions.patchMix({ name })}
+          onRenameActive={renameActiveMix}
           onRename={renameMix}
           onDelete={remove}
           onDuplicate={(item) => duplicateMix(item.mix)}
