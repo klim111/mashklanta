@@ -70,8 +70,8 @@ export default function TopicSection({
           >
             <Icon className="w-8 h-8" />
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{title}</h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">{subtitle}</p>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3">{title}</h2>
+          <p className="text-lg text-slate-700 max-w-2xl mx-auto leading-relaxed">{subtitle}</p>
         </motion.div>
 
         <motion.div

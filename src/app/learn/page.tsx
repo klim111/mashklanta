@@ -65,17 +65,17 @@ export default function LearnPage() {
       </div>
 
       {/* Hero */}
-      <section className="relative min-h-[70vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800 text-white px-4">
+      <section className="relative min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white px-4">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-10 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-float" />
-          <div className="absolute bottom-10 left-10 w-96 h-96 bg-indigo-400/20 rounded-full blur-3xl animate-float-slow" />
-          {/* 3D grid floor effect */}
+          <div className="absolute -top-24 right-[8%] h-[26rem] w-[26rem] rounded-full bg-blue-500/20 blur-3xl animate-blob" />
+          <div className="absolute bottom-[-6rem] left-[6%] h-[30rem] w-[30rem] rounded-full bg-violet-500/20 blur-3xl animate-blob [animation-delay:3s]" />
+          <div className="absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
           <div
-            className="absolute bottom-0 left-0 right-0 h-48 opacity-20"
+            className="absolute bottom-0 left-0 right-0 h-48 opacity-25"
             style={{
               background:
-                'linear-gradient(180deg, transparent, rgba(0,0,0,0.3)), repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 60px), repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 60px)',
-              transform: 'perspective(400px) rotateX(60deg)',
+                'linear-gradient(180deg, transparent, rgba(0,0,0,0.4)), repeating-linear-gradient(90deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 1px, transparent 1px, transparent 64px), repeating-linear-gradient(0deg, rgba(255,255,255,0.09) 0px, rgba(255,255,255,0.09) 1px, transparent 1px, transparent 64px)',
+              transform: 'perspective(420px) rotateX(62deg)',
               transformOrigin: 'bottom',
             }}
           />
@@ -87,23 +87,37 @@ export default function LearnPage() {
           transition={{ duration: 0.8 }}
           className="relative text-center max-w-3xl z-10"
         >
-          <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-4 py-2 rounded-full text-sm font-medium mb-6">
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
             <GraduationCap className="w-4 h-4" />
             מרכז למידה — משכלתנא
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+          <h1 className="mb-6 text-4xl font-black leading-[1.15] text-white md:text-6xl">
             להבין משכנתא
+            <br />
+            <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-violet-200 bg-clip-text text-transparent">
+              לפני שחותמים בבנק
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-blue-100 leading-relaxed mb-8">
+          <p className="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
             מסע לימודי אינטראקטיבי — מהבסיס ועד מסלולי הריבית.
             גללו בין כרטיסיות תלת-מימדיות בכל נושא.
           </p>
+          <div className="mb-8 flex flex-wrap justify-center gap-2">
+            {topicNav.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/25"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
           <div className="flex flex-wrap justify-center gap-3">
             <Button
               asChild
-              variant="secondary"
               size="lg"
-              className="bg-white text-indigo-700 hover:bg-blue-50"
+              className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
             >
               <a href="#interest-tracks">
                 <Layers className="w-5 h-5 ml-2" />
@@ -112,9 +126,8 @@ export default function LearnPage() {
             </Button>
             <Button
               asChild
-              variant="outline"
               size="lg"
-              className="border-white/40 text-white hover:bg-white/10"
+              className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
             >
               <Link href="/how-it-works">
                 <Compass className="w-5 h-5 ml-2" />
@@ -144,10 +157,10 @@ export default function LearnPage() {
               <li key={item.id}>
                 <a
                   href={`#${item.id}`}
-                  className={`block px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  className={`block px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
                     activeNav === item.id
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                      ? 'bg-gray-900 text-white shadow-md'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   {item.label}
@@ -214,27 +227,39 @@ export default function LearnPage() {
       ))}
 
       {/* CTA */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="max-w-3xl mx-auto px-4 text-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-800 to-violet-900 py-20 text-white">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-20 right-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -bottom-24 left-1/4 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl" />
+        </div>
+        <div className="relative max-w-3xl mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
               מוכנים ליישם את מה שלמדתם?
             </h2>
-            <p className="text-gray-600 mb-8">
+            <p className="text-slate-100 mb-8 text-lg leading-relaxed">
               השתמשו בכלים האינטראקטיביים שלנו לבניית תמהיל, סימולציות ותכנון משכנתא.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button
+                asChild
+                size="lg"
+                className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
+              >
                 <Link href="/mortgage-planning">
                   תכנון משכנתא
                   <ChevronLeft className="w-5 h-5 mr-2" />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline">
+              <Button
+                asChild
+                size="lg"
+                className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
+              >
                 <Link href="/simulations">סימולציות</Link>
               </Button>
             </div>

@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
 type MashkalantaProps = {
-  /** hero = דף הבית; header = כותרת תהליך התכנון */
-  variant?: "hero" | "header";
+  /** hero = דף הבית; header = כותרת תהליך התכנון; nav = לוגו בסרגל העליון */
+  variant?: "hero" | "header" | "nav";
   /** מפעיל את אנימציית ה־ל בלי צורך בריחוף */
   autoPlay?: boolean;
 };
@@ -16,6 +16,7 @@ export default function LoanWordJump({
   const [triggered, setTriggered] = useState(false);
   const [animationDone, setAnimationDone] = useState(false);
   const isHeader = variant === "header";
+  const isNav = variant === "nav";
 
   const handleHover = () => {
     if (!triggered) setTriggered(true);
@@ -42,21 +43,25 @@ export default function LoanWordJump({
   };
 
   const finalWord = ["מ", "ש", "כ", "ל", "נ", "ת", "א"];
+  const blinkClass = isHeader ? "blink-and-bold-header" : "blink-and-bold";
+  const lamedInClass = isHeader ? "text-emerald-300" : "text-emerald-600";
+  const letterClass = isHeader ? "text-white" : isNav ? "text-gray-900" : undefined;
+
+  const wrapClass = isHeader
+    ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center"
+    : isNav
+      ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center leading-none"
+      : "flex h-96 cursor-pointer select-none flex-col items-center justify-center";
+
+  const wordClass = isHeader
+    ? "text-2xl font-bold text-white md:text-[1.7rem]"
+    : isNav
+      ? "text-xl font-black text-gray-900 md:text-2xl"
+      : "text-5xl font-bold";
 
   return (
-    <div
-      dir="rtl"
-      onMouseEnter={handleHover}
-      className={
-        isHeader
-          ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center"
-          : "flex h-96 cursor-pointer select-none flex-col items-center justify-center"
-      }
-    >
-      <div
-        className={isHeader ? "text-2xl font-bold text-white md:text-[1.7rem]" : "text-5xl font-bold"}
-        style={containerStyle}
-      >
+    <div dir="rtl" onMouseEnter={handleHover} className={wrapClass}>
+      <div className={wordClass} style={containerStyle}>
         {finalWord.map((letter, index) => {
           if (letter === "ל") {
             return (
@@ -74,31 +79,26 @@ export default function LoanWordJump({
                       },
                     }}
                     exit={{ opacity: 0 }}
-                    className={isHeader ? "text-emerald-300" : "text-green-600"}
+                    className={lamedInClass}
                   >
                     ל
                   </motion.span>
                 )}
-                {animationDone && (
-                  <span className={isHeader ? "blink-and-bold-header" : "blink-and-bold"}>ל</span>
-                )}
+                {animationDone && <span className={blinkClass}>ל</span>}
               </AnimatePresence>
             );
           }
 
           if (animationDone && (letter === "ש" || letter === "כ")) {
             return (
-              <span
-                key={index}
-                className={isHeader ? "blink-and-bold-header" : "blink-and-bold"}
-              >
+              <span key={index} className={blinkClass}>
                 {letter}
               </span>
             );
           }
 
           return (
-            <span key={index} className={isHeader ? "text-white" : undefined}>
+            <span key={index} className={letterClass}>
               {letter}
             </span>
           );
@@ -106,7 +106,7 @@ export default function LoanWordJump({
       </div>
 
       <AnimatePresence>
-        {animationDone && (
+        {animationDone && !isNav && (
           <motion.div
             key="finalText"
             initial={{ opacity: 0, y: 15 }}

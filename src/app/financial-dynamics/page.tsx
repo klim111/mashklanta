@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import RealTimeMoneyFlow from '@/components/financial-dynamics/RealTimeMoneyFlow';
+import NavBar from '@/components/ui/navbar';
 
 // Types
 interface FinancialParams {
@@ -465,23 +466,16 @@ export default function FinancialDynamicsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
-      {/* Header */}
-      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
+      </div>
+      <div className="border-b border-gray-200 bg-white/90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ChevronLeft className="w-4 h-4" />
-                  חזרה
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2">
-                <Activity className="w-6 h-6 text-indigo-600" />
-                <h1 className="text-xl font-bold text-gray-900">דינמיקה פיננסית</h1>
-              </div>
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-indigo-600" />
+              <h1 className="text-lg font-bold text-gray-900">דינמיקה פיננסית</h1>
             </div>
-            
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"

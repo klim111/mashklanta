@@ -10,6 +10,7 @@ import { SavedMixesBoard } from '@/components/mortgage-advisor/SavedMixesBoard';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import { stageMixForWorkspace } from '@/components/mortgage-advisor/workspace/draft';
+import NavBar from '@/components/ui/navbar';
 
 export default function SavedMixesPage() {
   const router = useRouter();
@@ -25,6 +26,9 @@ export default function SavedMixesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
+      </div>
       <div className="container mx-auto px-4 py-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

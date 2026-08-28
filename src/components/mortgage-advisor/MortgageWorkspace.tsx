@@ -475,7 +475,6 @@ export function MortgageWorkspace({
   if (phase === 'landing') {
     return (
       <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
-        {!embedded && <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />}
         <div className="container mx-auto px-4 py-6">
           <WorkspaceLanding
             saved={saved}
@@ -523,7 +522,6 @@ export function MortgageWorkspace({
   if (phase === 'setup') {
     return (
       <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
-        {!embedded && <WorkspaceTopBar personalAreaHref={personalAreaHref} isAdvisor={isAdvisor} />}
         <div className="container mx-auto px-4 py-6">
           <MixSetupWizard
             onBack={backToLanding}
@@ -819,39 +817,6 @@ export function MortgageWorkspace({
         onClose={() => setRefinanceTarget(null)}
         onConfirm={actions.addRefinance}
       />
-    </div>
-  );
-}
-
-function WorkspaceTopBar({
-  personalAreaHref,
-  isAdvisor,
-}: {
-  personalAreaHref: string;
-  isAdvisor: boolean;
-}) {
-  return (
-    <div className="border-b border-slate-200 bg-white">
-      <div className="container mx-auto px-4 py-2.5 flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="h-9" asChild>
-          <Link href="/">
-            <Home className="h-4 w-4 ml-1" />
-            עמוד ראשי
-          </Link>
-        </Button>
-        <Button variant="ghost" size="sm" className="h-9" asChild>
-          <Link href={personalAreaHref}>
-            {isAdvisor ? <Users className="h-4 w-4 ml-1" /> : <UserRound className="h-4 w-4 ml-1" />}
-            {isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}
-          </Link>
-        </Button>
-        <Button variant="ghost" size="sm" className="h-9" asChild>
-          <Link href="/saved-mixes">
-            <BookmarkCheck className="h-4 w-4 ml-1" />
-            התמהילים השמורים
-          </Link>
-        </Button>
-      </div>
     </div>
   );
 }

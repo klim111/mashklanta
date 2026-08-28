@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
+import NavBar from '@/components/ui/navbar';
 
 export const metadata: Metadata = {
   title: 'כלי יועצי משכנתא | משכלנתא',
@@ -8,5 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default function MortgageAdvisorPage() {
-  return <MortgageWorkspace />;
+  return (
+    <>
+      <div className="relative z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
+      </div>
+      <MortgageWorkspace />
+    </>
+  );
 }

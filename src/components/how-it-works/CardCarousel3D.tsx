@@ -134,9 +134,9 @@ export default function CardCarousel3D({
                     c.gradient
                   )}
                 >
-                  <div className="h-full rounded-2xl bg-white/90 backdrop-blur p-6 flex flex-col items-center justify-center text-center">
-                    <SideIcon className="w-10 h-10 text-gray-400 mb-3" />
-                    <p className="font-bold text-gray-700 text-lg">{c.shortTitle ?? c.title}</p>
+                  <div className="h-full rounded-2xl bg-white p-6 flex flex-col items-center justify-center text-center border border-slate-200">
+                    <SideIcon className="w-10 h-10 text-slate-500 mb-3" />
+                    <p className="font-bold text-slate-800 text-lg">{c.shortTitle ?? c.title}</p>
                   </div>
                 </div>
               </motion.div>
@@ -183,49 +183,50 @@ export default function CardCarousel3D({
               className="relative w-[min(92vw,380px)] sm:w-[400px] md:w-[420px] cursor-grab active:cursor-grabbing z-10"
               style={{ transformStyle: 'preserve-3d' }}
             >
-              <div
-                className={cn(
-                  'rounded-3xl bg-gradient-to-br p-[3px] shadow-2xl shadow-blue-900/20',
-                  'ring-1 ring-white/40',
-                  card.gradient
-                )}
-              >
-                <div className="rounded-[22px] bg-white/95 backdrop-blur-xl overflow-hidden min-h-[380px] sm:min-h-[400px] flex flex-col">
-                  {/* Header */}
-                  <div
-                    className={cn(
-                      'px-6 py-5 bg-gradient-to-l text-white relative overflow-hidden',
-                      card.gradient
-                    )}
-                  >
-                    <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/10" />
-                    <div className="absolute -bottom-4 -right-4 w-32 h-32 rounded-full bg-white/5" />
-                    <div className="relative flex items-start gap-4">
-                      <div className="p-3 rounded-2xl bg-white/20 backdrop-blur shrink-0">
-                        <Icon className="w-8 h-8" />
+                <div
+                  className={cn(
+                    'rounded-3xl bg-gradient-to-br p-[3px] shadow-2xl shadow-slate-900/25',
+                    'ring-1 ring-slate-900/10',
+                    card.gradient
+                  )}
+                >
+                  <div className="rounded-[22px] bg-white overflow-hidden min-h-[380px] sm:min-h-[400px] flex flex-col">
+                    {/* Header — שכבת כהות קבועה כדי שכיתוב לבן תמיד ייקרא */}
+                    <div
+                      className={cn(
+                        'px-6 py-5 bg-gradient-to-l text-white relative overflow-hidden',
+                        card.gradient
+                      )}
+                    >
+                      <div className="absolute inset-0 bg-slate-950/35" />
+                      <div className="absolute -top-6 -left-6 w-24 h-24 rounded-full bg-white/10" />
+                      <div className="absolute -bottom-4 -right-4 w-32 h-32 rounded-full bg-white/5" />
+                      <div className="relative flex items-start gap-4">
+                        <div className="p-3 rounded-2xl bg-white/20 backdrop-blur shrink-0">
+                          <Icon className="w-8 h-8 text-white drop-shadow" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {card.tag && (
+                            <span className="inline-block text-xs font-semibold bg-white/25 text-white px-2 py-0.5 rounded-full mb-1">
+                              {card.tag}
+                            </span>
+                          )}
+                          <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm">{card.title}</h3>
+                          {card.subtitle && (
+                            <p className="text-sm text-white/95 mt-0.5 font-medium">{card.subtitle}</p>
+                          )}
+                        </div>
+                        <Sparkles className="w-5 h-5 text-white/80 shrink-0 animate-pulse" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        {card.tag && (
-                          <span className="inline-block text-xs font-medium bg-white/25 px-2 py-0.5 rounded-full mb-1">
-                            {card.tag}
-                          </span>
-                        )}
-                        <h3 className="text-xl font-bold leading-tight">{card.title}</h3>
-                        {card.subtitle && (
-                          <p className="text-sm text-white/80 mt-0.5">{card.subtitle}</p>
-                        )}
-                      </div>
-                      <Sparkles className="w-5 h-5 text-white/50 shrink-0 animate-pulse" />
                     </div>
-                  </div>
 
-                  {/* Body */}
-                  <div className="flex-1 px-6 py-5 overflow-y-auto text-right space-y-4">
-                    <p className="text-gray-700 leading-relaxed text-sm sm:text-base">{text}</p>
+                    {/* Body */}
+                    <div className="flex-1 px-6 py-5 overflow-y-auto text-right space-y-4 bg-slate-50">
+                      <p className="text-slate-800 leading-relaxed text-sm sm:text-base font-medium">{text}</p>
 
                     {variant === 'track' && card.advantages && card.advantages.length > 0 && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
+                        <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
                           <CheckCircle2 className="w-4 h-4 shrink-0" />
                           <span>יתרונות</span>
                         </div>
@@ -233,7 +234,7 @@ export default function CardCarousel3D({
                           {card.advantages.map((item, idx) => (
                             <li
                               key={idx}
-                              className="text-sm text-gray-600 flex gap-2 items-start"
+                              className="text-sm text-slate-700 flex gap-2 items-start"
                             >
                               <span className="text-emerald-500 mt-1 shrink-0">•</span>
                               <span>{item}</span>
@@ -245,7 +246,7 @@ export default function CardCarousel3D({
 
                     {variant === 'track' && card.risks && card.risks.length > 0 && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-amber-700 font-semibold text-sm">
+                        <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
                           <AlertTriangle className="w-4 h-4 shrink-0" />
                           <span>סיכונים</span>
                         </div>
@@ -253,7 +254,7 @@ export default function CardCarousel3D({
                           {card.risks.map((item, idx) => (
                             <li
                               key={idx}
-                              className="text-sm text-gray-600 flex gap-2 items-start"
+                              className="text-sm text-slate-700 flex gap-2 items-start"
                             >
                               <span className="text-amber-500 mt-1 shrink-0">•</span>
                               <span>{item}</span>
@@ -268,7 +269,7 @@ export default function CardCarousel3D({
                         {card.highlights.map((h) => (
                           <span
                             key={h}
-                            className="text-xs font-medium px-3 py-1 rounded-full bg-slate-100 text-slate-700"
+                            className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-200 text-slate-800"
                           >
                             {h}
                           </span>

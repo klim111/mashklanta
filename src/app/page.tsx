@@ -10,6 +10,7 @@ import Statistic from '@/components/ui/statistic';
 import Footer from '@/components/ui/footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { journeyStages } from '@/data/platform/journey';
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -198,36 +199,35 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Slide 2: Navigation & Guidance */}
+          {/* Slide 2: Navigation & Guidance — חמשת שלבי המשכנתא */}
           <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
-            <div className="max-w-4xl w-full px-8">
-              <svg viewBox="0 0 800 400" className="w-full h-auto">
-                {/* Navigation Path */}
-                <path d="M100 200 Q200 150 300 200 T500 200 T700 200" 
-                      stroke="rgba(34, 197, 94, 0.6)" strokeWidth="6" fill="none" className="animate-draw-line" />
-                
-                {/* Milestone Points */}
-                <circle cx="100" cy="200" r="12" fill="rgba(34, 197, 94, 0.8)" className="animate-pulse-glow" />
-                <circle cx="300" cy="200" r="12" fill="rgba(34, 197, 94, 0.8)" className="animate-pulse-glow" style={{animationDelay: '1s'}} />
-                <circle cx="500" cy="200" r="12" fill="rgba(34, 197, 94, 0.8)" className="animate-pulse-glow" style={{animationDelay: '2s'}} />
-                <circle cx="700" cy="200" r="12" fill="rgba(34, 197, 94, 0.8)" className="animate-pulse-glow" style={{animationDelay: '3s'}} />
-                
-                {/* Step Labels */}
-                <text x="100" y="180" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="14" fontWeight="bold">התחלה</text>
-                <text x="300" y="180" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="14" fontWeight="bold">ניתוח</text>
-                <text x="500" y="180" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="14" fontWeight="bold">תמהיל</text>
-                <text x="700" y="180" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="14" fontWeight="bold">הצלחה</text>
-                
-                {/* Compass/Target Icon */}
-                <circle cx="400" cy="120" r="40" fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.6)" strokeWidth="2" className="animate-pulse-glow" />
-                <path d="M400 90 L410 110 L400 130 L390 110 Z" fill="rgba(34, 197, 94, 0.8)" className="animate-float-up" />
-                
-                {/* Title */}
-                <text x="400" y="320" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" 
-                      fontSize="32" fontWeight="bold">ניווט לאורך כל השלבים</text>
-                <text x="400" y="350" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                      fontSize="18">ליווי מקצועי מהתחלה ועד הסוף</text>
-              </svg>
+            <div className="max-w-4xl w-full px-8" dir="rtl">
+              <div className="relative mb-10">
+                <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-gray-200 md:block" />
+                <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 overflow-hidden rounded-full md:block">
+                  <div className="h-full w-full bg-gradient-to-l from-blue-500 via-violet-500 to-rose-500 animate-draw-line" />
+                </div>
+                <ol className="relative grid grid-cols-5 gap-1 md:gap-2">
+                  {journeyStages.map((stage) => (
+                    <li key={stage.id} className="flex flex-col items-center text-center">
+                      <span
+                        className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br text-lg font-black text-white shadow-lg ${stage.gradient} animate-pulse-glow`}
+                      >
+                        {stage.number}
+                      </span>
+                      <span className="mt-3 text-[11px] font-bold leading-snug text-gray-800 md:text-sm">
+                        {stage.shortTitle}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <p className="text-center text-2xl font-black text-emerald-600 md:text-3xl">
+                ניווט לאורך כל השלבים
+              </p>
+              <p className="mt-1 text-center text-base text-gray-600 md:text-lg">
+                ליווי מקצועי מהתחלה ועד הסוף
+              </p>
             </div>
           </div>
 
@@ -264,21 +264,19 @@ export default function Home() {
           <div className="absolute inset-0 opacity-0 animate-carousel-slide-4 flex items-center justify-center">
             <div className="max-w-4xl w-full px-8">
               <svg viewBox="0 0 800 400" className="w-full h-auto">
-                {/* Money Savings Graph */}
-                <path d="M100 300 Q200 250 300 200 Q400 150 500 100 Q600 80 700 60" 
+                {/* Cost / remaining-debt graph — descends over time */}
+                <path d="M100 70 Q200 110 300 160 Q400 220 500 260 Q600 290 700 315"
                       stroke="rgba(34, 197, 94, 0.8)" strokeWidth="6" fill="none" className="animate-draw-line" />
-                
-                {/* Money Icons */}
-                <text x="150" y="290" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="24" className="animate-pulse-glow">₪</text>
-                <text x="300" y="190" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="28" className="animate-pulse-glow" style={{animationDelay: '1s'}}>₪</text>
-                <text x="500" y="90" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="32" className="animate-pulse-glow" style={{animationDelay: '2s'}}>₪</text>
-                <text x="700" y="50" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="36" className="animate-pulse-glow" style={{animationDelay: '3s'}}>₪</text>
-                
-                {/* Savings Labels */}
-                <text x="150" y="320" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪50K</text>
-                <text x="300" y="220" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪150K</text>
-                <text x="500" y="120" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪300K</text>
-                <text x="700" y="80" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪500K</text>
+
+                <text x="150" y="60" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="24" className="animate-pulse-glow">₪</text>
+                <text x="300" y="145" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="28" className="animate-pulse-glow" style={{animationDelay: '1s'}}>₪</text>
+                <text x="500" y="245" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="32" className="animate-pulse-glow" style={{animationDelay: '2s'}}>₪</text>
+                <text x="700" y="300" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="36" className="animate-pulse-glow" style={{animationDelay: '3s'}}>₪</text>
+
+                <text x="150" y="95" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪500K</text>
+                <text x="300" y="185" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪300K</text>
+                <text x="500" y="285" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪150K</text>
+                <text x="700" y="345" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪50K</text>
                 
                 {/* Title */}
                 <text x="400" y="350" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" 
