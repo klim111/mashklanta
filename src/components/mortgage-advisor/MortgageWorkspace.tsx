@@ -13,7 +13,6 @@ import {
   BookmarkCheck,
   Home,
   Plus,
-  Save,
   Settings2,
   ShieldAlert,
   Table2,
@@ -38,6 +37,7 @@ import type { PropertySetup } from './workspace/MixSetupWizard';
 import { PropertyHeader } from './workspace/PropertyHeader';
 import { MixList } from './workspace/MixList';
 import { MixEditor } from './workspace/MixEditor';
+import { SavedMixPicker } from './workspace/SavedMixPicker';
 import { RiskPanel } from './workspace/RiskPanel';
 import { GoalsPanel } from './workspace/GoalsPanel';
 import { EventsPanel } from './workspace/EventsPanel';
@@ -187,10 +187,10 @@ export function MortgageWorkspace({
   const [editorExpanded, setEditorExpanded] = useState(false);
 
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
-  const [justSaved, setJustSaved] = useState(false);
   const [flashSave, setFlashSave] = useState(false);
-  /** תמהיל ששוכפל ומחכה לשם לפני שהוא עולה לאזור העבודה */
+  /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם לפני שהוא נשאר באזור העבודה */
   const [pendingCloneId, setPendingCloneId] = useState<string | null>(null);
+  const [savedPickerOpen, setSavedPickerOpen] = useState(false);
 
   const signature = useMemo(() => signatureOf(mix), [mix]);
   const dirty = phase === 'ready' && signature !== savedSignature;
@@ -327,13 +327,18 @@ export function MortgageWorkspace({
     actions.setConstraints({ maxMonthlyPayment: profileCap });
   }, [phase, mix.id, mix.maxMonthlyPayment, profileCap, actions]);
 
-  const handleSave = useCallback(() => {
-    persistMix(mix);
-    setSavedSignature(signatureOf(mix));
+  /**
+   * שמירת המצב הנוכחי כתמהיל חדש: המקור נשאר כמו שנשמר, והעותק עם השינויים
+   * עולה לאזור העבודה עם שדה שם ריק.
+   */
+  const saveAsNewMix = useCallback(() => {
+    const clone = cloneWorkspaceMix(mix, { name: '' });
+    setPendingCloneId(clone.id);
+    openMix(clone);
+    setEditorExpanded(true);
     setFlashSave(false);
-    setJustSaved(true);
-    window.setTimeout(() => setJustSaved(false), 2200);
-  }, [persistMix, mix]);
+    void save(clone).then((stored) => notifyActive(stored));
+  }, [mix, openMix, save, notifyActive]);
 
   /**
    * תמהיל חדש נוסף לרשימה ולא מחליף את הקודם, ולכן כל מעבר לתמהיל אחר שומר
@@ -386,8 +391,10 @@ export function MortgageWorkspace({
 
   const renameActiveMix = useCallback(
     (name: string) => {
+      const next = { ...mix, name };
       actions.patchMix({ name });
-      persistMix({ ...mix, name });
+      persistMix(next);
+      setSavedSignature(signatureOf(next));
       if (pendingCloneId === mix.id) setPendingCloneId(null);
     },
     [actions, persistMix, mix, pendingCloneId]
@@ -464,6 +471,11 @@ export function MortgageWorkspace({
    */
   const propertyMixes = useMemo(
     () => saved.filter((item) => item.mix.id !== mix.id && sameProperty(item.mix, mix)),
+    [saved, mix]
+  );
+
+  const propertySavedMixes = useMemo(
+    () => saved.filter((item) => sameProperty(item.mix, mix)),
     [saved, mix]
   );
 
@@ -567,7 +579,7 @@ export function MortgageWorkspace({
             תמהיל חדש
           </Button>
 
-          <Button variant="ghost" size="sm" className="h-9" onClick={backToLanding}>
+          <Button variant="ghost" size="sm" className="h-9" onClick={() => setSavedPickerOpen(true)}>
             <BookmarkCheck className="h-4 w-4 ml-1" />
             טען תמהיל שמור
           </Button>
@@ -622,25 +634,6 @@ export function MortgageWorkspace({
                 />
               </PopoverContent>
             </Popover>
-
-            <Button
-              size="sm"
-              className={`h-9 ${flashSave ? 'save-flash' : ''}`}
-              variant={dirty ? 'default' : 'outline'}
-              onClick={handleSave}
-            >
-              {justSaved ? (
-                <>
-                  <BookmarkCheck className="h-4 w-4 ml-1" />
-                  נשמר
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 ml-1" />
-                  {dirty ? 'שמור מצב נוכחי כתמהיל' : 'שמור תמהיל'}
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </div>
@@ -691,6 +684,9 @@ export function MortgageWorkspace({
           onDuplicateActive={() => duplicateMix(mix)}
           pendingRenameId={pendingCloneId}
           onCreateForProperty={startMixForSameProperty}
+          saveDirty={dirty}
+          flashSave={flashSave}
+          onSaveAsNew={saveAsNewMix}
           activeActions={
             <>
               <Button
@@ -742,6 +738,16 @@ export function MortgageWorkspace({
               onAmortization={(trackId) => setAmortizationTarget({ trackId })}
             />
           }
+        />
+
+        <SavedMixPicker
+          open={savedPickerOpen}
+          onOpenChange={setSavedPickerOpen}
+          items={propertySavedMixes}
+          address={mix.propertyAddress}
+          totalAmount={mix.totalAmount}
+          activeId={mix.id}
+          onSelect={openSavedMix}
         />
 
         {showGoals && (

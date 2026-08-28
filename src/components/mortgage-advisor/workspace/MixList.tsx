@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, GitCompareArrows, Layers, Plus, SquarePen, Trash2 } from 'lucide-react';
+import { Copy, GitCompareArrows, Layers, Plus, Save, SquarePen, Trash2 } from 'lucide-react';
 import type { MixResult } from '../engine';
 import type { SavedMix } from '../savedMixes';
 import { MixRow } from './MixRow';
@@ -31,9 +31,13 @@ interface MixListProps {
   onDelete: (id: string) => void;
   onDuplicate: (item: SavedMix) => void;
   onDuplicateActive: () => void;
-  /** תמהיל ששוכפל ומחכה לשם — שדה השם נפתח ריק */
+  /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם — שדה השם נפתח ריק */
   pendingRenameId?: string | null;
   onCreateForProperty: () => void;
+  /** כשיש שינויים שלא נשמרו — כפתור שמירה כתמהיל חדש בשורת אזור העבודה */
+  onSaveAsNew?: () => void;
+  saveDirty?: boolean;
+  flashSave?: boolean;
 }
 
 /**
@@ -60,6 +64,9 @@ export function MixList({
   onDuplicateActive,
   pendingRenameId,
   onCreateForProperty,
+  onSaveAsNew,
+  saveDirty = false,
+  flashSave = false,
 }: MixListProps) {
   const scope = address?.trim()
     ? `לנכס ב${address.trim()}`
@@ -89,14 +96,24 @@ export function MixList({
       <CardContent>
         <div className="space-y-4">
           <section className="rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-white p-3 shadow-sm">
-            <div className="mb-2.5 flex items-center gap-2">
+            <div className="mb-2.5 flex flex-wrap items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
                 <SquarePen className="h-3.5 w-3.5" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-black text-blue-900">אזור העבודה</p>
                 <p className="text-[10px] text-blue-700">התמהיל שנפתח לניתוח ולעריכה</p>
               </div>
+              {saveDirty && onSaveAsNew && (
+                <Button
+                  size="sm"
+                  className={`ms-auto h-8 text-xs ${flashSave ? 'save-flash' : ''}`}
+                  onClick={onSaveAsNew}
+                >
+                  <Save className="h-3.5 w-3.5 ml-1" />
+                  שמור מצב נוכחי כתמהיל
+                </Button>
+              )}
             </div>
             <MixRow
               key={activeResult.mix.id}
@@ -112,10 +129,10 @@ export function MixList({
               onRename={onRenameActive}
               startRenaming={pendingRenameId === activeResult.mix.id}
               requireName={pendingRenameId === activeResult.mix.id}
-              namePlaceholder="תנו שם לתמהיל המשוכפל"
+              namePlaceholder="תנו שם לתמהיל החדש"
               hint={
                 pendingRenameId === activeResult.mix.id
-                  ? 'תנו שם לתמהיל המשוכפל כדי להמשיך לערוך אותו'
+                  ? 'תנו שם לתמהיל כדי להמשיך לערוך אותו'
                   : 'לחצו לעריכת המסלולים'
               }
               note={scenarioActive ? 'תרחיש פעיל' : undefined}

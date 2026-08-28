@@ -122,6 +122,10 @@ export function TrackEditor({
    * ליד זה מוצגת הריבית ששולמה עד מועד הפרעון.
    */
   const prepayRow = result.schedule.find((row) => row.prepayment > 1);
+  const contractualMonths = Math.max(1, Math.round(track.years * 12));
+  /** אחרי קיצור תקופה מציגים את משך לוח הסילוקין, לא את השנים המקוריות בחוזה */
+  const shortened = Boolean(prepayRow) && result.months < contractualMonths - 0.5;
+  const durationLabel = formatDuration(result.months);
   const declining =
     Boolean(prepayRow) &&
     result.lastMonthlyPayment > 0 &&
@@ -153,7 +157,13 @@ export function TrackEditor({
             <p className="text-[11px] text-slate-500 truncate">
               {formatShekel(track.amount)} · {track.percentage.toFixed(1)}% · {formatPercentage(effectiveRate)}
               {rateShifted && <span className="text-amber-600"> (בתרחיש)</span>} ·{' '}
-              {formatDuration(Math.round(track.years * 12))}
+              {durationLabel}
+              {shortened && (
+                <span className="text-emerald-700">
+                  {' '}
+                  · קוצר מ-{formatDuration(contractualMonths)}
+                </span>
+              )}
               {prepayRow && (
                 <span className="text-emerald-700">
                   {' '}
@@ -357,12 +367,20 @@ export function TrackEditor({
               />
             </div>
 
-            <TermMonthsSlider
-              label="תקופה"
-              icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
-              years={track.years}
-              onChange={(years) => patchWithName({ years })}
-            />
+            <div className="space-y-1">
+              <TermMonthsSlider
+                label="תקופה"
+                icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
+                years={track.years}
+                onChange={(years) => patchWithName({ years })}
+              />
+              {shortened && (
+                <p className="text-[11px] leading-relaxed text-emerald-800">
+                  אחרי קיצור התקופה בפרעון המוקדם המסלול נפרע תוך {durationLabel}, במקום{' '}
+                  {formatDuration(contractualMonths)}.
+                </p>
+              )}
+            </div>
 
             <div className="flex flex-col justify-end gap-2">
               <div className="flex flex-wrap gap-1.5">

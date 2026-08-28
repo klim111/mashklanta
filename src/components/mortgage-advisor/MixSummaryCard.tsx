@@ -103,7 +103,10 @@ export function MixSummaryCard({
                   </p>
                   <p className="text-[10px] text-slate-500">
                     {formatShekel(t.track.amount)} · {t.track.percentage.toFixed(1)}% ·{' '}
-                    {formatPercentage(t.track.interestRate)} · {formatDuration(Math.round(t.track.years * 12))}
+                    {formatPercentage(t.track.interestRate)} · {formatDuration(t.months)}
+                    {t.months < Math.round(t.track.years * 12) - 0.5
+                      ? ` · קוצר מ-${formatDuration(Math.round(t.track.years * 12))}`
+                      : ''}
                   </p>
                 </div>
                 <div className="text-left shrink-0">
