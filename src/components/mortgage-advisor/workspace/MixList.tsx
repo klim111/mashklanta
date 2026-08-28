@@ -103,13 +103,15 @@ export function MixList({
                 </div>
               </div>
               <motion.div
-                layout
+                layout="position"
                 layoutId={`mix-row-${activeResult.mix.id}`}
                 transition={LIFT_TRANSITION}
+                className="overflow-visible"
               >
                 <MixRow
                   mix={activeResult.mix}
                   summary={activeResult.summary}
+                  result={activeResult}
                   active
                   selected
                   selectionLocked
@@ -130,11 +132,15 @@ export function MixList({
                       {activeActions}
                     </>
                   }
-                  detail={editor}
                   hint="לחצו לעריכת המסלולים"
                   note={scenarioActive ? 'תרחיש פעיל' : undefined}
                 />
               </motion.div>
+              {expanded && (
+                <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
+                  {editor}
+                </div>
+              )}
             </section>
 
             {others.length > 0 ? (
@@ -154,9 +160,10 @@ export function MixList({
                   {others.map((item) => (
                     <motion.div
                       key={item.mix.id}
-                      layout
+                      layout="position"
                       layoutId={`mix-row-${item.mix.id}`}
                       transition={LIFT_TRANSITION}
+                      className="overflow-visible"
                     >
                       <MixRow
                         mix={item.mix}

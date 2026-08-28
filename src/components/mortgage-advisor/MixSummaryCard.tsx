@@ -49,6 +49,7 @@ export function MixSummaryCard({
     <MixRow
       mix={mix}
       summary={stats}
+      result={tracksDetail ?? computed ?? undefined}
       selected={selected}
       onToggleSelect={onToggleSelect}
       expanded={expanded}
@@ -110,9 +111,19 @@ export function MixSummaryCard({
                   <p className="text-[11px] font-bold text-slate-800">
                     {t.monthlyPayment > 0.01 ? formatShekel(t.monthlyPayment) : 'אין'}
                   </p>
-                  {t.monthlyPayment - t.lastMonthlyPayment > 1 && t.lastMonthlyPayment > 0.01 && (
+                  {t.schedule.some((row) => row.prepayment > 1) &&
+                    t.monthlyPayment - t.lastMonthlyPayment > 1 &&
+                    t.lastMonthlyPayment > 0.01 && (
                     <p className="text-[9px] text-slate-500">
                       יורד ל-{formatShekel(t.lastMonthlyPayment)}
+                    </p>
+                  )}
+                  {t.schedule.some((row) => row.prepayment > 1) && (
+                    <p className="text-[9px] text-emerald-700">
+                      ריבית עד הפרעון:{' '}
+                      {formatShekel(
+                        t.schedule.find((row) => row.prepayment > 1)?.cumulativeInterest ?? 0
+                      )}
                     </p>
                   )}
                   {t.balloonPayment > 1 && (

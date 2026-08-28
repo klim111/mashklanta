@@ -17,6 +17,7 @@ import {
 import type { MixResult, PrepaymentEvent, PrepaymentMode, WorkspaceMix } from '../engine';
 import { SliderField, formatShekel } from './primitives';
 import type { SavedMix } from '../savedMixes';
+import { isIndexLinked } from '../scenarioCalculations';
 
 interface QueuedAllocation {
   trackId: string;
@@ -123,6 +124,23 @@ export function PrepaymentDialog({
   const monthsSaved = preview ? baseResult.summary.months - preview.summary.months : 0;
   const newMonthly = preview ? recurringPaymentAfter(preview, month) : 0;
   const date = baseResult.schedule[Math.min(month, baseResult.schedule.length) - 1]?.date;
+
+  const untilPoint = useMemo(() => {
+    const track = trackId ? baseResult.tracks.find((item) => item.track.id === trackId) : undefined;
+    const rows = track
+      ? track.schedule.filter((row) => row.month <= month)
+      : baseResult.schedule.filter((row) => row.month <= month);
+    const last = rows[rows.length - 1];
+    const indexation = rows.reduce((sum, row) => sum + row.indexation, 0);
+    const linked = track
+      ? isIndexLinked(track.track.type)
+      : mix.tracks.some((item) => isIndexLinked(item.type));
+    return {
+      interest: last?.cumulativeInterest ?? 0,
+      indexation,
+      linked,
+    };
+  }, [baseResult, mix.tracks, month, trackId]);
 
   const commitCurrent = () => {
     queued.forEach((item) => {
@@ -306,18 +324,41 @@ export function PrepaymentDialog({
             </ul>
           )}
 
-          <SliderField
-            label="מועד הפרעון"
-            icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
-            value={month}
-            onChange={setMonth}
-            min={1}
-            max={maxMonth}
-            step={1}
-            display={date ? `תשלום ${month} · ${formatFullDate(date)}` : `תשלום ${month}`}
-            minLabel="תחילת המשכנתא"
-            maxLabel="סוף התקופה"
-          />
+          <div className="space-y-2">
+            <SliderField
+              label="מועד הפרעון"
+              icon={<CalendarClock className="h-3.5 w-3.5 text-violet-600" />}
+              value={month}
+              onChange={setMonth}
+              min={1}
+              max={maxMonth}
+              step={1}
+              display={date ? `תשלום ${month} · ${formatFullDate(date)}` : `תשלום ${month}`}
+              minLabel="תחילת המשכנתא"
+              maxLabel="סוף התקופה"
+            />
+            <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 space-y-1">
+              <p className="text-[12px] leading-relaxed text-violet-950">
+                עד לנקודת זמן זאת תשולם ריבית של{' '}
+                <span className="font-black">{formatShekel(untilPoint.interest)}</span>
+                {untilPoint.linked && (
+                  <span className="text-violet-800">
+                    {' '}
+                    כולל ריבית שנוספה בגלל שינוי הקרן הצפוי מהמדד
+                  </span>
+                )}
+                .
+              </p>
+              {untilPoint.linked && (
+                <p className="text-[12px] leading-relaxed text-violet-950">
+                  עד לנקודת זמן זאת צפויה הקרן{' '}
+                  {untilPoint.indexation >= 0 ? 'להתייקר' : 'להוזיל'} ב-{' '}
+                  <span className="font-black">{formatShekel(Math.abs(untilPoint.indexation))}</span>
+                  {untilPoint.indexation < -0.5 ? ' אם המדד ירד' : ''}.
+                </p>
+              )}
+            </div>
+          </div>
 
           <div className="space-y-1.5">
             <Label className="text-xs">איך הפרעון משפיע</Label>

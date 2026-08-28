@@ -118,12 +118,18 @@ export function TrackEditor({
   const rateShifted = Math.abs(effectiveRate - track.interestRate) > 0.001;
 
   /**
-   * בקרן שווה ההחזר יורד מחודש לחודש, ולכן מוצגים שני ההחזרים — הראשון, שהוא
-   * הגבוה ביותר, והאחרון. בגרייס אין החזר שוטף שמסלק את הקרן, והתשלום הגדול
-   * מגיע בסוף התקופה כתשלום בלון.
+   * ירידת מדרגה בהחזר של המסלול מוצגת רק כשיש פרעון מוקדם — לא בגלל קרן שווה.
+   * ליד זה מוצגת הריבית ששולמה עד מועד הפרעון.
    */
+  const prepayRow = result.schedule.find((row) => row.prepayment > 1);
   const declining =
-    result.lastMonthlyPayment > 0 && result.monthlyPayment - result.lastMonthlyPayment > 1;
+    Boolean(prepayRow) &&
+    result.lastMonthlyPayment > 0 &&
+    result.monthlyPayment - result.lastMonthlyPayment > 1;
+  const equalPrincipalDecline =
+    track.amortizationType === 'equal_principal' &&
+    result.lastMonthlyPayment > 0 &&
+    result.monthlyPayment - result.lastMonthlyPayment > 1;
   const hasBalloon = result.balloonPayment > 1;
   const noMonthlyPayment = result.monthlyPayment <= 0.01;
 
@@ -148,6 +154,12 @@ export function TrackEditor({
               {formatShekel(track.amount)} · {track.percentage.toFixed(1)}% · {formatPercentage(effectiveRate)}
               {rateShifted && <span className="text-amber-600"> (בתרחיש)</span>} ·{' '}
               {formatDuration(Math.round(track.years * 12))}
+              {prepayRow && (
+                <span className="text-emerald-700">
+                  {' '}
+                  · ריבית ששולמה עד הפרעון: {formatShekel(prepayRow.cumulativeInterest)}
+                </span>
+              )}
             </p>
           </div>
           <div className="text-center hidden sm:block min-w-[104px]">
@@ -157,6 +169,11 @@ export function TrackEditor({
             </p>
             {declining && (
               <p className="text-[10px] text-slate-500">יורד ל-{formatShekel(result.lastMonthlyPayment)}</p>
+            )}
+            {prepayRow && (
+              <p className="text-[10px] text-emerald-700 leading-tight">
+                ריבית עד הפרעון: {formatShekel(prepayRow.cumulativeInterest)}
+              </p>
             )}
             {hasBalloon && (
               <p className="text-[10px] text-amber-700">בלון {formatShekel(result.balloonPayment)}</p>
@@ -376,7 +393,7 @@ export function TrackEditor({
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-            {declining ? (
+            {declining || equalPrincipalDecline ? (
               <>
                 <TrackStat
                   label="החזר ראשון (הגבוה)"

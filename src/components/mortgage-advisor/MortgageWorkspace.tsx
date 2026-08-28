@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   Table2,
   Target,
+  Undo2,
   UserRound,
   Users,
   X,
@@ -354,6 +355,7 @@ export function MortgageWorkspace({
       if (item.clientId) setActiveClientId(item.clientId);
       notifyActive(item);
       openMix(item.mix);
+      setEditorExpanded(true);
     },
     [keepCurrentMix, openMix, notifyActive]
   );
@@ -692,6 +694,22 @@ export function MortgageWorkspace({
                 <Banknote className="h-3.5 w-3.5 ml-1" />
                 פרעון מוקדם
               </Button>
+              {mix.events.some((event) => event.kind === 'prepayment') && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
+                  title="הסרת כל הפרעונות המוקדמים והצגת ערכי התמהיל המקוריים"
+                  onClick={() =>
+                    actions.patchMix({
+                      events: mix.events.filter((event) => event.kind !== 'prepayment'),
+                    })
+                  }
+                >
+                  <Undo2 className="h-3.5 w-3.5 ml-1" />
+                  הסר פרעון מוקדם
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -705,6 +723,7 @@ export function MortgageWorkspace({
           }
           editor={
             <MixEditor
+              key={result.mix.id}
               result={result}
               onUpdateTrack={actions.updateTrack}
               onTrackAmountChange={actions.setTrackAmount}

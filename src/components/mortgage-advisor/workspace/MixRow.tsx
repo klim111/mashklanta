@@ -1,19 +1,22 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Banknote, ChevronDown, Coins, Pencil, Percent, Wallet } from 'lucide-react';
 import { TRACK_TYPES } from '../types';
 import { formatPercentage } from '../mortgageCalculations';
-import { formatDuration, remainingAmount } from '../engine';
-import type { MixSummary, WorkspaceMix } from '../engine';
+import { computeMix, formatDuration, remainingAmount } from '../engine';
+import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import { CompositionBar, formatShekel, trackColor } from './primitives';
 import { CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { describePaymentDrop } from './paymentDrop';
 
 interface MixRowProps {
   mix: WorkspaceMix;
   summary: MixSummary;
+  /** לוח סילוקין מלא — לדיוק מועד הירידה בהחזר */
+  result?: MixResult;
   /** התמהיל שנמצא כרגע בניתוח ובעריכה */
   active?: boolean;
   selected?: boolean;
@@ -50,6 +53,7 @@ interface MixRowProps {
 export function MixRow({
   mix,
   summary,
+  result,
   active = false,
   selected = false,
   onToggleSelect,
@@ -70,6 +74,14 @@ export function MixRow({
   const [draftName, setDraftName] = useState(startRenaming ? '' : mix.name);
 
   const unallocated = remainingAmount(mix);
+  const resolvedResult = useMemo(() => {
+    if (result) return result;
+    const hasPrepay = mix.events.some((event) => event.kind === 'prepayment');
+    const terms = mix.tracks.map((track) => Math.round(track.years * 12));
+    const staggered = terms.length > 1 && Math.max(...terms) - Math.min(...terms) > 0.5;
+    if (!hasPrepay && !staggered) return undefined;
+    return computeMix(mix);
+  }, [result, mix]);
 
   useEffect(() => {
     if (!startRenaming) return;
@@ -225,7 +237,7 @@ export function MixRow({
             value={
               summary.monthlyPayment > 0.01 ? formatShekel(summary.monthlyPayment) : 'אין החזר שוטף'
             }
-            hint={paymentHint(summary, mix)}
+            hint={paymentHint(summary, mix, resolvedResult)}
             emphasized
           />
           <RowStat
@@ -275,15 +287,10 @@ export function MixRow({
   );
 }
 
-/**
- * ההחזר החודשי אינו מספר אחד כשיש בתמהיל קרן שווה, תקופות שונות או גרייס.
- * ההערה מוסיפה את ההחזר האחרון ואת תשלום הבלון, כדי שהתמונה תהיה מלאה.
- */
-function paymentHint(summary: MixSummary, mix: WorkspaceMix): string | undefined {
+function paymentHint(summary: MixSummary, mix: WorkspaceMix, result?: MixResult): string | undefined {
   const parts: string[] = [];
-  if (summary.lastMonthlyPayment > 0.01 && summary.monthlyPayment - summary.lastMonthlyPayment > 1) {
-    parts.push(`יורד ל-${formatShekel(summary.lastMonthlyPayment)}`);
-  }
+  const drop = describePaymentDrop(mix, summary, result);
+  if (drop) parts.push(drop);
   if (summary.balloonPayment > 1) {
     parts.push(`בלון ${formatShekel(summary.balloonPayment)} בסוף`);
   }
@@ -319,7 +326,7 @@ function RowStat({
       >
         {value}
       </p>
-      {hint && <p className="text-[10px] text-amber-700 leading-tight">{hint}</p>}
+      {hint && <p className="text-[10px] text-amber-700 leading-tight break-words">{hint}</p>}
     </div>
   );
 }
