@@ -68,11 +68,17 @@ async function fetchMixes(clientId?: string): Promise<SavedMix[]> {
   });
 }
 
-async function postMix(mix: WorkspaceMix, clientId?: string | null): Promise<SavedMix | null> {
+async function postMix(
+  mix: WorkspaceMix,
+  extras?: { clientId?: string | null; planId?: string | null }
+): Promise<SavedMix | null> {
+  const payload: Record<string, unknown> = { mix };
+  if (extras?.clientId !== undefined) payload.clientId = extras.clientId;
+  if (extras?.planId !== undefined) payload.planId = extras.planId;
   const response = await fetch('/api/mixes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(clientId === undefined ? { mix } : { mix, clientId }),
+    body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(`failed to save mix: ${response.status}`);
   return toSavedMix(await response.json());
@@ -109,6 +115,8 @@ async function importLocalMixes(): Promise<boolean> {
 interface UseSavedMixesOptions {
   /** הצגת התמהילים של לקוח מסוים במקום כל התמהילים של המשתמש */
   clientId?: string;
+  /** שיוך שמירות חדשות לתהליך משכנתא */
+  planId?: string;
 }
 
 /**
@@ -116,7 +124,7 @@ interface UseSavedMixesOptions {
  * סימון ברור שהשמירה עדיין מקומית.
  */
 export function useSavedMixes(options: UseSavedMixesOptions = {}) {
-  const { clientId } = options;
+  const { clientId, planId } = options;
   const { status } = useSession();
   const signedIn = status === 'authenticated';
 
@@ -176,7 +184,10 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
       }
 
       try {
-        const stored = await postMix(mix, targetClientId ?? clientId);
+        const stored = await postMix(mix, {
+          clientId: targetClientId ?? clientId,
+          planId,
+        });
         if (stored) setSaved((items) => upsert(items, stored));
         setError(null);
         return stored ?? optimistic;
@@ -185,7 +196,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
         return optimistic;
       }
     },
-    [signedIn, clientId]
+    [signedIn, clientId, planId]
   );
 
   const recordIdOf = useCallback(

@@ -58,6 +58,17 @@ export function SigningStage({
     });
   };
 
+  const pullFromFinalMix = () => {
+    const mix = data.MIX;
+    if (!mix.isFinal) return;
+    onChange({
+      ...value,
+      finalMonthlyPayment: mix.monthlyPayment,
+      finalAverageRate: mix.averageRate,
+      finalAmount: mix.totalAmount,
+    });
+  };
+
   const monthlyGap =
     winner?.monthlyPayment != null && value.finalMonthlyPayment != null
       ? value.finalMonthlyPayment - winner.monthlyPayment
@@ -75,19 +86,43 @@ export function SigningStage({
 
   return (
     <div className="space-y-5">
+      {data.MIX.isFinal && (
+        <Panel
+          title="התמהיל הסופי שנבחר"
+          description="אלה התנאים שננעלו בשלב בניית התמהיל. אפשר לטעון אותם לחוזה ואז לאמת מול מה שנחתם בפועל."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric label="שם התמהיל" value={data.MIX.mixName ?? '—'} />
+            <Metric label="סכום" value={formatShekel(data.MIX.totalAmount)} />
+            <Metric label="החזר חודשי" value={formatShekel(data.MIX.monthlyPayment)} />
+            <Metric label="ריבית ממוצעת" value={formatPercent(data.MIX.averageRate, 2)} />
+          </div>
+        </Panel>
+      )}
       <Panel
         title="התנאים שנחתמו בפועל"
         description="העתיקו מהחוזה את מה שכתוב בו — לא את מה שסוכם בטלפון. כאן מתגלים הפערים."
         action={
-          winner && (
-            <button
-              type="button"
-              onClick={pullFromWinner}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
-            >
-              טענו את תנאי ההצעה הזוכה
-            </button>
-          )
+          <div className="flex flex-wrap gap-2">
+            {data.MIX.isFinal && (
+              <button
+                type="button"
+                onClick={pullFromFinalMix}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-800 transition-colors hover:bg-slate-50"
+              >
+                טענו את התמהיל הסופי
+              </button>
+            )}
+            {winner && (
+              <button
+                type="button"
+                onClick={pullFromWinner}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
+              >
+                טענו את תנאי ההצעה הזוכה
+              </button>
+            )}
+          </div>
         }
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

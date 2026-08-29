@@ -34,6 +34,11 @@ model User {
   mortgageMixes  MortgageMix[] @relation("MixOwner")
   /** תהליכי תכנון המשכנתא שהמשתמש פתח באזור האישי */
   mortgagePlans  MortgagePlan[] @relation("PlanOwner")
+  /**
+   * פרופיל פיננסי מההגדרות — פרטי הלווים וההון העצמי בלי פרטי נכס.
+   * נטען כברירת מחדל בפתיחת תהליך תכנון חדש.
+   */
+  profileJson    Json?
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -270,6 +275,9 @@ model MortgageMix {
   /** הלקוח שהתמהיל שייך לו. ריק כשהתמהיל עדיין לא שויך */
   clientId        String?
   client          Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  /** תהליך המשכנתא שהתמהיל שייך לו. ריק כשהתמהיל נוצר בלי שיוך לנכס */
+  planId          String?
+  plan            MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   name            String
   totalAmount     Float
@@ -284,6 +292,10 @@ model MortgageMix {
   averageRate     Float
   months          Int
 
+  /** התמהיל שנבחר כסופי למכרז מול הבנקים — נעול לעריכה */
+  isFinal         Boolean   @default(false)
+  locked          Boolean   @default(false)
+
   /** התמהיל המלא כפי שהכלי מכיר אותו */
   mixJson         Json
   summaryJson     Json
@@ -294,6 +306,7 @@ model MortgageMix {
   @@unique([ownerId, mixKey])
   @@index([clientId])
   @@index([ownerId])
+  @@index([planId])
 }
 
 /**
@@ -324,6 +337,7 @@ model MortgagePlan {
   completedAt     DateTime?
 
   stages          MortgagePlanStage[]
+  mixes           MortgageMix[]
 
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

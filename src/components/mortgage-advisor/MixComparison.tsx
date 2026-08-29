@@ -41,10 +41,15 @@ export interface ComparisonEntry {
   mix: WorkspaceMix;
   /** מסמן את התמהיל שנמצא כרגע בעריכה */
   current?: boolean;
+  recordId?: string;
+  isFinal?: boolean;
+  locked?: boolean;
 }
 
 interface MixComparisonProps {
   entries: ComparisonEntry[];
+  allowSelectFinal?: boolean;
+  onSelectFinal?: (entryId: string) => void;
 }
 
 type ComputedMix = ComparisonEntry & {
@@ -74,7 +79,7 @@ function repaidShare(item: ComputedMix, year: number): number {
 }
 
 /** גרף השוואה בין תמהילים — יתרת חוב, החזר חודשי, וסיכום חזותי זה מול זה. */
-export function MixComparison({ entries }: MixComparisonProps) {
+export function MixComparison({ entries, allowSelectFinal = false, onSelectFinal }: MixComparisonProps) {
   const [paydownOpen, setPaydownOpen] = useState(false);
 
   const computed = useMemo<ComputedMix[]>(
@@ -270,7 +275,14 @@ export function MixComparison({ entries }: MixComparisonProps) {
           </Panel>
         </div>
 
-        <HeadToHead mixes={computed} best={best} maxPaid={maxPaid} />
+        <HeadToHead
+          mixes={computed}
+          best={best}
+          maxPaid={maxPaid}
+          allowSelectFinal={allowSelectFinal}
+          onSelectFinal={onSelectFinal}
+          entries={entries}
+        />
       </CardContent>
 
       <PaydownPaceDialog open={paydownOpen} onOpenChange={setPaydownOpen} mixes={computed} />
@@ -282,6 +294,9 @@ function HeadToHead({
   mixes,
   best,
   maxPaid,
+  allowSelectFinal,
+  onSelectFinal,
+  entries,
 }: {
   mixes: ComputedMix[];
   best: {
@@ -291,6 +306,9 @@ function HeadToHead({
     byPaydown: ComputedMix;
   } | null;
   maxPaid: number;
+  allowSelectFinal?: boolean;
+  onSelectFinal?: (entryId: string) => void;
+  entries: ComparisonEntry[];
 }) {
   if (mixes.length === 0 || !best) return null;
 
@@ -299,25 +317,39 @@ function HeadToHead({
     ? pairMetrics(pair[0], pair[1])
     : globalMetrics(mixes, best);
 
+  const renderCard = (item: ComputedMix) => {
+    const entry = entries.find((row) => row.id === item.id);
+    return (
+      <MixFaceCard
+        item={item}
+        best={best}
+        maxPaid={maxPaid}
+        isFinal={Boolean(entry?.isFinal)}
+        allowSelectFinal={allowSelectFinal}
+        onSelectFinal={onSelectFinal ? () => onSelectFinal(item.id) : undefined}
+      />
+    );
+  };
+
   return (
     <div dir="rtl" className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:p-5">
       <p className="mb-4 text-sm font-black text-slate-800">השוואה זה מול זה</p>
 
       {pair ? (
         <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
-          <MixFaceCard item={pair[0]} best={best} maxPaid={maxPaid} />
+          {renderCard(pair[0])}
           <div className="flex flex-col justify-center gap-3 lg:w-56">
             {metrics.map((metric) => (
               <GapCard key={metric.id} metric={metric} />
             ))}
           </div>
-          <MixFaceCard item={pair[1]} best={best} maxPaid={maxPaid} />
+          {renderCard(pair[1])}
         </div>
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {mixes.map((item) => (
-              <MixFaceCard key={item.id} item={item} best={best} maxPaid={maxPaid} />
+              <div key={item.id}>{renderCard(item)}</div>
             ))}
           </div>
           <div className="grid gap-3 md:grid-cols-3">
@@ -489,6 +521,9 @@ function MixFaceCard({
   item,
   best,
   maxPaid,
+  isFinal,
+  allowSelectFinal,
+  onSelectFinal,
 }: {
   item: ComputedMix;
   best: {
@@ -498,6 +533,9 @@ function MixFaceCard({
     byPaydown: ComputedMix;
   };
   maxPaid: number;
+  isFinal?: boolean;
+  allowSelectFinal?: boolean;
+  onSelectFinal?: () => void;
 }) {
   const wins = {
     interest: best.byInterest.id === item.id,
@@ -602,6 +640,32 @@ function MixFaceCard({
           </dd>
         </div>
       </dl>
+
+      {allowSelectFinal && (
+        <div className="relative mt-5">
+          {isFinal ? (
+            <div className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-xs font-black text-white">
+              זה התמהיל הסופי שנבחר למכרז
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'לבחור תמהיל זה כתמהיל הסופי? הוא יינעל לשינויים, יישמר בחשבון, והנתונים שלו ייטענו בשלבי המיקוח מול הבנקים והחתימה.'
+                  )
+                ) {
+                  onSelectFinal?.();
+                }
+              }}
+              className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-slate-700"
+            >
+              בחר תמהיל זה כתמהיל סופי
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

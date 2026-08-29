@@ -142,6 +142,7 @@ export function cloneWorkspaceMix(
     ...overrides,
     id: nextId('mix'),
     name: overrides.name ?? '',
+    locked: false,
     createdAt: now,
     updatedAt: now,
   });
@@ -233,6 +234,7 @@ export function sanitizeMix(raw: unknown): WorkspaceMix | null {
       source.maxMonthlyPayment === undefined || source.maxMonthlyPayment === null
         ? undefined
         : finiteNumber(source.maxMonthlyPayment, 0) || undefined,
+    locked: source.locked === true,
     createdAt: typeof source.createdAt === 'string' ? source.createdAt : now,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : now,
   });

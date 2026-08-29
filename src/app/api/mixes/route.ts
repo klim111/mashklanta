@@ -42,6 +42,15 @@ export async function POST(req: NextRequest) {
     if (!client) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const requestedPlanId: string | null | undefined =
+    body?.planId === null || typeof body?.planId === 'string' ? body.planId : undefined;
+
+  if (typeof requestedPlanId === 'string') {
+    const { getPlanForUser } = await import('@/lib/mortgage-plans');
+    const plan = await getPlanForUser(userId, requestedPlanId);
+    if (!plan) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   // לקוח ששומר תמהיל משלו מקבל שיוך אוטומטי, כדי שהיועץ שלו יראה אותו מיד
   let clientId = requestedClientId;
   if (clientId === undefined) {
@@ -49,7 +58,7 @@ export async function POST(req: NextRequest) {
     if (own) clientId = own.id;
   }
 
-  const saved = await saveMix({ ownerId: userId, mix, clientId });
+  const saved = await saveMix({ ownerId: userId, mix, clientId, planId: requestedPlanId });
   // פרטי העסקה בכרטיס הלקוח מושלמים מהתמהיל, כדי שלא יידרש להזין אותם פעמיים
   if (saved.clientId) await fillClientDealFromMix(saved.clientId, mix);
 

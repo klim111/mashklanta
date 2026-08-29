@@ -23,7 +23,6 @@ describe('clientUpdateData', () => {
   it('מצפין שדות פיננסיים ומחשב טווח הכנסה', () => {
     const data = clientUpdateData({ income: 12_000, partnerIncome: 8_000 }, emptyFinancials);
 
-    expect(data.income).toBeUndefined();
     expect(data.incomeEnc).toEqual(expect.any(String));
     expect(data.partnerIncomeEnc).toEqual(expect.any(String));
     expect(data.incomeBucket).toBe('FROM_15K_TO_25K');

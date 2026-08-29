@@ -111,7 +111,25 @@ export function usePlans() {
     await archivePlan(planId);
   }, []);
 
-  return { plans, ready, error, refresh, start, remove };
+  const patchDeal = useCallback(
+    async (
+      planId: string,
+      deal: { propertyAddress?: string; propertyValue?: number | null; mortgageAmount?: number | null }
+    ) => {
+      const response = await fetch(`/api/plans/${planId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deal }),
+      });
+      if (!response.ok) throw new Error('failed to update deal');
+      const plan = await readPlan(response);
+      setPlans((current) => current.map((item) => (item.id === plan.id ? plan : item)));
+      return plan;
+    },
+    []
+  );
+
+  return { plans, ready, error, refresh, start, remove, patchDeal };
 }
 
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';

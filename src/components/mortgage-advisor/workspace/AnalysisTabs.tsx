@@ -20,6 +20,8 @@ interface AnalysisTabsProps {
   entries: ComparisonEntry[];
   /** מספר התמהילים שסומנו בווי להשוואה */
   comparedCount: number;
+  allowSelectFinal?: boolean;
+  onSelectFinal?: (entryId: string) => void;
 }
 
 /**
@@ -34,6 +36,8 @@ export function AnalysisTabs({
   onSelectMonth,
   entries,
   comparedCount,
+  allowSelectFinal,
+  onSelectFinal,
 }: AnalysisTabsProps) {
   const [tab, setTab] = useState<AnalysisTab>('charts');
 
@@ -75,7 +79,11 @@ export function AnalysisTabs({
       </TabsContent>
 
       <TabsContent value="comparison">
-        <MixComparison entries={entries} />
+        <MixComparison
+          entries={entries}
+          allowSelectFinal={allowSelectFinal}
+          onSelectFinal={onSelectFinal}
+        />
       </TabsContent>
     </Tabs>
   );

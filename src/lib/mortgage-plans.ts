@@ -13,6 +13,7 @@ import {
 } from './mortgage-plan';
 import type {
   AnalysisData,
+  MixData,
   PlanData,
   PlanStageDataMap,
   PlanStageId,
@@ -24,6 +25,8 @@ import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
 import { createEmptyLoan } from './borrower-loans';
+import { analysisFromProfile, parseClientProfile } from './client-profile';
+import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
 /**
  * שכבת הגישה לתהליכי תכנון המשכנתא.
@@ -178,8 +181,20 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
     },
   });
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { profileJson: true },
+  });
+
   let analysisJson: Prisma.InputJsonValue | undefined;
-  if (client) {
+  if (user?.profileJson) {
+    try {
+      analysisJson = analysisFromProfile(parseClientProfile(user.profileJson)) as unknown as Prisma.InputJsonValue;
+    } catch {
+      analysisJson = undefined;
+    }
+  }
+  if (!analysisJson && client) {
     try {
       analysisJson = seedAnalysisFromClient(client) as unknown as Prisma.InputJsonValue;
     } catch {
@@ -399,8 +414,139 @@ export async function archivePlan(userId: string, planId: string): Promise<boole
   });
   if (!row) return false;
 
-  await prisma.mortgagePlan.update({ where: { id: planId }, data: { status: 'ARCHIVED' } });
+  await prisma.mortgagePlan.update({
+    where: { id: planId },
+    data: { status: 'ARCHIVED' },
+  });
   return true;
+}
+
+export interface PlanDealInput {
+  propertyAddress?: string;
+  propertyValue?: number | null;
+  mortgageAmount?: number | null;
+}
+
+/**
+ * עדכון פרטי הנכס מכותרת כרטיס הדאשבורד. הנתונים נכנסים לשלב הפרופיל כדי
+ * שיופיעו כברירת מחדל כשמגיעים למסך הנכס בתהליך.
+ */
+export async function updatePlanDeal(
+  userId: string,
+  planId: string,
+  deal: PlanDealInput
+): Promise<PlanView | null> {
+  if (!(await assertAccess(userId, planId))) return null;
+
+  const data = await loadData(planId);
+  const analysis = parseStageData('ANALYSIS', {
+    ...data.ANALYSIS,
+    intent: data.ANALYSIS.intent ?? 'HAS_PROPERTY',
+    ...(deal.propertyAddress !== undefined ? { propertyAddress: deal.propertyAddress } : {}),
+    ...(deal.propertyValue !== undefined ? { propertyValue: deal.propertyValue } : {}),
+    ...(deal.mortgageAmount !== undefined ? { mortgageAmount: deal.mortgageAmount } : {}),
+  });
+
+  await prisma.mortgagePlanStage.upsert({
+    where: { planId_stage: { planId, stage: 'ANALYSIS' } },
+    create: {
+      planId,
+      stage: 'ANALYSIS',
+      status: 'IN_PROGRESS',
+      dataJson: analysis as unknown as Prisma.InputJsonValue,
+    },
+    update: { dataJson: analysis as unknown as Prisma.InputJsonValue },
+  });
+
+  await prisma.mortgagePlan.update({
+    where: { id: planId },
+    data: {
+      ...(deal.propertyAddress !== undefined ? { propertyAddress: deal.propertyAddress.trim() || null } : {}),
+      ...(deal.propertyValue !== undefined ? { propertyValue: deal.propertyValue } : {}),
+      ...(deal.mortgageAmount !== undefined ? { mortgageAmount: deal.mortgageAmount } : {}),
+    },
+  });
+
+  await refreshPlan(planId);
+  return getPlanForUser(userId, planId);
+}
+
+export function mixDataFromSaved(saved: SavedMix, notes = '', asFinal = false): MixData {
+  return {
+    mixRecordId: saved.recordId ?? null,
+    mixKey: saved.mix.id,
+    mixName: saved.mix.name || 'תמהיל ללא שם',
+    totalAmount: saved.mix.totalAmount,
+    monthlyPayment: saved.summary.monthlyPayment,
+    averageRate: saved.summary.averageRate,
+    totalInterest: saved.summary.totalInterest,
+    totalPaid: saved.summary.totalPaid,
+    months: saved.summary.months,
+    propertyAddress: saved.mix.propertyAddress?.trim() ?? '',
+    propertyValue: saved.mix.propertyValue ?? null,
+    notes,
+    isFinal: asFinal || Boolean(saved.isFinal),
+    finalLocked: asFinal || Boolean(saved.locked),
+  };
+}
+
+/** שמירת התמהיל הסופי לתוך שלב בניית התמהיל של התהליך */
+export async function persistFinalMix(
+  userId: string,
+  planId: string,
+  saved: SavedMix
+): Promise<PlanView | null> {
+  if (!(await assertAccess(userId, planId))) return null;
+  const data = await loadData(planId);
+  const mix = mixDataFromSaved(saved, data.MIX.notes, true);
+
+  await prisma.mortgagePlanStage.upsert({
+    where: { planId_stage: { planId, stage: 'MIX' } },
+    create: {
+      planId,
+      stage: 'MIX',
+      status: 'IN_PROGRESS',
+      dataJson: mix as unknown as Prisma.InputJsonValue,
+    },
+    update: { dataJson: mix as unknown as Prisma.InputJsonValue },
+  });
+
+  await refreshPlan(planId);
+  return getPlanForUser(userId, planId);
+}
+
+/**
+ * יצירת תהליך משכנתא מתמהיל ללא שיוך, ברגע שמזינים לו נכס.
+ */
+export async function createPlanFromMix(
+  userId: string,
+  saved: SavedMix,
+  deal: { propertyAddress: string; propertyValue: number | null; mortgageAmount: number | null }
+): Promise<PlanView> {
+  const plan = await createPlan(
+    userId,
+    deal.propertyAddress.trim() || saved.mix.name || undefined
+  );
+  const updated = await updatePlanDeal(userId, plan.id, deal);
+  const data = (updated ?? plan).data;
+  const mix = mixDataFromSaved(saved, '', Boolean(saved.isFinal));
+  mix.propertyAddress = deal.propertyAddress.trim();
+  mix.propertyValue = deal.propertyValue;
+  if (deal.mortgageAmount) mix.totalAmount = deal.mortgageAmount;
+
+  await prisma.mortgagePlanStage.upsert({
+    where: { planId_stage: { planId: plan.id, stage: 'MIX' } },
+    create: {
+      planId: plan.id,
+      stage: 'MIX',
+      status: 'IN_PROGRESS',
+      dataJson: mix as unknown as Prisma.InputJsonValue,
+    },
+    update: { dataJson: mix as unknown as Prisma.InputJsonValue },
+  });
+
+  await refreshPlan(plan.id);
+  return (await getPlanForUser(userId, plan.id)) ?? plan;
 }
 
 /**

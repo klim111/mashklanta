@@ -88,6 +88,14 @@ interface MortgageWorkspaceProps {
   onPendingPrepayHandled?: () => void;
   /** כשנשמר או נטען תמהיל — כדי שהתהליך יקבל את פרטי הנכס והסכום */
   onActiveMix?: (item: SavedMix) => void;
+  /** תהליך המשכנתא שאליו משויכות השמירות */
+  planId?: string;
+  /** פתיחה של תמהיל בודד — בלי שאר תמהילי הנכס */
+  soloMixKey?: string;
+  /** הצגת כפתור בחירת תמהיל סופי בהשוואה */
+  allowSelectFinal?: boolean;
+  finalMixKey?: string | null;
+  onSelectFinal?: (item: SavedMix) => void;
 }
 
 /** חתימת התמהיל לזיהוי שינויים שלא נשמרו. חותמות הזמן לא נחשבות שינוי. */
@@ -113,6 +121,11 @@ export function MortgageWorkspace({
   pendingPrepay,
   onPendingPrepayHandled,
   onActiveMix,
+  planId,
+  soloMixKey,
+  allowSelectFinal = false,
+  finalMixKey,
+  onSelectFinal,
 }: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
   const { data: session } = useSession();
@@ -123,8 +136,8 @@ export function MortgageWorkspace({
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const clients = useAdvisorClients(isAdvisor);
 
-  const { saved, save, rename, signedIn, ready } = useSavedMixes(
-    activeClientId ? { clientId: activeClientId } : {}
+  const { saved, save, rename, signedIn, ready, refresh } = useSavedMixes(
+    activeClientId ? { clientId: activeClientId, planId } : { planId }
   );
 
   // כניסה מדף הלקוח: הכלי נפתח כשהלקוח כבר נבחר, וכל שמירה נרשמת עליו
@@ -312,8 +325,20 @@ export function MortgageWorkspace({
     actions.setCompared(matches.map((item) => item.mix.id));
   }, [ready, saved, preferredKey, activeMixKey, initialMix, openMix, actions, notifyActive]);
 
+  const soloOpened = useRef(false);
+  useEffect(() => {
+    if (soloOpened.current || !soloMixKey || !ready) return;
+    const item = saved.find((entry) => entry.mix.id === soloMixKey);
+    if (!item) return;
+    soloOpened.current = true;
+    notifyActive(item);
+    openMix(item.mix);
+    actions.setCompared([]);
+  }, [ready, saved, soloMixKey, openMix, actions, notifyActive]);
+
   const persistMix = useCallback(
     (next: WorkspaceMix) => {
+      if (next.locked) return;
       void save(next).then((stored) => notifyActive(stored));
     },
     [save, notifyActive]
@@ -494,13 +519,16 @@ export function MortgageWorkspace({
    */
   const propertyMixes = useMemo(
     () =>
-      saved.filter(
-        (item) =>
+      saved.filter((item) => {
+        if (soloMixKey && item.mix.id !== soloMixKey) return false;
+        if (planId && item.planId && item.planId !== planId) return false;
+        return (
           item.mix.id !== mix.id &&
           sameProperty(item.mix, mix) &&
           !hiddenFromPage.has(item.mix.id)
-      ),
-    [saved, mix, hiddenFromPage]
+        );
+      }),
+    [saved, mix, hiddenFromPage, planId, soloMixKey]
   );
 
   const propertySavedMixes = useMemo(
@@ -570,12 +598,48 @@ export function MortgageWorkspace({
   const comparisonEntries = useMemo<ComparisonEntry[]>(() => {
     const compared = propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id));
     if (compared.length === 0) return [];
-    // התמהיל שבעבודה מוצג מהמצב החי שלו, ולא מהעותק השמור, כדי שהשוואה תשקף שינויים מיד
     return [
-      { id: 'current', label: `${mix.name} (בעבודה)`, mix, current: true },
-      ...compared.map((item) => ({ id: item.mix.id, label: item.mix.name, mix: item.mix })),
+      {
+        id: mix.id,
+        label: `${mix.name || 'תמהיל בעבודה'}${mix.locked ? ' · סופי' : ' (בעבודה)'}`,
+        mix,
+        current: true,
+        recordId: saved.find((item) => item.mix.id === mix.id)?.recordId,
+        isFinal: mix.id === finalMixKey || mix.locked,
+        locked: mix.locked,
+      },
+      ...compared.map((item) => ({
+        id: item.mix.id,
+        label: item.mix.name,
+        mix: item.mix,
+        recordId: item.recordId,
+        isFinal: item.mix.id === finalMixKey || Boolean(item.isFinal),
+        locked: Boolean(item.locked),
+      })),
     ];
-  }, [state.comparedIds, propertyMixes, mix]);
+  }, [state.comparedIds, propertyMixes, mix, saved, finalMixKey]);
+
+  const selectFinalMix = useCallback(
+    async (entryId: string) => {
+      if (!planId || !allowSelectFinal) return;
+      const fromList = saved.find((item) => item.mix.id === entryId);
+      const item = fromList ?? (entryId === mix.id ? await save(mix) : null);
+      if (!item?.recordId) return;
+      const response = await fetch(`/api/mixes/${item.recordId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFinal: true, planId }),
+      });
+      if (!response.ok) return;
+      const stored = (await response.json()) as SavedMix;
+      onSelectFinal?.(stored);
+      await refresh();
+      if (!stored.mix || stored.mix.id === mix.id) {
+        actions.patchMix({ locked: true });
+      }
+    },
+    [planId, allowSelectFinal, saved, mix, save, onSelectFinal, actions, refresh]
+  );
 
   if (phase === 'landing') {
     return (
@@ -717,8 +781,8 @@ export function MortgageWorkspace({
           monthlyPayment={result.summary.monthlyPayment}
           mixCount={propertyMixes.length + 1}
           profileMaxMonthlyPayment={profileCap}
-          onPatch={actions.patchMix}
-          onTotalAmountChange={actions.setTotalAmount}
+          onPatch={mix.locked ? () => undefined : actions.patchMix}
+          onTotalAmountChange={mix.locked ? () => undefined : actions.setTotalAmount}
         />
 
         {/* שינוי שנחסם בגלל חריגה מתקרת ההחזר. נדבק לראש המסך כדי שההודעה תיראה
@@ -802,17 +866,38 @@ export function MortgageWorkspace({
             </>
           }
           editor={
-            <MixEditor
-              key={result.mix.id}
-              result={result}
-              onUpdateTrack={actions.updateTrack}
-              onTrackAmountChange={actions.setTrackAmount}
-              onRemoveTrack={actions.removeTrack}
-              onAddTrack={actions.addTrack}
-              onPrepay={(trackId) => setPrepayTarget({ trackId })}
-              onRefinance={(trackId) => setRefinanceTarget({ trackId })}
-              onAmortization={(trackId) => setAmortizationTarget({ trackId })}
-            />
+            mix.locked ? (
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+                  התמהיל ננעל כתמהיל הסופי למכרז מול הבנקים ואינו ניתן לשינוי.
+                </div>
+                <div className="pointer-events-none select-none opacity-70">
+                  <MixEditor
+                    key={result.mix.id}
+                    result={result}
+                    onUpdateTrack={() => undefined}
+                    onTrackAmountChange={() => undefined}
+                    onRemoveTrack={() => undefined}
+                    onAddTrack={() => undefined}
+                    onPrepay={() => undefined}
+                    onRefinance={() => undefined}
+                    onAmortization={(trackId) => setAmortizationTarget({ trackId })}
+                  />
+                </div>
+              </div>
+            ) : (
+              <MixEditor
+                key={result.mix.id}
+                result={result}
+                onUpdateTrack={actions.updateTrack}
+                onTrackAmountChange={actions.setTrackAmount}
+                onRemoveTrack={actions.removeTrack}
+                onAddTrack={actions.addTrack}
+                onPrepay={(trackId) => setPrepayTarget({ trackId })}
+                onRefinance={(trackId) => setRefinanceTarget({ trackId })}
+                onAmortization={(trackId) => setAmortizationTarget({ trackId })}
+              />
+            )
           }
         />
 
@@ -858,6 +943,8 @@ export function MortgageWorkspace({
           onSelectMonth={setSelectedMonth}
           entries={comparisonEntries}
           comparedCount={comparedCount}
+          allowSelectFinal={allowSelectFinal}
+          onSelectFinal={selectFinalMix}
         />
 
         <EventsPanel

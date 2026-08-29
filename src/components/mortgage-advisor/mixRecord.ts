@@ -16,6 +16,10 @@ export interface SavedMix {
   /** הלקוח שהתמהיל שויך אליו, אם שויך */
   clientId?: string | null;
   clientName?: string | null;
+  /** תהליך המשכנתא שהתמהיל שייך לו */
+  planId?: string | null;
+  isFinal?: boolean;
+  locked?: boolean;
 }
 
 /** האם הסיכום ששמור לצד התמהיל שלם, או שצריך לחשב אותו מחדש. */
@@ -49,12 +53,17 @@ export function toSavedMix(raw: unknown): SavedMix | null {
   const summary = summaryIsUsable(item.summary) ? item.summary : computeMix(mix).summary;
   const savedAt = typeof item.savedAt === 'string' ? item.savedAt : mix.updatedAt;
 
+  const locked = item.locked === true || mix.locked === true;
+  const isFinal = item.isFinal === true;
   return {
     recordId: typeof item.recordId === 'string' ? item.recordId : undefined,
-    mix,
+    mix: locked ? { ...mix, locked: true } : mix,
     summary,
     savedAt,
     clientId: typeof item.clientId === 'string' ? item.clientId : null,
     clientName: typeof item.clientName === 'string' ? item.clientName : null,
+    planId: typeof item.planId === 'string' ? item.planId : null,
+    isFinal,
+    locked,
   };
 }

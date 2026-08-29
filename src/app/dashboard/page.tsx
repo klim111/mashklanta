@@ -12,20 +12,18 @@ import {
   Settings,
   Loader2,
   Home as HomeIcon,
-  BookmarkCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import MortgageCalculator from '@/components/mortgagecalculator';
-import CapitalPlanningCalculator from '@/components/ui/equitycalc';
-import { SavedMixesWidget } from '@/components/mortgage-advisor/SavedMixesWidget';
 import { PlansOverview } from '@/components/plan/PlansOverview';
+import { ToolsHub } from '@/components/dashboard/ToolsHub';
+import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 
 type TabType = 'plans' | 'tools' | 'settings';
 
 const tabs: Array<{ id: TabType; label: string; icon: typeof FileText }> = [
-  { id: 'plans', label: 'המשכנתאות שלי', icon: FileText },
-  { id: 'tools', label: 'מחשבונים וכלים', icon: Calculator },
+  { id: 'plans', label: 'דאשבורד משכנתאות', icon: FileText },
+  { id: 'tools', label: 'כלים ומחשבונים', icon: Calculator },
   { id: 'settings', label: 'הגדרות', icon: Settings },
 ];
 
@@ -139,91 +137,9 @@ export default function DashboardPage() {
         >
           {activeTab === 'plans' && <PlansOverview />}
 
-          {activeTab === 'tools' && (
-            <div className="space-y-6">
-              <SavedMixesWidget />
+          {activeTab === 'tools' && <ToolsHub />}
 
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
-                    <Calculator className="h-5 w-5 text-white" />
-                  </span>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900">מחשבון משכנתא</h2>
-                    <p className="text-sm text-slate-500">חישוב מהיר מחוץ לתהליך התכנון</p>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <MortgageCalculator />
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600">
-                      <BookmarkCheck className="h-5 w-5 text-white" />
-                    </span>
-                    <div>
-                      <h2 className="text-lg font-black text-slate-900">מחשבון הון עצמי</h2>
-                      <p className="text-sm text-slate-500">מקדמה, מס רכישה והוצאות נלוות</p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/equity-planning"
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
-                  >
-                    תכנון מתקדם
-                  </Link>
-                </div>
-                <div className="p-6">
-                  <CapitalPlanningCalculator />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-              <h2 className="text-2xl font-black text-slate-900">הגדרות החשבון</h2>
-              <div className="mt-6 space-y-6">
-                <div>
-                  <h3 className="mb-3 font-bold text-slate-900">פרטים אישיים</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">שם מלא</label>
-                      <input
-                        type="text"
-                        defaultValue={session.user?.name || ''}
-                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">
-                        כתובת מייל
-                      </label>
-                      <input
-                        type="email"
-                        defaultValue={session.user?.email || ''}
-                        disabled
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100 pt-6">
-                  <h3 className="mb-3 font-bold text-slate-900">אבטחה</h3>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                  >
-                    שנה סיסמה
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === 'settings' && <SettingsPanel />}
         </motion.div>
       </main>
     </div>

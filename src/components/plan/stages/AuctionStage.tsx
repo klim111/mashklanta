@@ -72,13 +72,28 @@ export function AuctionStage({
   const spread =
     cheapest && priciest ? (priciest.totalPaid ?? 0) - (cheapest.totalPaid ?? 0) : 0;
 
-  /** הרף להתמחרות הוא הסל הזול מבין הסלים שקיבלתם באישור העקרוני */
+  /** הרף להתמחרות הוא התמהיל הסופי שננעל, ואם אין — הסל הזול מהאישור העקרוני */
+  const finalMix = data.MIX.isFinal ? data.MIX : null;
   const benchmark = bestBasket(preApproval);
   const benchmarkName = benchmark ? uniformBasket(benchmark.basketId)?.shortName ?? null : null;
-  const plannedMonthly = benchmark?.monthlyPayment ?? data.MIX.monthlyPayment;
+  const plannedMonthly = finalMix?.monthlyPayment ?? benchmark?.monthlyPayment ?? data.MIX.monthlyPayment;
 
   return (
     <div className="space-y-5">
+      {finalMix && (
+        <Panel
+          title="התמהיל הסופי שנבחר"
+          description="זה התמהיל שננעל בשלב בניית התמהיל. המיקוח מול הבנקים נמדד מולו, והתנאים שלו ייטענו גם בשלב החתימה."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric label="שם התמהיל" value={finalMix.mixName ?? '—'} />
+            <Metric label="סכום" value={formatShekel(finalMix.totalAmount)} />
+            <Metric label="החזר חודשי" value={formatShekel(finalMix.monthlyPayment)} />
+            <Metric label="ריבית ממוצעת" value={formatPercent(finalMix.averageRate, 2)} />
+          </div>
+        </Panel>
+      )}
+
       {benchmark && (
         <Panel
           title="הרף שקיבלתם באישור העקרוני"

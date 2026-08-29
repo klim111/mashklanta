@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -57,6 +57,13 @@ import {
   formatPercent,
   formatShekel,
 } from '../ui';
+import { ProfileSyncDialog } from '@/components/dashboard/ProfileSyncDialog';
+import {
+  divergedProfileKeys,
+  parseClientProfile,
+  pickProfileFromAnalysis,
+} from '@/lib/client-profile';
+import type { ClientProfileFinancials, ProfileAnalysisKey } from '@/lib/client-profile';
 
 const AFFORDABILITY_TOOL = '/mortgage-planning?flow=affordability';
 const CONSUMER_LOANS_TOOL = '/consumer-loans';
@@ -125,7 +132,58 @@ export function AnalysisStage({
   planId: string;
 }) {
   const profile = data.ANALYSIS;
-  const patch = (next: Partial<AnalysisData>) => onChange({ ...profile, ...next });
+  const savedProfile = useRef<ClientProfileFinancials | null>(null);
+  const dismissed = useRef<Set<string>>(new Set());
+  const [pendingKeys, setPendingKeys] = useState<ProfileAnalysisKey[]>([]);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/profile', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (!cancelled && body) savedProfile.current = parseClientProfile(body);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const patch = (next: Partial<AnalysisData>) => {
+    const merged = { ...profile, ...next };
+    onChange(merged);
+    const stored = savedProfile.current;
+    if (!stored) return;
+    const keys = divergedProfileKeys(profile, merged, stored).filter(
+      (key) => !dismissed.current.has(key)
+    );
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    if (keys.length === 0) return;
+    syncTimer.current = setTimeout(() => setPendingKeys(keys), 900);
+  };
+
+  const acceptProfileSync = async () => {
+    const keys = pendingKeys;
+    setPendingKeys([]);
+    try {
+      await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pickProfileFromAnalysis({ ...profile })),
+      });
+      savedProfile.current = pickProfileFromAnalysis(profile);
+    } catch {
+      // השינוי במשכנתא כבר נשמר; עדכון ההגדרות ייכשל בשקט
+    }
+    keys.forEach((key) => dismissed.current.add(key));
+  };
+
+  const declineProfileSync = () => {
+    pendingKeys.forEach((key) => dismissed.current.add(key));
+    setPendingKeys([]);
+  };
+
   const go = (profileScreen: ProfileScreen) => patch({ profileScreen });
 
   const couple = profile.household === 'COUPLE';
@@ -139,6 +197,11 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
+      <ProfileSyncDialog
+        keys={pendingKeys}
+        onAccept={() => void acceptProfileSync()}
+        onDecline={declineProfileSync}
+      />
       {screen !== 'intent' && (
         <ScreenRail
           current={screen}

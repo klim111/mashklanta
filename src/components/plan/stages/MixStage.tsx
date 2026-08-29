@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { formatShekel } from '../ui';
 
-function toMixData(saved: SavedMix, notes: string): MixData {
+function toMixData(saved: SavedMix, notes: string, asFinal = false): MixData {
   return {
     mixRecordId: saved.recordId ?? null,
     mixKey: saved.mix.id,
@@ -34,6 +34,8 @@ function toMixData(saved: SavedMix, notes: string): MixData {
     propertyAddress: saved.mix.propertyAddress?.trim() ?? '',
     propertyValue: saved.mix.propertyValue ?? null,
     notes,
+    isFinal: asFinal || Boolean(saved.isFinal),
+    finalLocked: asFinal || Boolean(saved.locked),
   };
 }
 
@@ -116,9 +118,13 @@ function FutureLumpAssign({
 export function MixStage({
   data,
   onChange,
+  planId,
+  focusMixKey,
 }: {
   data: PlanData;
   onChange: (next: MixData) => void;
+  planId: string;
+  focusMixKey?: string | null;
 }) {
   const analysis = analyzeProfile(data.ANALYSIS);
   const profile = data.ANALYSIS;
@@ -127,6 +133,8 @@ export function MixStage({
   persist.current = onChange;
   const notes = useRef(data.MIX.notes);
   notes.current = data.MIX.notes;
+  const mixState = useRef(data.MIX);
+  mixState.current = data.MIX;
 
   const { saved } = useSavedMixes();
   const [pendingPrepay, setPendingPrepay] = useState<PendingPrepay | null>(null);
@@ -202,9 +210,13 @@ export function MixStage({
       <MortgageWorkspace
         embedded
         skipPropertySetup
-        startInSetup={!data.MIX.mixKey && !basketsSaved}
+        planId={planId}
+        startInSetup={!data.MIX.mixKey && !basketsSaved && !focusMixKey}
         preferredMixIds={preferredMixIds}
-        activeMixKey={data.MIX.mixKey}
+        activeMixKey={focusMixKey || data.MIX.mixKey}
+        soloMixKey={focusMixKey || undefined}
+        allowSelectFinal
+        finalMixKey={data.MIX.finalLocked ? data.MIX.mixKey : null}
         defaultSetupSeed={{
           dealType: profile.dealType ?? undefined,
           maxMonthlyPayment: Math.round(analysis.maxMonthlyPayment) || undefined,
@@ -216,7 +228,12 @@ export function MixStage({
         defaultEvents={prepayments}
         pendingPrepay={pendingPrepay}
         onPendingPrepayHandled={clearPendingPrepay}
-        onActiveMix={(item) => persist.current(toMixData(item, notes.current))}
+        onActiveMix={(item) => {
+          const current = mixState.current;
+          if (current.finalLocked && current.mixKey && current.mixKey !== item.mix.id) return;
+          persist.current(toMixData(item, notes.current, current.finalLocked && current.mixKey === item.mix.id));
+        }}
+        onSelectFinal={(item) => persist.current(toMixData(item, notes.current, true))}
       />
     </div>
   );

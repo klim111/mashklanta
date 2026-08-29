@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import {
   PLAN_STAGES,
+  isPlanStage,
   missingForStage,
   stageIndex,
   stageIsComplete,
@@ -70,6 +71,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [viewingStage, setViewingStage] = useState<PlanStageId | null>(null);
+  const [focusMixKey, setFocusMixKey] = useState<string | null>(null);
 
   const statuses = useMemo(() => {
     const map = {} as Record<PlanStageId, PlanStageStatus>;
@@ -78,6 +80,27 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     });
     return map;
   }, [plan]);
+
+  useEffect(() => {
+    if (!plan) return;
+    const params = new URLSearchParams(window.location.search);
+    const mix = params.get('mix');
+    const requested = params.get('stage');
+    if (mix) setFocusMixKey(mix);
+    if (requested && isPlanStage(requested)) {
+      const map = {} as Record<PlanStageId, PlanStageStatus>;
+      PLAN_STAGES.forEach((stageId) => {
+        map[stageId] = plan.stages.find((item) => item.stage === stageId)?.status ?? 'PENDING';
+      });
+      if (unfinishedPrerequisites(requested, map).length > 0) {
+        setViewingStage(requested);
+      } else {
+        void goToStage(requested);
+      }
+    }
+    // נקרא פעם אחת כשהתהליך נטען, כדי לפתוח תמהיל סופי מהדאשבורד
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.id]);
 
   if (!ready) {
     return (
@@ -388,6 +411,8 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     <StageTools stage={stage} data={plan.data} planId={plan.id} compact />
                     <MixStage
                       data={plan.data}
+                      planId={plan.id}
+                      focusMixKey={focusMixKey}
                       onChange={(next: MixData) => updateStage('MIX', next)}
                     />
                   </>

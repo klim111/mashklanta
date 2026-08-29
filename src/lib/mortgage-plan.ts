@@ -274,6 +274,9 @@ export interface MixData {
   propertyAddress: string;
   propertyValue: number | null;
   notes: string;
+  /** התמהיל שננעל כסופי למכרז מול הבנקים */
+  isFinal: boolean;
+  finalLocked: boolean;
 }
 
 /**
@@ -416,6 +419,8 @@ const EMPTY: PlanData = {
     propertyAddress: '',
     propertyValue: null,
     notes: '',
+    isFinal: false,
+    finalLocked: false,
   },
   APPLICATIONS: {
     bank: null,
@@ -651,7 +656,10 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         propertyValueRaw && maxPrice !== null && propertyValueRaw > maxPrice
           ? maxPrice
           : propertyValueRaw;
-      const mortgageAmount = requestedMortgage(propertyValue ?? 0, equity, dealType, targetLtvPercent);
+      const computedMortgage = requestedMortgage(propertyValue ?? 0, equity, dealType, targetLtvPercent);
+      const mortgageAmount =
+        (has('mortgageAmount') ? num(source.mortgageAmount) : seed.mortgageAmount) ??
+        computedMortgage;
 
       const borrowerLoans = carry.borrowerLoans ?? seed.borrowerLoans;
       const partnerLoans = couple ? (carry.partnerLoans ?? seed.partnerLoans) : [];
@@ -721,6 +729,8 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         propertyAddress: str(source.propertyAddress),
         propertyValue: num(source.propertyValue),
         notes: str(source.notes),
+        isFinal: bool(source.isFinal),
+        finalLocked: bool(source.finalLocked) || bool(source.isFinal),
       } as PlanStageDataMap[S];
     }
 
@@ -1407,6 +1417,7 @@ export function planSnapshot(data: PlanData): PlanSnapshot {
     data.SIGNING.finalAmount ??
     data.MIX.totalAmount ??
     preApproval.approvedAmount ??
+    data.ANALYSIS.mortgageAmount ??
     (analysis.requiredLoan || null);
 
   const monthlyPayment =

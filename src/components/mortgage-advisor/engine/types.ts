@@ -98,6 +98,8 @@ export interface WorkspaceMix {
   /** תקרת ההחזר החודשי שנקבעה ללקוח */
   maxMonthlyPayment?: number;
   notes?: string;
+  /** תמהיל שננעל אחרי בחירה כתמהיל סופי למכרז */
+  locked?: boolean;
   createdAt: string;
   updatedAt: string;
 }
