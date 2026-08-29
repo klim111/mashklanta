@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 function RegisterForm() {
   const router = useRouter();
@@ -315,15 +316,21 @@ function RegisterForm() {
             </Link>
           </p>
 
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">או</span>
-            </div>
-          </div>
+          {formData.role !== 'ADVISOR' && (
+            <>
+              <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-gray-500">או</span>
+                </div>
+              </div>
+              <div className="mb-6">
+                <GoogleAuthButton label="הרשמה עם Google" />
+              </div>
+            </>
+          )}
 
           {/* Login Link */}
           <div className="text-center">

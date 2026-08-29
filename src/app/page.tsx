@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform, useMotionValue } from 'framer-motion';
-import { ArrowRight, ArrowLeft, RefreshCw, Shield, TrendingUp, Users, Zap, Target, BarChart3, HeartHandshake, CheckCircle, Menu, Map, Calculator, Banknote, CreditCard, UserCheck, Activity, Tag } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { ArrowRight, ArrowLeft, RefreshCw, Menu, Calculator, Banknote, CreditCard, Tag, Layers, GraduationCap, PiggyBank } from 'lucide-react';
 import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
@@ -13,17 +13,11 @@ import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
 
 export default function Home() {
-  const [isLoaded, setIsLoaded] = useState(false);
   const [isNavbarOpen, setIsNavbarOpen] = useState(false);
   const [showHamburger, setShowHamburger] = useState(false);
-  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 300], [0, -50]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0.9]);
-
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
 
   useEffect(() => {
     const unsubscribe = scrollY.onChange((latest) => {
@@ -31,45 +25,6 @@ export default function Home() {
     });
     return unsubscribe;
   }, [scrollY]);
-
-  const benefits = [
-    {
-      icon: Shield,
-      title: "פשטות ושקיפות מלאה",
-      description: "תהליך ברור וקל להבנה של לקיחת וניהול המשכנתא, ללא הפתעות או עמלות נסתרות",
-      gradient: "from-blue-600 to-blue-700"
-    },
-    {
-      icon: Target,
-      title: "ניווט לאורך כל השלבים",
-      description: "ליווי מקצועי ומותאם אישית בכל שלב של התהליך - מהבקשה ועד לסילוק המשכנתא",
-      gradient: "from-green-600 to-green-700"
-    },
-    {
-      icon: BarChart3,
-      title: "תמהיל אופטימלי מותאם",
-      description: "מציאת התמהיל הטוב ביותר המתאים בדיוק לצרכים ולמצב הפיננסי שלך",
-      gradient: "from-purple-600 to-purple-700"
-    },
-    {
-      icon: TrendingUp,
-      title: "חיסכון עצום בעלויות",
-      description: "הפחתה משמעותית בעלויות הלוואה באמצעות אופטימיזציה חכמה ומשא ומתן יעיל",
-      gradient: "from-orange-600 to-orange-700"
-    },
-    {
-      icon: Zap,
-      title: "כלים מתקדמים לתכנון",
-      description: "מחשבונים חכמים, סימולציות ותחזיות לתכנון פיננסי מדויק וארוך טווח",
-      gradient: "from-indigo-600 to-indigo-700"
-    },
-    {
-      icon: HeartHandshake,
-      title: "ליווי AI + איש מקצוע",
-      description: "שילוב מושלם בין טכנולוגיה מתקדמת לבין ייעוץ אנושי מקצועי ואישי",
-      gradient: "from-rose-600 to-rose-700"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -478,9 +433,7 @@ export default function Home() {
                     </p>
                   </motion.div>
 
-                  {/* Tools Grid */}
-                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                    {/* Simulations Tool */}
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
@@ -489,24 +442,23 @@ export default function Home() {
                       whileHover={{ scale: 1.05, y: -5 }}
                       className="group"
                     >
-                      <Link href="/simulations">
+                      <Link href="/mortgage-advisor">
                         <Card className="h-full border border-gray-200 hover:border-indigo-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
                           <CardContent className="p-4 text-center">
-                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                              <Activity className="w-6 h-6 text-white" />
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                              <Layers className="w-6 h-6 text-white" />
                             </div>
                             <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                              סימולציות
+                              בניית תמהיל
                             </h3>
                             <p className="text-xs text-gray-600 leading-relaxed">
-                              כלי סימולציה מתקדמים לתכנון פיננסי
+                              בניית תמהיל משכנתא עם תחזיות ריבית ואינפלציה
                             </p>
                           </CardContent>
                         </Card>
                       </Link>
                     </motion.div>
 
-                    {/* Road Map Tool */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
@@ -515,183 +467,74 @@ export default function Home() {
                       whileHover={{ scale: 1.05, y: -5 }}
                       className="group"
                     >
-                      <Card className="h-full border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
-                        <CardContent className="p-4 text-center">
-                          <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                            <Map className="w-6 h-6 text-white" />
-                          </div>
-                          <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-                            מפת הדרכים
-                          </h3>
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            הסבר של צעד אחר צעד ללקיחת משכנתא
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <Link href="/equity-planning">
+                        <Card className="h-full border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
+                          <CardContent className="p-4 text-center">
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-green-600 to-green-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                              <PiggyBank className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
+                              מחשבון הון עצמי
+                            </h3>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              חישוב ההון העצמי הנדרש למשכנתא
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     </motion.div>
 
-                    {/* Equity Calculator Tool */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.3 }}
                       viewport={{ once: true }}
                       whileHover={{ scale: 1.05, y: -5 }}
                       className="group"
                     >
-                      <Card className="h-full border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
-                        <CardContent className="p-4 text-center">
-                          <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-green-600 to-green-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                            <Calculator className="w-6 h-6 text-white" />
-                          </div>
-                          <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
-                            מחשבון הון עצמי
-                          </h3>
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            חישוב ההון העצמי הנדרש למשכנתא
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <Link href="/consumer-loans">
+                        <Card className="h-full border border-gray-200 hover:border-orange-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
+                          <CardContent className="p-4 text-center">
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                              <CreditCard className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
+                              תכנון וניהול הלוואות צרכניות
+                            </h3>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              כלים לניהול הלוואות צרכניות קיימות
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     </motion.div>
 
-                    {/* Monthly Payment Calculator */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
                       viewport={{ once: true }}
                       whileHover={{ scale: 1.05, y: -5 }}
                       className="group"
                     >
-                      <Card className="h-full border border-gray-200 hover:border-purple-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
-                        <CardContent className="p-4 text-center">
-                          <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                            <Banknote className="w-6 h-6 text-white" />
-                          </div>
-                          <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
-                            חישוב החזר חודשי מקסימלי
-                          </h3>
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            חישוב ההחזר החודשי המקסימלי שאתה יכול לעמוד בו
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-
-                    {/* Consumer Loans Planning */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-                      viewport={{ once: true }}
-                      whileHover={{ scale: 1.05, y: -5 }}
-                      className="group"
-                    >
-                      <Card className="h-full border border-gray-200 hover:border-orange-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
-                        <CardContent className="p-4 text-center">
-                          <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                            <CreditCard className="w-6 h-6 text-white" />
-                          </div>
-                          <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
-                            תכנון וניהול הלוואות צרכניות
-                          </h3>
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            כלים לניהול הלוואות צרכניות קיימות
-                          </p>
-                        </CardContent>
-                      </Card>
+                      <Link href="/learn">
+                        <Card className="h-full border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer">
+                          <CardContent className="p-4 text-center">
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-600 to-cyan-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                              <GraduationCap className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                              מרכז הלמידה
+                            </h3>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              מסלולי ריבית, תמהיל ומסע המשכנתא
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     </motion.div>
                   </div>
-
-                  {/* Advisor Button */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-                    viewport={{ once: true }}
-                    className="text-center"
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Button
-                        size="lg"
-                        className="text-base px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 rounded-xl"
-                        onClick={() => {
-                          const advisorSection = document.querySelector('[data-section="advisor"]');
-                          if (advisorSection) {
-                            advisorSection.scrollIntoView({ behavior: 'smooth' });
-                          }
-                        }}
-                      >
-                        <UserCheck className="w-5 h-5 ml-2" />
-                        תן ליועץ משכנתא לעשות עבורך את העבודה
-                      </Button>
-                    </motion.div>
-                  </motion.div>
                 </div>
-        </div>
-        </motion.section>
-
-      {/* Benefits Section */}
-        <motion.section
-        id="benefits-section"
-        initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-          viewport={{ once: true, margin: "-100px" }}
-        className="py-20 px-6 bg-gray-50"
-      >
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              למה לבחור במשכלתנא?
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              הפלטפורמה המתקדמת ביותר למשכנתאות בישראל - טכנולוגיה חדשנית, מומחיות מוכחת
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => {
-              const IconComponent = benefit.icon;
-              return (
-                <motion.div
-                  key={index}
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  className="group"
-                >
-                  <Card className="h-full border border-gray-200 hover:border-gray-300 shadow-lg hover:shadow-xl transition-all duration-300 bg-white overflow-hidden">
-                    <CardContent className="p-8 text-center relative">
-                      <div className={`w-16 h-16 mx-auto mb-6 bg-gradient-to-br ${benefit.gradient} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                        <IconComponent className="w-8 h-8 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
-                        {benefit.title}
-                      </h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        {benefit.description}
-                      </p>
-                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <CheckCircle className="w-6 h-6 text-green-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
         </div>
         </motion.section>
 

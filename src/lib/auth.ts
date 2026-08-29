@@ -1,16 +1,33 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { findUserByLogin } from "@/lib/find-user-by-login";
 
+const googleConfigured = Boolean(
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+);
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/auth/login",
+  },
   providers: [
+    ...(googleConfigured
+      ? [
+          Google({
+            clientId: process.env.GOOGLE_CLIENT_ID as string,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     Credentials({
       name: "Credentials",
       credentials: {
@@ -39,7 +56,18 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
-        token.role = (user as any).role;
+        const existingRole = (user as any).role;
+        if (existingRole) {
+          token.role = existingRole;
+        } else if (token.id) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: String(token.id) },
+            select: { role: true },
+          });
+          token.role = dbUser?.role ?? "CLIENT";
+        } else {
+          token.role = "CLIENT";
+        }
       }
       return token;
     },
@@ -49,6 +77,24 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role as string;
       }
       return session;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      if (!user.email || !user.id) return;
+      const base = user.email
+        .split("@")[0]
+        .replace(/[^a-zA-Z0-9._-]/g, "")
+        .slice(0, 24);
+      if (!base) return;
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { username: base },
+        });
+      } catch {
+        // שם המשתמש כבר תפוס — נשאר בלי username
+      }
     },
   },
 };

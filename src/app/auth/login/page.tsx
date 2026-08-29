@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, CheckCircle } from 'lucide-react';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 function LoginForm() {
   const router = useRouter();
@@ -172,9 +173,10 @@ function LoginForm() {
             </div>
           </div>
 
+          <GoogleAuthButton label="התחברות עם Google" />
 
           {/* Register Link */}
-          <div className="text-center space-y-3">
+          <div className="mt-8 text-center space-y-3">
             <p className="text-gray-600">
               עדיין אין לך חשבון?{' '}
               <Link

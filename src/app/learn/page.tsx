@@ -9,11 +9,16 @@ import {
   GraduationCap,
   Layers,
   ArrowDown,
+  BookOpen,
+  PieChart,
+  Route,
+  Lightbulb,
 } from 'lucide-react';
 import NavBar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import TopicSection from '@/components/how-it-works/TopicSection';
+import { LearnStageRail, type LearnStage } from '@/components/how-it-works/LearnStageRail';
 import { learnTopics } from '@/data/how-it-works/topics';
 import { interestTracks } from '@/data/how-it-works/interestTracks';
 import type { CarouselCardData } from '@/components/how-it-works/CardCarousel3D';
@@ -30,19 +35,19 @@ const trackCards: CarouselCardData[] = interestTracks.map((t) => ({
   tag: t.tag,
 }));
 
-const topicNav = [
-  { id: 'intro', label: 'יסודות' },
-  { id: 'interest-tracks', label: 'מסלולי ריבית' },
-  { id: 'mix', label: 'תמהיל' },
-  { id: 'journey', label: 'מסע המשכנתא' },
-  { id: 'tips', label: 'טיפים' },
+const learnStages: LearnStage[] = [
+  { id: 'intro', number: 1, shortTitle: 'יסודות', icon: BookOpen, gradient: 'from-blue-500 to-indigo-600' },
+  { id: 'interest-tracks', number: 2, shortTitle: 'מסלולי ריבית', icon: Layers, gradient: 'from-blue-500 via-indigo-600 to-violet-700' },
+  { id: 'mix', number: 3, shortTitle: 'תמהיל', icon: PieChart, gradient: 'from-emerald-500 to-teal-600' },
+  { id: 'journey', number: 4, shortTitle: 'מסע המשכנתא', icon: Route, gradient: 'from-orange-500 to-amber-600' },
+  { id: 'tips', number: 5, shortTitle: 'טיפים', icon: Lightbulb, gradient: 'from-purple-500 to-fuchsia-600' },
 ];
 
 export default function LearnPage() {
   const [activeNav, setActiveNav] = useState('intro');
 
   useEffect(() => {
-    const sections = topicNav.map((t) => document.getElementById(t.id)).filter(Boolean);
+    const sections = learnStages.map((t) => document.getElementById(t.id)).filter(Boolean);
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
@@ -103,13 +108,13 @@ export default function LearnPage() {
             גללו בין כרטיסיות תלת-מימדיות בכל נושא.
           </p>
           <div className="mb-8 flex flex-wrap justify-center gap-2">
-            {topicNav.map((item) => (
+            {learnStages.map((item) => (
               <a
                 key={item.id}
                 href={`#${item.id}`}
                 className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur transition-colors hover:bg-white/25"
               >
-                {item.label}
+                {item.shortTitle}
               </a>
             ))}
           </div>
@@ -149,25 +154,14 @@ export default function LearnPage() {
         </motion.a>
       </section>
 
-      {/* Sticky topic nav */}
-      <nav className="sticky top-[72px] z-40 bg-white/90 backdrop-blur border-b border-gray-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 overflow-x-auto">
-          <ul className="flex gap-1 py-3 min-w-max justify-center">
-            {topicNav.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={`#${item.id}`}
-                  className={`block px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                    activeNav === item.id
-                      ? 'bg-gray-900 text-white shadow-md'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
+      {/* Sticky stage rail — כמו בכלי תכנון המשכנתא */}
+      <nav className="sticky top-[72px] z-40 overflow-hidden bg-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.45)]">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-600/25 blur-3xl" />
+          <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-violet-600/20 blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-6xl px-3 py-3 md:px-6">
+          <LearnStageRail stages={learnStages} current={activeNav} />
         </div>
       </nav>
 
@@ -242,7 +236,7 @@ export default function LearnPage() {
               מוכנים ליישם את מה שלמדתם?
             </h2>
             <p className="text-slate-100 mb-8 text-lg leading-relaxed">
-              השתמשו בכלים האינטראקטיביים שלנו לבניית תמהיל, סימולציות ותכנון משכנתא.
+              השתמשו בכלים האינטראקטיביים שלנו לבניית תמהיל ותכנון משכנתא.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button
@@ -260,7 +254,7 @@ export default function LearnPage() {
                 size="lg"
                 className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
               >
-                <Link href="/simulations">סימולציות</Link>
+                <Link href="/mortgage-advisor">בניית תמהיל</Link>
               </Button>
             </div>
           </motion.div>
