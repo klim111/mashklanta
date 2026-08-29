@@ -1,13 +1,20 @@
 import { INTEREST_RATES } from './interest-rates';
 import {
+  breakevenSpots,
+  fallbackInflationForecast,
+  type InflationForecast,
+} from './inflation-forecast';
+import {
   FALLBACK_NOMINAL_SPOTS,
   fallbackPrimeForecast,
   type PrimeForecast,
   type YieldSpot,
 } from './prime-forward-curve';
 
-const ZCM_URL =
+const ZCM_NOMINAL_URL =
   'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/ZCM/1.0?c%5BDATA_TYPE%5D=ZC_YTM&c%5BNOMINAL_REAL%5D=N&lastNObservations=1&format=csv';
+const ZCM_REAL_URL =
+  'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/ZCM/1.0?c%5BDATA_TYPE%5D=ZC_YTM&c%5BNOMINAL_REAL%5D=R&lastNObservations=1&format=csv';
 const BR_URL =
   'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/BR/1.0?lastNObservations=1&format=csv';
 
@@ -57,18 +64,22 @@ async function fetchText(url: string): Promise<string> {
   }
 }
 
-function spotsFromZcmCsv(csv: string): { spots: YieldSpot[]; asOf: string } {
-  const rows = parseCsv(csv).filter(
-    (row) =>
-      row.NOMINAL_REAL === 'N' &&
-      row.DATA_TYPE === 'ZC_YTM' &&
-      (row.SERIES_CODE || '').includes('ZND')
-  );
+function spotsFromZcmCsv(csv: string, nominalReal: 'N' | 'R'): { spots: YieldSpot[]; asOf: string } {
+  const rows = parseCsv(csv).filter((row) => {
+    if (row.NOMINAL_REAL && row.NOMINAL_REAL !== nominalReal) return false;
+    if (row.DATA_TYPE && row.DATA_TYPE !== 'ZC_YTM') return false;
+    const code = row.SERIES_CODE || '';
+    if (!code) return true;
+    if (nominalReal === 'N') return code.includes('ZND');
+    return code.includes('ZRD') || !code.includes('ZND');
+  });
   const byYears = new Map<number, { yieldPct: number; asOf: string }>();
   rows.forEach((row) => {
     const years = parseMaturityYears(row.TIME_TO_MATURITY || row.SERIES_CODE || '');
     const yieldPct = Number(row.OBS_VALUE);
-    if (!years || !Number.isFinite(yieldPct) || yieldPct <= 0) return;
+    if (!years || !Number.isFinite(yieldPct)) return;
+    if (nominalReal === 'N' && yieldPct <= 0) return;
+    if (yieldPct <= -5 || yieldPct > 20) return;
     byYears.set(years, { yieldPct, asOf: row.TIME_PERIOD || '' });
   });
   const spots = [...byYears.entries()]
@@ -78,24 +89,59 @@ function spotsFromZcmCsv(csv: string): { spots: YieldSpot[]; asOf: string } {
   return { spots, asOf };
 }
 
-export async function fetchPrimeForecast(): Promise<PrimeForecast> {
-  const defaultBoi = INTEREST_RATES.prime - 1.5;
-  try {
-    const [zcm, br] = await Promise.allSettled([fetchText(ZCM_URL), fetchText(BR_URL)]);
-    const parsed = zcm.status === 'fulfilled' ? spotsFromZcmCsv(zcm.value) : { spots: [], asOf: '' };
-    const { spots, asOf } = parsed;
-    const boiRate =
-      br.status === 'fulfilled'
-        ? latestNumeric(parseCsv(br.value)) ?? defaultBoi
-        : defaultBoi;
+export interface BoiMarketCurves {
+  prime: PrimeForecast;
+  inflation: InflationForecast;
+}
 
-    if (spots.length >= 3) {
-      return { asOf: asOf || new Date().toISOString().slice(0, 7), source: 'boi', boiRate, spots };
-    }
+export async function fetchBoiMarketCurves(): Promise<BoiMarketCurves> {
+  const defaultBoi = INTEREST_RATES.prime - 1.5;
+  const fallbackPrime = fallbackPrimeForecast(defaultBoi);
+  const fallbackInflation = fallbackInflationForecast();
+
+  try {
+    const [nominal, real, br] = await Promise.allSettled([
+      fetchText(ZCM_NOMINAL_URL),
+      fetchText(ZCM_REAL_URL),
+      fetchText(BR_URL),
+    ]);
+
+    const parsedNominal =
+      nominal.status === 'fulfilled' ? spotsFromZcmCsv(nominal.value, 'N') : { spots: [] as YieldSpot[], asOf: '' };
+    const parsedReal =
+      real.status === 'fulfilled' ? spotsFromZcmCsv(real.value, 'R') : { spots: [] as YieldSpot[], asOf: '' };
+
+    const boiRate =
+      br.status === 'fulfilled' ? latestNumeric(parseCsv(br.value)) ?? defaultBoi : defaultBoi;
+
+    const prime: PrimeForecast =
+      parsedNominal.spots.length >= 3
+        ? {
+            asOf: parsedNominal.asOf || new Date().toISOString().slice(0, 7),
+            source: 'boi',
+            boiRate,
+            spots: parsedNominal.spots,
+          }
+        : { ...fallbackPrime, boiRate };
+
+    const breakEvens = breakevenSpots(parsedNominal.spots, parsedReal.spots);
+    const inflation: InflationForecast =
+      breakEvens.length >= 3
+        ? {
+            asOf: parsedReal.asOf || parsedNominal.asOf || new Date().toISOString().slice(0, 7),
+            source: 'boi',
+            spots: breakEvens,
+          }
+        : fallbackInflation;
+
+    return { prime, inflation };
   } catch {
-    // fall through
+    return { prime: fallbackPrime, inflation: fallbackInflation };
   }
-  return fallbackPrimeForecast(defaultBoi);
+}
+
+export async function fetchPrimeForecast(): Promise<PrimeForecast> {
+  return (await fetchBoiMarketCurves()).prime;
 }
 
 export { FALLBACK_NOMINAL_SPOTS };

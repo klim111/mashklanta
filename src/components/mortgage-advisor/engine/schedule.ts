@@ -1,5 +1,6 @@
 import type { MortgageTrack } from '../types';
 import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
+import { expectedInflationPath, inflationRateAtMonth } from '@/lib/inflation-forecast';
 import { expectedMarketPrimePath, isVariableRateStation, primeRateAtMonth, variableUnlinkedRateAtMonth } from '@/lib/prime-forward-curve';
 import type {
   AmortizationType,
@@ -11,6 +12,7 @@ import type {
   TrackResult,
   TrackType,
 } from './types';
+import { usesInflationForecast } from './types';
 
 const MIN_RATE = 0.01;
 
@@ -176,7 +178,10 @@ export function simulateTrack({
   let totalIndexation = 0;
   let totalPrepaid = 0;
 
-  const monthlyInflation = assumptions.annualInflation / 100 / 12;
+  const monthlyInflationConstant = assumptions.annualInflation / 100 / 12;
+  const inflationPath = usesInflationForecast(assumptions)
+    ? expectedInflationPath(assumptions.inflationForecast!.spots)
+    : undefined;
   const hardLimit = stopAtMonth && stopAtMonth > 0 ? stopAtMonth : 12 * 40 + 12;
   const primePath = assumptions.primeForecast
     ? expectedMarketPrimePath(assumptions.primeForecast.spots, assumptions.primeForecast.boiRate)
@@ -200,17 +205,22 @@ export function simulateTrack({
       remainingMonths = Math.max(1, lockedEndMonth - month + 1);
     }
 
-    // --- הצמדה למדד: הקרן נצמדת, עם הגנה מפני ירידת המדד מתחת לבסיס ---
+    // --- הצמדה למדד: הקרן נצמדת לפי תחזית בנק ישראל, עם הגנה מפני ירידת המדד ---
     let indexation = 0;
-    if (isIndexLinked(currentType) && monthlyInflation !== 0) {
-      indexLevel *= 1 + monthlyInflation;
-      const effective = Math.max(indexLevel, 1);
-      const factor = indexFloorLevel > 0 ? effective / indexFloorLevel : 1;
-      indexFloorLevel = effective;
-      const indexed = balance * factor;
-      indexation = indexed - balance;
-      balance = indexed;
-      if (indexation !== 0) paymentDirty = true;
+    if (isIndexLinked(currentType)) {
+      const monthlyInflation = inflationPath
+        ? inflationRateAtMonth(inflationPath, month) / 100 / 12
+        : monthlyInflationConstant;
+      if (monthlyInflation !== 0) {
+        indexLevel *= 1 + monthlyInflation;
+        const effective = Math.max(indexLevel, 1);
+        const factor = indexFloorLevel > 0 ? effective / indexFloorLevel : 1;
+        indexFloorLevel = effective;
+        const indexed = balance * factor;
+        indexation = indexed - balance;
+        balance = indexed;
+        if (indexation !== 0) paymentDirty = true;
+      }
     }
     totalIndexation += indexation;
 
@@ -367,6 +377,7 @@ export function simulateTrack({
     totalInterest: cumulativeInterest,
     totalPaid,
     totalIndexation,
+    inflationCost: 0,
     totalPrepaid,
     months: schedule.length,
   };

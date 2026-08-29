@@ -28,6 +28,8 @@ import {
   VariableForwardChart,
   usesForwardPricedRate,
 } from './PrimeForwardChart';
+import { InflationForecastChart } from './InflationForecastChart';
+import { isIndexLinked } from '../scenarioCalculations';
 
 interface WorkspaceChartsProps {
   result: MixResult;
@@ -119,6 +121,7 @@ export function WorkspaceCharts({
   const hasVariableUnlinked = result.tracks.some(
     (t) => t.track.type === 'variable_unlinked' && t.schedule.length > 1
   );
+  const hasIndexed = result.tracks.some((t) => isIndexLinked(t.track.type) && t.schedule.length > 1);
   const hasForwardPriced = result.tracks.some((t) => usesForwardPricedRate(t.track.type));
 
   const handleClick = (event: unknown) => {
@@ -297,6 +300,18 @@ export function WorkspaceCharts({
                   ? result.tracks.find((t) => t.track.type === 'variable_unlinked')?.track.interestRate
                   : undefined
               }
+              height={230}
+            />
+          </div>
+        )}
+        {hasIndexed && (
+          <div className="lg:col-span-2">
+            <InflationForecastChart
+              assumptions={result.mix.assumptions}
+              years={Math.max(
+                ...result.tracks.filter((t) => isIndexLinked(t.track.type)).map((t) => t.track.years),
+                1
+              )}
               height={230}
             />
           </div>

@@ -23,6 +23,8 @@ import {
 } from './PrimeForwardChart';
 import { formatShekel } from './primitives';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
+import { InflationForecastChart } from './InflationForecastChart';
+import { isIndexLinked } from '../scenarioCalculations';
 
 interface MixEditorProps {
   result: MixResult;
@@ -110,6 +112,7 @@ export function MixEditor({
             removable={mix.tracks.length > 1}
             minAmount={minAmountForTrack(mix, trackResult.track.id)}
             maxAmount={trackResult.track.amount + remaining}
+            assumptions={mix.assumptions}
             onUpdate={(patch) => onUpdateTrack(trackResult.track.id, patch)}
             onAmountChange={(amount) => onTrackAmountChange(trackResult.track.id, amount)}
             onRemove={() => onRemoveTrack(trackResult.track.id)}
@@ -159,6 +162,13 @@ export function MixEditor({
             <VariableForwardChart
               previewPoints={newVariablePreview}
               quotedRate={DEFAULT_INTEREST_RATES.variable_unlinked}
+              height={160}
+            />
+          )}
+          {isIndexLinked(newType) && (
+            <InflationForecastChart
+              assumptions={mix.assumptions}
+              years={mix.tracks[0]?.years ?? 25}
               height={160}
             />
           )}

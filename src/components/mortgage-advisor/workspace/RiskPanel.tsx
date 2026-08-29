@@ -17,6 +17,7 @@ import { TRACK_TYPES } from '../types';
 import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 import { formatPercentage } from '../mortgageCalculations';
 import type { WorkspaceMix, TrackType } from '../engine';
+import { usesInflationForecast } from '../engine';
 import { SliderField } from './primitives';
 
 const RATE_DELTA = { min: -3, max: 3, step: 0.25 };
@@ -139,7 +140,11 @@ export function RiskPanel({
                 min={INFLATION.min}
                 max={INFLATION.max}
                 step={INFLATION.step}
-                display={formatPercentage(mix.assumptions.annualInflation)}
+                display={
+                  usesInflationForecast(mix.assumptions)
+                    ? 'תחזית בנק ישראל'
+                    : formatPercentage(mix.assumptions.annualInflation)
+                }
                 minLabel={`מדד יורד ${INFLATION.min}%`}
                 maxLabel={`מדד עולה +${INFLATION.max}%`}
                 valueClassName={

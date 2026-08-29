@@ -27,6 +27,7 @@ import type {
   WorkspaceMix,
 } from '../engine';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
+import type { InflationForecast } from '@/lib/inflation-forecast';
 
 export interface WorkspaceState {
   mix: WorkspaceMix;
@@ -50,6 +51,8 @@ type Action =
   | { type: 'setInflation'; value: number }
   | { type: 'resetAssumptions' }
   | { type: 'setPrimeForecast'; forecast: PrimeForecast }
+  | { type: 'setInflationForecast'; forecast: InflationForecast }
+  | { type: 'setMarketForecasts'; prime: PrimeForecast; inflation: InflationForecast }
   | { type: 'addEvent'; event: MixEvent }
   | { type: 'removeEvent'; id: string }
   | { type: 'setConstraints'; patch: Partial<OptimizationConstraints> }
@@ -220,6 +223,28 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
         }),
       };
 
+    case 'setInflationForecast':
+      return {
+        ...state,
+        mix: touch({
+          ...state.mix,
+          assumptions: { ...state.mix.assumptions, inflationForecast: action.forecast },
+        }),
+      };
+
+    case 'setMarketForecasts':
+      return {
+        ...state,
+        mix: touch({
+          ...state.mix,
+          assumptions: {
+            ...state.mix.assumptions,
+            primeForecast: action.prime,
+            inflationForecast: action.inflation,
+          },
+        }),
+      };
+
     case 'addEvent':
       return { ...state, mix: touch({ ...state.mix, events: [...state.mix.events, action.event] }) };
 
@@ -296,6 +321,8 @@ export interface MortgageWorkspace {
     setInflation: (value: number) => void;
     resetAssumptions: () => void;
     setPrimeForecast: (forecast: PrimeForecast) => void;
+    setInflationForecast: (forecast: InflationForecast) => void;
+    setMarketForecasts: (prime: PrimeForecast, inflation: InflationForecast) => void;
     addPrepayment: (event: Omit<PrepaymentEvent, 'id' | 'kind'>) => void;
     addRefinance: (event: Omit<RefinanceEvent, 'id' | 'kind'>) => void;
     removeEvent: (id: string) => void;
@@ -342,6 +369,8 @@ export function useMortgageWorkspace(initialMix?: WorkspaceMix): MortgageWorkspa
     setInflation: (value) => dispatch({ type: 'setInflation', value }),
     resetAssumptions: () => dispatch({ type: 'resetAssumptions' }),
     setPrimeForecast: (forecast) => dispatch({ type: 'setPrimeForecast', forecast }),
+    setInflationForecast: (forecast) => dispatch({ type: 'setInflationForecast', forecast }),
+    setMarketForecasts: (prime, inflation) => dispatch({ type: 'setMarketForecasts', prime, inflation }),
     addPrepayment: (event) => dispatch({ type: 'addEvent', event: { ...event, id: eventId(), kind: 'prepayment' } }),
     addRefinance: (event) => dispatch({ type: 'addEvent', event: { ...event, id: eventId(), kind: 'refinance' } }),
     removeEvent: (id) => dispatch({ type: 'removeEvent', id }),

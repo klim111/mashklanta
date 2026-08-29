@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Banknote, CalendarClock, Coins, RefreshCcw, Trash2 } from 'lucide-react';
 import { formatTrackTypeWithAmortization } from './types';
 import { formatPercentage } from './mortgageCalculations';
-import { computeMix, formatDuration } from './engine';
+import { computeMix, formatDuration, inflationIsApplied, withFrozenInflation } from './engine';
 import type { MixSummary, WorkspaceMix } from './engine';
 import { MixRow } from './workspace/MixRow';
 import { formatShekel, trackColor } from './workspace/primitives';
@@ -44,6 +44,12 @@ export function MixSummaryCard({
   const computed = useMemo(() => (summary ? null : computeMix(mix)), [mix, summary]);
   const stats = summary ?? computed!.summary;
   const tracksDetail = useMemo(() => (expanded ? computeMix(mix) : null), [expanded, mix]);
+  const inflationCost = useMemo(() => {
+    if (!tracksDetail || tracksDetail.summary.totalIndexation <= 1) return 0;
+    if (!inflationIsApplied(mix.assumptions)) return 0;
+    const frozen = computeMix(withFrozenInflation(mix));
+    return Math.max(0, tracksDetail.summary.totalPaid - frozen.summary.totalPaid);
+  }, [tracksDetail, mix]);
 
   return (
     <MixRow
@@ -75,6 +81,13 @@ export function MixSummaryCard({
                 icon={<Coins className="h-3 w-3" />}
                 label="תוספת הצמדה"
                 value={formatShekel(stats.totalIndexation)}
+              />
+            )}
+            {inflationCost > 1 && (
+              <DetailStat
+                icon={<Coins className="h-3 w-3" />}
+                label="נשרף על אינפלציה"
+                value={formatShekel(inflationCost)}
               />
             )}
             {stats.ltv !== undefined && (

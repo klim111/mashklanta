@@ -1,6 +1,7 @@
 import type { DealType, MortgageMix, MortgageTrack } from '../types';
 import { AMORTIZATION_TYPES, DEAL_TYPES, DEFAULT_INTEREST_RATES, TRACK_TYPES } from '../types';
 import { DEFAULT_ASSUMPTIONS } from './types';
+import type { InflationForecast } from '@/lib/inflation-forecast';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import type { Assumptions, TrackType, WorkspaceMix } from './types';
 
@@ -21,6 +22,24 @@ function finiteNumber(value: unknown, fallback: number): number {
     if (Number.isFinite(parsed)) return parsed;
   }
   return fallback;
+}
+
+function sanitizeInflationForecast(value: unknown): InflationForecast | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const source = value as Partial<InflationForecast>;
+  if (!Array.isArray(source.spots) || source.spots.length < 2) return undefined;
+  const spots = source.spots
+    .map((spot) => ({
+      years: finiteNumber((spot as { years?: unknown }).years, 0),
+      inflationPct: finiteNumber((spot as { inflationPct?: unknown }).inflationPct, NaN),
+    }))
+    .filter((spot) => spot.years > 0 && Number.isFinite(spot.inflationPct));
+  if (spots.length < 2) return undefined;
+  return {
+    asOf: typeof source.asOf === 'string' ? source.asOf : '',
+    source: source.source === 'boi' ? 'boi' : 'fallback',
+    spots,
+  };
 }
 
 function sanitizePrimeForecast(value: unknown): PrimeForecast | undefined {
@@ -156,6 +175,14 @@ export function mixWithPrimeForecast(mix: WorkspaceMix, forecast: PrimeForecast)
   };
 }
 
+/** מדביק תחזית אינפלציה לתמהיל, בלי לדרוס שאר ההנחות */
+export function mixWithInflationForecast(mix: WorkspaceMix, forecast: InflationForecast): WorkspaceMix {
+  return {
+    ...mix,
+    assumptions: { ...mix.assumptions, inflationForecast: forecast },
+  };
+}
+
 /**
  * מיישר את התמהיל: אחוזי המסלולים נגזרים מסכום המשכנתא.
  *
@@ -219,6 +246,7 @@ export function sanitizeMix(raw: unknown): WorkspaceMix | null {
       rateDeltas: rateDeltas && typeof rateDeltas === 'object' ? rateDeltas : {},
       annualInflation: finiteNumber(source.assumptions?.annualInflation, DEFAULT_ASSUMPTIONS.annualInflation),
       primeForecast: sanitizePrimeForecast(source.assumptions?.primeForecast),
+      inflationForecast: sanitizeInflationForecast(source.assumptions?.inflationForecast),
     },
     startDate: typeof source.startDate === 'string' ? source.startDate : firstOfNextMonth(),
     propertyValue:

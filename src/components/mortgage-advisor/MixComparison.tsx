@@ -29,9 +29,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { formatPercentage } from './mortgageCalculations';
-import { computeMix, formatDuration, yearlySeries } from './engine';
+import { computeMix, formatDuration, mixHasForecastSensitiveTracks, yearlySeries } from './engine';
 import type { MixResult, SeriesPoint, WorkspaceMix } from './engine';
 import { compactCurrency, formatShekel } from './workspace/primitives';
+import { ForecastDisclaimer } from './workspace/ForecastDisclaimer';
 
 const SERIES_COLORS = ['#2563eb', '#f97316', '#10b981', '#8b5cf6', '#ec4899', '#0891b2'];
 
@@ -160,6 +161,11 @@ export function MixComparison({ entries, allowSelectFinal = false, onSelectFinal
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {entries.some((entry) => mixHasForecastSensitiveTracks(entry.mix)) && (
+          <ForecastDisclaimer
+            mix={entries.find((entry) => mixHasForecastSensitiveTracks(entry.mix))?.mix ?? entries[0].mix}
+          />
+        )}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-slate-500">

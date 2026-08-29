@@ -60,8 +60,13 @@ import { MaxPaymentDialog } from './MaxPaymentDialog';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { AmountAndPercent, TermMonthsSlider, formatShekel, trackColor } from './primitives';
 import { PrimeForwardChart, VariableForwardChart, previewPrimeForwardPoints, previewVariableForwardPoints, CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { InflationForecastChart } from './InflationForecastChart';
+import { ForecastDisclaimer } from './ForecastDisclaimer';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
+import { fallbackInflationForecast } from '@/lib/inflation-forecast';
+import type { InflationForecast } from '@/lib/inflation-forecast';
+import { isIndexLinked } from '../scenarioCalculations';
 
 /** מתחת לשקל אחד נחשב "כוסה במלואו" — שאריות עיגול לא אמורות לחסום את המשך התהליך. */
 const COVERED_EPSILON = 1;
@@ -84,6 +89,8 @@ interface MixSetupWizardProps {
   initialProperty?: Partial<PropertySetup>;
   /** עקום הפריים החי — כשחסר משתמשים בנתוני נפילה */
   primeForecast?: PrimeForecast;
+  /** תחזית האינפלציה של בנק ישראל — להצמדה במסלולים צמודים */
+  inflationForecast?: InflationForecast;
   /** מתהליך חמשת השלבים: מדלגים על מסך הנכס כי הנתונים כבר הוזנו */
   skipPropertyStep?: boolean;
   /** תמהילים שמורים — לבדיקת שם ייחודי לאותו נכס */
@@ -140,12 +147,14 @@ export function MixSetupWizard({
   onBack,
   initialProperty,
   primeForecast,
+  inflationForecast,
   skipPropertyStep = false,
   existingMixes = [],
 }: MixSetupWizardProps) {
   const seedEquity = initialProperty?.equity ?? null;
   const forecast = primeForecast ?? fallbackPrimeForecast();
-  const mixAssumptions = { ...DEFAULT_ASSUMPTIONS, primeForecast: forecast };
+  const cpiForecast = inflationForecast ?? fallbackInflationForecast();
+  const mixAssumptions = { ...DEFAULT_ASSUMPTIONS, primeForecast: forecast, inflationForecast: cpiForecast };
   const [property, setProperty] = useState<PropertySetup>(() => {
     const propertyValue = initialProperty?.propertyValue ?? 0;
     const dealType = initialProperty?.dealType ?? DEFAULT_DEAL_TYPE;
@@ -230,7 +239,7 @@ export function MixSetupWizard({
           normalizeMix(createEmptyMix({ totalAmount, tracks: list, assumptions: mixAssumptions }))
         ).summary.monthlyPayment;
 
-  const monthlyPayment = useMemo(() => paymentOf(tracks), [tracks, totalAmount, forecast]);
+  const monthlyPayment = useMemo(() => paymentOf(tracks), [tracks, totalAmount, forecast, cpiForecast]);
 
   const primePreviewPoints = useMemo(
     () =>
@@ -736,6 +745,7 @@ export function MixSetupWizard({
                 {tracks.some((t) => usesForwardPricedRate(t.type)) ? ` · ${CURRENT_RATE_PAYMENT_NOTE}` : ''}
               </p>
             )}
+            {tracks.length > 0 && <ForecastDisclaimer mix={{ tracks }} compact />}
 
             {covered ? (
               <div className="space-y-2">
@@ -906,6 +916,16 @@ export function MixSetupWizard({
                         <VariableForwardChart
                           previewPoints={variablePreviewPoints}
                           quotedRate={form.interestRate}
+                          height={180}
+                        />
+                      </div>
+                    )}
+
+                    {isIndexLinked(form.type) && (
+                      <div className="sm:col-span-2">
+                        <InflationForecastChart
+                          assumptions={mixAssumptions}
+                          years={form.years}
                           height={180}
                         />
                       </div>

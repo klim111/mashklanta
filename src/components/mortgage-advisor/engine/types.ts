@@ -1,5 +1,7 @@
 import type { DealType, MortgageBank, MortgageTrack } from '../types';
+import type { InflationForecast } from '@/lib/inflation-forecast';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
+import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 
 export type TrackType = MortgageTrack['type'];
 export type AmortizationType = NonNullable<MortgageTrack['amortizationType']>;
@@ -44,39 +46,62 @@ export type MixEvent = PrepaymentEvent | RefinanceEvent;
 export interface Assumptions {
   /** שינוי בנקודות אחוז לכל סוג מסלול רגיש-ריבית */
   rateDeltas: Partial<Record<TrackType, number>>;
-  /** אינפלציה שנתית להצמדת מסלולים צמודי מדד */
+  /**
+   * אינפלציה שנתית קבועה. בערך הבסיס (2%) ובנוכחות תחזית בנק ישראל,
+   * המנוע משתמש בנתיב התחזית ולא בקבוע הזה. הזזה בסרגל הסיכונים דורסת
+   * את התחזית ומחילה אינפלציה אחידה.
+   */
   annualInflation: number;
   /**
    * עקום האפס השקלי של בנק ישראל. כשהוא קיים, מסלול פריים מתומחר חודש-חודש
    * לפי הפורוורדים, ומסלול משתנה לא צמוד מתעדכן בתחנות לפי הפורוורד לתקופה.
    */
   primeForecast?: PrimeForecast;
+  /**
+   * ציפיות אינפלציה משוק ההון (ברק-איבן בין עקום נומינלי לצמוד). כשהן קיימות
+   * והתרחיש לא דורס אותן, מסלולים צמודי מדד מוצמדים לפי הנתיב החודשי.
+   */
+  inflationForecast?: InflationForecast;
 }
 
 /**
- * הנחות הבסיס: ריביות כפי שהוזנו ואינפלציה לפי יעד בנק ישראל. כל השוואה
- * בגרפים ובמדדים נמדדת מול ההנחות האלה, ולכן זהו מקור אמת אחד.
+ * הנחות הבסיס: ריביות כפי שהוזנו, ותחזית אינפלציה של בנק ישראל (או 2% כשאין
+ * תחזית). כל השוואה בגרפים ובמדדים נמדדת מול ההנחות האלה.
  */
 export const BASE_ASSUMPTIONS: Assumptions = {
   rateDeltas: {},
   annualInflation: 2,
 };
 
-/** שומר את צפי הפריים כשמאפסים תרחיש — זה בסיס השוק, לא תרחיש */
+/** שומר את צפי הפריים והמדד כשמאפסים תרחיש — זה בסיס השוק, לא תרחיש */
 export function withBaseScenario(assumptions: Assumptions): Assumptions {
   return {
     ...BASE_ASSUMPTIONS,
     primeForecast: assumptions.primeForecast,
+    inflationForecast: assumptions.inflationForecast,
   };
 }
 
-export const DEFAULT_ASSUMPTIONS = BASE_ASSUMPTIONS;
+/** האם להחיל את נתיב תחזית האינפלציה במקום אינפלציה שנתית קבועה */
+export function usesInflationForecast(assumptions: Assumptions): boolean {
+  const spots = assumptions.inflationForecast?.spots;
+  if (!spots || spots.length < 2) return false;
+  return Math.abs(assumptions.annualInflation - BASE_ASSUMPTIONS.annualInflation) < 0.001;
+}
+
+/** יש הצמדה בפועל — תחזית או אינפלציה קבועה שונה מאפס */
+export function inflationIsApplied(assumptions: Assumptions): boolean {
+  if (usesInflationForecast(assumptions)) return true;
+  return Math.abs(assumptions.annualInflation) > 0.001;
+}
 
 /** האם ההנחות שונות מהבסיס — כלומר יש תרחיש פעיל. */
 export function isScenarioActive(assumptions: Assumptions): boolean {
   if (Math.abs(assumptions.annualInflation - BASE_ASSUMPTIONS.annualInflation) > 0.001) return true;
   return Object.values(assumptions.rateDeltas).some((delta) => Math.abs(delta ?? 0) > 0.001);
 }
+
+export const DEFAULT_ASSUMPTIONS = BASE_ASSUMPTIONS;
 
 /** תמהיל עבודה — תמהיל רגיל בתוספת אירועים והנחות */
 export interface WorkspaceMix {
@@ -102,6 +127,23 @@ export interface WorkspaceMix {
   locked?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** תמהיל שבו המדד קפוא — לוח וסיכום כאילו אין שינוי במדד */
+export function withFrozenInflation(mix: WorkspaceMix): WorkspaceMix {
+  return {
+    ...mix,
+    assumptions: {
+      ...mix.assumptions,
+      annualInflation: 0,
+      inflationForecast: undefined,
+    },
+  };
+}
+
+/** תמהיל עם מסלול משתנה או צמוד — המספרים מבוססים על תחזיות */
+export function mixHasForecastSensitiveTracks(mix: Pick<WorkspaceMix, 'tracks'>): boolean {
+  return mix.tracks.some((track) => isRateVariable(track.type) || isIndexLinked(track.type));
 }
 
 /** שורה בלוח סילוקין של מסלול בודד */
@@ -147,6 +189,11 @@ export interface TrackResult {
   totalInterest: number;
   totalPaid: number;
   totalIndexation: number;
+  /**
+   * כמה יותר שולם בגלל האינפלציה לעומת מדד קפוא. כולל את תוספת הקרן
+   * שנפרעת ואת הריבית הנוספת שנצברה עליה.
+   */
+  inflationCost: number;
   totalPrepaid: number;
   months: number;
 }
@@ -188,6 +235,8 @@ export interface MixSummary {
   totalInterest: number;
   totalPaid: number;
   totalIndexation: number;
+  /** סך התשלום העודף מול מדד קפוא — הכסף שנשרף על אינפלציה */
+  inflationCost: number;
   totalPrepaid: number;
   averageRate: number;
   weightedAverageYears: number;

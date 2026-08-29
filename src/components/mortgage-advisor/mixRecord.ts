@@ -50,7 +50,13 @@ export function toSavedMix(raw: unknown): SavedMix | null {
   const mix = sanitizeMix(item.mix);
   if (!mix) return null;
 
-  const summary = summaryIsUsable(item.summary) ? item.summary : computeMix(mix).summary;
+  const summary = summaryIsUsable(item.summary)
+    ? {
+        inflationCost: 0,
+        totalIndexation: 0,
+        ...item.summary,
+      }
+    : computeMix(mix).summary;
   const savedAt = typeof item.savedAt === 'string' ? item.savedAt : mix.updatedAt;
 
   const locked = item.locked === true || mix.locked === true;

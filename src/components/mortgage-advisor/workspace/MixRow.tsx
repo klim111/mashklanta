@@ -11,6 +11,7 @@ import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import { CompositionBar, formatShekel, trackColor } from './primitives';
 import { CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
 import { describePaymentDrop } from './paymentDrop';
+import { ForecastDisclaimer } from './ForecastDisclaimer';
 
 interface MixRowProps {
   mix: WorkspaceMix;
@@ -265,6 +266,8 @@ export function MixRow({
             value={formatPercentage(summary.averageRate)}
           />
         </div>
+
+        <ForecastDisclaimer mix={mix} compact />
 
         <div>
           <CompositionBar tracks={mix.tracks} height={8} />

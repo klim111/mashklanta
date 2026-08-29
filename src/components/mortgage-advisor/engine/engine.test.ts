@@ -12,6 +12,7 @@ import {
 import { optimizeMix } from './optimize';
 import type { WorkspaceMix } from './types';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
+import { fallbackInflationForecast } from '@/lib/inflation-forecast';
 
 function singleTrackMix(overrides: Partial<WorkspaceMix> = {}): WorkspaceMix {
   return createWorkspaceMix({
@@ -168,6 +169,50 @@ describe('index linked track', () => {
       })
     );
     expect(deflated.summary.totalIndexation).toBeCloseTo(0, 6);
+  });
+
+  it('uses the Bank of Israel inflation path instead of a flat 2% when a forecast is present', () => {
+    const forecast = fallbackInflationForecast();
+    const withForecast = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'fixed_linked', amount: 1_000_000, interestRate: 3, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 2, inflationForecast: forecast },
+      })
+    );
+    const flatTwo = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'fixed_linked', amount: 1_000_000, interestRate: 3, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 2 },
+      })
+    );
+    const frozen = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'fixed_linked', amount: 1_000_000, interestRate: 3, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 0, inflationForecast: forecast },
+      })
+    );
+
+    expect(withForecast.summary.totalIndexation).toBeGreaterThan(0);
+    expect(withForecast.summary.totalPaid).toBeGreaterThan(frozen.summary.totalPaid);
+    expect(withForecast.summary.totalPaid).not.toBeCloseTo(flatTwo.summary.totalPaid, 0);
+    expect(frozen.summary.totalIndexation).toBeCloseTo(0, 6);
+  });
+
+  it('does not apply the forecast path when a scenario overrides inflation', () => {
+    const forecast = fallbackInflationForecast();
+    const scenario = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'fixed_linked', amount: 1_000_000, interestRate: 3, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 5, inflationForecast: forecast },
+      })
+    );
+    const constant = computeMix(
+      singleTrackMix({
+        tracks: [createTrack({ id: 'a', type: 'fixed_linked', amount: 1_000_000, interestRate: 3, years: 20 })],
+        assumptions: { rateDeltas: {}, annualInflation: 5 },
+      })
+    );
+    expect(scenario.summary.totalPaid).toBeCloseTo(constant.summary.totalPaid, 0);
   });
 });
 

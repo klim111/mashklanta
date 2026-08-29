@@ -49,6 +49,8 @@ import { clearDraft, consumeStagedMix, readDraft, writeDraft } from './workspace
 import type { WorkspaceDraft } from './workspace/draft';
 import type { ComparisonEntry } from './MixComparison';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
+import { fallbackInflationForecast } from '@/lib/inflation-forecast';
+import type { InflationForecast } from '@/lib/inflation-forecast';
 
 type Phase = 'landing' | 'setup' | 'ready';
 
@@ -102,6 +104,21 @@ interface MortgageWorkspaceProps {
 function signatureOf(mix: WorkspaceMix): string {
   const { updatedAt: _updatedAt, createdAt: _createdAt, ...rest } = mix;
   return JSON.stringify(rest);
+}
+
+function inflationFromPayload(data: unknown): InflationForecast | null {
+  if (!data || typeof data !== 'object') return null;
+  const payload = data as {
+    asOf?: unknown;
+    source?: unknown;
+    spots?: unknown;
+  };
+  if (!Array.isArray(payload.spots) || payload.spots.length < 2) return null;
+  return {
+    asOf: typeof payload.asOf === 'string' ? payload.asOf : '',
+    source: payload.source === 'boi' ? 'boi' : 'fallback',
+    spots: payload.spots,
+  };
 }
 
 /**
@@ -163,6 +180,7 @@ export function MortgageWorkspace({
 
   /** העקום האחרון שנטען — נשמר בנפרד כדי שלא ייעלם כשמחליפים תמהיל */
   const primeForecastRef = useRef(mix.assumptions.primeForecast);
+  const inflationForecastRef = useRef(mix.assumptions.inflationForecast);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,13 +198,17 @@ export function MortgageWorkspace({
                 spots: data.spots,
               };
         primeForecastRef.current = forecast;
-        actions.setPrimeForecast(forecast);
+        const inflation = inflationFromPayload(data?.inflation) ?? fallbackInflationForecast();
+        inflationForecastRef.current = inflation;
+        actions.setMarketForecasts(forecast, inflation);
       })
       .catch(() => {
         if (cancelled) return;
         const forecast = fallbackPrimeForecast();
+        const inflation = fallbackInflationForecast();
         primeForecastRef.current = forecast;
-        actions.setPrimeForecast(forecast);
+        inflationForecastRef.current = inflation;
+        actions.setMarketForecasts(forecast, inflation);
       });
     return () => {
       cancelled = true;
@@ -221,9 +243,15 @@ export function MortgageWorkspace({
   const openMix = useCallback(
     (next: WorkspaceMix, constraints?: OptimizationConstraints) => {
       const forecast = primeForecastRef.current;
-      const withCurve = forecast
-        ? { ...next, assumptions: { ...next.assumptions, primeForecast: forecast } }
-        : next;
+      const inflation = inflationForecastRef.current;
+      const withCurve = {
+        ...next,
+        assumptions: {
+          ...next.assumptions,
+          ...(forecast ? { primeForecast: forecast } : {}),
+          ...(inflation ? { inflationForecast: inflation } : {}),
+        },
+      };
       const withCap = withProfileCap(withCurve);
       // תקרת ההחזר שנקבעה ללקוח היא גם התקרה שהאופטימיזציה עובדת מולה
       actions.load(
@@ -697,6 +725,7 @@ export function MortgageWorkspace({
             initialProperty={setupSeed}
             skipPropertyStep={skipPropertySetup}
             primeForecast={mix.assumptions.primeForecast ?? primeForecastRef.current}
+            inflationForecast={mix.assumptions.inflationForecast ?? inflationForecastRef.current}
             existingMixes={saved}
             onComplete={(created) => {
               persistMix(created);

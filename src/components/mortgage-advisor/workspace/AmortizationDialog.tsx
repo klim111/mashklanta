@@ -4,10 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, MousePointerClick, Table2 } from 'lucide-react';
-import { formatFullDate } from '../engine';
+import { Download, Flame, MousePointerClick, Table2, TrendingUp } from 'lucide-react';
+import { computeMix, formatFullDate, inflationIsApplied, withFrozenInflation } from '../engine';
 import type { MixResult } from '../engine';
+import { isIndexLinked } from '../scenarioCalculations';
 import { formatShekel } from './primitives';
+import { ForecastDisclaimer } from './ForecastDisclaimer';
 
 interface AmortizationDialogProps {
   result: MixResult;
@@ -45,15 +47,32 @@ export function AmortizationDialog({
 }: AmortizationDialogProps) {
   const [trackId, setTrackId] = useState<string>('all');
   const [granularity, setGranularity] = useState<Granularity>('monthly');
+  const [withInflation, setWithInflation] = useState(true);
 
-  // כל פתיחה מתחילה מהיקף שנבחר בכפתור שממנו נפתח הלוח
+  const hasIndexed = useMemo(
+    () => result.mix.tracks.some((track) => isIndexLinked(track.type)),
+    [result.mix.tracks]
+  );
+  const inflationAvailable = hasIndexed && inflationIsApplied(result.mix.assumptions);
+
+  const frozenResult = useMemo(
+    () => (open && inflationAvailable ? computeMix(withFrozenInflation(result.mix)) : result),
+    [open, inflationAvailable, result]
+  );
+
+  const activeResult = withInflation && inflationAvailable ? result : frozenResult;
+
+  // כל פתיחה מתחילה מהיקף שנבחר בכפתור שממנו נפתח הלוח, ועם תחזית האינפלציה
   useEffect(() => {
-    if (open) setTrackId(initialTrackId ?? 'all');
+    if (open) {
+      setTrackId(initialTrackId ?? 'all');
+      setWithInflation(true);
+    }
   }, [open, initialTrackId]);
 
   const source = useMemo(() => {
     if (trackId === 'all') {
-      return result.schedule.map((row) => ({
+      return activeResult.schedule.map((row) => ({
         month: row.month,
         date: row.date,
         annualRate: row.weightedRate,
@@ -67,7 +86,7 @@ export function AmortizationDialog({
         isRateStation: Boolean(row.isRateStation),
       }));
     }
-    const track = result.tracks.find((t) => t.track.id === trackId);
+    const track = activeResult.tracks.find((t) => t.track.id === trackId);
     return (track?.schedule ?? []).map((row) => ({
       month: row.month,
       date: row.date,
@@ -81,7 +100,7 @@ export function AmortizationDialog({
       balanceEnd: row.balanceEnd,
       isRateStation: Boolean(row.isRateStation),
     }));
-  }, [result, trackId]);
+  }, [activeResult, trackId]);
 
   const rows = useMemo<DisplayRow[]>(() => {
     if (granularity === 'monthly') {
@@ -144,9 +163,27 @@ export function AmortizationDialog({
     [rows]
   );
 
+  const inflationStats = useMemo(() => {
+    if (!inflationAvailable) return null;
+    if (trackId === 'all') {
+      return {
+        principalGrowth: result.summary.totalIndexation,
+        inflationCost: Math.max(0, result.summary.totalPaid - frozenResult.summary.totalPaid),
+      };
+    }
+    const inflated = result.tracks.find((t) => t.track.id === trackId);
+    const frozen = frozenResult.tracks.find((t) => t.track.id === trackId);
+    if (!inflated || !isIndexLinked(inflated.track.type)) return null;
+    return {
+      principalGrowth: inflated.totalIndexation,
+      inflationCost: Math.max(0, inflated.totalPaid - (frozen?.totalPaid ?? inflated.totalPaid)),
+    };
+  }, [inflationAvailable, result, frozenResult, trackId]);
+
   // עמודת הריבית שנצברה נוספת רק כשיש גרייס מלא, כדי לא להעמיס על לוח רגיל
   const hasDeferred = totals.deferredInterest > 0.5;
   const hasStations = rows.some((row) => row.isRateStation);
+  const showIndexation = Boolean(withInflation && inflationAvailable && inflationStats);
   const ratesVary =
     rows.length > 1 &&
     (hasStations ||
@@ -167,7 +204,7 @@ export function AmortizationDialog({
       'ריבית',
       'ריבית שנצברה',
       'קרן',
-      'הצמדה',
+      ...(showIndexation ? ['הצמדה'] : []),
       'פרעון מוקדם',
       'יתרה',
     ];
@@ -180,7 +217,7 @@ export function AmortizationDialog({
         Math.round(row.interest),
         Math.round(row.deferredInterest),
         Math.round(row.principal),
-        Math.round(row.indexation),
+        ...(showIndexation ? [Math.round(row.indexation)] : []),
         Math.round(row.prepayment),
         Math.round(row.balanceEnd),
       ].join(',')
@@ -189,7 +226,7 @@ export function AmortizationDialog({
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `לוח-החזרים-${scopeName}.csv`;
+    link.download = `לוח-החזרים-${scopeName}${showIndexation ? '-עם-אינפלציה' : ''}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -231,6 +268,29 @@ export function AmortizationDialog({
             </SelectContent>
           </Select>
 
+          {inflationAvailable && (
+            <div className="flex rounded-lg border border-violet-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setWithInflation(false)}
+                className={`h-9 px-3 text-[11px] font-semibold ${
+                  !withInflation ? 'bg-violet-600 text-white' : 'bg-white text-violet-800 hover:bg-violet-50'
+                }`}
+              >
+                בלי שינוי מדד
+              </button>
+              <button
+                type="button"
+                onClick={() => setWithInflation(true)}
+                className={`h-9 px-3 text-[11px] font-semibold ${
+                  withInflation ? 'bg-violet-600 text-white' : 'bg-white text-violet-800 hover:bg-violet-50'
+                }`}
+              >
+                עם תחזית אינפלציה
+              </button>
+            </div>
+          )}
+
           <Button size="sm" variant="outline" className="h-9 text-xs" onClick={exportCsv}>
             <Download className="h-3.5 w-3.5 ml-1" />
             ייצוא CSV
@@ -239,12 +299,46 @@ export function AmortizationDialog({
           <span className="text-[11px] text-slate-500 mr-auto">{rows.length} שורות</span>
         </div>
 
+        {inflationAvailable && withInflation && inflationStats && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex items-start gap-2 rounded-lg bg-violet-50 border border-violet-200 px-3 py-2">
+              <TrendingUp className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] text-violet-700">הקרן גדלה מהאינפלציה</p>
+                <p className="text-sm font-bold text-violet-950">{formatShekel(inflationStats.principalGrowth)}</p>
+                <p className="text-[10px] text-violet-800/80 leading-snug">
+                  סך ההצמדה לקרן לפי תחזית בנק ישראל לאורך התקופה
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2">
+              <Flame className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] text-orange-700">כסף שנשרף על אינפלציה</p>
+                <p className="text-sm font-bold text-orange-950">{formatShekel(inflationStats.inflationCost)}</p>
+                <p className="text-[10px] text-orange-800/80 leading-snug">
+                  הפרש סך התשלום מול לוח שבו המדד לא זז — קרן נוספת וריבית עליה
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {inflationAvailable && !withInflation && (
+          <p className="text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 leading-snug">
+            הלוח מוצג כאילו המדד לא זז. סך הריבית וסך התשלום בתמהיל עצמו מחושבים לפי תחזית האינפלציה
+            של בנק ישראל — לחצו «עם תחזית אינפלציה» כדי לראות את הערכים הצפויים.
+          </p>
+        )}
+
         {hasStations && (
           <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 leading-snug">
             שורות ירוקות הן תחנות שינוי ריבית במסלול משתנה לא צמוד. בתחנות האלה יש פטור מעמלת פירעון
             מוקדם.
           </p>
         )}
+
+        <ForecastDisclaimer mix={result.mix} />
 
         <div className="flex-1 overflow-auto rounded-xl border border-slate-200">
           <table className="w-full text-xs">
@@ -256,7 +350,9 @@ export function AmortizationDialog({
                 <th className="text-left font-medium p-2">ריבית</th>
                 {hasDeferred && <th className="text-left font-medium p-2">ריבית שנצברה</th>}
                 <th className="text-left font-medium p-2">קרן</th>
-                <th className="text-left font-medium p-2 hidden sm:table-cell">הצמדה</th>
+                {showIndexation && (
+                  <th className="text-left font-medium p-2 hidden sm:table-cell">הצמדה</th>
+                )}
                 <th className="text-left font-medium p-2 hidden sm:table-cell">פרעון</th>
                 <th className="text-left font-medium p-2">יתרה</th>
               </tr>
@@ -293,9 +389,11 @@ export function AmortizationDialog({
                     </td>
                   )}
                   <td className="p-2 text-left text-blue-600">{formatShekel(row.principal)}</td>
-                  <td className="p-2 text-left text-violet-600 hidden sm:table-cell">
-                    {row.indexation > 0.5 ? formatShekel(row.indexation) : '—'}
-                  </td>
+                  {showIndexation && (
+                    <td className="p-2 text-left text-violet-600 hidden sm:table-cell">
+                      {row.indexation > 0.5 ? formatShekel(row.indexation) : '—'}
+                    </td>
+                  )}
                   <td className="p-2 text-left text-emerald-600 hidden sm:table-cell">
                     {row.prepayment > 0.5 ? formatShekel(row.prepayment) : '—'}
                   </td>
@@ -315,9 +413,11 @@ export function AmortizationDialog({
                   </td>
                 )}
                 <td className="p-2 text-left text-blue-700">{formatShekel(totals.principal)}</td>
-                <td className="p-2 text-left text-violet-700 hidden sm:table-cell">
-                  {formatShekel(totals.indexation)}
-                </td>
+                {showIndexation && (
+                  <td className="p-2 text-left text-violet-700 hidden sm:table-cell">
+                    {formatShekel(totals.indexation)}
+                  </td>
+                )}
                 <td className="p-2 text-left text-emerald-700 hidden sm:table-cell">
                   {formatShekel(totals.prepayment)}
                 </td>

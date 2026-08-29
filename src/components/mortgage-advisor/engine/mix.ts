@@ -189,6 +189,7 @@ function summarize(mix: WorkspaceMix, tracks: TrackResult[], schedule: MixSchedu
     totalInterest,
     totalPaid,
     totalIndexation,
+    inflationCost: 0,
     totalPrepaid,
     averageRate: principalSum > 0 ? weightedRateSum / principalSum : 0,
     weightedAverageYears: principalSum > 0 ? weightedYearsSum / principalSum : 0,

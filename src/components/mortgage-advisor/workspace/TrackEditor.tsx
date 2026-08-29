@@ -31,6 +31,7 @@ import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 import { formatPercentage } from '../mortgageCalculations';
 import { autoTrackName, formatDuration } from '../engine';
 import type { TrackResult } from '../engine';
+import type { Assumptions } from '../engine';
 import { AmountAndPercent, SliderField, TermMonthsSlider, formatShekel, trackColor } from './primitives';
 import {
   CURRENT_RATE_PAYMENT_NOTE,
@@ -38,6 +39,7 @@ import {
   VariableForwardChart,
   usesForwardPricedRate,
 } from './PrimeForwardChart';
+import { InflationForecastChart } from './InflationForecastChart';
 
 interface TrackEditorProps {
   result: TrackResult;
@@ -47,6 +49,7 @@ interface TrackEditorProps {
   minAmount?: number;
   /** התקרה למסלול הזה — מה שנותר מסכום המשכנתא אחרי המסלולים האחרים */
   maxAmount: number;
+  assumptions?: Assumptions;
   onUpdate: (patch: Partial<MortgageTrack>) => void;
   /** קובע את הסכום במסלול הזה בלבד; ההפרש נשאר סכום שיש להשלים */
   onAmountChange: (amount: number) => void;
@@ -63,6 +66,7 @@ export function TrackEditor({
   removable,
   minAmount = 0,
   maxAmount,
+  assumptions,
   onUpdate,
   onAmountChange,
   onRemove,
@@ -409,6 +413,13 @@ export function TrackEditor({
           {track.type === 'variable_unlinked' && result.schedule.length > 1 && (
             <VariableForwardChart tracks={[result]} quotedRate={track.interestRate} height={180} />
           )}
+          {indexLinked && result.schedule.length > 1 && (
+            <InflationForecastChart
+              assumptions={assumptions}
+              years={track.years}
+              height={180}
+            />
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
             {declining || equalPrincipalDecline ? (
@@ -467,8 +478,9 @@ export function TrackEditor({
             <div className="flex items-start gap-2 rounded-lg bg-violet-50 border border-violet-200 p-2.5">
               <TrendingUp className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-violet-800 leading-relaxed">
-                ההצמדה למדד מוסיפה {formatShekel(result.totalIndexation)} לקרן לאורך התקופה. הקרן מוגנת מירידת
-                מדד ולא תקטן מתחת לסכום המקורי.
+                לפי תחזית האינפלציה של בנק ישראל הקרן גדלה ב-{formatShekel(result.totalIndexation)} לאורך
+                התקופה. בלוח ההחזרים אפשר לראות גם כמה כסף נשרף על אינפלציה לעומת מדד קפוא. הקרן מוגנת
+                מירידת מדד ולא תקטן מתחת לסכום המקורי.
               </p>
             </div>
           )}
