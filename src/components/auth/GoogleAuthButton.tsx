@@ -2,7 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 function GoogleMark() {
   return (
@@ -35,19 +35,43 @@ export function GoogleAuthButton({
   callbackUrl?: string;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   return (
-    <button
-      type="button"
-      disabled={loading}
-      onClick={() => {
-        setLoading(true);
-        void signIn("google", { callbackUrl });
-      }}
-      className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-800 transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {loading ? <Loader2 className="h-5 w-5 animate-spin text-gray-500" /> : <GoogleMark />}
-      {label}
-    </button>
+    <div className="space-y-3">
+      <button
+        type="button"
+        disabled={loading}
+        onClick={async () => {
+          setError("");
+          setLoading(true);
+          try {
+            const response = await fetch("/api/auth/providers");
+            const providers = response.ok ? await response.json() : null;
+            if (!providers?.google) {
+              setError(
+                "התחברות עם Google עדיין לא הוגדרה. חסרים GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET בקובץ הסביבה."
+              );
+              return;
+            }
+            await signIn("google", { callbackUrl });
+          } catch {
+            setError("לא ניתן להתחבר עם Google כרגע. נסו שוב.");
+          } finally {
+            setLoading(false);
+          }
+        }}
+        className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-800 transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {loading ? <Loader2 className="h-5 w-5 animate-spin text-gray-500" /> : <GoogleMark />}
+        {label}
+      </button>
+      {error && (
+        <p className="flex items-start gap-2 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </p>
+      )}
+    </div>
   );
 }

@@ -202,7 +202,7 @@ function MixRow({
           </div>
           <ChevronDown className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 px-3 py-3">
+        <div className="grid grid-cols-2 gap-2 px-3 py-3 md:grid-cols-3 lg:grid-cols-5">
           <Stat label="החזר חודשי" value={formatCurrency(calc.summary.totalMonthlyPayment)} best={best.monthly} />
           <Stat label="סך ריבית" value={formatCurrency(calc.summary.totalInterest)} best={best.interest} />
           <Stat label="סך תשלום" value={formatCurrency(calc.summary.totalPaid)} best={best.totalPaid} />
@@ -582,7 +582,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
 
           {/* Time axis below the pies */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2">
               <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
                 <Clock className="h-4 w-4 text-blue-600" />
                 ציר זמן — מצב כעבור {selectedYear} שנים

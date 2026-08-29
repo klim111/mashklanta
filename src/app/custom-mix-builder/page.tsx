@@ -305,8 +305,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם יש לך קצבאות או הכנסות נוספות?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם יש לך קצבאות או הכנסות נוספות?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.hasAllowances ? "default" : "outline"}
@@ -354,8 +354,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם אתה צופה סכום חד-פעמי בעתיד?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם אתה צופה סכום חד-פעמי בעתיד?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.expectsLumpSum ? "default" : "outline"}
@@ -456,8 +456,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם יש תוכניות להרחבת המשפחה?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם יש תוכניות להרחבת המשפחה?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.plansFamilyExpansion ? "default" : "outline"}
@@ -870,7 +870,7 @@ export default function CustomMixBuilder() {
           <NavBar />
         </div>
         
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
           <div className="max-w-2xl mx-auto text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
             <p className="text-lg text-gray-600 mb-8">
@@ -895,7 +895,7 @@ export default function CustomMixBuilder() {
         <NavBar />
       </div>
       
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {currentStep === 'personal' && renderPersonalStep()}
         {currentStep === 'financial' && renderFinancialStep()}
         {currentStep === 'future' && renderFutureStep()}

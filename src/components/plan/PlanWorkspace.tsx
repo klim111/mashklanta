@@ -236,7 +236,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
-          <div className="mb-6 grid items-center gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto]">
+          <div className="mb-6 flex flex-col items-center gap-4 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
             <Mashkalanta variant="header" autoPlay />
 
             <div className="min-w-0 md:text-center">

@@ -141,7 +141,7 @@ export function MixRow({
         }}
         className={`p-3 space-y-2.5 ${onClick ? 'cursor-pointer' : ''}`}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-2 sm:gap-3">
           {onToggleSelect && (
             <span onClick={stopRowClick} className="mt-0.5">
               <Checkbox
@@ -159,7 +159,7 @@ export function MixRow({
           )}
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {renaming ? (
                 <input
                   value={draftName}
@@ -225,7 +225,7 @@ export function MixRow({
           </div>
 
           {actions && (
-            <span onClick={stopRowClick} className="flex flex-wrap items-center gap-1.5 shrink-0">
+            <span onClick={stopRowClick} className="flex w-full flex-wrap items-center gap-1.5 lg:w-auto lg:shrink-0">
               {actions}
             </span>
           )}

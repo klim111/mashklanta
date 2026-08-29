@@ -901,28 +901,28 @@ export function MortgagePlanningContent({
           <Label htmlFor="ownCapitalExisting" className="text-right block mb-2 text-lg font-medium">
             ההון העצמי שלך
           </Label>
-          <div className="flex gap-2 max-w-md mx-auto">
+          <div className="flex max-w-md flex-col gap-3 mx-auto sm:flex-row sm:gap-2">
             <FormattedNumberInput
               id="ownCapitalExisting"
               placeholder="₪"
               value={userData.ownCapital}
               onValueChange={(value) => setUserData({ ...userData, ownCapital: value })}
               className={cn(
-                'text-right text-lg p-4 flex-1',
+                'text-right text-lg p-4 w-full sm:flex-1',
                 existingPropertyFieldErrors.ownCapitalExisting && fieldErrorClassName
               )}
             />
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 variant="outline"
                 onClick={() => setShowEquityCalculator(true)}
-                className="px-4 py-3 whitespace-nowrap text-sm"
+                className="px-4 py-3 whitespace-normal text-sm sm:whitespace-nowrap"
               >
                 מחשבון הון עצמי
               </Button>
-              <Link href="/equity-planning">
+              <Link href="/equity-planning" className="sm:contents">
                 <Button
-                  className="px-4 py-3 whitespace-nowrap text-sm bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full px-4 py-3 whitespace-normal text-sm bg-blue-600 hover:bg-blue-700 text-white sm:w-auto sm:whitespace-nowrap"
                 >
                   תכנון מתקדם
                 </Button>
@@ -2504,7 +2504,7 @@ export function MortgagePlanningContent({
       )}
       
       <div
-        className={`container mx-auto px-6 ${
+        className={`container mx-auto px-4 sm:px-6 ${
           currentStep === 'results' ? 'py-3' : embedded ? 'py-4' : 'py-12'
         }`}
       >

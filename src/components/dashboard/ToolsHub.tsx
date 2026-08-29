@@ -126,7 +126,7 @@ export function ToolsHub() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <Link
                   href={tool.href}
-                  className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l ${tool.gradient} px-5 py-4 text-sm font-black text-white shadow-md transition-transform group-hover:scale-[1.02] sm:min-w-[11.5rem]`}
+                  className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l ${tool.gradient} px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-transform group-hover:scale-[1.02] sm:w-auto sm:min-w-[11.5rem]`}
                 >
                   <Icon className="h-5 w-5" />
                   {tool.title}

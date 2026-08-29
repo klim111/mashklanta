@@ -70,7 +70,7 @@ export default function LearnPage() {
       </div>
 
       {/* Hero */}
-      <section className="relative min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white px-4">
+      <section className="relative min-h-[62vh] sm:min-h-[72vh] lg:min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white px-4">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 right-[8%] h-[26rem] w-[26rem] rounded-full bg-blue-500/20 blur-3xl animate-blob" />
           <div className="absolute bottom-[-6rem] left-[6%] h-[30rem] w-[30rem] rounded-full bg-violet-500/20 blur-3xl animate-blob [animation-delay:3s]" />
@@ -96,7 +96,7 @@ export default function LearnPage() {
             <GraduationCap className="w-4 h-4" />
             מרכז למידה — משכלתנא
           </div>
-          <h1 className="mb-6 text-4xl font-black leading-[1.15] text-white md:text-6xl">
+          <h1 className="mb-6 text-3xl font-black leading-[1.15] text-white sm:text-4xl md:text-6xl">
             להבין משכנתא
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-violet-200 bg-clip-text text-transparent">
@@ -155,7 +155,7 @@ export default function LearnPage() {
       </section>
 
       {/* Sticky stage rail — כמו בכלי תכנון המשכנתא */}
-      <nav className="sticky top-[72px] z-40 overflow-hidden bg-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.45)]">
+      <nav className="sticky top-14 z-40 overflow-hidden bg-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.45)] md:top-[72px]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-600/25 blur-3xl" />
           <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-violet-600/20 blur-3xl" />

@@ -85,12 +85,12 @@ export default function TopicSection({
               <p className="mb-3 px-2 text-xs font-black tracking-wide text-slate-500">
                 שלבי ההסבר
               </p>
-              <ol className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:gap-1.5">
+              <ol className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory lg:flex-col lg:overflow-visible lg:gap-1.5">
                 {cards.map((card, i) => {
                   const CardIcon = card.icon;
                   const isCurrent = i === activeIndex;
                   return (
-                    <li key={card.id} className="min-w-[9.5rem] lg:min-w-0">
+                    <li key={card.id} className="min-w-[8.5rem] shrink-0 snap-start sm:min-w-[9.5rem] lg:min-w-0">
                       <button
                         type="button"
                         onClick={() => setActiveIndex(i)}

@@ -259,7 +259,7 @@ export default function ExistingMortgagePage() {
         <NavBar />
       </div>
       
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {!selectedOption && renderMainOptions()}
         {selectedOption === 'refinance' && !refinanceOption && renderRefinanceOptions()}
         {selectedOption === 'transfer' && renderTransferOptions()}

@@ -39,7 +39,7 @@ export default function NavBar() {
         ))}
       </nav>
 
-      <div className="hidden md:flex items-center gap-3">
+      <div className="hidden lg:flex items-center gap-3">
         {session ? (
           <div className="flex items-center gap-3">
             <Link href="/dashboard">

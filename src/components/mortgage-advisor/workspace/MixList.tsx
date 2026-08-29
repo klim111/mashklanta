@@ -347,7 +347,11 @@ function MixSliderSection({
           <p className={`text-[10px] ${bank ? 'text-amber-800' : 'text-violet-700'}`}>{subtitle}</p>
         </div>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin]">
+      <div
+        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] ${
+          items.length === 1 ? 'justify-center' : 'justify-start'
+        }`}
+      >
         {items.map((item) => {
           const selected = comparedIds.includes(item.mix.id);
           return (

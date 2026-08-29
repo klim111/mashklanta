@@ -96,7 +96,7 @@ export default function Footer() {
             <div className="text-gray-400 text-sm">
               © 2024 משכלתנא. כל הזכויות שמורות.
             </div>
-            <div className="flex space-x-6 space-x-reverse text-sm text-gray-400">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 sm:gap-x-6 text-sm text-gray-400">
               <a href="#" className="hover:text-white transition-colors">תנאי שימוש</a>
               <a href="#" className="hover:text-white transition-colors">מדיניות פרטיות</a>
               <a href="#" className="hover:text-white transition-colors">מדיניות עוגיות</a>

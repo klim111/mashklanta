@@ -37,7 +37,7 @@ export function MixStripCard({
           onActivate();
         }
       }}
-      className={`relative w-[250px] shrink-0 cursor-pointer rounded-2xl border bg-white p-3 pt-8 text-right shadow-sm transition-all hover:border-slate-300 ${
+      className={`relative w-[min(88vw,250px)] shrink-0 snap-center cursor-pointer rounded-2xl border bg-white p-3 pt-8 text-right shadow-sm transition-all hover:border-slate-300 sm:w-[250px] ${
         selected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
       }`}
     >

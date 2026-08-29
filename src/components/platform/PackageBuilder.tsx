@@ -85,7 +85,7 @@ export default function PackageBuilder() {
                 onClick={() => toggle(stage.id)}
                 whileTap={{ scale: 0.99 }}
                 aria-pressed={isOn}
-                className={`group flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-right transition-all ${
+                className={`group flex w-full flex-col gap-3 rounded-2xl border-2 p-4 text-right transition-all sm:flex-row sm:items-center sm:gap-4 ${
                   isOn
                     ? 'border-blue-500 bg-blue-50/70 shadow-lg'
                     : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'

@@ -107,7 +107,7 @@ export default function CardCarousel3D({
   return (
     <div ref={containerRef} className={cn('relative w-full', className)} tabIndex={0}>
       <div
-        className="relative mx-auto h-[520px] sm:h-[580px] md:h-[640px] max-w-6xl"
+        className="relative mx-auto h-[440px] sm:h-[580px] md:h-[640px] max-w-6xl"
         style={{ perspective: '1600px', perspectiveOrigin: '50% 40%' }}
       >
         <div
@@ -117,7 +117,7 @@ export default function CardCarousel3D({
           )}
         />
 
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 hidden items-center justify-center pointer-events-none sm:flex">
           {cards.map((c, i) => {
             const offset = i - activeIndex;
             if (offset === 0 || Math.abs(offset) > 2) return null;
@@ -200,10 +200,10 @@ export default function CardCarousel3D({
                   card.gradient
                 )}
               >
-                <div className="rounded-[22px] bg-white overflow-hidden min-h-[460px] sm:min-h-[500px] md:min-h-[540px] flex flex-col">
+                <div className="rounded-[22px] bg-white overflow-hidden min-h-[360px] sm:min-h-[500px] md:min-h-[540px] flex flex-col">
                   <div
                     className={cn(
-                      'px-8 py-7 bg-gradient-to-l text-white relative overflow-hidden',
+                      'px-5 py-5 sm:px-8 sm:py-7 bg-gradient-to-l text-white relative overflow-hidden',
                       card.gradient
                     )}
                   >
@@ -231,7 +231,7 @@ export default function CardCarousel3D({
                     </div>
                   </div>
 
-                  <div className="flex-1 px-8 py-6 overflow-y-auto text-right space-y-5 bg-slate-50">
+                  <div className="flex-1 px-5 py-4 overflow-y-auto text-right space-y-4 bg-slate-50 sm:px-8 sm:py-6 sm:space-y-5">
                     <p className="text-slate-800 leading-relaxed text-base md:text-lg font-medium">
                       {text}
                     </p>

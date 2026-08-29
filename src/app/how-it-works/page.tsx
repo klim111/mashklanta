@@ -158,7 +158,7 @@ export default function HowItWorksPage() {
             איך הפלטפורמה עובדת
           </div>
 
-          <h1 className="mb-6 text-4xl font-black leading-[1.15] text-white md:text-6xl lg:text-7xl">
+          <h1 className="mb-6 text-3xl font-black leading-[1.15] text-white sm:text-4xl md:text-6xl lg:text-7xl">
             כל מה שיועץ משכנתאות עושה —
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-violet-200 bg-clip-text text-transparent">
@@ -247,7 +247,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ───────────────────── Sticky section nav ───────────────────── */}
-      <nav className="sticky top-[73px] z-40 border-b border-gray-100 bg-white/90 shadow-sm backdrop-blur">
+      <nav className="sticky top-14 z-40 border-b border-gray-100 bg-white/90 shadow-sm backdrop-blur md:top-[73px]">
         <div className="mx-auto max-w-6xl overflow-x-auto px-4">
           <ul className="flex min-w-max justify-center gap-1 py-3">
             {sectionNav.map((item) => (

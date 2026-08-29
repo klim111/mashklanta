@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { authErrorMessage } from '@/lib/auth-errors';
 
 function RegisterForm() {
   const router = useRouter();
@@ -22,12 +23,13 @@ function RegisterForm() {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if role is specified in URL
   useEffect(() => {
     const role = searchParams.get('role');
     if (role === 'ADVISOR') {
       setFormData(prev => ({ ...prev, role: 'ADVISOR' }));
     }
+    const oauthError = authErrorMessage(searchParams.get('error'));
+    if (oauthError) setError(oauthError);
   }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -122,7 +124,7 @@ function RegisterForm() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-4">
@@ -130,7 +132,7 @@ function RegisterForm() {
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {formData.role === 'ADVISOR' ? 'הרשמה ליועצי משכנתאות' : 'הרשמה'}
             </h1>
             <p className="text-gray-600 mt-2">

@@ -117,14 +117,14 @@ export function MortgageMixCard({
       <CardHeader className="pb-4">
         {isEditing ? (
           <CardTitle className="flex items-center justify-between">
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
               <Input
                 value={editData.name}
                 onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                className="text-lg font-semibold"
+                className="text-lg font-semibold w-full sm:flex-1"
                 placeholder="שם התמהיל"
               />
-              <div className="flex gap-1">
+              <div className="flex shrink-0 gap-1 self-end sm:self-auto">
                 <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700">
                   <Check className="h-4 w-4" />
                 </Button>
@@ -142,7 +142,7 @@ export function MortgageMixCard({
             <div className="space-y-2">
               {summaryHeaderConfig ? (
                 <>
-                  <h4 className="text-3xl font-bold text-gray-900">{summaryHeaderConfig.title}</h4>
+                  <h4 className="text-xl font-bold text-gray-900 sm:text-2xl lg:text-3xl">{summaryHeaderConfig.title}</h4>
                   <p className="text-base text-gray-500">{summaryHeaderConfig.description}</p>
                 </>
               ) : (
@@ -253,23 +253,23 @@ export function MortgageMixCard({
             )}
           </div>
         ) : (
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div
-              className={`flex items-center gap-2 ${onToggleSelect ? 'cursor-pointer' : ''}`}
+              className={`flex min-w-0 items-center gap-2 ${onToggleSelect ? 'cursor-pointer' : ''}`}
               onClick={(e) => {
                 stopPropagation(e);
                 onToggleSelect?.(mix.id);
               }}
             >
               <PieChart className="h-5 w-5 text-blue-600" />
-              <span className="text-lg">{mix.name}</span>
+              <span className="text-lg truncate">{mix.name}</span>
               {isSelected && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                   נבחר
                 </Badge>
               )}
             </div>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap justify-end gap-1 sm:shrink-0">
               {onShowDetails && (
                 <Button
                   size="sm"

@@ -2236,16 +2236,16 @@ export default function EquityPlanningTool() {
     <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6">
           <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900">תכנון הון עצמי — הוצאות נלוות</h1>
-              <p className="text-gray-600">כלי מקצועי לתכנון וניהול הוצאות רכישת נכס</p>
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">תכנון הון עצמי — הוצאות נלוות</h1>
+              <p className="text-sm text-gray-600 sm:text-base">כלי מקצועי לתכנון וניהול הוצאות רכישת נכס</p>
           </div>
         </div>
 
         {/* Stepper */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-center space-x-8 space-x-reverse">
+        <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-0 sm:space-x-8 sm:space-x-reverse">
             {[
               { step: 0, title: 'הגדרות בסיס', description: 'נתוני נכס ומימון' },
               { step: 1, title: 'הוצאות לפי קטגוריות', description: 'הוספה ועריכה מהירה' },
@@ -2253,7 +2253,7 @@ export default function EquityPlanningTool() {
             ].map((item, index) => (
               <div key={item.step} className="flex items-center">
                 <div className="flex items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${
                     data.currentStep >= item.step 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-200 text-gray-600'
@@ -2264,13 +2264,13 @@ export default function EquityPlanningTool() {
                       item.step + 1
                     )}
                   </div>
-                  <div className="mr-4">
-                    <div className="font-medium text-gray-900">{item.title}</div>
-                    <div className="text-sm text-gray-600">{item.description}</div>
+                  <div className="mr-3 sm:mr-4">
+                    <div className="font-medium text-gray-900 text-sm sm:text-base">{item.title}</div>
+                    <div className="hidden text-sm text-gray-600 sm:block">{item.description}</div>
                   </div>
                 </div>
                 {index < 2 && (
-                  <div className={`w-16 h-1 mx-4 ${
+                  <div className={`hidden w-16 h-1 mx-4 sm:block ${
                     data.currentStep > item.step ? 'bg-blue-600' : 'bg-gray-200'
                   }`} />
                 )}
@@ -2280,7 +2280,7 @@ export default function EquityPlanningTool() {
         </div>
 
         {/* Main Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {data.currentStep === 0 && renderBasicSettings()}
           {data.currentStep === 1 && renderExpensesByCategories()}
           {data.currentStep === 2 && renderSummaryAndCashFlow()}

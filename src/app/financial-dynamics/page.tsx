@@ -471,20 +471,20 @@ export default function FinancialDynamicsPage() {
       </div>
       <div className="border-b border-gray-200 bg-white/90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-600" />
-              <h1 className="text-lg font-bold text-gray-900">דינמיקה פיננסית</h1>
+          <div className="flex flex-wrap items-center justify-between gap-2 min-h-14 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Activity className="w-5 h-5 shrink-0 text-indigo-600" />
+              <h1 className="truncate text-base font-bold text-gray-900 sm:text-lg">דינמיקה פיננסית</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExport}
-                className="gap-2"
+                className="gap-1.5 px-2 sm:gap-2 sm:px-3"
               >
                 <Download className="w-4 h-4" />
-                ייצוא
+                <span className="hidden sm:inline">ייצוא</span>
               </Button>
               <Button
                 variant="outline"
@@ -520,7 +520,7 @@ export default function FinancialDynamicsPage() {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed right-0 top-16 bottom-0 w-96 bg-white shadow-2xl z-50 overflow-y-auto border-l border-gray-200"
+                className="fixed inset-y-0 right-0 top-16 z-50 w-full max-w-md overflow-y-auto border-l border-gray-200 bg-white shadow-2xl sm:w-96"
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">

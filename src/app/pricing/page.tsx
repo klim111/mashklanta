@@ -141,7 +141,7 @@ export default function PricingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className={`relative flex h-full flex-col rounded-3xl border-2 bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
+                  className={`relative flex h-full flex-col rounded-3xl border-2 bg-white p-5 shadow-lg transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl sm:p-8 ${
                     plan.popular
                       ? 'border-violet-400 lg:-mt-4 lg:pb-12 lg:shadow-2xl'
                       : 'border-gray-200'
@@ -368,7 +368,8 @@ export default function PricingPage() {
           </motion.div>
 
           <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overscroll-x-contain">
+              <p className="mb-2 px-4 pt-3 text-center text-xs text-gray-500 md:hidden">גללו הצידה לצפייה בהשוואה המלאה</p>
               <table className="w-full min-w-[560px] text-right">
                 <thead>
                   <tr className="bg-gray-900 text-white">

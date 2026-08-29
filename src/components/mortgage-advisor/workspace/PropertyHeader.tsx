@@ -128,7 +128,7 @@ export function PropertyHeader({
 
         <div className="flex flex-wrap items-center gap-2">
           <Select value={dealType} onValueChange={(value) => changeDealType(value as DealType)}>
-            <SelectTrigger className="h-8 w-[190px] text-xs">
+            <SelectTrigger className="h-8 w-full min-w-0 text-xs sm:w-[190px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

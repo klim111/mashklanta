@@ -65,17 +65,17 @@ export default function AdvisorDashboardPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+          <div className="flex justify-between items-center min-h-16 gap-3 py-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <Link href="/" className="flex min-w-0 items-center gap-2">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shrink-0">
                   <HomeIcon className="w-6 h-6 text-white" />
                 </div>
-                <span className="font-bold text-xl">משכנתא - יועצים</span>
+                <span className="truncate font-bold text-lg sm:text-xl">משכנתא - יועצים</span>
               </Link>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link
                 href="/saved-mixes"
                 className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors"
@@ -94,14 +94,14 @@ export default function AdvisorDashboardPage() {
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-sm font-medium">{session.user?.name || session.user?.email}</span>
+                <span className="hidden text-sm font-medium lg:inline">{session.user?.name || session.user?.email}</span>
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
-                יציאה
+                <span className="hidden sm:inline">יציאה</span>
               </button>
             </div>
           </div>
@@ -184,14 +184,14 @@ export default function AdvisorDashboardPage() {
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm border mb-6">
-          <div className="flex border-b">
+          <div className="flex overflow-x-auto border-b">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  className={`flex shrink-0 items-center gap-2 px-4 py-3 text-sm font-medium transition-colors sm:px-6 sm:py-4 ${
                     activeTab === tab.id
                       ? 'text-blue-600 border-b-2 border-blue-600'
                       : 'text-gray-600 hover:text-gray-900'

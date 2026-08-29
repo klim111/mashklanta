@@ -140,7 +140,7 @@ export default function JourneyExplorer() {
             {/* Performer toggle */}
             <div className="shrink-0">
               <div className="mb-2 text-xs font-bold text-gray-600 md:text-left">מי מבצע את השלב?</div>
-              <div className="relative z-0 flex rounded-2xl bg-gray-100 p-1">
+              <div className="relative z-0 flex w-full flex-col gap-1 rounded-2xl bg-gray-100 p-1 sm:w-auto sm:flex-row">
                 {(
                   [
                     { id: 'advisor' as const, label: 'היועץ', icon: UserCheck },
@@ -157,7 +157,7 @@ export default function JourneyExplorer() {
                         setPerformer(option.id);
                         setAutoplay(false);
                       }}
-                      className={`relative z-10 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
+                      className={`relative z-10 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:py-2.5 sm:text-sm ${
                         selected ? 'text-white' : 'text-gray-700 hover:text-gray-900'
                       }`}
                     >
@@ -169,7 +169,8 @@ export default function JourneyExplorer() {
                         />
                       )}
                       <OptionIcon className="relative z-10 h-4 w-4" />
-                      <span className="relative z-10">{option.label}</span>
+                      <span className="relative z-10 sm:hidden">{option.id === 'self' ? 'לבד' : option.label}</span>
+                      <span className="relative z-10 hidden sm:inline">{option.label}</span>
                     </button>
                   );
                 })}
@@ -284,17 +285,17 @@ export default function JourneyExplorer() {
           </div>
 
           {/* Panel footer navigation */}
-          <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
+          <div className="mt-8 flex flex-col gap-4 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={() => select(activeIndex - 1)}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:w-auto"
             >
               <ChevronRight className="h-4 w-4" />
               השלב הקודם
             </button>
 
-            <div className="flex gap-1.5">
+            <div className="flex justify-center gap-1.5">
               {journeyStages.map((s, index) => (
                 <button
                   key={s.id}
@@ -311,7 +312,7 @@ export default function JourneyExplorer() {
             <button
               type="button"
               onClick={() => select(activeIndex + 1)}
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:w-auto"
             >
               השלב הבא
               <ChevronLeft className="h-4 w-4" />

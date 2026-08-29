@@ -149,12 +149,13 @@ export function TrackEditor({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      <div className="flex items-stretch">
+      <div className="flex flex-col sm:flex-row sm:items-stretch">
+        <div className="flex min-w-0 flex-1 items-stretch">
         <span className="w-1.5 shrink-0" style={{ backgroundColor: trackColor(track.type) }} />
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex-1 min-w-0 flex items-center gap-3 p-3 text-right hover:bg-slate-50 transition-colors"
+          className="flex-1 min-w-0 flex items-center gap-2 p-3 text-right hover:bg-slate-50 transition-colors sm:gap-3"
         >
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
@@ -204,9 +205,10 @@ export function TrackEditor({
           </div>
           <ChevronDown className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
+        </div>
 
         {/* פעולות המסלול זמינות גם בשורה הסגורה, ומציגות את הנתונים של המסלול הזה בלבד */}
-        <div className="flex items-center gap-1 pl-2 border-r border-slate-100">
+        <div className="flex items-center justify-end gap-1 border-t border-slate-100 px-2 py-1.5 sm:border-t-0 sm:border-r sm:py-0 sm:pl-2">
           <Button
             size="sm"
             variant="ghost"

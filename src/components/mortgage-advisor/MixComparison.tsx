@@ -167,7 +167,7 @@ export function MixComparison({ entries, allowSelectFinal = false, onSelectFinal
           />
         )}
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-xs">
+          <table className="w-full min-w-[640px] text-xs lg:min-w-0">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
                 <th className="text-right font-medium p-2">תמהיל</th>
@@ -705,7 +705,7 @@ function PaydownPaceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         dir="rtl"
-        className="max-h-[90vh] max-w-6xl overflow-y-auto sm:max-w-6xl [&>button]:left-4 [&>button]:right-auto"
+        className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-6xl overflow-y-auto p-4 sm:w-full sm:p-6 sm:max-w-6xl [&>button]:left-4 [&>button]:right-auto"
       >
         <DialogHeader>
           <DialogTitle className="text-right text-xl font-black text-slate-900">
@@ -720,7 +720,15 @@ function PaydownPaceDialog({
         {ranked.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-500">אין תמהילים להשוואה</p>
         ) : (
-          <div className="grid gap-4 overflow-x-auto pb-2" style={{ gridTemplateColumns: `repeat(${ranked.length}, minmax(220px, 1fr))` }}>
+          <div
+            className={
+              ranked.length <= 1
+                ? 'grid grid-cols-1 gap-4'
+                : ranked.length === 2
+                  ? 'grid grid-cols-1 gap-4 sm:grid-cols-2'
+                  : 'grid grid-cols-1 gap-4 overflow-x-auto pb-2 sm:grid-cols-2 lg:grid-cols-3'
+            }
+          >
             {ranked.map((item, rank) => {
               const fastest = rank === 0;
               const slowest = rank === ranked.length - 1 && ranked.length > 1;
@@ -839,7 +847,7 @@ function Panel({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-slate-800">{title}</p>
         {hint && <p className="text-[10px] font-medium text-blue-600">{hint}</p>}
       </div>

@@ -254,7 +254,7 @@ export function LoanPlanner() {
       <div className="min-h-screen bg-gray-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
               מתכנן הלוואות צרכניות והשוואות
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -263,15 +263,15 @@ export function LoanPlanner() {
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="loans" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              ניהול הלוואות
+          <TabsList className="mb-8 grid h-auto w-full grid-cols-3 gap-1 p-1">
+            <TabsTrigger value="loans" className="flex min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm">
+              <Calculator className="h-4 w-4 shrink-0" />
+              <span className="leading-tight">ניהול הלוואות</span>
             </TabsTrigger>
-            <DroppableZone id="compare-tab" className="flex-1">
-              <TabsTrigger value="compare" className="flex items-center gap-2 w-full">
-                <TrendingUp className="h-4 w-4" />
-                השוואה
+            <DroppableZone id="compare-tab" className="flex-1 min-w-0">
+              <TabsTrigger value="compare" className="flex min-w-0 w-full flex-col items-center gap-1 px-1 py-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm">
+                <TrendingUp className="h-4 w-4 shrink-0" />
+                <span className="leading-tight">השוואה</span>
                 {state.selectedForComparison.length > 0 && (
                   <span className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs">
                     {state.selectedForComparison.length}
@@ -282,9 +282,9 @@ export function LoanPlanner() {
                 )}
               </TabsTrigger>
             </DroppableZone>
-            <TabsTrigger value="optimize" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              שילובים
+            <TabsTrigger value="optimize" className="flex min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm">
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <span className="leading-tight">שילובים</span>
             </TabsTrigger>
           </TabsList>
 

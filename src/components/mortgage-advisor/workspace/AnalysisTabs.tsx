@@ -52,7 +52,7 @@ export function AnalysisTabs({
 
   return (
     <Tabs value={tab} onValueChange={(value) => setTab(value as AnalysisTab)} dir="rtl">
-      <TabsList className="h-11">
+      <TabsList className="h-11 w-full justify-start overflow-x-auto sm:w-auto sm:justify-center">
         <TabsTrigger value="charts" className="text-xs sm:text-sm">
           <BarChart3 className="h-4 w-4 ml-1.5" />
           ניתוח גרפי

@@ -13,7 +13,7 @@ function MixPlannerBody() {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
       <div className="border-b border-slate-200 bg-white px-4 py-3">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-7xl flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-slate-900"

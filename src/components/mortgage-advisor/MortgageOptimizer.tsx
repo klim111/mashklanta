@@ -315,8 +315,8 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
 
       {/* תמהילים מומלצים */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 sm:text-2xl">
             <Sparkles className="h-6 w-6 text-purple-600" />
             תמהילים מומלצים עבורך
           </h2>

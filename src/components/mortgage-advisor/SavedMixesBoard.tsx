@@ -139,7 +139,7 @@ function PropertyGroup({
           <p className="text-base font-bold text-slate-900 truncate">
             {address || `משכנתא בסך ${formatShekel(totalAmount)}`}
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-500 flex flex-wrap gap-x-1.5 gap-y-0.5">
             משכנתא {formatShekel(totalAmount)}
             {propertyValue && propertyValue > 0 && ` · עלות נכס ${formatShekel(propertyValue)}`}
             {propertyValue && propertyValue > 0 && ` · הון עצמי ${formatShekel(equity)}`}

@@ -440,7 +440,7 @@ export function MixSetupWizard({
                   {DEAL_TYPES[property.dealType]}
                   {property.propertyAddress.trim() && ` · ${property.propertyAddress.trim()}`}
                 </p>
-                <p className="text-sm font-bold text-slate-900">
+                <p className="text-sm font-bold text-slate-900 break-words">
                   משכנתא {formatShekel(totalAmount)} · נכס {formatShekel(property.propertyValue)} · הון
                   עצמי {formatShekel(equity)}
                 </p>

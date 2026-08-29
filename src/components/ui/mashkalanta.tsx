@@ -51,13 +51,13 @@ export default function LoanWordJump({
     ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center"
     : isNav
       ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center leading-none"
-      : "flex h-96 cursor-pointer select-none flex-col items-center justify-center";
+      : "flex h-28 cursor-pointer select-none flex-col items-center justify-center sm:h-48 md:h-64 lg:h-96";
 
   const wordClass = isHeader
     ? "text-2xl font-bold text-white md:text-[1.7rem]"
     : isNav
       ? "text-xl font-black text-gray-900 md:text-2xl"
-      : "text-5xl font-bold";
+      : "text-3xl font-bold sm:text-4xl md:text-5xl";
 
   return (
     <div dir="rtl" onMouseEnter={handleHover} className={wrapClass}>
@@ -115,7 +115,7 @@ export default function LoanWordJump({
             className={
               isHeader
                 ? "mt-1 max-w-[11rem] text-center text-[10px] font-semibold leading-tight text-cyan-100/90 md:text-[11px]"
-                : "mt-4 text-xl text-gray-700"
+                : "mt-2 text-base text-gray-700 sm:mt-4 sm:text-xl"
             }
           >
             מוסיפים שכל למשכנתא שלך

@@ -103,7 +103,7 @@ export default function DashboardPage() {
               </p>
             </motion.div>
 
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-6 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
@@ -112,7 +112,7 @@ export default function DashboardPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all ${
+                    className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold transition-all sm:w-auto sm:px-4 sm:text-sm ${
                       active
                         ? 'bg-white text-slate-900 shadow-lg'
                         : 'bg-white/10 text-white/70 hover:bg-white/15 hover:text-white'

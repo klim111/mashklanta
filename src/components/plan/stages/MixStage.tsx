@@ -89,7 +89,7 @@ function FutureLumpAssign({
           setResetKey((current) => current + 1);
         }}
       >
-        <SelectTrigger className="h-9 max-w-lg bg-white text-xs">
+        <SelectTrigger className="h-9 w-full max-w-full bg-white text-xs sm:max-w-lg">
           <SelectValue placeholder="לאיזה מסלול לייעד את הסכום?" />
         </SelectTrigger>
         <SelectContent>

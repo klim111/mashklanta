@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, ArrowLeft, RefreshCw, Menu, Calculator, Banknote, CreditCard, Tag, Layers, GraduationCap, PiggyBank } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RefreshCw, Calculator, Banknote, CreditCard, Tag, Layers, GraduationCap, PiggyBank } from 'lucide-react';
 import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
@@ -13,18 +12,9 @@ import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
 
 export default function Home() {
-  const [isNavbarOpen, setIsNavbarOpen] = useState(false);
-  const [showHamburger, setShowHamburger] = useState(false);
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 300], [0, -50]);
   const opacity = useTransform(scrollY, [0, 300], [1, 0.9]);
-
-  useEffect(() => {
-    const unsubscribe = scrollY.onChange((latest) => {
-      setShowHamburger(latest > 600);
-    });
-    return unsubscribe;
-  }, [scrollY]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -42,21 +32,21 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50"
+        className="relative overflow-hidden min-h-[100svh] lg:h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50"
       >
         {/* Logo Section - Top */}
-        <div className="h-1/5 flex items-center justify-center pt-2">
+        <div className="flex h-auto items-center justify-center pt-4 sm:h-1/5 sm:pt-2 lg:h-1/5">
         <Mashkalanta />
         </div>
 
         {/* Title and Subtitle Section */}
-        <div className="h-2/5 flex flex-col items-center justify-start px-6 pt-0">
+        <div className="flex flex-col items-center justify-start px-4 pt-2 sm:h-2/5 sm:px-6 sm:pt-0">
                 <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
-            className="text-lg md:text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed text-center"
+            className="text-base md:text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed text-center"
           >
             פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
             <br />
@@ -70,8 +60,8 @@ export default function Home() {
         </div>
 
         {/* Buttons Section - Bottom */}
-        <div className="flex min-h-[18%] items-center justify-center px-6 pb-10 pt-2">
-          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4">
+        <div className="flex min-h-[18%] items-center justify-center px-4 pb-8 pt-4 sm:px-6 sm:pb-10 sm:pt-2">
+          <div className="flex w-full max-w-lg flex-col sm:max-w-none sm:flex-row flex-wrap justify-center gap-3 sm:gap-4">
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -162,15 +152,15 @@ export default function Home() {
                 <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 overflow-hidden rounded-full md:block">
                   <div className="h-full w-full bg-gradient-to-l from-blue-500 via-violet-500 to-rose-500 animate-draw-line" />
                 </div>
-                <ol className="relative grid grid-cols-5 gap-1 md:gap-2">
+                <ol className="relative mx-auto grid max-w-xs grid-cols-5 gap-0.5 sm:max-w-md sm:gap-1 md:max-w-none md:gap-2">
                   {journeyStages.map((stage) => (
                     <li key={stage.id} className="flex flex-col items-center text-center">
                       <span
-                        className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br text-lg font-black text-white shadow-lg ${stage.gradient} animate-pulse-glow`}
+                        className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black text-white shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl sm:text-base md:h-14 md:w-14 md:text-lg ${stage.gradient} animate-pulse-glow`}
                       >
                         {stage.number}
                       </span>
-                      <span className="mt-3 text-[11px] font-bold leading-snug text-gray-800 md:text-sm">
+                      <span className="mt-1.5 text-[8px] font-bold leading-tight text-gray-800 sm:mt-3 sm:text-[11px] md:text-sm">
                         {stage.shortTitle}
                       </span>
                     </li>
@@ -243,79 +233,6 @@ export default function Home() {
           </div>
         </div>
       </motion.section>
-      
-      {/* Floating Hamburger Menu Button - Only visible after scrolling past first section */}
-      <motion.div
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: showHamburger ? 1 : 0, x: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed top-6 right-6 z-50"
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-white/90 backdrop-blur-sm border-gray-300 hover:bg-white hover:border-gray-400 shadow-lg"
-          onClick={() => setIsNavbarOpen(!isNavbarOpen)}
-        >
-          {isNavbarOpen ? (
-            <span className="text-lg font-bold">✕</span>
-          ) : (
-            <Menu className="w-5 h-5" />
-          )}
-        </Button>
-      </motion.div>
-
-      {/* Mobile Navbar Overlay */}
-      {isNavbarOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsNavbarOpen(false)}
-        >
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute top-0 right-0 h-full w-80 bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="mb-8">
-                <h2 className="text-xl font-bold text-gray-900">תפריט ניווט</h2>
-              </div>
-              
-              <nav className="space-y-4">
-                <Link href="/" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  בית
-                </Link>
-                <Link href="/mortgage-application" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  משכנתא חדשה
-                </Link>
-                <Link href="/mortgage-advisor" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  ייעוץ משכנתא
-                </Link>
-                <Link href="/consumer-loans" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  הלוואות צרכניות
-                </Link>
-                <Link href="/dashboard" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  לוח בקרה
-                </Link>
-                <Link href="/auth/login" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  התחברות
-                </Link>
-                <Link href="/auth/register" className="block py-3 px-4 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                  הרשמה
-                </Link>
-              </nav>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-
 
       {/* Action Cards Section */}
         <motion.section
@@ -324,7 +241,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true, margin: "-100px" }}
-        className="relative min-h-screen py-20 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden"
+        className="relative min-h-screen py-12 px-4 sm:py-20 sm:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden"
       >
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">

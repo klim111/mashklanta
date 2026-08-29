@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, CheckCircle } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { authErrorMessage } from '@/lib/auth-errors';
 
 function LoginForm() {
   const router = useRouter();
@@ -21,6 +22,8 @@ function LoginForm() {
     if (searchParams.get('advisor') === 'true') {
       setShowAdvisorMessage(true);
     }
+    const oauthError = authErrorMessage(searchParams.get('error'));
+    if (oauthError) setError(oauthError);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,7 +66,7 @@ function LoginForm() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-4">
@@ -71,7 +74,7 @@ function LoginForm() {
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">התחברות</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">התחברות</h1>
             <p className="text-gray-600 mt-2">ברוכים השבים למשכלנתא</p>
           </div>
 

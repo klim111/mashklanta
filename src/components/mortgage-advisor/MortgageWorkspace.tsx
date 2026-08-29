@@ -788,7 +788,8 @@ export function MortgageWorkspace({
           <Button variant="ghost" size="sm" className="h-9" asChild>
             <Link href={personalAreaHref}>
               {isAdvisor ? <Users className="h-4 w-4 ml-1" /> : <UserRound className="h-4 w-4 ml-1" />}
-              {isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}
+              <span className="hidden md:inline">{isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}</span>
+              <span className="md:hidden">{isAdvisor ? 'האזור שלי' : 'אזור אישי'}</span>
             </Link>
           </Button>
           )}
@@ -861,17 +862,17 @@ export function MortgageWorkspace({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 text-xs"
+                className="h-8 px-2 text-xs sm:px-3"
                 onClick={() => setPrepayTarget({})}
               >
-                <Banknote className="h-3.5 w-3.5 ml-1" />
-                פרעון מוקדם
+                <Banknote className="h-3.5 w-3.5 sm:ml-1" />
+                <span className="hidden sm:inline">פרעון מוקדם</span>
               </Button>
               {mix.events.some((event) => event.kind === 'prepayment') && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
+                  className="h-8 px-2 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 sm:px-3"
                   title="הסרת כל הפרעונות המוקדמים והצגת ערכי התמהיל המקוריים"
                   onClick={() =>
                     actions.patchMix({
@@ -879,18 +880,18 @@ export function MortgageWorkspace({
                     })
                   }
                 >
-                  <Undo2 className="h-3.5 w-3.5 ml-1" />
-                  הסר פרעון מוקדם
+                  <Undo2 className="h-3.5 w-3.5 sm:ml-1" />
+                  <span className="hidden sm:inline">הסר פרעון מוקדם</span>
                 </Button>
               )}
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 text-xs"
+                className="h-8 px-2 text-xs sm:px-3"
                 onClick={() => setAmortizationTarget({})}
               >
-                <Table2 className="h-3.5 w-3.5 ml-1" />
-                לוח החזרים
+                <Table2 className="h-3.5 w-3.5 sm:ml-1" />
+                <span className="hidden sm:inline">לוח החזרים</span>
               </Button>
             </>
           }

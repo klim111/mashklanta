@@ -135,7 +135,7 @@ export function MixEditor({
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={newType} onValueChange={(value) => setNewType(value as TrackType)}>
-              <SelectTrigger className="h-8 w-[170px] bg-white text-xs">
+              <SelectTrigger className="h-8 w-full bg-white text-xs sm:w-[170px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -146,7 +146,7 @@ export function MixEditor({
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" className="h-8 text-xs" onClick={() => onAddTrack(newType)}>
+            <Button size="sm" className="h-8 w-full text-xs sm:w-auto" onClick={() => onAddTrack(newType)}>
               <Plus className="h-3.5 w-3.5 ml-1" />
               הוסף מסלול על {formatShekel(remaining)}
             </Button>

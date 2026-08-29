@@ -306,7 +306,7 @@ export default function UniformMixes() {
           <NavBar />
         </div>
         
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
           <div className="max-w-2xl mx-auto text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
             <p className="text-lg text-gray-600 mb-8">
@@ -331,7 +331,7 @@ export default function UniformMixes() {
         <NavBar />
       </div>
       
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

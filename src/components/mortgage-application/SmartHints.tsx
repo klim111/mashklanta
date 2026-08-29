@@ -243,7 +243,7 @@ export function SmartHints({ context, userData = {}, onHintAction }: SmartHintsP
 
   return (
     <motion.div
-      className="fixed bottom-6 left-6 z-50 max-w-sm space-y-3"
+      className="fixed bottom-4 left-4 right-4 z-50 max-w-sm space-y-3 sm:bottom-6 sm:left-6 sm:right-auto"
       initial={{ opacity: 0, x: -100 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4 }}
