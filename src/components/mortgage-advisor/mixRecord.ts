@@ -39,6 +39,16 @@ function summaryIsUsable(summary: unknown): summary is MixSummary {
   });
 }
 
+/** סיכומים ישנים עלולים לחסור שדות הצמדה שנוספו אחריהם */
+function withIndexationDefaults(summary: MixSummary): MixSummary {
+  const { inflationCost: savedCost, totalIndexation: savedIndexation, ...rest } = summary;
+  return {
+    ...rest,
+    inflationCost: Number.isFinite(savedCost) ? savedCost : 0,
+    totalIndexation: Number.isFinite(savedIndexation) ? savedIndexation : 0,
+  };
+}
+
 /**
  * תיקון תמהיל שהגיע מאחסון כלשהו — בסיס נתונים, אחסון הדפדפן או גרסה ישנה של
  * הכלי. תמהיל שאין בו כלום שאפשר לשחזר מוחזר כ-null במקום להפיל את התצוגה.
@@ -51,11 +61,7 @@ export function toSavedMix(raw: unknown): SavedMix | null {
   if (!mix) return null;
 
   const summary = summaryIsUsable(item.summary)
-    ? {
-        inflationCost: 0,
-        totalIndexation: 0,
-        ...item.summary,
-      }
+    ? withIndexationDefaults(item.summary)
     : computeMix(mix).summary;
   const savedAt = typeof item.savedAt === 'string' ? item.savedAt : mix.updatedAt;
 
