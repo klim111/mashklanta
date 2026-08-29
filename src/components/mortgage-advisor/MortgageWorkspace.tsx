@@ -10,9 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertTriangle,
   Banknote,
-  BookmarkCheck,
   Home,
-  Plus,
   Settings2,
   ShieldAlert,
   Table2,
@@ -29,13 +27,13 @@ import type { MixEvent, OptimizationConstraints, WorkspaceMix } from './engine';
 import { cloneWorkspaceMix } from './engine';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
-import { dealTypeOf, sameProperty } from './propertyContext';
+import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
 import { DEFAULT_CONSTRAINTS, useMortgageWorkspace } from './workspace/useMortgageWorkspace';
 import { WorkspaceLanding } from './workspace/WorkspaceLanding';
 import { MixSetupWizard } from './workspace/MixSetupWizard';
 import type { PropertySetup } from './workspace/MixSetupWizard';
 import { PropertyHeader } from './workspace/PropertyHeader';
-import { MixList } from './workspace/MixList';
+import { MixList, MAX_COMPARED_MIXES } from './workspace/MixList';
 import { MixEditor } from './workspace/MixEditor';
 import { SavedMixPicker } from './workspace/SavedMixPicker';
 import { RiskPanel } from './workspace/RiskPanel';
@@ -125,7 +123,7 @@ export function MortgageWorkspace({
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const clients = useAdvisorClients(isAdvisor);
 
-  const { saved, save, remove, rename, signedIn, ready } = useSavedMixes(
+  const { saved, save, rename, signedIn, ready } = useSavedMixes(
     activeClientId ? { clientId: activeClientId } : {}
   );
 
@@ -191,6 +189,9 @@ export function MortgageWorkspace({
   /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם לפני שהוא נשאר באזור העבודה */
   const [pendingCloneId, setPendingCloneId] = useState<string | null>(null);
   const [savedPickerOpen, setSavedPickerOpen] = useState(false);
+  const [hiddenFromPage, setHiddenFromPage] = useState<Set<string>>(() => new Set());
+  const [nameNotice, setNameNotice] = useState<string | null>(null);
+  const [compareNotice, setCompareNotice] = useState<string | null>(null);
 
   const signature = useMemo(() => signatureOf(mix), [mix]);
   const dirty = phase === 'ready' && signature !== savedSignature;
@@ -355,6 +356,12 @@ export function MortgageWorkspace({
 
   const openSavedMix = useCallback(
     (item: SavedMix) => {
+      setHiddenFromPage((prev) => {
+        if (!prev.has(item.mix.id)) return prev;
+        const next = new Set(prev);
+        next.delete(item.mix.id);
+        return next;
+      });
       keepCurrentMix();
       // התמהיל נשאר משויך ללקוח שלו, גם כשמגיעים אליו מהאזור האישי
       if (item.clientId) setActiveClientId(item.clientId);
@@ -382,22 +389,38 @@ export function MortgageWorkspace({
   );
 
   const renameMix = useCallback(
-    (id: string, name: string) => {
+    (id: string, name: string): boolean => {
+      const item = saved.find((entry) => entry.mix.id === id);
+      if (
+        item &&
+        mixNameExistsForProperty(name, item.mix, saved, id)
+      ) {
+        setNameNotice('כבר קיים תמהיל בשם הזה לנכס זה. בחרו שם ייחודי.');
+        return false;
+      }
+      setNameNotice(null);
       void rename(id, name);
       if (id === pendingCloneId) setPendingCloneId(null);
+      return true;
     },
-    [rename, pendingCloneId]
+    [rename, pendingCloneId, saved]
   );
 
   const renameActiveMix = useCallback(
-    (name: string) => {
+    (name: string): boolean => {
+      if (mixNameExistsForProperty(name, mix, saved, mix.id)) {
+        setNameNotice('כבר קיים תמהיל בשם הזה לנכס זה. בחרו שם ייחודי.');
+        return false;
+      }
+      setNameNotice(null);
       const next = { ...mix, name };
       actions.patchMix({ name });
       persistMix(next);
       setSavedSignature(signatureOf(next));
       if (pendingCloneId === mix.id) setPendingCloneId(null);
+      return true;
     },
-    [actions, persistMix, mix, pendingCloneId]
+    [actions, persistMix, mix, pendingCloneId, saved]
   );
 
   const plannedPrepay = useMemo(() => {
@@ -470,8 +493,14 @@ export function MortgageWorkspace({
    * כתובת — כדי שההשוואה תהיה בין חלופות לאותה עסקה.
    */
   const propertyMixes = useMemo(
-    () => saved.filter((item) => item.mix.id !== mix.id && sameProperty(item.mix, mix)),
-    [saved, mix]
+    () =>
+      saved.filter(
+        (item) =>
+          item.mix.id !== mix.id &&
+          sameProperty(item.mix, mix) &&
+          !hiddenFromPage.has(item.mix.id)
+      ),
+    [saved, mix, hiddenFromPage]
   );
 
   const propertySavedMixes = useMemo(
@@ -482,6 +511,60 @@ export function MortgageWorkspace({
   const comparedCount = useMemo(
     () => propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id)).length,
     [propertyMixes, state.comparedIds]
+  );
+
+  const toggleCompared = useCallback(
+    (id: string) => {
+      const already = state.comparedIds.includes(id);
+      if (
+        !already &&
+        propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id)).length >=
+          MAX_COMPARED_MIXES
+      ) {
+        setCompareNotice(`ניתן להוסיף עד ${MAX_COMPARED_MIXES} תמהילים להשוואה בבת אחת`);
+        window.setTimeout(() => setCompareNotice(null), 3500);
+        return;
+      }
+      setCompareNotice(null);
+      actions.toggleCompared(id);
+    },
+    [state.comparedIds, propertyMixes, actions]
+  );
+
+  const dismissFromPage = useCallback(
+    (id: string) => {
+      setHiddenFromPage((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      if (state.comparedIds.includes(id)) actions.toggleCompared(id);
+
+      if (id !== mix.id) return;
+
+      const remaining = propertyMixes.filter((item) => !hiddenFromPage.has(item.mix.id));
+      if (remaining[0]) {
+        openSavedMix(remaining[0]);
+        return;
+      }
+      backToLanding();
+    },
+    [state.comparedIds, actions, mix.id, propertyMixes, hiddenFromPage, openSavedMix, backToLanding]
+  );
+
+  const restoreSavedMix = useCallback(
+    (item: SavedMix) => {
+      const wasHidden = hiddenFromPage.has(item.mix.id);
+      setHiddenFromPage((prev) => {
+        if (!prev.has(item.mix.id)) return prev;
+        const next = new Set(prev);
+        next.delete(item.mix.id);
+        return next;
+      });
+      setSavedPickerOpen(false);
+      if (!wasHidden && item.mix.id !== mix.id) openSavedMix(item);
+    },
+    [hiddenFromPage, mix.id, openSavedMix]
   );
 
   const comparisonEntries = useMemo<ComparisonEntry[]>(() => {
@@ -550,6 +633,7 @@ export function MortgageWorkspace({
             initialProperty={setupSeed}
             skipPropertyStep={skipPropertySetup}
             primeForecast={mix.assumptions.primeForecast ?? primeForecastRef.current}
+            existingMixes={saved}
             onComplete={(created) => {
               persistMix(created);
               openMix(created);
@@ -574,15 +658,38 @@ export function MortgageWorkspace({
           </Button>
           )}
 
-          <Button variant="ghost" size="sm" className="h-9" onClick={() => startNewMix()}>
-            <Plus className="h-4 w-4 ml-1" />
-            תמהיל חדש
-          </Button>
-
-          <Button variant="ghost" size="sm" className="h-9" onClick={() => setSavedPickerOpen(true)}>
-            <BookmarkCheck className="h-4 w-4 ml-1" />
-            טען תמהיל שמור
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Settings2 className="h-4 w-4 ml-1" />
+                הגדרות
+                {(showRisk || showGoals) && (
+                  <span className="mr-1.5 rounded-full bg-slate-200 px-1.5 text-[10px] font-semibold text-slate-700">
+                    {Number(showRisk) + Number(showGoals)}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent dir="rtl" align="end" className="w-72 p-2">
+              <p className="px-2 py-1.5 text-[11px] font-semibold text-slate-500">
+                כלים נוספים למסך
+              </p>
+              <SettingToggle
+                checked={showRisk}
+                onChange={setShowRisk}
+                icon={<ShieldAlert className="h-4 w-4 text-blue-600" />}
+                label="הצג סרגל ניתוח סיכונים"
+                hint="הזזת ריבית ומדד כדי לבחון את חשיפת התמהיל"
+              />
+              <SettingToggle
+                checked={showGoals}
+                onChange={setShowGoals}
+                icon={<Target className="h-4 w-4 text-blue-600" />}
+                label="שנה סכום החזר חודשי"
+                hint="הגדרת תקרת החזר ובחירת מטרות לאופטימיזציה"
+              />
+            </PopoverContent>
+          </Popover>
 
           {!embedded && (
           <Button variant="ghost" size="sm" className="h-9" asChild>
@@ -600,41 +707,6 @@ export function MortgageWorkspace({
               onSelect={setActiveClientId}
             />
           )}
-
-          <div className="flex items-center gap-2 sm:mr-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
-                  <Settings2 className="h-4 w-4 ml-1" />
-                  הגדרות
-                  {(showRisk || showGoals) && (
-                    <span className="mr-1.5 rounded-full bg-slate-200 px-1.5 text-[10px] font-semibold text-slate-700">
-                      {Number(showRisk) + Number(showGoals)}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent dir="rtl" align="end" className="w-72 p-2">
-                <p className="px-2 py-1.5 text-[11px] font-semibold text-slate-500">
-                  כלים נוספים למסך
-                </p>
-                <SettingToggle
-                  checked={showRisk}
-                  onChange={setShowRisk}
-                  icon={<ShieldAlert className="h-4 w-4 text-blue-600" />}
-                  label="הצג סרגל ניתוח סיכונים"
-                  hint="הזזת ריבית ומדד כדי לבחון את חשיפת התמהיל"
-                />
-                <SettingToggle
-                  checked={showGoals}
-                  onChange={setShowGoals}
-                  icon={<Target className="h-4 w-4 text-blue-600" />}
-                  label="שנה סכום החזר חודשי"
-                  hint="הגדרת תקרת החזר ובחירת מטרות לאופטימיזציה"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
         </div>
       </div>
 
@@ -676,17 +748,21 @@ export function MortgageWorkspace({
           scenarioActive={scenarioActive}
           onToggleExpanded={() => setEditorExpanded((open) => !open)}
           onActivate={openSavedMix}
-          onToggleCompare={actions.toggleCompared}
+          onToggleCompare={toggleCompared}
           onRenameActive={renameActiveMix}
           onRename={renameMix}
-          onDelete={remove}
+          onDismiss={dismissFromPage}
           onDuplicate={(item) => duplicateMix(item.mix)}
           onDuplicateActive={() => duplicateMix(mix)}
           pendingRenameId={pendingCloneId}
           onCreateForProperty={startMixForSameProperty}
+          onLoadSaved={() => setSavedPickerOpen(true)}
           saveDirty={dirty}
           flashSave={flashSave}
           onSaveAsNew={saveAsNewMix}
+          uniformMixIds={preferredMixIds}
+          nameNotice={nameNotice}
+          compareNotice={compareNotice}
           activeActions={
             <>
               <Button
@@ -747,7 +823,7 @@ export function MortgageWorkspace({
           address={mix.propertyAddress}
           totalAmount={mix.totalAmount}
           activeId={mix.id}
-          onSelect={openSavedMix}
+          onSelect={restoreSavedMix}
         />
 
         {showGoals && (

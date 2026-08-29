@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,7 @@ import {
   fixedUnlinkedAmount,
   maxMortgageFor,
   minFixedUnlinkedAmount,
+  mixNameExistsForProperty,
   mortgageForLtvPercent,
 } from '../propertyContext';
 import { MaxPaymentDialog } from './MaxPaymentDialog';
@@ -84,6 +86,10 @@ interface MixSetupWizardProps {
   primeForecast?: PrimeForecast;
   /** מתהליך חמשת השלבים: מדלגים על מסך הנכס כי הנתונים כבר הוזנו */
   skipPropertyStep?: boolean;
+  /** תמהילים שמורים — לבדיקת שם ייחודי לאותו נכס */
+  existingMixes?: Array<{
+    mix: Pick<WorkspaceMix, 'id' | 'name' | 'propertyAddress' | 'totalAmount'>;
+  }>;
 }
 
 interface TrackForm {
@@ -135,6 +141,7 @@ export function MixSetupWizard({
   initialProperty,
   primeForecast,
   skipPropertyStep = false,
+  existingMixes = [],
 }: MixSetupWizardProps) {
   const seedEquity = initialProperty?.equity ?? null;
   const forecast = primeForecast ?? fallbackPrimeForecast();
@@ -171,6 +178,10 @@ export function MixSetupWizard({
   const [form, setForm] = useState<TrackForm>(() => emptyForm());
   const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
+  /** מסלול שנפתח מחדש לעריכה — מוצא מהרשימה השמורה עד לשמירה */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [justSavedId, setJustSavedId] = useState<string | null>(null);
 
   const totalAmount = property.totalAmount;
   const maxMortgage = maxMortgageFor(property.propertyValue, property.dealType);
@@ -184,9 +195,16 @@ export function MixSetupWizard({
     !overFinanced &&
     property.maxMonthlyPayment > 0;
 
-  const allocated = useMemo(() => tracks.reduce((sum, t) => sum + t.amount, 0), [tracks]);
+  const committedTracks = useMemo(
+    () => (editingId ? tracks.filter((track) => track.id !== editingId) : tracks),
+    [tracks, editingId]
+  );
+  const allocated = useMemo(
+    () => committedTracks.reduce((sum, t) => sum + t.amount, 0),
+    [committedTracks]
+  );
   const remaining = Math.max(0, totalAmount - allocated);
-  const covered = propertyConfirmed && tracks.length > 0 && remaining <= COVERED_EPSILON;
+  const covered = propertyConfirmed && tracks.length > 0 && remaining <= COVERED_EPSILON && !editingId;
 
   const formAmount = form.amountTouched ? Math.min(form.amount, remaining) : remaining;
 
@@ -196,9 +214,9 @@ export function MixSetupWizard({
    */
   const minAmount = useMemo(() => {
     if (form.type !== 'fixed_unlinked') return 0;
-    const required = minFixedUnlinkedAmount(totalAmount) - fixedUnlinkedAmount(tracks);
+    const required = minFixedUnlinkedAmount(totalAmount) - fixedUnlinkedAmount(committedTracks);
     return Math.max(0, Math.min(remaining, required));
-  }, [form.type, totalAmount, tracks, remaining]);
+  }, [form.type, totalAmount, committedTracks, remaining]);
 
   const canAddTrack = formAmount > 0 && form.years > 0 && formAmount >= minAmount - 1;
   const fixedShareOk =
@@ -268,6 +286,7 @@ export function MixSetupWizard({
     if (tracks.length > 0 && Math.round(value) !== Math.round(totalAmount)) {
       setTracks([]);
       setForm(emptyForm());
+      setEditingId(null);
       setNotice(null);
     }
   };
@@ -293,17 +312,18 @@ export function MixSetupWizard({
   const addTrack = () => {
     if (!canAddTrack) return;
 
-    const candidate = [
-      ...tracks,
-      createTrack({
-        type: form.type,
-        amount: formAmount,
-        years: form.years,
-        amortizationType: form.amortizationType,
-        interestRate: form.interestRate,
-        variablePeriod: form.type.includes('variable') ? form.variablePeriod : undefined,
-      }),
-    ];
+    const nextTrack = createTrack({
+      ...(editingId ? { id: editingId } : {}),
+      type: form.type,
+      amount: formAmount,
+      years: form.years,
+      amortizationType: form.amortizationType,
+      interestRate: form.interestRate,
+      variablePeriod: form.type.includes('variable') ? form.variablePeriod : undefined,
+    });
+    const candidate = editingId
+      ? tracks.map((track) => (track.id === editingId ? nextTrack : track))
+      : [...tracks, nextTrack];
 
     // מסלול שמעלה את ההחזר מעל התקרה שנקבעה ללקוח אינו נוסף לתמהיל
     const cap = property.maxMonthlyPayment;
@@ -318,17 +338,59 @@ export function MixSetupWizard({
 
     setTracks(candidate);
     setNotice(null);
+    setEditingId(null);
+    setJustSavedId(nextTrack.id);
+    window.setTimeout(
+      () => setJustSavedId((current) => (current === nextTrack.id ? null : current)),
+      1400
+    );
+    setForm(emptyForm(form.type === 'fixed_unlinked' ? 'prime' : 'fixed_unlinked'));
+  };
+
+  const beginEdit = (track: MortgageTrack) => {
+    setNotice(null);
+    setEditingId(track.id);
+    setForm({
+      type: track.type,
+      amount: track.amount,
+      years: track.years,
+      amortizationType: track.amortizationType || 'spitzer',
+      interestRate: track.interestRate,
+      variablePeriod: track.variablePeriod ?? 5,
+      rateTouched: true,
+      amountTouched: true,
+    });
+  };
+
+  const cancelEdit = () => {
+    setNotice(null);
+    setEditingId(null);
     setForm(emptyForm(form.type === 'fixed_unlinked' ? 'prime' : 'fixed_unlinked'));
   };
 
   const removeTrack = (id: string) => {
     setNotice(null);
+    if (editingId === id) {
+      setEditingId(null);
+      setForm(emptyForm());
+    }
     setTracks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const complete = () => {
     const trimmed = name.trim();
     if (!trimmed || !covered || !fixedShareOk || overPayment) return;
+    if (
+      mixNameExistsForProperty(
+        trimmed,
+        { propertyAddress: property.propertyAddress, totalAmount },
+        existingMixes
+      )
+    ) {
+      setNameError('כבר קיים תמהיל בשם הזה לנכס זה. בחרו שם ייחודי כדי להמשיך.');
+      return;
+    }
+    setNameError(null);
     onComplete(
       normalizeMix(
         createEmptyMix({
@@ -593,37 +655,78 @@ export function MixSetupWizard({
             </div>
 
             {tracks.length > 0 && (
-              <div className="space-y-1.5">
-                {tracks.map((track, index) => (
-                  <div
-                    key={track.id}
-                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2.5"
-                  >
-                    <span
-                      className="w-1.5 h-8 rounded-full shrink-0"
-                      style={{ backgroundColor: trackColor(track.type) }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-800 truncate">
-                        מסלול {index + 1} · {TRACK_TYPES[track.type]}
-                      </p>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {formatShekel(track.amount)} ·{' '}
-                        {totalAmount > 0 ? ((track.amount / totalAmount) * 100).toFixed(1) : '0'}% ·{' '}
-                        {formatDuration(Math.round(track.years * 12))} · {track.interestRate.toFixed(2)}% ·{' '}
-                        {AMORTIZATION_TYPES[track.amortizationType || 'spitzer']}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeTrack(track.id)}
-                      title="הסר מסלול"
-                      className="text-slate-400 hover:text-red-600 transition-colors shrink-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+              <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5">
+                <p className="text-[11px] font-semibold text-emerald-800">מסלולים שנשמרו לתמהיל</p>
+                <AnimatePresence initial={false}>
+                  {tracks.map((track, index) => {
+                    const editing = track.id === editingId;
+                    const justSaved = track.id === justSavedId;
+                    return (
+                      <motion.div
+                        key={track.id}
+                        layout
+                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                        animate={{
+                          opacity: editing ? 0.55 : 1,
+                          y: 0,
+                          scale: justSaved ? 1.02 : 1,
+                        }}
+                        exit={{ opacity: 0, x: 24 }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                        className={`flex items-center gap-2 rounded-lg border p-2.5 transition-colors ${
+                          editing
+                            ? 'border-dashed border-blue-300 bg-blue-50/80'
+                            : justSaved
+                              ? 'border-emerald-400 bg-white shadow-md ring-2 ring-emerald-200'
+                              : 'border-emerald-100 bg-white'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => beginEdit(track)}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-right"
+                          title="לחצו לעריכת המסלול"
+                        >
+                          <span
+                            className="h-8 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: trackColor(track.type) }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-slate-800">
+                              מסלול {index + 1} · {TRACK_TYPES[track.type]}
+                              {editing && (
+                                <span className="mr-1.5 text-[10px] font-medium text-blue-700">
+                                  בעריכה
+                                </span>
+                              )}
+                              {justSaved && !editing && (
+                                <span className="mr-1.5 text-[10px] font-medium text-emerald-700">
+                                  נשמר
+                                </span>
+                              )}
+                            </p>
+                            <p className="truncate text-[10px] text-slate-500">
+                              {formatShekel(track.amount)} ·{' '}
+                              {totalAmount > 0 ? ((track.amount / totalAmount) * 100).toFixed(1) : '0'}
+                              % · {formatDuration(Math.round(track.years * 12))} ·{' '}
+                              {track.interestRate.toFixed(2)}% ·{' '}
+                              {AMORTIZATION_TYPES[track.amortizationType || 'spitzer']}
+                            </p>
+                          </div>
+                          <Pencil className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeTrack(track.id)}
+                          title="מחיקת מסלול — הסכום הפנוי יתעדכן"
+                          className="shrink-0 text-slate-400 transition-colors hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               </div>
             )}
 
@@ -639,7 +742,8 @@ export function MixSetupWizard({
                 <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <p className="text-[11px] text-emerald-800">
-                    כל סכום המשכנתא מחולק בין {tracks.length} מסלולים. אפשר לתת שם לתמהיל.
+                    כל סכום המשכנתא מחולק בין {tracks.length} מסלולים. אפשר לתת שם לתמהיל, או ללחוץ
+                    על מסלול כדי לערוך אותו.
                   </p>
                 </div>
                 {!fixedShareOk && (
@@ -666,12 +770,29 @@ export function MixSetupWizard({
             ) : (
               <>
                 <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <span className="text-[11px] text-amber-800">נותר למימון</span>
+                  <span className="text-[11px] text-amber-800">
+                    {editingId ? 'סכום זמין למסלול זה' : 'נותר למימון'}
+                  </span>
                   <span className="text-sm font-bold text-amber-900">{formatShekel(remaining)}</span>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-3">
-                  <p className="text-xs font-semibold text-slate-700">מסלול {tracks.length + 1}</p>
+                <div className="rounded-xl border-2 border-blue-400 bg-white p-3 space-y-3 shadow-md ring-2 ring-blue-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-blue-900">
+                      {editingId ? 'עריכת מסלול שמור' : `מסלול ${tracks.length + 1} — בעריכה`}
+                    </p>
+                    {editingId && (
+                      <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={cancelEdit}>
+                        ביטול עריכה
+                      </Button>
+                    )}
+                  </div>
+                  {editingId && (
+                    <p className="text-[11px] text-blue-700">
+                      המסלול הקודם נשמר. השינויים כאן יחליפו אותו, והסכום שנותר למימון מתעדכן לפי
+                      העריכה.
+                    </p>
+                  )}
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
@@ -793,7 +914,7 @@ export function MixSetupWizard({
 
                   <Button className="h-9 w-full sm:w-auto" disabled={!canAddTrack} onClick={addTrack}>
                     <Plus className="h-4 w-4 ml-1" />
-                    הוסף מסלול
+                    {editingId ? 'שמור שינויים במסלול' : 'הוסף מסלול'}
                   </Button>
                 </div>
               </>
@@ -818,7 +939,10 @@ export function MixSetupWizard({
                 autoFocus
                 placeholder="לדוגמה: תמהיל מאוזן 30/30/40"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setNameError(null);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') complete();
                 }}
@@ -832,6 +956,12 @@ export function MixSetupWizard({
                 צור תמהיל
               </Button>
             </div>
+            {nameError && (
+              <p className="flex items-start gap-1.5 text-[11px] text-red-700">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                {nameError}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

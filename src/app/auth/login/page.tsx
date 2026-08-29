@@ -71,7 +71,7 @@ function LoginForm() {
               </div>
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">התחברות</h1>
-            <p className="text-gray-600 mt-2">ברוכים השבים ל-Nadlanium</p>
+            <p className="text-gray-600 mt-2">ברוכים השבים למשכלנתא</p>
           </div>
 
           {/* Success Message for Advisor Registration */}
@@ -112,9 +112,8 @@ function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                   placeholder="שם משתמש או your@email.com"
-                  dir="ltr"
                 />
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
@@ -131,7 +130,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

@@ -48,8 +48,8 @@ export function SavedMixPicker({
             תמהילים שמורים {scope}
           </DialogTitle>
           <DialogDescription className="text-right text-xs leading-relaxed">
-            מוצגים רק תמהילים לאותו נכס, או לאותו סכום משכנתא כשלא הוזנה כתובת. בחירה טוענת את
-            התמהיל לאזור העבודה.
+            מוצגים תמהילים שמורים לאותו נכס, כולל כאלה שהוסרו מאזור העבודה. בחירה מחזירה את התמהיל
+            לסרגל, ומשם אפשר להעלות אותו לעבודה או לסמן אותו להשוואה.
           </DialogDescription>
         </DialogHeader>
 
@@ -72,7 +72,8 @@ export function SavedMixPicker({
                 active={item.mix.id === activeId}
                 selected={item.mix.id === activeId}
                 highlight={item.mix.id === activeId ? 'בעבודה' : undefined}
-                hint="לחצו לטעינה לאזור העבודה"
+                hint="לחצו להחזרה לסרגל התמהילים"
+                showExpandIcon={false}
                 onClick={() => {
                   onSelect(item);
                   onOpenChange(false);

@@ -6,14 +6,17 @@ import { FormattedNumberValueInput } from '@/components/ui/formatted-number-inpu
 import { NumericInput } from '@/components/ui/numeric-input';
 import { formatCurrency } from '../mortgageCalculations';
 import type { TrackType } from '../engine';
-import {
-  PLAN_TERM_MONTHS_MAX,
-  PLAN_TERM_MONTHS_MIN,
-  clampTermMonths,
-  monthsToYears,
-  yearsToMonths,
-} from '@/lib/mortgage-plan';
 import { formatDuration } from '../engine';
+import { PLAN_TERM_MONTHS_MAX, monthsToYears, yearsToMonths } from '@/lib/mortgage-plan';
+
+/** תקופת מסלול בעריכה וביצירת תמהיל: שנה עד 30 שנים, כל חודש ביניים */
+export const TRACK_TERM_MONTHS_MIN = 12;
+export const TRACK_TERM_MONTHS_MAX = PLAN_TERM_MONTHS_MAX;
+
+function clampTrackTermMonths(months: number): number {
+  if (!Number.isFinite(months) || months <= 0) return TRACK_TERM_MONTHS_MIN;
+  return Math.min(TRACK_TERM_MONTHS_MAX, Math.max(TRACK_TERM_MONTHS_MIN, Math.round(months)));
+}
 
 export const TRACK_COLORS: Record<string, string> = {
   fixed_unlinked: '#2563eb',
@@ -159,7 +162,7 @@ export function SliderField({
   );
 }
 
-/** סליידר תקופה רציף בחודשים — מ-4 שנים עד 30, כל חודש ביניים */
+/** סליידר תקופה רציף בחודשים — משנה אחת עד 30, כל חודש ביניים */
 export function TermMonthsSlider({
   years,
   onChange,
@@ -171,19 +174,19 @@ export function TermMonthsSlider({
   label?: string;
   icon?: React.ReactNode;
 }) {
-  const months = clampTermMonths(yearsToMonths(years));
+  const months = clampTrackTermMonths(yearsToMonths(years));
   return (
     <SliderField
       label={label}
       icon={icon}
       value={months}
       onChange={(next) => onChange(monthsToYears(next))}
-      min={PLAN_TERM_MONTHS_MIN}
-      max={PLAN_TERM_MONTHS_MAX}
+      min={TRACK_TERM_MONTHS_MIN}
+      max={TRACK_TERM_MONTHS_MAX}
       step={1}
       display={formatDuration(months)}
-      minLabel={`${PLAN_TERM_MONTHS_MIN} חודשים`}
-      maxLabel={`${PLAN_TERM_MONTHS_MAX} חודשים`}
+      minLabel="שנה"
+      maxLabel="30 שנים"
     />
   );
 }

@@ -98,7 +98,7 @@ export async function sendEmail({ to, subject, html, text }: EmailOptions) {
 // Email templates
 export const emailTemplates = {
   welcomeEmail: (name: string, verificationUrl: string) => ({
-    subject: `ברוכים הבאים ל-${process.env.PUBLIC_APP_NAME || 'Nadlanium'}!`,
+    subject: `ברוכים הבאים ל-${process.env.PUBLIC_APP_NAME || 'משכלנתא'}!`,
     html: `
       <!DOCTYPE html>
       <html dir="rtl" lang="he">
@@ -163,7 +163,7 @@ export const emailTemplates = {
         <div class="container">
           <div class="header">
             <div class="logo">🏠</div>
-            <h1>ברוכים הבאים ל-Nadlanium!</h1>
+            <h1>ברוכים הבאים למשכלנתא!</h1>
           </div>
           <div class="content">
             <h2>שלום ${name || 'משתמש יקר'},</h2>
@@ -187,7 +187,7 @@ export const emailTemplates = {
             <p>אם לא ביקשת ליצור חשבון, אנא התעלם מהודעה זו.</p>
           </div>
           <div class="footer">
-            <p>© 2024 Nadlanium. כל הזכויות שמורות.</p>
+            <p>© 2024 משכלנתא. כל הזכויות שמורות.</p>
             <p>אם יש לך שאלות, אל תהסס <a href="mailto:${process.env.EMAIL_REPLY_TO}">ליצור איתנו קשר</a></p>
           </div>
         </div>
@@ -195,7 +195,7 @@ export const emailTemplates = {
       </html>
     `,
     text: `
-      ברוכים הבאים ל-Nadlanium!
+      ברוכים הבאים למשכלנתא!
       
       שלום ${name || 'משתמש יקר'},
       
@@ -208,12 +208,12 @@ export const emailTemplates = {
       אם לא ביקשת ליצור חשבון, אנא התעלם מהודעה זו.
       
       בברכה,
-      צוות Nadlanium
+      צוות משכלנתא
     `
   }),
 
   passwordResetEmail: (name: string, resetUrl: string) => ({
-    subject: 'איפוס סיסמה - Nadlanium',
+    subject: 'איפוס סיסמה - משכלנתא',
     html: `
       <!DOCTYPE html>
       <html dir="rtl" lang="he">
@@ -261,7 +261,7 @@ export const emailTemplates = {
       </html>
     `,
     text: `
-      איפוס סיסמה - Nadlanium
+      איפוס סיסמה - משכלנתא
       
       שלום ${name || 'משתמש יקר'},
       

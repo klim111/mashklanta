@@ -26,7 +26,7 @@ interface MixRowProps {
   expanded?: boolean;
   /** לחיצה על השורה — מעלה את התמהיל לראש הרשימה ופותחת אותו */
   onClick?: () => void;
-  onRename?: (name: string) => void;
+  onRename?: (name: string) => boolean | void;
   /** פותח את שדה השם מיד — למשל אחרי שכפול */
   startRenaming?: boolean;
   /** לא סוגרים את שדה השם בלי שם תקין */
@@ -41,6 +41,8 @@ interface MixRowProps {
   hint?: string;
   /** הערה לשורת התיאור, למשל שהנתונים מוצגים לפי תרחיש */
   note?: string;
+  /** חץ הפתיחה מוצג רק לתמהיל שבאזור העבודה */
+  showExpandIcon?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ export function MixRow({
   detail,
   hint,
   note,
+  showExpandIcon = true,
 }: MixRowProps) {
   const [renaming, setRenaming] = useState(startRenaming);
   const [draftName, setDraftName] = useState(startRenaming ? '' : mix.name);
@@ -100,7 +103,13 @@ export function MixRow({
       setRenaming(true);
       return;
     }
-    if (trimmed && trimmed !== mix.name) onRename?.(trimmed);
+    if (trimmed && trimmed !== mix.name) {
+      const accepted = onRename?.(trimmed);
+      if (accepted === false) {
+        setRenaming(true);
+        return;
+      }
+    }
     setRenaming(false);
   };
 
@@ -220,7 +229,7 @@ export function MixRow({
             </span>
           )}
 
-          {onClick && (
+          {onClick && showExpandIcon && (
             <ChevronDown
               className={`h-4 w-4 text-slate-400 shrink-0 mt-1 transition-transform ${
                 expanded ? 'rotate-180' : ''

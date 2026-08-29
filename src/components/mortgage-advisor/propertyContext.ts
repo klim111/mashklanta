@@ -157,6 +157,23 @@ export function sameProperty(
   return propertyGroupKey(a) === propertyGroupKey(b);
 }
 
+/** האם כבר קיים תמהיל באותו שם לאותו נכס — חוץ מהתמהיל שבעריכה, אם צוין */
+export function mixNameExistsForProperty(
+  name: string,
+  property: Pick<WorkspaceMix, 'propertyAddress' | 'totalAmount'>,
+  mixes: Array<{ mix: Pick<WorkspaceMix, 'id' | 'name' | 'propertyAddress' | 'totalAmount'> }>,
+  exceptId?: string
+): boolean {
+  const trimmed = name.trim().toLowerCase();
+  if (!trimmed) return false;
+  return mixes.some(
+    (item) =>
+      item.mix.id !== exceptId &&
+      sameProperty(item.mix, property) &&
+      item.mix.name.trim().toLowerCase() === trimmed
+  );
+}
+
 export interface MixGroup<T> {
   key: string;
   /** כתובת הנכס, אם הקבוצה מאוגדת סביב נכס ספציפי */
