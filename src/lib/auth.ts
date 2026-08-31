@@ -7,8 +7,13 @@ import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { findUserByLogin } from "@/lib/find-user-by-login";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
 const googleConfigured = Boolean(
-  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  googleClientId &&
+    googleClientSecret &&
+    !googleClientId.includes("your-google") &&
+    !googleClientSecret.includes("your-google")
 );
 
 export const authOptions: NextAuthOptions = {
@@ -23,8 +28,8 @@ export const authOptions: NextAuthOptions = {
     ...(googleConfigured
       ? [
           Google({
-            clientId: process.env.GOOGLE_CLIENT_ID as string,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
             allowDangerousEmailAccountLinking: true,
           }),
         ]
