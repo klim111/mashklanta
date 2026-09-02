@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Banknote,
   Home,
+  Save,
   Settings2,
   ShieldAlert,
   Table2,
@@ -23,6 +24,10 @@ import {
 import { ClientList } from '@/components/advisor/ClientList';
 import { useAdvisorClients } from '@/components/advisor/useAdvisorClients';
 import type { AdvisorClient } from '@/components/advisor/useAdvisorClients';
+import { SaveMixDialog } from '@/components/advisor/SaveMixDialog';
+import { useAdvisorSettings } from '@/components/advisor/useAdvisorCrm';
+import { rateKey } from '@/lib/advisor-crm';
+import type { SaveTarget } from './savedMixes';
 import type { MixEvent, OptimizationConstraints, WorkspaceMix } from './engine';
 import { cloneWorkspaceMix } from './engine';
 import { useSavedMixes } from './savedMixes';
@@ -158,10 +163,30 @@ export function MortgageWorkspace({
   );
 
   // כניסה מדף הלקוח: הכלי נפתח כשהלקוח כבר נבחר, וכל שמירה נרשמת עליו
+  const [enteredFromClient, setEnteredFromClient] = useState(false);
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('client');
-    if (requested) setActiveClientId(requested);
+    if (requested) {
+      setActiveClientId(requested);
+      setEnteredFromClient(true);
+    }
   }, []);
+
+  /**
+   * ריביות ברירת המחדל של היועץ נטענות פעם אחת ומוזרקות לאזור העבודה, כדי שכל
+   * מסלול חדש ייפתח עם הריבית ששמורה בהגדרות לאותו בנק וללוח הסילוקין שלו.
+   */
+  const advisorSettings = useAdvisorSettings(isAdvisor);
+  useEffect(() => {
+    if (!isAdvisor) return;
+    const map: Record<string, number> = {};
+    advisorSettings.settings.rates.forEach((item) => {
+      map[rateKey(item.bank, item.amortizationType, item.trackType)] = item.rate;
+    });
+    actions.setRateDefaults(map);
+  }, [isAdvisor, advisorSettings.settings.rates, actions]);
+
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   const [phase, setPhase] = useState<Phase>(
     initialMix ? 'ready' : startInSetup ? 'setup' : 'landing'
@@ -741,7 +766,7 @@ export function MortgageWorkspace({
   return (
     <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-2.5 flex flex-wrap items-center gap-2">
+        <div className="container mx-auto flex flex-wrap items-center justify-center gap-2 px-3 py-2.5 sm:justify-start sm:px-4">
           {!embedded && (
           <Button variant="ghost" size="sm" className="h-9" asChild>
             <Link href="/">
@@ -794,6 +819,18 @@ export function MortgageWorkspace({
           </Button>
           )}
 
+          {isAdvisor && phase === 'ready' && (
+            <Button
+              size="sm"
+              className="h-9"
+              onClick={() => setSaveDialogOpen(true)}
+              title="שמירת התמהיל ללקוח או לקטגוריה"
+            >
+              <Save className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">שמור תמהיל</span>
+            </Button>
+          )}
+
           {isAdvisor && (
             <ClientSelector
               clients={clients.clients}
@@ -804,7 +841,7 @@ export function MortgageWorkspace({
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-4 space-y-4">
+      <div className="container mx-auto space-y-4 px-3 py-4 sm:px-4">
         {/* פרטי הנכס והעסקה בכותרת אחת מעל כל התמהילים ששייכים אליהם */}
         <PropertyHeader
           mix={mix}
@@ -862,17 +899,17 @@ export function MortgageWorkspace({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 px-2 text-xs sm:px-3"
+                className="h-10 px-3 text-xs sm:h-8 sm:px-3"
                 onClick={() => setPrepayTarget({})}
               >
-                <Banknote className="h-3.5 w-3.5 sm:ml-1" />
-                <span className="hidden sm:inline">פרעון מוקדם</span>
+                <Banknote className="h-3.5 w-3.5 ml-1" />
+                פרעון מוקדם
               </Button>
               {mix.events.some((event) => event.kind === 'prepayment') && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 px-2 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 sm:px-3"
+                  className="h-10 px-3 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 sm:h-8"
                   title="הסרת כל הפרעונות המוקדמים והצגת ערכי התמהיל המקוריים"
                   onClick={() =>
                     actions.patchMix({
@@ -880,18 +917,18 @@ export function MortgageWorkspace({
                     })
                   }
                 >
-                  <Undo2 className="h-3.5 w-3.5 sm:ml-1" />
-                  <span className="hidden sm:inline">הסר פרעון מוקדם</span>
+                  <Undo2 className="h-3.5 w-3.5 ml-1" />
+                  הסר פרעון
                 </Button>
               )}
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 px-2 text-xs sm:px-3"
+                className="h-10 px-3 text-xs sm:h-8 sm:px-3"
                 onClick={() => setAmortizationTarget({})}
               >
-                <Table2 className="h-3.5 w-3.5 sm:ml-1" />
-                <span className="hidden sm:inline">לוח החזרים</span>
+                <Table2 className="h-3.5 w-3.5 ml-1" />
+                לוח החזרים
               </Button>
             </>
           }
@@ -931,7 +968,24 @@ export function MortgageWorkspace({
           }
         />
 
-        <SavedMixPicker
+        {isAdvisor && (
+        <SaveMixDialog
+          open={saveDialogOpen}
+          onOpenChange={setSaveDialogOpen}
+          mixName={mix.name}
+          clients={clients.clients.map((client) => ({ id: client.id, name: client.name }))}
+          lockedClientId={enteredFromClient ? activeClientId : null}
+          onSave={async (target: SaveTarget) => {
+            const stored = await save(mix, target);
+            notifyActive(stored);
+            setSavedSignature(signatureOf(mix));
+            if (target.clientId) setActiveClientId(target.clientId);
+            await refresh();
+          }}
+        />
+      )}
+
+      <SavedMixPicker
           open={savedPickerOpen}
           onOpenChange={setSavedPickerOpen}
           items={propertySavedMixes}

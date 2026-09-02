@@ -40,6 +40,7 @@ import { StageRail } from './StageRail';
 import { StageLockedPreview } from './StageLockedPreview';
 import { StageTools } from './StageTools';
 import { formatShekel } from './ui';
+import { AdvisorStageNotes } from './AdvisorStageNotes';
 import { AnalysisStage } from './stages/AnalysisStage';
 import { MixStage } from './stages/MixStage';
 import { PreApprovalStage } from './stages/PreApprovalStage';
@@ -374,6 +375,9 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 </div>
               </div>
             </div>
+
+            {/* מה שהיועץ כתב ללקוח בשלב הזה, מעל תוכן השלב עצמו */}
+            <AdvisorStageNotes stage={stage} />
 
             {isPreview && (
               <StageLockedPreview

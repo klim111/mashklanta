@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // החיבור השוטף עובר דרך ה-pooler של Neon, אבל מיגרציות דורשות חיבור ישיר
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
@@ -15,33 +15,65 @@ model User {
   id             String    @id @default(cuid())
   name           String?
   email          String?   @unique
-  /** שם כניסה ייחודי — אפשר להתחבר איתו במקום המייל */
+  /**
+   * שם כניסה ייחודי — אפשר להתחבר איתו במקום המייל
+   */
   username       String?   @unique
   emailVerified  DateTime?
   image          String?
   hashedPassword String?
   role           UserRole  @default(CLIENT)
 
-  accounts       Account[]
-  sessions       Session[]
-  documents      Document[]
-  calculations   Calculation[]
-  /** הלקוחות שהמשתמש מלווה כיועץ */
-  clients        Client[]  @relation("AdvisorClients")
-  /** רשומות הליווי שבהן המשתמש הוא הלקוח */
-  advisedAs      Client[]  @relation("ClientAccount")
-  /** תמהילים שהמשתמש שמר, בין כיועץ ובין כלקוח */
-  mortgageMixes  MortgageMix[] @relation("MixOwner")
-  /** תהליכי תכנון המשכנתא שהמשתמש פתח באזור האישי */
-  mortgagePlans  MortgagePlan[] @relation("PlanOwner")
+  accounts      Account[]
+  sessions      Session[]
+  documents     Document[]
+  calculations  Calculation[]
+  /**
+   * הלקוחות שהמשתמש מלווה כיועץ
+   */
+  clients       Client[]       @relation("AdvisorClients")
+  /**
+   * רשומות הליווי שבהן המשתמש הוא הלקוח
+   */
+  advisedAs     Client[]       @relation("ClientAccount")
+  /**
+   * תמהילים שהמשתמש שמר, בין כיועץ ובין כלקוח
+   */
+  mortgageMixes MortgageMix[]  @relation("MixOwner")
+  /**
+   * תהליכי תכנון המשכנתא שהמשתמש פתח באזור האישי
+   */
+  mortgagePlans MortgagePlan[] @relation("PlanOwner")
   /**
    * פרופיל פיננסי מההגדרות — פרטי הלווים וההון העצמי בלי פרטי נכס.
    * נטען כברירת מחדל בפתיחת תהליך תכנון חדש.
    */
-  profileJson    Json?
+  profileJson   Json?
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  // ───────────────────────── לוח הבקרה של היועץ (CRM) ─────────────────────────
+  /**
+   * /** המשימות שהיועץ פתח לעצמו, לכל לקוח ולכל שלב
+   */
+  advisorTasks    AdvisorTask[]        @relation("AdvisorTasks")
+  /**
+   * ההערות שהיועץ כתב בשלבי הלקוח — אישיות או כאלה שנשלחו ללקוח
+   */
+  advisorNotes    AdvisorNote[]        @relation("AdvisorNotes")
+  /**
+   * הפגישות שהיועץ הציע ללקוחותיו
+   */
+  advisorMeetings AdvisorMeeting[]     @relation("AdvisorMeetings")
+  /**
+   * ריביות ברירת המחדל של היועץ, לכל בנק ולכל לוח סילוקין
+   */
+  advisorRates    AdvisorRateDefault[] @relation("AdvisorRates")
+  /**
+   * הקטגוריות שהיועץ הגדיר לתמהילים שאינם משויכים ללקוח
+   */
+  mixCategories   MixCategory[]        @relation("AdvisorMixCategories")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum UserRole {
@@ -96,8 +128,8 @@ model Document {
   ocrText     String?
   parsedJson  Json?
 
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum DocumentStatus {
@@ -121,66 +153,82 @@ model Calculation {
  * היא הקישור בין היועץ לחשבון הזה — ולכן היועץ רואה רק לקוחות שיש להם חשבון.
  */
 model Client {
-  id                String        @id @default(cuid())
-  advisorId         String
-  advisor           User          @relation("AdvisorClients", fields: [advisorId], references: [id], onDelete: Cascade)
-  /** חשבון הלקוח עצמו — דרכו הלקוח רואה את אותם נתונים באזור האישי שלו */
-  userId            String
-  user              User          @relation("ClientAccount", fields: [userId], references: [id], onDelete: Cascade)
+  id        String @id @default(cuid())
+  advisorId String
+  advisor   User   @relation("AdvisorClients", fields: [advisorId], references: [id], onDelete: Cascade)
+  /**
+   * חשבון הלקוח עצמו — דרכו הלקוח רואה את אותם נתונים באזור האישי שלו
+   */
+  userId    String
+  user      User   @relation("ClientAccount", fields: [userId], references: [id], onDelete: Cascade)
 
   // פרטי לקוח
-  name              String
-  email             String
-  phone             String?
-  address           String?
+  name    String
+  email   String
+  phone   String?
+  address String?
 
   // סטטוס והתקדמות בתהליך
-  status            ClientStatus  @default(POTENTIAL)
-  stage             ClientStage   @default(INTAKE)
-  progress          Int           @default(0) // 0-100
+  status   ClientStatus @default(POTENTIAL)
+  stage    ClientStage  @default(INTAKE)
+  progress Int          @default(0) // 0-100
 
   // הרכב משק הבית
-  household         HouseholdType @default(SINGLE)
-  age               Int?
-  partnerName       String?
-  partnerAge        Int?
+  household   HouseholdType @default(SINGLE)
+  age         Int?
+  partnerName String?
+  partnerAge  Int?
 
   // פרטים פיננסיים — מוצפנים ברמת השדה (ראה src/lib/crypto.ts).
   // הערכים המדויקים אינם ניתנים לסינון ב-SQL; incomeBucket הוא העמודה הגלויה היחידה.
-  incomeEnc         String?
-  partnerIncomeEnc  String?
-  expensesEnc       String?
-  existingLoansEnc  String?
-  creditScoreEnc    String?
-  downPaymentEnc    String?
+  incomeEnc        String?
+  partnerIncomeEnc String?
+  expensesEnc      String?
+  existingLoansEnc String?
+  creditScoreEnc   String?
+  downPaymentEnc   String?
 
   /**
    * טווח ההכנסה של משק הבית, גלוי בכוונה. השדות המוצפנים אינם ניתנים לסינון או
    * למיון ב-SQL, ולכן זהו הערך היחיד שרשימת הלקוחות יכולה לסנן לפיו.
    */
-  incomeBucket      IncomeBucket?
+  incomeBucket IncomeBucket?
 
   // העסקה
-  propertyValue     Float?
-  propertyAddress   String?
-  mortgageAmount    Float?
-  dealType          DealType?
+  propertyValue   Float?
+  propertyAddress String?
+  mortgageAmount  Float?
+  dealType        DealType?
 
-  notes             String?
+  notes String?
 
   // ריביות מהבנקים
-  bankRates         Json?
+  bankRates Json?
 
-  mixes             MortgageMix[]
-  documents         ClientDocument[]
-  actions           ClientAction[]
-  reminders         Reminder[]
-  plans             MortgagePlan[]
+  mixes        MortgageMix[]
+  documents    ClientDocument[]
+  actions      ClientAction[]
+  reminders    Reminder[]
+  plans        MortgagePlan[]
+  /**
+   * משימות היועץ עבור הלקוח, לפי שלבי כלי תכנון המשכנתא
+   */
+  tasks        AdvisorTask[]
+  /**
+   * הערות היועץ בשלבי הלקוח
+   */
+  advisorNotes AdvisorNote[]
+  /**
+   * הפגישות שנקבעו בין היועץ ללקוח
+   */
+  meetings     AdvisorMeeting[]
 
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  /** יועץ מלווה לקוח פעם אחת בלבד */
+  /**
+   * יועץ מלווה לקוח פעם אחת בלבד
+   */
   @@unique([advisorId, userId])
   @@index([userId])
   @@index([advisorId, incomeBucket])
@@ -192,7 +240,9 @@ enum ClientStatus {
   IN_PROCESS
 }
 
-/** טווחי הכנסה חודשית של משק הבית, בשקלים */
+/**
+ * טווחי הכנסה חודשית של משק הבית, בשקלים
+ */
 enum IncomeBucket {
   UNDER_10K
   FROM_10K_TO_15K
@@ -206,7 +256,9 @@ enum HouseholdType {
   COUPLE
 }
 
-/** סוג העסקה — קובע את תקרת המימון. הערכים זהים לאלה שבקוד הכלי */
+/**
+ * סוג העסקה — קובע את תקרת המימון. הערכים זהים לאלה שבקוד הכלי
+ */
 enum DealType {
   first_home
   replacement_home
@@ -214,7 +266,9 @@ enum DealType {
   any_purpose
 }
 
-/** שלבי הליווי. לכל שלב רשימת מסמכים משלו, שנפתחת כשמגיעים אליו */
+/**
+ * שלבי הליווי. לכל שלב רשימת מסמכים משלו, שנפתחת כשמגיעים אליו
+ */
 enum ClientStage {
   INTAKE
   DOCUMENTS
@@ -232,11 +286,13 @@ enum ClientStage {
  * שהלקוח מגיע לשלב, ומכאן ואילך הן מחזיקות את הסטטוס בפועל.
  */
 model ClientDocument {
-  id          String               @id @default(cuid())
-  clientId    String
-  client      Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  /** מזהה קבוע מהקטלוג, כדי שלא ייווצרו כפילויות בכל פתיחת שלב */
+  /**
+   * מזהה קבוע מהקטלוג, כדי שלא ייווצרו כפילויות בכל פתיחת שלב
+   */
   key         String
   name        String
   stage       ClientStage
@@ -244,11 +300,13 @@ model ClientDocument {
   required    Boolean              @default(true)
   note        String?
   submittedAt DateTime?
-  /** קובץ שהועלה למערכת עבור המסמך */
+  /**
+   * קובץ שהועלה למערכת עבור המסמך
+   */
   documentId  String?
 
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([clientId, key])
   @@index([clientId, stage])
@@ -267,17 +325,29 @@ enum ClientDocumentStatus {
  * לחשב מחדש את כל לוח הסילוקין.
  */
 model MortgageMix {
-  id              String    @id @default(cuid())
-  /** מזהה התמהיל בכלי התכנון, לשמירה חוזרת של אותו תמהיל */
-  mixKey          String
-  ownerId         String
-  owner           User      @relation("MixOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  /** הלקוח שהתמהיל שייך לו. ריק כשהתמהיל עדיין לא שויך */
-  clientId        String?
-  client          Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  /** תהליך המשכנתא שהתמהיל שייך לו. ריק כשהתמהיל נוצר בלי שיוך לנכס */
-  planId          String?
-  plan            MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  id         String        @id @default(cuid())
+  /**
+   * מזהה התמהיל בכלי התכנון, לשמירה חוזרת של אותו תמהיל
+   */
+  mixKey     String
+  ownerId    String
+  owner      User          @relation("MixOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /**
+   * הלקוח שהתמהיל שייך לו. ריק כשהתמהיל עדיין לא שויך
+   */
+  clientId   String?
+  client     Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  /**
+   * תהליך המשכנתא שהתמהיל שייך לו. ריק כשהתמהיל נוצר בלי שיוך לנכס
+   */
+  planId     String?
+  plan       MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  /**
+   * קטגוריה שהיועץ הגדיר. משמשת רק לתמהילים שאינם משויכים ללקוח — כך שאזור
+   * התמהילים השמורים מסודר לפי הקטגוריות שהיועץ בחר בעת היצירה.
+   */
+  categoryId String?
+  category   MixCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   name            String
   totalAmount     Float
@@ -286,47 +356,53 @@ model MortgageMix {
   dealType        DealType?
 
   // תמונת מצב של הסיכום בזמן השמירה
-  monthlyPayment  Float
-  totalInterest   Float
-  totalPaid       Float
-  averageRate     Float
-  months          Int
+  monthlyPayment Float
+  totalInterest  Float
+  totalPaid      Float
+  averageRate    Float
+  months         Int
 
-  /** התמהיל שנבחר כסופי למכרז מול הבנקים — נעול לעריכה */
-  isFinal         Boolean   @default(false)
-  locked          Boolean   @default(false)
+  /**
+   * התמהיל שנבחר כסופי למכרז מול הבנקים — נעול לעריכה
+   */
+  isFinal Boolean @default(false)
+  locked  Boolean @default(false)
 
-  /** התמהיל המלא כפי שהכלי מכיר אותו */
-  mixJson         Json
-  summaryJson     Json
+  /**
+   * התמהיל המלא כפי שהכלי מכיר אותו
+   */
+  mixJson     Json
+  summaryJson Json
 
-  savedAt         DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  savedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([ownerId, mixKey])
   @@index([clientId])
   @@index([ownerId])
   @@index([planId])
+  @@index([categoryId])
 }
 
 /**
  * תהליך תכנון משכנתא של הלקוח, מחולק לחמשת השלבים של עמוד "איך זה עובד".
- *
  * זהו מקור האמת להתקדמות הלקוח: הנתונים שהוזנו בכל שלב יושבים ברשומת השלב,
  * ועמודות הסיכום משוכפלות לכאן כדי שרשימת התהליכים תיטען בלי לפרש JSON.
  */
 model MortgagePlan {
-  id              String        @id @default(cuid())
-  ownerId         String
-  owner           User          @relation("PlanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  /** רשומת הליווי אצל היועץ, כשקיימת — כדי שהיועץ יראה את אותה התקדמות */
-  clientId        String?
-  client          Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  id       String  @id @default(cuid())
+  ownerId  String
+  owner    User    @relation("PlanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /**
+   * רשומת הליווי אצל היועץ, כשקיימת — כדי שהיועץ יראה את אותה התקדמות
+   */
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
-  name            String
-  status          PlanStatus    @default(IN_PROGRESS)
-  currentStage    PlanStage     @default(ANALYSIS)
-  progress        Int           @default(0) // 0-100
+  name         String
+  status       PlanStatus @default(IN_PROGRESS)
+  currentStage PlanStage  @default(ANALYSIS)
+  progress     Int        @default(0) // 0-100
 
   // תמונת מצב לכרטיס התהליך באזור האישי
   propertyValue   Float?
@@ -334,13 +410,13 @@ model MortgagePlan {
   mortgageAmount  Float?
   monthlyPayment  Float?
 
-  completedAt     DateTime?
+  completedAt DateTime?
 
-  stages          MortgagePlanStage[]
-  mixes           MortgageMix[]
+  stages MortgagePlanStage[]
+  mixes  MortgageMix[]
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([ownerId])
   @@index([clientId])
@@ -351,22 +427,24 @@ model MortgagePlan {
  * לשלבים הבאים, כך שאין צורך להזין את אותו נתון פעמיים.
  */
 model MortgagePlanStage {
-  id          String          @id @default(cuid())
-  planId      String
-  plan        MortgagePlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  id     String       @id @default(cuid())
+  planId String
+  plan   MortgagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   stage       PlanStage
   status      PlanStageStatus @default(PENDING)
   dataJson    Json?
   completedAt DateTime?
 
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([planId, stage])
 }
 
-/** חמשת השלבים כפי שהם מוגדרים בעמוד "איך זה עובד" */
+/**
+ * חמשת השלבים כפי שהם מוגדרים בעמוד "איך זה עובד"
+ */
 enum PlanStage {
   ANALYSIS
   MIX
@@ -388,18 +466,18 @@ enum PlanStageStatus {
 }
 
 model ClientAction {
-  id          String      @id @default(cuid())
-  clientId    String
-  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   type        ActionType
   description String
   status      ActionStatus @default(PENDING)
   dueDate     DateTime?
   completedAt DateTime?
-  
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum ActionType {
@@ -420,21 +498,197 @@ enum ActionStatus {
 }
 
 model Reminder {
-  id          String   @id @default(cuid())
-  clientId    String
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
   title       String
   description String?
   dueDate     DateTime
   isCompleted Boolean  @default(false)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model RatesCache {
   key       String   @id
   payload   Json
   expiresAt DateTime
+}
+
+// ────────────────────────── לוח הבקרה של היועץ (CRM) ──────────────────────────
+
+/**
+ * משימה של היועץ עבור לקוח מסוים, בשלב מסוים.
+ * השלבים כאן הם בדיוק חמשת השלבים של כלי תכנון המשכנתא (PlanStage), כדי
+ * שהמשימות של היועץ ייגזרו מאותו תהליך שהלקוח רואה אצלו — ולא מרצף נפרד.
+ */
+model AdvisorTask {
+  id        String @id @default(cuid())
+  advisorId String
+  advisor   User   @relation("AdvisorTasks", fields: [advisorId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  stage       PlanStage
+  title       String
+  details     String?
+  /**
+   * התאריך והשעה שהיועץ קבע למשימה. זה מה שמרכז אותה בלוח השנה
+   */
+  dueDate     DateTime?
+  status      AdvisorTaskStatus @default(OPEN)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([advisorId, dueDate])
+  @@index([clientId, stage])
+}
+
+enum AdvisorTaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+/**
+ * הערה של היועץ בשלב מסוים אצל לקוח.
+ * הערה אישית נשארת אצל היועץ בלבד; הערה משותפת מוצגת ללקוח באותו שלב בכלי
+ * התכנון שלו, לצד שם היועץ.
+ */
+model AdvisorNote {
+  id        String @id @default(cuid())
+  advisorId String
+  advisor   User   @relation("AdvisorNotes", fields: [advisorId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  stage      PlanStage
+  body       String
+  visibility NoteVisibility @default(PRIVATE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId, stage])
+  @@index([advisorId, createdAt])
+}
+
+enum NoteVisibility {
+  /**
+   * אישית — רק היועץ רואה
+   */
+  PRIVATE
+  /**
+   * נשלחה ללקוח — מוצגת גם אצלו באותו שלב
+   */
+  SHARED
+}
+
+/**
+ * פגישה בין היועץ ללקוח. היועץ מציע מועד, והפגישה מופיעה מיד בלוח השנה שלו
+ * כפגישה מתוכננת. אישור הלקוח הוא שהופך אותה למאושרת.
+ */
+model AdvisorMeeting {
+  id        String @id @default(cuid())
+  advisorId String
+  advisor   User   @relation("AdvisorMeetings", fields: [advisorId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /**
+   * השלב שממנו נקבעה הפגישה, כשנקבעה מתוך שלב ולא משורת הלקוח
+   */
+  stage           PlanStage?
+  title           String
+  startsAt        DateTime
+  durationMinutes Int           @default(45)
+  /**
+   * מיקום פיזי או קישור לשיחת וידאו
+   */
+  location        String?
+  note            String?
+  status          MeetingStatus @default(PROPOSED)
+  respondedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([advisorId, startsAt])
+  @@index([clientId, startsAt])
+}
+
+enum MeetingStatus {
+  /**
+   * הוצעה ללקוח וממתינה לאישורו
+   */
+  PROPOSED
+  /**
+   * הלקוח אישר את המועד
+   */
+  CONFIRMED
+  DECLINED
+  CANCELLED
+}
+
+/**
+ * ריבית ברירת מחדל של היועץ לצירוף בנק + לוח סילוקין + סוג מסלול.
+ * היועץ מזין אותן פעם אחת בהגדרות, ומכאן והלאה כל מסלול חדש בכלי בניית
+ * התמהיל נפתח עם הערך הזה — וניתן לשנות אותו בעת היצירה בלי לגעת בהגדרות.
+ */
+model AdvisorRateDefault {
+  id        String @id @default(cuid())
+  advisorId String
+  advisor   User   @relation("AdvisorRates", fields: [advisorId], references: [id], onDelete: Cascade)
+
+  /**
+   * שם הבנק כפי שהוא מופיע ב-MORTGAGE_BANKS
+   */
+  bank             String
+  /**
+   * לוח הסילוקין כפי שהוא מופיע ב-AMORTIZATION_TYPES
+   */
+  amortizationType String
+  /**
+   * סוג המסלול כפי שהוא מופיע ב-TRACK_TYPES
+   */
+  trackType        String
+  /**
+   * ריבית שנתית באחוזים
+   */
+  rate             Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([advisorId, bank, amortizationType, trackType])
+  @@index([advisorId])
+}
+
+/**
+ * קטגוריה שהיועץ הגדיר לסידור התמהילים שאינם משויכים ללקוח
+ */
+model MixCategory {
+  id        String @id @default(cuid())
+  advisorId String
+  advisor   User   @relation("AdvisorMixCategories", fields: [advisorId], references: [id], onDelete: Cascade)
+
+  name      String
+  /**
+   * צבע לתצוגה בלוח התמהילים
+   */
+  color     String?
+  sortOrder Int     @default(0)
+
+  mixes MortgageMix[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([advisorId, name])
+  @@index([advisorId, sortOrder])
 }

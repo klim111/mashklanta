@@ -37,6 +37,30 @@ export interface WorkspaceState {
   lastOptimization: OptimizationOutcome | null;
   /** הסבר על שינוי שנחסם, למשל חריגה מתקרת ההחזר החודשי */
   blockedNotice: string | null;
+  /**
+   * ריביות ברירת המחדל של היועץ, לפי `בנק|לוח סילוקין|סוג מסלול`.
+   * הן נשמרות כמפה פשוטה כדי שהרדיוסר יישאר טהור.
+   */
+  rateDefaults: Record<string, number>;
+}
+
+/**
+ * הריבית שמסלול חדש נפתח איתה: מה שהיועץ הגדיר לבנק וללוח הסילוקין הזה, ואם
+ * לא הגדיר — הריבית הכללית של המערכת. בכל מקרה היא ניתנת לעריכה מיד אחר כך.
+ */
+function defaultRateFor(
+  state: WorkspaceState,
+  type: TrackType,
+  amortizationType: MortgageTrack['amortizationType'] = 'spitzer'
+): number {
+  const bank = state.mix.bank;
+  if (bank) {
+    const exact = state.rateDefaults[`${bank}|${amortizationType ?? 'spitzer'}|${type}`];
+    if (typeof exact === 'number') return exact;
+    const spitzer = state.rateDefaults[`${bank}|spitzer|${type}`];
+    if (typeof spitzer === 'number') return spitzer;
+  }
+  return DEFAULT_INTEREST_RATES[type];
 }
 
 type Action =
@@ -60,6 +84,7 @@ type Action =
   | { type: 'clearOptimization' }
   | { type: 'toggleCompared'; id: string }
   | { type: 'setCompared'; ids: string[] }
+  | { type: 'setRateDefaults'; rates: Record<string, number> }
   | { type: 'dismissNotice' };
 
 function touch(mix: WorkspaceMix): WorkspaceMix {
@@ -111,8 +136,26 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
       };
 
     // פרטי העסקה — שם, כתובת ותקרת ההחזר — אינם משנים את ההחזר ולכן אינם נחסמים
-    case 'patchMix':
-      return { ...state, mix: touch({ ...state.mix, ...action.patch }), blockedNotice: null };
+    case 'patchMix': {
+      const merged = touch({ ...state.mix, ...action.patch });
+      // בחירת בנק מביאה איתה את הריביות שהיועץ הגדיר לאותו בנק, לכל מסלול לפי
+      // סוגו ולוח הסילוקין שלו. אלה רק ערכי פתיחה — כל מסלול נשאר פתוח לעריכה.
+      if (action.patch.bank && action.patch.bank !== state.mix.bank) {
+        const withBank = { ...state, mix: merged };
+        return {
+          ...state,
+          mix: {
+            ...merged,
+            tracks: merged.tracks.map((track) => ({
+              ...track,
+              interestRate: defaultRateFor(withBank, track.type, track.amortizationType),
+            })),
+          },
+          blockedNotice: null,
+        };
+      }
+      return { ...state, mix: merged, blockedNotice: null };
+    }
 
     case 'setTotalAmount': {
       // שינוי סכום המשכנתא שומר על הרכב התמהיל — כל מסלול נשאר באחוז שלו.
@@ -138,7 +181,15 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
       const years = state.mix.tracks[0]?.years ?? 25;
       return withMix(state, {
         ...state.mix,
-        tracks: [...tracks, createTrack({ type, amount: remaining || carve || 100_000, years })],
+        tracks: [
+          ...tracks,
+          createTrack({
+            type,
+            amount: remaining || carve || 100_000,
+            years,
+            interestRate: defaultRateFor(state, type),
+          }),
+        ],
       });
     }
 
@@ -154,10 +205,23 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
       const tracks = state.mix.tracks.map((t) => {
         if (t.id !== action.id) return t;
         const next = { ...t, ...action.patch };
+        // החלפת לוח הסילוקין מביאה את הריבית שהיועץ הגדיר לאותו לוח מול הבנק.
+        if (
+          action.patch.amortizationType &&
+          action.patch.amortizationType !== t.amortizationType &&
+          action.patch.interestRate === undefined &&
+          !action.patch.type
+        ) {
+          next.interestRate = defaultRateFor(state, next.type, action.patch.amortizationType);
+        }
         // החלפת סוג מסלול מביאה איתה את ריבית ברירת המחדל ואת השדות הרלוונטיים.
         if (action.patch.type && action.patch.type !== t.type) {
           if (action.patch.interestRate === undefined) {
-            next.interestRate = DEFAULT_INTEREST_RATES[action.patch.type];
+            next.interestRate = defaultRateFor(
+              state,
+              action.patch.type,
+              next.amortizationType
+            );
           }
           next.variablePeriod = action.patch.type.includes('variable')
             ? (t.variablePeriod ?? 5)
@@ -279,6 +343,9 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
     case 'setCompared':
       return { ...state, comparedIds: action.ids };
 
+    case 'setRateDefaults':
+      return { ...state, rateDefaults: action.rates };
+
     default:
       return state;
   }
@@ -297,6 +364,7 @@ export function createInitialWorkspaceState(initialMix?: WorkspaceMix): Workspac
     comparedIds: [],
     lastOptimization: null,
     blockedNotice: null,
+    rateDefaults: {},
   };
 }
 
@@ -333,6 +401,8 @@ export interface MortgageWorkspace {
     toggleCompared: (id: string) => void;
     setCompared: (ids: string[]) => void;
     dismissNotice: () => void;
+    /** ריביות ברירת המחדל של היועץ, כפי שנשמרו בהגדרות שלו */
+    setRateDefaults: (rates: Record<string, number>) => void;
   };
 }
 
@@ -384,6 +454,7 @@ export function useMortgageWorkspace(initialMix?: WorkspaceMix): MortgageWorkspa
     clearOptimization: () => dispatch({ type: 'clearOptimization' }),
     toggleCompared: (id) => dispatch({ type: 'toggleCompared', id }),
     setCompared: (ids) => dispatch({ type: 'setCompared', ids }),
+    setRateDefaults: (rates) => dispatch({ type: 'setRateDefaults', rates }),
     dismissNotice: () => dispatch({ type: 'dismissNotice' }),
   }), [state.mix, state.constraints]);
 

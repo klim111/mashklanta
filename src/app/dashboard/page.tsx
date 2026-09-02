@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { PlansOverview } from '@/components/plan/PlansOverview';
+import { ClientMeetings } from '@/components/dashboard/ClientMeetings';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 
@@ -135,7 +136,13 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28 }}
         >
-          {activeTab === 'plans' && <PlansOverview />}
+          {activeTab === 'plans' && (
+            <>
+              {/* פגישות שהיועץ הציע — אישור המועד כאן מסמן אותה כמאושרת אצלו */}
+              <ClientMeetings />
+              <PlansOverview />
+            </>
+          )}
 
           {activeTab === 'tools' && <ToolsHub />}
 

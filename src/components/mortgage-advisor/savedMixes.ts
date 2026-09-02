@@ -70,11 +70,12 @@ async function fetchMixes(clientId?: string): Promise<SavedMix[]> {
 
 async function postMix(
   mix: WorkspaceMix,
-  extras?: { clientId?: string | null; planId?: string | null }
+  extras?: SaveTarget
 ): Promise<SavedMix | null> {
   const payload: Record<string, unknown> = { mix };
   if (extras?.clientId !== undefined) payload.clientId = extras.clientId;
   if (extras?.planId !== undefined) payload.planId = extras.planId;
+  if (extras?.categoryId !== undefined) payload.categoryId = extras.categoryId;
   const response = await fetch('/api/mixes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -110,6 +111,18 @@ async function importLocalMixes(): Promise<boolean> {
   window.localStorage.removeItem(LOCAL_KEY);
   window.localStorage.setItem(IMPORTED_KEY, 'done');
   return true;
+}
+
+/**
+ * לאן התמהיל נשמר. שדה שלא נשלח נשאר כפי שהוא ברשומה הקיימת, ו-null מנתק
+ * שיוך קיים — כך שאפשר לשמור בלי לקוח, בלי נכס או בלי קטגוריה במפורש.
+ */
+export interface SaveTarget {
+  clientId?: string | null;
+  /** תהליך המשכנתא של הלקוח — הנכס שהתמהיל שייך לו */
+  planId?: string | null;
+  /** קטגוריה של היועץ, לתמהיל שאינו משויך ללקוח */
+  categoryId?: string | null;
 }
 
 interface UseSavedMixesOptions {
@@ -173,7 +186,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
   }, [status, signedIn, refresh]);
 
   const save = useCallback(
-    async (mix: WorkspaceMix, targetClientId?: string | null): Promise<SavedMix> => {
+    async (mix: WorkspaceMix, target?: SaveTarget): Promise<SavedMix> => {
       const optimistic = snapshot(mix);
       // התצוגה מתעדכנת מיד, והשרת מחזיר אחר כך את הרשומה עם המזהה שלה
       setSaved((items) => upsert(items, optimistic));
@@ -185,8 +198,9 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
 
       try {
         const stored = await postMix(mix, {
-          clientId: targetClientId ?? clientId,
-          planId,
+          clientId: target?.clientId !== undefined ? target.clientId : clientId,
+          planId: target?.planId !== undefined ? target.planId : planId,
+          ...(target?.categoryId === undefined ? {} : { categoryId: target.categoryId }),
         });
         if (stored) setSaved((items) => upsert(items, stored));
         setError(null);

@@ -73,6 +73,7 @@ export default function SavedMixesPage() {
         )}
 
         <SavedMixesBoard
+          viewer={session?.user?.role === 'ADVISOR' ? 'advisor' : 'client'}
           saved={saved}
           ready={ready}
           onOpen={openInTool}

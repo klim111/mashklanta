@@ -16,8 +16,16 @@ export interface SavedMix {
   /** הלקוח שהתמהיל שויך אליו, אם שויך */
   clientId?: string | null;
   clientName?: string | null;
-  /** תהליך המשכנתא שהתמהיל שייך לו */
+  /** תהליך המשכנתא שהתמהיל שייך לו. ריק — התמהיל אינו משויך לנכס */
   planId?: string | null;
+  /** כתובת הנכס של התהליך שהתמהיל שויך אליו */
+  planAddress?: string | null;
+  /** הקטגוריה שהיועץ הגדיר, לתמהילים שאינם משויכים ללקוח */
+  categoryId?: string | null;
+  categoryName?: string | null;
+  /** מי שמר את התמהיל — כדי שהלקוח יראה שהוא הוצע לו על ידי היועץ ובשמו */
+  ownerName?: string | null;
+  ownerIsAdvisor?: boolean;
   isFinal?: boolean;
   locked?: boolean;
 }
@@ -75,6 +83,11 @@ export function toSavedMix(raw: unknown): SavedMix | null {
     clientId: typeof item.clientId === 'string' ? item.clientId : null,
     clientName: typeof item.clientName === 'string' ? item.clientName : null,
     planId: typeof item.planId === 'string' ? item.planId : null,
+    planAddress: typeof item.planAddress === 'string' ? item.planAddress : null,
+    categoryId: typeof item.categoryId === 'string' ? item.categoryId : null,
+    categoryName: typeof item.categoryName === 'string' ? item.categoryName : null,
+    ownerName: typeof item.ownerName === 'string' ? item.ownerName : null,
+    ownerIsAdvisor: item.ownerIsAdvisor === true,
     isFinal,
     locked,
   };

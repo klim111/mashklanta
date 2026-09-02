@@ -2,6 +2,7 @@ import type { Client, Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { documentsUpToStage, stageProgress } from './client-process';
 import type { ClientStage } from './client-process';
+import type { PlanStageId } from './mortgage-plan';
 import {
   ENCRYPTED_FINANCIAL_FIELDS,
   decryptFinancials,
@@ -37,17 +38,41 @@ export interface ClientListItem {
   mixCount: number;
   /** מסמכים שנותרו להגשה מתוך אלה שכבר נפתחו */
   openDocuments: number;
+  /** משימות של היועץ שעדיין פתוחות עבור הלקוח */
+  openTasks: number;
+  /** הפגישה הקרובה שנקבעה עם הלקוח, אם יש כזו */
+  nextMeetingAt: string | null;
+  /**
+   * השלב של הלקוח בכלי תכנון המשכנתא — אותם חמישה שלבים שהוא רואה אצלו.
+   * ריק כשעדיין לא פתח תהליך.
+   */
+  planStage: PlanStageId | null;
+  planProgress: number;
   updatedAt: string;
 }
 
 /** רשימת הלקוחות של היועץ, עם המספרים שמוצגים בשורת הלקוח */
 export async function listAdvisorClients(advisorId: string): Promise<ClientListItem[]> {
+  const now = new Date();
   const rows = await prisma.client.findMany({
     where: { advisorId },
     orderBy: { updatedAt: 'desc' },
     include: {
       _count: { select: { mixes: true } },
       documents: { select: { status: true, required: true } },
+      tasks: { where: { status: { in: ['OPEN', 'IN_PROGRESS'] } }, select: { id: true } },
+      meetings: {
+        where: { startsAt: { gte: now }, status: { in: ['PROPOSED', 'CONFIRMED'] } },
+        orderBy: { startsAt: 'asc' },
+        take: 1,
+        select: { startsAt: true },
+      },
+      plans: {
+        where: { status: { not: 'ARCHIVED' } },
+        orderBy: { updatedAt: 'desc' },
+        take: 1,
+        select: { currentStage: true, progress: true },
+      },
     },
   });
 
@@ -64,6 +89,10 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
     incomeBucket: row.incomeBucket,
     mixCount: row._count.mixes,
     openDocuments: row.documents.filter((doc) => doc.required && doc.status === 'PENDING').length,
+    openTasks: row.tasks.length,
+    nextMeetingAt: row.meetings[0]?.startsAt.toISOString() ?? null,
+    planStage: (row.plans[0]?.currentStage as PlanStageId | undefined) ?? null,
+    planProgress: row.plans[0]?.progress ?? 0,
     updatedAt: row.updatedAt.toISOString(),
   }));
 }

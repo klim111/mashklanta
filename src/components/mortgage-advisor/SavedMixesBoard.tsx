@@ -19,6 +19,11 @@ interface SavedMixesBoardProps {
   onDelete?: (id: string) => void;
   onRename?: (id: string, name: string) => void;
   emptyState?: React.ReactNode;
+  /**
+   * מי מסתכל על הלוח. אצל הלקוח מסומן איזה תמהיל הוצע לו על ידי היועץ ובשם מי;
+   * אצל היועץ הסימון הזה מיותר, כי הוא זה שיצר אותם.
+   */
+  viewer?: 'client' | 'advisor';
 }
 
 /**
@@ -34,6 +39,7 @@ export function SavedMixesBoard({
   onDelete,
   onRename,
   emptyState,
+  viewer = 'client',
 }: SavedMixesBoardProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const groups = useMemo(() => groupByProperty(saved, (item) => item.mix), [saved]);
@@ -75,6 +81,7 @@ export function SavedMixesBoard({
           onOpen={onOpen}
           onDelete={onDelete}
           onRename={onRename}
+          viewer={viewer}
         />
       ))}
     </div>
@@ -92,6 +99,7 @@ interface PropertyGroupProps {
   onOpen: (item: SavedMix) => void;
   onDelete?: (id: string) => void;
   onRename?: (id: string, name: string) => void;
+  viewer: 'client' | 'advisor';
 }
 
 /**
@@ -109,6 +117,7 @@ function PropertyGroup({
   onOpen,
   onDelete,
   onRename,
+  viewer,
 }: PropertyGroupProps) {
   const groupSelected = items.filter((item) => selected.includes(item.mix.id));
 
@@ -189,6 +198,7 @@ function PropertyGroup({
               onOpen={() => onOpen(item)}
               onDelete={onDelete ? () => onDelete(item.mix.id) : undefined}
               onRename={onRename ? (name) => onRename(item.mix.id, name) : undefined}
+              badges={<MixOrigin item={item} viewer={viewer} />}
               highlight={
                 item.mix.id === cheapestMonthly
                   ? `ההחזר החודשי הנמוך — ${formatShekel(item.summary.monthlyPayment)}`
@@ -203,5 +213,31 @@ function PropertyGroup({
         {entries.length > 0 && <MixComparison entries={entries} />}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * מאיפה התמהיל הגיע ולמה הוא משויך.
+ *
+ * שני הדברים שהלקוח צריך לדעת במבט אחד: אם היועץ הוא שהציע לו את התמהיל, ואם
+ * התמהיל מחובר לנכס שהוא הזין או שהוא עדיין עומד בפני עצמו.
+ */
+function MixOrigin({ item, viewer }: { item: SavedMix; viewer: 'client' | 'advisor' }) {
+  const proposed = viewer === 'client' && item.ownerIsAdvisor;
+  if (!proposed && item.planId) return null;
+
+  return (
+    <>
+      {proposed && (
+        <Badge className="bg-blue-100 text-[10px] text-blue-800 hover:bg-blue-100">
+          תמהיל מוצע על ידי יועץ · {item.ownerName || 'היועץ שלכם'}
+        </Badge>
+      )}
+      {!item.planId && (
+        <Badge className="bg-amber-100 text-[10px] text-amber-800 hover:bg-amber-100">
+          תמהיל לא משויך לנכס
+        </Badge>
+      )}
+    </>
   );
 }

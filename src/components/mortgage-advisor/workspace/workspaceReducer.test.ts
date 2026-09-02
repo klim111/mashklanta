@@ -10,6 +10,7 @@ import {
   remainingAmount,
 } from '../engine';
 import type { WorkspaceMix } from '../engine';
+import { DEFAULT_INTEREST_RATES } from '../types';
 
 /** תמהיל שמשבץ את כל סכום המשכנתא, כמו שהאשף מייצר */
 function stateWith(amounts: number[], overrides: Partial<WorkspaceMix> = {}): WorkspaceState {
@@ -300,5 +301,53 @@ describe('assumptions', () => {
     );
     expect(reset.mix.assumptions.inflationForecast).toEqual(inflation);
     expect(reset.mix.assumptions.annualInflation).toBe(2);
+  });
+});
+
+describe('ריביות ברירת המחדל של היועץ', () => {
+  const rates = {
+    'לאומי|spitzer|prime': 4.9,
+    'לאומי|equal_principal|prime': 5.4,
+    'לאומי|spitzer|fixed_unlinked': 4.2,
+  };
+
+  const withRates = (overrides: Partial<WorkspaceMix> = {}) =>
+    run(stateWith([600_000, 400_000], overrides), { type: 'setRateDefaults', rates });
+
+  it('מסלול חדש נפתח עם הריבית ששמורה לבנק של התמהיל', () => {
+    const state = run(withRates({ bank: 'לאומי' }), { type: 'addTrack', trackType: 'prime' });
+    expect(state.mix.tracks.at(-1)?.interestRate).toBe(4.9);
+  });
+
+  it('בלי בנק נבחר נשארת הריבית הכללית של המערכת', () => {
+    const state = run(withRates(), { type: 'addTrack', trackType: 'prime' });
+    expect(state.mix.tracks.at(-1)?.interestRate).toBe(DEFAULT_INTEREST_RATES.prime);
+  });
+
+  it('החלפת לוח סילוקין מביאה את הריבית ששמורה לאותו לוח', () => {
+    const added = run(withRates({ bank: 'לאומי' }), { type: 'addTrack', trackType: 'prime' });
+    const trackId = added.mix.tracks.at(-1)!.id;
+    const state = run(added, {
+      type: 'updateTrack',
+      id: trackId,
+      patch: { amortizationType: 'equal_principal' },
+    });
+    expect(state.mix.tracks.at(-1)?.interestRate).toBe(5.4);
+  });
+
+  it('בחירת בנק מעדכנת את המסלולים הקיימים לריביות שלו', () => {
+    const state = run(withRates(), { type: 'patchMix', patch: { bank: 'לאומי' } });
+    expect(state.mix.tracks.every((track) => track.interestRate === 4.2)).toBe(true);
+  });
+
+  it('ריבית שהיועץ הקליד ידנית אינה נדרסת בשינוי לוח הסילוקין', () => {
+    const added = run(withRates({ bank: 'לאומי' }), { type: 'addTrack', trackType: 'prime' });
+    const trackId = added.mix.tracks.at(-1)!.id;
+    const state = run(added, {
+      type: 'updateTrack',
+      id: trackId,
+      patch: { amortizationType: 'equal_principal', interestRate: 3.1 },
+    });
+    expect(state.mix.tracks.at(-1)?.interestRate).toBe(3.1);
   });
 });

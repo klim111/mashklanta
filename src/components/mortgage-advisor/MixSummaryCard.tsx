@@ -22,6 +22,8 @@ interface MixSummaryCardProps {
   onRename?: (name: string) => void;
   /** תג להצגה בכרטיס, למשל "התמהיל הזול ביותר" */
   highlight?: string;
+  /** תגיות מעל הכרטיס — מי הציע את התמהיל, ולאיזה נכס הוא משויך */
+  badges?: React.ReactNode;
 }
 
 /**
@@ -38,6 +40,7 @@ export function MixSummaryCard({
   onDelete,
   onRename,
   highlight,
+  badges,
 }: MixSummaryCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -51,7 +54,7 @@ export function MixSummaryCard({
     return Math.max(0, tracksDetail.summary.totalPaid - frozen.summary.totalPaid);
   }, [tracksDetail, mix]);
 
-  return (
+  const row = (
     <MixRow
       mix={mix}
       summary={stats}
@@ -204,6 +207,15 @@ export function MixSummaryCard({
         </div>
       }
     />
+  );
+
+  if (!badges) return row;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">{badges}</div>
+      {row}
+    </div>
   );
 }
 

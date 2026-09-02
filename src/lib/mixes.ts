@@ -12,12 +12,16 @@ const mixSelect = {
   ownerId: true,
   clientId: true,
   planId: true,
+  categoryId: true,
   isFinal: true,
   locked: true,
   savedAt: true,
   mixJson: true,
   summaryJson: true,
   client: { select: { name: true } },
+  plan: { select: { propertyAddress: true, name: true } },
+  category: { select: { name: true } },
+  owner: { select: { name: true, email: true, role: true } },
 } satisfies Prisma.MortgageMixSelect;
 
 type MixRow = Prisma.MortgageMixGetPayload<{ select: typeof mixSelect }>;
@@ -52,6 +56,11 @@ function fromRow(row: MixRow): SavedMix | null {
     clientId: row.clientId,
     clientName: row.client?.name ?? null,
     planId: row.planId,
+    planAddress: row.plan?.propertyAddress ?? row.plan?.name ?? null,
+    categoryId: row.categoryId,
+    categoryName: row.category?.name ?? null,
+    ownerName: row.owner?.name ?? row.owner?.email ?? null,
+    ownerIsAdvisor: row.owner?.role === 'ADVISOR',
     isFinal: row.isFinal,
     locked: row.locked,
   });
@@ -101,13 +110,24 @@ export interface SaveMixInput {
   clientId?: string | null;
   /** תהליך המשכנתא שהתמהיל שייך לו. null מנתק שיוך לנכס */
   planId?: string | null;
+  /**
+   * הקטגוריה שהיועץ בחר בעת היצירה. רלוונטית לתמהילים שאינם משויכים ללקוח —
+   * הם מסודרים לפיה באזור התמהילים השמורים.
+   */
+  categoryId?: string | null;
 }
 
 /**
  * שמירת תמהיל. שמירה חוזרת של אותו תמהיל מעדכנת את הרשומה הקיימת במקום ליצור
  * כפילות, ולכן המפתח הוא מזהה התמהיל בכלי יחד עם המשתמש ששמר אותו.
  */
-export async function saveMix({ ownerId, mix, clientId, planId }: SaveMixInput): Promise<SavedMix> {
+export async function saveMix({
+  ownerId,
+  mix,
+  clientId,
+  planId,
+  categoryId,
+}: SaveMixInput): Promise<SavedMix> {
   const existing = await prisma.mortgageMix.findUnique({
     where: { ownerId_mixKey: { ownerId, mixKey: mix.id } },
     select: mixSelect,
@@ -131,12 +151,14 @@ export async function saveMix({ ownerId, mix, clientId, planId }: SaveMixInput):
       ownerId,
       clientId: clientId ?? null,
       planId: planId ?? null,
+      categoryId: categoryId ?? null,
       savedAt,
       ...columns,
     },
     update: {
       ...(clientId === undefined ? {} : { clientId }),
       ...(planId === undefined ? {} : { planId }),
+      ...(categoryId === undefined ? {} : { categoryId }),
       savedAt,
       ...columns,
     },
@@ -229,6 +251,45 @@ export async function assignMixDeal(
   });
 
   return getMixForUser(userId, recordId);
+}
+
+/**
+ * שיוך תמהיל לקטגוריה של היועץ, או ניתוקו ממנה.
+ *
+ * רק מי ששמר את התמהיל יכול לשייך אותו, כי הקטגוריות שייכות ליועץ עצמו ולא
+ * לעסקה — ולכן אין משמעות לקטגוריה של יועץ אחר על אותו תמהיל.
+ */
+export async function setMixCategory(
+  ownerId: string,
+  recordId: string,
+  categoryId: string | null
+): Promise<SavedMix | null> {
+  if (categoryId) {
+    const category = await prisma.mixCategory.findFirst({
+      where: { id: categoryId, advisorId: ownerId },
+      select: { id: true },
+    });
+    if (!category) return null;
+  }
+
+  const updated = await prisma.mortgageMix.updateMany({
+    where: { id: recordId, ownerId },
+    data: { categoryId },
+  });
+  if (updated.count === 0) return null;
+
+  const row = await prisma.mortgageMix.findUnique({ where: { id: recordId }, select: mixSelect });
+  return row ? fromRow(row) : null;
+}
+
+/** התמהילים ששמורים אצל היועץ ואינם משויכים ללקוח — הם שמסודרים לפי קטגוריה */
+export async function listUnassignedMixes(ownerId: string): Promise<SavedMix[]> {
+  const rows = await prisma.mortgageMix.findMany({
+    where: { ownerId, clientId: null },
+    orderBy: { savedAt: 'desc' },
+    select: mixSelect,
+  });
+  return fromRows(rows);
 }
 
 /** האם המשתמש רשאי לגעת ברשומת התמהיל: הוא שמר אותה, הוא הלקוח, או שהוא היועץ */

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { assignMixDeal, canEditMix, markMixAsFinal } from '@/lib/mixes';
+import { assignMixDeal, canEditMix, markMixAsFinal, setMixCategory } from '@/lib/mixes';
 import { findAccessibleClient } from '@/lib/clients';
 import { getPlanForUser, persistFinalMix } from '@/lib/mortgage-plans';
 
@@ -28,6 +28,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     const saved = await markMixAsFinal(userId, id, body.planId);
     if (!saved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     await persistFinalMix(userId, body.planId, saved);
+    return NextResponse.json(saved);
+  }
+
+  if (body?.categoryId === null || typeof body?.categoryId === 'string') {
+    const saved = await setMixCategory(userId, id, body.categoryId);
+    if (!saved) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return NextResponse.json(saved);
   }
 

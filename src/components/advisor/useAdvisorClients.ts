@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientStage } from '@/lib/client-process';
+import type { PlanStageId } from '@/lib/advisor-crm';
 
 export interface AdvisorClient {
   id: string;
@@ -16,6 +17,13 @@ export interface AdvisorClient {
   mixCount: number;
   incomeBucket: 'UNDER_10K' | 'FROM_10K_TO_15K' | 'FROM_15K_TO_25K' | 'FROM_25K_TO_40K' | 'ABOVE_40K' | null;
   openDocuments: number;
+  /** משימות של היועץ שעדיין פתוחות עבור הלקוח */
+  openTasks: number;
+  /** הפגישה הקרובה שנקבעה עם הלקוח */
+  nextMeetingAt: string | null;
+  /** השלב בכלי תכנון המשכנתא — אותם חמישה שלבים שהלקוח רואה אצלו */
+  planStage: PlanStageId | null;
+  planProgress: number;
   updatedAt: string;
 }
 

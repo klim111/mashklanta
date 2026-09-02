@@ -45,20 +45,39 @@ export async function POST(req: NextRequest) {
   const requestedPlanId: string | null | undefined =
     body?.planId === null || typeof body?.planId === 'string' ? body.planId : undefined;
 
+  // הקטגוריה שייכת ליועץ שיצר את התמהיל, ולכן היא נשמרת רק כשהיא באמת שלו
+  let categoryId: string | null | undefined =
+    body?.categoryId === null || typeof body?.categoryId === 'string' ? body.categoryId : undefined;
+  if (typeof categoryId === 'string') {
+    const category = await prisma.mixCategory.findFirst({
+      where: { id: categoryId, advisorId: userId },
+      select: { id: true },
+    });
+    if (!category) categoryId = null;
+  }
+
   if (typeof requestedPlanId === 'string') {
     const { getPlanForUser } = await import('@/lib/mortgage-plans');
     const plan = await getPlanForUser(userId, requestedPlanId);
     if (!plan) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // לקוח ששומר תמהיל משלו מקבל שיוך אוטומטי, כדי שהיועץ שלו יראה אותו מיד
+  // לקוח ששומר תמהיל משלו מקבל שיוך אוטומטי, כדי שהיועץ שלו יראה אותו מיד.
+  // אצל יועץ אין שיוך אוטומטי: תמהיל בלי לקוח נשאר בתמהילים השמורים שלו,
+  // מסודר לפי הקטגוריה שבחר.
   let clientId = requestedClientId;
-  if (clientId === undefined) {
+  if (clientId === undefined && session?.user?.role !== 'ADVISOR') {
     const own = await prisma.client.findFirst({ where: { userId }, select: { id: true } });
     if (own) clientId = own.id;
   }
 
-  const saved = await saveMix({ ownerId: userId, mix, clientId, planId: requestedPlanId });
+  const saved = await saveMix({
+    ownerId: userId,
+    mix,
+    clientId,
+    planId: requestedPlanId,
+    categoryId,
+  });
   // פרטי העסקה בכרטיס הלקוח מושלמים מהתמהיל, כדי שלא יידרש להזין אותם פעמיים
   if (saved.clientId) await fillClientDealFromMix(saved.clientId, mix);
 

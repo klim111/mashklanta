@@ -8,9 +8,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Banknote,
+  CalendarDays,
+  CalendarPlus,
   Check,
   CheckCircle2,
-  ChevronLeft,
   Circle,
   FileText,
   Home as HomeIcon,
@@ -42,6 +43,11 @@ import {
   stageIndex,
 } from '@/lib/client-process';
 import type { ClientDocumentStatus, ClientStage } from '@/lib/client-process';
+import { ClientStageBoard } from '@/components/advisor/ClientStageBoard';
+import { MeetingDialog } from '@/components/advisor/MeetingDialog';
+import { MeetingRow } from '@/components/advisor/MeetingRow';
+import { useMeetings } from '@/components/advisor/useAdvisorCrm';
+import { EmptyState, SectionCard } from '@/components/advisor/ui';
 
 interface ClientDocumentView {
   id: string;
@@ -96,9 +102,11 @@ export default function AdvisorClientPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [callOpen, setCallOpen] = useState(false);
+  const [meetingOpen, setMeetingOpen] = useState(false);
   const [editing, setEditing] = useState(false);
 
   const { saved, ready, remove, rename } = useSavedMixes({ clientId });
+  const meetings = useMeetings({ clientId, enabled: Boolean(clientId) });
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -219,6 +227,10 @@ export default function AdvisorClientPage() {
               )}
             </p>
           </div>
+          <Button variant="outline" size="sm" className="h-9" onClick={() => setMeetingOpen(true)}>
+            <CalendarPlus className="h-4 w-4 ml-1" />
+            קבע פגישה
+          </Button>
           <Button variant="outline" size="sm" className="h-9" onClick={() => setCallOpen(true)}>
             <Video className="h-4 w-4 ml-1" />
             שיחת וידאו
@@ -328,29 +340,53 @@ export default function AdvisorClientPage() {
           />
         </div>
 
-        {/* השלב בתהליך */}
-        <Card className="border-slate-200">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-slate-800">שלב בתהליך</p>
-              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[11px]">
-                {STAGE_LABELS[client.stage]} · {client.progress}%
-              </Badge>
-            </div>
-            <StageTrack stage={client.stage} onSelect={(stage) => void patch({ stage })} />
-            <p className="text-[11px] text-slate-500">
-              לחיצה על שלב מעדכנת את מקומו של הלקוח בתהליך ופותחת את המסמכים שנדרשים בו.
-            </p>
-          </CardContent>
-        </Card>
+        {/* חמשת השלבים — זהים לשלבים שהלקוח רואה בכלי תכנון המשכנתא */}
+        <ClientStageBoard clientId={client.id} clientName={client.name} />
 
-        {/* המסמכים */}
+        {/* הפגישות עם הלקוח */}
+        <SectionCard
+          title="פגישות"
+          icon={<CalendarDays className="h-4 w-4 text-blue-600" />}
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => setMeetingOpen(true)}
+            >
+              <CalendarPlus className="h-3.5 w-3.5 ml-1" />
+              קבע פגישה
+            </Button>
+          }
+        >
+          {meetings.meetings.length === 0 ? (
+            <EmptyState
+              icon={<CalendarDays className="h-6 w-6" />}
+              title="עדיין לא נקבעה פגישה"
+              hint="שלחו ללקוח הצעת מועד. היא תופיע בלוח השנה שלכם, ואצלו כפגישה שממתינה לאישור."
+            />
+          ) : (
+            <div className="space-y-2">
+              {meetings.meetings.map((meeting) => (
+                <MeetingRow
+                  key={meeting.id}
+                  meeting={meeting}
+                  viewer="advisor"
+                  linkToClient={false}
+                  onCancel={() => void meetings.cancel(meeting.id)}
+                />
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* המסמכים — לפי שלבי תיק המסמכים של הליווי */}
         <Card className="border-slate-200">
           <CardContent className="p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-blue-600" />
-                מסמכים
+                תיק המסמכים
               </p>
               <div className="flex items-center gap-1.5">
                 <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px]">
@@ -361,6 +397,12 @@ export default function AdvisorClientPage() {
                 </Badge>
               </div>
             </div>
+
+            <StageTrack stage={client.stage} onSelect={(stage) => void patch({ stage })} />
+            <p className="text-[11px] text-slate-500">
+              לחיצה על שלב פותחת את המסמכים שנדרשים בו. השלבים כאן הם שלבי איסוף המסמכים, ולא
+              חמשת שלבי התהליך שמוצגים למעלה.
+            </p>
 
             {client.documents.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-500">
@@ -402,6 +444,7 @@ export default function AdvisorClientPage() {
           </div>
 
           <SavedMixesBoard
+            viewer="advisor"
             saved={saved}
             ready={ready}
             onOpen={openMixInTool}
@@ -424,6 +467,14 @@ export default function AdvisorClientPage() {
           />
         </div>
       </div>
+
+      <MeetingDialog
+        open={meetingOpen}
+        onOpenChange={setMeetingOpen}
+        clientId={client.id}
+        clientName={client.name}
+        onSubmit={async (input) => meetings.propose(input)}
+      />
 
       <VideoCallModal
         isOpen={callOpen}
