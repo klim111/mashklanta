@@ -37,7 +37,7 @@ export function MixStripCard({
           onActivate();
         }
       }}
-      className={`relative w-[min(88vw,250px)] shrink-0 snap-center cursor-pointer rounded-2xl border bg-white p-3 pt-8 text-right shadow-sm transition-all hover:border-slate-300 sm:w-[250px] ${
+      className={`relative mx-auto w-full max-w-[19rem] snap-center cursor-pointer rounded-2xl border bg-white p-3 pt-8 text-center shadow-sm transition-all hover:border-slate-300 sm:mx-0 sm:w-[250px] sm:max-w-none sm:shrink-0 sm:text-right ${
         selected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
       }`}
     >
@@ -78,7 +78,7 @@ export function MixStripCard({
       </p>
       <div className="mt-2">
         <CompositionBar tracks={mix.tracks} height={8} />
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 sm:justify-start">
           {mix.tracks.map((track) => (
             <span key={track.id} className="flex items-center gap-1 text-[10px] text-slate-500">
               <span

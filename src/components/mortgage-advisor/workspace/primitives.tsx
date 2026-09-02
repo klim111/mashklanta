@@ -209,10 +209,10 @@ export function AmountAndPercent({
   const percent = totalAmount > 0 ? (amount / totalAmount) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <div className="space-y-0.5">
         <FormattedNumberValueInput
-          className="h-9"
+          className="h-11 sm:h-9"
           disabled={disabled}
           value={Math.round(amount)}
           onValueChange={onChange}
@@ -221,7 +221,7 @@ export function AmountAndPercent({
       </div>
       <div className="space-y-0.5">
         <NumericInput
-          className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+          className="h-11 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm sm:h-9"
           value={Number(percent.toFixed(1))}
           onChange={(next) => {
             if (next === null) return;

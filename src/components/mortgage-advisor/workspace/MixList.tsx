@@ -113,24 +113,24 @@ export function MixList({
   return (
     <Card className="border-slate-200 shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2">
+        <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-right">
+          <CardTitle className="flex items-center justify-center gap-2 text-base sm:justify-start">
             <Layers className="h-4 w-4 text-blue-600" />
             תמהילים {scope}
             <span className="text-xs font-normal text-slate-500">{others.length + 1}</span>
           </CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onCreateForProperty}>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+            <Button size="sm" variant="outline" className="h-10 w-full text-xs sm:h-8 sm:w-auto" onClick={onCreateForProperty}>
               <Plus className="h-3.5 w-3.5 ml-1" />
               תמהיל נוסף לנכס הזה
             </Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onLoadSaved}>
+            <Button size="sm" variant="outline" className="h-10 w-full text-xs sm:h-8 sm:w-auto" onClick={onLoadSaved}>
               <BookmarkCheck className="h-3.5 w-3.5 ml-1" />
               טען תמהיל שמור
             </Button>
           </div>
         </div>
-        <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+        <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 text-center sm:justify-start sm:text-right">
           <GitCompareArrows className="h-3.5 w-3.5" />
           לחיצה על תיבת תמהיל מעלה אותו לאזור העבודה. סימון בעיגול מוסיף עד {MAX_COMPARED_MIXES}{' '}
           תמהילים להשוואה כשורות מלאות, בלי להחליף את זה שבעבודה.
@@ -142,7 +142,7 @@ export function MixList({
       <CardContent>
         <div className="space-y-4">
           <section className="rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-white p-3 shadow-sm">
-            <div className="mb-2.5 flex flex-wrap items-center gap-2">
+            <div className="mb-2.5 flex flex-col items-center gap-2 text-center sm:flex-row sm:flex-wrap sm:items-center sm:text-right">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
                 <SquarePen className="h-3.5 w-3.5" />
               </span>
@@ -153,7 +153,7 @@ export function MixList({
               {saveDirty && onSaveAsNew && (
                 <Button
                   size="sm"
-                  className={`ms-auto h-8 text-xs ${flashSave ? 'save-flash' : ''}`}
+                  className={`h-10 w-full text-xs sm:ms-auto sm:h-8 sm:w-auto ${flashSave ? 'save-flash' : ''}`}
                   onClick={onSaveAsNew}
                 >
                   <Save className="h-3.5 w-3.5 ml-1" />
@@ -189,7 +189,7 @@ export function MixList({
                     type="button"
                     onClick={onDuplicateActive}
                     title="שכפול התמהיל"
-                    className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 sm:p-1.5"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -197,7 +197,7 @@ export function MixList({
                     type="button"
                     onClick={() => onDismiss(activeResult.mix.id)}
                     title="הסרה מאזור העבודה — התמהיל יישמר בתמהילים השמורים"
-                    className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                    className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 sm:p-1.5"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -272,7 +272,7 @@ export function MixList({
                           type="button"
                           onClick={() => onDuplicate(item)}
                           title="שכפול התמהיל"
-                          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 sm:p-1.5"
                         >
                           <Copy className="h-4 w-4" />
                         </button>
@@ -280,7 +280,7 @@ export function MixList({
                           type="button"
                           onClick={() => onDismiss(item.mix.id)}
                           title="הסרה מהעמוד — התמהיל יישמר בתמהילים השמורים"
-                          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 sm:p-1.5"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -332,7 +332,7 @@ function MixSliderSection({
         bank ? 'border-amber-200 bg-amber-50/70' : 'border-violet-200 bg-violet-50/50'
       }`}
     >
-      <div className="mb-2.5 flex items-center gap-2">
+      <div className="mb-2.5 flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2 sm:text-right">
         <span
           className={`flex h-7 w-7 items-center justify-center rounded-full text-white ${
             bank ? 'bg-amber-600' : 'bg-violet-600'
@@ -347,11 +347,7 @@ function MixSliderSection({
           <p className={`text-[10px] ${bank ? 'text-amber-800' : 'text-violet-700'}`}>{subtitle}</p>
         </div>
       </div>
-      <div
-        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] ${
-          items.length === 1 ? 'justify-center' : 'justify-start'
-        }`}
-      >
+      <div className="flex flex-col items-center gap-3 sm:flex-row sm:snap-x sm:snap-mandatory sm:overflow-x-auto sm:pb-1 sm:[scrollbar-width:thin] sm:justify-start">
         {items.map((item) => {
           const selected = comparedIds.includes(item.mix.id);
           return (

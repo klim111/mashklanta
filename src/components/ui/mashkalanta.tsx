@@ -51,7 +51,7 @@ export default function LoanWordJump({
     ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center"
     : isNav
       ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center leading-none"
-      : "flex h-28 cursor-pointer select-none flex-col items-center justify-center sm:h-48 md:h-64 lg:h-96";
+      : "flex h-24 cursor-pointer select-none flex-col items-center justify-center sm:h-48 md:h-64 lg:h-96";
 
   const wordClass = isHeader
     ? "text-2xl font-bold text-white md:text-[1.7rem]"

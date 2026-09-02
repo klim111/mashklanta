@@ -177,7 +177,7 @@ export function MixRow({
                       setRenaming(false);
                     }
                   }}
-                  className="w-full max-w-xs text-sm font-bold text-slate-900 border-b border-blue-400 outline-none bg-transparent placeholder:font-medium placeholder:text-slate-400"
+                  className="w-full text-sm font-bold text-slate-900 border-b border-blue-400 outline-none bg-transparent placeholder:font-medium placeholder:text-slate-400 sm:max-w-xs"
                 />
               ) : (
                 <>
@@ -225,7 +225,7 @@ export function MixRow({
           </div>
 
           {actions && (
-            <span onClick={stopRowClick} className="flex w-full flex-wrap items-center gap-1.5 lg:w-auto lg:shrink-0">
+            <span onClick={stopRowClick} className="flex w-full flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:justify-end">
               {actions}
             </span>
           )}

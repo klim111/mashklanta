@@ -220,7 +220,7 @@ export default function CardCarousel3D({
                             {card.tag}
                           </span>
                         )}
-                        <h3 className="text-2xl md:text-3xl font-black leading-tight text-white drop-shadow-sm">
+                        <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm md:text-3xl">
                           {card.title}
                         </h3>
                         {card.subtitle && (

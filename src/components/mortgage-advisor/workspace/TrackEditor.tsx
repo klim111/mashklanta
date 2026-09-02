@@ -208,26 +208,26 @@ export function TrackEditor({
         </div>
 
         {/* פעולות המסלול זמינות גם בשורה הסגורה, ומציגות את הנתונים של המסלול הזה בלבד */}
-        <div className="flex items-center justify-end gap-1 border-t border-slate-100 px-2 py-1.5 sm:border-t-0 sm:border-r sm:py-0 sm:pl-2">
+        <div className="flex items-center justify-center gap-1 border-t border-slate-100 px-2 py-1.5 sm:justify-end sm:border-t-0 sm:border-r sm:py-0 sm:pl-2">
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 px-2 text-[11px] text-slate-600"
+            className="h-10 px-2 text-[11px] text-slate-600 sm:h-8"
             title={`פרעון מוקדם ב${track.name}`}
             onClick={onPrepay}
           >
-            <Banknote className="h-3.5 w-3.5 sm:ml-1" />
-            <span className="hidden lg:inline">פרעון מוקדם</span>
+            <Banknote className="h-3.5 w-3.5 ml-1" />
+            <span>פרעון מוקדם</span>
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 px-2 text-[11px] text-slate-600"
+            className="h-10 px-2 text-[11px] text-slate-600 sm:h-8"
             title={`לוח החזרים של ${track.name}`}
             onClick={onAmortization}
           >
-            <Table2 className="h-3.5 w-3.5 sm:ml-1" />
-            <span className="hidden lg:inline">לוח החזרים</span>
+            <Table2 className="h-3.5 w-3.5 ml-1" />
+            <span>לוח החזרים</span>
           </Button>
           {removable && (
             <button
@@ -252,7 +252,7 @@ export function TrackEditor({
                 value={track.amortizationType || 'spitzer'}
                 onValueChange={(value) => patchWithName({ amortizationType: value as MortgageTrack['amortizationType'] })}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-11 sm:h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,7 +266,7 @@ export function TrackEditor({
             <div className="space-y-1">
               <Label className="text-xs">סוג הריבית</Label>
               <Select value={track.type} onValueChange={(value) => patchWithName({ type: value as MortgageTrack['type'] })}>
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-11 sm:h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -284,7 +284,7 @@ export function TrackEditor({
                   value={String(track.variablePeriod ?? 5)}
                   onValueChange={(value) => patchWithName({ variablePeriod: Number(value) })}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-11 sm:h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -190,7 +190,7 @@ export default function Statistic() {
     <section
       id="stats"
       dir="rtl"
-      className="relative overflow-hidden bg-slate-950 py-20 px-4 text-white md:py-28"
+      className="relative overflow-hidden bg-slate-950 px-4 py-12 text-white md:py-28"
     >
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 right-[8%] h-[28rem] w-[28rem] rounded-full bg-blue-600/25 blur-3xl animate-blob" />

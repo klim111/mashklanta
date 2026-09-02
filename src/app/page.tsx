@@ -32,21 +32,21 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden min-h-[100svh] lg:h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50"
+        className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 md:min-h-[100svh] lg:h-screen"
       >
         {/* Logo Section - Top */}
-        <div className="flex h-auto items-center justify-center pt-4 sm:h-1/5 sm:pt-2 lg:h-1/5">
-        <Mashkalanta />
+        <div className="relative z-10 flex items-center justify-center px-5 pt-8 md:h-1/5 md:px-0 md:pt-2">
+        <Mashkalanta autoPlay />
         </div>
 
         {/* Title and Subtitle Section */}
-        <div className="flex flex-col items-center justify-start px-4 pt-2 sm:h-2/5 sm:px-6 sm:pt-0">
+        <div className="relative z-10 flex flex-col items-center justify-start px-5 pt-3 text-center md:h-2/5 md:px-6 md:pt-0">
                 <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
-            className="text-base md:text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed text-center"
+            className="mx-auto max-w-md text-base leading-relaxed text-gray-600 md:max-w-4xl md:text-xl"
           >
             פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
             <br />
@@ -54,23 +54,24 @@ export default function Home() {
           </motion.p>
         </div>
 
-        {/* Animation Section - Middle */}
-        <div className="h-1/5 flex items-center justify-center relative">
+        {/* Animation Section - Middle (desktop overlay lives below; keep spacer on md+) */}
+        <div className="relative hidden h-1/5 items-center justify-center md:flex">
           {/* Animation content will be handled by the carousel below */}
         </div>
 
         {/* Buttons Section - Bottom */}
-        <div className="flex min-h-[18%] items-center justify-center px-4 pb-8 pt-4 sm:px-6 sm:pb-10 sm:pt-2">
-          <div className="flex w-full max-w-lg flex-col sm:max-w-none sm:flex-row flex-wrap justify-center gap-3 sm:gap-4">
+        <div className="relative z-10 flex items-center justify-center px-5 pb-10 pt-8 md:min-h-[18%] md:px-6 md:pb-10 md:pt-2">
+          <div className="flex w-full max-w-sm flex-col items-stretch justify-center gap-3 md:max-w-none md:flex-row md:flex-wrap md:gap-4">
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className="w-full md:w-auto"
             >
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm"
+                className="w-full justify-center px-6 py-4 text-base font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8 md:text-lg"
               >
                 <Link href="/how-it-works">למד איך זה עובד</Link>
               </Button>
@@ -79,12 +80,13 @@ export default function Home() {
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className="w-full md:w-auto"
             >
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-white/90 border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 shadow-lg backdrop-blur-sm"
+                className="w-full justify-center px-6 py-4 text-base font-semibold bg-white/90 border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8 md:text-lg"
               >
                 <Link href="/pricing">
                   <Tag className="w-5 h-5 ml-2" />
@@ -96,10 +98,11 @@ export default function Home() {
             <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              className="w-full md:w-auto"
             >
               <Button
                 size="lg"
-                className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                className="w-full justify-center px-6 py-4 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg md:w-auto md:px-8 md:text-lg"
                 onClick={() => {
                   const actionCardsSection = document.querySelector('[data-section="action-cards"]');
                   if (actionCardsSection) {
@@ -114,8 +117,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Benefits Visualization Carousel - Background */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* Benefits Visualization Carousel - Background (desktop/tablet only so it never covers phone copy) */}
+        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
           
           {/* Slide 1: Transparency & Simplicity */}
           <div className="absolute inset-0 opacity-0 animate-carousel-slide-1 flex items-center justify-center">
@@ -241,7 +244,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true, margin: "-100px" }}
-        className="relative min-h-screen py-12 px-4 sm:py-20 sm:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden"
+        className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-10 px-4 md:min-h-screen md:px-6 md:py-20"
       >
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -253,15 +256,15 @@ export default function Home() {
             >
               <Link href="/mortgage-planning?flow=affordability">
                 <Card className="group relative overflow-hidden border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer h-full">
-                  <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+                  <CardContent className="flex h-full flex-col justify-between p-5 text-center sm:p-8">
                     <div>
                       <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                         <Calculator className="w-10 h-10 text-white" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+                      <h3 className="mb-3 text-xl font-bold text-gray-900 transition-colors group-hover:text-blue-600 sm:mb-4 sm:text-2xl">
                         מה אני יכול להרשות לעצמי
                       </h3>
-                      <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                      <p className="mb-5 text-base leading-relaxed text-gray-600 sm:mb-6 sm:text-lg">
                         חישוב ערך הנכס המקסימלי לפי נתוני ההכנסה והמשך תכנון המשכנתא
                       </p>
                     </div>
@@ -282,15 +285,15 @@ export default function Home() {
             >
               <Link href="/mortgage-planning?flow=existing">
                 <Card className="group relative overflow-hidden border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer h-full">
-                  <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+                  <CardContent className="flex h-full flex-col justify-between p-5 text-center sm:p-8">
                     <div>
                       <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                         <Banknote className="w-10 h-10 text-white" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
+                      <h3 className="mb-3 text-xl font-bold text-gray-900 transition-colors group-hover:text-green-600 sm:mb-4 sm:text-2xl">
                         משכנתא לנכס קיים
                       </h3>
-                      <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                      <p className="mb-5 text-base leading-relaxed text-gray-600 sm:mb-6 sm:text-lg">
                         יודעים את מחיר הנכס? נלווה אתכם צעד אחר צעד עד המשכנתא המשתלמת ביותר
                       </p>
                     </div>
@@ -311,15 +314,15 @@ export default function Home() {
             >
               <Link href="/mortgage-refinance">
                 <Card className="group relative overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl z-10 cursor-pointer h-full">
-                  <CardContent className="p-8 text-center h-full flex flex-col justify-between">
+                  <CardContent className="flex h-full flex-col justify-between p-5 text-center sm:p-8">
                     <div>
                       <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                         <RefreshCw className="w-10 h-10 text-white" />
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+                      <h3 className="mb-3 text-xl font-bold text-gray-900 transition-colors group-hover:text-purple-600 sm:mb-4 sm:text-2xl">
                         מיחזור משכנתא
                       </h3>
-                      <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                      <p className="mb-5 text-base leading-relaxed text-gray-600 sm:mb-6 sm:text-lg">
                         שפר את תנאי המשכנתא הקיימת שלך — הקטנת תשלום חודשי או קיצור תקופה
                       </p>
                     </div>
@@ -461,7 +464,7 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true, margin: "-80px" }}
-        className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 py-20 px-6 text-white"
+        className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-4 py-12 text-white md:px-6 md:py-20"
       >
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-16 right-[12%] h-72 w-72 rounded-full bg-violet-500/20 blur-3xl animate-blob" />
@@ -473,33 +476,33 @@ export default function Home() {
               <Tag className="h-4 w-4" />
               מודל התמחור
             </div>
-            <h2 className="mb-4 text-3xl font-black text-white md:text-5xl">
+            <h2 className="mb-4 text-2xl font-black text-white md:text-5xl">
               משלמים על שלב, לא על חבילה
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-slate-100">
+            <p className="mx-auto max-w-2xl text-base text-slate-100 md:text-lg">
               כל אחד מחמשת שלבי המשכנתא מתומחר בנפרד. עשיתם לבד — לא שילמתם. רוצים יועץ על הכל — מקבלים מחיר חבילה.
             </p>
           </div>
           <div className="mb-10 grid gap-5 md:grid-cols-3">
-            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10">
+            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
               <div className="text-sm font-bold text-cyan-200">עצמאי</div>
               <div className="my-2 text-4xl font-black text-white">₪120</div>
               <div className="text-sm text-slate-100">לחודש, עד קבלת המשכנתא — כל הכלים פתוחים</div>
             </Link>
-            <Link href="/pricing#builder" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15">
+            <Link href="/pricing#builder" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 sm:p-7 md:text-right">
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-500 px-3 py-0.5 text-[11px] font-black text-white">הכי נבחר</span>
               <div className="text-sm font-bold text-violet-200">היברידי</div>
               <div className="my-2 text-4xl font-black text-white">לפי שלב</div>
               <div className="text-sm text-slate-100">אתם עושים מה שאתם יודעים, היועץ נכנס בדיוק היכן שצריך</div>
             </Link>
-            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10">
+            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
               <div className="text-sm font-bold text-amber-200">ליווי מלא</div>
               <div className="my-2 text-4xl font-black text-white">₪6,000</div>
               <div className="text-sm text-slate-100">חמשת השלבים מקצה לקצה, כולל גישה לפלטפורמה</div>
             </Link>
           </div>
           <div className="text-center">
-            <Button asChild size="lg" className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900">
+            <Button asChild size="lg" className="w-full bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900 sm:w-auto">
               <Link href="/pricing">למודל התמחור המלא ולמחשבון החבילה</Link>
             </Button>
           </div>
