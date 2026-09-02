@@ -51,30 +51,79 @@ export interface ClientListItem {
   updatedAt: string;
 }
 
+/** שגיאת Prisma על טבלה או עמודה שאינן קיימות — סימן שמיגרציה עוד לא רצה */
+function isMissingSchema(error: unknown): boolean {
+  const code = (error as { code?: unknown })?.code;
+  return code === 'P2021' || code === 'P2022';
+}
+
+interface CrmCounters {
+  openTasks: Map<string, number>;
+  nextMeetingAt: Map<string, Date>;
+}
+
+/**
+ * המונים שמגיעים מטבלאות ה-CRM של היועץ.
+ *
+ * הם נשלפים בנפרד ולא כצירוף לשאילתת הלקוחות, כי הטבלאות האלה נוספו אחרי
+ * רשימת הלקוחות: כשהמיגרציה עוד לא רצה בסביבה מסוימת, הרשימה נטענת בלי
+ * המונים — במקום שהמסך המרכזי של היועץ ייפול בגללן.
+ */
+async function crmCounters(advisorId: string, now: Date): Promise<CrmCounters> {
+  const openTasks = new Map<string, number>();
+  const nextMeetingAt = new Map<string, Date>();
+
+  try {
+    const [tasks, meetings] = await Promise.all([
+      prisma.advisorTask.groupBy({
+        by: ['clientId'],
+        where: { advisorId, status: { in: ['OPEN', 'IN_PROGRESS'] } },
+        _count: { _all: true },
+      }),
+      prisma.advisorMeeting.findMany({
+        where: {
+          advisorId,
+          startsAt: { gte: now },
+          status: { in: ['PROPOSED', 'CONFIRMED'] },
+        },
+        orderBy: { startsAt: 'asc' },
+        select: { clientId: true, startsAt: true },
+      }),
+    ]);
+
+    tasks.forEach((row) => openTasks.set(row.clientId, row._count._all));
+    // הפגישות ממוינות לפי מועד, ולכן הראשונה שנרשמת לכל לקוח היא הקרובה שלו
+    meetings.forEach((row) => {
+      if (!nextMeetingAt.has(row.clientId)) nextMeetingAt.set(row.clientId, row.startsAt);
+    });
+  } catch (error) {
+    if (!isMissingSchema(error)) throw error;
+    console.warn('advisor CRM tables are missing — run prisma migrate deploy');
+  }
+
+  return { openTasks, nextMeetingAt };
+}
+
 /** רשימת הלקוחות של היועץ, עם המספרים שמוצגים בשורת הלקוח */
 export async function listAdvisorClients(advisorId: string): Promise<ClientListItem[]> {
   const now = new Date();
-  const rows = await prisma.client.findMany({
-    where: { advisorId },
-    orderBy: { updatedAt: 'desc' },
-    include: {
-      _count: { select: { mixes: true } },
-      documents: { select: { status: true, required: true } },
-      tasks: { where: { status: { in: ['OPEN', 'IN_PROGRESS'] } }, select: { id: true } },
-      meetings: {
-        where: { startsAt: { gte: now }, status: { in: ['PROPOSED', 'CONFIRMED'] } },
-        orderBy: { startsAt: 'asc' },
-        take: 1,
-        select: { startsAt: true },
+  const [rows, counters] = await Promise.all([
+    prisma.client.findMany({
+      where: { advisorId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        _count: { select: { mixes: true } },
+        documents: { select: { status: true, required: true } },
+        plans: {
+          where: { status: { not: 'ARCHIVED' } },
+          orderBy: { updatedAt: 'desc' },
+          take: 1,
+          select: { currentStage: true, progress: true },
+        },
       },
-      plans: {
-        where: { status: { not: 'ARCHIVED' } },
-        orderBy: { updatedAt: 'desc' },
-        take: 1,
-        select: { currentStage: true, progress: true },
-      },
-    },
-  });
+    }),
+    crmCounters(advisorId, now),
+  ]);
 
   return rows.map((row) => ({
     id: row.id,
@@ -89,8 +138,8 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
     incomeBucket: row.incomeBucket,
     mixCount: row._count.mixes,
     openDocuments: row.documents.filter((doc) => doc.required && doc.status === 'PENDING').length,
-    openTasks: row.tasks.length,
-    nextMeetingAt: row.meetings[0]?.startsAt.toISOString() ?? null,
+    openTasks: counters.openTasks.get(row.id) ?? 0,
+    nextMeetingAt: counters.nextMeetingAt.get(row.id)?.toISOString() ?? null,
     planStage: (row.plans[0]?.currentStage as PlanStageId | undefined) ?? null,
     planProgress: row.plans[0]?.progress ?? 0,
     updatedAt: row.updatedAt.toISOString(),
