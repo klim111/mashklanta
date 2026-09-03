@@ -7,8 +7,25 @@ import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { findUserByLogin } from "@/lib/find-user-by-login";
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() ?? "";
+/**
+ * ערך ממשתנה סביבה, בלי רווחים ובלי מרכאות עוטפות.
+ *
+ * בקובץ `.env` המרכאות מוסרות על ידי dotenv, אבל בממשק של ספקי האחסון הן
+ * נשמרות כחלק מהערך — ואז המפתח נשלח לגוגל עם מרכאות ונדחה כ-invalid_client.
+ */
+function readEnv(name: string): string {
+  const value = process.env[name]?.trim() ?? "";
+  return value.replace(/^["']|["']$/g, "").trim();
+}
+
+const googleClientId = readEnv("GOOGLE_CLIENT_ID");
+const googleClientSecret = readEnv("GOOGLE_CLIENT_SECRET");
+
+/**
+ * הפרובידר של גוגל נרשם רק כששני המפתחות קיימים באמת בזמן ריצה. כשהם מוגדרים
+ * רק לחלק מהסביבות אצל ספק האחסון, הם פשוט לא יגיעו לדפלוי הזה — ולכן המסך
+ * מדווח על כך במפורש במקום להציג כפתור שנכשל.
+ */
 const googleConfigured = Boolean(
   googleClientId &&
     googleClientSecret &&

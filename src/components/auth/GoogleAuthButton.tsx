@@ -50,7 +50,7 @@ export function GoogleAuthButton({
             const providers = response.ok ? await response.json() : null;
             if (!providers?.google) {
               setError(
-                "התחברות עם Google עדיין לא הוגדרה. חסרים GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET בקובץ הסביבה."
+                "התחברות עם Google לא זמינה בסביבה הזו. יש להגדיר את GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET, ולוודא שהם משויכים לסביבה שממנה נטען העמוד — משתנה שמוגדר ל-Production בלבד אינו מגיע לדפלוי של Preview."
               );
               return;
             }
