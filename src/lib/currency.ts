@@ -55,9 +55,24 @@ export function parseFormattedNumberInput(value: string | number | undefined | n
   return parseInt(cleanValue, 10) || 0;
 }
 
-/** משאיר רק ספרות ונקודה עשרונית אחת — כדי שאפשר יהיה להקליד 4.7 בלי שהנקודה תיעלם */
+/**
+ * משאיר ספרות ומפריד עשרוני אחד — כדי שאפשר יהיה להקליד 4.7 בלי שהנקודה תיעלם.
+ *
+ * הפסיק דו-משמעי: ב-"1,234.5" הוא מפריד אלפים, וב-"4,7" הוא המפריד העשרוני —
+ * וכך מפיק אותו לוח הספרות של מקלדת בעברית, וכך גם רבים מקלידים מתוך הרגל.
+ * ההכרעה היא לפי הנקודה: כשיש נקודה בטקסט, הפסיקים הם מפרידי אלפים ויורדים;
+ * כשאין נקודה ויש פסיק יחיד, הוא המפריד העשרוני. בלי ההבחנה הזו "4,7" היה
+ * הופך בשקט ל-47.
+ *
+ * הפונקציה משרתת שדות ריבית ואחוזים בלבד (סכומים בשקלים עוברים במסלול השלם),
+ * ולכן פסיק יחיד בלי נקודה הוא תמיד עשרוני ולא אלפים.
+ */
 export function sanitizeDecimalInput(raw: string): string {
-  const cleaned = raw.replace(/[^\d.]/g, '');
+  const commas = (raw.match(/,/g) ?? []).length;
+  const normalized =
+    !raw.includes('.') && commas === 1 ? raw.replace(',', '.') : raw.replace(/,/g, '');
+
+  const cleaned = normalized.replace(/[^\d.]/g, '');
   const first = cleaned.indexOf('.');
   if (first === -1) return cleaned;
   return cleaned.slice(0, first + 1) + cleaned.slice(first + 1).replace(/\./g, '');

@@ -20,6 +20,18 @@ describe('הזנת מספרים', () => {
     expect(sanitizeDecimalInput('1,234.5')).toBe('1234.5');
   });
 
+  it('מקבל פסיק כמפריד עשרוני, כפי שמקלדת בעברית מפיקה אותו', () => {
+    expect(sanitizeDecimalInput('4,7')).toBe('4.7');
+    expect(sanitizeDecimalInput('4,')).toBe('4.');
+    expect(parseDecimalInput('4,75')).toBe(4.75);
+  });
+
+  it('פסיק נשאר מפריד אלפים כשיש כבר נקודה בטקסט', () => {
+    expect(sanitizeDecimalInput('1,234,567.5')).toBe('1234567.5');
+    // בלי נקודה וביותר מפסיק אחד — אלה מפרידי אלפים ולא עשרוני
+    expect(sanitizeDecimalInput('1,234,567')).toBe('1234567');
+  });
+
   it('לא הופך נקודה או שדה ריק לאפס', () => {
     expect(parseDecimalInput('')).toBeNull();
     expect(parseDecimalInput('.')).toBeNull();

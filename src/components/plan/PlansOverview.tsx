@@ -50,7 +50,7 @@ function isUnassociatedMix(mix: SavedMix): boolean {
 export function PlansOverview() {
   const router = useRouter();
   const { plans, ready, error, start, remove, patchDeal } = usePlans();
-  const { saved, ready: mixesReady } = useSavedMixes();
+  const { saved, ready: mixesReady, remove: removeMix } = useSavedMixes();
   const [starting, setStarting] = useState(false);
   const [tab, setTab] = useState<DashTab>('mortgages');
 
@@ -100,7 +100,7 @@ export function PlansOverview() {
           <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
         </div>
       ) : tab === 'unassigned' ? (
-        <UnassignedMixes mixes={unassigned} />
+        <UnassignedMixes mixes={unassigned} onDelete={removeMix} />
       ) : (
         <>
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
@@ -491,7 +491,13 @@ function MortgageCard({
   );
 }
 
-function UnassignedMixes({ mixes }: { mixes: SavedMix[] }) {
+function UnassignedMixes({
+  mixes,
+  onDelete,
+}: {
+  mixes: SavedMix[];
+  onDelete: (mixId: string) => void;
+}) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -539,6 +545,7 @@ function UnassignedMixes({ mixes }: { mixes: SavedMix[] }) {
           mix={mix}
           busy={busyId === mix.recordId}
           onAttach={(deal) => void attach(mix, deal)}
+          onDelete={() => onDelete(mix.mix.id)}
         />
       ))}
     </div>
@@ -549,10 +556,12 @@ function UnassignedMixCard({
   mix,
   busy,
   onAttach,
+  onDelete,
 }: {
   mix: SavedMix;
   busy: boolean;
   onAttach: (deal: { address: string; value: number | null; amount: number | null }) => void;
+  onDelete: () => void;
 }) {
   const [address, setAddress] = useState('');
   const [value, setValue] = useState<number | null>(mix.mix.propertyValue ?? null);
@@ -565,12 +574,28 @@ function UnassignedMixCard({
           <h3 className="text-base font-black text-slate-900">{mix.mix.name || 'תמהיל ללא שם'}</h3>
           <p className="mt-1 text-xs text-slate-500">תמהיל כללי · ממתין לשיוך לנכס</p>
         </div>
-        <Link
-          href={`/dashboard/mix-planner?mix=${encodeURIComponent(mix.mix.id)}`}
-          className="text-xs font-black text-blue-600"
-        >
-          פתיחה בכלי התכנון
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/mix-planner?mix=${encodeURIComponent(mix.mix.id)}`}
+            className="text-xs font-black text-blue-600"
+          >
+            פתיחה בכלי התכנון
+          </Link>
+          {/* תמהיל כללי אינו קשור לשום תהליך, ולכן אפשר למחוק אותו מכאן */}
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('למחוק את התמהיל הזה? הוא אינו משויך לנכס, והמחיקה סופית.')) {
+                onDelete();
+              }
+            }}
+            aria-label="מחיקת התמהיל"
+            title="מחיקת התמהיל"
+            className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Stat label="סכום" value={formatShekel(mix.mix.totalAmount)} />
