@@ -176,7 +176,11 @@ function LoginForm() {
             </div>
           </div>
 
-          <GoogleAuthButton label="התחברות עם Google" />
+          <GoogleAuthButton
+            label="התחברות עם Google"
+            callbackUrl={searchParams.get('callbackUrl') || '/dashboard'}
+            autoStart={searchParams.get('google') === '1'}
+          />
 
           {/* Register Link */}
           <div className="mt-8 text-center space-y-3">

@@ -5,10 +5,12 @@ import { getToken } from 'next-auth/jwt';
 /**
  * מסלולי ה-API שפתוחים גם בלי התחברות: נתוני שוק מבנק ישראל, שערי מטבע, חיפוש
  * כתובות, בדיקת חיים ושרת ה-TURN. הם מזינים את הכלים הציבוריים של האתר, שעובדים
- * גם למי שעדיין לא נרשם.
+ * גם למי שעדיין לא נרשם. גם `/api/auth-diagnostics` פתוח — הוא נדרש דווקא למי
+ * שטרם התחבר, לפני שההתחברות עם גוגל מתחילה.
  */
 const PUBLIC_API_PREFIXES = [
   '/api/auth',
+  '/api/auth-diagnostics',
   '/api/health',
   '/api/addresses',
   '/api/boi',

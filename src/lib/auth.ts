@@ -6,32 +6,15 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { findUserByLogin } from "@/lib/find-user-by-login";
+import { applyNormalizedAuthUrl } from "@/lib/auth-url";
+import { googleClientId, googleClientSecret, googleConfigured } from "@/lib/google-oauth";
 
 /**
- * ערך ממשתנה סביבה, בלי רווחים ובלי מרכאות עוטפות.
- *
- * בקובץ `.env` המרכאות מוסרות על ידי dotenv, אבל בממשק של ספקי האחסון הן
- * נשמרות כחלק מהערך — ואז המפתח נשלח לגוגל עם מרכאות ונדחה כ-invalid_client.
+ * NEXTAUTH_URL מנורמל פעם אחת, בטעינת המודול: מרכאות עוטפות, רווח או סלאש
+ * בסוף משנים את כתובת הבסיס — ואיתה את ה-Redirect URI שנשלח לגוגל, שאז אינו
+ * זהה לזה שרשום ב-Google Cloud Console וגוגל עונה `redirect_uri_mismatch`.
  */
-function readEnv(name: string): string {
-  const value = process.env[name]?.trim() ?? "";
-  return value.replace(/^["']|["']$/g, "").trim();
-}
-
-const googleClientId = readEnv("GOOGLE_CLIENT_ID");
-const googleClientSecret = readEnv("GOOGLE_CLIENT_SECRET");
-
-/**
- * הפרובידר של גוגל נרשם רק כששני המפתחות קיימים באמת בזמן ריצה. כשהם מוגדרים
- * רק לחלק מהסביבות אצל ספק האחסון, הם פשוט לא יגיעו לדפלוי הזה — ולכן המסך
- * מדווח על כך במפורש במקום להציג כפתור שנכשל.
- */
-const googleConfigured = Boolean(
-  googleClientId &&
-    googleClientSecret &&
-    !googleClientId.includes("your-google") &&
-    !googleClientSecret.includes("your-google")
-);
+applyNormalizedAuthUrl();
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
