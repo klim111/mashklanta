@@ -5,15 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Plus } from 'lucide-react';
-import { DEFAULT_INTEREST_RATES, MIN_FIXED_UNLINKED_PERCENT, TRACK_TYPES } from '../types';
+import { DEFAULT_INTEREST_RATES, MIN_FIXED_PERCENT, TRACK_TYPES } from '../types';
 import type { MortgageTrack } from '../types';
 import { allocatedAmount, remainingAmount } from '../engine';
 import type { MixResult, TrackType } from '../engine';
-import {
-  meetsFixedUnlinkedRequirement,
-  minAmountForTrack,
-  minFixedUnlinkedAmount,
-} from '../propertyContext';
+import { meetsFixedRequirement, minFixedAmount, missingFixedAmount } from '../propertyContext';
 import { TrackEditor } from './TrackEditor';
 import {
   PrimeForwardChart,
@@ -55,7 +51,7 @@ export function MixEditor({
   const [newType, setNewType] = useState<TrackType>('fixed_unlinked');
 
   const { mix } = result;
-  const fixedShareOk = meetsFixedUnlinkedRequirement(mix);
+  const fixedShareOk = meetsFixedRequirement(mix);
   const remaining = remainingAmount(mix);
   const allocated = allocatedAmount(mix);
 
@@ -83,12 +79,14 @@ export function MixEditor({
   return (
     <div className="border-t border-slate-100 p-3 space-y-3">
       {!fixedShareOk && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5">
-          <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-red-800 leading-relaxed">
-            דרישת בנק ישראל: לפחות {MIN_FIXED_UNLINKED_PERCENT}% מהמשכנתא בריבית קבועה לא צמודה —{' '}
-            {formatShekel(minFixedUnlinkedAmount(mix.totalAmount))}. הגדילו את המסלול הקבוע הלא צמוד
-            כדי לעמוד בדרישה.
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-900 leading-relaxed">
+            דרישת בנק ישראל: לפחות {MIN_FIXED_PERCENT}% מהמשכנתא בריבית קבועה —{' '}
+            {formatShekel(minFixedAmount(mix.totalAmount))}. הקבועה הצמודה והקבועה הלא צמודה
+            נספרות יחד, וכל חלוקה ביניהן תקינה. חסרים עוד{' '}
+            <strong>{formatShekel(missingFixedAmount(mix))}</strong> — השלימו אותם במסלול קבוע
+            קיים או בהוספת מסלול קבוע נוסף.
           </p>
         </div>
       )}
@@ -110,7 +108,7 @@ export function MixEditor({
             result={trackResult}
             totalAmount={mix.totalAmount}
             removable={mix.tracks.length > 1}
-            minAmount={minAmountForTrack(mix, trackResult.track.id)}
+            missingFixed={missingFixedAmount(mix)}
             maxAmount={trackResult.track.amount + remaining}
             assumptions={mix.assumptions}
             onUpdate={(patch) => onUpdateTrack(trackResult.track.id, patch)}

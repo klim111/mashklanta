@@ -5,13 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BookmarkCheck,
-  Building2,
   Copy,
   GitCompareArrows,
   Layers,
   Plus,
   Save,
-  Sparkles,
   SquarePen,
   Trash2,
 } from 'lucide-react';
@@ -20,9 +18,8 @@ import type { SavedMix } from '../savedMixes';
 import { UNIFORM_BASKETS } from '@/lib/mortgage-plan';
 import { MixRow } from './MixRow';
 import { MixStripCard } from './MixStripCard';
+import type { MixOrigin } from './MixStripCard';
 import { formatShekel } from './primitives';
-
-export const MAX_COMPARED_MIXES = 3;
 
 interface MixListProps {
   /** התמהיל שבניתוח, מהמצב החי שלו */
@@ -58,7 +55,6 @@ interface MixListProps {
   /** מזהי הסלים האחידים שנשמרו מהאישור העקרוני */
   uniformMixIds?: string[];
   nameNotice?: string | null;
-  compareNotice?: string | null;
 }
 
 function isBankDefaultMix(mix: WorkspaceMix, preferredIds: string[]): boolean {
@@ -98,17 +94,14 @@ export function MixList({
   flashSave = false,
   uniformMixIds = [],
   nameNotice,
-  compareNotice,
 }: MixListProps) {
   const scope = address?.trim()
     ? `לנכס ב${address.trim()}`
     : `למשכנתא בסך ${formatShekel(activeResult.mix.totalAmount)}`;
 
-  const bankDefaults = others.filter((item) => isBankDefaultMix(item.mix, uniformMixIds));
-  const customMixes = others.filter((item) => !isBankDefaultMix(item.mix, uniformMixIds));
+  const originOf = (item: SavedMix): MixOrigin =>
+    isBankDefaultMix(item.mix, uniformMixIds) ? 'bank' : 'custom';
   const comparedItems = others.filter((item) => comparedIds.includes(item.mix.id));
-  const comparedCount = comparedItems.length;
-  const compareFull = comparedCount >= MAX_COMPARED_MIXES;
 
   return (
     <Card className="border-slate-200 shadow-sm">
@@ -132,11 +125,10 @@ export function MixList({
         </div>
         <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 text-center sm:justify-start sm:text-right">
           <GitCompareArrows className="h-3.5 w-3.5" />
-          לחיצה על תיבת תמהיל מעלה אותו לאזור העבודה. סימון בעיגול מוסיף עד {MAX_COMPARED_MIXES}{' '}
-          תמהילים להשוואה כשורות מלאות, בלי להחליף את זה שבעבודה.
+          לחיצה על תיבת תמהיל פותחת אותה באזור העבודה. סימון בעיגול שבצד ימין מוסיף את התמהיל
+          לאזור העבודה להשוואה — בלי הגבלה על מספר התמהילים.
         </p>
         {nameNotice && <p className="text-[11px] font-semibold text-red-700">{nameNotice}</p>}
-        {compareNotice && <p className="text-[11px] font-semibold text-amber-700">{compareNotice}</p>}
       </CardHeader>
 
       <CardContent>
@@ -147,8 +139,19 @@ export function MixList({
                 <SquarePen className="h-3.5 w-3.5" />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-black text-blue-900">אזור העבודה</p>
-                <p className="text-[10px] text-blue-700">התמהיל שנפתח לניתוח ולעריכה</p>
+                <p className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-black text-blue-900 sm:justify-start">
+                  אזור העבודה
+                  {comparedItems.length > 0 && (
+                    <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
+                      {comparedItems.length + 1} תמהילים בהשוואה
+                    </span>
+                  )}
+                </p>
+                <p className="text-[10px] text-blue-700">
+                  {comparedItems.length > 0
+                    ? 'הטבלה והגרפים שמתחת מציגים את כל התמהילים שבאזור העבודה'
+                    : 'התמהיל שנפתח לניתוח ולעריכה'}
+                </p>
               </div>
               {saveDirty && onSaveAsNew && (
                 <Button
@@ -210,51 +213,10 @@ export function MixList({
                 {editor}
               </div>
             )}
-          </section>
 
-          {bankDefaults.length > 0 && (
-            <MixSliderSection
-              icon={<Building2 className="h-3.5 w-3.5" />}
-              tone="bank"
-              title="התמהילים שהבנק מציע כברירת מחדל"
-              subtitle="נקודת ייחוס לבחינת התמהיל המותאם אישית"
-              items={bankDefaults}
-              comparedIds={comparedIds}
-              compareFull={compareFull}
-              onActivate={onActivate}
-              onToggleCompare={onToggleCompare}
-            />
-          )}
-
-          {customMixes.length > 0 && (
-            <MixSliderSection
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-              tone="custom"
-              title="תמהילים מותאמים אישית"
-              subtitle="תמהילים שנוצרו או נפתחו בכלי"
-              items={customMixes}
-              comparedIds={comparedIds}
-              compareFull={compareFull}
-              onActivate={onActivate}
-              onToggleCompare={onToggleCompare}
-            />
-          )}
-
-          {comparedItems.length > 0 && (
-            <section className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3">
-              <div className="mb-2.5 flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white">
-                  <GitCompareArrows className="h-3.5 w-3.5" />
-                </span>
-                <div>
-                  <p className="text-xs font-black text-indigo-900">תמהילים בהשוואה</p>
-                  <p className="text-[10px] text-indigo-700">
-                    עד {MAX_COMPARED_MIXES} תמהילים כשורות מלאות. הסרה מכאן לא מוחקת את התמהיל
-                    מהשמורים.
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2">
+            {/* התמהילים שסומנו נכנסים לאזור העבודה עצמו, ומוזנים לטבלה ולגרפים שמתחת */}
+            {comparedItems.length > 0 && (
+              <div className="mt-3 space-y-2">
                 {comparedItems.map((item) => (
                   <MixRow
                     key={item.mix.id}
@@ -265,7 +227,7 @@ export function MixList({
                     onToggleSelect={() => onToggleCompare(item.mix.id)}
                     onClick={() => onActivate(item)}
                     onRename={(name) => onRename(item.mix.id, name)}
-                    hint="לחצו להעברה לאזור העבודה"
+                    hint="לחצו כדי לפתוח אותו לעריכה"
                     actions={
                       <>
                         <button
@@ -289,7 +251,17 @@ export function MixList({
                   />
                 ))}
               </div>
-            </section>
+            )}
+          </section>
+
+          {others.length > 0 && (
+            <MixSliderSection
+              items={others}
+              originOf={originOf}
+              comparedIds={comparedIds}
+              onActivate={onActivate}
+              onToggleCompare={onToggleCompare}
+            />
           )}
 
           {others.length === 0 && (
@@ -304,47 +276,50 @@ export function MixList({
   );
 }
 
+/**
+ * כל התמהילים של הנכס בשורה אחת — אלה של הבנק ואלה שנבנו בכלי יחד.
+ *
+ * ההבחנה ביניהם נעשית על הכרטיס עצמו, בגוון ובתווית, כדי שאפשר יהיה להשוות
+ * ביניהם בלי לקפוץ בין שני אזורים נפרדים.
+ */
 function MixSliderSection({
-  icon,
-  tone,
-  title,
-  subtitle,
   items,
+  originOf,
   comparedIds,
-  compareFull,
   onActivate,
   onToggleCompare,
 }: {
-  icon: React.ReactNode;
-  tone: 'bank' | 'custom';
-  title: string;
-  subtitle: string;
   items: SavedMix[];
+  originOf: (item: SavedMix) => MixOrigin;
   comparedIds: string[];
-  compareFull: boolean;
   onActivate: (item: SavedMix) => void;
   onToggleCompare: (id: string) => void;
 }) {
-  const bank = tone === 'bank';
+  const bankCount = items.filter((item) => originOf(item) === 'bank').length;
+  const customCount = items.length - bankCount;
+
   return (
-    <section
-      className={`rounded-2xl border p-3 ${
-        bank ? 'border-amber-200 bg-amber-50/70' : 'border-violet-200 bg-violet-50/50'
-      }`}
-    >
+    <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
       <div className="mb-2.5 flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2 sm:text-right">
-        <span
-          className={`flex h-7 w-7 items-center justify-center rounded-full text-white ${
-            bank ? 'bg-amber-600' : 'bg-violet-600'
-          }`}
-        >
-          {icon}
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-white">
+          <GitCompareArrows className="h-3.5 w-3.5" />
         </span>
         <div>
-          <p className={`text-xs font-black ${bank ? 'text-amber-950' : 'text-violet-950'}`}>
-            {title}
+          <p className="text-xs font-black text-slate-900">תמהילים להשוואה</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-2 text-[10px] text-slate-600 sm:justify-start">
+            {bankCount > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                {bankCount} ברירת מחדל של הבנק
+              </span>
+            )}
+            {customCount > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-violet-400" />
+                {customCount} מותאמים אישית
+              </span>
+            )}
           </p>
-          <p className={`text-[10px] ${bank ? 'text-amber-800' : 'text-violet-700'}`}>{subtitle}</p>
         </div>
       </div>
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:snap-x sm:snap-mandatory sm:overflow-x-auto sm:pb-1 sm:[scrollbar-width:thin] sm:justify-start">
@@ -355,8 +330,8 @@ function MixSliderSection({
               key={item.mix.id}
               mix={item.mix}
               summary={item.summary}
+              origin={originOf(item)}
               selected={selected}
-              selectDisabled={compareFull && !selected}
               onToggleSelect={() => onToggleCompare(item.mix.id)}
               onActivate={() => onActivate(item)}
             />

@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import {
   AMORTIZATION_TYPES,
-  MIN_FIXED_UNLINKED_PERCENT,
+  MIN_FIXED_PERCENT,
+  isFixedTrackType,
   TRACK_TYPES,
   VARIABLE_PERIODS,
 } from '../types';
@@ -45,8 +46,11 @@ interface TrackEditorProps {
   result: TrackResult;
   totalAmount: number;
   removable: boolean;
-  /** הסכום המינימלי המותר במסלול לפי דרישת בנק ישראל; 0 כשאין מגבלה */
-  minAmount?: number;
+  /**
+   * כמה עוד חסר בתמהיל בריבית קבועה כדי להגיע לשליש שבנק ישראל דורש.
+   * משמש להתרעה בלבד — הסכום במסלול עצמו אינו מוגבל בגללו.
+   */
+  missingFixed?: number;
   /** התקרה למסלול הזה — מה שנותר מסכום המשכנתא אחרי המסלולים האחרים */
   maxAmount: number;
   assumptions?: Assumptions;
@@ -64,7 +68,7 @@ export function TrackEditor({
   result,
   totalAmount,
   removable,
-  minAmount = 0,
+  missingFixed = 0,
   maxAmount,
   assumptions,
   onUpdate,
@@ -77,25 +81,19 @@ export function TrackEditor({
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const track = result.track;
+  /** מסלול בריבית קבועה — צמודה או לא צמודה — נספר לדרישת השליש */
+  const isFixed = isFixedTrackType(track.type);
 
-  const minPercentage = totalAmount > 0 ? (minAmount / totalAmount) * 100 : 0;
   const maxPercentage = totalAmount > 0 ? (maxAmount / totalAmount) * 100 : 100;
 
   /**
-   * הסכום במסלול נקבע לעצמו ולא נלקח מהמסלולים האחרים. ירידה מתחת לשליש הקל"צ
-   * שבנק ישראל דורש נדחית והערך חוזר למינימום המותר, ועלייה מעל מה שנותר מסכום
-   * המשכנתא נחתכת לתקרה.
+   * הסכום במסלול נקבע לעצמו ולא נלקח מהמסלולים האחרים.
+   *
+   * מסלול קבוע יכול לרדת מתחת לשליש בלי שייחסם: דרישת בנק ישראל היא על סך
+   * הריבית הקבועה בתמהיל, והשלמתה יכולה לבוא מכל מסלול קבוע אחר. רק חריגה
+   * מעל מה שנותר מסכום המשכנתא נחתכת לתקרה.
    */
   const applyAmount = (amount: number) => {
-    if (minAmount > 0 && amount < minAmount - 1) {
-      setNotice(
-        `בנק ישראל מחייב לפחות ${MIN_FIXED_UNLINKED_PERCENT}% מהמשכנתא בריבית קבועה לא צמודה. ` +
-          `הערך הוחזר למינימום המותר — ${formatShekel(minAmount)} (${minPercentage.toFixed(1)}%).`
-      );
-      onAmountChange(minAmount);
-      return;
-    }
-
     if (amount > maxAmount + 1) {
       setNotice(
         `אין מה לשבץ מעל סכום המשכנתא. הסכום הוגבל ל-${formatShekel(maxAmount)} — כל מה שנותר ` +
@@ -314,10 +312,11 @@ export function TrackEditor({
                 totalAmount={totalAmount}
                 onChange={applyAmount}
               />
-              {minAmount > 0 && (
-                <p className="text-[11px] text-blue-700">
-                  מינימום נדרש לפי בנק ישראל בריבית קבועה לא צמודה: {MIN_FIXED_UNLINKED_PERCENT}%
-                  מהמשכנתא — {formatShekel(minAmount)}.
+              {isFixed && missingFixed > 0 && (
+                <p className="text-[11px] text-amber-700">
+                  בתמהיל חסרים {formatShekel(missingFixed)} בריבית קבועה כדי להגיע ל-
+                  {MIN_FIXED_PERCENT}% שבנק ישראל דורש. אפשר להשלים כאן, במסלול קבוע אחר —
+                  צמוד או לא צמוד — או בהוספת מסלול קבוע נוסף.
                 </p>
               )}
               {notice && (
@@ -350,7 +349,7 @@ export function TrackEditor({
               max={100}
               step={0.5}
               display={`${track.percentage.toFixed(1)}% · ${formatShekel(track.amount)}`}
-              minLabel={minAmount > 0 ? `מינימום ${minPercentage.toFixed(0)}%` : '0%'}
+              minLabel="0%"
               maxLabel={
                 maxPercentage < 99.5
                   ? `עד ${maxPercentage.toFixed(0)}% — כל מה שנותר לשבץ`

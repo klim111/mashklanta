@@ -29,7 +29,8 @@ import {
   DEAL_TYPES,
   DEFAULT_INTEREST_RATES,
   MAX_LTV_PERCENT,
-  MIN_FIXED_UNLINKED_PERCENT,
+  MIN_FIXED_PERCENT,
+  isFixedTrackType,
   TRACK_TYPES,
   VARIABLE_PERIODS,
 } from '../types';
@@ -50,9 +51,9 @@ import {
   DEFAULT_DEAL_TYPE,
   clampCombinedLtv,
   dealTypeForCombinedLtv,
-  fixedUnlinkedAmount,
+  fixedAmount,
   maxMortgageFor,
-  minFixedUnlinkedAmount,
+  minFixedAmount,
   mixNameExistsForProperty,
   mortgageForLtvPercent,
 } from '../propertyContext';
@@ -218,18 +219,17 @@ export function MixSetupWizard({
   const formAmount = form.amountTouched ? Math.min(form.amount, remaining) : remaining;
 
   /**
-   * דרישת בנק ישראל היא ששליש מהמשכנתא יילקח בריבית קבועה לא צמודה, ולכן המסלול
-   * הזה לא יכול לרדת מתחת למה שחסר להשלמת השליש אחרי המסלולים שכבר נוספו.
+   * כמה עוד חסר בריבית קבועה כדי להשלים את השליש שבנק ישראל דורש, אחרי המסלולים
+   * שכבר נוספו. זו התרעה בלבד: הדרישה היא על סך הריבית הקבועה בתמהיל — צמודה
+   * ולא צמודה יחד — ולכן כל מסלול קבוע בודד רשאי להיות קטן משליש.
    */
-  const minAmount = useMemo(() => {
-    if (form.type !== 'fixed_unlinked') return 0;
-    const required = minFixedUnlinkedAmount(totalAmount) - fixedUnlinkedAmount(committedTracks);
-    return Math.max(0, Math.min(remaining, required));
-  }, [form.type, totalAmount, committedTracks, remaining]);
+  const missingFixed = useMemo(() => {
+    const required = minFixedAmount(totalAmount) - fixedAmount(committedTracks);
+    return required > 1 ? Math.min(remaining, required) : 0;
+  }, [totalAmount, committedTracks, remaining]);
 
-  const canAddTrack = formAmount > 0 && form.years > 0 && formAmount >= minAmount - 1;
-  const fixedShareOk =
-    fixedUnlinkedAmount(tracks) >= minFixedUnlinkedAmount(totalAmount) - 1;
+  const canAddTrack = formAmount > 0 && form.years > 0;
+  const fixedShareOk = fixedAmount(tracks) >= minFixedAmount(totalAmount) - 1;
 
   /** ההחזר החודשי של רשימת מסלולים נתונה, לבדיקה מול תקרת ההחזר של הלקוח */
   const paymentOf = (list: MortgageTrack[]) =>
@@ -270,17 +270,11 @@ export function MixSetupWizard({
     });
   };
 
-  /** הזנה מתחת למינימום של בנק ישראל נדחית, והשדה חוזר לערך המינימלי המותר. */
+  /**
+   * הסכום במסלול חופשי עד למה שנותר מסכום המשכנתא. אין כאן רצפה: מסלול קבוע
+   * קטן משליש תקין כל עוד מסלולי הקבועה יחד משלימים את השליש.
+   */
   const commitAmount = (value: number) => {
-    if (minAmount > 0 && value < minAmount - 1) {
-      const percent = totalAmount > 0 ? (minAmount / totalAmount) * 100 : 0;
-      setNotice(
-        `בנק ישראל מחייב לקחת לפחות ${MIN_FIXED_UNLINKED_PERCENT}% מהמשכנתא בריבית קבועה לא צמודה. ` +
-          `הסכום הוחזר למינימום המותר — ${formatShekel(minAmount)} (${percent.toFixed(1)}%).`
-      );
-      patchForm({ amount: minAmount, amountTouched: true });
-      return;
-    }
     setNotice(null);
     patchForm({ amount: Math.min(value, remaining), amountTouched: true });
   };
@@ -757,12 +751,14 @@ export function MixSetupWizard({
                   </p>
                 </div>
                 {!fixedShareOk && (
-                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5">
-                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-red-800 leading-relaxed">
-                      דרישת בנק ישראל: לפחות {MIN_FIXED_UNLINKED_PERCENT}% מהמשכנתא בריבית קבועה לא
-                      צמודה — {formatShekel(minFixedUnlinkedAmount(totalAmount))}. הסירו מסלול
-                      והזינו מחדש כדי לעמוד בדרישה.
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-900 leading-relaxed">
+                      דרישת בנק ישראל: לפחות {MIN_FIXED_PERCENT}% מהמשכנתא בריבית קבועה —{' '}
+                      {formatShekel(minFixedAmount(totalAmount))}. הקבועה הצמודה והלא צמודה
+                      נספרות יחד. חסרים עוד{' '}
+                      <strong>{formatShekel(minFixedAmount(totalAmount) - fixedAmount(tracks))}</strong>{' '}
+                      — הוסיפו או הגדילו מסלול קבוע כדי להשלים.
                     </p>
                   </div>
                 )}
@@ -845,10 +841,11 @@ export function MixSetupWizard({
                         totalAmount={totalAmount}
                         onChange={commitAmount}
                       />
-                      {minAmount > 0 && (
-                        <p className="text-[11px] text-blue-700">
-                          מינימום נדרש לפי בנק ישראל בריבית קבועה לא צמודה:{' '}
-                          {MIN_FIXED_UNLINKED_PERCENT}% מהמשכנתא — {formatShekel(minAmount)}.
+                      {isFixedTrackType(form.type) && missingFixed > 0 && (
+                        <p className="text-[11px] text-amber-700">
+                          חסרים {formatShekel(missingFixed)} בריבית קבועה כדי להגיע ל-
+                          {MIN_FIXED_PERCENT}% שבנק ישראל דורש. אפשר להשלים במסלול הזה או במסלול
+                          קבוע נוסף — צמוד או לא צמוד.
                         </p>
                       )}
                       {notice && (

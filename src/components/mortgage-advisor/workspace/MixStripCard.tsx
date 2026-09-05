@@ -5,11 +5,27 @@ import { formatDuration } from '../engine';
 import type { MixSummary, WorkspaceMix } from '../engine';
 import { CompositionBar, formatShekel, trackColor } from './primitives';
 
+/** מאיפה הגיע התמהיל — ברירת מחדל של הבנק, או תמהיל שנבנה בכלי */
+export type MixOrigin = 'bank' | 'custom';
+
+const ORIGIN_STYLES: Record<MixOrigin, { card: string; badge: string; label: string }> = {
+  bank: {
+    card: 'border-amber-300 bg-amber-50/60',
+    badge: 'bg-amber-100 text-amber-900',
+    label: 'ברירת מחדל של הבנק',
+  },
+  custom: {
+    card: 'border-violet-300 bg-violet-50/50',
+    badge: 'bg-violet-100 text-violet-900',
+    label: 'מותאם אישית',
+  },
+};
+
 interface MixStripCardProps {
   mix: WorkspaceMix;
   summary: MixSummary;
+  origin: MixOrigin;
   selected?: boolean;
-  selectDisabled?: boolean;
   onToggleSelect?: () => void;
   onActivate: () => void;
 }
@@ -17,15 +33,20 @@ interface MixStripCardProps {
 /**
  * כרטיס קומפקטי לסרגל התמהילים — בלי חץ פתיחה. לחיצה מעלה לאזור העבודה,
  * והעיגול בפינה הימנית העליונה מוסיף להשוואה.
+ *
+ * המקור מסומן בגוון ובתווית קטנה בלבד, כדי שההבחנה בין תמהיל של הבנק לתמהיל
+ * מותאם אישית לא תבוא על חשבון תוכן הכרטיס.
  */
 export function MixStripCard({
   mix,
   summary,
+  origin,
   selected = false,
-  selectDisabled = false,
   onToggleSelect,
   onActivate,
 }: MixStripCardProps) {
+  const tone = ORIGIN_STYLES[origin];
+
   return (
     <div
       role="button"
@@ -37,37 +58,32 @@ export function MixStripCard({
           onActivate();
         }
       }}
-      className={`relative mx-auto w-full max-w-[19rem] snap-center cursor-pointer rounded-2xl border bg-white p-3 pt-8 text-center shadow-sm transition-all hover:border-slate-300 sm:mx-0 sm:w-[250px] sm:max-w-none sm:shrink-0 sm:text-right ${
-        selected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
+      className={`relative mx-auto w-full max-w-[19rem] snap-center cursor-pointer rounded-2xl border p-3 pt-9 text-center shadow-sm transition-all sm:mx-0 sm:w-[250px] sm:max-w-none sm:shrink-0 sm:text-right ${
+        selected ? 'border-blue-500 ring-2 ring-blue-200' : `${tone.card} hover:border-slate-400`
       }`}
     >
+      <span
+        className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black ${tone.badge}`}
+      >
+        {tone.label}
+      </span>
       {onToggleSelect && (
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            if (!selectDisabled || selected) onToggleSelect();
+            onToggleSelect();
           }}
-          title={
-            selected
-              ? 'הסירו מההשוואה'
-              : selectDisabled
-                ? 'ניתן להשוות עד 3 תמהילים בבת אחת'
-                : 'סמנו להשוואה'
-          }
-          aria-label="סמנו להשוואה"
+          title={selected ? 'הסירו מאזור העבודה' : 'הוסיפו לאזור העבודה להשוואה'}
+          aria-label="סימון להשוואה באזור העבודה"
           aria-pressed={selected}
           className={`absolute top-2 right-2 h-5 w-5 rounded-full border-2 transition-colors ${
             selected
               ? 'border-blue-600 bg-blue-600'
-              : selectDisabled
-                ? 'cursor-not-allowed border-slate-200 bg-slate-50'
-                : 'border-slate-300 bg-white hover:border-blue-400'
+              : 'border-slate-300 bg-white hover:border-blue-400'
           }`}
         >
-          {selected && (
-            <span className="block h-full w-full rounded-full border-2 border-white" />
-          )}
+          {selected && <span className="block h-full w-full rounded-full border-2 border-white" />}
         </button>
       )}
 

@@ -38,8 +38,23 @@ export const MAX_LTV_PERCENT: Record<DealType, number> = {
   any_purpose: 50,
 };
 
-/** בנק ישראל מחייב לקחת לפחות שליש מהמשכנתא בריבית קבועה לא צמודה */
-export const MIN_FIXED_UNLINKED_PERCENT = 33;
+/**
+ * בנק ישראל מחייב לקחת לפחות שליש מהמשכנתא בריבית קבועה.
+ *
+ * הדרישה היא על הריבית הקבועה כולה — צמודה ולא צמודה יחד — ולא על מסלול בודד.
+ * לכן כל חלוקה בין שני המסלולים תקינה כל עוד סכומם מגיע לשליש: אפשר שליש קל"צ,
+ * אפשר שליש ק"צ, ואפשר כל שילוב ביניהם.
+ */
+export const MIN_FIXED_PERCENT = 33;
+
+/** המסלולים שנחשבים לריבית קבועה לצורך דרישת השליש */
+export const FIXED_TRACK_TYPES = ['fixed_unlinked', 'fixed_linked'] as const;
+
+export type FixedTrackType = (typeof FIXED_TRACK_TYPES)[number];
+
+export function isFixedTrackType(type: MortgageTrack['type']): boolean {
+  return (FIXED_TRACK_TYPES as readonly string[]).includes(type);
+}
 
 export const MORTGAGE_BANKS = [
   'לאומי',

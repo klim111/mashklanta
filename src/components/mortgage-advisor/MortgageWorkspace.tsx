@@ -38,7 +38,7 @@ import { WorkspaceLanding } from './workspace/WorkspaceLanding';
 import { MixSetupWizard } from './workspace/MixSetupWizard';
 import type { PropertySetup } from './workspace/MixSetupWizard';
 import { PropertyHeader } from './workspace/PropertyHeader';
-import { MixList, MAX_COMPARED_MIXES } from './workspace/MixList';
+import { MixList } from './workspace/MixList';
 import { MixEditor } from './workspace/MixEditor';
 import { SavedMixPicker } from './workspace/SavedMixPicker';
 import { RiskPanel } from './workspace/RiskPanel';
@@ -251,7 +251,6 @@ export function MortgageWorkspace({
   const [savedPickerOpen, setSavedPickerOpen] = useState(false);
   const [hiddenFromPage, setHiddenFromPage] = useState<Set<string>>(() => new Set());
   const [nameNotice, setNameNotice] = useState<string | null>(null);
-  const [compareNotice, setCompareNotice] = useState<string | null>(null);
 
   const signature = useMemo(() => signatureOf(mix), [mix]);
   const dirty = phase === 'ready' && signature !== savedSignature;
@@ -594,23 +593,11 @@ export function MortgageWorkspace({
     [propertyMixes, state.comparedIds]
   );
 
-  const toggleCompared = useCallback(
-    (id: string) => {
-      const already = state.comparedIds.includes(id);
-      if (
-        !already &&
-        propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id)).length >=
-          MAX_COMPARED_MIXES
-      ) {
-        setCompareNotice(`ניתן להוסיף עד ${MAX_COMPARED_MIXES} תמהילים להשוואה בבת אחת`);
-        window.setTimeout(() => setCompareNotice(null), 3500);
-        return;
-      }
-      setCompareNotice(null);
-      actions.toggleCompared(id);
-    },
-    [state.comparedIds, propertyMixes, actions]
-  );
+  /**
+   * סימון תמהיל מכניס אותו לאזור העבודה להשוואה. אין תקרה על מספר התמהילים —
+   * הטבלה והגרפים שמתחת מציגים את כולם יחד.
+   */
+  const toggleCompared = useCallback((id: string) => actions.toggleCompared(id), [actions]);
 
   const dismissFromPage = useCallback(
     (id: string) => {
@@ -893,7 +880,6 @@ export function MortgageWorkspace({
           onSaveAsNew={saveAsNewMix}
           uniformMixIds={preferredMixIds}
           nameNotice={nameNotice}
-          compareNotice={compareNotice}
           activeActions={
             <>
               <Button

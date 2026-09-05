@@ -1,4 +1,4 @@
-import { DEAL_TYPES, MAX_LTV_PERCENT, MIN_FIXED_UNLINKED_PERCENT } from './types';
+import { DEAL_TYPES, MAX_LTV_PERCENT, MIN_FIXED_PERCENT, isFixedTrackType } from './types';
 import type { DealType, MortgageTrack } from './types';
 import type { WorkspaceMix } from './engine';
 
@@ -97,40 +97,42 @@ export function planningPropertyType(dealType: DealType): string {
   }
 }
 
-/** סך הסכום שנלקח בריבית קבועה לא צמודה */
-export function fixedUnlinkedAmount(tracks: MortgageTrack[]): number {
+/**
+ * סך הסכום שנלקח בריבית קבועה — צמודה ולא צמודה יחד.
+ *
+ * שני המסלולים נספרים באותה קופה, כי דרישת בנק ישראל היא על הריבית הקבועה
+ * כולה ולא על סוג ההצמדה שלה.
+ */
+export function fixedAmount(tracks: MortgageTrack[]): number {
   return tracks
-    .filter((track) => track.type === 'fixed_unlinked')
+    .filter((track) => isFixedTrackType(track.type))
     .reduce((sum, track) => sum + track.amount, 0);
 }
 
-/** הסכום שדרישת בנק ישראל מחייבת לקחת בריבית קבועה לא צמודה */
-export function minFixedUnlinkedAmount(totalAmount: number): number {
+/** הסכום שדרישת בנק ישראל מחייבת לקחת בריבית קבועה */
+export function minFixedAmount(totalAmount: number): number {
   if (!Number.isFinite(totalAmount) || totalAmount <= 0) return 0;
-  return (totalAmount * MIN_FIXED_UNLINKED_PERCENT) / 100;
+  return (totalAmount * MIN_FIXED_PERCENT) / 100;
+}
+
+/** האם התמהיל עומד בדרישת שליש הריבית הקבועה */
+export function meetsFixedRequirement(
+  mix: Pick<WorkspaceMix, 'totalAmount' | 'tracks'>
+): boolean {
+  return fixedAmount(mix.tracks) >= minFixedAmount(mix.totalAmount) - 1;
 }
 
 /**
- * הסכום המינימלי המותר במסלול נתון. רק מסלול בריבית קבועה לא צמודה מוגבל, והמינימום
- * שלו הוא מה שחסר כדי להשלים את שליש המשכנתא שבנק ישראל דורש — כלומר מסלולים
- * קל"צ אחרים בתמהיל מקטינים את הדרישה מהמסלול הזה.
+ * כמה עוד חסר בריבית קבועה כדי להגיע לשליש.
+ *
+ * זה מה שמוצג להתרעה במקום לחסום: כל מסלול קבוע יכול להיות קטן משליש בפני
+ * עצמו, וההשלמה יכולה לבוא מכל מסלול קבוע אחר — צמוד או לא צמוד.
  */
-export function minAmountForTrack(
-  mix: Pick<WorkspaceMix, 'totalAmount' | 'tracks'>,
-  trackId: string
-): number {
-  const track = mix.tracks.find((t) => t.id === trackId);
-  if (!track || track.type !== 'fixed_unlinked') return 0;
-  const others = mix.tracks.filter((t) => t.id !== trackId);
-  const required = minFixedUnlinkedAmount(mix.totalAmount) - fixedUnlinkedAmount(others);
-  return Math.max(0, Math.min(mix.totalAmount, required));
-}
-
-/** האם התמהיל עומד בדרישת שליש קל"צ */
-export function meetsFixedUnlinkedRequirement(
+export function missingFixedAmount(
   mix: Pick<WorkspaceMix, 'totalAmount' | 'tracks'>
-): boolean {
-  return fixedUnlinkedAmount(mix.tracks) >= minFixedUnlinkedAmount(mix.totalAmount) - 1;
+): number {
+  const missing = minFixedAmount(mix.totalAmount) - fixedAmount(mix.tracks);
+  return missing > 1 ? missing : 0;
 }
 
 /** כתובת מנורמלת להשוואה — רווחים כפולים ואותיות רישיות לא הופכים נכס לשני נכסים */
