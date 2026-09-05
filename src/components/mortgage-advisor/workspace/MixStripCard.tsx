@@ -1,5 +1,6 @@
 'use client';
 
+import { Gavel } from 'lucide-react';
 import { TRACK_TYPES } from '../types';
 import { formatDuration } from '../engine';
 import type { MixSummary, WorkspaceMix } from '../engine';
@@ -28,6 +29,8 @@ interface MixStripCardProps {
   selected?: boolean;
   onToggleSelect?: () => void;
   onActivate: () => void;
+  /** הפקת בקשת הצעת ריביות לבנקים מהתמהיל שבכרטיס */
+  onRequestQuote?: () => void;
 }
 
 /**
@@ -44,6 +47,7 @@ export function MixStripCard({
   selected = false,
   onToggleSelect,
   onActivate,
+  onRequestQuote,
 }: MixStripCardProps) {
   const tone = ORIGIN_STYLES[origin];
 
@@ -106,6 +110,21 @@ export function MixStripCard({
           ))}
         </div>
       </div>
+
+      {onRequestQuote && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRequestQuote();
+          }}
+          title="הכנת הצעת התמהיל למיקוח מול הבנקים — מכתב בקשה בלי ריביות"
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100"
+        >
+          <Gavel className="h-3.5 w-3.5" />
+          הצעה לבנקים
+        </button>
+      )}
     </div>
   );
 }

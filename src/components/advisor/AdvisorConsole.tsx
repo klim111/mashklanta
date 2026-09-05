@@ -11,6 +11,7 @@ import {
   CalendarDays,
   CalendarPlus,
   FileText,
+  Gavel,
   Home as HomeIcon,
   Layers,
   ListChecks,
@@ -28,6 +29,7 @@ import { ClientList } from './ClientList';
 import { CalendarPanel } from './CalendarPanel';
 import { MeetingDialog } from './MeetingDialog';
 import { MixesPanel } from './MixesPanel';
+import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { AdvisorSettingsPanel } from './AdvisorSettingsPanel';
 import { TasksPanel } from './TasksPanel';
 import { StageChip } from './ui';
@@ -35,13 +37,14 @@ import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
 
-type TabId = 'clients' | 'tasks' | 'calendar' | 'mixes' | 'settings';
+type TabId = 'clients' | 'tasks' | 'calendar' | 'mixes' | 'rate-requests' | 'settings';
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'clients', label: 'לקוחות', icon: Users },
   { id: 'tasks', label: 'משימות', icon: ListChecks },
   { id: 'calendar', label: 'לוח שנה', icon: CalendarDays },
   { id: 'mixes', label: 'תמהילים שמורים', icon: Layers },
+  { id: 'rate-requests', label: 'תמהילים שהוגשו לבנקים', icon: Gavel },
   { id: 'settings', label: 'הגדרות', icon: Settings },
 ];
 
@@ -350,6 +353,8 @@ export function AdvisorConsole() {
           {tab === 'calendar' && <CalendarPanel clients={clients} onChanged={refreshAll} />}
 
           {tab === 'mixes' && <MixesPanel />}
+
+          {tab === 'rate-requests' && <BankRateRequests />}
 
           {tab === 'settings' && (
             <AdvisorSettingsPanel

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import {
   Calculator,
   FileText,
+  Gavel,
   User,
   LogOut,
   Settings,
@@ -19,19 +20,34 @@ import { PlansOverview } from '@/components/plan/PlansOverview';
 import { ClientMeetings } from '@/components/dashboard/ClientMeetings';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
+import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 
-type TabType = 'plans' | 'tools' | 'settings';
+type TabType = 'plans' | 'rate-requests' | 'tools' | 'settings';
 
 const tabs: Array<{ id: TabType; label: string; icon: typeof FileText }> = [
   { id: 'plans', label: 'דאשבורד משכנתאות', icon: FileText },
+  { id: 'rate-requests', label: 'תמהילים שהוגשו לבנקים', icon: Gavel },
   { id: 'tools', label: 'כלים ומחשבונים', icon: Calculator },
   { id: 'settings', label: 'הגדרות', icon: Settings },
 ];
+
+const TAB_IDS = tabs.map((tab) => tab.id);
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('plans');
+
+  // קישור ישיר לאזור מסוים, למשל /dashboard#rate-requests אחרי שמירת בקשה
+  useEffect(() => {
+    const fromHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if ((TAB_IDS as string[]).includes(hash)) setActiveTab(hash as TabType);
+    };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+    return () => window.removeEventListener('hashchange', fromHash);
+  }, []);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -143,6 +159,8 @@ export default function DashboardPage() {
               <PlansOverview />
             </>
           )}
+
+          {activeTab === 'rate-requests' && <BankRateRequests />}
 
           {activeTab === 'tools' && <ToolsHub />}
 

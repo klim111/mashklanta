@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -13,13 +13,14 @@ import {
   SquarePen,
   Trash2,
 } from 'lucide-react';
-import type { MixResult, WorkspaceMix } from '../engine';
+import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import type { SavedMix } from '../savedMixes';
 import { UNIFORM_BASKETS } from '@/lib/mortgage-plan';
 import { MixRow } from './MixRow';
 import { MixStripCard } from './MixStripCard';
 import type { MixOrigin } from './MixStripCard';
 import { formatShekel } from './primitives';
+import { RateRequestDialog } from '../rateRequest/RateRequestDialog';
 
 interface MixListProps {
   /** התמהיל שבניתוח, מהמצב החי שלו */
@@ -95,6 +96,12 @@ export function MixList({
   uniformMixIds = [],
   nameNotice,
 }: MixListProps) {
+  /** התמהיל שממנו מפיקים עכשיו מכתב בקשת ריביות לבנקים */
+  const [quoteTarget, setQuoteTarget] = useState<{
+    mix: WorkspaceMix;
+    summary: MixSummary;
+  } | null>(null);
+
   const scope = address?.trim()
     ? `לנכס ב${address.trim()}`
     : `למשכנתא בסך ${formatShekel(activeResult.mix.totalAmount)}`;
@@ -186,6 +193,9 @@ export function MixList({
                   : 'לחצו לעריכת המסלולים'
               }
               note={scenarioActive ? 'תרחיש פעיל' : undefined}
+              onRequestQuote={() =>
+                setQuoteTarget({ mix: activeResult.mix, summary: activeResult.summary })
+              }
               actions={
                 <>
                   <button
@@ -228,6 +238,9 @@ export function MixList({
                     onClick={() => onActivate(item)}
                     onRename={(name) => onRename(item.mix.id, name)}
                     hint="לחצו כדי לפתוח אותו לעריכה"
+                    onRequestQuote={() =>
+                      setQuoteTarget({ mix: item.mix, summary: item.summary })
+                    }
                     actions={
                       <>
                         <button
@@ -261,6 +274,7 @@ export function MixList({
               comparedIds={comparedIds}
               onActivate={onActivate}
               onToggleCompare={onToggleCompare}
+              onRequestQuote={(item) => setQuoteTarget({ mix: item.mix, summary: item.summary })}
             />
           )}
 
@@ -272,6 +286,16 @@ export function MixList({
           )}
         </div>
       </CardContent>
+
+      {/* מכתב בקשת הריביות לבנקים — נפתח מכל כרטיסייה ומכל שורת תמהיל */}
+      {quoteTarget && (
+        <RateRequestDialog
+          open
+          onOpenChange={(next) => !next && setQuoteTarget(null)}
+          mix={quoteTarget.mix}
+          summary={quoteTarget.summary}
+        />
+      )}
     </Card>
   );
 }
@@ -288,12 +312,14 @@ function MixSliderSection({
   comparedIds,
   onActivate,
   onToggleCompare,
+  onRequestQuote,
 }: {
   items: SavedMix[];
   originOf: (item: SavedMix) => MixOrigin;
   comparedIds: string[];
   onActivate: (item: SavedMix) => void;
   onToggleCompare: (id: string) => void;
+  onRequestQuote: (item: SavedMix) => void;
 }) {
   const bankCount = items.filter((item) => originOf(item) === 'bank').length;
   const customCount = items.length - bankCount;
@@ -334,6 +360,7 @@ function MixSliderSection({
               selected={selected}
               onToggleSelect={() => onToggleCompare(item.mix.id)}
               onActivate={() => onActivate(item)}
+              onRequestQuote={() => onRequestQuote(item)}
             />
           );
         })}

@@ -31,19 +31,23 @@ model User {
   /**
    * הלקוחות שהמשתמש מלווה כיועץ
    */
-  clients       Client[]       @relation("AdvisorClients")
+  clients       Client[]          @relation("AdvisorClients")
   /**
    * רשומות הליווי שבהן המשתמש הוא הלקוח
    */
-  advisedAs     Client[]       @relation("ClientAccount")
+  advisedAs     Client[]          @relation("ClientAccount")
   /**
    * תמהילים שהמשתמש שמר, בין כיועץ ובין כלקוח
    */
-  mortgageMixes MortgageMix[]  @relation("MixOwner")
+  mortgageMixes MortgageMix[]     @relation("MixOwner")
+  /**
+   * בקשות הריביות שהמשתמש הפיק לתמהילים, לצורך מיקוח מול הבנקים
+   */
+  rateRequests  BankRateRequest[] @relation("RateRequestOwner")
   /**
    * תהליכי תכנון המשכנתא שהמשתמש פתח באזור האישי
    */
-  mortgagePlans MortgagePlan[] @relation("PlanOwner")
+  mortgagePlans MortgagePlan[]    @relation("PlanOwner")
   /**
    * פרופיל פיננסי מההגדרות — פרטי הלווים וההון העצמי בלי פרטי נכס.
    * נטען כברירת מחדל בפתיחת תהליך תכנון חדש.
@@ -206,6 +210,7 @@ model Client {
   bankRates Json?
 
   mixes        MortgageMix[]
+  rateRequests BankRateRequest[]
   documents    ClientDocument[]
   actions      ClientAction[]
   reminders    Reminder[]
@@ -691,4 +696,53 @@ model MixCategory {
 
   @@unique([advisorId, name])
   @@index([advisorId, sortOrder])
+}
+
+/**
+ * בקשה להצעת ריביות — תמהיל שהוגש לבנקים למיקוח, בלי הריביות.
+ * נשמרים התמהיל כפי שהוגש והפרטים שמולאו במכתב; המכתב עצמו נבנה מחדש בכל
+ * טעינה מהתמהיל, כך שיש מקור אמת אחד ולא עותק קפוא של המסמך.
+ */
+model BankRateRequest {
+  id       String  @id @default(cuid())
+  ownerId  String
+  owner    User    @relation("RateRequestOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /**
+   * הלקוח שהבקשה שייכת לו, כדי שהיועץ והלקוח יראו את אותה רשימה
+   */
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * מזהה הבקשה בכלי, לשמירה חוזרת של אותה בקשה
+   */
+  requestKey String
+  /**
+   * מספר האסמכתה שמופיע במכתב
+   */
+  reference  String
+  /**
+   * מזהה התמהיל שממנו הופקה הבקשה
+   */
+  mixKey     String
+
+  name            String
+  bankName        String?
+  propertyAddress String?
+  totalAmount     Float
+  trackCount      Int
+  months          Int
+
+  /**
+   * התמהיל כפי שהוגש, והפרטים שמולאו במכתב
+   */
+  mixJson     Json
+  detailsJson Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, requestKey])
+  @@index([ownerId, createdAt])
+  @@index([clientId])
 }

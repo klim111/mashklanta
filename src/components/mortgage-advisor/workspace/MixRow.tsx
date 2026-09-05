@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertTriangle, Banknote, ChevronDown, Coins, Pencil, Percent, Wallet } from 'lucide-react';
+import { AlertTriangle, Banknote, ChevronDown, Coins, Gavel, Pencil, Percent, Wallet } from 'lucide-react';
 import { TRACK_TYPES } from '../types';
 import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
@@ -37,6 +37,8 @@ interface MixRowProps {
   highlight?: string;
   /** פעולות שמוצגות בשורה הסגורה עצמה */
   actions?: React.ReactNode;
+  /** הפקת בקשת הצעת ריביות לבנקים מהתמהיל שבשורה */
+  onRequestQuote?: () => void;
   /** מה שנפתח מתחת לשורה כשהיא פתוחה */
   detail?: React.ReactNode;
   hint?: string;
@@ -69,6 +71,7 @@ export function MixRow({
   namePlaceholder,
   highlight,
   actions,
+  onRequestQuote,
   detail,
   hint,
   note,
@@ -224,8 +227,9 @@ export function MixRow({
             </p>
           </div>
 
-          {actions && (
+          {(actions || onRequestQuote) && (
             <span onClick={stopRowClick} className="flex w-full flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:justify-end">
+              {onRequestQuote && <RequestQuoteButton onClick={onRequestQuote} />}
               {actions}
             </span>
           )}
@@ -296,6 +300,30 @@ export function MixRow({
 
       {expanded && detail}
     </div>
+  );
+}
+
+/**
+ * הפקת מכתב בקשת ריביות מהתמהיל שבשורה — אותו כפתור בכל מקום שבו מוצג סיכום
+ * תמהיל, כדי שאפשר יהיה לשלוח כל חלופה למיקוח מול הבנקים.
+ */
+export function RequestQuoteButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="הכנת הצעת התמהיל למיקוח מול הבנקים — מכתב בקשה בלי ריביות"
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100 sm:py-1.5 ${className}`}
+    >
+      <Gavel className="h-3.5 w-3.5" />
+      הצעה לבנקים
+    </button>
   );
 }
 
