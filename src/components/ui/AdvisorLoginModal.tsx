@@ -167,18 +167,18 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2 text-right">
-                כתובת מייל
+                שם משתמש או מייל
               </label>
               <div className="relative">
                 <input
                   id="email"
-                  type="email"
+                  type="text"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="your@email.com"
-                  dir="ltr"
+                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="שם משתמש או your@email.com"
                 />
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
@@ -195,7 +195,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

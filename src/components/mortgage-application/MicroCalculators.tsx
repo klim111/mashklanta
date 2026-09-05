@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatNumberInput, parseFormattedNumberInput } from '@/lib/currency';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator, TrendingUp, Settings, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -88,12 +89,18 @@ export function MicroCalculator({
       </label>
       <div className="relative">
         <input
-          type="number"
-          value={input.value}
-          onChange={(e) => onInputChange(input.id, Number(e.target.value))}
-          min={input.min}
-          max={input.max}
-          step={input.step || 1}
+          type={input.type === 'currency' ? 'text' : 'number'}
+          inputMode={input.type === 'currency' ? 'numeric' : undefined}
+          value={input.type === 'currency' ? (input.value ? formatNumberInput(String(input.value)) : '') : input.value}
+          onChange={(e) => {
+            const numValue = input.type === 'currency'
+              ? parseFormattedNumberInput(e.target.value)
+              : Number(e.target.value);
+            onInputChange(input.id, numValue);
+          }}
+          min={input.type === 'currency' ? undefined : input.min}
+          max={input.type === 'currency' ? undefined : input.max}
+          step={input.type === 'currency' ? undefined : (input.step || 1)}
           className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           dir="rtl"
         />

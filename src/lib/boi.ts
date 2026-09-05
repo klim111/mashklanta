@@ -1,15 +1,17 @@
+import { INTEREST_RATES } from "./interest-rates";
+
 export type RatesQuery = { from?: string; to?: string };
 
 function buildFallbackRates(asOfDate?: string) {
   const asOf = asOfDate || new Date().toISOString().slice(0, 10);
-  // Conservative placeholders to avoid over-promising if real API is unavailable
-  // The UI will map relevant keys per track id
+  // ריביות ברירת מחדל נטענות מקובץ הריביות המרכזי (src/lib/interest-rates.ts).
+  // ה-UI ממפה את המפתחות לפי מסלול.
   return {
-    prime: 6.0,
-    fixed_unlinked: 3.8,
-    fixed_cpi: 4.2,
-    gov_bonds: 3.5,
-    gov_bonds_cpi: 3.7,
+    prime: INTEREST_RATES.prime,
+    fixed_unlinked: INTEREST_RATES.fixed_unlinked,
+    fixed_cpi: INTEREST_RATES.fixed_linked,
+    gov_bonds: INTEREST_RATES.variable_unlinked_5y,
+    gov_bonds_cpi: INTEREST_RATES.variable_linked_5y,
     asOf,
     source: "fallback",
   } as const;

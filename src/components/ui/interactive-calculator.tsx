@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./card"
 import { Input } from "./input"
 import { Label } from "./label"
 import EquityCalculatorModal from "./equity-calculator-modal"
+import { formatNumberInput, parseFormattedNumberInput } from "@/lib/currency"
 
 import { TrendingUp, Banknote, Calendar, Home, Calculator, Table, Eye, EyeOff, AlertTriangle, HelpCircle, Phone, Upload } from "lucide-react"
 
@@ -120,33 +121,6 @@ export default function InteractiveCalculator() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
-  }
-
-  const parseFormattedNumber = (value: string) => {
-    if (!value) return 0
-    // Remove commas and other non-digit characters
-    const cleanValue = value.replace(/[^\d]/g, '')
-    return parseInt(cleanValue) || 0
-  }
-
-  const formatNumber = (value: string) => {
-    // הסרת פסיקים קיימים וסימנים אחרים
-    const cleanValue = value.replace(/[^\d]/g, '')
-    if (cleanValue === '') return ''
-    
-    // הוספת פסיקים
-    return new Intl.NumberFormat('he-IL').format(parseInt(cleanValue))
-  }
-
-  const formatNumberWithCommas = (value: string) => {
-    // הסרת פסיקים קיימים וסימנים אחרים
-    const cleanValue = value.replace(/[^\d]/g, '')
-    if (cleanValue === '') return ''
-    
-    // הוספת פסיקים
-    const numValue = parseInt(cleanValue)
-    if (isNaN(numValue)) return ''
-    return new Intl.NumberFormat('he-IL').format(numValue)
   }
 
   // Percent parsing helper for refinance inputs (allows decimals)
@@ -318,10 +292,10 @@ export default function InteractiveCalculator() {
   }
 
   // חישובים
-  const propertyPriceNum = parseFormattedNumber(propertyPrice) || 0
-  const downPaymentNum = parseFormattedNumber(downPayment) || 0
-  const monthlyIncomeNum = parseFormattedNumber(monthlyIncome) || 0
-  const otherLoansNum = parseFormattedNumber(otherLoans) || 0
+  const propertyPriceNum = parseFormattedNumberInput(propertyPrice) || 0
+  const downPaymentNum = parseFormattedNumberInput(downPayment) || 0
+  const monthlyIncomeNum = parseFormattedNumberInput(monthlyIncome) || 0
+  const otherLoansNum = parseFormattedNumberInput(otherLoans) || 0
   const interestRateNum = selectedLoanTrack ? selectedLoanTrack.averageRate : 0
   const loanTermNum = parseInt(loanTerm) || 0
   const otherLoansMonthsNum = parseInt(otherLoansMonths) || 0
@@ -346,11 +320,11 @@ export default function InteractiveCalculator() {
   const isLTVExceeded = hasRequiredFields ? ltvRatio > (selectedType.maxLTV * 100) : false
 
   // Refinance derived values
-  const currentBalanceNum = parseFormattedNumber(currentBalance) || 0
+  const currentBalanceNum = parseFormattedNumberInput(currentBalance) || 0
   const currentRateNum = parsePercent(currentRate) || 0
   const currentRemainingTermNum = parseInt(currentRemainingTerm) || 0
   const selectedRefiRateNum = selectedRefiTrack ? selectedRefiTrack.averageRate : 0
-  const refiCostsNum = parseFormattedNumber(refiCosts) || 0
+  const refiCostsNum = parseFormattedNumberInput(refiCosts) || 0
   const refiNewTermNum = parseInt(refiNewTerm) || 0
   const hasRefiRequired = Boolean(currentBalance && currentRate && currentRemainingTerm && selectedRefiTrack)
 
@@ -451,7 +425,7 @@ export default function InteractiveCalculator() {
               
               // Auto-fill fields if present
               if (result.mortgageTerms.principalOutstanding) {
-                setCurrentBalance(formatNumberWithCommas(String(Math.round(parseFloat(result.mortgageTerms.principalOutstanding)))))
+                setCurrentBalance(formatNumberInput(String(Math.round(parseFloat(result.mortgageTerms.principalOutstanding)))))
               }
               if (result.mortgageTerms.currentRatePercent) {
                 setCurrentRate(String(result.mortgageTerms.currentRatePercent))
@@ -512,7 +486,7 @@ export default function InteractiveCalculator() {
 
       // Auto-fill fields if present
       if (parsed.principalOutstanding) {
-        setCurrentBalance(formatNumberWithCommas(String(Math.round(parsed.principalOutstanding))))
+        setCurrentBalance(formatNumberInput(String(Math.round(parsed.principalOutstanding))))
       }
       if (parsed.currentRatePercent) {
         setCurrentRate(String(parsed.currentRatePercent))
@@ -832,7 +806,7 @@ export default function InteractiveCalculator() {
                         const v = e.target.value
                         if (v === '') { setCurrentBalance(''); return }
                         const clean = v.replace(/[^\d,]/g, '')
-                        setCurrentBalance(formatNumberWithCommas(clean))
+                        setCurrentBalance(formatNumberInput(clean))
                       }}
                       className="w-full text-left border-2 focus:border-blue-500"
                     />
@@ -952,7 +926,7 @@ export default function InteractiveCalculator() {
                         const v = e.target.value
                         if (v === '') { setRefiCosts(''); return }
                         const clean = v.replace(/[^\d,]/g, '')
-                        setRefiCosts(formatNumberWithCommas(clean))
+                        setRefiCosts(formatNumberInput(clean))
                       }}
                       placeholder="0"
                       className="w-full text-left border-2 focus:border-red-500"
@@ -1143,7 +1117,7 @@ export default function InteractiveCalculator() {
                         const cleanValue = value.replace(/[^\d,]/g, '')
                         
                         // Format with commas
-                        const formattedValue = formatNumberWithCommas(cleanValue)
+                        const formattedValue = formatNumberInput(cleanValue)
                         setPropertyPrice(formattedValue)
                       }}
                       placeholder=""
@@ -1208,7 +1182,7 @@ export default function InteractiveCalculator() {
                               return
                             }
                             const cleanValue = value.replace(/[^\d,]/g, '')
-                            const formattedValue = formatNumberWithCommas(cleanValue)
+                            const formattedValue = formatNumberInput(cleanValue)
                             setDownPayment(formattedValue)
                           }}
                           placeholder=""
@@ -1419,7 +1393,7 @@ export default function InteractiveCalculator() {
                           const cleanValue = value.replace(/[^\d,]/g, '')
                           
                           // Format with commas
-                          const formattedValue = formatNumberWithCommas(cleanValue)
+                          const formattedValue = formatNumberInput(cleanValue)
                           setMonthlyIncome(formattedValue)
                         }}
                         placeholder=""
@@ -1462,7 +1436,7 @@ export default function InteractiveCalculator() {
                           const cleanValue = value.replace(/[^\d,]/g, '')
                           
                           // Format with commas
-                          const formattedValue = formatNumberWithCommas(cleanValue)
+                          const formattedValue = formatNumberInput(cleanValue)
                           setOtherLoans(formattedValue)
                         }}
                         placeholder=""
@@ -1793,7 +1767,7 @@ export default function InteractiveCalculator() {
             onClose={() => setShowEquityCalculator(false)}
             onApplyEquity={(equity) => {
               setCalculatedEquity(equity)
-              setDownPayment(formatNumberWithCommas(equity.toString()))
+              setDownPayment(formatNumberInput(equity.toString()))
               setDownPaymentMode('calculate')
             }}
             propertyPrice={propertyPriceNum}

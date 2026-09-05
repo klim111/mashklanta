@@ -28,6 +28,7 @@ import {
   Save,
   Download
 } from "lucide-react"
+import { formatNumberInput, parseFormattedNumberInput } from "@/lib/currency"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
 
 interface EquityCalculator {
@@ -164,12 +165,6 @@ export default function EquityCalculatorModal({
   })
 
   // Helper functions
-  const parseFormattedNumber = (value: string) => {
-    if (!value) return 0
-    const cleanValue = value.replace(/[^\d]/g, '')
-    return parseInt(cleanValue) || 0
-  }
-
   // Calculate purchase tax based on property value and home type
   const calculatePurchaseTax = (propertyValue: number, isFirstHome: boolean): { tax: number; explanation: string } => {
     if (propertyValue <= 0) {
@@ -227,14 +222,6 @@ export default function EquityCalculatorModal({
     return { tax, explanation }
   }
 
-  const formatNumberWithCommas = (value: string) => {
-    const cleanValue = value.replace(/[^\d]/g, '')
-    if (cleanValue === '') return ''
-    const numValue = parseInt(cleanValue)
-    if (isNaN(numValue)) return ''
-    return new Intl.NumberFormat('he-IL').format(numValue)
-  }
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('he-IL', {
       style: 'currency',
@@ -246,20 +233,20 @@ export default function EquityCalculatorModal({
 
   // Calculate equity
   const calculateEquity = () => {
-    const availableFunds = parseFormattedNumber(equityCalculator.availableFunds) || 0
-    const brokerage = parseFormattedNumber(equityCalculator.brokerage) || (propertyPrice * 0.02)
-    const lawyerFees = parseFormattedNumber(equityCalculator.lawyerFees) || 5500
+    const availableFunds = parseFormattedNumberInput(equityCalculator.availableFunds) || 0
+    const brokerage = parseFormattedNumberInput(equityCalculator.brokerage) || (propertyPrice * 0.02)
+    const lawyerFees = parseFormattedNumberInput(equityCalculator.lawyerFees) || 5500
     
     // Calculate purchase tax automatically
     const purchaseTaxCalculation = calculatePurchaseTax(propertyPrice, isFirstHome)
-    const purchaseTax = parseFormattedNumber(equityCalculator.purchaseTax) || purchaseTaxCalculation.tax
+    const purchaseTax = parseFormattedNumberInput(equityCalculator.purchaseTax) || purchaseTaxCalculation.tax
     
-    const capitalGainsTax = parseFormattedNumber(equityCalculator.capitalGainsTax) || 0
-    const bettermentTax = parseFormattedNumber(equityCalculator.bettermentTax) || 0
-    const renovations = parseFormattedNumber(equityCalculator.renovations) || 0
-    const movingCosts = parseFormattedNumber(equityCalculator.movingCosts) || 0
-    const furnitureAppliances = parseFormattedNumber(equityCalculator.furnitureAppliances) || 0
-    const mortgageCosts = parseFormattedNumber(equityCalculator.mortgageCosts) || 0
+    const capitalGainsTax = parseFormattedNumberInput(equityCalculator.capitalGainsTax) || 0
+    const bettermentTax = parseFormattedNumberInput(equityCalculator.bettermentTax) || 0
+    const renovations = parseFormattedNumberInput(equityCalculator.renovations) || 0
+    const movingCosts = parseFormattedNumberInput(equityCalculator.movingCosts) || 0
+    const furnitureAppliances = parseFormattedNumberInput(equityCalculator.furnitureAppliances) || 0
+    const mortgageCosts = parseFormattedNumberInput(equityCalculator.mortgageCosts) || 0
 
     const totalExpenses = brokerage + lawyerFees + purchaseTax + capitalGainsTax + 
                          bettermentTax + renovations + movingCosts + furnitureAppliances + mortgageCosts
@@ -282,8 +269,8 @@ export default function EquityCalculatorModal({
       
       setEquityCalculator(prev => ({
         ...prev,
-        brokerage: formatNumberWithCommas(brokerageAmount.toString()),
-        purchaseTax: formatNumberWithCommas(purchaseTaxCalculation.tax.toString())
+        brokerage: formatNumberInput(brokerageAmount.toString()),
+        purchaseTax: formatNumberInput(purchaseTaxCalculation.tax.toString())
       }))
     }
   }, [propertyPrice, isFirstHome])
@@ -310,7 +297,7 @@ export default function EquityCalculatorModal({
       return
     }
     const cleanValue = value.replace(/[^\d,]/g, '')
-    const formattedValue = formatNumberWithCommas(cleanValue)
+    const formattedValue = formatNumberInput(cleanValue)
     updateEquityValue(field, formattedValue)
   }
 
@@ -757,7 +744,7 @@ export default function EquityCalculatorModal({
                        <CardContent>
                          <div className="space-y-2">
                            {expenseCategories.map((category) => {
-                             const amount = parseFormattedNumber(equityCalculator[category.id])
+                             const amount = parseFormattedNumberInput(equityCalculator[category.id])
                              if (amount === 0) return null
                              
                              return (

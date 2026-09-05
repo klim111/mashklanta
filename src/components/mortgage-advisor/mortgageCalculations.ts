@@ -19,12 +19,26 @@ export function calculateMonthlyPayment(principal: number, annualRate: number, y
 }
 
 /**
+ * חישוב תשלום חודשי ראשון בשיטת קרן שווה.
+ * הקרן החודשית קבועה, והריבית מחושבת לפי יתרה נוכחית ולכן סך התשלום החודשי פוחת לאורך הזמן.
+ */
+export function calculateEqualPrincipalFirstPayment(principal: number, annualRate: number, years: number): number {
+  const numPayments = years * 12;
+  if (numPayments <= 0) return 0;
+  const principalPayment = principal / numPayments;
+  const monthlyRate = annualRate / 100 / 12;
+  const firstMonthInterest = principal * monthlyRate;
+  return principalPayment + firstMonthInterest;
+}
+
+/**
  * יצירת לוח סילוקין למסלול בודד
  */
 export function generateAmortizationSchedule(
   principal: number, 
   annualRate: number, 
-  years: number
+  years: number,
+  amortizationType: MortgageTrack['amortizationType'] = 'spitzer'
 ): AmortRow[] {
   const monthlyPayment = calculateMonthlyPayment(principal, annualRate, years);
   const monthlyRate = annualRate / 100 / 12;
@@ -32,27 +46,65 @@ export function generateAmortizationSchedule(
   
   const schedule: AmortRow[] = [];
   let balance = principal;
-  
+  /** ריבית שנצברה ולא שולמה — קיימת רק בגרייס מלא */
+  let deferredInterest = 0;
+  const equalPrincipalPayment = numPayments > 0 ? principal / numPayments : 0;
+  const isPartialGrace = amortizationType === 'partial_grace';
+  const isFullGrace = amortizationType === 'full_grace';
+
   for (let month = 1; month <= numPayments; month++) {
-    const interestPayment = balance * monthlyRate;
-    const principalPayment = monthlyPayment - interestPayment;
-    const newBalance = Math.max(0, balance - principalPayment);
-    
+    // בגרייס מלא הריבית שנצברה היא חלק מהחוב וצוברת ריבית בעצמה
+    const interestPayment = (balance + deferredInterest) * monthlyRate;
+    const debtStart = balance + deferredInterest;
+    const isLastMonth = month === numPayments;
+
+    let principalPayment = 0;
+    let actualPayment = 0;
+    let deferredPaid = 0;
+    let newBalance = balance;
+
+    if (isFullGrace) {
+      if (isLastMonth) {
+        // אין תשלום שוטף לאורך התקופה, ובסופה נפרעים הקרן וכל הריבית שנצברה
+        deferredPaid = deferredInterest;
+        principalPayment = balance;
+        actualPayment = principalPayment + deferredPaid + interestPayment;
+        deferredInterest = 0;
+        newBalance = 0;
+      } else {
+        deferredInterest += interestPayment;
+      }
+    } else {
+      principalPayment = isPartialGrace
+        ? (isLastMonth ? balance : 0)
+        : amortizationType === 'equal_principal'
+          ? Math.min(equalPrincipalPayment, balance)
+          : monthlyPayment - interestPayment;
+      actualPayment =
+        isPartialGrace
+          ? interestPayment + principalPayment
+          : amortizationType === 'equal_principal'
+          ? principalPayment + interestPayment
+          : monthlyPayment;
+      newBalance = Math.max(0, balance - principalPayment);
+    }
+
     schedule.push({
       month,
-      balanceStart: balance,
-      payment: monthlyPayment,
+      balanceStart: debtStart,
+      payment: actualPayment,
       interest: interestPayment,
       principal: principalPayment,
-      balanceEnd: newBalance
+      deferredInterest: deferredPaid,
+      balanceEnd: newBalance + deferredInterest
     });
-    
+
     balance = newBalance;
-    
-    // הפסקה אם היתרה הגיעה לאפס
-    if (balance <= 0.01) break;
+
+    // הפסקה אם החוב נסגר במלואו
+    if (balance + deferredInterest <= 0.01) break;
   }
-  
+
   return schedule;
 }
 
@@ -60,8 +112,18 @@ export function generateAmortizationSchedule(
  * חישוב מסלול משכנתא בודד
  */
 export function calculateTrack(track: MortgageTrack): TrackCalculation {
-  const monthlyPayment = calculateMonthlyPayment(track.amount, track.interestRate, track.years);
-  const amortSchedule = generateAmortizationSchedule(track.amount, track.interestRate, track.years);
+  const amortSchedule = generateAmortizationSchedule(
+    track.amount,
+    track.interestRate,
+    track.years,
+    track.amortizationType || 'spitzer'
+  );
+  const isEqualPrincipal = track.amortizationType === 'equal_principal';
+  const monthlyPayment = amortSchedule[0]?.payment ?? (
+    isEqualPrincipal
+      ? calculateEqualPrincipalFirstPayment(track.amount, track.interestRate, track.years)
+      : calculateMonthlyPayment(track.amount, track.interestRate, track.years)
+  );
   
   const totalPaid = amortSchedule.reduce((sum, row) => sum + row.payment, 0);
   const totalInterest = totalPaid - track.amount;

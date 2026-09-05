@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +16,14 @@ import { DEFAULT_INTEREST_RATES } from './types';
 import { calculateMortgageMix, formatCurrency, formatPercentage } from './mortgageCalculations';
 import { MortgageMixCard } from './MortgageMixCard';
 import { ComparisonPanel } from './ComparisonPanel';
+import { formatDuration } from './engine';
+import {
+  PLAN_TERM_MONTHS_MAX,
+  PLAN_TERM_MONTHS_MIN,
+  clampTermMonths,
+  monthsToYears,
+  yearsToMonths,
+} from '@/lib/mortgage-plan';
 
 interface OptimizerInputs {
   totalAmount: number;
@@ -116,11 +125,10 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
               <Label htmlFor="totalAmount" className="text-base font-semibold">
                 סכום המשכנתא (₪)
               </Label>
-              <Input
+              <FormattedNumberValueInput
                 id="totalAmount"
-                type="number"
                 value={inputs.totalAmount}
-                onChange={(e) => setInputs({ ...inputs, totalAmount: parseFloat(e.target.value) || 0 })}
+                onValueChange={(v) => setInputs({ ...inputs, totalAmount: v })}
                 className="text-lg"
               />
             </div>
@@ -130,11 +138,10 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
               <Label htmlFor="maxMonthlyPayment" className="text-base font-semibold">
                 החזר חודשי מקסימלי (₪)
               </Label>
-              <Input
+              <FormattedNumberValueInput
                 id="maxMonthlyPayment"
-                type="number"
                 value={inputs.maxMonthlyPayment}
-                onChange={(e) => setInputs({ ...inputs, maxMonthlyPayment: parseFloat(e.target.value) || 0 })}
+                onValueChange={(v) => setInputs({ ...inputs, maxMonthlyPayment: v })}
                 className="text-lg"
               />
             </div>
@@ -279,21 +286,27 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
             {/* תקופת החזר מקסימלית */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label className="text-base font-semibold">תקופת החזר מקסימלית (שנים)</Label>
+                <Label className="text-base font-semibold">תקופת החזר מקסימלית</Label>
                 <Badge variant="outline" className="text-sm">
-                  {inputs.maxYears} שנים
+                  {formatDuration(clampTermMonths(yearsToMonths(inputs.maxYears)))}
                 </Badge>
               </div>
               <Slider
-                value={[inputs.maxYears]}
-                onValueChange={(value) => setInputs({ ...inputs, maxYears: value[0] })}
-                min={5}
-                max={Math.min(30, (80 - inputs.currentAge))}
+                dir="ltr"
+                value={[clampTermMonths(yearsToMonths(inputs.maxYears))]}
+                onValueChange={(value) => setInputs({ ...inputs, maxYears: monthsToYears(value[0]) })}
+                min={PLAN_TERM_MONTHS_MIN}
+                max={PLAN_TERM_MONTHS_MAX}
                 step={1}
                 className="w-full"
               />
+              <div dir="ltr" className="flex justify-between text-xs text-gray-500">
+                <span>{PLAN_TERM_MONTHS_MIN} חודשים</span>
+                <span>{PLAN_TERM_MONTHS_MAX} חודשים</span>
+              </div>
               <p className="text-xs text-gray-500">
-                מקסימום עד גיל 80: {Math.min(30, (80 - inputs.currentAge))} שנים
+                מקסימום עד גיל 80:{' '}
+                {formatDuration(Math.max(PLAN_TERM_MONTHS_MIN, (80 - inputs.currentAge) * 12))}
               </p>
             </div>
           </div>
@@ -302,8 +315,8 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
 
       {/* תמהילים מומלצים */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 sm:text-2xl">
             <Sparkles className="h-6 w-6 text-purple-600" />
             תמהילים מומלצים עבורך
           </h2>

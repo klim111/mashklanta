@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Edit, Check, X, Calculator, TrendingUp } from 'lucide-react';
 import type { MortgageTrack } from './types';
 import { TRACK_TYPES, DEFAULT_INTEREST_RATES, AMORTIZATION_TYPES, VARIABLE_PERIODS } from './types';
-import { formatCurrency, formatPercentage, calculateMonthlyPayment } from './mortgageCalculations';
+import { formatCurrency, formatPercentage, calculateTrack } from './mortgageCalculations';
+import { formatDuration } from './engine';
+import { clampTermMonths, monthsToYears, yearsToMonths } from '@/lib/mortgage-plan';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
 
@@ -34,18 +37,60 @@ export function MortgageTrackCard({
 }: MortgageTrackCardProps) {
   const [internalIsEditing, setInternalIsEditing] = useState(false);
   const [editData, setEditData] = useState(track);
+  const [isNameEditing, setIsNameEditing] = useState(false);
+  const [isCustomName, setIsCustomName] = useState(false);
   
   // שימוש בעריכה חיצונית או פנימית
   const isEditing = externalIsEditing || internalIsEditing;
   const { cpiData, loading: cpiLoading } = useCPI();
   const { currencyRates, loading: currencyLoading } = useCurrencyRates();
+  const buildAutoTrackName = (data: MortgageTrack) => {
+    const rawTrackTypeLabel = TRACK_TYPES[data.type] || 'מסלול';
+    const trackTypeLabel = rawTrackTypeLabel.replace(/^ריבית\s+/, '');
+    const amountLabel = formatCurrency(data.amount || 0);
+    const yearsLabel = formatDuration(yearsToMonths(data.years || 0));
+    const interestLabel = `${(data.interestRate || 0).toFixed(2)}%`;
+    const amortizationLabel = AMORTIZATION_TYPES[data.amortizationType || 'spitzer'];
+    return `${trackTypeLabel} - ${amountLabel} - ${yearsLabel} - ${interestLabel} - ${amortizationLabel}`;
+  };
+
+  const autoTrackName = useMemo(() => {
+    return buildAutoTrackName(editData);
+  }, [
+    editData.type,
+    editData.amount,
+    editData.years,
+    editData.interestRate,
+    editData.amortizationType,
+    editData.percentage,
+    editData.variablePeriod,
+    editData.cpiIndex,
+    editData.exchangeRate,
+    editData.currency,
+  ]);
+
+  useEffect(() => {
+    setEditData(track);
+    // Always start in auto-name mode; only explicit manual edit locks the name.
+    setIsCustomName(false);
+    setIsNameEditing(false);
+  }, [track]);
+
+  useEffect(() => {
+    if (!isCustomName) {
+      setEditData((prev) => ({ ...prev, name: autoTrackName }));
+    }
+  }, [autoTrackName, isCustomName]);
 
   const handleSave = () => {
+    const calculationPreview = calculateTrack(editData);
     // חישוב מחדש של האחוז והסכום
     const updatedTrack = {
       ...editData,
       percentage: totalMortgageAmount > 0 ? (editData.amount / totalMortgageAmount) * 100 : 0,
-      monthlyPayment: calculateMonthlyPayment(editData.amount, editData.interestRate, editData.years)
+      monthlyPayment: calculationPreview.monthlyPayment,
+      totalInterest: calculationPreview.totalInterest,
+      totalPaid: calculationPreview.totalPaid,
     };
     
     onUpdate(updatedTrack);
@@ -58,12 +103,21 @@ export function MortgageTrackCard({
 
   const handleCancel = () => {
     setEditData(track);
+    setIsNameEditing(false);
     if (externalIsEditing) {
       // אם זה עריכה חיצונית, לא ניתן לבטל
       onUpdate(track);
     } else {
       setInternalIsEditing(false);
     }
+  };
+
+  const commitNameEdit = () => {
+    const trimmed = editData.name.trim();
+    const resolvedName = trimmed || autoTrackName;
+    setEditData((prev) => ({ ...prev, name: resolvedName }));
+    setIsCustomName(resolvedName !== autoTrackName);
+    setIsNameEditing(false);
   };
 
   const handleTypeChange = (newType: string) => {
@@ -118,12 +172,34 @@ export function MortgageTrackCard({
       <Card className="border-2 border-blue-200 shadow-lg">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between text-lg">
-            <Input
-              value={editData.name}
-              onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-              className="text-lg font-semibold"
-              placeholder="שם המסלול"
-            />
+            <div className="flex-1">
+              {isNameEditing ? (
+                <Input
+                  value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                  onBlur={commitNameEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitNameEdit();
+                    if (e.key === 'Escape') {
+                      setEditData((prev) => ({ ...prev, name: isCustomName ? track.name : autoTrackName }));
+                      setIsNameEditing(false);
+                    }
+                  }}
+                  className="text-lg font-semibold"
+                  placeholder="שם המסלול"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsNameEditing(true)}
+                  className="w-full text-right text-lg font-semibold hover:text-blue-600 hover:underline underline-offset-4"
+                  title="לחץ לעריכת שם המסלול"
+                >
+                  {editData.name || autoTrackName}
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700">
                 <Check className="h-4 w-4" />
@@ -137,62 +213,6 @@ export function MortgageTrackCard({
         
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>סוג מסלול</Label>
-              <Select value={editData.type} onValueChange={handleTypeChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TRACK_TYPES).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label>ריבית שנתית (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={editData.interestRate}
-                onChange={(e) => setEditData({ ...editData, interestRate: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>סכום (₪)</Label>
-              <Input
-                type="number"
-                value={editData.amount}
-                onChange={(e) => handleAmountChange(parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            
-            <div>
-              <Label>אחוז מהמשכנתא (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={editData.percentage.toFixed(1)}
-                onChange={(e) => handlePercentageChange(parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>תקופה (שנים)</Label>
-              <Input
-                type="number"
-                value={editData.years}
-                onChange={(e) => setEditData({ ...editData, years: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-            
             <div>
               <Label>לוח סילוקין</Label>
               <Select 
@@ -209,31 +229,65 @@ export function MortgageTrackCard({
                 </SelectContent>
               </Select>
             </div>
+
+            <div>
+              <Label>סוג מסלול</Label>
+              <Select value={editData.type} onValueChange={handleTypeChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TRACK_TYPES).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>ריבית שנתית (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={editData.interestRate}
+                onChange={(e) => setEditData({ ...editData, interestRate: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+
+            <div>
+              <Label>סכום (₪)</Label>
+              <FormattedNumberValueInput
+                value={editData.amount}
+                onValueChange={handleAmountChange}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>תקופה (חודשים)</Label>
+              <FormattedNumberValueInput
+                value={yearsToMonths(editData.years)}
+                onValueChange={(value) =>
+                  setEditData({ ...editData, years: monthsToYears(clampTermMonths(value)) })
+                }
+              />
+            </div>
+            
+            <div>
+              <Label>אחוז מימון (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={editData.percentage.toFixed(1)}
+                onChange={(e) => handlePercentageChange(parseFloat(e.target.value) || 0)}
+              />
+            </div>
           </div>
 
           {/* שדות נוספים לפי סוג הריבית */}
-          {(editData.type.includes('linked') || editData.type === 'makam') && (
-            <div>
-              <Label>מדד המחירים לצרכן</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={editData.cpiIndex || cpiData?.value || 100}
-                  onChange={(e) => setEditData({ ...editData, cpiIndex: parseFloat(e.target.value) || 0 })}
-                />
-                {cpiLoading ? (
-                  <span className="text-xs text-gray-500">טוען מדד...</span>
-                ) : cpiData && (
-                  <div className="text-xs text-purple-600 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    עדכני: {cpiData.value.toFixed(1)}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {editData.type.includes('variable') && (
             <div>
               <Label>תקופת משתנה</Label>
@@ -278,9 +332,9 @@ export function MortgageTrackCard({
     );
   }
 
-  const monthlyPayment = calculateMonthlyPayment(track.amount, track.interestRate, track.years);
-  const totalPaid = monthlyPayment * track.years * 12;
-  const totalInterest = totalPaid - track.amount;
+  const trackCalculation = calculateTrack(track);
+  const monthlyPayment = trackCalculation.monthlyPayment;
+  const totalInterest = trackCalculation.totalInterest;
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200 border border-gray-200">
@@ -381,7 +435,7 @@ export function MortgageTrackCard({
         
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">תקופה:</span>
-          <span className="font-medium">{track.years} שנים</span>
+          <span className="font-medium">{formatDuration(yearsToMonths(track.years))}</span>
         </div>
         
         {track.amortizationType && (

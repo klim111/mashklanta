@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* הבזק חד-פעמי שמסב את תשומת הלב לכפתור השמירה כשנוצר שינוי שלא נשמר */
+@keyframes save-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.save-flash {
+  animation: save-flash 0.9s ease-out 1;
+}
+
 /* Financial Dynamics Animations */
 @keyframes pulse-glow {
   0%, 100% {
@@ -94,6 +111,23 @@
 
 .animate-float-slow {
   animation: float-slow 10s ease-in-out infinite 1s;
+}
+
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(28px, -18px) scale(1.08);
+  }
+  66% {
+    transform: translate(-22px, 16px) scale(0.94);
+  }
+}
+
+.animate-blob {
+  animation: blob 12s ease-in-out infinite;
 }
 
 /* Financial Graphics Carousel */
@@ -603,11 +637,20 @@ html {
   font-weight: 600;
 }
 
-/* Hebrew text styling */
-p, span, div {
+/* Hebrew text styling — only apply to elements without an explicit dir attribute,
+   so any `dir="ltr"` (e.g. on slider scales) is honored instead of being overridden. */
+p:not([dir]), span:not([dir]), div:not([dir]) {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   direction: rtl;
   text-align: center;
+}
+
+/* Make sure explicit direction attributes always win over the default RTL above. */
+[dir="ltr"] {
+  direction: ltr;
+}
+[dir="rtl"] {
+  direction: rtl;
 }
 
 /* Custom Animations */

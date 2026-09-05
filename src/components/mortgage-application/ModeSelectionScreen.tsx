@@ -53,26 +53,26 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="text-center mb-12"
+        className="text-center mb-8 sm:mb-12"
       >
-        <h1 className="text-4xl font-semibold text-slate-800 mb-4">
+        <h1 className="text-2xl font-semibold text-slate-800 mb-4 sm:text-4xl">
           בואו נתחיל את המסע
         </h1>
-        <p className="text-xl text-slate-600 max-w-2xl">
+        <p className="text-base text-slate-600 max-w-2xl sm:text-xl">
           איך תרצו לנווט בתהליך המשכנתא? בחרו את הדרך המתאימה לכם
         </p>
       </motion.div>
 
       {/* Mode Cards */}
-      <div className="grid md:grid-cols-2 gap-8 max-w-5xl w-full">
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-5xl w-full">
         {/* Test Button */}
-        <div className="col-span-2 mb-4">
+        <div className="md:col-span-2 mb-4">
           <button 
             onClick={testClick}
             className="bg-red-500 text-white px-4 py-2 rounded"
