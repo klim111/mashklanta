@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTrack, createWorkspaceMix } from '../engine';
 import { buildRateRequestDocument, rateRequestFileName } from './document';
-import { rateRequestBodyHtml, rateRequestPrintHtml } from './letter';
+import { RATE_REQUEST_PRINT_CSS, rateRequestBodyHtml } from './letter';
 import { rateRequestSheets } from './excel';
 
 function demoMix() {
@@ -122,11 +122,15 @@ describe('rateRequestBodyHtml', () => {
     expect(html).not.toContain('4.55');
   });
 
-  it('מסמך ההדפסה עצמאי וכולל את גיליון הסגנונות', () => {
-    const html = rateRequestPrintHtml(buildRateRequestDocument(demoMix()));
-    expect(html.startsWith('<!doctype html>')).toBe(true);
-    expect(html).toContain('@page');
-    expect(html).toContain('.rr-doc');
+  it('כללי ההדפסה מורידים מהדף כל מה שאינו המכתב, ומשאירים לו את צבעיו', () => {
+    // ההדפסה נעשית מתוך העמוד עצמו, ולכן זה מה שמונע הדפסה של כל מסך הכלי
+    expect(RATE_REQUEST_PRINT_CSS).toContain('@page');
+    expect(RATE_REQUEST_PRINT_CSS).toContain(
+      'body > *:not(.rr-print-root) { display: none !important; }'
+    );
+    expect(RATE_REQUEST_PRINT_CSS).toContain('print-color-adjust: exact !important');
+    // במסך המכתב המושתל אינו נראה — הוא קיים רק לצורך ההדפסה
+    expect(RATE_REQUEST_PRINT_CSS).toContain('.rr-print-root { display: none !important; }');
   });
 });
 

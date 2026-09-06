@@ -921,8 +921,10 @@ input[type="number"]::placeholder {
 }
 
 /* Professional Print Styles */
+/* מכתב בקשת הריביות מודפס בצבעים שלו, ולכן שורש ההדפסה שלו מוחרג מכאן */
 @media print {
-  * {
+  body > *:not(.rr-print-root),
+  body > *:not(.rr-print-root) * {
     background: white !important;
     color: black !important;
   }

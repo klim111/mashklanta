@@ -9,6 +9,9 @@
 import type { RateRequestDocument } from './document';
 import { formatRateRequestDate } from './document';
 
+/** מזהה תגית הסגנון של ההדפסה, כדי שאפשר יהיה להסיר אותה אחריה */
+const PRINT_STYLE_ID = 'rr-print-style';
+
 const shekel = new Intl.NumberFormat('he-IL', {
   style: 'currency',
   currency: 'ILS',
@@ -229,15 +232,49 @@ export const RATE_REQUEST_CSS = `
 }
 `;
 
-/** כללי הדפסה — נפרדים, כדי שלא ישפיעו על התצוגה במסך */
+/** המחלקה של שורש ההדפסה — המכתב שנשתל בעמוד רק לצורך ההדפסה */
+export const RATE_REQUEST_PRINT_ROOT_CLASS = 'rr-print-root';
+
+/**
+ * כללי ההדפסה. המכתב מודפס מתוך העמוד עצמו, ולכן הכללים האלה מורידים מהדף כל
+ * מה שאינו המכתב — כך יוצא בדיוק מה שמוצג בחלון, ולא כל מסך הכלי.
+ */
 export const RATE_REQUEST_PRINT_CSS = `
-@page { size: A4; margin: 12mm; }
-html, body { margin: 0; padding: 0; background: #fff; }
-.rr-doc { padding: 0; font-size: 11.5px; }
-.rr-doc table.rr-table { page-break-inside: auto; }
-.rr-doc table.rr-table tr { page-break-inside: avoid; }
-.rr-doc thead { display: table-header-group; }
-.rr-doc .rr-asks-section, .rr-doc .rr-sign { page-break-inside: avoid; }
+@media screen {
+  .rr-print-root { display: none !important; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  /* רק המכתב מודפס — שאר העמוד, כולל החלון שממנו הופעלה ההדפסה, יורד מהדף */
+  body > *:not(.rr-print-root) { display: none !important; }
+  .rr-print-root {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  /* הצבעים הם חלק מהמסמך, ולכן הם מודפסים ולא נמחקים על ידי הדפדפן */
+  .rr-print-root, .rr-print-root * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .rr-print-root .rr-doc { padding: 0; font-size: 11.5px; }
+  .rr-print-root .rr-doc table.rr-table { page-break-inside: auto; }
+  .rr-print-root .rr-doc table.rr-table tr { page-break-inside: avoid; }
+  .rr-print-root .rr-doc thead { display: table-header-group; }
+  .rr-print-root .rr-doc .rr-asks-section,
+  .rr-print-root .rr-doc .rr-sign { page-break-inside: avoid; }
+}
 `;
 
 function factsHtml(doc: RateRequestDocument): string {
@@ -396,57 +433,47 @@ export function rateRequestBodyHtml(doc: RateRequestDocument): string {
   </div>`;
 }
 
-/** מסמך HTML עצמאי — הבסיס להדפסה ולשמירה כ-PDF */
-export function rateRequestPrintHtml(doc: RateRequestDocument): string {
-  return `<!doctype html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(`${doc.title} — ${doc.mixName}`)}</title>
-<style>${RATE_REQUEST_CSS}${RATE_REQUEST_PRINT_CSS}</style>
-</head>
-<body>${rateRequestBodyHtml(doc)}</body>
-</html>`;
-}
-
 /**
- * הדפסת המכתב דרך חלונית מוסתרת. כך אין תלות בחלון קופץ שנחסם, והמשתמש בוחר
- * "שמירה כ-PDF" בתיבת ההדפסה של הדפדפן.
+ * הדפסת המכתב, ומשם שמירה כ-PDF מתיבת ההדפסה של הדפדפן.
+ *
+ * המכתב נשתל בעמוד עצמו וכללי ההדפסה מורידים מהדף כל מה שאינו הוא. כך מה
+ * שיוצא לקובץ זהה למה שמוצג בחלון — בכל דפדפן, גם כאלה שמדפיסים תמיד את
+ * המסמך הראשי ומתעלמים מבקשת הדפסה של חלונית פנימית.
  */
 export function printRateRequest(doc: RateRequestDocument): void {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
-  const frame = document.createElement('iframe');
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.position = 'fixed';
-  frame.style.left = '-10000px';
-  frame.style.bottom = '0';
-  frame.style.width = '210mm';
-  frame.style.height = '297mm';
-  frame.style.border = '0';
-  document.body.appendChild(frame);
+  // שאריות מהדפסה קודמת שלא הספיקה להתנקות
+  document
+    .querySelectorAll(`.${RATE_REQUEST_PRINT_ROOT_CLASS}, #${PRINT_STYLE_ID}`)
+    .forEach((element) => element.remove());
+
+  const style = document.createElement('style');
+  style.id = PRINT_STYLE_ID;
+  style.textContent = `${RATE_REQUEST_CSS}\n${RATE_REQUEST_PRINT_CSS}`;
+
+  const root = document.createElement('div');
+  root.className = RATE_REQUEST_PRINT_ROOT_CLASS;
+  root.setAttribute('aria-hidden', 'true');
+  root.innerHTML = rateRequestBodyHtml(doc);
+
+  document.head.appendChild(style);
+  document.body.appendChild(root);
 
   const cleanup = () => {
-    setTimeout(() => frame.remove(), 1000);
+    window.removeEventListener('afterprint', cleanup);
+    root.remove();
+    style.remove();
   };
+  window.addEventListener('afterprint', cleanup);
 
-  frame.onload = () => {
-    const win = frame.contentWindow;
-    if (!win) {
-      cleanup();
-      return;
+  // מרווח קצר כדי שהפריסה תסתיים לפני שתיבת ההדפסה נפתחת
+  window.setTimeout(() => {
+    try {
+      window.print();
+    } finally {
+      // דפדפנים שאינם משגרים afterprint — ניקוי מאוחר, כדי שהמכתב לא יישאר בדף
+      window.setTimeout(cleanup, 60_000);
     }
-    win.onafterprint = cleanup;
-    // מרווח קצר כדי שהפריסה תסתיים לפני שתיבת ההדפסה נפתחת
-    setTimeout(() => {
-      try {
-        win.focus();
-        win.print();
-      } finally {
-        setTimeout(cleanup, 60_000);
-      }
-    }, 120);
-  };
-
-  frame.srcdoc = rateRequestPrintHtml(doc);
+  }, 60);
 }
