@@ -1245,6 +1245,25 @@ export interface AnalysisResult {
   ratioOk: boolean;
 }
 
+/** השדות שמהם נגזרת ההכנסה הפנויה — תת-קבוצה של נתוני השלב הראשון */
+export type IncomeInputs = Pick<
+  AnalysisData,
+  'household' | 'income' | 'partnerIncome' | 'expenses' | 'existingLoans'
+>;
+
+/** סך ההכנסות של משק הבית, כולל בן/בת הזוג בהגשה זוגית */
+export function totalIncomeOf(data: IncomeInputs): number {
+  return (data.income ?? 0) + (data.household === 'COUPLE' ? data.partnerIncome ?? 0 : 0);
+}
+
+/**
+ * ההכנסה הפנויה של משק הבית: סך ההכנסות פחות ההוצאות החודשיות ופחות החזרי
+ * ההלוואות הקיימות. זהו הבסיס לתקרת ההחזר, ולכן זה גם המספר שמוצג לבנקים.
+ */
+export function disposableIncomeOf(data: IncomeInputs): number {
+  return totalIncomeOf(data) - (data.expenses ?? 0) - (data.existingLoans ?? 0);
+}
+
 /**
  * המספרים שמניעים את שלב הניתוח, ואת ההמלצות בשלבים שאחריו.
  *
@@ -1252,8 +1271,8 @@ export interface AnalysisResult {
  * לפני שנבנה תמהיל אמיתי בשלב הבא.
  */
 export function analyzeProfile(data: AnalysisData): AnalysisResult {
-  const totalIncome = (data.income ?? 0) + (data.household === 'COUPLE' ? data.partnerIncome ?? 0 : 0);
-  const disposableIncome = totalIncome - (data.expenses ?? 0) - (data.existingLoans ?? 0);
+  const totalIncome = totalIncomeOf(data);
+  const disposableIncome = disposableIncomeOf(data);
 
   const propertyValue = data.propertyValue ?? 0;
   const equity = data.equity ?? 0;

@@ -57,6 +57,8 @@ interface MixListProps {
   /** מזהי הסלים האחידים שנשמרו מהאישור העקרוני */
   uniformMixIds?: string[];
   nameNotice?: string | null;
+  /** ההכנסה הפנויה מהשלב הראשון — מוצגת במכתב הבקשה לבנקים */
+  disposableIncome?: number;
   /**
    * שמירת תמהיל שהריביות בו התקבלו מבנק. בלעדיה אין הזנת ריביות — התמהיל של
    * הבנק נשמר כתמהיל רגיל לנכס, ולכן השמירה נעשית באותו מקום כמו כל שמירה.
@@ -103,6 +105,7 @@ export function MixList({
   flashSave = false,
   uniformMixIds = [],
   nameNotice,
+  disposableIncome,
   onSaveBankQuote,
   onOpenBankQuote,
 }: MixListProps) {
@@ -314,6 +317,7 @@ export function MixList({
           onOpenChange={(next) => !next && setQuoteTarget(null)}
           mix={quoteTarget.mix}
           summary={quoteTarget.summary}
+          disposableIncome={disposableIncome}
         />
       )}
 

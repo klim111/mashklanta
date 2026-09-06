@@ -217,6 +217,7 @@ export function MixStage({
         soloMixKey={focusMixKey || undefined}
         allowSelectFinal
         finalMixKey={data.MIX.finalLocked ? data.MIX.mixKey : null}
+        disposableIncome={Math.round(analysis.disposableIncome) || undefined}
         defaultSetupSeed={{
           dealType: profile.dealType ?? undefined,
           maxMonthlyPayment: Math.round(analysis.maxMonthlyPayment) || undefined,

@@ -200,15 +200,22 @@ export function rateRequestSheets(doc: RateRequestDocument): XlsxSheet[] {
 
   const facts: Array<[string, string | number, XlsxStyle?]> = [
     ['סכום המשכנתא המבוקש', doc.totalAmount, { ...valueStyle, format: 'shekel' }],
-    ['מספר מסלולים בתמהיל', doc.lines.length],
   ];
-  if (doc.periodLabel) facts.push(['התקופה הארוכה בתמהיל', doc.periodLabel]);
   if (doc.propertyValue && doc.propertyValue > 0) {
     facts.push(['שווי הנכס', Math.round(doc.propertyValue), { ...valueStyle, format: 'shekel' }]);
   }
   if (doc.ltv !== undefined) {
     facts.push(['אחוז מימון', Number(doc.ltv.toFixed(1)), { ...valueStyle, format: 'percent' }]);
   }
+  if (doc.disposableIncome !== undefined) {
+    facts.push([
+      'הכנסה פנויה חודשית',
+      doc.disposableIncome,
+      { ...valueStyle, format: 'shekel' },
+    ]);
+  }
+  facts.push(['מספר מסלולים בתמהיל', doc.lines.length]);
+  if (doc.periodLabel) facts.push(['התקופה הארוכה בתמהיל', doc.periodLabel]);
   if (doc.dealTypeLabel) facts.push(['סוג העסקה', doc.dealTypeLabel]);
   if (doc.propertyAddress) facts.push(['כתובת הנכס', doc.propertyAddress]);
   if (doc.details.applicantName?.trim()) facts.push(['שם הפונה', doc.details.applicantName.trim()]);

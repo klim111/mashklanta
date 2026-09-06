@@ -30,6 +30,7 @@ import { printRateRequest } from './letter';
 import { downloadRateRequestXlsx } from './excel';
 import { RateRequestLetter } from './RateRequestLetter';
 import { useRateRequests } from './useRateRequests';
+import { useProfileDisposableIncome } from './useProfileDisposableIncome';
 
 interface RateRequestDialogProps {
   open: boolean;
@@ -37,6 +38,11 @@ interface RateRequestDialogProps {
   mix: WorkspaceMix;
   /** סיכום קיים, כדי לא לחשב לוח סילוקין מחדש */
   summary?: MixSummary;
+  /**
+   * ההכנסה הפנויה שחושבה בשלב הראשון של התהליך. כשהיא לא מועברת, היא נטענת
+   * מהפרופיל השמור של המשתמש.
+   */
+  disposableIncome?: number;
   /**
    * בקשה שכבר נשמרה ונפתחת שוב — המזהה, האסמכתה ותאריך היצירה נשמרים כפי שהם,
    * כך שהמכתב שנפתח מהאזור האישי זהה לזה שהופק בפעם הראשונה.
@@ -64,11 +70,15 @@ export function RateRequestDialog({
   onOpenChange,
   mix,
   summary,
+  disposableIncome,
   existing,
   onSaved,
 }: RateRequestDialogProps) {
   const { data: session } = useSession();
   const { save, signedIn } = useRateRequests();
+  const profileDisposableIncome = useProfileDisposableIncome();
+  // מה שהתהליך העביר גובר על הפרופיל השמור — שם הנתונים עדכניים יותר
+  const income = disposableIncome ?? profileDisposableIncome;
 
   const [details, setDetails] = useState<RateRequestDetails>(existing?.details ?? {});
   const [saving, setSaving] = useState(false);
@@ -85,6 +95,15 @@ export function RateRequestDialog({
       }
     );
   }, [open, existing, session?.user?.name, session?.user?.email]);
+
+  // ההכנסה הפנויה נטענת אחרי הפתיחה, ולכן היא נכנסת לפרטים ברגע שהיא מגיעה.
+  // בבקשה שמורה נשמר הערך שהיה בזמן ההפקה, ולכן הוא לא נדרס.
+  useEffect(() => {
+    if (!open || !income || existing?.details.disposableIncome) return;
+    setDetails((current) =>
+      current.disposableIncome === income ? current : { ...current, disposableIncome: income }
+    );
+  }, [open, income, existing]);
 
   // המזהה, האסמכתה ותאריך היצירה נקבעים פעם אחת לכל פתיחה, כדי שהמסמך שיישמר
   // יהיה אותו מסמך שהודפס

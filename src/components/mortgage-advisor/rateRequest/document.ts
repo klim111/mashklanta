@@ -22,6 +22,11 @@ export interface RateRequestDetails {
   contactEmail?: string;
   /** מועד אחרון לקבלת ההצעה (ISO של תאריך) */
   replyBy?: string;
+  /**
+   * ההכנסה הפנויה החודשית של משק הבית, כפי שחושבה מהנתונים שהוזנו בשלב הראשון.
+   * מוצגת לבנק כמידע כללי לצד אחוז המימון.
+   */
+  disposableIncome?: number;
   /** בקשות מיוחדות שיתווספו לסעיפי הבקשה */
   notes?: string;
 }
@@ -60,6 +65,8 @@ export interface RateRequestDocument {
   propertyValue?: number;
   dealTypeLabel?: string;
   ltv?: number;
+  /** ההכנסה הפנויה החודשית מהשלב הראשון */
+  disposableIncome?: number;
   months: number;
   periodLabel: string;
   lines: RateRequestLine[];
@@ -145,9 +152,9 @@ function introParagraphs(
 
   return [
     `${who}מבקש/ת לקבל מכם הצעת ריביות עבור תמהיל משכנתא בסך ${amount} ש"ח${where}. ` +
-      `התמהיל נבנה מראש בהתאם ליכולת ההחזר ולצורכי משק הבית, והוא מובא לפניכם כמות שהוא.`,
+      `התמהיל נבנה מראש בהתאם ליכולת ההחזר ולצורכי משק הבית.`,
     `התמהיל מורכב מ-${lineCount} מסלולים, ולכל מסלול נקבעו מראש לוח סילוקין, סוג ריבית, תקופה וסכום. ` +
-      `נבקשכם לתמחר את המסלולים במבנה זה בלבד — בלי לשנות סכומים, תקופות או לוחות סילוקין.`,
+      `נבקשכם לתמחר את המסלולים במבנה זה.`,
     'בטבלה שלהלן, עמודת "ריבית שנתית מוצעת" ועמודת "החזר חודשי" הושארו ריקות בכוונה, והן מיועדות למילוי על ידכם. ' +
       'הצעות של מספר בנקים על אותו מבנה תמהיל מאפשרות השוואה מלאה ביניהן, ולכן חשוב שהמבנה יישמר.',
   ];
@@ -209,6 +216,10 @@ export function buildRateRequestDocument(
     propertyValue: mix.propertyValue,
     dealTypeLabel: mix.dealType ? DEAL_TYPES[mix.dealType as DealType] : undefined,
     ltv,
+    disposableIncome:
+      typeof details.disposableIncome === 'number' && details.disposableIncome > 0
+        ? Math.round(details.disposableIncome)
+        : undefined,
     months,
     periodLabel: months > 0 ? formatDuration(months) : '',
     lines,

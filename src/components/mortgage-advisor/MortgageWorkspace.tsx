@@ -88,6 +88,8 @@ interface MortgageWorkspaceProps {
   activeMixKey?: string | null;
   /** ערכי ברירת מחדל לאשף (סוג עסקה ותקרת החזר מהפרופיל) */
   defaultSetupSeed?: Partial<PropertySetup>;
+  /** ההכנסה הפנויה שחושבה בשלב הניתוח הפיננסי — מוצגת במכתב הבקשה לבנקים */
+  disposableIncome?: number;
   /** אירועים שמצטרפים לכל תמהיל חדש — למשל פירעון מוקדם מהכנסה עתידית שהוצהרה */
   defaultEvents?: MixEvent[];
   /** ייעוד סכום עתידי למסלול בתמהיל שמור — פותח את התמהיל בניתוח ואת חלון הפרעון */
@@ -139,6 +141,7 @@ export function MortgageWorkspace({
   preferredMixIds,
   activeMixKey,
   defaultSetupSeed,
+  disposableIncome,
   defaultEvents,
   pendingPrepay,
   onPendingPrepayHandled,
@@ -903,6 +906,7 @@ export function MortgageWorkspace({
           onSaveAsNew={saveAsNewMix}
           uniformMixIds={preferredMixIds}
           nameNotice={nameNotice}
+          disposableIncome={disposableIncome}
           onSaveBankQuote={saveBankQuote}
           onOpenBankQuote={openBankQuote}
           activeActions={

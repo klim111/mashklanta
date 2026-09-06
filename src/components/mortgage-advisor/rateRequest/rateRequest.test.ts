@@ -84,6 +84,23 @@ describe('buildRateRequestDocument', () => {
     expect(rateRequestFileName(doc, 'xlsx')).toBe('בקשת-ריביות-תמהיל-מאוזן-מזרחי.xlsx');
   });
 
+  it('הפתיח מסתיים במקום שנקבע, בלי המשך', () => {
+    const doc = buildRateRequestDocument(demoMix());
+    expect(doc.intro[0].endsWith('בהתאם ליכולת ההחזר ולצורכי משק הבית.')).toBe(true);
+    expect(doc.intro[1].endsWith('נבקשכם לתמחר את המסלולים במבנה זה.')).toBe(true);
+  });
+
+  it('נושא את ההכנסה הפנויה מהשלב הראשון, לצד אחוז המימון', () => {
+    const doc = buildRateRequestDocument(demoMix(), {
+      details: { disposableIncome: 18_400 },
+    });
+    expect(doc.disposableIncome).toBe(18_400);
+    expect(doc.ltv).toBeCloseTo(66.666, 2);
+
+    // בלי נתוני שלב ראשון השורה פשוט לא מופיעה
+    expect(buildRateRequestDocument(demoMix()).disposableIncome).toBeUndefined();
+  });
+
   it('מציג יתרה שלא שובצה למסלול, כדי שהבנק יראה את כל הסכום', () => {
     const mix = demoMix();
     mix.totalAmount = 1_200_000;
@@ -112,6 +129,19 @@ describe('rateRequestBodyHtml', () => {
       month: '2-digit',
       year: 'numeric',
     }).format(new Date(doc.createdAt)));
+  });
+
+  it('מציג בראש המסמך את אחוז המימון ואת ההכנסה הפנויה כמידע כללי', () => {
+    const doc = buildRateRequestDocument(demoMix(), {
+      details: { disposableIncome: 18_400 },
+    });
+    const html = rateRequestBodyHtml(doc);
+    const facts = html.slice(html.indexOf('rr-facts'), html.indexOf('rr-section'));
+
+    expect(facts).toContain('אחוז מימון');
+    expect(facts).toContain('66.7%');
+    expect(facts).toContain('הכנסה פנויה חודשית');
+    expect(facts).toContain('18,400');
   });
 
   it('משאיר את תאי הריבית וההחזר ריקים בכל שורת מסלול', () => {
@@ -147,9 +177,22 @@ describe('rateRequestSheets', () => {
       )
     );
     expect(flat).toContain('ריבית שנתית מוצעת');
+    expect(flat).toContain('אחוז מימון');
     expect(flat).toContain('למילוי הבנק');
     expect(flat).toContain('סה"כ');
     expect(flat).toContain(1_000_000);
+  });
+
+  it('מעביר לאקסל גם את ההכנסה הפנויה מהשלב הראשון', () => {
+    const doc = buildRateRequestDocument(demoMix(), {
+      details: { disposableIncome: 18_400 },
+    });
+    const [sheet] = rateRequestSheets(doc);
+    const flat = sheet.rows.flatMap((row) =>
+      row.cells.map((cell) => (cell && typeof cell === 'object' ? cell.value : cell))
+    );
+    expect(flat).toContain('הכנסה פנויה חודשית');
+    expect(flat).toContain(18_400);
   });
 
   it('משאיר את שתי עמודות הבנק ריקות אך מעוצבות', () => {

@@ -46,6 +46,10 @@ export function sanitizeRateRequestDetails(raw: unknown): RateRequestDetails {
   if (replyBy) details.replyBy = replyBy;
   const notes = text(source.notes);
   if (notes) details.notes = notes;
+  const disposableIncome = Number(source.disposableIncome);
+  if (Number.isFinite(disposableIncome) && disposableIncome > 0) {
+    details.disposableIncome = Math.round(disposableIncome);
+  }
   return details;
 }
 

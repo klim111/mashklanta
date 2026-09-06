@@ -278,15 +278,16 @@ export const RATE_REQUEST_PRINT_CSS = `
 `;
 
 function factsHtml(doc: RateRequestDocument): string {
-  const facts: Array<[string, string]> = [
-    ['סכום המשכנתא המבוקש', money(doc.totalAmount)],
-    ['מספר מסלולים', String(doc.lines.length)],
-  ];
-  if (doc.periodLabel) facts.push(['התקופה הארוכה בתמהיל', doc.periodLabel]);
+  const facts: Array<[string, string]> = [['סכום המשכנתא המבוקש', money(doc.totalAmount)]];
   if (doc.propertyValue && doc.propertyValue > 0) {
     facts.push(['שווי הנכס', money(doc.propertyValue)]);
   }
   if (doc.ltv !== undefined) facts.push(['אחוז מימון', `${doc.ltv.toFixed(1)}%`]);
+  if (doc.disposableIncome !== undefined) {
+    facts.push(['הכנסה פנויה חודשית', money(doc.disposableIncome)]);
+  }
+  facts.push(['מספר מסלולים', String(doc.lines.length)]);
+  if (doc.periodLabel) facts.push(['התקופה הארוכה בתמהיל', doc.periodLabel]);
   if (doc.dealTypeLabel) facts.push(['סוג העסקה', doc.dealTypeLabel]);
   if (doc.propertyAddress) facts.push(['הנכס', doc.propertyAddress]);
 
