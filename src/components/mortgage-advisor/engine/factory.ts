@@ -1,6 +1,7 @@
 import type { DealType, MortgageMix, MortgageTrack } from '../types';
-import { AMORTIZATION_TYPES, DEAL_TYPES, DEFAULT_INTEREST_RATES, TRACK_TYPES } from '../types';
+import { AMORTIZATION_TYPES, DEAL_TYPES, DEFAULT_INTEREST_RATES, MORTGAGE_BANKS, TRACK_TYPES } from '../types';
 import { DEFAULT_ASSUMPTIONS } from './types';
+import type { BankQuote } from './types';
 import type { InflationForecast } from '@/lib/inflation-forecast';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import type { Assumptions, TrackType, WorkspaceMix } from './types';
@@ -218,6 +219,30 @@ export function remainingAmount(mix: Pick<WorkspaceMix, 'tracks' | 'totalAmount'
 }
 
 /**
+ * ניקוי הריביות שהתקבלו מבנק. בלי שם בנק מוכר אין הצעה, ולכן מוחזר undefined
+ * והתמהיל נשאר תמהיל רגיל.
+ */
+function sanitizeBankQuote(raw: unknown): BankQuote | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const source = raw as Partial<BankQuote>;
+  const bank = MORTGAGE_BANKS.find((name) => name === source.bank);
+  if (!bank) return undefined;
+
+  const receivedAt =
+    typeof source.receivedAt === 'string' && !Number.isNaN(Date.parse(source.receivedAt))
+      ? source.receivedAt
+      : new Date().toISOString();
+
+  return {
+    bank,
+    receivedAt,
+    sourceMixId: typeof source.sourceMixId === 'string' ? source.sourceMixId : undefined,
+    requestId: typeof source.requestId === 'string' ? source.requestId : undefined,
+    notes: typeof source.notes === 'string' && source.notes.trim() ? source.notes.trim() : undefined,
+  };
+}
+
+/**
  * מתקן תמהיל שנקרא מאחסון מקומי. תמהילים שנשמרו בגרסאות קודמות עלולים לחסור
  * שדות או להחזיק בהם null, ולכן כל מה שנטען מהדפדפן עובר כאן לפני שהוא מוצג
  * או מחושב. מחזיר null כשאין מה להציל.
@@ -263,6 +288,7 @@ export function sanitizeMix(raw: unknown): WorkspaceMix | null {
         ? undefined
         : finiteNumber(source.maxMonthlyPayment, 0) || undefined,
     locked: source.locked === true,
+    quote: sanitizeBankQuote(source.quote),
     createdAt: typeof source.createdAt === 'string' ? source.createdAt : now,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : now,
   });

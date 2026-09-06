@@ -103,6 +103,25 @@ export function isScenarioActive(assumptions: Assumptions): boolean {
 
 export const DEFAULT_ASSUMPTIONS = BASE_ASSUMPTIONS;
 
+/**
+ * ריביות שהתקבלו מבנק על מבנה התמהיל.
+ *
+ * אחרי שהתמהיל נשלח לבנקים בלי ריביות ובנק החזיר תמחור, הריביות נרשמות על
+ * עותק של אותו תמהיל. כל בנק וכל סבב מקבלים עותק משלהם, ולכן אפשר להזין
+ * ריביות לאותו תמהיל שוב ושוב ולהשוות בין ההצעות.
+ */
+export interface BankQuote {
+  bank: MortgageBank;
+  /** מתי התקבלו הריביות מהבנק (ISO) */
+  receivedAt: string;
+  /** התמהיל שהוגש לבנק, זה שממנו הועתק המבנה */
+  sourceMixId?: string;
+  /** בקשת הריביות שממנה נוצרה ההצעה, כשההזנה נעשתה מתוך בקשה שמורה */
+  requestId?: string;
+  /** הערות מההצעה: עמלות, תוקף, תנאים */
+  notes?: string;
+}
+
 /** תמהיל עבודה — תמהיל רגיל בתוספת אירועים והנחות */
 export interface WorkspaceMix {
   id: string;
@@ -125,6 +144,8 @@ export interface WorkspaceMix {
   notes?: string;
   /** תמהיל שננעל אחרי בחירה כתמהיל סופי למכרז */
   locked?: boolean;
+  /** הריביות בתמהיל התקבלו מבנק — מי הבנק ומתי התקבלו */
+  quote?: BankQuote;
   createdAt: string;
   updatedAt: string;
 }

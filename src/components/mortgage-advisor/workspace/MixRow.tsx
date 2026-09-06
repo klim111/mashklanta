@@ -3,7 +3,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertTriangle, Banknote, ChevronDown, Coins, Gavel, Pencil, Percent, Wallet } from 'lucide-react';
+import {
+  AlertTriangle,
+  BadgePercent,
+  Banknote,
+  ChevronDown,
+  Coins,
+  Gavel,
+  Pencil,
+  Percent,
+  Wallet,
+} from 'lucide-react';
 import { TRACK_TYPES } from '../types';
 import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
@@ -12,6 +22,7 @@ import { CompositionBar, formatShekel, trackColor } from './primitives';
 import { CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
 import { describePaymentDrop } from './paymentDrop';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
+import { formatQuoteDate } from '../bankQuote/quote';
 
 interface MixRowProps {
   mix: WorkspaceMix;
@@ -39,6 +50,8 @@ interface MixRowProps {
   actions?: React.ReactNode;
   /** הפקת בקשת הצעת ריביות לבנקים מהתמהיל שבשורה */
   onRequestQuote?: () => void;
+  /** הזנת הריביות שהתקבלו מבנק על מבנה התמהיל שבשורה */
+  onEnterQuote?: () => void;
   /** מה שנפתח מתחת לשורה כשהיא פתוחה */
   detail?: React.ReactNode;
   hint?: string;
@@ -72,6 +85,7 @@ export function MixRow({
   highlight,
   actions,
   onRequestQuote,
+  onEnterQuote,
   detail,
   hint,
   note,
@@ -207,6 +221,12 @@ export function MixRow({
                   בניתוח
                 </Badge>
               )}
+              {mix.quote && (
+                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600 text-[9px] shrink-0">
+                  <BadgePercent className="ml-1 h-3 w-3" />
+                  התקבלו ריביות מבנק {mix.quote.bank} · {formatQuoteDate(mix.quote.receivedAt)}
+                </Badge>
+              )}
               {highlight && (
                 <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[9px] shrink-0">
                   {highlight}
@@ -227,9 +247,10 @@ export function MixRow({
             </p>
           </div>
 
-          {(actions || onRequestQuote) && (
+          {(actions || onRequestQuote || onEnterQuote) && (
             <span onClick={stopRowClick} className="flex w-full flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:justify-end">
               {onRequestQuote && <RequestQuoteButton onClick={onRequestQuote} />}
+              {onEnterQuote && <EnterQuoteButton onClick={onEnterQuote} />}
               {actions}
             </span>
           )}
@@ -323,6 +344,27 @@ export function RequestQuoteButton({
     >
       <Gavel className="h-3.5 w-3.5" />
       הצעה לבנקים
+    </button>
+  );
+}
+
+/** הזנת הריביות שהתקבלו מבנק על מבנה התמהיל שבשורה */
+export function EnterQuoteButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="הזנת הריביות שהתקבלו מהבנק — נשמרת הצעה נפרדת על שם הבנק ותאריך קבלתה"
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
+    >
+      <BadgePercent className="h-3.5 w-3.5" />
+      ריביות מהבנק
     </button>
   );
 }

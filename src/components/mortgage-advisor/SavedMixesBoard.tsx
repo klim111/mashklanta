@@ -11,6 +11,7 @@ import type { SavedMix } from './mixRecord';
 import { DEAL_TYPES, MAX_LTV_PERCENT } from './types';
 import { groupByProperty } from './propertyContext';
 import { formatShekel } from './workspace/primitives';
+import { formatQuoteDate } from './bankQuote/quote';
 
 interface SavedMixesBoardProps {
   saved: SavedMix[];
@@ -224,10 +225,16 @@ function PropertyGroup({
  */
 function MixOrigin({ item, viewer }: { item: SavedMix; viewer: 'client' | 'advisor' }) {
   const proposed = viewer === 'client' && item.ownerIsAdvisor;
-  if (!proposed && item.planId) return null;
+  const quote = item.mix.quote;
+  if (!proposed && !quote && item.planId) return null;
 
   return (
     <>
+      {quote && (
+        <Badge className="bg-emerald-600 text-[10px] text-white hover:bg-emerald-600">
+          התקבלו ריביות מבנק {quote.bank} · {formatQuoteDate(quote.receivedAt)}
+        </Badge>
+      )}
       {proposed && (
         <Badge className="bg-blue-100 text-[10px] text-blue-800 hover:bg-blue-100">
           תמהיל מוצע על ידי יועץ · {item.ownerName || 'היועץ שלכם'}

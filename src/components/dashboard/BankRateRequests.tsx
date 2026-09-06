@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
+  BadgePercent,
   Building2,
   CalendarDays,
   CloudOff,
@@ -25,9 +26,14 @@ import { downloadRateRequestXlsx } from '@/components/mortgage-advisor/rateReque
 import { RateRequestDialog } from '@/components/mortgage-advisor/rateRequest/RateRequestDialog';
 import { useRateRequests } from '@/components/mortgage-advisor/rateRequest/useRateRequests';
 import type { SavedRateRequest } from '@/components/mortgage-advisor/rateRequest/record';
+import { BankQuoteDialog } from '@/components/mortgage-advisor/bankQuote/BankQuoteDialog';
+import { formatQuoteDate } from '@/components/mortgage-advisor/bankQuote/quote';
+import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import { stageMixForWorkspace } from '@/components/mortgage-advisor/workspace/draft';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { formatDuration } from '@/components/mortgage-advisor/engine';
+import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 
 /**
  * התמהילים שהוגשו לבנקים למיקוח במכרז הריביות.
@@ -38,12 +44,28 @@ import { formatDuration } from '@/components/mortgage-advisor/engine';
 export function BankRateRequests() {
   const router = useRouter();
   const { requests, ready, error, signedIn, remove } = useRateRequests();
+  const { saved, save } = useSavedMixes();
   const [open, setOpen] = useState<SavedRateRequest | null>(null);
+  const [quoteEntry, setQuoteEntry] = useState<SavedRateRequest | null>(null);
 
-  const openInTool = (item: SavedRateRequest) => {
-    stageMixForWorkspace(item.mix);
+  const openMixInTool = (mix: WorkspaceMix) => {
+    stageMixForWorkspace(mix);
     router.push('/mortgage-advisor');
   };
+
+  /** ההצעות שכבר התקבלו על מבנה התמהיל שהוגש — לכל בנק ולכל סבב */
+  const offersFor = (request: SavedRateRequest): SavedMix[] =>
+    saved
+      .filter(
+        (item) =>
+          item.mix.quote &&
+          (item.mix.quote.requestId === request.id || item.mix.quote.sourceMixId === request.mix.id)
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.mix.quote?.receivedAt ?? 0).getTime() -
+          new Date(a.mix.quote?.receivedAt ?? 0).getTime()
+      );
 
   return (
     <div className="space-y-4">
@@ -106,14 +128,31 @@ export function BankRateRequests() {
             <RequestCard
               key={item.id}
               item={item}
+              offers={offersFor(item)}
               onView={() => setOpen(item)}
               onPrint={() => printRateRequest(item.document)}
               onExcel={() => downloadRateRequestXlsx(item.document)}
-              onOpenInTool={() => openInTool(item)}
+              onOpenInTool={() => openMixInTool(item.mix)}
+              onEnterQuote={() => setQuoteEntry(item)}
+              onOpenOffer={(offer) => openMixInTool(offer.mix)}
               onDelete={() => remove(item.id)}
             />
           ))}
         </div>
+      )}
+
+      {quoteEntry && (
+        <BankQuoteDialog
+          open
+          onOpenChange={(next) => !next && setQuoteEntry(null)}
+          mix={quoteEntry.mix}
+          requestId={quoteEntry.id}
+          takenNames={saved.map((item) => item.mix.name)}
+          onSave={async (quoted) => {
+            await save(quoted);
+          }}
+          onOpenSaved={openMixInTool}
+        />
       )}
 
       {open && (
@@ -135,17 +174,23 @@ export function BankRateRequests() {
 
 function RequestCard({
   item,
+  offers,
   onView,
   onPrint,
   onExcel,
   onOpenInTool,
+  onEnterQuote,
+  onOpenOffer,
   onDelete,
 }: {
   item: SavedRateRequest;
+  offers: SavedMix[];
   onView: () => void;
   onPrint: () => void;
   onExcel: () => void;
   onOpenInTool: () => void;
+  onEnterQuote: () => void;
+  onOpenOffer: (offer: SavedMix) => void;
   onDelete: () => void;
 }) {
   const doc = item.document;
@@ -203,16 +248,57 @@ function RequestCard({
             value={doc.months > 0 ? formatDuration(doc.months) : '—'}
           />
           <Fact
-            label="ריביות במסמך"
-            value="ריקות לתמחור הבנק"
-            tone="amber"
+            label={offers.length > 0 ? 'הצעות שהתקבלו' : 'ריביות במסמך'}
+            value={
+              offers.length > 0
+                ? `${offers.length} הצעות מבנקים`
+                : 'ריקות לתמחור הבנק'
+            }
+            tone={offers.length > 0 ? 'emerald' : 'amber'}
           />
         </div>
+
+        {offers.length > 0 && (
+          <div className="space-y-1.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2">
+            <p className="flex items-center gap-1 text-[10px] font-bold text-emerald-900">
+              <BadgePercent className="h-3 w-3" />
+              הריביות שהתקבלו על התמהיל הזה
+            </p>
+            {offers.map((offer) => (
+              <button
+                key={offer.mix.id}
+                type="button"
+                onClick={() => onOpenOffer(offer)}
+                title="פתיחת ההצעה בכלי בניית התמהילים"
+                className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-right text-[11px] transition-colors hover:border-emerald-400"
+              >
+                <span className="font-bold text-emerald-900">
+                  בנק {offer.mix.quote?.bank}
+                  <span className="mr-1.5 font-normal text-slate-500">
+                    {formatQuoteDate(offer.mix.quote?.receivedAt ?? offer.savedAt)}
+                  </span>
+                </span>
+                <span className="font-semibold text-slate-700">
+                  {formatShekel(offer.summary.monthlyPayment)} לחודש ·{' '}
+                  {offer.summary.averageRate.toFixed(2)}% ממוצע
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <Button size="sm" className="h-9 flex-1 text-xs sm:flex-none" onClick={onView}>
             <Eye className="ml-1 h-3.5 w-3.5" />
             פתיחת המכתב
+          </Button>
+          <Button
+            size="sm"
+            className="h-9 flex-1 bg-emerald-600 text-xs hover:bg-emerald-700 sm:flex-none"
+            onClick={onEnterQuote}
+          >
+            <BadgePercent className="ml-1 h-3.5 w-3.5" />
+            הזנת ריביות שהתקבלו
           </Button>
           <Button
             size="sm"
@@ -254,22 +340,18 @@ function Fact({
 }: {
   label: string;
   value: string;
-  tone?: 'slate' | 'amber';
+  tone?: 'slate' | 'amber' | 'emerald';
 }) {
+  const tones = {
+    slate: { box: 'border-slate-200 bg-slate-50/70', text: 'text-slate-900' },
+    amber: { box: 'border-amber-200 bg-amber-50', text: 'text-amber-800' },
+    emerald: { box: 'border-emerald-200 bg-emerald-50', text: 'text-emerald-800' },
+  }[tone];
+
   return (
-    <div
-      className={`rounded-xl border p-2 ${
-        tone === 'amber' ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50/70'
-      }`}
-    >
+    <div className={`rounded-xl border p-2 ${tones.box}`}>
       <p className="text-[10px] text-slate-500">{label}</p>
-      <p
-        className={`text-sm font-bold leading-tight ${
-          tone === 'amber' ? 'text-amber-800' : 'text-slate-900'
-        }`}
-      >
-        {value}
-      </p>
+      <p className={`text-sm font-bold leading-tight ${tones.text}`}>{value}</p>
     </div>
   );
 }

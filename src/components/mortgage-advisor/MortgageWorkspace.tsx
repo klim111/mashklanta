@@ -465,6 +465,29 @@ export function MortgageWorkspace({
     [keepCurrentMix, openMix, save, notifyActive]
   );
 
+  /**
+   * תמהיל שהריביות בו התקבלו מבנק נשמר כתמהיל רגיל לאותו נכס, ומופיע ברשימה
+   * עם סימון הבנק ותאריך ההצעה. המקור נשאר כמו שהוא, ולכן אפשר להזין ריביות
+   * לאותו תמהיל שוב, מבנק אחר או בסבב נוסף.
+   */
+  const saveBankQuote = useCallback(
+    async (quoted: WorkspaceMix) => {
+      const stored = await save(quoted);
+      notifyActive(stored);
+      await refresh();
+    },
+    [save, notifyActive, refresh]
+  );
+
+  const openBankQuote = useCallback(
+    (quoted: WorkspaceMix) => {
+      keepCurrentMix();
+      openMix(quoted);
+      setEditorExpanded(true);
+    },
+    [keepCurrentMix, openMix]
+  );
+
   const renameMix = useCallback(
     (id: string, name: string): boolean => {
       const item = saved.find((entry) => entry.mix.id === id);
@@ -880,6 +903,8 @@ export function MortgageWorkspace({
           onSaveAsNew={saveAsNewMix}
           uniformMixIds={preferredMixIds}
           nameNotice={nameNotice}
+          onSaveBankQuote={saveBankQuote}
+          onOpenBankQuote={openBankQuote}
           activeActions={
             <>
               <Button

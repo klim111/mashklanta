@@ -1,13 +1,17 @@
 'use client';
 
-import { Gavel } from 'lucide-react';
+import { BadgePercent, Gavel } from 'lucide-react';
 import { TRACK_TYPES } from '../types';
 import { formatDuration } from '../engine';
 import type { MixSummary, WorkspaceMix } from '../engine';
 import { CompositionBar, formatShekel, trackColor } from './primitives';
+import { formatQuoteDate } from '../bankQuote/quote';
 
-/** מאיפה הגיע התמהיל — ברירת מחדל של הבנק, או תמהיל שנבנה בכלי */
-export type MixOrigin = 'bank' | 'custom';
+/**
+ * מאיפה הגיע התמהיל — ברירת מחדל של הבנק, תמהיל שנבנה בכלי, או תמהיל שהריביות
+ * בו התקבלו מבנק אחרי שהוגש לו למיקוח.
+ */
+export type MixOrigin = 'bank' | 'custom' | 'quote';
 
 const ORIGIN_STYLES: Record<MixOrigin, { card: string; badge: string; label: string }> = {
   bank: {
@@ -20,6 +24,11 @@ const ORIGIN_STYLES: Record<MixOrigin, { card: string; badge: string; label: str
     badge: 'bg-violet-100 text-violet-900',
     label: 'מותאם אישית',
   },
+  quote: {
+    card: 'border-emerald-400 bg-emerald-50/70',
+    badge: 'bg-emerald-600 text-white',
+    label: 'התקבלו ריביות',
+  },
 };
 
 interface MixStripCardProps {
@@ -31,6 +40,8 @@ interface MixStripCardProps {
   onActivate: () => void;
   /** הפקת בקשת הצעת ריביות לבנקים מהתמהיל שבכרטיס */
   onRequestQuote?: () => void;
+  /** הזנת הריביות שהתקבלו מבנק על מבנה התמהיל שבכרטיס */
+  onEnterQuote?: () => void;
 }
 
 /**
@@ -48,8 +59,10 @@ export function MixStripCard({
   onToggleSelect,
   onActivate,
   onRequestQuote,
+  onEnterQuote,
 }: MixStripCardProps) {
   const tone = ORIGIN_STYLES[origin];
+  const quote = mix.quote;
 
   return (
     <div
@@ -69,7 +82,7 @@ export function MixStripCard({
       <span
         className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black ${tone.badge}`}
       >
-        {tone.label}
+        {quote ? `ריביות · ${quote.bank}` : tone.label}
       </span>
       {onToggleSelect && (
         <button
@@ -92,6 +105,11 @@ export function MixStripCard({
       )}
 
       <p className="truncate text-sm font-bold text-slate-900">{mix.name || 'תמהיל ללא שם'}</p>
+      {quote && (
+        <p className="mt-0.5 truncate text-[10px] font-bold text-emerald-800">
+          התקבלו ריביות מבנק {quote.bank} · {formatQuoteDate(quote.receivedAt)}
+        </p>
+      )}
       <p className="mt-0.5 truncate text-[11px] text-slate-500">
         {formatShekel(summary.monthlyPayment)} לחודש · {mix.tracks.length} מסלולים ·{' '}
         {formatDuration(summary.months)}
@@ -111,19 +129,37 @@ export function MixStripCard({
         </div>
       </div>
 
-      {onRequestQuote && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRequestQuote();
-          }}
-          title="הכנת הצעת התמהיל למיקוח מול הבנקים — מכתב בקשה בלי ריביות"
-          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100"
-        >
-          <Gavel className="h-3.5 w-3.5" />
-          הצעה לבנקים
-        </button>
+      {(onRequestQuote || onEnterQuote) && (
+        <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+          {onRequestQuote && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRequestQuote();
+              }}
+              title="הכנת הצעת התמהיל למיקוח מול הבנקים — מכתב בקשה בלי ריביות"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100"
+            >
+              <Gavel className="h-3.5 w-3.5" />
+              הצעה לבנקים
+            </button>
+          )}
+          {onEnterQuote && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEnterQuote();
+              }}
+              title="הזנת הריביות שהתקבלו מהבנק על מבנה התמהיל הזה"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100"
+            >
+              <BadgePercent className="h-3.5 w-3.5" />
+              ריביות מהבנק
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

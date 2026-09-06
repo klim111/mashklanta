@@ -21,6 +21,7 @@ import { MixStripCard } from './MixStripCard';
 import type { MixOrigin } from './MixStripCard';
 import { formatShekel } from './primitives';
 import { RateRequestDialog } from '../rateRequest/RateRequestDialog';
+import { BankQuoteDialog } from '../bankQuote/BankQuoteDialog';
 
 interface MixListProps {
   /** התמהיל שבניתוח, מהמצב החי שלו */
@@ -56,6 +57,13 @@ interface MixListProps {
   /** מזהי הסלים האחידים שנשמרו מהאישור העקרוני */
   uniformMixIds?: string[];
   nameNotice?: string | null;
+  /**
+   * שמירת תמהיל שהריביות בו התקבלו מבנק. בלעדיה אין הזנת ריביות — התמהיל של
+   * הבנק נשמר כתמהיל רגיל לנכס, ולכן השמירה נעשית באותו מקום כמו כל שמירה.
+   */
+  onSaveBankQuote?: (quoted: WorkspaceMix) => Promise<void> | void;
+  /** פתיחת התמהיל שהתקבל מהבנק באזור העבודה */
+  onOpenBankQuote?: (quoted: WorkspaceMix) => void;
 }
 
 function isBankDefaultMix(mix: WorkspaceMix, preferredIds: string[]): boolean {
@@ -95,6 +103,8 @@ export function MixList({
   flashSave = false,
   uniformMixIds = [],
   nameNotice,
+  onSaveBankQuote,
+  onOpenBankQuote,
 }: MixListProps) {
   /** התמהיל שממנו מפיקים עכשיו מכתב בקשת ריביות לבנקים */
   const [quoteTarget, setQuoteTarget] = useState<{
@@ -102,12 +112,19 @@ export function MixList({
     summary: MixSummary;
   } | null>(null);
 
+  /** התמהיל שעליו מזינים עכשיו את הריביות שהתקבלו מבנק */
+  const [quoteEntryMix, setQuoteEntryMix] = useState<WorkspaceMix | null>(null);
+
   const scope = address?.trim()
     ? `לנכס ב${address.trim()}`
     : `למשכנתא בסך ${formatShekel(activeResult.mix.totalAmount)}`;
 
   const originOf = (item: SavedMix): MixOrigin =>
-    isBankDefaultMix(item.mix, uniformMixIds) ? 'bank' : 'custom';
+    item.mix.quote ? 'quote' : isBankDefaultMix(item.mix, uniformMixIds) ? 'bank' : 'custom';
+
+  /** שמות התמהילים לנכס, כדי שהצעה חדשה תקבל שם ייחודי */
+  const takenNames = [activeResult.mix.name, ...others.map((item) => item.mix.name)];
+  const enterQuote = onSaveBankQuote ? (target: WorkspaceMix) => setQuoteEntryMix(target) : undefined;
   const comparedItems = others.filter((item) => comparedIds.includes(item.mix.id));
 
   return (
@@ -196,6 +213,7 @@ export function MixList({
               onRequestQuote={() =>
                 setQuoteTarget({ mix: activeResult.mix, summary: activeResult.summary })
               }
+              onEnterQuote={enterQuote && (() => enterQuote(activeResult.mix))}
               actions={
                 <>
                   <button
@@ -241,6 +259,7 @@ export function MixList({
                     onRequestQuote={() =>
                       setQuoteTarget({ mix: item.mix, summary: item.summary })
                     }
+                    onEnterQuote={enterQuote && (() => enterQuote(item.mix))}
                     actions={
                       <>
                         <button
@@ -275,6 +294,7 @@ export function MixList({
               onActivate={onActivate}
               onToggleCompare={onToggleCompare}
               onRequestQuote={(item) => setQuoteTarget({ mix: item.mix, summary: item.summary })}
+              onEnterQuote={enterQuote && ((item: SavedMix) => enterQuote(item.mix))}
             />
           )}
 
@@ -296,6 +316,18 @@ export function MixList({
           summary={quoteTarget.summary}
         />
       )}
+
+      {/* הזנת הריביות שהבנק החזיר — נשמרת כתמהיל נפרד לאותו נכס */}
+      {quoteEntryMix && onSaveBankQuote && (
+        <BankQuoteDialog
+          open
+          onOpenChange={(next) => !next && setQuoteEntryMix(null)}
+          mix={quoteEntryMix}
+          takenNames={takenNames}
+          onSave={onSaveBankQuote}
+          onOpenSaved={onOpenBankQuote}
+        />
+      )}
     </Card>
   );
 }
@@ -313,6 +345,7 @@ function MixSliderSection({
   onActivate,
   onToggleCompare,
   onRequestQuote,
+  onEnterQuote,
 }: {
   items: SavedMix[];
   originOf: (item: SavedMix) => MixOrigin;
@@ -320,9 +353,11 @@ function MixSliderSection({
   onActivate: (item: SavedMix) => void;
   onToggleCompare: (id: string) => void;
   onRequestQuote: (item: SavedMix) => void;
+  onEnterQuote?: (item: SavedMix) => void;
 }) {
   const bankCount = items.filter((item) => originOf(item) === 'bank').length;
-  const customCount = items.length - bankCount;
+  const quoteCount = items.filter((item) => originOf(item) === 'quote').length;
+  const customCount = items.length - bankCount - quoteCount;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
@@ -345,6 +380,12 @@ function MixSliderSection({
                 {customCount} מותאמים אישית
               </span>
             )}
+            {quoteCount > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                {quoteCount} עם ריביות שהתקבלו מבנק
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -361,6 +402,7 @@ function MixSliderSection({
               onToggleSelect={() => onToggleCompare(item.mix.id)}
               onActivate={() => onActivate(item)}
               onRequestQuote={() => onRequestQuote(item)}
+              onEnterQuote={onEnterQuote && (() => onEnterQuote(item))}
             />
           );
         })}
