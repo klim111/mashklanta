@@ -194,6 +194,42 @@ export default function DashboardPage() {
                   <p className="text-sm">אין פעילות אחרונה</p>
                 </div>
               </div>
+
+              {/* Principal approval intake */}
+              <Link
+                href="/principal-approval"
+                className="md:col-span-2 lg:col-span-3 group rounded-lg border border-indigo-100 bg-gradient-to-l from-indigo-50 to-white p-6 shadow-sm transition-all hover:border-indigo-300 hover:shadow-md"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">אישור עקרוני — איסוף פרטי הבקשה</h3>
+                      <p className="text-sm text-gray-600">
+                        פרטי לווים וערבים, הכנסות, חשבונות בנק ומקורות מימון — נשמר אוטומטית ומופק כדוח PDF
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 rotate-180 text-indigo-500 transition-transform group-hover:-translate-x-1" />
+                </div>
+              </Link>
+
+              <Link
+                href="/advisor/clients"
+                className="md:col-span-2 lg:col-span-3 group rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-all hover:border-gray-300"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700">
+                      אזור היועץ — ניהול תיקי לקוחות
+                    </span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 rotate-180 text-gray-400 transition-transform group-hover:-translate-x-1" />
+                </div>
+              </Link>
             </div>
           )}
 

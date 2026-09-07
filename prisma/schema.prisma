@@ -17,10 +17,20 @@ model User {
   image          String?
   hashedPassword String?
 
+  /// client | advisor | admin
+  role           String    @default("client")
+
   accounts       Account[]
   sessions       Session[]
   documents      Document[]
   calculations   Calculation[]
+
+  clientProfile  ClientProfile?
+  advisorLinks   AdvisorClient[] @relation("AdvisorLinks")
+  clientLinks    AdvisorClient[] @relation("ClientLinks")
+  clientCases    MortgageCase[]  @relation("CaseClient")
+  advisedCases   MortgageCase[]  @relation("CaseAdvisor")
+  advisorAccess  AdvisorAccess[]
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -97,4 +107,153 @@ model RatesCache {
   key       String   @id
   payload   Json
   expiresAt DateTime
+}
+// ---------------------------------------------------------------------------
+// Principal approval (אישור עקרוני) — client intake, advisor collaboration
+// ---------------------------------------------------------------------------
+
+/// Canonical client profile, built during the "בניית פרופיל לקוח" stage.
+/// Acts as the source of truth used to pre-fill the principal approval form and
+/// to detect conflicts when a value is changed inside the approval flow.
+model ClientProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Flat map of canonical field keys -> value, e.g. { "firstName": "ישראל" }
+  dataJson  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Link between an advisor and a client, so an advisor can open a client file.
+model AdvisorClient {
+  id        String   @id @default(cuid())
+  advisorId String
+  advisor   User     @relation("AdvisorLinks", fields: [advisorId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    User     @relation("ClientLinks", fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([advisorId, clientId])
+  @@index([clientId])
+}
+
+/// One principal-approval file per client (a client may hold several over time).
+model MortgageCase {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     User     @relation("CaseClient", fields: [clientId], references: [id], onDelete: Cascade)
+  advisorId  String?
+  advisor    User?    @relation("CaseAdvisor", fields: [advisorId], references: [id])
+  title      String   @default("אישור עקרוני")
+  status     String   @default("draft") // draft | submitted | approved | archived
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  entities   CaseEntity[]
+  fields     CaseField[]
+  conflicts  FieldConflict[]
+  accesses   AdvisorAccess[]
+
+  @@index([clientId])
+  @@index([advisorId])
+}
+
+/// A repeatable record inside a case: borrower, guarantor, income, previous
+/// employment, bank account or funding source. Case-level fields use the
+/// synthetic entity id "case".
+model CaseEntity {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// borrower | guarantor | income | prevEmployment | bankAccount | fundingSource
+  type      String
+  /// Owning borrower/guarantor for incomes and previous employments.
+  parentId  String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([caseId, type])
+  @@index([parentId])
+}
+
+/// A single stored answer. Kept per-field so that every keystroke can be saved
+/// independently, and so that provenance (client vs. advisor) is tracked at the
+/// finest granularity the UI needs.
+model CaseField {
+  id          String   @id @default(cuid())
+  caseId      String
+  case        MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// case | borrower | guarantor | income | prevEmployment | bankAccount | fundingSource
+  entityType  String
+  /// CaseEntity.id, or "case" for case-level fields
+  entityId    String
+  fieldKey    String
+  /// JSON-encoded value, so numbers/booleans/arrays survive a round trip.
+  value       String?
+  /// client | advisor | profile
+  source      String   @default("client")
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([caseId, entityType, entityId, fieldKey])
+  @@index([caseId])
+}
+
+/// Raised when a value pre-filled from the client profile is changed inside the
+/// approval flow. Stays open until the user picks which value wins.
+model FieldConflict {
+  id            String    @id @default(cuid())
+  caseId        String
+  case          MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entityType    String
+  entityId      String
+  fieldKey      String
+  /// JSON-encoded values of both sides
+  profileValue  String?
+  caseValue     String?
+  status        String    @default("open") // open | resolved
+  resolvedValue String?
+  resolvedWith  String?   // profile | case
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([caseId, entityType, entityId, fieldKey])
+  @@index([caseId, status])
+}
+
+/// Explicit permission a client grants a specific advisor to edit the data the
+/// client entered. Without it the advisor sees those fields read-only.
+model AdvisorAccess {
+  id         String    @id @default(cuid())
+  caseId     String
+  case       MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  advisorId  String
+  advisor    User      @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  canEdit    Boolean   @default(false)
+  grantedAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@unique([caseId, advisorId])
+  @@index([advisorId])
+}
+
+/// Catalogue of bank branches (code + name) used by the branch drop-downs.
+/// Populated from the official public dataset via `npm run sync:bank-branches`.
+model BankBranch {
+  id         String   @id @default(cuid())
+  bankCode   String
+  bankName   String
+  branchCode String
+  branchName String
+  address    String?
+  city       String?
+  zipCode    String?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([bankCode, branchCode])
+  @@index([bankCode])
 }
