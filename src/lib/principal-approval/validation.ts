@@ -84,7 +84,11 @@ export type FieldKind =
   | 'multiselect'
   | 'boolean'
   | 'bankAccount'
-  | 'textarea';
+  | 'textarea'
+  /** מפת מסמך→נאסף */
+  | 'documents'
+  /** ריביות הסלים האחידים: סל → מסלול → ריבית */
+  | 'basketRates';
 
 export interface ValidatableField {
   kind: FieldKind;
@@ -177,6 +181,24 @@ export function validateValue(field: ValidatableField, rawValue: unknown): Valid
       return typeof value === 'boolean' || value === 'true' || value === 'false'
         ? OK
         : fail('יש לבחור כן או לא');
+
+    case 'documents': {
+      if (typeof value !== 'object' || Array.isArray(value)) return fail('רשימת המסמכים אינה תקינה');
+      return OK;
+    }
+
+    case 'basketRates': {
+      if (typeof value !== 'object' || Array.isArray(value)) return fail('הריביות אינן תקינות');
+      for (const perBasket of Object.values(value as Record<string, unknown>)) {
+        if (perBasket === null || typeof perBasket !== 'object') return fail('הריביות אינן תקינות');
+        for (const rate of Object.values(perBasket as Record<string, unknown>)) {
+          if (rate === null || rate === undefined || rate === '') continue;
+          const n = Number(rate);
+          if (!Number.isFinite(n) || n < 0 || n > 20) return fail('ריבית חייבת להיות בין 0 ל-20 אחוזים');
+        }
+      }
+      return OK;
+    }
 
     case 'textarea':
     case 'text':

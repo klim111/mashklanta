@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   decryptField,
   decryptNumber,
@@ -66,5 +66,41 @@ describe('הצפנת מספרים', () => {
   it('מסרב להצפין ערך שאינו מספר סופי', () => {
     expect(() => encryptNumber(Number.NaN, 'income')).toThrow();
     expect(() => encryptNumber(Number.POSITIVE_INFINITY, 'income')).toThrow();
+  });
+});
+
+/** NODE_ENV is typed read-only, but the fallback is exactly what we need to exercise. */
+function setNodeEnv(value: string | undefined): void {
+  const env = process.env as Record<string, string | undefined>;
+  if (value === undefined) delete env.NODE_ENV;
+  else env.NODE_ENV = value;
+}
+
+describe('missing FIELD_ENCRYPTION_KEY', () => {
+  const original = process.env.FIELD_ENCRYPTION_KEY;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.FIELD_ENCRYPTION_KEY;
+    else process.env.FIELD_ENCRYPTION_KEY = original;
+    setNodeEnv(originalNodeEnv);
+    resetEncryptionKeyCache();
+  });
+
+  it('falls back to a derived key outside production, so dev runs unconfigured', () => {
+    delete process.env.FIELD_ENCRYPTION_KEY;
+    setNodeEnv('development');
+    resetEncryptionKeyCache();
+
+    const payload = encryptField('סודי', 'ctx');
+    expect(decryptField(payload, 'ctx')).toBe('סודי');
+  });
+
+  it('still refuses to run in production without a key', () => {
+    delete process.env.FIELD_ENCRYPTION_KEY;
+    setNodeEnv('production');
+    resetEncryptionKeyCache();
+
+    expect(() => encryptField('סודי', 'ctx')).toThrow(/FIELD_ENCRYPTION_KEY is not set/);
   });
 });

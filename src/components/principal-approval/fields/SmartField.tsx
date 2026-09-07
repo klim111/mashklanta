@@ -14,6 +14,9 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Combobox, MultiCombobox, type ComboboxOption } from './Combobox';
 import { BranchSelect } from './BranchSelect';
 import { ChildAgesInput, CountStepper } from './ChildAgesInput';
+import { DocumentChecklist } from './DocumentChecklist';
+import { BasketRatesEditor, type BasketRates } from './BasketRatesEditor';
+import { buildDocumentGroups } from '@/lib/principal-approval/documents';
 
 interface SmartFieldProps {
   field: FieldDef;
@@ -73,6 +76,39 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
   );
 
   switch (field.kind) {
+    case 'documents': {
+      // The checklist follows the people actually on the application.
+      const people = [
+        ...(data?.entities.borrower ?? []).map((entity, index) => ({ entity, index, kind: 'borrower' as const })),
+        ...(data?.entities.guarantor ?? []).map((entity, index) => ({ entity, index, kind: 'guarantor' as const })),
+      ].map(({ entity, index, kind }) => {
+        const personValues = valuesOf(kind, entity.id);
+        const name = [personValues.firstName, personValues.lastName].filter(Boolean).join(' ').trim();
+        return {
+          id: entity.id,
+          label: name || `${kind === 'borrower' ? 'לווה' : 'ערב'} ${index + 1}`,
+          employmentStatus: personValues.employmentStatus,
+        };
+      });
+      return shell(
+        <DocumentChecklist
+          groups={buildDocumentGroups(people)}
+          value={(value as Record<string, boolean>) ?? {}}
+          onChange={(next) => update(next)}
+          readOnly={readOnly}
+        />,
+      );
+    }
+
+    case 'basketRates':
+      return shell(
+        <BasketRatesEditor
+          value={(value as BasketRates) ?? {}}
+          onChange={(next) => update(next)}
+          readOnly={readOnly}
+        />,
+      );
+
     case 'money':
     case 'number':
     case 'percent':

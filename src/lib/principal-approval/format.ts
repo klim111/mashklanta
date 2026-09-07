@@ -113,3 +113,33 @@ export function formatPhone(value: string | null | undefined): string {
   }
   return `${digits.slice(0, 2)}-${digits.slice(2, 9)}`;
 }
+
+/** ISO date + n months, clamped to the end of the target month. */
+export function addMonths(iso: string | null | undefined, months: number): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = d.getUTCDate();
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return target.toISOString().slice(0, 10);
+}
+
+/** ISO date + n days. */
+export function addDays(iso: string | null | undefined, days: number): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Whole days from today until an ISO date; negative once it has passed. */
+export function daysUntil(iso: string | null | undefined, now = new Date()): number | null {
+  if (!iso) return null;
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) return null;
+  const startOfDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((target.getTime() - startOfDay) / 86_400_000);
+}

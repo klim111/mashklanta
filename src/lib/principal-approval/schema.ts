@@ -8,6 +8,7 @@
 
 import type { FieldKind, ValidatableField } from './validation';
 import { COUNTRIES } from './countries';
+import { DEAL_TYPES, MORTGAGE_BANKS } from '@/components/mortgage-advisor/types';
 
 export type EntityType =
   | 'case'
@@ -16,7 +17,8 @@ export type EntityType =
   | 'income'
   | 'prevEmployment'
   | 'bankAccount'
-  | 'fundingSource';
+  | 'fundingSource'
+  | 'bankApproval';
 
 export const ENTITY_TYPES: EntityType[] = [
   'case',
@@ -26,6 +28,7 @@ export const ENTITY_TYPES: EntityType[] = [
   'prevEmployment',
   'bankAccount',
   'fundingSource',
+  'bankApproval',
 ];
 
 /** Entities whose rows a user may add / remove. */
@@ -36,6 +39,7 @@ export const REPEATABLE_ENTITIES: EntityType[] = [
   'prevEmployment',
   'bankAccount',
   'fundingSource',
+  'bankApproval',
 ];
 
 export interface Option {
@@ -167,6 +171,16 @@ export const FUNDING_SOURCE_OPTIONS: Option[] = [
   { value: 'gift_from_family', label: 'הון עצמי — מתנה ממשפחה' },
   { value: 'savings', label: 'הון עצמי — חסכונות' },
 ];
+
+export const DEAL_TYPE_OPTIONS: Option[] = Object.entries(DEAL_TYPES).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const MORTGAGE_BANK_OPTIONS: Option[] = MORTGAGE_BANKS.map((bank) => ({
+  value: bank,
+  label: bank,
+}));
 
 export const YES_NO_OPTIONS: Option[] = [
   { value: 'true', label: 'כן' },
@@ -445,6 +459,15 @@ export const CASE_FIELDS: FieldDef[] = [
     sensitive: true,
     help: 'סך מקורות המימון חייב להשתוות לסכום זה',
   },
+  { key: 'dealType', kind: 'select', label: 'סוג העסקה', required: true, options: DEAL_TYPE_OPTIONS },
+  {
+    key: 'requestedYears',
+    kind: 'integer',
+    label: 'תקופה מבוקשת (שנים)',
+    required: true,
+    min: 4,
+    max: 30,
+  },
   { key: 'propertyPrice', kind: 'money', label: 'מחיר הנכס', suffix: '₪', sensitive: true },
   { key: 'propertyCity', kind: 'text', label: 'עיר הנכס' },
   { key: 'propertyAddress', kind: 'text', label: 'כתובת הנכס', span: 2 },
@@ -456,6 +479,70 @@ export const CASE_FIELDS: FieldDef[] = [
     required: true,
     help: 'האם הנכס נרכש ביישוב שבו נמצא מקום העבודה',
   },
+];
+
+/* -------------------------------------------------------------------------- */
+/* Documents                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export const DOCUMENT_FIELDS: FieldDef[] = [
+  {
+    key: 'documents',
+    kind: 'documents',
+    label: 'תיק המסמכים',
+    help: 'הרשימה נבנית לפי אופן ההעסקה של כל לווה',
+    span: 3,
+  },
+];
+
+/* -------------------------------------------------------------------------- */
+/* Principal approvals, one per bank                                          */
+/* -------------------------------------------------------------------------- */
+
+/** תוקף האישור העקרוני, בחודשים מיום קבלתו */
+export const APPROVAL_VALIDITY_MONTHS = 3;
+/** תוקף הריביות שבאישור, בימים מיום קבלתו */
+export const APPROVAL_RATES_VALIDITY_DAYS = 24;
+
+const APPROVED: Condition = { field: 'approved', equals: true };
+
+export const BANK_APPROVAL_FIELDS: FieldDef[] = [
+  {
+    key: 'bankName',
+    kind: 'select',
+    label: 'הבנק',
+    required: true,
+    options: MORTGAGE_BANK_OPTIONS,
+  },
+  { key: 'submittedAt', kind: 'pastDate', label: 'תאריך ההגשה', required: true },
+  { key: 'bankerName', kind: 'text', label: 'הבנקאי שמטפל בבקשה' },
+  { key: 'approved', kind: 'boolean', label: 'האישור העקרוני התקבל', required: true },
+  {
+    key: 'approvedAt',
+    kind: 'pastDate',
+    label: 'תאריך קבלת האישור',
+    help: `תוקף האישור ${APPROVAL_VALIDITY_MONTHS} חודשים, ותוקף הריביות ${APPROVAL_RATES_VALIDITY_DAYS} ימים — מחושבים אוטומטית`,
+    visibleWhen: APPROVED,
+    requiredWhen: APPROVED,
+  },
+  {
+    key: 'approvedAmount',
+    kind: 'money',
+    label: 'הסכום שאושר',
+    suffix: '₪',
+    sensitive: true,
+    visibleWhen: APPROVED,
+    requiredWhen: APPROVED,
+  },
+  {
+    key: 'basketRates',
+    kind: 'basketRates',
+    label: 'הריביות שהתקבלו לסלים האחידים',
+    help: 'ריבית לכל מסלול בכל אחד משלושת הסלים, כפי שנקב הבנק',
+    span: 3,
+    visibleWhen: APPROVED,
+  },
+  { key: 'approvalNotes', kind: 'textarea', label: 'הערות', span: 3 },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -523,6 +610,8 @@ export function fieldsFor(entityType: EntityType): FieldDef[] {
       return BANK_ACCOUNT_FIELDS;
     case 'fundingSource':
       return FUNDING_SOURCE_FIELDS;
+    case 'bankApproval':
+      return BANK_APPROVAL_FIELDS;
     default:
       return [];
   }

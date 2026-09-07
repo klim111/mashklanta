@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 /**
  * הצפנה ברמת השדה לנתונים רגישים (הכנסות, התחייבויות, דירוג אשראי).
@@ -18,6 +18,7 @@ const TAG_BYTES = 16;
 const CURRENT_VERSION = 'v1';
 
 let cachedKey: Buffer | null = null;
+let warnedAboutDevKey = false;
 
 /**
  * המפתח נטען בעצלתיים ולא ברמת המודול, כדי שבנייה בלי המשתנה מוגדר לא תיכשל
@@ -27,8 +28,28 @@ function getKey(): Buffer {
   if (cachedKey) return cachedKey;
 
   const raw = process.env.FIELD_ENCRYPTION_KEY;
+
   if (!raw) {
-    throw new Error('FIELD_ENCRYPTION_KEY is not set — cannot read or write encrypted fields');
+    // בפרודקשן מפתח חסר הוא תקלת הגדרה ויש להיכשל עליה, לא להמציא מפתח.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FIELD_ENCRYPTION_KEY is not set — cannot read or write encrypted fields');
+    }
+
+    // בפיתוח ובבדיקות נגזר מפתח יציב מסוד ההתחברות, כדי שאפשר יהיה להריץ את
+    // האפליקציה בלי הגדרה נוספת. הוא יציב לאורך הפעלות כל עוד NEXTAUTH_SECRET
+    // לא משתנה, אבל אינו סוד — ולכן שינוי ל-FIELD_ENCRYPTION_KEY אמיתי הופך
+    // נתונים שנכתבו איתו לבלתי קריאים, וזו התנהגות מקובלת לנתוני פיתוח.
+    if (!warnedAboutDevKey) {
+      warnedAboutDevKey = true;
+      console.warn(
+        '[crypto] FIELD_ENCRYPTION_KEY is not set — using a derived development key. ' +
+          'Set a real key before running in production.'
+      );
+    }
+    cachedKey = createHash('sha256')
+      .update(`dev-field-encryption:${process.env.NEXTAUTH_SECRET ?? 'local'}`)
+      .digest();
+    return cachedKey;
   }
 
   const key = Buffer.from(raw, 'base64');
@@ -45,6 +66,7 @@ function getKey(): Buffer {
 /** לשימוש בבדיקות, אחרי שינוי משתנה הסביבה */
 export function resetEncryptionKeyCache(): void {
   cachedKey = null;
+  warnedAboutDevKey = false;
 }
 
 /**

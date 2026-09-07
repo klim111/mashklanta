@@ -17,8 +17,11 @@ import { COUNTRIES } from '@/lib/principal-approval/countries';
 import { bankLabel } from '@/lib/banks/banks';
 import { formatCurrency, formatDate, formatNumber, yearsSince } from '@/lib/principal-approval/format';
 import { validateFundingTotals } from '@/lib/principal-approval/validation';
+import { toApprovalSummary } from '@/lib/principal-approval/plan-bridge';
+import { buildDocumentGroups, documentProgress } from '@/lib/principal-approval/documents';
 import { useCase, CASE_ENTITY_ID } from './CaseContext';
 import { usePeopleOptions } from './sections/PeopleSection';
+import { BankApprovalsReport } from './BankApprovalsReport';
 
 function renderValue(def: FieldDef, raw: unknown, peopleLabels: Map<string, string>): string {
   if (raw === null || raw === undefined || raw === '' || (Array.isArray(raw) && raw.length === 0)) return '—';
@@ -135,6 +138,13 @@ export function ApprovalReport() {
   );
 
   const caseValues = valuesOf('case', CASE_ENTITY_ID);
+  const approvals = useMemo(
+    () =>
+      entities('bankApproval').map((approval) =>
+        toApprovalSummary(approval.id, valuesOf('bankApproval', approval.id)),
+      ),
+    [entities, valuesOf],
+  );
   const borrowers = entities('borrower');
   const guarantors = entities('guarantor');
   const accounts = entities('bankAccount');
@@ -222,6 +232,9 @@ export function ApprovalReport() {
             </div>
           ))}
         </div>
+
+        {/* הסיכום לפי בנקים פותח את הדוח — זו התוצאה של השלב */}
+        <BankApprovalsReport approvals={approvals} />
 
         <ReportSection title="פרטי הלווים">
           {borrowers.map((borrower, index) => {
@@ -352,6 +365,63 @@ export function ApprovalReport() {
             })}
           </ReportSection>
         )}
+
+        <ReportSection title="תיק המסמכים">
+          {(() => {
+            const people = [
+              ...borrowers.map((entity, index) => ({ entity, index, kind: 'borrower' as const })),
+              ...guarantors.map((entity, index) => ({ entity, index, kind: 'guarantor' as const })),
+            ].map(({ entity, index, kind }) => {
+              const values = valuesOf(kind, entity.id);
+              const name = [values.firstName, values.lastName].filter(Boolean).join(' ').trim();
+              return {
+                id: entity.id,
+                label: name || `${kind === 'borrower' ? 'לווה' : 'ערב'} ${index + 1}`,
+                employmentStatus: values.employmentStatus,
+              };
+            });
+            const groups = buildDocumentGroups(people);
+            const collected = (caseValues.documents as Record<string, boolean>) ?? {};
+            const progress = documentProgress(groups, collected);
+            return (
+              <>
+                <p className="text-[13px] font-semibold text-slate-700">
+                  נאספו {progress.collected} מתוך {progress.total} מסמכים
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {groups.map((group) => (
+                    <div key={group.id} className="break-inside-avoid rounded-lg border border-slate-200 bg-white p-3">
+                      <h4 className="mb-1.5 text-[12px] font-bold text-slate-700">
+                        {group.title}
+                        {group.subtitle && (
+                          <span className="mr-2 font-normal text-slate-400">{group.subtitle}</span>
+                        )}
+                      </h4>
+                      <ul className="space-y-0.5">
+                        {group.documents.map((doc) => (
+                          <li key={doc.key} className="flex items-center gap-1.5 text-[12px]">
+                            <span
+                              className={
+                                collected[doc.key]
+                                  ? 'text-emerald-600'
+                                  : 'text-slate-300'
+                              }
+                            >
+                              {collected[doc.key] ? '✓' : '○'}
+                            </span>
+                            <span className={collected[doc.key] ? 'text-slate-500' : 'text-slate-700'}>
+                              {doc.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </ReportSection>
 
         <footer className="border-t border-slate-200 pt-4 text-[10px] leading-relaxed text-slate-400">
           <p>

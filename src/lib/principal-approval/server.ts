@@ -306,6 +306,7 @@ const EMPTY_ENTITIES = (): Record<EntityType, EntityDTO[]> => ({
   prevEmployment: [],
   bankAccount: [],
   fundingSource: [],
+  bankApproval: [],
 });
 
 export function entityLabel(type: EntityType, position: number): string {
@@ -322,6 +323,8 @@ export function entityLabel(type: EntityType, position: number): string {
       return `חשבון ${position + 1}`;
     case 'fundingSource':
       return `מקור מימון ${position + 1}`;
+    case 'bankApproval':
+      return `אישור עקרוני ${position + 1}`;
     default:
       return 'פרטי התיק';
   }

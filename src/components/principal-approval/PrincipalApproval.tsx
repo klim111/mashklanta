@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  BadgeCheck,
   Cloud,
   CloudOff,
   FileText,
+  FolderCheck,
   HandCoins,
   Landmark,
   Loader2,
@@ -18,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { completeness, type EntityType } from '@/lib/principal-approval/schema';
 import { CaseProvider, useCase, CASE_ENTITY_ID } from './CaseContext';
+import { toApprovalSummary, type ApprovalSummary } from '@/lib/principal-approval/plan-bridge';
 import { ConflictResolver } from './ConflictResolver';
 import { PermissionPanel } from './PermissionPanel';
 import { ApprovalReport } from './ApprovalReport';
@@ -25,8 +30,18 @@ import { PeopleSection } from './sections/PeopleSection';
 import { BankAccountsSection } from './sections/BankAccountsSection';
 import { LoanDetailsSection } from './sections/LoanDetailsSection';
 import { FundingSection } from './sections/FundingSection';
+import { DocumentsSection } from './sections/DocumentsSection';
+import { BankApprovalsSection } from './sections/BankApprovalsSection';
 
-type StepId = 'borrowers' | 'accounts' | 'loan' | 'funding' | 'guarantors' | 'report';
+type StepId =
+  | 'borrowers'
+  | 'accounts'
+  | 'loan'
+  | 'funding'
+  | 'guarantors'
+  | 'documents'
+  | 'approvals'
+  | 'report';
 
 const STEPS: { id: StepId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'borrowers', label: 'לווים והכנסות', icon: Users },
@@ -34,6 +49,8 @@ const STEPS: { id: StepId; label: string; icon: React.ComponentType<{ className?
   { id: 'loan', label: 'הלוואה ונכס', icon: Building2 },
   { id: 'funding', label: 'מקורות מימון', icon: PiggyBank },
   { id: 'guarantors', label: 'ערבים', icon: HandCoins },
+  { id: 'documents', label: 'תיק המסמכים', icon: FolderCheck },
+  { id: 'approvals', label: 'אישור עקרוני לפי בנק', icon: BadgeCheck },
   { id: 'report', label: 'דוח מסכם', icon: FileText },
 ];
 
@@ -76,16 +93,49 @@ function useOverallProgress() {
       total += c.total;
     };
     add('case', valuesOf('case', CASE_ENTITY_ID));
-    (['borrower', 'guarantor', 'income', 'prevEmployment', 'bankAccount', 'fundingSource'] as EntityType[]).forEach(
+    (
+      [
+        'borrower',
+        'guarantor',
+        'income',
+        'prevEmployment',
+        'bankAccount',
+        'fundingSource',
+        'bankApproval',
+      ] as EntityType[]
+    ).forEach(
       (type) => entities(type).forEach((entity) => add(type, valuesOf(type, entity.id))),
     );
     return { filled, total, ratio: total === 0 ? 0 : filled / total };
   }, [data, valuesOf, entities]);
 }
 
+/**
+ * Reports the per-bank approvals upward so the plan stage can keep feeding
+ * `PlanData.APPLICATIONS`. Fires only when the payload actually changes, so it
+ * cannot ping-pong with the parent's own state update.
+ */
+function ApprovalsReporter({ onApprovals }: { onApprovals: (list: ApprovalSummary[]) => void }) {
+  const { entities, valuesOf } = useCase();
+  const approvals = entities('bankApproval');
+  const serialized = JSON.stringify(
+    approvals.map((approval) => toApprovalSummary(approval.id, valuesOf('bankApproval', approval.id))),
+  );
+  const lastSent = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastSent.current === serialized) return;
+    lastSent.current = serialized;
+    onApprovals(JSON.parse(serialized) as ApprovalSummary[]);
+  }, [serialized, onApprovals]);
+
+  return null;
+}
+
 function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
   const { data, loading, loadError, openConflicts, actionError, dismissActionError } = useCase();
   const [step, setStep] = useState<StepId>('borrowers');
+  const stepIndex = Math.max(STEPS.findIndex((s) => s.id === step), 0);
   const progress = useOverallProgress();
 
   if (loading) {
@@ -222,8 +272,47 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
         {step === 'loan' && <LoanDetailsSection />}
         {step === 'funding' && <FundingSection />}
         {step === 'guarantors' && <PeopleSection kind="guarantor" />}
+        {step === 'documents' && <DocumentsSection />}
+        {step === 'approvals' && <BankApprovalsSection />}
         {step === 'report' && <ApprovalReport />}
       </main>
+
+      {/* Previous / next between the sections */}
+      <nav className="flex items-center justify-between gap-3 print:hidden">
+        <button
+          type="button"
+          disabled={stepIndex === 0}
+          onClick={() => setStep(STEPS[stepIndex - 1].id)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-all',
+            stepIndex === 0
+              ? 'cursor-not-allowed border-slate-100 text-slate-300'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900',
+          )}
+        >
+          <ChevronRight className="h-4 w-4" />
+          {stepIndex === 0 ? 'תחילת הטופס' : STEPS[stepIndex - 1].label}
+        </button>
+
+        <span className="text-[11px] font-medium text-slate-400">
+          {stepIndex + 1} מתוך {STEPS.length}
+        </span>
+
+        <button
+          type="button"
+          disabled={stepIndex === STEPS.length - 1}
+          onClick={() => setStep(STEPS[stepIndex + 1].id)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all',
+            stepIndex === STEPS.length - 1
+              ? 'cursor-not-allowed bg-slate-100 text-slate-300'
+              : 'bg-slate-900 text-white shadow-lg shadow-slate-200 hover:bg-slate-800',
+          )}
+        >
+          {stepIndex === STEPS.length - 1 ? 'סוף הטופס' : STEPS[stepIndex + 1].label}
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      </nav>
 
       {step !== 'report' && (
         <div className="print:hidden">
@@ -243,20 +332,25 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
 export function PrincipalApproval({
   clientRecordId,
   embedded = false,
+  onApprovals,
 }: {
   clientRecordId?: string;
   /** Rendered inside another screen (the plan flow), so it drops the page chrome. */
   embedded?: boolean;
+  /** Called with the per-bank approvals whenever they change. */
+  onApprovals?: (approvals: ApprovalSummary[]) => void;
 }) {
   if (embedded) {
     return (
       <CaseProvider clientRecordId={clientRecordId}>
+        {onApprovals && <ApprovalsReporter onApprovals={onApprovals} />}
         <ApprovalShell embedded />
       </CaseProvider>
     );
   }
   return (
     <CaseProvider clientRecordId={clientRecordId}>
+      {onApprovals && <ApprovalsReporter onApprovals={onApprovals} />}
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
         <ApprovalShell />
       </div>

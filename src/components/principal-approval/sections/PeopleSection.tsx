@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { HandCoins, Users } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { HandCoins, Users, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   BORROWER_FIELDS,
   GUARANTOR_FIELDS,
@@ -36,6 +37,24 @@ export function PeopleSection({ kind }: { kind: 'borrower' | 'guarantor' }) {
   const peopleOptions = usePeopleOptions();
   const people = entities(kind);
   const fields = kind === 'borrower' ? BORROWER_FIELDS : GUARANTOR_FIELDS;
+  const noun = kind === 'borrower' ? 'לווה' : 'ערב';
+
+  // Each person gets their own tab rather than a stack of long cards.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active = people.find((person) => person.id === activeId) ?? people[0] ?? null;
+
+  useEffect(() => {
+    if (people.length > 0 && !people.some((person) => person.id === activeId)) {
+      setActiveId(people[0].id);
+    }
+  }, [people, activeId]);
+
+  /** The tab is named after the person as soon as they have a name. */
+  const tabLabel = (personId: string, index: number) => {
+    const values = valuesOf(kind, personId);
+    const name = [values.firstName, values.lastName].filter(Boolean).join(' ').trim();
+    return name || `${noun} ${index + 1}`;
+  };
 
   const totals = people.reduce(
     (acc, person) => {
@@ -59,7 +78,10 @@ export function PeopleSection({ kind }: { kind: 'borrower' | 'guarantor' }) {
         action={
           <AddButton
             label={kind === 'borrower' ? 'הוספת לווה' : 'הוספת ערב'}
-            onClick={() => void addEntity(kind)}
+            onClick={async () => {
+              const created = await addEntity(kind);
+              if (created) setActiveId(created.id);
+            }}
           />
         }
       />
@@ -70,47 +92,81 @@ export function PeopleSection({ kind }: { kind: 'borrower' | 'guarantor' }) {
         </p>
       )}
 
-      <div className="space-y-6">
-        {people.map((person, index) => {
-          const values = valuesOf(kind, person.id);
-          const name = [values.firstName, values.lastName].filter(Boolean).join(' ').trim();
-          const c = completeness(kind, values);
-          return (
+      {people.length > 0 && (
+        <>
+          {/* Tab per person — the label follows the name they type. */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+            {people.map((person, index) => {
+              const c = completeness(kind, valuesOf(kind, person.id));
+              const isActive = active?.id === person.id;
+              const removable = kind === 'guarantor' || index > 0;
+              return (
+                <div key={person.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(person.id)}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all',
+                      isActive
+                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700',
+                      removable && 'pl-8',
+                    )}
+                  >
+                    <span className="max-w-[180px] truncate">{tabLabel(person.id, index)}</span>
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                        isActive
+                          ? 'bg-white/15 text-white'
+                          : c.ratio === 1
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-amber-50 text-amber-700',
+                      )}
+                    >
+                      {c.filled}/{c.total}
+                    </span>
+                  </button>
+                  {removable && (
+                    <button
+                      type="button"
+                      aria-label={`הסרת ${tabLabel(person.id, index)}`}
+                      onClick={() => void removeEntity(person.id)}
+                      className={cn(
+                        'absolute inset-y-0 left-2 my-auto flex h-5 w-5 items-center justify-center rounded-md transition-colors',
+                        isActive ? 'text-white/60 hover:bg-white/15' : 'text-slate-300 hover:bg-rose-50 hover:text-rose-600',
+                      )}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {active && (
             <EntityCard
-              key={person.id}
-              title={`${kind === 'borrower' ? 'לווה' : 'ערב'} ${index + 1}${name ? ` · ${name}` : ''}`}
-              badge={
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    c.ratio === 1
-                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
-                      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
-                  }`}
-                >
-                  {c.filled}/{c.total} שדות חובה
-                </span>
-              }
-              onRemove={
-                kind === 'guarantor' || index > 0 ? () => void removeEntity(person.id) : undefined
-              }
+              key={active.id}
+              title={tabLabel(active.id, people.findIndex((p) => p.id === active.id))}
             >
               <FieldGrid
                 fields={fields}
                 entityType={kind}
-                entityId={person.id}
-                peopleOptions={peopleOptions.filter((p) => p.value !== person.id)}
+                entityId={active.id}
+                peopleOptions={peopleOptions.filter((p) => p.value !== active.id)}
               />
 
               <div className="mt-6 border-t border-dashed border-slate-200 pt-5">
                 <IncomeBlock
-                  personId={person.id}
-                  personLabel={name || `${kind === 'borrower' ? 'לווה' : 'ערב'} ${index + 1}`}
+                  personId={active.id}
+                  personLabel={tabLabel(active.id, people.findIndex((p) => p.id === active.id))}
                 />
               </div>
             </EntityCard>
-          );
-        })}
-      </div>
+          )}
+        </>
+      )}
     </section>
   );
 }
