@@ -99,6 +99,8 @@ interface MortgageWorkspaceProps {
   onActiveMix?: (item: SavedMix) => void;
   /** תהליך המשכנתא שאליו משויכות השמירות */
   planId?: string;
+  /** הלקוח שהכלי נפתח עליו — כשהוא מוטמע בדף הלקוח אצל היועץ */
+  clientId?: string;
   /** פתיחה של תמהיל בודד — בלי שאר תמהילי הנכס */
   soloMixKey?: string;
   /** הצגת כפתור בחירת תמהיל סופי בהשוואה */
@@ -147,6 +149,7 @@ export function MortgageWorkspace({
   onPendingPrepayHandled,
   onActiveMix,
   planId,
+  clientId,
   soloMixKey,
   allowSelectFinal = false,
   finalMixKey,
@@ -158,22 +161,24 @@ export function MortgageWorkspace({
   const personalAreaHref = isAdvisor ? '/advisor-dashboard' : '/dashboard';
 
   /** הלקוח שהתמהילים נשמרים עבורו. ריק כשעובדים בלי שיוך ללקוח */
-  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [activeClientId, setActiveClientId] = useState<string | null>(clientId ?? null);
   const clients = useAdvisorClients(isAdvisor);
 
   const { saved, save, rename, signedIn, ready, refresh } = useSavedMixes(
     activeClientId ? { clientId: activeClientId, planId } : { planId }
   );
 
-  // כניסה מדף הלקוח: הכלי נפתח כשהלקוח כבר נבחר, וכל שמירה נרשמת עליו
-  const [enteredFromClient, setEnteredFromClient] = useState(false);
+  // כניסה מדף הלקוח: הכלי נפתח כשהלקוח כבר נבחר, וכל שמירה נרשמת עליו — בין
+  // אם הוא הוטמע בדף הלקוח ובין אם נפתח ממנו בקישור
+  const [enteredFromClient, setEnteredFromClient] = useState(Boolean(clientId));
   useEffect(() => {
+    if (clientId) return;
     const requested = new URLSearchParams(window.location.search).get('client');
     if (requested) {
       setActiveClientId(requested);
       setEnteredFromClient(true);
     }
-  }, []);
+  }, [clientId]);
 
   /**
    * ריביות ברירת המחדל של היועץ נטענות פעם אחת ומוזרקות לאזור העבודה, כדי שכל
@@ -390,6 +395,22 @@ export function MortgageWorkspace({
     openMix(item.mix);
     actions.setCompared([]);
   }, [ready, saved, soloMixKey, openMix, actions, notifyActive]);
+
+  /**
+   * כשהכלי מוטמע בדף לקוח, הוא נפתח על התמהיל האחרון שנשמר לו — כדי ששורת
+   * התמהילים של אותו לקוח תוצג מיד, ולא מסך פתיחה ריק.
+   */
+  const clientMixOpened = useRef(false);
+  useEffect(() => {
+    if (!clientId || clientMixOpened.current || initialMix || !ready) return;
+    if (phase !== 'landing' || saved.length === 0) return;
+    const newest = [...saved].sort(
+      (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+    )[0];
+    clientMixOpened.current = true;
+    notifyActive(newest);
+    openMix(newest.mix);
+  }, [clientId, ready, saved, phase, initialMix, openMix, notifyActive]);
 
   const persistMix = useCallback(
     (next: WorkspaceMix) => {
@@ -715,7 +736,7 @@ export function MortgageWorkspace({
             saved={saved}
             signedIn={signedIn}
             clientsPanel={
-              isAdvisor ? (
+              isAdvisor && !clientId ? (
                 <Card className="border-slate-200 shadow-sm">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">

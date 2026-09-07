@@ -547,8 +547,11 @@ model AdvisorTask {
   id        String @id @default(cuid())
   advisorId String
   advisor   User   @relation("AdvisorTasks", fields: [advisorId], references: [id], onDelete: Cascade)
-  clientId  String
-  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /**
+   * הלקוח שהמשימה שייכת לו. ריק — משימה של היועץ עצמו, בלי שיוך ללקוח
+   */
+  clientId  String?
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   stage       PlanStage
   title       String

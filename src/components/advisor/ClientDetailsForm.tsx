@@ -23,19 +23,38 @@ export interface ClientDetailsValues {
   notes: string | null;
 }
 
+/** קבוצות השדות בטופס — כדי ששלב בתהליך יבקש רק את מה שרלוונטי לו */
+export type ClientDetailsSection = 'household' | 'income' | 'deal' | 'notes';
+
+const ALL_SECTIONS: ClientDetailsSection[] = ['household', 'income', 'deal', 'notes'];
+
 interface ClientDetailsFormProps {
   values: ClientDetailsValues;
   onSubmit: (values: Partial<ClientDetailsValues>) => Promise<void>;
-  onCancel: () => void;
+  onCancel?: () => void;
+  /** אילו קבוצות שדות להציג. ברירת המחדל — כולן */
+  sections?: ClientDetailsSection[];
+  submitLabel?: string;
+  /** מוצג אחרי שמירה מוצלחת, כשהטופס נשאר פתוח בתוך שלב */
+  confirmOnSave?: boolean;
 }
 
 /**
  * טופס פרטי הלקוח. אלה הנתונים שמאכלסים את כרטיסי הסיכום בראש הדף — הרכב משק
  * הבית, ההכנסות שמהן נגזר התזרים, ופרטי העסקה.
  */
-export function ClientDetailsForm({ values, onSubmit, onCancel }: ClientDetailsFormProps) {
+export function ClientDetailsForm({
+  values,
+  onSubmit,
+  onCancel,
+  sections = ALL_SECTIONS,
+  submitLabel = 'שמור פרטים',
+  confirmOnSave = false,
+}: ClientDetailsFormProps) {
   const [draft, setDraft] = useState<ClientDetailsValues>(values);
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const shows = (section: ClientDetailsSection) => sections.includes(section);
 
   const set = <K extends keyof ClientDetailsValues>(key: K, value: ClientDetailsValues[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -45,12 +64,14 @@ export function ClientDetailsForm({ values, onSubmit, onCancel }: ClientDetailsF
     setBusy(true);
     await onSubmit(draft);
     setBusy(false);
+    if (confirmOnSave) setSaved(true);
   };
 
   const couple = draft.household === 'COUPLE';
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      {shows('household') && (
       <Section title="משק הבית">
         <Field label="הרכב">
           <div className="flex gap-1.5">
@@ -97,7 +118,9 @@ export function ClientDetailsForm({ values, onSubmit, onCancel }: ClientDetailsF
           />
         </Field>
       </Section>
+      )}
 
+      {shows('income') && (
       <Section title="הכנסות והוצאות חודשיות">
         <Field label="הכנסה">
           <MoneyField value={draft.income} onChange={(value) => set('income', value)} />
@@ -120,7 +143,9 @@ export function ClientDetailsForm({ values, onSubmit, onCancel }: ClientDetailsF
           />
         </Field>
       </Section>
+      )}
 
+      {shows('deal') && (
       <Section title="העסקה">
         <Field label="כתובת הנכס">
           <Input
@@ -156,24 +181,30 @@ export function ClientDetailsForm({ values, onSubmit, onCancel }: ClientDetailsF
           </select>
         </Field>
       </Section>
+      )}
 
-      <div>
-        <p className="text-[11px] font-semibold text-slate-500 mb-1">הערות</p>
-        <textarea
-          value={draft.notes ?? ''}
-          onChange={(event) => set('notes', event.target.value)}
-          rows={2}
-          className="w-full rounded-md border border-slate-200 p-2 text-sm"
-        />
-      </div>
+      {shows('notes') && (
+        <div>
+          <p className="text-[11px] font-semibold text-slate-500 mb-1">הערות</p>
+          <textarea
+            value={draft.notes ?? ''}
+            onChange={(event) => set('notes', event.target.value)}
+            rows={2}
+            className="w-full rounded-md border border-slate-200 p-2 text-sm"
+          />
+        </div>
+      )}
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Button type="submit" size="sm" className="h-9" disabled={busy}>
-          {busy ? 'שומר...' : 'שמור פרטים'}
+          {busy ? 'שומר...' : submitLabel}
         </Button>
-        <Button type="button" size="sm" variant="ghost" className="h-9" onClick={onCancel}>
-          ביטול
-        </Button>
+        {onCancel && (
+          <Button type="button" size="sm" variant="ghost" className="h-9" onClick={onCancel}>
+            ביטול
+          </Button>
+        )}
+        {saved && !busy && <span className="text-xs font-semibold text-emerald-600">נשמר</span>}
       </div>
     </form>
   );

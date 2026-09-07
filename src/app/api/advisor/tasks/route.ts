@@ -11,6 +11,15 @@ function readDate(value: unknown): Date | null {
 }
 
 /**
+ * מזהה הלקוח שהתבקש בסינון. `none` מבקש את המשימות שאינן משויכות ללקוח,
+ * וערך ריק פירושו בלי סינון בכלל.
+ */
+function readClientFilter(value: string | null): string | null | undefined {
+  if (!value) return undefined;
+  return value === 'none' ? null : value;
+}
+
+/**
  * המשימות של היועץ. בלי פרמטרים מוחזרות רק המשימות הפתוחות — זה מה שסדר היום
  * צריך — ועם `all=1` מוחזרות גם אלה שנסגרו, לתצוגת ההיסטוריה של הלקוח.
  */
@@ -27,14 +36,17 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(
     await listAdvisorTasks(advisorId, {
-      clientId: params.get('clientId') ?? undefined,
+      clientId: readClientFilter(params.get('clientId')),
       stage: stage ?? undefined,
       includeClosed: params.get('all') === '1',
     })
   );
 }
 
-/** פתיחת משימה חדשה ללקוח, בשלב מסוים ועם מועד לביצוע */
+/**
+ * פתיחת משימה חדשה בשלב מסוים ועם מועד לביצוע. שיוך ללקוח הוא רשות: משימה בלי
+ * לקוח היא משימה של היועץ עצמו, והיא מופיעה בלוח השנה ובסדר היום כמו כל אחרת.
+ */
 export async function POST(req: NextRequest) {
   const session = await getServerAuth();
   const advisorId = session?.user?.id;
@@ -44,12 +56,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
-  const clientId = typeof body?.clientId === 'string' ? body.clientId : '';
+  const clientId = typeof body?.clientId === 'string' && body.clientId ? body.clientId : null;
   const stage = asPlanStage(body?.stage);
   const title = typeof body?.title === 'string' ? body.title.trim() : '';
 
-  if (!clientId || !stage || !title) {
-    return NextResponse.json({ error: 'נדרשים לקוח, שלב וכותרת למשימה' }, { status: 400 });
+  if (!stage || !title) {
+    return NextResponse.json({ error: 'נדרשים שלב וכותרת למשימה' }, { status: 400 });
   }
 
   const task = await createAdvisorTask({

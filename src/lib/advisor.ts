@@ -55,7 +55,7 @@ function toTaskView(row: TaskRow): AdvisorTaskView {
   return {
     id: row.id,
     clientId: row.clientId,
-    clientName: row.client.name,
+    clientName: row.client?.name ?? null,
     stage: row.stage as PlanStageId,
     title: row.title,
     details: row.details,
@@ -69,15 +69,18 @@ function toTaskView(row: TaskRow): AdvisorTaskView {
 /**
  * המשימות של היועץ. משימות עם תאריך מסודרות לפי המועד שנקבע להן, ומשימות
  * בלי תאריך נדחקות לסוף — כך שהרשימה קוראת כמו סדר יום.
+ *
+ * `clientId: null` מבקש במפורש את המשימות שאינן משויכות ללקוח, להבדיל מהשמטת
+ * הסינון — שמחזירה את כולן.
  */
 export async function listAdvisorTasks(
   advisorId: string,
-  filter: { clientId?: string; stage?: PlanStageId; includeClosed?: boolean } = {}
+  filter: { clientId?: string | null; stage?: PlanStageId; includeClosed?: boolean } = {}
 ): Promise<AdvisorTaskView[]> {
   const rows = await prisma.advisorTask.findMany({
     where: {
       advisorId,
-      ...(filter.clientId ? { clientId: filter.clientId } : {}),
+      ...(filter.clientId === undefined ? {} : { clientId: filter.clientId }),
       ...(filter.stage ? { stage: filter.stage } : {}),
       ...(filter.includeClosed ? {} : { status: { in: ['OPEN', 'IN_PROGRESS'] } }),
     },
@@ -89,7 +92,8 @@ export async function listAdvisorTasks(
 
 export interface CreateTaskInput {
   advisorId: string;
-  clientId: string;
+  /** ריק — משימה של היועץ עצמו, שאינה משויכת ללקוח */
+  clientId?: string | null;
   stage: PlanStageId;
   title: string;
   details?: string | null;
@@ -97,12 +101,12 @@ export interface CreateTaskInput {
 }
 
 export async function createAdvisorTask(input: CreateTaskInput): Promise<AdvisorTaskView | null> {
-  if (!(await advisorOwnsClient(input.advisorId, input.clientId))) return null;
+  if (input.clientId && !(await advisorOwnsClient(input.advisorId, input.clientId))) return null;
 
   const row = await prisma.advisorTask.create({
     data: {
       advisorId: input.advisorId,
-      clientId: input.clientId,
+      clientId: input.clientId ?? null,
       stage: input.stage,
       title: input.title,
       details: input.details ?? null,
@@ -119,6 +123,8 @@ export interface UpdateTaskInput {
   dueDate?: Date | null;
   stage?: PlanStageId;
   status?: AdvisorTaskStatus;
+  /** שיוך המשימה ללקוח, או null לניתוק השיוך */
+  clientId?: string | null;
 }
 
 /** עדכון משימה. סימון כהושלמה חותם גם את מועד הסגירה, וחזרה לפתוחה מנקה אותו */
@@ -138,6 +144,13 @@ export async function updateAdvisorTask(
   if (input.details !== undefined) data.details = input.details;
   if (input.dueDate !== undefined) data.dueDate = input.dueDate;
   if (input.stage !== undefined) data.stage = input.stage;
+  if (input.clientId !== undefined) {
+    // שיוך ללקוח מותר רק ללקוח שהיועץ הזה באמת מלווה
+    if (input.clientId === null) data.client = { disconnect: true };
+    else if (await advisorOwnsClient(advisorId, input.clientId)) {
+      data.client = { connect: { id: input.clientId } };
+    }
+  }
   if (input.status !== undefined) {
     data.status = input.status;
     data.completedAt = input.status === 'DONE' ? new Date() : null;

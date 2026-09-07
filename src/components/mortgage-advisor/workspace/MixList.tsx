@@ -17,8 +17,8 @@ import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import type { SavedMix } from '../savedMixes';
 import { UNIFORM_BASKETS } from '@/lib/mortgage-plan';
 import { MixRow } from './MixRow';
-import { MixStripCard } from './MixStripCard';
-import type { MixOrigin } from './MixStripCard';
+import { AUTHOR_STYLES, MixStripCard } from './MixStripCard';
+import type { MixAuthor, MixOrigin } from './MixStripCard';
 import { formatShekel } from './primitives';
 import { RateRequestDialog } from '../rateRequest/RateRequestDialog';
 import { BankQuoteDialog } from '../bankQuote/BankQuoteDialog';
@@ -337,10 +337,11 @@ export function MixList({
 }
 
 /**
- * כל התמהילים של הנכס בשורה אחת — אלה של הבנק ואלה שנבנו בכלי יחד.
+ * כל התמהילים של הנכס, מופרדים לפי מי שבנה אותם.
  *
- * ההבחנה ביניהם נעשית על הכרטיס עצמו, בגוון ובתווית, כדי שאפשר יהיה להשוות
- * ביניהם בלי לקפוץ בין שני אזורים נפרדים.
+ * ההפרדה הזו היא הראשונה שהעין צריכה לתפוס: תמהיל שהלקוח בנה לעצמו ותמהיל
+ * שהיועץ הציע לו הם שני דברים שונים, גם כשהם לאותה עסקה. בתוך כל קבוצה נשמרת
+ * ההבחנה בין ברירת המחדל של הבנק לתמהיל שנבנה בכלי, על הכרטיס עצמו.
  */
 function MixSliderSection({
   items,
@@ -359,9 +360,11 @@ function MixSliderSection({
   onRequestQuote: (item: SavedMix) => void;
   onEnterQuote?: (item: SavedMix) => void;
 }) {
-  const bankCount = items.filter((item) => originOf(item) === 'bank').length;
+  const authorOf = (item: SavedMix): MixAuthor => (item.ownerIsAdvisor ? 'advisor' : 'client');
+  const groups = (['client', 'advisor'] as const)
+    .map((author) => ({ author, items: items.filter((item) => authorOf(item) === author) }))
+    .filter((group) => group.items.length > 0);
   const quoteCount = items.filter((item) => originOf(item) === 'quote').length;
-  const customCount = items.length - bankCount - quoteCount;
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
@@ -372,18 +375,12 @@ function MixSliderSection({
         <div>
           <p className="text-xs font-black text-slate-900">תמהילים להשוואה</p>
           <p className="flex flex-wrap items-center justify-center gap-x-2 text-[10px] text-slate-600 sm:justify-start">
-            {bankCount > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-amber-400" />
-                {bankCount} ברירת מחדל של הבנק
+            {groups.map((group) => (
+              <span key={group.author} className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${AUTHOR_STYLES[group.author].dot}`} />
+                {group.items.length} {AUTHOR_STYLES[group.author].label}
               </span>
-            )}
-            {customCount > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-violet-400" />
-                {customCount} מותאמים אישית
-              </span>
-            )}
+            ))}
             {quoteCount > 0 && (
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -393,23 +390,34 @@ function MixSliderSection({
           </p>
         </div>
       </div>
-      <div className="flex flex-col items-center gap-3 sm:flex-row sm:snap-x sm:snap-mandatory sm:overflow-x-auto sm:pb-1 sm:[scrollbar-width:thin] sm:justify-start">
-        {items.map((item) => {
-          const selected = comparedIds.includes(item.mix.id);
-          return (
-            <MixStripCard
-              key={item.mix.id}
-              mix={item.mix}
-              summary={item.summary}
-              origin={originOf(item)}
-              selected={selected}
-              onToggleSelect={() => onToggleCompare(item.mix.id)}
-              onActivate={() => onActivate(item)}
-              onRequestQuote={() => onRequestQuote(item)}
-              onEnterQuote={onEnterQuote && (() => onEnterQuote(item))}
-            />
-          );
-        })}
+
+      <div className="space-y-3">
+        {groups.map((group) => (
+          <div key={group.author} className="space-y-1.5">
+            {groups.length > 1 && (
+              <p className="flex items-center gap-1.5 text-[11px] font-black text-slate-700">
+                <span className={`h-2 w-2 rounded-full ${AUTHOR_STYLES[group.author].dot}`} />
+                תמהילים ש{group.author === 'client' ? 'הלקוח בנה' : 'היועץ בנה'}
+              </p>
+            )}
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:snap-x sm:snap-mandatory sm:justify-start sm:overflow-x-auto sm:pb-1 sm:[scrollbar-width:thin]">
+              {group.items.map((item) => (
+                <MixStripCard
+                  key={item.mix.id}
+                  mix={item.mix}
+                  summary={item.summary}
+                  origin={originOf(item)}
+                  author={group.author}
+                  selected={comparedIds.includes(item.mix.id)}
+                  onToggleSelect={() => onToggleCompare(item.mix.id)}
+                  onActivate={() => onActivate(item)}
+                  onRequestQuote={() => onRequestQuote(item)}
+                  onEnterQuote={onEnterQuote && (() => onEnterQuote(item))}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

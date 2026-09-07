@@ -21,8 +21,8 @@ interface SavedMixesBoardProps {
   onRename?: (id: string, name: string) => void;
   emptyState?: React.ReactNode;
   /**
-   * מי מסתכל על הלוח. אצל הלקוח מסומן איזה תמהיל הוצע לו על ידי היועץ ובשם מי;
-   * אצל היועץ הסימון הזה מיותר, כי הוא זה שיצר אותם.
+   * מי מסתכל על הלוח. שני הצדדים רואים מי בנה כל תמהיל; אצל הלקוח מצוין גם שם
+   * היועץ שהציע לו אותו.
    */
   viewer?: 'client' | 'advisor';
 }
@@ -30,7 +30,7 @@ interface SavedMixesBoardProps {
 /**
  * לוח התמהילים השמורים, מסודר לפי נכס.
  *
- * זהו אותו לוח שמוצג באזור האישי של הלקוח ובדף הלקוח אצל היועץ, כדי ששני
+ * זהו אותו לוח שמוצג באזור האישי של הלקוח ובתמהילים השמורים של היועץ, כדי ששני
  * הצדדים יראו בדיוק את אותה תמונה של החלופות לאותה עסקה.
  */
 export function SavedMixesBoard({
@@ -218,15 +218,15 @@ function PropertyGroup({
 }
 
 /**
- * מאיפה התמהיל הגיע ולמה הוא משויך.
+ * מי בנה את התמהיל ולמה הוא משויך.
  *
- * שני הדברים שהלקוח צריך לדעת במבט אחד: אם היועץ הוא שהציע לו את התמהיל, ואם
- * התמהיל מחובר לנכס שהוא הזין או שהוא עדיין עומד בפני עצמו.
+ * מי שבנה אותו נאמר תמיד ובמפורש — תמהיל שהלקוח בנה לעצמו ותמהיל שהיועץ הציע
+ * לו הם שני דברים שונים, ולכן הם גם נבדלים בצבע התג. לצידו נאמר אם התמהיל
+ * מחובר לנכס שהוזן, או שהוא עדיין עומד בפני עצמו.
  */
 function MixOrigin({ item, viewer }: { item: SavedMix; viewer: 'client' | 'advisor' }) {
-  const proposed = viewer === 'client' && item.ownerIsAdvisor;
+  const byAdvisor = Boolean(item.ownerIsAdvisor);
   const quote = item.mix.quote;
-  if (!proposed && !quote && item.planId) return null;
 
   return (
     <>
@@ -235,11 +235,19 @@ function MixOrigin({ item, viewer }: { item: SavedMix; viewer: 'client' | 'advis
           התקבלו ריביות מבנק {quote.bank} · {formatQuoteDate(quote.receivedAt)}
         </Badge>
       )}
-      {proposed && (
-        <Badge className="bg-blue-100 text-[10px] text-blue-800 hover:bg-blue-100">
-          תמהיל מוצע על ידי יועץ · {item.ownerName || 'היועץ שלכם'}
-        </Badge>
-      )}
+      <Badge
+        className={`text-[10px] ${
+          byAdvisor
+            ? 'bg-violet-100 text-violet-900 hover:bg-violet-100'
+            : 'bg-sky-100 text-sky-900 hover:bg-sky-100'
+        }`}
+      >
+        {byAdvisor
+          ? viewer === 'client'
+            ? `נוצר על ידי היועץ · ${item.ownerName || 'היועץ שלכם'}`
+            : 'נוצר על ידי היועץ'
+          : 'נוצר על ידי הלקוח'}
+      </Badge>
       {!item.planId && (
         <Badge className="bg-amber-100 text-[10px] text-amber-800 hover:bg-amber-100">
           תמהיל לא משויך לנכס

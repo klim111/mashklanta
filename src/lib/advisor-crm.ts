@@ -34,8 +34,9 @@ export function taskIsClosed(status: AdvisorTaskStatus): boolean {
 
 export interface AdvisorTaskView {
   id: string;
-  clientId: string;
-  clientName: string;
+  /** הלקוח שהמשימה שייכת לו, או null כשהיא משימה של היועץ בלי שיוך */
+  clientId: string | null;
+  clientName: string | null;
   stage: PlanStageId;
   title: string;
   details: string | null;

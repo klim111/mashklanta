@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
@@ -9,7 +9,6 @@ import {
   BarChart3,
   BookmarkCheck,
   CalendarDays,
-  CalendarPlus,
   FileText,
   Gavel,
   Home as HomeIcon,
@@ -28,13 +27,14 @@ import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
 import { ClientList } from './ClientList';
 import { CalendarPanel } from './CalendarPanel';
 import { MeetingDialog } from './MeetingDialog';
+import { QuickActions } from './QuickActions';
 import { MixesPanel } from './MixesPanel';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { AdvisorSettingsPanel } from './AdvisorSettingsPanel';
 import { TasksPanel } from './TasksPanel';
 import { StageChip } from './ui';
 import { useAdvisorClients } from './useAdvisorClients';
-import { useAdvisorOverview, useMeetings } from './useAdvisorCrm';
+import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
 
 type TabId = 'clients' | 'tasks' | 'calendar' | 'mixes' | 'rate-requests' | 'settings';
@@ -61,10 +61,26 @@ export function AdvisorConsole() {
   const [query, setQuery] = useState('');
   const [meetingFor, setMeetingFor] = useState<AdvisorClient | null>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  /** לקוח שהגיעו ממנו — הלוח והמשימות נפתחים מסוננים אליו */
+  const [focusClientId, setFocusClientId] = useState<string | undefined>(undefined);
+
+  /**
+   * כניסה מדף הלקוח: `?tab=calendar&client=<id>` פותח את הלשונית המבוקשת עם
+   * הסינון ללקוח, כדי שהמעבר מכרטיס הפגישות שלו יגיע ליומן שלו ולא לכללי.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('tab');
+    if (requested && TABS.some((item) => item.id === requested)) setTab(requested as TabId);
+    const client = params.get('client');
+    if (client) setFocusClientId(client);
+  }, []);
 
   const { clients, ready, error, addClient, refresh: refreshClients } = useAdvisorClients(true);
   const { overview, refresh: refreshOverview } = useAdvisorOverview(true);
   const { propose } = useMeetings();
+  // רק לפתיחת משימה מהגישה המהירה — הרשימה עצמה נטענת בלשונית המשימות
+  const { create: createTask } = useAdvisorTasks({}, false);
 
   const displayName = session?.user?.name || session?.user?.email || 'יועץ';
   const firstName = session?.user?.name?.split(' ')[0] || 'יועץ יקר';
@@ -197,22 +213,20 @@ export function AdvisorConsole() {
                   <UserPlus className="h-4 w-4" />
                   לקוח חדש
                 </button>
-                <button
-                  type="button"
-                  onClick={() => openMeeting(null)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
-                >
-                  <CalendarPlus className="h-4 w-4" />
-                  קבע פגישה
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTab('tasks')}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
-                >
-                  <ListChecks className="h-4 w-4" />
-                  משימה חדשה
-                </button>
+                <QuickActions
+                  tone="dark"
+                  clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+                  onCreateTask={async (input) => {
+                    const failure = await createTask(input);
+                    if (!failure) await refreshAll();
+                    return failure;
+                  }}
+                  onProposeMeeting={async (input) => {
+                    const failure = await propose(input);
+                    if (!failure) await refreshAll();
+                    return failure;
+                  }}
+                />
                 <Link
                   href="/mortgage-advisor"
                   className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
@@ -348,9 +362,17 @@ export function AdvisorConsole() {
             </div>
           )}
 
-          {tab === 'tasks' && <TasksPanel clients={clients} onChanged={refreshAll} />}
+          {tab === 'tasks' && (
+            <TasksPanel clients={clients} onChanged={refreshAll} initialClientId={focusClientId} />
+          )}
 
-          {tab === 'calendar' && <CalendarPanel clients={clients} onChanged={refreshAll} />}
+          {tab === 'calendar' && (
+            <CalendarPanel
+              clients={clients}
+              onChanged={refreshAll}
+              initialClientId={focusClientId}
+            />
+          )}
 
           {tab === 'mixes' && <MixesPanel />}
 

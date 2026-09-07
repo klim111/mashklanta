@@ -13,28 +13,48 @@ import { formatQuoteDate } from '../bankQuote/quote';
  */
 export type MixOrigin = 'bank' | 'custom' | 'quote';
 
-const ORIGIN_STYLES: Record<MixOrigin, { card: string; badge: string; label: string }> = {
-  bank: {
-    card: 'border-amber-300 bg-amber-50/60',
-    badge: 'bg-amber-100 text-amber-900',
-    label: 'ברירת מחדל של הבנק',
-  },
-  custom: {
-    card: 'border-violet-300 bg-violet-50/50',
-    badge: 'bg-violet-100 text-violet-900',
-    label: 'מותאם אישית',
-  },
-  quote: {
-    card: 'border-emerald-400 bg-emerald-50/70',
-    badge: 'bg-emerald-600 text-white',
-    label: 'התקבלו ריביות',
-  },
+/** מי בנה את התמהיל — הלקוח באזור שלו, או היועץ שמלווה אותו */
+export type MixAuthor = 'client' | 'advisor';
+
+const ORIGIN_LABELS: Record<MixOrigin, string> = {
+  bank: 'ברירת מחדל של הבנק',
+  custom: 'מותאם אישית',
+  quote: 'התקבלו ריביות מבנק',
 };
+
+/** תמהיל שהריביות בו כבר התקבלו מבנק — מצב שגובר על הגוון של מי שבנה אותו */
+const QUOTE_STYLE = {
+  card: 'border-emerald-400 bg-emerald-50/70',
+  badge: 'bg-emerald-600 text-white',
+};
+
+/**
+ * הגוונים לפי מי שבנה את התמהיל. זו ההבחנה הראשונה שצריך לראות בשורת
+ * התמהילים, ולכן היא זו שצובעת את הכרטיס כולו.
+ */
+const AUTHOR_STYLES: Record<MixAuthor, { card: string; badge: string; label: string; dot: string }> =
+  {
+    client: {
+      card: 'border-sky-300 bg-sky-50/60',
+      badge: 'bg-sky-100 text-sky-900',
+      label: 'נוצר על ידי הלקוח',
+      dot: 'bg-sky-400',
+    },
+    advisor: {
+      card: 'border-violet-300 bg-violet-50/50',
+      badge: 'bg-violet-100 text-violet-900',
+      label: 'נוצר על ידי היועץ',
+      dot: 'bg-violet-400',
+    },
+  };
+
+export { AUTHOR_STYLES };
 
 interface MixStripCardProps {
   mix: WorkspaceMix;
   summary: MixSummary;
   origin: MixOrigin;
+  author: MixAuthor;
   selected?: boolean;
   onToggleSelect?: () => void;
   onActivate: () => void;
@@ -48,21 +68,25 @@ interface MixStripCardProps {
  * כרטיס קומפקטי לסרגל התמהילים — בלי חץ פתיחה. לחיצה מעלה לאזור העבודה,
  * והעיגול בפינה הימנית העליונה מוסיף להשוואה.
  *
- * המקור מסומן בגוון ובתווית קטנה בלבד, כדי שההבחנה בין תמהיל של הבנק לתמהיל
- * מותאם אישית לא תבוא על חשבון תוכן הכרטיס.
+ * הכרטיס נושא שתי הבחנות: מי בנה את התמהיל — הלקוח או היועץ — בגוון הכרטיס
+ * ובתווית שבראשו, ומאיפה הגיע ההרכב — ברירת מחדל של הבנק או תמהיל שנבנה בכלי —
+ * בשורת משנה, כדי שההבחנה השנייה לא תתחרה בראשונה.
  */
 export function MixStripCard({
   mix,
   summary,
   origin,
+  author,
   selected = false,
   onToggleSelect,
   onActivate,
   onRequestQuote,
   onEnterQuote,
 }: MixStripCardProps) {
-  const tone = ORIGIN_STYLES[origin];
   const quote = mix.quote;
+  const author_ = AUTHOR_STYLES[author];
+  // הריביות שהתקבלו צובעות את הכרטיס, אבל התווית ממשיכה לומר מי בנה אותו
+  const tone = quote ? { ...author_, ...QUOTE_STYLE } : author_;
 
   return (
     <div
@@ -82,7 +106,7 @@ export function MixStripCard({
       <span
         className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black ${tone.badge}`}
       >
-        {quote ? `ריביות · ${quote.bank}` : tone.label}
+        {author_.label}
       </span>
       {onToggleSelect && (
         <button
@@ -105,9 +129,13 @@ export function MixStripCard({
       )}
 
       <p className="truncate text-sm font-bold text-slate-900">{mix.name || 'תמהיל ללא שם'}</p>
-      {quote && (
+      {quote ? (
         <p className="mt-0.5 truncate text-[10px] font-bold text-emerald-800">
           התקבלו ריביות מבנק {quote.bank} · {formatQuoteDate(quote.receivedAt)}
+        </p>
+      ) : (
+        <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+          {ORIGIN_LABELS[origin]}
         </p>
       )}
       <p className="mt-0.5 truncate text-[11px] text-slate-500">

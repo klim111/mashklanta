@@ -91,7 +91,10 @@ async function crmCounters(advisorId: string, now: Date): Promise<CrmCounters> {
       }),
     ]);
 
-    tasks.forEach((row) => openTasks.set(row.clientId, row._count._all));
+    // משימה בלי שיוך ללקוח אינה שייכת לאף שורת לקוח, ולכן אינה נספרת כאן
+    tasks.forEach((row) => {
+      if (row.clientId) openTasks.set(row.clientId, row._count._all);
+    });
     // הפגישות ממוינות לפי מועד, ולכן הראשונה שנרשמת לכל לקוח היא הקרובה שלו
     meetings.forEach((row) => {
       if (!nextMeetingAt.has(row.clientId)) nextMeetingAt.set(row.clientId, row.startsAt);

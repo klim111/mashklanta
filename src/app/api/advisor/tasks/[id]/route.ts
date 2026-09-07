@@ -41,12 +41,20 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   const stage = asPlanStage(body.stage);
   const dueDate = readDateInput(body.dueDate);
+  // שיוך ללקוח: מזהה משייך, null מנתק, וכלום משאיר את השיוך הקיים
+  const clientId =
+    body.clientId === null
+      ? null
+      : typeof body.clientId === 'string' && body.clientId
+        ? body.clientId
+        : undefined;
 
   const task = await updateAdvisorTask(advisorId, id, {
     ...(typeof body.title === 'string' && body.title.trim() ? { title: body.title.trim() } : {}),
     ...(typeof body.details === 'string' ? { details: body.details.trim() || null } : {}),
     ...(dueDate === undefined ? {} : { dueDate }),
     ...(stage ? { stage } : {}),
+    ...(clientId === undefined ? {} : { clientId }),
     ...(isStatus(body.status) ? { status: body.status } : {}),
   });
 

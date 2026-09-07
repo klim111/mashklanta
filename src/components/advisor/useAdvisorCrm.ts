@@ -89,13 +89,15 @@ export function useAdvisorOverview(enabled = true) {
 // ───────────────────────────────── משימות ─────────────────────────────────
 
 export interface TaskFilter {
+  /** מזהה לקוח, או `none` למשימות שאינן משויכות ללקוח */
   clientId?: string;
   stage?: PlanStageId;
   includeClosed?: boolean;
 }
 
 export interface NewTaskInput {
-  clientId: string;
+  /** ריק — משימה של היועץ עצמו, בלי שיוך ללקוח */
+  clientId?: string | null;
   stage: PlanStageId;
   title: string;
   details?: string;
@@ -156,6 +158,8 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
         dueDate: string | null;
         stage: PlanStageId;
         status: AdvisorTaskStatus;
+        /** שיוך ללקוח, או null לניתוק השיוך */
+        clientId: string | null;
       }>
     ) => {
       // התצוגה מתעדכנת מיד כדי שסימון "בוצע" יגיב בלי המתנה לשרת

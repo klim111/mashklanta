@@ -68,15 +68,21 @@ export function TaskRow({
           {task.title}
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
-          {showClient && (
-            <Link
-              href={`/advisor-dashboard/client/${task.clientId}`}
-              className="flex items-center gap-1 font-semibold text-blue-700 hover:underline"
-            >
-              <UserRound className="h-3 w-3" />
-              {task.clientName}
-            </Link>
-          )}
+          {showClient &&
+            (task.clientId ? (
+              <Link
+                href={`/advisor-dashboard/client/${task.clientId}`}
+                className="flex items-center gap-1 font-semibold text-blue-700 hover:underline"
+              >
+                <UserRound className="h-3 w-3" />
+                {task.clientName}
+              </Link>
+            ) : (
+              <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">
+                <UserRound className="h-3 w-3" />
+                ללא שיוך ללקוח
+              </span>
+            ))}
           {showStage && <StageChip stage={task.stage as PlanStageId} />}
           {task.details && <span className="truncate">{task.details}</span>}
         </div>

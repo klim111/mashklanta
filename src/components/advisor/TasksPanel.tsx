@@ -11,6 +11,9 @@ import { TaskRow } from './TaskRow';
 import { useAdvisorTasks } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
 
+/** הערך שמסמן בבורר הלקוח את המשימות שאינן משויכות לאף לקוח */
+const UNASSIGNED = 'none';
+
 /**
  * לוח המשימות של היועץ, מסודר לפי חמשת השלבים של כלי תכנון המשכנתא.
  *
@@ -20,11 +23,14 @@ import type { AdvisorClient } from './useAdvisorClients';
 export function TasksPanel({
   clients,
   onChanged,
+  initialClientId,
 }: {
   clients: AdvisorClient[];
   onChanged?: () => void;
+  /** לקוח שהגיעו אליו מדף הלקוח — הרשימה נפתחת מסוננת אליו */
+  initialClientId?: string;
 }) {
-  const [clientFilter, setClientFilter] = useState('');
+  const [clientFilter, setClientFilter] = useState(initialClientId ?? '');
   const [showClosed, setShowClosed] = useState(false);
 
   const { tasks, ready, create, update, remove } = useAdvisorTasks({
@@ -70,6 +76,7 @@ export function TasksPanel({
             aria-label="סינון לפי לקוח"
           >
             <option value="">כל הלקוחות</option>
+            <option value={UNASSIGNED}>ללא שיוך ללקוח</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
                 {client.name}
@@ -104,7 +111,7 @@ export function TasksPanel({
         <EmptyState
           icon={<ListChecks className="h-6 w-6" />}
           title="אין משימות פתוחות"
-          hint="פתחו משימה ללקוח בשלב שבו הוא נמצא, וקבעו לה תאריך — היא תופיע כאן ובלוח השנה."
+          hint="פתחו משימה — ללקוח בשלב שבו הוא נמצא, או לעצמכם בלי שיוך — וקבעו לה תאריך, כדי שתופיע כאן ובלוח השנה."
         />
       ) : (
         <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
