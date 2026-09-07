@@ -156,6 +156,28 @@ export default function DashboardPage() {
             <>
               {/* פגישות שהיועץ הציע — אישור המועד כאן מסמן אותה כמאושרת אצלו */}
               <ClientMeetings />
+
+              {/* שלב האישור העקרוני — איסוף פרטי הבקשה, נשמר אוטומטית */}
+              <Link
+                href="/principal-approval"
+                className="group mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-l from-indigo-50/80 to-white p-5 transition-all hover:border-indigo-300 hover:shadow-md"
+              >
+                <div className="flex items-center gap-3.5">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-[15px] font-bold text-slate-900">אישור עקרוני — פרטי הבקשה</p>
+                    <p className="text-[13px] text-slate-500">
+                      פרטי הלווים והערבים, הכנסות, חשבונות בנק ומקורות מימון — עם דוח מסכם להורדה
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[13px] font-semibold text-indigo-600 transition-transform group-hover:-translate-x-1">
+                  להזנת הפרטים ←
+                </span>
+              </Link>
+
               <PlansOverview />
             </>
           )}

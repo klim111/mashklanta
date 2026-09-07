@@ -76,6 +76,20 @@ model User {
    */
   mixCategories   MixCategory[]        @relation("AdvisorMixCategories")
 
+  // ─────────────────────── האישור העקרוני (איסוף פרטי הבקשה) ───────────────────────
+  /**
+   * תיקי האישור העקרוני שבהם המשתמש הוא הלווה
+   */
+  approvalCases   MortgageCase[]       @relation("ApprovalCaseClient")
+  /**
+   * תיקי האישור העקרוני שהמשתמש מטפל בהם כיועץ
+   */
+  advisedApprovals MortgageCase[]      @relation("ApprovalCaseAdvisor")
+  /**
+   * הרשאות העריכה שקיבל המשתמש כיועץ על נתונים שהזין הלקוח
+   */
+  approvalAccess  ApprovalAccess[]     @relation("ApprovalAccessAdvisor")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -745,4 +759,154 @@ model BankRateRequest {
   @@unique([ownerId, requestKey])
   @@index([ownerId, createdAt])
   @@index([clientId])
+}
+
+
+// ─────────────────────── האישור העקרוני — איסוף פרטי הבקשה ───────────────────────
+//
+// שלב איסוף הפרטים לקראת אישור עקרוני: פרטי הלווים והערבים, ההכנסות, חשבונות
+// הבנק ומקורות המימון. הנתונים נשמרים ברמת השדה הבודד כדי ששמירה אוטומטית תוכל
+// לרוץ על כל הקלדה בנפרד, וכדי לזכור מי הזין כל שדה — הלקוח או היועץ.
+//
+// פרופיל הלקוח עצמו אינו נשמר כאן: הוא נשאר ב-User.profileJson ונקרא דרך
+// src/lib/client-profile.ts, וכך יש מקור אמת אחד לפרופיל בכל המערכת.
+// הקישור יועץ↔לקוח נשען על מודל Client הקיים ולא על טבלה נוספת.
+
+/**
+ * תיק אישור עקרוני אחד של לקוח.
+ */
+model MortgageCase {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    User     @relation("ApprovalCaseClient", fields: [clientId], references: [id], onDelete: Cascade)
+  /**
+   * היועץ המטפל, אם התיק נפתח מתוך לוח הבקרה של היועץ
+   */
+  advisorId String?
+  advisor   User?    @relation("ApprovalCaseAdvisor", fields: [advisorId], references: [id])
+  title     String   @default("אישור עקרוני")
+  status    String   @default("draft") // draft | submitted | approved | archived
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entities  CaseEntity[]
+  fields    CaseField[]
+  conflicts FieldConflict[]
+  accesses  ApprovalAccess[]
+
+  @@index([clientId])
+  @@index([advisorId])
+}
+
+/**
+ * רשומה חוזרת בתוך התיק: לווה, ערב, הכנסה, מקום עבודה קודם, חשבון בנק או מקור
+ * מימון. שדות ברמת התיק עצמו משתמשים במזהה הקבוע "case".
+ */
+model CaseEntity {
+  id        String       @id @default(cuid())
+  caseId    String
+  case      MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// borrower | guarantor | income | prevEmployment | bankAccount | fundingSource
+  type      String
+  /// הלווה/הערב שאליו שייכת ההכנסה או מקום העבודה הקודם
+  parentId  String?
+  position  Int          @default(0)
+  createdAt DateTime     @default(now())
+
+  @@index([caseId, type])
+  @@index([parentId])
+}
+
+/**
+ * תשובה בודדת.
+ *
+ * ערכים רגישים (הכנסות, הון עצמי, מקורות מימון, מספרי חשבון ותעודות זהות)
+ * נשמרים מוצפנים ב-valueEnc דרך src/lib/crypto.ts, באותה מדיניות שנוהגת
+ * בשדות הכספיים של מודל Client. שאר הערכים נשמרים כטקסט ב-value.
+ */
+model CaseField {
+  id          String       @id @default(cuid())
+  caseId      String
+  case        MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// case | borrower | guarantor | income | prevEmployment | bankAccount | fundingSource
+  entityType  String
+  /// CaseEntity.id, או "case" לשדות ברמת התיק
+  entityId    String
+  fieldKey    String
+  /// ערך גלוי, מקודד JSON
+  value       String?
+  /// ערך רגיש ומוצפן, מקודד JSON לפני ההצפנה
+  valueEnc    String?
+  /// client | advisor | profile
+  source      String       @default("client")
+  updatedById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([caseId, entityType, entityId, fieldKey])
+  @@index([caseId])
+}
+
+/**
+ * סתירה בין ערך שמולא מפרופיל הלקוח לבין הערך שהוזן באישור העקרוני.
+ * נשארת פתוחה עד שהמשתמש בוחר איזה ערך נכון.
+ */
+model FieldConflict {
+  id            String       @id @default(cuid())
+  caseId        String
+  case          MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  entityType    String
+  entityId      String
+  fieldKey      String
+  /// שני הצדדים, מקודדים JSON ומוצפנים כשהשדה רגיש
+  profileValue  String?
+  caseValue     String?
+  encrypted     Boolean      @default(false)
+  status        String       @default("open") // open | resolved
+  resolvedValue String?
+  resolvedWith  String?      // profile | case
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([caseId, entityType, entityId, fieldKey])
+  @@index([caseId, status])
+}
+
+/**
+ * הרשאה מפורשת שהלקוח נותן ליועץ מסוים לערוך נתונים שהלקוח עצמו הזין.
+ * בלעדיה היועץ רואה את אותם שדות לקריאה בלבד.
+ */
+model ApprovalAccess {
+  id        String       @id @default(cuid())
+  caseId    String
+  case      MortgageCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  advisorId String
+  advisor   User         @relation("ApprovalAccessAdvisor", fields: [advisorId], references: [id], onDelete: Cascade)
+  canEdit   Boolean      @default(false)
+  grantedAt DateTime     @default(now())
+  revokedAt DateTime?
+
+  @@unique([caseId, advisorId])
+  @@index([advisorId])
+}
+
+/**
+ * קטלוג סניפי הבנקים (קוד ושם) עבור רשימות הבחירה.
+ * מיובא מהמאגר הציבורי הרשמי דרך `npm run sync:bank-branches`.
+ */
+model BankBranch {
+  id         String   @id @default(cuid())
+  bankCode   String
+  bankName   String
+  branchCode String
+  branchName String
+  address    String?
+  city       String?
+  zipCode    String?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([bankCode, branchCode])
+  @@index([bankCode])
 }

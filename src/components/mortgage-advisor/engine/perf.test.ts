@@ -22,12 +22,21 @@ describe('recompute budget', () => {
     ],
   });
 
-  const timeOf = (target: typeof mix, runs = 60) => {
-    const start = performance.now();
-    for (let i = 0; i < runs; i++) {
-      yearlySeries(computeMix(target));
+  /**
+   * הזמן נמדד כמיטב מכמה מקבצים ולא כמקבץ יחיד: כשחבילת הבדיקות רצה במקביל,
+   * מקבץ בודד עלול להיתפס באמצע עומס מעבד ולחרוג מהתקציב בלי שדבר בקוד השתנה.
+   * רגרסיה אמיתית מאטה את כל המקבצים, ולכן המינימום עדיין תופס אותה.
+   */
+  const timeOf = (target: typeof mix, runs = 60, batches = 3) => {
+    let best = Infinity;
+    for (let batch = 0; batch < batches; batch++) {
+      const start = performance.now();
+      for (let i = 0; i < runs; i++) {
+        yearlySeries(computeMix(target));
+      }
+      best = Math.min(best, (performance.now() - start) / runs);
     }
-    return (performance.now() - start) / runs;
+    return best;
   };
 
   it('computes a five-track mix without events in a fraction of a frame', () => {

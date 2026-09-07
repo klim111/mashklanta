@@ -235,6 +235,12 @@ export default function AdvisorClientPage() {
             <Video className="h-4 w-4 ml-1" />
             שיחת וידאו
           </Button>
+          <Button variant="outline" size="sm" className="h-9" asChild>
+            <Link href={`/advisor-dashboard/client/${client.id}/principal-approval`}>
+              <FileText className="h-4 w-4 ml-1" />
+              אישור עקרוני
+            </Link>
+          </Button>
           <Button size="sm" className="h-9" asChild>
             <Link href={`/mortgage-advisor?client=${client.id}`}>
               <PieChart className="h-4 w-4 ml-1" />

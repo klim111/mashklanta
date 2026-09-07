@@ -928,4 +928,73 @@ input[type="number"]::placeholder {
     background: white !important;
     color: black !important;
   }
-} 
+}
+
+/* ---------------------------------------------------------------------------
+   Principal approval report — print / save-as-PDF stylesheet
+
+   Scoped to `body.printing-approval-report`, which the report sets only while
+   its own print dialog is open. Without that scope the "hide everything else"
+   rule would also blank out the rate-request letter (.rr-print-root), which
+   prints through the same global stylesheet.
+--------------------------------------------------------------------------- */
+@media print {
+  body.printing-approval-report {
+    background: #fff !important;
+  }
+
+  /* Hide everything that is not the report sheet. */
+  body.printing-approval-report * {
+    visibility: hidden;
+  }
+
+  body.printing-approval-report #approval-report,
+  body.printing-approval-report #approval-report * {
+    visibility: visible;
+  }
+
+  body.printing-approval-report #approval-report {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    font-size: 11px;
+  }
+
+  body.printing-approval-report .print\:hidden,
+  body.printing-approval-report nav {
+    display: none !important;
+  }
+
+  #approval-report .break-inside-avoid,
+  #approval-report section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #approval-report h1 {
+    font-size: 18px;
+  }
+
+  #approval-report h2 {
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  /* Keep the tinted panels readable in print. */
+  #approval-report .bg-slate-50\/50,
+  #approval-report .bg-slate-50,
+  #approval-report .bg-amber-50\/60 {
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm 10mm;
+}
