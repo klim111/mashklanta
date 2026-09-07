@@ -83,14 +83,14 @@ function useOverallProgress() {
   }, [data, valuesOf, entities]);
 }
 
-function ApprovalShell() {
+function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
   const { data, loading, loadError, openConflicts, actionError, dismissActionError } = useCase();
   const [step, setStep] = useState<StepId>('borrowers');
   const progress = useOverallProgress();
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className={cn('flex items-center justify-center', embedded ? 'min-h-[240px]' : 'min-h-[60vh]')}>
         <div className="flex flex-col items-center gap-3 text-slate-400">
           <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
           <p className="text-sm">טוען את התיק…</p>
@@ -112,13 +112,32 @@ function ApprovalShell() {
   const percent = Math.round(progress.ratio * 100);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8" dir="rtl">
+    <div
+      className={cn('space-y-6', embedded ? '' : 'mx-auto max-w-6xl px-4 py-8')}
+      dir="rtl"
+    >
       {/* Header */}
-      <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm print:hidden">
+      <header
+        className={cn(
+          'print:hidden',
+          embedded
+            ? 'rounded-2xl border border-slate-200 bg-slate-50/60 p-4'
+            : 'rounded-3xl border border-slate-200 bg-white p-6 shadow-sm',
+        )}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-500">שלב האישור העקרוני</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900">
+            {!embedded && (
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-500">
+                שלב האישור העקרוני
+              </p>
+            )}
+            <h1
+              className={cn(
+                'font-black tracking-tight text-slate-900',
+                embedded ? 'text-base' : 'mt-1 text-2xl',
+              )}
+            >
               איסוף פרטי הבקשה
             </h1>
             <p className="mt-1 text-[13px] text-slate-500">
@@ -221,7 +240,21 @@ function ApprovalShell() {
  * specific client's file; on the client side it is omitted and the signed-in
  * user's own file is used.
  */
-export function PrincipalApproval({ clientRecordId }: { clientRecordId?: string }) {
+export function PrincipalApproval({
+  clientRecordId,
+  embedded = false,
+}: {
+  clientRecordId?: string;
+  /** Rendered inside another screen (the plan flow), so it drops the page chrome. */
+  embedded?: boolean;
+}) {
+  if (embedded) {
+    return (
+      <CaseProvider clientRecordId={clientRecordId}>
+        <ApprovalShell embedded />
+      </CaseProvider>
+    );
+  }
   return (
     <CaseProvider clientRecordId={clientRecordId}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">

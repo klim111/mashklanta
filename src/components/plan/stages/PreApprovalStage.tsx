@@ -44,6 +44,7 @@ import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { DEAL_TYPES, MAX_LTV_PERCENT, TRACK_TYPES } from '@/components/mortgage-advisor/types';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import { PrincipalApproval } from '@/components/principal-approval/PrincipalApproval';
 import { usePrimeForecast } from '@/hooks/use-prime-forecast';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import {
@@ -369,6 +370,13 @@ export function PreApprovalStage({
 
   return (
     <div className="space-y-5">
+      {/*
+        איסוף פרטי הבקשה — הלווים והערבים, ההכנסות, חשבונות הבנק ומקורות המימון.
+        זה החלק שנאסף לפני הפנייה לבנק, ולכן הוא פותח את השלב; התיבות שמתחת
+        מלוות את ההגשה עצמה (המסמכים, הבנק והאישור שהתקבל).
+      */}
+      <PrincipalApproval embedded />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {slideLabels.map((label, index) => (
