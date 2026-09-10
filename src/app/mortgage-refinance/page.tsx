@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, Target, Banknote, Clock } from 'lucide-react';
 import type { MortgageMix } from '@/components/mortgage-advisor/types';
@@ -12,6 +13,8 @@ import { ScenarioAnalysis } from '@/components/mortgage-advisor/ScenarioAnalysis
 import { MortgageDetailsModal } from '@/components/mortgage-advisor/MortgageDetailsModal';
 import { RefinanceMortgageInput } from '@/components/mortgage-refinance/RefinanceMortgageInput';
 import { calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
+import { useMarketRates } from '@/hooks/useMarketRates';
+import { mixWithRemainingTerms } from '@/lib/refinance';
 
 type RefinanceStep = 'tracks' | 'goal';
 
@@ -24,6 +27,10 @@ const EMPTY_MIX: MortgageMix = {
 };
 
 export default function MortgageRefinancePage() {
+  const { data: session, status } = useSession();
+  /** הכלי פתוח לכולם. למשתמש שאינו רשום הוא מוגבל לבדיקה אחת */
+  const isGuest = status !== 'loading' && !session;
+  const { market } = useMarketRates();
   const [currentMix, setCurrentMix] = useState<MortgageMix>(EMPTY_MIX);
   const [currentStep, setCurrentStep] = useState<RefinanceStep>('tracks');
   const [inputMethod, setInputMethod] = useState<'scan' | 'manual'>('manual');
@@ -42,7 +49,8 @@ export default function MortgageRefinancePage() {
 
   const mixWithCalculations = (): MortgageMix => {
     if (currentMix.tracks.length === 0) return currentMix;
-    const calc = calculateMortgageMix(currentMix);
+    // התקופה של כל מסלול היא מה שנותר עד סוף המשכנתא לפי התאריכים שהוזנו
+    const calc = calculateMortgageMix(mixWithRemainingTerms(currentMix));
     return {
       ...calc.mix,
       name: `המשכנתא הנוכחית${currentMix.bank ? ` - ${currentMix.bank}` : ''}`,
@@ -193,6 +201,8 @@ export default function MortgageRefinancePage() {
         onProceedToRefinanceOptions={() => setCurrentStep('goal')}
         onShowDetails={setShowDetailsModal}
         onAnalyzeScenarios={setShowScenarioAnalysis}
+        isGuest={isGuest}
+        market={market}
       />
 
       <div className="flex gap-4 justify-center mt-8">

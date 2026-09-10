@@ -18,6 +18,11 @@ export interface MortgageTrack {
   currency?: 'USD' | 'EUR'; // סוג מטבע
   // לוח סילוקין
   amortizationType?: 'spitzer' | 'equal_principal' | 'partial_grace' | 'full_grace' | 'ability_based' | 'secured';
+  // ─── מועדי התשלומים (משמש במיחזור, שבו התקופה היא הזמן שנותר בפועל) ───
+  /** תאריך התשלום האחרון של המסלול (ISO / YYYY-MM-DD) */
+  endDate?: string;
+  /** יום החיוב בחודש (1-28) */
+  paymentDay?: number;
 }
 
 /** סוג העסקה — קובע את תקרת המימון של בנק ישראל */

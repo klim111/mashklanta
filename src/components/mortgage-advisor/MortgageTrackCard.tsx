@@ -13,6 +13,15 @@ import { TRACK_TYPES, DEFAULT_INTEREST_RATES, AMORTIZATION_TYPES, VARIABLE_PERIO
 import { formatCurrency, formatPercentage, calculateTrack } from './mortgageCalculations';
 import { formatDuration } from './engine';
 import { clampTermMonths, monthsToYears, yearsToMonths } from '@/lib/mortgage-plan';
+import {
+  DEFAULT_PAYMENT_DAY,
+  clampPaymentDay,
+  endDateFromMonths,
+  formatPaymentDate,
+  remainingPayments,
+  toDateInputValue,
+  trackRemainingMonths,
+} from '@/lib/refinance';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
 
@@ -24,6 +33,13 @@ interface MortgageTrackCardProps {
   onShowDetails?: (track: MortgageTrack) => void;
   isEditing?: boolean;
   onStartEditing?: () => void;
+  /**
+   * מקור התקופה של המסלול:
+   * - `months` (ברירת מחדל) — הלקוח מזין מספר חודשים, כמו במשכנתא חדשה.
+   * - `end-date` — הלקוח מזין את התאריך המדויק של התשלום האחרון ואת יום החיוב
+   *   בחודש, והתקופה נגזרת מהזמן שנותר בפועל. זה המצב במיחזור.
+   */
+  termMode?: 'months' | 'end-date';
 }
 
 export function MortgageTrackCard({ 
@@ -33,7 +49,8 @@ export function MortgageTrackCard({
   onDelete, 
   onShowDetails,
   isEditing: externalIsEditing = false,
-  onStartEditing
+  onStartEditing,
+  termMode = 'months'
 }: MortgageTrackCardProps) {
   const [internalIsEditing, setInternalIsEditing] = useState(false);
   const [editData, setEditData] = useState(track);
@@ -42,6 +59,26 @@ export function MortgageTrackCard({
   
   // שימוש בעריכה חיצונית או פנימית
   const isEditing = externalIsEditing || internalIsEditing;
+  const byEndDate = termMode === 'end-date';
+  const paymentDay = clampPaymentDay(editData.paymentDay ?? DEFAULT_PAYMENT_DAY);
+  /** ברירת המחדל של תאריך הסיום נגזרת מהתקופה שכבר יש למסלול */
+  const endDateValue =
+    editData.endDate ||
+    toDateInputValue(endDateFromMonths(yearsToMonths(editData.years || 0) || 1, paymentDay));
+  const remaining = remainingPayments({ endDate: endDateValue, paymentDay });
+
+  /** שינוי תאריך הסיום או יום החיוב גוזר מחדש את התקופה שנותרה */
+  const applyDates = (nextEndDate: string, nextPaymentDay: number) => {
+    const day = clampPaymentDay(nextPaymentDay);
+    const months = remainingPayments({ endDate: nextEndDate, paymentDay: day }).months;
+    setEditData((prev) => ({
+      ...prev,
+      endDate: nextEndDate,
+      paymentDay: day,
+      years: months > 0 ? months / 12 : prev.years,
+    }));
+  };
+
   const { cpiData, loading: cpiLoading } = useCPI();
   const { currencyRates, loading: currencyLoading } = useCurrencyRates();
   const buildAutoTrackName = (data: MortgageTrack) => {
@@ -265,17 +302,54 @@ export function MortgageTrackCard({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>תקופה (חודשים)</Label>
-              <FormattedNumberValueInput
-                value={yearsToMonths(editData.years)}
-                onValueChange={(value) =>
-                  setEditData({ ...editData, years: monthsToYears(clampTermMonths(value)) })
-                }
-              />
+          {byEndDate && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 space-y-3">
+              <p className="text-xs font-semibold text-blue-900">
+                מועדי התשלומים — מהם נגזרת התקופה שנותרה למסלול
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor={`end-date-${editData.id}`}>תאריך התשלום האחרון</Label>
+                  <Input
+                    id={`end-date-${editData.id}`}
+                    type="date"
+                    value={endDateValue}
+                    onChange={(e) => applyDates(e.target.value, paymentDay)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`payment-day-${editData.id}`}>יום החיוב בחודש</Label>
+                  <Input
+                    id={`payment-day-${editData.id}`}
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={paymentDay}
+                    onChange={(e) => applyDates(endDateValue, parseInt(e.target.value, 10) || DEFAULT_PAYMENT_DAY)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-blue-800">
+                נותרו <span className="font-bold">{formatDuration(remaining.months)}</span> ({remaining.months} תשלומים)
+                {' · '}התשלום הקרוב {formatPaymentDate(remaining.nextPaymentDate)}
+                {' · '}האחרון {formatPaymentDate(remaining.lastPaymentDate)}
+              </p>
             </div>
-            
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            {!byEndDate && (
+              <div>
+                <Label>תקופה (חודשים)</Label>
+                <FormattedNumberValueInput
+                  value={yearsToMonths(editData.years)}
+                  onValueChange={(value) =>
+                    setEditData({ ...editData, years: monthsToYears(clampTermMonths(value)) })
+                  }
+                />
+              </div>
+            )}
+
             <div>
               <Label>אחוז מימון (%)</Label>
               <Input
@@ -434,8 +508,18 @@ export function MortgageTrackCard({
         </div>
         
         <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">תקופה:</span>
-          <span className="font-medium">{formatDuration(yearsToMonths(track.years))}</span>
+          <span className="text-sm text-gray-600">{byEndDate ? 'נותר לתשלום:' : 'תקופה:'}</span>
+          <div className="text-left">
+            <span className="font-medium">
+              {formatDuration(byEndDate ? trackRemainingMonths(track) : yearsToMonths(track.years))}
+            </span>
+            {byEndDate && track.endDate && (
+              <div className="text-xs text-blue-600">
+                עד {formatPaymentDate(remainingPayments({ endDate: track.endDate, paymentDay: track.paymentDay }).lastPaymentDate)}
+                {' · '}חיוב ב-{clampPaymentDay(track.paymentDay ?? DEFAULT_PAYMENT_DAY)} לחודש
+              </div>
+            )}
+          </div>
         </div>
         
         {track.amortizationType && (
