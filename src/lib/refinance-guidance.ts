@@ -40,6 +40,8 @@ export interface ParamGuidance {
 export interface TrackDraft {
   interestRate: number;
   months: number;
+  /** סכום הקרן במסלול — ניתן לשינוי במיחזור של כל המשכנתא */
+  amount: number;
   type: MortgageTrack['type'];
   amortizationType: NonNullable<MortgageTrack['amortizationType']>;
 }

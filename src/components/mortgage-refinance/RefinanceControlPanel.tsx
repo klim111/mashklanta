@@ -8,10 +8,13 @@ import {
   ArrowUp,
   Calendar,
   Check,
+  Coins,
   Layers,
   Lock,
   Percent,
+  Plus,
   Sparkles,
+  Trash2,
   TriangleAlert,
 } from 'lucide-react';
 import type { MortgageTrack } from '@/components/mortgage-advisor/types';
@@ -19,7 +22,9 @@ import { AMORTIZATION_TYPES, TRACK_TYPES } from '@/components/mortgage-advisor/t
 import { formatCurrency, formatPercentage } from '@/components/mortgage-advisor/mortgageCalculations';
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import {
+  MIN_TRACK_AMOUNT,
   clampRefiTermMonths,
+  maxAmountForTrack,
   rateBoundsForRefinance,
   termBoundsForGoal,
   trackRemainingMonths,
@@ -49,6 +54,15 @@ interface RefinanceControlPanelProps {
   scope: RefinanceScope;
   selectedTrackId: string | null;
   onSelectTrack: (trackId: string) => void;
+  /** גובה המשכנתא כולה — התקרה לחלוקת הסכומים בין המסלולים */
+  totalAmount: number;
+  /** הסכום שעדיין לא שובץ לאף מסלול */
+  unallocated: number;
+  /** הוספת מסלול חדש על הסכום שלא שובץ */
+  onAddTrack: () => void;
+  /** מסלולים שנוספו בפאנל — אפשר להסיר אותם */
+  addedTrackIds?: string[];
+  onRemoveTrack?: (trackId: string) => void;
 }
 
 export function RefinanceControlPanel({
@@ -60,6 +74,11 @@ export function RefinanceControlPanel({
   scope,
   selectedTrackId,
   onSelectTrack,
+  totalAmount,
+  unallocated,
+  onAddTrack,
+  addedTrackIds = [],
+  onRemoveTrack,
 }: RefinanceControlPanelProps) {
   const singleMode = scope === 'single';
   const awaitingSelection = singleMode && !selectedTrackId;
@@ -114,6 +133,15 @@ export function RefinanceControlPanel({
         </div>
       )}
 
+      {/* מצב חלוקת הסכום בין המסלולים */}
+      {!singleMode && unallocated >= MIN_TRACK_AMOUNT && (
+        <p className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-900">
+          <Coins className="h-3.5 w-3.5" />
+          {formatCurrency(unallocated)} מתוך {formatCurrency(totalAmount)} עדיין לא שובצו — הגדילו
+          מסלול קיים או הוסיפו מסלול חדש
+        </p>
+      )}
+
       <div className="relative">
         <div
           className={`grid gap-2.5 ${columns} ${
@@ -128,8 +156,38 @@ export function RefinanceControlPanel({
               onChange={(patch) => onDraftChange(track.id, patch)}
               goal={goal}
               market={market}
+              /* שינוי סכום אפשרי רק במיחזור של כל המשכנתא, שבו אפשר להעביר
+                 סכומים בין המסלולים */
+              amountEditable={!singleMode}
+              maxAmount={maxAmountForTrack(
+                totalAmount,
+                tracks.map((item) => drafts[item.id]?.amount ?? item.amount),
+                tracks.findIndex((item) => item.id === track.id)
+              )}
+              onRemove={
+                addedTrackIds.includes(track.id) && onRemoveTrack
+                  ? () => onRemoveTrack(track.id)
+                  : undefined
+              }
             />
           ))}
+
+          {/* נשאר סכום שלא שובץ — אפשר להוסיף מסלול, והוא יופיע כאן ככל מסלול אחר */}
+          {!singleMode && unallocated >= MIN_TRACK_AMOUNT && (
+            <button
+              type="button"
+              onClick={onAddTrack}
+              className="flex min-h-[168px] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/60 p-3 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow">
+                <Plus className="h-5 w-5" />
+              </span>
+              <span className="text-[13px] font-bold text-blue-900">הוספת מסלול</span>
+              <span className="text-[11px] leading-snug text-blue-700">
+                נותרו {formatCurrency(unallocated)} שלא שובצו לאף מסלול
+              </span>
+            </button>
+          )}
 
           {/* במיחזור מסלול בודד נשאר מקום לצד הכרטיס — ממלאים אותו במה שחשוב לדעת */}
           {singleMode && !awaitingSelection && visibleTracks[0] && (
@@ -201,17 +259,27 @@ function TrackControlCard({
   onChange,
   goal,
   market,
+  amountEditable,
+  maxAmount,
+  onRemove,
 }: {
   track: MortgageTrack;
   draft?: TrackDraft;
   onChange: (patch: Partial<TrackDraft>) => void;
   goal: RefinanceGoal;
   market?: MarketRates | null;
+  /** במיחזור של כל המשכנתא אפשר להזיז סכומים בין המסלולים */
+  amountEditable: boolean;
+  /** התקרה לסכום במסלול — מה שיש בו ועוד מה שלא שובץ */
+  maxAmount: number;
+  /** הסרה — קיימת רק למסלול שנוסף בפאנל */
+  onRemove?: () => void;
 }) {
   const baseMonths = clampRefiTermMonths(trackRemainingMonths(track));
   const current: TrackDraft = draft ?? {
     interestRate: track.interestRate,
     months: baseMonths,
+    amount: track.amount,
     type: track.type,
     amortizationType: track.amortizationType ?? 'spitzer',
   };
@@ -224,6 +292,7 @@ function TrackControlCard({
   const touched =
     Math.abs(current.interestRate - track.interestRate) > 0.001 ||
     Math.round(current.months) !== baseMonths ||
+    Math.round(current.amount) !== Math.round(track.amount) ||
     current.type !== track.type ||
     current.amortizationType !== (track.amortizationType ?? 'spitzer');
 
@@ -247,12 +316,25 @@ function TrackControlCard({
             {TRACK_TYPES[current.type]}
           </p>
           <p className="text-[10px] text-slate-500">
-            {formatCurrency(track.amount)} · {track.percentage.toFixed(0)}% מהמשכנתא
+            {formatCurrency(current.amount)}
+            {Math.round(current.amount) !== Math.round(track.amount) && (
+              <span className="text-blue-600"> (היום {formatCurrency(track.amount)})</span>
+            )}
           </p>
         </div>
         <span className={`shrink-0 text-[10px] font-bold ${RISK_META[risk.level].text}`}>
           {RISK_META[risk.level].label}
         </span>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            title="הסרת המסלול שנוסף"
+            className="shrink-0 rounded-md p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {/* סוג מסלול + לוח סילוקין */}
@@ -342,6 +424,36 @@ function TrackControlCard({
           )}
         </div>
       </Field>
+
+      {/* סכום המסלול — רק במיחזור של כל המשכנתא */}
+      {amountEditable && (
+        <Field icon={Coins} label="סכום המסלול">
+          <div className="flex items-center gap-2">
+            <Slider
+              dir="ltr"
+              className="flex-1"
+              value={[Math.min(maxAmount, Math.max(MIN_TRACK_AMOUNT, Math.round(current.amount)))]}
+              onValueChange={([value]) => onChange({ amount: value })}
+              min={MIN_TRACK_AMOUNT}
+              max={Math.max(maxAmount, MIN_TRACK_AMOUNT)}
+              step={5000}
+            />
+            <span
+              className={`w-[74px] shrink-0 rounded-md border px-1 py-0.5 text-center text-[12px] font-bold ${
+                Math.round(current.amount) !== Math.round(track.amount)
+                  ? 'border-blue-300 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-slate-50 text-slate-700'
+              }`}
+            >
+              {formatCurrency(current.amount)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <span>מינימום {formatCurrency(MIN_TRACK_AMOUNT)}</span>
+            <span>עד {formatCurrency(maxAmount)} (כולל מה שלא שובץ)</span>
+          </div>
+        </Field>
+      )}
 
       {/* תקופה */}
       <Field icon={Calendar} label="תקופה שנותרה" guidance={guidanceFor(guidance, 'term')}>
@@ -446,8 +558,14 @@ function GuidanceChip({ guidance }: { guidance: ParamGuidance }) {
   );
 }
 
-/** שורת ההכוונה הכללית למטרה שנבחרה — מוצגת מעל הפאנל */
-export function GoalGuidanceStrip({ goal }: { goal: RefinanceGoal }) {
+/** שורת ההכוונה הכללית למטרה שנבחרה — מוצגת מעל כרטיסי המסלולים */
+export function GoalGuidanceStrip({
+  goal,
+  scope = 'whole',
+}: {
+  goal: RefinanceGoal;
+  scope?: RefinanceScope;
+}) {
   const items =
     goal === 'reduce_payment'
       ? [
@@ -460,6 +578,10 @@ export function GoalGuidanceStrip({ goal }: { goal: RefinanceGoal }) {
           { icon: ArrowDown, text: 'תקופה — לקצר', tone: 'text-violet-700' },
           { icon: Sparkles, text: 'לוח סילוקין — לשקול קרן שווה', tone: 'text-slate-600' },
         ];
+
+  if (scope === 'whole') {
+    items.push({ icon: Coins, text: 'סכום — אפשר להעביר בין המסלולים', tone: 'text-slate-600' });
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

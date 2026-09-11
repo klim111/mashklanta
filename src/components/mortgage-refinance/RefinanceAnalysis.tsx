@@ -32,16 +32,20 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import type { MortgageMix, MortgageTrack, MortgageCalculation } from '@/components/mortgage-advisor/types';
-import { TRACK_TYPES } from '@/components/mortgage-advisor/types';
+import { DEFAULT_INTEREST_RATES, TRACK_TYPES } from '@/components/mortgage-advisor/types';
 import { formatCurrency, calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
 import { monthsToYears } from '@/lib/mortgage-plan';
 import {
+  MIN_TRACK_AMOUNT,
   REFINANCE_GOAL_LABELS,
+  REFI_TERM_MONTHS_MIN,
   clampRefiTermMonths,
+  clampTrackAmount,
   findAboveMarketTracks,
   goalForTermChange,
   rateWorsensTerms,
   trackRemainingMonths,
+  unallocatedAmount,
 } from '@/lib/refinance';
 import type { MarketRates, RefinanceGoal } from '@/lib/refinance';
 import { goalProgress } from '@/lib/refinance-guidance';
@@ -62,13 +66,16 @@ import {
 import type { RefinanceScope } from '@/components/mortgage-refinance/RefinanceControlPanel';
 import {
   ComparisonCharts,
-  ResultsDashboard,
+  MixResultRow,
+  MixRowsHeader,
+  NoChangeNotice,
+  StateBlocksRow,
+  UnallocatedWarning,
   TrackComparisonCharts,
-  baselineOf,
-  rowFromCalculation,
-  rowFromTrack,
+  mixStatsOf,
+  snapshotOf,
+  trackStatsOf,
 } from '@/components/mortgage-refinance/RefinanceResultsDashboard';
-import type { ResultRowData } from '@/components/mortgage-refinance/RefinanceResultsDashboard';
 import { isRateVariable, isIndexLinked } from '@/components/mortgage-advisor/scenarioCalculations';
 import { compactCurrency, mixYearlySeries } from '@/components/mortgage-advisor/analysisCharts';
 import {
@@ -315,6 +322,7 @@ function draftFromTrack(track: MortgageTrack): TrackDraft {
   return {
     interestRate: track.interestRate,
     months: clampRefiTermMonths(trackRemainingMonths(track)),
+    amount: track.amount,
     type: track.type,
     amortizationType: track.amortizationType ?? 'spitzer',
   };
@@ -322,6 +330,20 @@ function draftFromTrack(track: MortgageTrack): TrackDraft {
 
 function draftsFromTracks(tracks: MortgageTrack[]): Record<string, TrackDraft> {
   return Object.fromEntries(tracks.map((track) => [track.id, draftFromTrack(track)]));
+}
+
+/** המסלול כפי שהוא אחרי החלת הערכים מהפאנל */
+function applyDraft(track: MortgageTrack, draft?: TrackDraft, totalAmount = 0): MortgageTrack {
+  if (!draft) return track;
+  return {
+    ...track,
+    type: draft.type,
+    interestRate: draft.interestRate,
+    years: monthsToYears(draft.months),
+    amount: draft.amount,
+    percentage: totalAmount > 0 ? (draft.amount / totalAmount) * 100 : track.percentage,
+    amortizationType: draft.amortizationType,
+  };
 }
 
 export function RefinanceAnalysis({
@@ -339,9 +361,13 @@ export function RefinanceAnalysis({
   /** מיחזור כל המשכנתא, או מסלול אחד בלבד */
   const [scope, setScope] = useState<RefinanceScope>('whole');
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  /** מסלולים שנוספו בפאנל על הסכום שלא שובץ */
+  const [addedTracks, setAddedTracks] = useState<MortgageTrack[]>([]);
   const [drafts, setDrafts] = useState<Record<string, TrackDraft>>(() =>
     draftsFromTracks(currentMix.tracks)
   );
+  /** המסלול שפתוח לפירוט בדאשבורד */
+  const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
 
   const gate = useRefinanceGuestGate(isGuest);
 
@@ -350,18 +376,32 @@ export function RefinanceAnalysis({
     setGoalSwitched(false);
     setScope('whole');
     setSelectedTrackId(null);
+    setExpandedTrackId(null);
+    setAddedTracks([]);
     setDrafts(draftsFromTracks(currentMix.tracks));
   }, [currentMix.id, currentMix.tracks.length]);
 
   const singleMode = scope === 'single';
-  const selectedTrack = currentMix.tracks.find((track) => track.id === selectedTrackId) ?? null;
+  /** המסלולים שבפאנל: אלה של המשכנתא, ומה שנוסף בפאנל עצמו */
+  const panelTracks = useMemo(
+    () => [...currentMix.tracks, ...addedTracks],
+    [currentMix.tracks, addedTracks]
+  );
+  const selectedTrack = panelTracks.find((track) => track.id === selectedTrackId) ?? null;
+
+  const totalAmount = Math.max(
+    currentMix.totalAmount,
+    currentMix.tracks.reduce((sum, track) => sum + track.amount, 0)
+  );
+  const draftAmounts = panelTracks.map((track) => drafts[track.id]?.amount ?? track.amount);
+  const unallocated = unallocatedAmount(totalAmount, draftAmounts);
 
   /**
    * שינוי פרמטר בפאנל. כל שינוי עובר דרך ההגבלה של משתמש שאינו רשום, מיישר את
    * הערך לגבולות החוקיים, ומעדכן את המטרה כשהיא כבר לא מתאימה למה שנבחר.
    */
-  const applyDraft = (trackId: string, patch: Partial<TrackDraft>) => {
-    const track = currentMix.tracks.find((item) => item.id === trackId);
+  const changeDraft = (trackId: string, patch: Partial<TrackDraft>) => {
+    const track = panelTracks.find((item) => item.id === trackId);
     if (!track) return;
 
     const controlKey = `${Object.keys(patch)[0] ?? 'draft'}:${trackId}`;
@@ -388,7 +428,51 @@ export function RefinanceAnalysis({
       }
     }
 
+    // סכום המסלול לעולם לא חורג מגובה המשכנתא בשאר המסלולים
+    if (patch.amount !== undefined) {
+      const index = panelTracks.findIndex((item) => item.id === trackId);
+      next.amount = clampTrackAmount(patch.amount, totalAmount, draftAmounts, index);
+    }
+
     setDrafts((prev) => ({ ...prev, [trackId]: next }));
+  };
+
+  /** הוספת מסלול על הסכום שלא שובץ — מוצג בפאנל ומשתקף בדאשבורד ככל מסלול */
+  const addTrack = () => {
+    if (unallocated < MIN_TRACK_AMOUNT) return;
+    if (!gate.allow('add-track')) return;
+
+    const longestMonths = panelTracks.reduce(
+      (max, track) => Math.max(max, clampRefiTermMonths(trackRemainingMonths(track))),
+      REFI_TERM_MONTHS_MIN
+    );
+    const type: MortgageTrack['type'] = 'fixed_unlinked';
+    const rate = market?.rates?.[type] ?? DEFAULT_INTEREST_RATES[type];
+
+    const track: MortgageTrack = {
+      id: `refi-added-${Date.now()}`,
+      name: 'מסלול חדש במיחזור',
+      type,
+      amount: unallocated,
+      percentage: totalAmount > 0 ? (unallocated / totalAmount) * 100 : 0,
+      interestRate: Number(rate.toFixed(2)),
+      years: monthsToYears(longestMonths),
+      amortizationType: 'spitzer',
+    };
+
+    setAddedTracks((prev) => [...prev, track]);
+    setDrafts((prev) => ({ ...prev, [track.id]: draftFromTrack(track) }));
+  };
+
+  const removeTrack = (trackId: string) => {
+    setAddedTracks((prev) => prev.filter((track) => track.id !== trackId));
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[trackId];
+      return next;
+    });
+    if (selectedTrackId === trackId) setSelectedTrackId(null);
+    if (expandedTrackId === trackId) setExpandedTrackId(null);
   };
 
   const changeGoal = (nextGoal: RefinanceGoal) => {
@@ -400,7 +484,7 @@ export function RefinanceAnalysis({
     if (nextGoal === 'reduce_interest') {
       setDrafts((prev) => {
         const next = { ...prev };
-        currentMix.tracks.forEach((track) => {
+        panelTracks.forEach((track) => {
           const baseMonths = clampRefiTermMonths(trackRemainingMonths(track));
           const draft = next[track.id];
           if (draft && draft.months > baseMonths) {
@@ -414,30 +498,30 @@ export function RefinanceAnalysis({
 
   const changeScope = (nextScope: RefinanceScope) => {
     setScope(nextScope);
-    if (nextScope === 'single' && !selectedTrackId && currentMix.tracks.length === 1) {
-      setSelectedTrackId(currentMix.tracks[0].id);
+    if (nextScope === 'single') {
+      const fallback = selectedTrackId ?? (panelTracks.length === 1 ? panelTracks[0].id : null);
+      setSelectedTrackId(fallback);
+      setExpandedTrackId(fallback);
     }
   };
 
+  const selectTrack = (trackId: string) => {
+    setSelectedTrackId(trackId);
+    setExpandedTrackId(trackId);
+  };
+
   /** התמהיל לאחר המיחזור — רק המסלולים שנמצאים בפאנל מושפעים */
-  const refinedMix = useMemo<MortgageMix>(
-    () => ({
-      ...currentMix,
-      tracks: currentMix.tracks.map((track) => {
+  const refinedMix = useMemo<MortgageMix>(() => {
+    const tracks = panelTracks
+      .map((track) => {
         const inPanel = !singleMode || track.id === selectedTrackId;
-        const draft = drafts[track.id];
-        if (!inPanel || !draft) return track;
-        return {
-          ...track,
-          type: draft.type,
-          interestRate: draft.interestRate,
-          years: monthsToYears(draft.months),
-          amortizationType: draft.amortizationType,
-        };
-      }),
-    }),
-    [currentMix, drafts, singleMode, selectedTrackId]
-  );
+        return inPanel ? applyDraft(track, drafts[track.id], totalAmount) : track;
+      })
+      // מסלול שנוסף בפאנל אינו חלק ממיחזור של מסלול בודד
+      .filter((track) => !singleMode || currentMix.tracks.some((item) => item.id === track.id));
+
+    return { ...currentMix, tracks };
+  }, [currentMix, panelTracks, drafts, singleMode, selectedTrackId, totalAmount]);
 
   const refinedCalc = useMemo<MortgageCalculation>(() => calculateMortgageMix(refinedMix), [refinedMix]);
 
@@ -452,8 +536,6 @@ export function RefinanceAnalysis({
     baseInterest: baseCalc.summary.totalInterest,
     refinedInterest: refinedCalc.summary.totalInterest,
   });
-
-  const principal = currentMix.tracks.reduce((sum, track) => sum + track.amount, 0);
 
   /** המסלולים שבהם הריבית שהוזנה גבוהה מהריבית הממוצעת בשוק */
   const marketFindings = useMemo(
@@ -472,97 +554,56 @@ export function RefinanceAnalysis({
     [currentMix.tracks, drafts, singleMode, selectedTrackId]
   );
 
-  const baseTrackCalc = selectedTrack
-    ? baseCalc.trackCalculations.find((tc) => tc.track.id === selectedTrack.id)
-    : undefined;
-  const refinedTrackCalc = selectedTrack
-    ? refinedCalc.trackCalculations.find((tc) => tc.track.id === selectedTrack.id)
-    : undefined;
-
-  /* ---------- שורות הדאשבורד ---------- */
-  const rows: ResultRowData[] = [];
-  const currentRow = rowFromCalculation(baseCalc, {
-    id: 'current',
-    title: 'המשכנתא היום',
-    subtitle: `${currentMix.bank ?? 'המשכנתא הנוכחית'} · ${formatCurrency(principal)} קרן`,
-    tone: 'current',
-    composition: currentMix.tracks,
-  });
-  rows.push(currentRow);
-
-  if (singleMode && selectedTrack && baseTrackCalc && refinedTrackCalc) {
-    const trackBaseRow = rowFromTrack(baseTrackCalc, {
-      id: 'track-current',
-      title: `${TRACK_TYPES[selectedTrack.type]} — היום`,
-      subtitle: `המסלול שנבחר למיחזור · ${formatCurrency(selectedTrack.amount)}`,
-      tone: 'track',
-    });
-    rows.push(trackBaseRow);
-    rows.push(
-      rowFromTrack(refinedTrackCalc, {
-        id: 'track-refinanced',
-        title: `${TRACK_TYPES[refinedTrackCalc.track.type]} — לאחר המיחזור`,
-        subtitle: 'המסלול לפי הפאנל שלמעלה',
-        tone: 'track',
-        baseline: baselineOf(trackBaseRow),
-      })
-    );
-  }
-
-  rows.push(
-    rowFromCalculation(refinedCalc, {
-      id: 'refinanced',
-      title: singleMode ? 'המשכנתא כולה לאחר מיחזור המסלול' : 'המשכנתא לאחר המיחזור',
-      subtitle: changed ? 'מתעדכן חי לפי פאנל השליטה' : 'שנו פרמטר בפאנל כדי לראות את ההשפעה',
-      tone: 'refinanced',
-      baseline: baselineOf(currentRow),
-      composition: refinedMix.tracks,
-    })
+  const baseByTrackId = useMemo(
+    () => Object.fromEntries(baseCalc.trackCalculations.map((tc) => [tc.track.id, tc])),
+    [baseCalc]
   );
+  const refinedByTrackId = useMemo(
+    () => Object.fromEntries(refinedCalc.trackCalculations.map((tc) => [tc.track.id, tc])),
+    [refinedCalc]
+  );
+
+  const monthsByTrackId = (calc: MortgageCalculation) =>
+    Object.fromEntries(calc.trackCalculations.map((tc) => [tc.track.id, tc.amortSchedule.length]));
+
+  const expandedTrack = expandedTrackId
+    ? {
+        base: baseByTrackId[expandedTrackId],
+        refined: refinedByTrackId[expandedTrackId],
+        track:
+          refinedMix.tracks.find((track) => track.id === expandedTrackId) ??
+          panelTracks.find((track) => track.id === expandedTrackId),
+      }
+    : null;
+
+  const trackChanged =
+    expandedTrack?.base && expandedTrack?.refined
+      ? Math.abs(expandedTrack.refined.monthlyPayment - expandedTrack.base.monthlyPayment) > 1 ||
+        Math.abs(expandedTrack.refined.totalInterest - expandedTrack.base.totalInterest) > 1
+      : false;
 
   return (
     <div className="space-y-3" dir="rtl">
-      {/* ===== כותרת: המצב הנוכחי ===== */}
+      {/* ===== פאנל השליטה: כותרת, מטרה והיקף, ואז המסלולים ===== */}
       <Card className="border-0 shadow-md">
-        <CardHeader className="pb-1.5 pt-3">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-600" />
-              המצב הנוכחי
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 text-slate-500">
-              <Pencil className="h-3.5 w-3.5 ml-1" />
-              עריכה
-            </Button>
+        <CardContent className="space-y-2.5 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+              <SlidersHorizontal className="h-4 w-4 text-blue-600" />
+              פאנל השליטה
+            </p>
+            <div className="flex items-center gap-2">
+              <p className="hidden text-[10px] text-slate-500 sm:block">
+                כל שינוי מתעדכן מיד בדאשבורד שמתחת
+              </p>
+              <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 text-slate-500">
+                <Pencil className="h-3.5 w-3.5 ml-1" />
+                עריכת נתוני המשכנתא
+              </Button>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="pb-3">
-          <div className="flex flex-wrap justify-center gap-2">
-            <StateBox
-              icon={Wallet}
-              label="החזר חודשי"
-              value={formatCurrency(baseCalc.summary.totalMonthlyPayment)}
-              gradient="bg-gradient-to-br from-slate-900 to-indigo-900"
-            />
-            <StateBox
-              icon={Banknote}
-              label="סך ריבית"
-              value={formatCurrency(baseCalc.summary.totalInterest)}
-              gradient="bg-gradient-to-br from-slate-900 to-blue-900"
-            />
-            <StateBox
-              icon={Coins}
-              label="סכום הקרן שנותר"
-              value={formatCurrency(principal)}
-              gradient="bg-gradient-to-br from-slate-900 to-slate-700"
-            />
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* ===== מטרה + היקף המיחזור ===== */}
-      <Card className="border-0 shadow-md">
-        <CardContent className="space-y-2 p-3">
+          {/* מטרת המיחזור והיקפו — הבחירה כאן מעדכנת את ההמלצות בכל מסלול */}
           <div className="grid gap-2 lg:grid-cols-2">
             <div className="space-y-1.5">
               <p className="text-[11px] font-bold text-slate-500">מה המטרה שלכם במיחזור?</p>
@@ -592,7 +633,7 @@ export function RefinanceAnalysis({
                   onClick={() => changeScope('whole')}
                   icon={Layers}
                   title="מיחזור כל המשכנתא"
-                  hint="כל המסלולים בפאנל"
+                  hint="כל המסלולים, כולל הסכומים"
                 />
                 <ChoiceButton
                   active={singleMode}
@@ -605,42 +646,35 @@ export function RefinanceAnalysis({
             </div>
           </div>
 
-          {/* ===== פאנל השליטה — מתחת לבחירת המטרה וההיקף ===== */}
-          <div className="space-y-2 border-t border-slate-100 pt-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
-                <SlidersHorizontal className="h-4 w-4 text-blue-600" />
-                פאנל השליטה
-              </p>
-              <p className="text-[10px] text-slate-500">
-                כל שינוי מתעדכן מיד בדאשבורד שמתחת — בלי שמירה ובלי מעבר מסך
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <GoalGuidanceStrip goal={goal} />
-              {goalSwitched && goal === 'reduce_payment' && (
-                <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">
-                  הארכתם תקופה — המטרה עברה להקטנת ההחזר החודשי
-                </span>
-              )}
-            </div>
-
-            <RefinanceControlPanel
-              tracks={currentMix.tracks}
-              drafts={drafts}
-              onDraftChange={applyDraft}
-              goal={goal}
-              market={market}
-              scope={scope}
-              selectedTrackId={selectedTrackId}
-              onSelectTrack={setSelectedTrackId}
-            />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <GoalGuidanceStrip goal={goal} scope={scope} />
+            {goalSwitched && goal === 'reduce_payment' && (
+              <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">
+                הארכתם תקופה — המטרה עברה להקטנת ההחזר החודשי
+              </span>
+            )}
           </div>
+
+          <RefinanceControlPanel
+            /* מיחזור מסלול בודד נעשה על מסלולי המשכנתא הקיימת בלבד */
+            tracks={singleMode ? currentMix.tracks : panelTracks}
+            drafts={drafts}
+            onDraftChange={changeDraft}
+            goal={goal}
+            market={market}
+            scope={scope}
+            selectedTrackId={selectedTrackId}
+            onSelectTrack={selectTrack}
+            totalAmount={totalAmount}
+            unallocated={unallocated}
+            onAddTrack={addTrack}
+            addedTrackIds={addedTracks.map((track) => track.id)}
+            onRemoveTrack={removeTrack}
+          />
         </CardContent>
       </Card>
 
-      {/* ===== דאשבורד התוצאות + גרפים ===== */}
+      {/* ===== דאשבורד התוצאות ===== */}
       <Card className="border-0 shadow-md">
         <CardContent className="space-y-2.5 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -658,27 +692,112 @@ export function RefinanceAnalysis({
             />
           </div>
 
-          <ResultsDashboard
-            rows={rows}
-            charts={
-              <div className="space-y-3 border-t border-slate-100 pt-2.5">
-                {singleMode && baseTrackCalc && refinedTrackCalc && selectedTrack && (
-                  <TrackComparisonCharts
-                    title={`המסלול שנבחר — ${TRACK_TYPES[selectedTrack.type]}`}
-                    hint="המסלול לפני המיחזור ואחריו."
-                    baseTrack={baseTrackCalc}
-                    refinedTrack={refinedTrackCalc}
+          {/* שורת המצב הנוכחי, ומתחתיה — אחרי שינוי — המצב שלאחר המיחזור */}
+          <StateBlocksRow
+            title="המצב הנוכחי"
+            caption={`${currentMix.bank ?? 'המשכנתא הנוכחית'} · ${formatCurrency(
+              baseCalc.trackCalculations.reduce((sum, tc) => sum + tc.track.amount, 0)
+            )} קרן`}
+            snapshot={snapshotOf(baseCalc)}
+            tone="current"
+          />
+
+          {unallocated >= MIN_TRACK_AMOUNT && !singleMode && (
+            <UnallocatedWarning unallocated={unallocated} totalAmount={totalAmount} />
+          )}
+
+          {changed ? (
+            <StateBlocksRow
+              title="המצב לאחר המיחזור"
+              caption="לפי הפרמטרים שבפאנל השליטה"
+              snapshot={snapshotOf(refinedCalc)}
+              baseline={snapshotOf(baseCalc)}
+              tone="refinanced"
+            />
+          ) : (
+            <NoChangeNotice text="טרם בוצע שינוי — לצפייה במצב שלאחר המיחזור שנו אחד הפרמטרים בפאנל השליטה." />
+          )}
+
+          {/* שורות התמהיל: הפרטים המלאים והחלוקה למסלולים */}
+          <div className="space-y-2 border-t border-slate-100 pt-2.5">
+            <MixRowsHeader />
+
+            <MixResultRow
+              title="התמהיל היום"
+              subtitle={changed ? undefined : 'טרם בוצע שינוי בתמהיל'}
+              stats={mixStatsOf(baseCalc)}
+              tone="current"
+              tracks={currentMix.tracks}
+              trackMonths={monthsByTrackId(baseCalc)}
+              onTrackClick={(id) => setExpandedTrackId((prev) => (prev === id ? null : id))}
+              activeTrackId={expandedTrackId}
+            />
+
+            {changed && (
+              <MixResultRow
+                title="התמהיל לאחר המיחזור"
+                subtitle={singleMode ? 'לאחר מיחזור המסלול שנבחר' : 'לפי פאנל השליטה'}
+                stats={mixStatsOf(refinedCalc)}
+                baseline={mixStatsOf(baseCalc)}
+                tone="refinanced"
+                tracks={refinedMix.tracks}
+                trackMonths={monthsByTrackId(refinedCalc)}
+                onTrackClick={(id) => setExpandedTrackId((prev) => (prev === id ? null : id))}
+                activeTrackId={expandedTrackId}
+              />
+            )}
+
+            {/* פירוט המסלול שנלחץ: שורות וגרפים */}
+            {expandedTrack?.track && (expandedTrack.base || expandedTrack.refined) && (
+              <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50/40 p-2.5">
+                {expandedTrack.base && (
+                  <MixResultRow
+                    title={`${TRACK_TYPES[expandedTrack.base.track.type]} — היום`}
+                    subtitle={trackChanged ? 'המסלול לפני המיחזור' : 'לא בוצע שינוי במסלול זה'}
+                    stats={trackStatsOf(expandedTrack.base)}
+                    tone="track"
                   />
                 )}
-                <ComparisonCharts
-                  title={singleMode ? 'המשכנתא כולה לאחר מיחזור המסלול' : 'המשכנתא כולה'}
-                  hint="המצב הנוכחי מול המצב שלאחר המיחזור."
-                  baseCalc={baseCalc}
-                  refinedCalc={refinedCalc}
+
+                {expandedTrack.refined && (trackChanged || !expandedTrack.base) && (
+                  <MixResultRow
+                    title={`${TRACK_TYPES[expandedTrack.refined.track.type]} — ${
+                      expandedTrack.base ? 'לאחר המיחזור' : 'מסלול חדש שנוסף'
+                    }`}
+                    subtitle="לפי פאנל השליטה"
+                    stats={trackStatsOf(expandedTrack.refined)}
+                    baseline={expandedTrack.base ? trackStatsOf(expandedTrack.base) : undefined}
+                    tone="track"
+                  />
+                )}
+
+                <TrackComparisonCharts
+                  title={`גרפים למסלול — ${TRACK_TYPES[expandedTrack.track.type]}`}
+                  hint={
+                    trackChanged
+                      ? 'המסלול לפני המיחזור ואחריו.'
+                      : 'לא בוצע שינוי במסלול — מוצג המצב הנוכחי בלבד.'
+                  }
+                  baseTrack={expandedTrack.base ?? expandedTrack.refined!}
+                  refinedTrack={expandedTrack.refined ?? expandedTrack.base!}
                 />
               </div>
-            }
-          />
+            )}
+          </div>
+
+          {/* גרפי ההשוואה של המשכנתא כולה */}
+          <div className="border-t border-slate-100 pt-2.5">
+            <ComparisonCharts
+              title={singleMode ? 'המשכנתא כולה לאחר מיחזור המסלול' : 'המשכנתא כולה'}
+              hint={
+                changed
+                  ? 'המצב הנוכחי מול המצב שלאחר המיחזור.'
+                  : 'טרם בוצע שינוי — מוצג המצב הנוכחי בלבד.'
+              }
+              baseCalc={baseCalc}
+              refinedCalc={refinedCalc}
+            />
+          </div>
         </CardContent>
       </Card>
 

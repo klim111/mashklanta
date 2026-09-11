@@ -13,6 +13,10 @@ import {
   totalInterestForMonths,
   trackRemainingMonths,
   trackWithRemainingTerm,
+  unallocatedAmount,
+  maxAmountForTrack,
+  clampTrackAmount,
+  MIN_TRACK_AMOUNT,
 } from '@/lib/refinance';
 import { mapBoiRatesToTrackTypes } from '@/lib/boi-average-rates';
 import { goalProgress, guidanceFor, trackGuidance } from '@/lib/refinance-guidance';
@@ -188,6 +192,7 @@ describe('הכוונה לפי מטרת המיחזור', () => {
   const draft = (overrides: Partial<TrackDraft> = {}): TrackDraft => ({
     interestRate: base.interestRate,
     months: baseMonths,
+    amount: base.amount,
     type: base.type,
     amortizationType: 'spitzer',
     ...overrides,
@@ -247,5 +252,26 @@ describe('הכוונה לפי מטרת המיחזור', () => {
     expect(interestGoal.metric).toBe('totalInterest');
     expect(interestGoal.achieved).toBe(true);
     expect(interestGoal.tradeoff).toBe(400);
+  });
+});
+
+describe('חלוקת הסכום בין המסלולים', () => {
+  it('מחשב את הסכום שלא שובץ', () => {
+    expect(unallocatedAmount(800_000, [500_000, 200_000])).toBe(100_000);
+    expect(unallocatedAmount(800_000, [500_000, 300_000])).toBe(0);
+    // חריגה מעל גובה המשכנתא אינה "סכום שנותר"
+    expect(unallocatedAmount(800_000, [500_000, 400_000])).toBe(0);
+  });
+
+  it('התקרה למסלול היא מה שיש בו ועוד מה שלא שובץ', () => {
+    expect(maxAmountForTrack(800_000, [500_000, 200_000], 0)).toBe(600_000);
+    expect(maxAmountForTrack(800_000, [500_000, 200_000], 1)).toBe(300_000);
+  });
+
+  it('מיישר סכום שהוזן לגבולות המותרים', () => {
+    const amounts = [500_000, 200_000];
+    expect(clampTrackAmount(900_000, 800_000, amounts, 0)).toBe(600_000);
+    expect(clampTrackAmount(1_000, 800_000, amounts, 0)).toBe(MIN_TRACK_AMOUNT);
+    expect(clampTrackAmount(450_000, 800_000, amounts, 0)).toBe(450_000);
   });
 });

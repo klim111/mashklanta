@@ -303,3 +303,44 @@ export function rateBoundsForRefinance(
 export function rateWorsensTerms(nextRate: number, baseRate: number): boolean {
   return nextRate > baseRate + 0.001;
 }
+
+// ───────────────────────── חלוקת הסכום בין המסלולים ─────────────────────────
+
+/** הסכום המינימלי שאפשר להשאיר במסלול */
+export const MIN_TRACK_AMOUNT = 10_000;
+
+/**
+ * הסכום שעדיין לא שובץ לאף מסלול. כל עוד הוא חיובי, אפשר להגדיל מסלול קיים
+ * או להוסיף מסלול חדש — עד גובה המשכנתא כולה.
+ */
+export function unallocatedAmount(totalAmount: number, amounts: number[]): number {
+  const allocated = amounts.reduce((sum, amount) => sum + (Number.isFinite(amount) ? amount : 0), 0);
+  const remaining = Math.round(totalAmount - allocated);
+  return remaining > 0 ? remaining : 0;
+}
+
+/**
+ * הסכום המרבי שמותר למסלול מסוים: מה שיש בו היום ועוד כל מה שלא שובץ. כך
+ * שינוי בסכום של מסלול אחד לעולם לא מוציא את התמהיל מגובה המשכנתא.
+ */
+export function maxAmountForTrack(
+  totalAmount: number,
+  amounts: number[],
+  trackIndex: number
+): number {
+  const others = amounts.filter((_, index) => index !== trackIndex);
+  const othersSum = others.reduce((sum, amount) => sum + (Number.isFinite(amount) ? amount : 0), 0);
+  return Math.max(MIN_TRACK_AMOUNT, Math.round(totalAmount - othersSum));
+}
+
+/** מיישר סכום שהוזן למסלול לגבולות המותרים */
+export function clampTrackAmount(
+  amount: number,
+  totalAmount: number,
+  amounts: number[],
+  trackIndex: number
+): number {
+  const max = maxAmountForTrack(totalAmount, amounts, trackIndex);
+  if (!Number.isFinite(amount)) return max;
+  return Math.min(max, Math.max(MIN_TRACK_AMOUNT, Math.round(amount)));
+}
