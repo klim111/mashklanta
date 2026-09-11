@@ -26,6 +26,8 @@ import {
   CURRENT_RATE_PAYMENT_NOTE,
   PrimeForwardChart,
   VariableForwardChart,
+  previewPrimeForwardPoints,
+  showsRateChangeNote,
   usesForwardPricedRate,
 } from './PrimeForwardChart';
 import { InflationForecastChart } from './InflationForecastChart';
@@ -141,12 +143,28 @@ export function WorkspaceCharts({
     return row?.year ?? null;
   }, [rows, selectedMonth]);
 
-  const hasPrime = result.tracks.some((t) => t.track.type === 'prime' && t.schedule.length > 1);
+  /**
+   * גרף ציפיות השוק לפריים מוזן מעקום התשואות של בנק ישראל, ולא מלוח ההחזרים.
+   * הלוח מחזיק את הפריים התקף עכשיו לכל אורכו — הזנה ממנו הייתה מציירת קו שטוח
+   * תחת כותרת של תחזית.
+   */
+  const primeTrack = result.tracks.find((t) => t.track.type === 'prime' && t.schedule.length > 1);
+  const primeExpectations = useMemo(() => {
+    const forecast = result.mix.assumptions.primeForecast;
+    if (!primeTrack || !forecast) return [];
+    return previewPrimeForwardPoints(
+      primeTrack.track.interestRate,
+      primeTrack.track.years,
+      forecast
+    );
+  }, [primeTrack, result.mix.assumptions.primeForecast]);
   const hasVariableUnlinked = result.tracks.some(
     (t) => t.track.type === 'variable_unlinked' && t.schedule.length > 1
   );
   const hasIndexed = result.tracks.some((t) => isIndexLinked(t.track.type) && t.schedule.length > 1);
   const hasForwardPriced = result.tracks.some((t) => usesForwardPricedRate(t.track.type));
+  /** יש מסלול שההחזר בו נגזר מריבית שעשויה להתעדכן — פריים, מק"מ או מל"צ */
+  const hasRateChangeNote = result.tracks.some((t) => showsRateChangeNote(t.track.type));
 
   const handleClick = (event: unknown) => {
     const month = monthFromClick(event);
@@ -240,8 +258,10 @@ export function WorkspaceCharts({
           title="החזר חודשי"
           hint={
             hasForwardPriced
-              ? `${CURRENT_RATE_PAYMENT_NOTE} בהמשך התקופה ההחזר החזוי מתעדכן לפי עקום הפורוורד.`
-              : 'ההחזר לאורך התקופה. בצמודי מדד ובמשתנות ההחזר משתנה בהתאם לתרחיש.'
+              ? `${CURRENT_RATE_PAYMENT_NOTE} בתחנות השינוי של מסלול משתנה לא צמודה ההחזר החזוי מתעדכן לפי עקום הפורוורד.`
+              : hasRateChangeNote
+                ? CURRENT_RATE_PAYMENT_NOTE
+                : 'ההחזר לאורך התקופה. בצמודי מדד ובמשתנות ההחזר משתנה בהתאם לתרחיש.'
           }
         >
           <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
@@ -308,15 +328,11 @@ export function WorkspaceCharts({
           </AreaChart>
         </ChartPanel>
 
-        {hasPrime && (
+        {primeExpectations.length >= 2 && (
           <div className="lg:col-span-3">
             <PrimeForwardChart
-              tracks={result.tracks}
-              quotedRate={
-                result.tracks.filter((t) => t.track.type === 'prime').length === 1
-                  ? result.tracks.find((t) => t.track.type === 'prime')?.track.interestRate
-                  : undefined
-              }
+              previewPoints={primeExpectations}
+              quotedRate={primeTrack?.track.interestRate}
               height={230}
             />
           </div>
@@ -366,6 +382,12 @@ function TrackFocusCharts({
 }) {
   const rows = trackRows(track);
   const data = track.track;
+  /** ציפיות השוק לפריים — מעקום התשואות, לא מהלוח שמחזיק ריבית קבועה */
+  const primeExpectations = useMemo(() => {
+    const forecast = assumptions.primeForecast;
+    if (data.type !== 'prime' || !forecast) return [];
+    return previewPrimeForwardPoints(data.interestRate, data.years, forecast);
+  }, [data.type, data.interestRate, data.years, assumptions.primeForecast]);
   const isGrace =
     data.amortizationType === 'partial_grace' || data.amortizationType === 'full_grace';
   const prepayRow = track.schedule.find((row) => row.prepayment > 1);
@@ -454,9 +476,13 @@ function TrackFocusCharts({
         </AreaChart>
       </ChartPanel>
 
-      {data.type === 'prime' && track.schedule.length > 1 && (
+      {data.type === 'prime' && primeExpectations.length >= 2 && (
         <div className="lg:col-span-3">
-          <PrimeForwardChart tracks={[track]} quotedRate={data.interestRate} height={220} />
+          <PrimeForwardChart
+            previewPoints={primeExpectations}
+            quotedRate={data.interestRate}
+            height={220}
+          />
         </div>
       )}
       {data.type === 'variable_unlinked' && track.schedule.length > 1 && (
@@ -472,7 +498,7 @@ function TrackFocusCharts({
 
       {/* הביאורים של המסלול — אותם הסברים שהיו בתוך המסלול, כאן לצד הגרפים */}
       <div className="space-y-2 lg:col-span-3">
-        {usesForwardPricedRate(data.type) && track.monthlyPayment > 0.01 && (
+        {showsRateChangeNote(data.type) && track.monthlyPayment > 0.01 && (
           <p className="text-[11px] leading-snug text-slate-500">{CURRENT_RATE_PAYMENT_NOTE}</p>
         )}
 

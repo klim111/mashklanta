@@ -37,6 +37,7 @@ import {
 } from '@/lib/mortgage-affordability';
 import { migrateMortgagePlanningUserData, sumIndividualLoanPayments } from '@/lib/borrower-loans';
 import { INTEREST_RATES } from '@/lib/interest-rates';
+import { useMarketRates } from '@/hooks/use-market-rates';
 import {
   PLAN_TERM_MONTHS_MAX,
   PLAN_TERM_MONTHS_MIN,
@@ -120,6 +121,12 @@ export function MortgagePlanningContent({
 }: MortgagePlanningEmbed = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  /**
+   * הריביות החיות של בנק ישראל. הרכיב מחשב את כושר ההחזר לפי ריבית הקל"צ
+   * מהטבלה המרכזית, ולכן הוא צריך להיצבע מחדש ברגע שהמשיכה חוזרת — אחרת הוא
+   * היה נשאר על הערך שהיה זמין ברגע הטעינה.
+   */
+  useMarketRates();
   /** הגעה מתוך תהליך תכנון — מציגים דרך חזרה אליו במקום להשאיר את הלקוח תלוי באוויר */
   const returnPlanId = embedded ? null : searchParams.get('fromPlan');
   const [currentStep, setCurrentStep] = useState<PlanningStep>('property-type');

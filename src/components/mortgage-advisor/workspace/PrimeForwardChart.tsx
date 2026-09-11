@@ -29,7 +29,20 @@ export interface PrimeForwardPoint {
 }
 
 export const CURRENT_RATE_PAYMENT_NOTE =
-  'ההחזר החודשי המוצג הוא לפי הריביות התקפות לרגע החישוב.';
+  'ההחזר החודשי המוצג הוא לפי הריביות התקפות לרגע החישוב, והוא ישתנה כשהריבית תתעדכן.';
+
+/**
+ * מסלולים שההחזר בהם נקבע לפי הריבית התקפה עכשיו, ויזוז כשהיא תתעדכן —
+ * פריים ומק"מ נצמדים לריבית בנק ישראל, ומט"ח לריבית הבסיס במטבע.
+ */
+export function usesCurrentRatePricing(type: TrackType): boolean {
+  return type === 'prime' || type === 'makam' || type === 'dollar' || type === 'euro';
+}
+
+/** האם להציג את ההבהרה שההחזר נגזר מריבית שעשויה להשתנות */
+export function showsRateChangeNote(type: TrackType): boolean {
+  return usesCurrentRatePricing(type) || usesForwardPricedRate(type);
+}
 
 /**
  * מסלולים שההחזרים שלהם מתומחרים לפי פורוורד ולא לפי הריבית של היום.

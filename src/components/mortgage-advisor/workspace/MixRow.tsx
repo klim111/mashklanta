@@ -19,7 +19,7 @@ import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
 import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import { CompositionBar, formatShekel, trackColor } from './primitives';
-import { CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
 import { describePaymentDrop } from './paymentDrop';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
 import { formatQuoteDate } from '../bankQuote/quote';
@@ -376,7 +376,7 @@ function paymentHint(summary: MixSummary, mix: WorkspaceMix, result?: MixResult)
   if (summary.balloonPayment > 1) {
     parts.push(`בלון ${formatShekel(summary.balloonPayment)} בסוף`);
   }
-  if (mix.tracks.some((track) => usesForwardPricedRate(track.type))) {
+  if (mix.tracks.some((track) => showsRateChangeNote(track.type))) {
     parts.push(CURRENT_RATE_PAYMENT_NOTE);
   }
   return parts.length > 0 ? parts.join(' · ') : undefined;

@@ -59,7 +59,7 @@ import {
 import { MaxPaymentDialog } from './MaxPaymentDialog';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { AmountAndPercent, TermMonthsSlider, formatShekel, trackColor } from './primitives';
-import { VariableForwardChart, previewVariableForwardPoints, CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { VariableForwardChart, previewVariableForwardPoints, CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
 import { InflationForecastChart } from './InflationForecastChart';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
@@ -767,7 +767,7 @@ export function MixSetupWizard({
             {tracks.length > 0 && monthlyPayment > 0 && (
               <p className="text-[11px] text-slate-500 leading-snug">
                 החזר חודשי {formatShekel(monthlyPayment)}
-                {tracks.some((t) => usesForwardPricedRate(t.type)) ? ` · ${CURRENT_RATE_PAYMENT_NOTE}` : ''}
+                {tracks.some((t) => showsRateChangeNote(t.type)) ? ` · ${CURRENT_RATE_PAYMENT_NOTE}` : ''}
               </p>
             )}
             {tracks.length > 0 && <ForecastDisclaimer mix={{ tracks }} compact />}
