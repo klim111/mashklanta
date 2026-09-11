@@ -15,6 +15,7 @@ import {
   Loader2,
   MapPin,
   Plus,
+  RefreshCw,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -252,16 +253,31 @@ function StartCard({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onStart}
-          disabled={busy}
-          className="group inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-4 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70"
-        >
-          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-          התחל תכנון משכנתא חדשה
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-        </button>
+        {/* שתי דרכי הכניסה לתהליך: משכנתא חדשה, ומיחזור של משכנתא קיימת */}
+        <div className="flex w-full flex-col gap-2.5 sm:w-auto">
+          <button
+            type="button"
+            onClick={onStart}
+            disabled={busy}
+            className="group inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-4 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70"
+          >
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+            התחל תכנון משכנתא חדשה
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          </button>
+
+          <Link
+            href="/mortgage-refinance"
+            className="group inline-flex items-center justify-center gap-2.5 rounded-2xl border border-white/25 bg-white/10 px-7 py-4 text-base font-black text-white transition-all hover:-translate-y-0.5 hover:bg-white/15"
+          >
+            <RefreshCw className="h-5 w-5" />
+            מיחזור משכנתא קיימת
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          </Link>
+          <p className="text-center text-[11px] text-white/50">
+            כלי המיחזור פתוח לחשבון שלכם ללא הגבלה על מספר השינויים
+          </p>
+        </div>
       </div>
     </div>
   );

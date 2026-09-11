@@ -22,6 +22,9 @@ interface AnalysisTabsProps {
   comparedCount: number;
   allowSelectFinal?: boolean;
   onSelectFinal?: (entryId: string) => void;
+  /** המסלול שמוצג באזור הגרפים. null — כל התמהיל */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
 }
 
 /**
@@ -38,6 +41,8 @@ export function AnalysisTabs({
   comparedCount,
   allowSelectFinal,
   onSelectFinal,
+  focusTrackId = null,
+  onFocusTrack,
 }: AnalysisTabsProps) {
   const [tab, setTab] = useState<AnalysisTab>('charts');
 
@@ -75,6 +80,8 @@ export function AnalysisTabs({
           scenarioActive={scenarioActive}
           selectedMonth={selectedMonth}
           onSelectMonth={onSelectMonth}
+          focusTrackId={focusTrackId}
+          onFocusTrack={onFocusTrack}
         />
       </TabsContent>
 
