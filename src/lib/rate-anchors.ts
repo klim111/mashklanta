@@ -16,9 +16,10 @@
  *                         לטווח שווה לתקופת השינוי של המסלול (מל"צ 2 → שנתיים).
  *    משתנה צמודה        — עקום האפס ה**ריאלי**, באותו היגיון.
  *    מק"מ               — עקום האפס הנומינלי לשנה, שזו תקופת המק"מ.
- *    קבועה לא צמודה     — עקום האפס הנומינלי לאורך התקופה של המסלול.
- *    קבועה צמודה        — עקום האפס הריאלי לאורך התקופה של המסלול.
- *    זכאות / מענק / מט"ח — אין עוגן שוק מבנק ישראל; הריבית מוזנת ידנית בלבד.
+ *
+ *  למסלול בריבית קבועה אין עוגן ואין מרווח: הריבית נסגרת מול הבנק ליום החתימה
+ *  ואינה מתעדכנת אחר כך מול שום עקום, ולכן היא שדה ריבית אחד. אותו דבר בזכאות,
+ *  במענק ובמט"ח, שנקבעים בתקנות או מול ריבית הבסיס במטבע הזר.
  * ============================================================================
  */
 
@@ -51,10 +52,12 @@ export interface RateAnchor {
 }
 
 export interface AnchorContext {
-  /** תקופת השינוי של מסלול משתנה, בשנים */
+  /**
+   * תקופת השינוי של המסלול המשתנה, בשנים — היא שקובעת לאיזה טווח בעקום האפס
+   * העוגן מתייחס. אורך המשכנתא אינו רלוונטי לעוגן: מסלול שמתעדכן כל שנתיים
+   * מתומחר מול העקום לשנתיים גם כשהוא נפרס ל-25 שנה.
+   */
   variablePeriod?: number;
-  /** תקופת המסלול בשנים — העוגן של מסלול קבוע נלקח לטווח הזה */
-  years?: number;
 }
 
 /**
@@ -85,15 +88,18 @@ export function interpolateCurvePct(spots: YieldSpot[], years: number): number |
   return last.yieldPct;
 }
 
-/** כמה שנים העוגן של המסלול צריך לכסות */
+/**
+ * כמה שנים העוגן של המסלול צריך לכסות.
+ *
+ * במסלול משתנה זו תקופת השינוי ולא אורך המשכנתא: מל"צ שמשתנה כל שנתיים
+ * מתומחר מול עקום האפס לשנתיים גם אם המשכנתא ל-25 שנה. במק"מ זו שנה אחת,
+ * שהיא תקופת המק"מ.
+ */
 export function anchorYears(type: MortgageTrackType, context: AnchorContext = {}): number {
   if (type === 'makam') return 1;
-  if (type === 'variable_unlinked' || type === 'variable_linked') {
-    const period = context.variablePeriod;
-    return period && period > 0 ? period : 5;
-  }
-  const years = context.years;
-  return years && years > 0 ? years : 25;
+  const period = context.variablePeriod;
+  if (period && period > 0) return period;
+  return 5;
 }
 
 /** איזה עקום מתאים למסלול, או null כשאין לו עוגן שוק */
@@ -103,13 +109,11 @@ export function anchorCurveFor(type: MortgageTrackType): AnchorCurve | null {
       return 'prime';
     case 'variable_unlinked':
     case 'makam':
-    case 'fixed_unlinked':
-    case 'five_year_plan':
       return 'nominal';
     case 'variable_linked':
-    case 'fixed_linked':
       return 'real';
-    // זכאות ומענק נקבעים בתקנות ולא בשוק; מט"ח נסמך על ריבית הבסיס במטבע הזר
+    // קבועה נסגרת מול הבנק ואינה מתעדכנת מול עקום; זכאות ומענק נקבעים בתקנות;
+    // מט"ח נסמך על ריבית הבסיס במטבע הזר. לכולם הריבית מוזנת כשדה אחד.
     default:
       return null;
   }
@@ -232,8 +236,6 @@ export function defaultRateFor(
 const RATE_LIST_CONTEXT: Partial<
   Record<InterestRateKey, { type: MortgageTrackType; context: AnchorContext }>
 > = {
-  fixed_unlinked: { type: 'fixed_unlinked', context: { years: 25 } },
-  fixed_linked: { type: 'fixed_linked', context: { years: 25 } },
   variable_unlinked_2y: { type: 'variable_unlinked', context: { variablePeriod: 2 } },
   variable_unlinked_5y: { type: 'variable_unlinked', context: { variablePeriod: 5 } },
   variable_linked_2y: { type: 'variable_linked', context: { variablePeriod: 2 } },
@@ -319,13 +321,10 @@ export function applyLiveInterestRates(snapshot: MarketRatesSnapshot): void {
   const trackRates: Partial<Record<MortgageTrackType, number>> = {};
   (
     [
-      ['fixed_unlinked', { years: 25 }],
-      ['fixed_linked', { years: 25 }],
       ['prime', {}],
       ['variable_unlinked', { variablePeriod: 5 }],
       ['variable_linked', { variablePeriod: 5 }],
       ['makam', {}],
-      ['five_year_plan', { years: 5 }],
     ] as Array<[MortgageTrackType, AnchorContext]>
   ).forEach(([type, context]) => {
     if (anchorForTrack(type, snapshot, context)) {

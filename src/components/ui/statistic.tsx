@@ -240,8 +240,9 @@ export default function Statistic() {
             <div>
               <h3 className="text-2xl font-black text-white">מדד ריביות עדכניות</h3>
               <p className="mt-1 text-sm text-slate-300">
-                הריביות שמוזנות כברירת מחדל בבניית התמהיל — עוגן מבנק ישראל בתוספת המרווח
-                הבנקאי המקובל ·{" "}
+                הריביות שמוזנות כברירת מחדל בבניית התמהיל. בפריים ובמסלולים המשתנים הן עוגן
+                מבנק ישראל בתוספת המרווח הבנקאי המקובל; בקבועות ובזכאות אין עוגן והריבית
+                מצוטטת על ידי הבנק ·{" "}
                 {live
                   ? `נמשך מבנק ישראל ${formatDate(snapshot.boiRateAsOf)}`
                   : `נתוני נפילה · ${INTEREST_RATES_METADATA.lastUpdated}`}

@@ -125,7 +125,7 @@ interface TrackForm {
 function emptyForm(snapshot: MarketRatesSnapshot, type: TrackType = 'fixed_unlinked'): TrackForm {
   const years = 25;
   const variablePeriod = 5;
-  const context = { years, variablePeriod };
+  const context = { variablePeriod };
   const interestRate = defaultRateFor(type, snapshot, context);
   const anchor = anchorForTrack(type, snapshot, context);
   return {
@@ -206,11 +206,8 @@ export function MixSetupWizard({
   /** העוגן של המסלול שנערך כרגע, לפי סוגו ותקופת השינוי שלו */
   const formAnchor = useMemo(
     () =>
-      anchorForTrack(form.type, marketRates, {
-        years: form.years,
-        variablePeriod: form.variablePeriod,
-      }),
-    [form.type, form.years, form.variablePeriod, marketRates]
+      anchorForTrack(form.type, marketRates, { variablePeriod: form.variablePeriod }),
+    [form.type, form.variablePeriod, marketRates]
   );
   const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -289,7 +286,7 @@ export function MixSetupWizard({
       return;
     }
     // בחירת סוג מסלול מושכת מיד את העוגן המתאים לו ואת המרווח שמעליו
-    const context = { years: form.years, variablePeriod: form.variablePeriod };
+    const context = { variablePeriod: form.variablePeriod };
     const interestRate = defaultRateFor(type, marketRates, context);
     const anchor = anchorForTrack(type, marketRates, context);
     patchForm({

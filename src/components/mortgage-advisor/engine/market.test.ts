@@ -43,9 +43,17 @@ describe('עוגן המסלול', () => {
     expect(trackAnchor(track, market())?.rate).toBeCloseTo(3.5, 10);
   });
 
-  it('נלקח לפי תקופת המסלול כשאין תחנת שינוי', () => {
+  it('אינו קיים במסלול קבוע — הריבית שם נסגרת מול הבנק', () => {
     const track = createTrack({ type: 'fixed_unlinked', years: 10 });
-    expect(trackAnchor(track, market())?.rate).toBeCloseTo(4.5, 10);
+    expect(trackAnchor(track, market())).toBeNull();
+    expect(trackRateBreakdown(track, market()).spread).toBeNull();
+  });
+
+  it('אורך המשכנתא אינו משנה את העוגן של מסלול משתנה', () => {
+    const short = createTrack({ type: 'variable_unlinked', years: 10, variablePeriod: 5 });
+    const long = createTrack({ type: 'variable_unlinked', years: 30, variablePeriod: 5 });
+    expect(trackAnchor(short, market())?.rate).toBeCloseTo(4, 10);
+    expect(trackAnchor(long, market())?.rate).toBeCloseTo(4, 10);
   });
 });
 
@@ -92,6 +100,7 @@ describe('החלת נתוני בנק ישראל על תמהיל', () => {
         variablePeriod: 2,
         rateSpread: 1.2,
       }),
+      // מסלול קבוע — אין לו עוגן, ולכן הריבית שלו אינה זזה עם בנק ישראל
       createTrack({ id: 'f', type: 'fixed_unlinked', amount: 300_000, years: 25, interestRate: 4.85 }),
     ],
   });

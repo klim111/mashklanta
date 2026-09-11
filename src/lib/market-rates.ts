@@ -22,7 +22,7 @@
  * ============================================================================
  */
 
-import { INTEREST_RATES } from './interest-rates';
+import { STATIC_INTEREST_RATES } from './interest-rates';
 import { applyLiveInterestRates } from './rate-anchors';
 import {
   breakevenSpots,
@@ -77,6 +77,11 @@ export interface MarketRatesSnapshot {
   boiRate: number;
   boiRateAsOf: string;
   boiRateSource: DataSource;
+  /**
+   * בנק ישראל החזיר יותר מערך אחד לאותו תאריך, ולכן ייתכן שנבחרה הסדרה
+   * הלא נכונה. מדווח ב-`/api/health` כדי שאפשר יהיה לאתר זאת מיד.
+   */
+  boiRateAmbiguous?: boolean;
   /** ריבית הפריים במשק = ריבית בנק ישראל + 1.5% */
   primeRate: number;
   /** עקום האפס הנומינלי של החודש הקודם — עוגן המשתנות הלא צמודות */
@@ -150,12 +155,26 @@ export function parseCsv(text: string): Record<string, string>[] {
   });
 }
 
-/** מספר השנים לפדיון מתוך קוד הסדרה או שדה התקופה (למשל "Y02" → 2) */
+/**
+ * מספר השנים לפדיון מתוך קוד הסדרה או שדה התקופה.
+ *
+ * בנק ישראל מקודד את הטווח כשנים ("Y02") ולעיתים כחודשים ("M24"). שתי הצורות
+ * מתורגמות לשנים, כדי שהעוגן לא ייפול לערכי נפילה רק בגלל שינוי בקידוד.
+ */
 export function parseMaturityYears(value: string): number | null {
-  const match = /Y0?(\d+)/i.exec(value);
-  if (!match) return null;
-  const years = Number(match[1]);
-  return Number.isFinite(years) && years > 0 ? years : null;
+  const years = /Y\s*0?(\d+(?:\.\d+)?)/i.exec(value);
+  if (years) {
+    const parsed = Number(years[1]);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  const months = /M\s*0?(\d+)/i.exec(value);
+  if (months) {
+    const parsed = Number(months[1]);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed / 12;
+  }
+
+  return null;
 }
 
 /** החודש (YYYY-MM) של תצפית, מתוך שדה TIME_PERIOD בכל אחד מהפורמטים של SDMX */
@@ -179,16 +198,24 @@ interface ZcmObservation {
   month: string;
 }
 
-/** תצפיות עקום אפס תקינות מתוך ה-CSV, אחרי סינון הסדרות הלא רלוונטיות */
+/**
+ * תצפיות עקום אפס תקינות מתוך ה-CSV.
+ *
+ * ההפרדה בין נומינלי לריאלי נשענת קודם כול על ממד `NOMINAL_REAL`, שגם הבקשה
+ * עצמה מסננת לפיו. רק כשהממד חסר בתשובה נופלים לזיהוי לפי קוד הסדרה
+ * (ZND / ZRD). הסדר הזה חשוב: זיהוי לפי קוד בלבד היה פוסל את כל השורות אילו
+ * בנק ישראל היה משנה את מוסכמת השמות, והעוגנים היו נופלים בשקט לערכי נפילה.
+ */
 export function zcmObservations(csv: string, nominalReal: 'N' | 'R'): ZcmObservation[] {
   return parseCsv(csv)
     .filter((row) => {
-      if (row.NOMINAL_REAL && row.NOMINAL_REAL !== nominalReal) return false;
       if (row.DATA_TYPE && row.DATA_TYPE !== 'ZC_YTM') return false;
+      if (row.NOMINAL_REAL) return row.NOMINAL_REAL === nominalReal;
       const code = row.SERIES_CODE || '';
       if (!code) return true;
-      if (nominalReal === 'N') return code.includes('ZND');
-      return code.includes('ZRD') || !code.includes('ZND');
+      if (code.includes('ZND')) return nominalReal === 'N';
+      if (code.includes('ZRD')) return nominalReal === 'R';
+      return true;
     })
     .flatMap((row) => {
       const years = parseMaturityYears(row.TIME_TO_MATURITY || row.SERIES_CODE || '');
@@ -260,22 +287,42 @@ export function latestCurve(observations: ZcmObservation[]): CurveSnapshot | nul
 /**
  * התצפית המספרית האחרונה בסדרה חד-ממדית (כמו ריבית בנק ישראל).
  *
- * תא ריק אינו תצפית: `Number('')` הוא אפס, ובלי הבדיקה הזו סדרה עם תא ריק
- * הייתה נקראת כריבית בנק ישראל של 0% — ומשם פריים של 1.5% בכל הפלטפורמה.
+ * שני דברים שהלכו כאן לאיבוד בעבר:
+ * 1. תא ריק אינו תצפית. `Number('')` הוא אפס, ובלי הבדיקה הזו סדרה עם תא ריק
+ *    הייתה נקראת כריבית בנק ישראל של 0% — ומשם פריים של 1.5% בכל הפלטפורמה.
+ * 2. כשחוזרות כמה סדרות לאותו תאריך, הבחירה חייבת להיות דטרמיניסטית ולא לפי
+ *    סדר השורות בקובץ. מיון לפי קוד הסדרה מבטיח שאותו קלט ייתן תמיד אותה
+ *    תשובה, ו-`ambiguous` מסמן שיש יותר מערך אחד כדי שאפשר יהיה לראות זאת
+ *    ב-`/api/health` במקום לנחש למה הפריים נראה מוזר.
  */
-export function latestObservation(rows: Record<string, string>[]): { value: number; asOf: string } | null {
-  const sorted = rows
-    .filter((row) => (row.OBS_VALUE ?? '').trim() !== '' && Number.isFinite(Number(row.OBS_VALUE)))
-    .sort((a, b) => (a.TIME_PERIOD || '').localeCompare(b.TIME_PERIOD || ''));
-
-  for (let i = sorted.length - 1; i >= 0; i--) {
-    const value = Number(sorted[i].OBS_VALUE);
+export function latestObservation(
+  rows: Record<string, string>[]
+): { value: number; asOf: string; ambiguous: boolean } | null {
+  const valid = rows.filter((row) => {
+    const raw = (row.OBS_VALUE ?? '').trim();
+    if (raw === '') return false;
+    const value = Number(raw);
     // ריבית מוניטרית סבירה. אפס הוא ערך תקין (2015–2021), ולכן הגבול התחתון פתוח.
-    if (value >= 0 && value < 20) {
-      return { value, asOf: sorted[i].TIME_PERIOD || '' };
-    }
-  }
-  return null;
+    return Number.isFinite(value) && value >= 0 && value < 20;
+  });
+  if (valid.length === 0) return null;
+
+  const latestPeriod = valid
+    .map((row) => row.TIME_PERIOD || '')
+    .sort()
+    .at(-1);
+
+  const atLatest = valid
+    .filter((row) => (row.TIME_PERIOD || '') === latestPeriod)
+    .sort((a, b) => (a.SERIES_CODE || '').localeCompare(b.SERIES_CODE || ''));
+
+  const distinct = new Set(atLatest.map((row) => Number(row.OBS_VALUE)));
+
+  return {
+    value: Number(atLatest[0].OBS_VALUE),
+    asOf: latestPeriod || '',
+    ambiguous: distinct.size > 1,
+  };
 }
 
 // ───────────────────────────── משיכה ─────────────────────────────
@@ -310,9 +357,17 @@ function fallbackRealSpots(): YieldSpot[] {
   });
 }
 
-/** התצלום שמוחזר כשאף מקור לא נמשך — טבלת הריביות הסטטית */
+/**
+ * התצלום שמוחזר כשאף מקור לא נמשך — טבלת הריביות הסטטית.
+ *
+ * הערכים נלקחים מ-`STATIC_INTEREST_RATES` ולא מ-`INTEREST_RATES`, שהוא כבר
+ * הטבלה החיה. תצלום הנפילה הוא גם נקודת הייחוס שממנה מחולץ המרווח הבנקאי
+ * (`defaultSpreadFor`), ולכן הוא חייב להיות קבוע: אילו הוא היה זז עם השוק,
+ * המרווח היה מתכווץ בדיוק כפי שהעוגן גדל, והריבית הסופית הייתה נתקעת על הערך
+ * שנכתב בקוד במקום לעקוב אחרי בנק ישראל.
+ */
 export function fallbackMarketRates(reference: Date = new Date()): MarketRatesSnapshot {
-  const boiRate = INTEREST_RATES.prime - PRIME_OVER_BOI;
+  const boiRate = STATIC_INTEREST_RATES.prime - PRIME_OVER_BOI;
   const month = previousMonthKey(reference);
   const prime = fallbackPrimeForecast(boiRate);
 
@@ -322,7 +377,7 @@ export function fallbackMarketRates(reference: Date = new Date()): MarketRatesSn
     boiRate,
     boiRateAsOf: prime.asOf,
     boiRateSource: 'fallback',
-    primeRate: INTEREST_RATES.prime,
+    primeRate: STATIC_INTEREST_RATES.prime,
     nominalCurve: { spots: FALLBACK_NOMINAL_SPOTS, month, asOf: prime.asOf, source: 'fallback' },
     realCurve: { spots: fallbackRealSpots(), month, asOf: prime.asOf, source: 'fallback' },
     primeForecast: prime,
@@ -395,6 +450,7 @@ export async function fetchMarketRates(reference: Date = new Date()): Promise<Ma
     boiRate,
     boiRateAsOf: br?.asOf || fallback.boiRateAsOf,
     boiRateSource: br ? 'boi' : 'fallback',
+    boiRateAmbiguous: br?.ambiguous ?? false,
     primeRate: boiRate + PRIME_OVER_BOI,
     nominalCurve,
     realCurve,

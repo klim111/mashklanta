@@ -42,20 +42,24 @@ export function AnchorSpreadRate({
   disabled = false,
   className = '',
 }: AnchorSpreadRateProps) {
-  // בלי עוגן שוק (זכאות, מענק, מט"ח) אין מה לפרק — נשאר שדה ריבית אחד
+  /*
+    מסלול בלי עוגן — קבועה, זכאות, מענק ומט"ח — מקבל שדה ריבית אחד ותו לא.
+    הריבית בהם נסגרת מול הבנק או נקבעת בתקנות, ואין מה לפרק לעוגן ולמרווח;
+    הצגת שלושה שדות שאחד מהם ריק הייתה מרמזת על פירוק שלא קיים.
+  */
   if (!anchor) {
     return (
-      <div className={`space-y-1 ${className}`}>
-        <span className="text-xs font-medium text-slate-700">{rateLabel} %</span>
+      <div className={`relative ${className}`}>
         <NumericInput
-          className={FIELD_CLASS}
+          className={`${FIELD_CLASS} pl-7 text-left font-bold`}
           value={rate}
           disabled={disabled}
           onChange={(value) => onChange({ rate: value ?? 0 })}
+          aria-label={rateLabel}
         />
-        <p className="text-[10px] leading-snug text-slate-500">
-          למסלול הזה אין עוגן שוק של בנק ישראל — הריבית נקבעת בתקנות או מול הבנק ומוזנת ידנית.
-        </p>
+        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+          %
+        </span>
       </div>
     );
   }

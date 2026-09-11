@@ -23,6 +23,7 @@ export async function GET() {
       fetchedAt: snapshot.fetchedAt,
       boiRate: snapshot.boiRate,
       boiRateAsOf: snapshot.boiRateAsOf,
+      boiRateAmbiguous: snapshot.boiRateAmbiguous ?? false,
       primeRate: snapshot.primeRate,
       nominalCurveMonth: snapshot.nominalCurve.month,
       nominalCurveSource: snapshot.nominalCurve.source,

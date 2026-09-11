@@ -41,7 +41,7 @@ export function RefinanceDialog({
   const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
   const [newYears, setNewYears] = useState(20);
   const [newRate, setNewRate] = useState(() =>
-    defaultRateFor('fixed_unlinked', marketRates, { years: 20 })
+    defaultRateFor('fixed_unlinked', marketRates)
   );
   const [newSpread, setNewSpread] = useState<number | null>(null);
   const [newAmortization, setNewAmortization] = useState<NonNullable<MortgageTrack['amortizationType']>>('spitzer');
@@ -157,9 +157,8 @@ export function RefinanceDialog({
                 value={newType}
                 onValueChange={(value) => {
                   const type = value as MortgageTrack['type'];
-                  const context = { years: newYears };
-                  const rate = defaultRateFor(type, marketRates, context);
-                  const anchor = anchorForTrack(type, marketRates, context);
+                  const rate = defaultRateFor(type, marketRates);
+                  const anchor = anchorForTrack(type, marketRates);
                   setNewType(type);
                   setNewRate(rate);
                   setNewSpread(anchor ? roundRate(rate - anchor.rate) : null);
@@ -200,7 +199,7 @@ export function RefinanceDialog({
                 ריבית חדשה
               </span>
               <AnchorSpreadRate
-                anchor={anchorForTrack(newType, marketRates, { years: newYears })}
+                anchor={anchorForTrack(newType, marketRates)}
                 spread={newSpread}
                 rate={newRate}
                 rateLabel="ריבית חדשה"

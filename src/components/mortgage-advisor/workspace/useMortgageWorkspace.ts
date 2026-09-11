@@ -79,7 +79,7 @@ function defaultRateFor(
   state: WorkspaceState,
   type: TrackType,
   amortizationType: MortgageTrack['amortizationType'] = 'spitzer',
-  context: { variablePeriod?: number; years?: number } = {}
+  context: { variablePeriod?: number } = {}
 ): { interestRate: number; rateSpread?: number } {
   const bank = state.mix.bank;
   const anchor = anchorForTrack(type, state.marketRates, context);
@@ -190,10 +190,7 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
             ...merged,
             tracks: merged.tracks.map((track) => ({
               ...track,
-              ...defaultRateFor(withBank, track.type, track.amortizationType, {
-                variablePeriod: track.variablePeriod,
-                years: track.years,
-              }),
+              ...defaultRateFor(withBank, track.type, track.amortizationType, { variablePeriod: track.variablePeriod }),
             })),
           },
           blockedNotice: null,
@@ -232,7 +229,7 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
             type,
             amount: remaining || carve || 100_000,
             years,
-            ...defaultRateFor(state, type, 'spitzer', { years }),
+            ...defaultRateFor(state, type, 'spitzer'),
           }),
         ],
       });
@@ -259,10 +256,7 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
         ) {
           Object.assign(
             next,
-            defaultRateFor(state, next.type, action.patch.amortizationType, {
-              variablePeriod: next.variablePeriod,
-              years: next.years,
-            })
+            defaultRateFor(state, next.type, action.patch.amortizationType, { variablePeriod: next.variablePeriod })
           );
         }
         // החלפת סוג מסלול מביאה איתה את ריבית ברירת המחדל ואת השדות הרלוונטיים.
@@ -275,10 +269,7 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
           if (action.patch.interestRate === undefined) {
             Object.assign(
               next,
-              defaultRateFor(state, action.patch.type, next.amortizationType, {
-                variablePeriod: next.variablePeriod,
-                years: next.years,
-              })
+              defaultRateFor(state, action.patch.type, next.amortizationType, { variablePeriod: next.variablePeriod })
             );
           }
           if (action.patch.type === 'dollar') next.currency = 'USD';
@@ -302,7 +293,6 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
             typeof spread === 'number' && Number.isFinite(spread)
               ? anchorForTrack(next.type, state.marketRates, {
                   variablePeriod: next.variablePeriod,
-                  years: next.years,
                 })
               : null;
           if (anchor) next.interestRate = roundRate(anchor.rate + spread!);

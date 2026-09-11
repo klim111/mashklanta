@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   anchorCurveFor,
   anchorForTrack,
   anchorYears,
+  applyLiveInterestRates,
   defaultRateFor,
   defaultSpreadFor,
   interpolateCurvePct,
@@ -11,7 +12,19 @@ import {
   roundRate,
 } from './rate-anchors';
 import { fallbackMarketRates, type MarketRatesSnapshot } from './market-rates';
-import { INTEREST_RATE_KEYS, STATIC_INTEREST_RATES as INTEREST_RATES } from './interest-rates';
+import {
+  INTEREST_RATE_KEYS,
+  INTEREST_RATES as INTEREST_RATES_LIVE,
+  STATIC_INTEREST_RATES,
+  STATIC_INTEREST_RATES as INTEREST_RATES,
+  clearLiveInterestRates,
+} from './interest-rates';
+
+const STATIC = STATIC_INTEREST_RATES;
+
+// הערכים החיים הם מצב ברמת המודול; איפוס לפני כל בדיקה שומר עליהן עצמאיות
+beforeEach(() => clearLiveInterestRates());
+afterEach(() => clearLiveInterestRates());
 
 /** תצלום שוק מלאכותי עם עקומים "עגולים", כדי שהבדיקות יקראו כמו חשבון פשוט */
 function snapshot(overrides: Partial<MarketRatesSnapshot> = {}): MarketRatesSnapshot {
@@ -100,15 +113,24 @@ describe('בחירת העוגן לפי סוג המסלול', () => {
     expect(anchorForTrack('makam', market)?.rate).toBeCloseTo(3, 10);
   });
 
-  it('קבועה — העקום המתאים לאורך התקופה של המסלול', () => {
-    expect(anchorForTrack('fixed_unlinked', market, { years: 10 })?.rate).toBeCloseTo(4.5, 10);
-    expect(anchorForTrack('fixed_linked', market, { years: 10 })?.rate).toBeCloseTo(2, 10);
+  it('קבועה — אין עוגן: הריבית נסגרת מול הבנק ואינה נגזרת מעקום', () => {
+    expect(anchorCurveFor('fixed_unlinked')).toBeNull();
+    expect(anchorCurveFor('fixed_linked')).toBeNull();
+    expect(anchorForTrack('fixed_unlinked', market)).toBeNull();
+    expect(anchorForTrack('fixed_linked', market)).toBeNull();
   });
 
   it('זכאות ומענק — אין עוגן שוק, והריבית מוזנת ידנית', () => {
     expect(anchorForTrack('eligibility', market)).toBeNull();
     expect(anchorForTrack('grant', market)).toBeNull();
     expect(anchorForTrack('dollar', market)).toBeNull();
+  });
+
+  it('אורך המשכנתא אינו משנה את העוגן — רק תחנת השינוי', () => {
+    const short = anchorForTrack('variable_unlinked', market, { variablePeriod: 2 });
+    const long = anchorForTrack('variable_unlinked', market, { variablePeriod: 2 });
+    expect(short?.rate).toBeCloseTo(long?.rate ?? NaN, 10);
+    expect(anchorYears('variable_unlinked', { variablePeriod: 2 })).toBe(2);
   });
 
   it('התווית מציינת את העקום, את הטווח ואת החודש שממנו נלקח', () => {
@@ -158,14 +180,8 @@ describe('ריביות ברירת המחדל החיות', () => {
   it('זהות לטבלה הסטטית כשאין נתונים חיים — ולכן אין רגרסיה בהתנהגות', () => {
     const offline = fallbackMarketRates(new Date('2026-09-11T00:00:00Z'));
     expect(defaultRateFor('prime', offline)).toBeCloseTo(INTEREST_RATES.prime, 2);
-    expect(defaultRateFor('fixed_unlinked', offline, { years: 25 })).toBeCloseTo(
-      INTEREST_RATES.fixed_unlinked,
-      2
-    );
-    expect(defaultRateFor('fixed_linked', offline, { years: 25 })).toBeCloseTo(
-      INTEREST_RATES.fixed_linked,
-      2
-    );
+    expect(defaultRateFor('fixed_unlinked', offline)).toBeCloseTo(INTEREST_RATES.fixed_unlinked, 2);
+    expect(defaultRateFor('fixed_linked', offline)).toBeCloseTo(INTEREST_RATES.fixed_linked, 2);
     expect(defaultRateFor('variable_unlinked', offline, { variablePeriod: 5 })).toBeCloseTo(
       INTEREST_RATES.variable_unlinked_5y,
       2
@@ -216,5 +232,53 @@ describe('ריביות ברירת המחדל החיות', () => {
     const byKey = new Map(liveRatesList(snapshot()).map((item) => [item.key, item]));
     expect(byKey.get('eligibility')?.live).toBe(false);
     expect(byKey.get('prime')?.live).toBe(true);
+  });
+});
+
+describe('הזרמת הריביות לטבלה המרכזית', () => {
+  /**
+   * רגרסיה: `fallbackMarketRates` קרא את `INTEREST_RATES`, שהוא הטבלה החיה.
+   * מרגע שהערכים החיים נכנסו, נקודת הייחוס שממנה מחולץ המרווח זזה יחד עם
+   * העוגן — המרווח התכווץ בדיוק כפי שהעוגן גדל, והריבית הסופית נתקעה על הערך
+   * שנכתב בקוד. בפועל: הפריים בדף הבית הראה 5.00% בעוד שהעוגן במסלול הראה את
+   * הפריים האמיתי, ושני המספרים לא הסתדרו זה עם זה.
+   */
+  it('הפריים נשאר זהה לעוגן גם אחרי שהערכים החיים הוזרמו', () => {
+    const market = snapshot({ boiRate: 4.25, primeRate: 5.75 });
+
+    applyLiveInterestRates(market);
+
+    const fromList = liveRatesList(market).find((item) => item.key === 'prime');
+    expect(fromList?.anchor).toBeCloseTo(5.75, 2);
+    expect(fromList?.spread).toBeCloseTo(0, 2);
+    expect(fromList?.rate).toBeCloseTo(5.75, 2);
+    expect(defaultRateFor('prime', market)).toBeCloseTo(5.75, 2);
+    expect(INTEREST_RATES_LIVE.prime).toBeCloseTo(5.75, 2);
+  });
+
+  it('הזרמה חוזרת אינה מזיזה את הערכים — הפעולה אידמפוטנטית', () => {
+    const market = snapshot({ boiRate: 4.25, primeRate: 5.75 });
+    applyLiveInterestRates(market);
+    const first = defaultRateFor('variable_unlinked', market, { variablePeriod: 5 });
+    applyLiveInterestRates(market);
+    applyLiveInterestRates(market);
+    expect(defaultRateFor('variable_unlinked', market, { variablePeriod: 5 })).toBeCloseTo(first, 6);
+  });
+
+  it('אינה כותבת ערכים חיים למסלולים שאין להם עוגן', () => {
+    applyLiveInterestRates(snapshot({ boiRate: 4.25, primeRate: 5.75 }));
+    // קבועה, זכאות ומט"ח נשארים על הציטוט מהטבלה
+    expect(INTEREST_RATES_LIVE.fixed_unlinked).toBeCloseTo(STATIC.fixed_unlinked, 6);
+    expect(INTEREST_RATES_LIVE.fixed_linked).toBeCloseTo(STATIC.fixed_linked, 6);
+    expect(INTEREST_RATES_LIVE.eligibility).toBeCloseTo(STATIC.eligibility, 6);
+    expect(INTEREST_RATES_LIVE.dollar).toBeCloseTo(STATIC.dollar, 6);
+  });
+
+  it('תצלום הנפילה קבוע ואינו זז עם הערכים החיים', () => {
+    const before = fallbackMarketRates(new Date('2026-09-11T00:00:00Z'));
+    applyLiveInterestRates(snapshot({ boiRate: 4.25, primeRate: 5.75 }));
+    const after = fallbackMarketRates(new Date('2026-09-11T00:00:00Z'));
+    expect(after.primeRate).toBeCloseTo(before.primeRate, 10);
+    expect(after.boiRate).toBeCloseTo(before.boiRate, 10);
   });
 });

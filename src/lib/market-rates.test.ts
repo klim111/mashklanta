@@ -126,7 +126,7 @@ describe('ריבית בנק ישראל', () => {
     const rows = parseCsv(
       ['TIME_PERIOD,OBS_VALUE', '2026-08-25,4.50', '2026-01-01,4.75'].join('\n')
     );
-    expect(latestObservation(rows)).toEqual({ value: 4.5, asOf: '2026-08-25' });
+    expect(latestObservation(rows)).toEqual({ value: 4.5, asOf: '2026-08-25', ambiguous: false });
   });
 
   it('מקבלת ריבית אפס, שהיא ערך תקין במשק', () => {
@@ -136,6 +136,44 @@ describe('ריבית בנק ישראל', () => {
 
   it('מחזירה null כשאין תצפית מספרית', () => {
     expect(latestObservation(parseCsv('TIME_PERIOD,OBS_VALUE\n2026-08-25,'))).toBeNull();
+  });
+
+  it('בוחרת דטרמיניסטית ומסמנת כשיש כמה סדרות לאותו תאריך', () => {
+    const rows = parseCsv(
+      [
+        'SERIES_CODE,TIME_PERIOD,OBS_VALUE',
+        'BR.B,2026-08-25,3.10',
+        'BR.A,2026-08-25,4.50',
+      ].join('\n')
+    );
+    // הסדרה נבחרת לפי הקוד ולא לפי סדר השורות, כדי שאותו קלט ייתן אותה תשובה
+    expect(latestObservation(rows)).toEqual({ value: 4.5, asOf: '2026-08-25', ambiguous: true });
+  });
+
+  it('אינה מסמנת אי-ודאות כששתי הסדרות מסכימות', () => {
+    const rows = parseCsv(
+      ['SERIES_CODE,TIME_PERIOD,OBS_VALUE', 'BR.A,2026-08-25,4.50', 'BR.B,2026-08-25,4.50'].join('\n')
+    );
+    expect(latestObservation(rows)?.ambiguous).toBe(false);
+  });
+});
+
+describe('זיהוי סדרות עקום האפס', () => {
+  it('נשען על ממד NOMINAL_REAL גם כשקוד הסדרה לא מוכר', () => {
+    const csv = [
+      'SERIES_CODE,DATA_TYPE,NOMINAL_REAL,TIME_TO_MATURITY,TIME_PERIOD,OBS_VALUE',
+      'NEWCODE.X,ZC_YTM,N,Y05,2026-08-31,3.60',
+      'NEWCODE.X,ZC_YTM,R,Y05,2026-08-31,1.40',
+    ].join('\n');
+    // שינוי מוסכמת השמות בבנק ישראל לא אמור להפיל את העוגנים לערכי נפילה
+    expect(zcmObservations(csv, 'N').map((o) => o.yieldPct)).toEqual([3.6]);
+    expect(zcmObservations(csv, 'R').map((o) => o.yieldPct)).toEqual([1.4]);
+  });
+
+  it('מתרגמת טווח שמקודד בחודשים לשנים', () => {
+    expect(parseMaturityYears('M24')).toBeCloseTo(2, 10);
+    expect(parseMaturityYears('M06')).toBeCloseTo(0.5, 10);
+    expect(parseMaturityYears('Y10')).toBe(10);
   });
 });
 
