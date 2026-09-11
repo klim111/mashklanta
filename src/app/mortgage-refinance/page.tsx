@@ -174,18 +174,27 @@ export default function MortgageRefinancePage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="max-w-6xl mx-auto"
+      className={mixSummaryRevealed ? "max-w-7xl mx-auto" : "max-w-6xl mx-auto"}
     >
-      <div className="text-center mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
-        </p>
-        <Button variant="link" className="mt-4 text-blue-600" onClick={() => setInputMethod('scan')}>
-          <Upload className="w-4 h-4 ml-2" />
-          העלאת דוח יתרות לסילוק במקום הזנה ידנית
-        </Button>
-      </div>
+      {/* אחרי שהניתוח נפתח הכותרת מתכווצת לשורה אחת — כדי שהפאנל והדאשבורד
+          ייכנסו למסך בלי גלילה מיותרת */}
+      {mixSummaryRevealed ? (
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-center">
+          <h1 className="text-lg font-bold text-gray-900">מיחזור המשכנתא שלכם</h1>
+          <span className="text-sm text-gray-500">— שנו פרמטרים בפאנל וראו מיד את התוצאה</span>
+        </div>
+      ) : (
+        <div className="text-center mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
+          </p>
+          <Button variant="link" className="mt-4 text-blue-600" onClick={() => setInputMethod('scan')}>
+            <Upload className="w-4 h-4 ml-2" />
+            העלאת דוח יתרות לסילוק במקום הזנה ידנית
+          </Button>
+        </div>
+      )}
 
       <RefinanceMortgageInput
         mix={currentMix}

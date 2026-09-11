@@ -15,6 +15,8 @@ import {
   trackWithRemainingTerm,
 } from '@/lib/refinance';
 import { mapBoiRatesToTrackTypes } from '@/lib/boi-average-rates';
+import { goalProgress, guidanceFor, trackGuidance } from '@/lib/refinance-guidance';
+import type { TrackDraft } from '@/lib/refinance-guidance';
 import { calculateTrack, monthsInTerm } from '@/components/mortgage-advisor/mortgageCalculations';
 import type { MortgageTrack } from '@/components/mortgage-advisor/types';
 
@@ -177,5 +179,73 @@ describe('השוואה לריבית הממוצעת בבנק ישראל', () => {
     const from = new Date(2026, 8, 5);
     const good = track({ interestRate: 4.1, endDate: '2036-09-30', paymentDay: 10 });
     expect(findAboveMarketTracks([good], market, from)).toHaveLength(0);
+  });
+});
+
+describe('הכוונה לפי מטרת המיחזור', () => {
+  const base = track({ interestRate: 5.5, endDate: '2036-09-30', paymentDay: 10 });
+  const baseMonths = trackRemainingMonths(base, new Date(2026, 8, 5));
+  const draft = (overrides: Partial<TrackDraft> = {}): TrackDraft => ({
+    interestRate: base.interestRate,
+    months: baseMonths,
+    type: base.type,
+    amortizationType: 'spitzer',
+    ...overrides,
+  });
+
+  it('הקטנת החזר חודשי: הורדת ריבית והארכת תקופה', () => {
+    const guidance = trackGuidance({ goal: 'reduce_payment', track: base, draft: draft() });
+    expect(guidanceFor(guidance, 'rate')?.direction).toBe('down');
+    expect(guidanceFor(guidance, 'term')?.direction).toBe('up');
+    expect(guidanceFor(guidance, 'rate')?.weight).toBe('primary');
+  });
+
+  it('הקטנת סך ריבית: הורדת ריבית וקיצור תקופה', () => {
+    const guidance = trackGuidance({ goal: 'reduce_interest', track: base, draft: draft() });
+    expect(guidanceFor(guidance, 'term')?.direction).toBe('down');
+    expect(guidanceFor(guidance, 'amortization')?.label).toContain('קרן שווה');
+  });
+
+  it('מסמן שינוי שמשרת את המטרה ושינוי שפועל נגדה', () => {
+    const helping = trackGuidance({
+      goal: 'reduce_payment',
+      track: base,
+      draft: draft({ interestRate: 4.9, months: baseMonths + 24 }),
+    });
+    expect(guidanceFor(helping, 'rate')?.satisfied).toBe(true);
+    expect(guidanceFor(helping, 'term')?.satisfied).toBe(true);
+
+    const hurting = trackGuidance({
+      goal: 'reduce_payment',
+      track: base,
+      draft: draft({ interestRate: 6.1, months: baseMonths - 12 }),
+    });
+    expect(guidanceFor(hurting, 'rate')?.conflicting).toBe(true);
+    expect(guidanceFor(hurting, 'term')?.conflicting).toBe(true);
+  });
+
+  it('מודד התקדמות לעבר המטרה ואת המחיר בצד השני', () => {
+    const progress = goalProgress({
+      goal: 'reduce_payment',
+      baseMonthly: 5000,
+      refinedMonthly: 4600,
+      baseInterest: 300_000,
+      refinedInterest: 340_000,
+    });
+    expect(progress.metric).toBe('monthlyPayment');
+    expect(progress.achieved).toBe(true);
+    expect(progress.delta).toBe(-400);
+    expect(progress.tradeoff).toBe(40_000);
+
+    const interestGoal = goalProgress({
+      goal: 'reduce_interest',
+      baseMonthly: 5000,
+      refinedMonthly: 5400,
+      baseInterest: 300_000,
+      refinedInterest: 260_000,
+    });
+    expect(interestGoal.metric).toBe('totalInterest');
+    expect(interestGoal.achieved).toBe(true);
+    expect(interestGoal.tradeoff).toBe(400);
   });
 });

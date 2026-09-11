@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ComposedChart,
   Area,
@@ -14,46 +13,39 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
 import {
   Wallet,
   Banknote,
   Shield,
   ChevronDown,
-  Percent,
-  Calendar,
   Pencil,
   Target,
   TrendingDown,
-  Clock,
   Coins,
   Activity,
   Gauge,
   Split,
   AlertTriangle,
-  ArrowUpRight,
+  Layers,
   RefreshCcw,
-  Sparkles,
-  Timer,
+  SlidersHorizontal,
+  LayoutDashboard,
 } from 'lucide-react';
-import type { MortgageMix, MortgageTrack, MortgageCalculation, TrackCalculation } from '@/components/mortgage-advisor/types';
+import type { MortgageMix, MortgageTrack, MortgageCalculation } from '@/components/mortgage-advisor/types';
 import { TRACK_TYPES } from '@/components/mortgage-advisor/types';
-import { formatCurrency, formatPercentage, calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
-import { formatDuration, toWorkspaceMix } from '@/components/mortgage-advisor/engine';
-import { MixSummaryCard } from '@/components/mortgage-advisor/MixSummaryCard';
-import { monthsToYears, yearsToMonths } from '@/lib/mortgage-plan';
+import { formatCurrency, calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
+import { monthsToYears } from '@/lib/mortgage-plan';
 import {
   REFINANCE_GOAL_LABELS,
   clampRefiTermMonths,
   findAboveMarketTracks,
   goalForTermChange,
-  rateBoundsForRefinance,
   rateWorsensTerms,
-  termBoundsForGoal,
   trackRemainingMonths,
 } from '@/lib/refinance';
 import type { MarketRates, RefinanceGoal } from '@/lib/refinance';
+import { goalProgress } from '@/lib/refinance-guidance';
+import type { TrackDraft } from '@/lib/refinance-guidance';
 import {
   GuestLimitDialog,
   useRefinanceGuestGate,
@@ -63,17 +55,22 @@ import {
   RateWorsenedNotice,
   RegistrationInvite,
 } from '@/components/mortgage-refinance/RefinanceNotices';
-import { isRateVariable, isIndexLinked } from '@/components/mortgage-advisor/scenarioCalculations';
-import { MortgageMixBuilder } from '@/components/mortgage-advisor/MortgageMixBuilder';
 import {
-  AnalysisCharts,
-  DeltaBadge,
-  mergeSeries,
-  mixYearlySeries,
-  trackYearlySeries,
-  compactCurrency,
-  ANALYSIS_COLORS,
-} from '@/components/mortgage-advisor/analysisCharts';
+  GoalGuidanceStrip,
+  RefinanceControlPanel,
+} from '@/components/mortgage-refinance/RefinanceControlPanel';
+import type { RefinanceScope } from '@/components/mortgage-refinance/RefinanceControlPanel';
+import {
+  ComparisonCharts,
+  ResultsDashboard,
+  TrackComparisonCharts,
+  baselineOf,
+  rowFromCalculation,
+  rowFromTrack,
+} from '@/components/mortgage-refinance/RefinanceResultsDashboard';
+import type { ResultRowData } from '@/components/mortgage-refinance/RefinanceResultsDashboard';
+import { isRateVariable, isIndexLinked } from '@/components/mortgage-advisor/scenarioCalculations';
+import { compactCurrency, mixYearlySeries } from '@/components/mortgage-advisor/analysisCharts';
 import {
   trackRiskProfile,
   mixRiskScore,
@@ -82,8 +79,6 @@ import {
   RISK_META,
 } from '@/components/mortgage-refinance/riskAnalysis';
 
-type RefinanceMode = 'whole' | 'per-track';
-
 interface RefinanceAnalysisProps {
   currentMix: MortgageMix;
   onEdit: () => void;
@@ -91,25 +86,6 @@ interface RefinanceAnalysisProps {
   isGuest?: boolean;
   /** הריביות הממוצעות בשוק לפי בנק ישראל, להשוואה מול הריביות שהוזנו */
   market?: MarketRates | null;
-}
-
-function trackColor(type: MortgageTrack['type']): string {
-  if (type === 'fixed_unlinked') return 'bg-blue-500';
-  if (type === 'fixed_linked') return 'bg-blue-400';
-  if (type === 'prime') return 'bg-orange-500';
-  if (type === 'variable_unlinked') return 'bg-green-500';
-  if (type === 'variable_linked') return 'bg-green-400';
-  if (type === 'makam') return 'bg-purple-500';
-  return 'bg-slate-500';
-}
-
-/**
- * טווח סרגל הריבית במיחזור. אפשר תמיד להוריד את הריבית, ואפשר גם להעלות
- * אותה מעל הריבית הקיימת — כדי שיהיה אפשר לבדוק הצעה פחות טובה ולראות עליה
- * את ההתרעה, במקום שהסרגל פשוט ייעצר.
- */
-function rateBounds(track: MortgageTrack, marketRate?: number): { min: number; max: number } {
-  return rateBoundsForRefinance(track.interestRate, marketRate);
 }
 
 const joinNames = (tracks: MortgageTrack[]) => tracks.map((t) => t.name).join(', ');
@@ -137,19 +113,19 @@ function StateBox({
   const hasDelta = typeof delta === 'number' && Math.abs(delta) > 1;
   const improved = (delta ?? 0) < 0;
   return (
-    <div className={`rounded-xl ${gradient} text-white px-4 py-3 shadow-md text-center w-full sm:w-56`}>
-      <div className="flex items-center justify-center gap-1.5 text-slate-300 text-[11px] mb-0.5">
-        <Icon className="h-3.5 w-3.5" />
+    <div className={`rounded-xl ${gradient} text-white px-3 py-2 shadow-md text-center w-full sm:w-48`}>
+      <div className="flex items-center justify-center gap-1.5 text-slate-300 text-[10px]">
+        <Icon className="h-3 w-3" />
         {label}
       </div>
-      <p className="text-xl font-bold">{value}</p>
+      <p className="text-lg font-bold leading-tight">{value}</p>
       {hasDelta ? (
-        <p className={`text-[11px] font-bold mt-0.5 ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
+        <p className={`text-[10px] font-bold ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
           {improved ? '−' : '+'}
           {formatCurrency(Math.abs(delta as number))} {improved ? 'חיסכון' : 'תוספת'}
         </p>
       ) : (
-        <p className="text-[10px] text-slate-400 mt-0.5">{caption}</p>
+        <p className="text-[10px] text-slate-400">{caption}</p>
       )}
     </div>
   );
@@ -331,237 +307,22 @@ function CurrentStateAnalysis({
 }
 
 /* ------------------------------------------------------------------ */
-/* Per-track row: risk line + (per-track) sliders + per-track graphs   */
+/* Main refinance analysis — control panel + results dashboard         */
 /* ------------------------------------------------------------------ */
 
-function RefinanceTrackRow({
-  track,
-  baseTrackCalc,
-  refinedTrackCalc,
-  rate,
-  onRateChange,
-  years,
-  onYearsChange,
-  editable,
-  effectiveYears,
-  goal,
-  marketRate,
-}: {
-  track: MortgageTrack;
-  baseTrackCalc?: TrackCalculation;
-  refinedTrackCalc?: TrackCalculation;
-  rate: number;
-  onRateChange: (v: number) => void;
-  years: number;
-  onYearsChange: (v: number) => void;
-  editable: boolean;
-  effectiveYears: number;
-  /** מטרת המיחזור — קובעת את גבולות סרגל התקופה ואת ההצעה שמוצגת */
-  goal: RefinanceGoal;
-  /** הריבית הממוצעת בשוק לאותו סוג מסלול */
-  marketRate?: number;
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (editable) setOpen(true);
-  }, [editable]);
-
-  const { min, max } = rateBounds(track, marketRate);
-  /** התקופה שנותרה למסלול היום — נקודת המוצא של כל שינוי */
-  const baseMonths = clampRefiTermMonths(trackRemainingMonths(track));
-  const termBounds = termBoundsForGoal(goal, baseMonths);
-  const selectedMonths = clampRefiTermMonths(yearsToMonths(years));
-  const rateWorsened = rateWorsensTerms(rate, track.interestRate);
-  const risk = useMemo(() => trackRiskProfile(track), [track]);
-  const meta = RISK_META[risk.level];
-
-  const baseMonthly = baseTrackCalc?.monthlyPayment ?? 0;
-  const baseInterest = baseTrackCalc?.totalInterest ?? 0;
-  const curMonthly = refinedTrackCalc?.monthlyPayment ?? baseMonthly;
-  const curInterest = refinedTrackCalc?.totalInterest ?? baseInterest;
-  const mDelta = curMonthly - baseMonthly;
-
-  const changed = editable && (Math.abs(mDelta) > 1 || Math.abs(curInterest - baseInterest) > 1);
-  const worse = curInterest > baseInterest + 1;
-  const scenarioColor = worse ? ANALYSIS_COLORS.worse : ANALYSIS_COLORS.better;
-
-  const lineData = useMemo(() => {
-    if (!open || !baseTrackCalc || !refinedTrackCalc) return [];
-    return mergeSeries(trackYearlySeries(baseTrackCalc), trackYearlySeries(refinedTrackCalc));
-  }, [open, baseTrackCalc, refinedTrackCalc]);
-
-  return (
-    <div className="border-b border-slate-100 last:border-b-0">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors text-right"
-      >
-        <span className={`w-1.5 h-9 rounded-full shrink-0 ${trackColor(track.type)}`} />
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
-          <p className="text-[11px] text-slate-500 truncate">
-            {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {formatDuration(yearsToMonths(editable ? effectiveYears : track.years))} ·{' '}
-            {formatPercentage(rate)}
-          </p>
-        </div>
-        <span className={`hidden sm:inline text-[10px] font-bold shrink-0 ${meta.text}`}>{meta.label}</span>
-        <ChevronDown className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="p-3 sm:p-4 bg-slate-50/60 border-t border-slate-100 space-y-4">
-          {/* per-track risk line (moved here from the analysis box) */}
-          <div className={`rounded-lg border p-3 ${meta.bg}`}>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="font-semibold text-sm text-slate-900">פרופיל סיכון</span>
-              <span className={`text-[11px] font-bold ${meta.text}`}>{meta.label}</span>
-            </div>
-            <p className="text-xs text-slate-700 leading-relaxed">{risk.description}</p>
-            {risk.stationNote && (
-              <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {risk.stationNote}
-              </p>
-            )}
-          </div>
-
-          {editable && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
-                    <Percent className="h-3.5 w-3.5 text-blue-600" />
-                    ריבית המסלול
-                  </span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {formatPercentage(track.interestRate)} → <span className="text-emerald-600">{formatPercentage(rate)}</span>
-                  </span>
-                </div>
-                <Slider
-                  dir="ltr"
-                  value={[Math.min(max, Math.max(min, rate))]}
-                  onValueChange={([v]) => onRateChange(v)}
-                  min={min}
-                  max={max}
-                  step={0.05}
-                />
-                <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <TrendingDown className="h-3 w-3 text-emerald-500" />
-                    מופחתת {formatPercentage(min)}
-                  </span>
-                  <span>{formatPercentage(max)}</span>
-                </div>
-
-                {/* במטרת הקטנת סך הריבית מציעים גם את הריבית הממוצעת בשוק */}
-                {goal === 'reduce_interest' && typeof marketRate === 'number' && marketRate < track.interestRate - 0.05 && (
-                  <button
-                    type="button"
-                    onClick={() => onRateChange(Number(marketRate.toFixed(2)))}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-900 transition-colors hover:bg-emerald-100"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    הורדה לריבית הממוצעת בשוק ({formatPercentage(marketRate)})
-                  </button>
-                )}
-
-                {rateWorsened && (
-                  <p className="flex items-start gap-1.5 rounded-lg border border-red-200 bg-red-50 p-2 text-[11px] font-medium text-red-700">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                    הריבית שנבחרה גבוהה מהריבית הקיימת ({formatPercentage(track.interestRate)}) — הדבר גורע
-                    מתנאי המשכנתא ומייקר את סך הריבית.
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-800 flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-violet-600" />
-                    תקופת המסלול
-                  </span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {formatDuration(selectedMonths)}
-                    {selectedMonths !== baseMonths && (
-                      <span className="text-[11px] font-normal text-slate-500">
-                        {' '}(היום {formatDuration(baseMonths)})
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <Slider
-                  dir="ltr"
-                  value={[Math.min(termBounds.max, Math.max(termBounds.min, selectedMonths))]}
-                  onValueChange={([v]) => onYearsChange(monthsToYears(v))}
-                  min={termBounds.min}
-                  max={termBounds.max}
-                  step={1}
-                />
-                <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
-                  <span>{termBounds.min} חודשים</span>
-                  <span>
-                    {termBounds.max} חודשים
-                    {goal === 'reduce_interest' && ' (התקופה הנוכחית)'}
-                  </span>
-                </div>
-
-                {goal === 'reduce_interest' ? (
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onYearsChange(monthsToYears(Math.max(termBounds.min, baseMonths - 24)))
-                      }
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-[11px] font-bold text-violet-900 transition-colors hover:bg-violet-100"
-                    >
-                      <Timer className="h-3.5 w-3.5" />
-                      קיצור התקופה בשנתיים להקטנת סך הריבית
-                    </button>
-                    <p className="text-[11px] text-slate-500">
-                      במטרה הזו הסרגל נעצר בתקופה הנוכחית — הארכה מגדילה את סך הריבית.{' '}
-                      <button
-                        type="button"
-                        onClick={() => onYearsChange(monthsToYears(baseMonths + 24))}
-                        className="font-bold text-blue-700 underline underline-offset-2"
-                      >
-                        רוצים בכל זאת להאריך? נעבור להקטנת ההחזר החודשי
-                      </button>
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onYearsChange(monthsToYears(Math.min(termBounds.max, baseMonths + 24)))}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-[11px] font-bold text-violet-900 transition-colors hover:bg-violet-100"
-                  >
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                    הארכת התקופה בשנתיים להקטנת ההחזר
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {baseTrackCalc && refinedTrackCalc && (
-            <AnalysisCharts
-              lineData={lineData}
-              changed={changed}
-              scenarioColor={scenarioColor}
-              scenarioName="ממוחזר"
-              principal={track.amount}
-              interest={curInterest}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
+/** ערכי הפתיחה של מסלול בפאנל: מה שיש היום */
+function draftFromTrack(track: MortgageTrack): TrackDraft {
+  return {
+    interestRate: track.interestRate,
+    months: clampRefiTermMonths(trackRemainingMonths(track)),
+    type: track.type,
+    amortizationType: track.amortizationType ?? 'spitzer',
+  };
 }
 
-/* ------------------------------------------------------------------ */
-/* Main refinance analysis                                             */
-/* ------------------------------------------------------------------ */
+function draftsFromTracks(tracks: MortgageTrack[]): Record<string, TrackDraft> {
+  return Object.fromEntries(tracks.map((track) => [track.id, draftFromTrack(track)]));
+}
 
 export function RefinanceAnalysis({
   currentMix,
@@ -571,109 +332,128 @@ export function RefinanceAnalysis({
 }: RefinanceAnalysisProps) {
   const baseCalc = useMemo<MortgageCalculation>(() => calculateMortgageMix(currentMix), [currentMix]);
 
-  const [mode, setMode] = useState<RefinanceMode>('per-track');
   /** מטרת המיחזור. ברירת המחדל היא הקטנת ההחזר החודשי — מה שרוב הלקוחות מחפשים */
   const [goal, setGoal] = useState<RefinanceGoal>('reduce_payment');
   /** נרשם כשהמטרה התחלפה אוטומטית בעקבות הארכת תקופה */
   const [goalSwitched, setGoalSwitched] = useState(false);
-  const [trackYears, setTrackYears] = useState<Record<string, number>>(() =>
-    Object.fromEntries(currentMix.tracks.map((t) => [t.id, monthsToYears(trackRemainingMonths(t))]))
+  /** מיחזור כל המשכנתא, או מסלול אחד בלבד */
+  const [scope, setScope] = useState<RefinanceScope>('whole');
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, TrackDraft>>(() =>
+    draftsFromTracks(currentMix.tracks)
   );
-  const [rates, setRates] = useState<Record<string, number>>(() =>
-    Object.fromEntries(currentMix.tracks.map((t) => [t.id, t.interestRate]))
-  );
-  const [newMix, setNewMix] = useState<MortgageMix | null>(null);
 
   const gate = useRefinanceGuestGate(isGuest);
 
   useEffect(() => {
-    setMode('per-track');
     setGoal('reduce_payment');
     setGoalSwitched(false);
-    setTrackYears(
-      Object.fromEntries(currentMix.tracks.map((t) => [t.id, monthsToYears(trackRemainingMonths(t))]))
-    );
-    setRates(Object.fromEntries(currentMix.tracks.map((t) => [t.id, t.interestRate])));
-    setNewMix(null);
+    setScope('whole');
+    setSelectedTrackId(null);
+    setDrafts(draftsFromTracks(currentMix.tracks));
   }, [currentMix.id, currentMix.tracks.length]);
 
-  const perTrack = mode === 'per-track';
-
-  /** שינוי ריבית של מסלול — עובר דרך ההגבלה של משתמש לא רשום */
-  const changeRate = (trackId: string, value: number) => {
-    if (!gate.allow(`rate:${trackId}`)) return;
-    setRates((prev) => ({ ...prev, [trackId]: value }));
-  };
+  const singleMode = scope === 'single';
+  const selectedTrack = currentMix.tracks.find((track) => track.id === selectedTrackId) ?? null;
 
   /**
-   * שינוי תקופה של מסלול. הארכת תקופה סותרת את המטרה של הקטנת סך הריבית,
-   * ולכן היא מעבירה את הבדיקה אוטומטית להקטנת ההחזר החודשי.
+   * שינוי פרמטר בפאנל. כל שינוי עובר דרך ההגבלה של משתמש שאינו רשום, מיישר את
+   * הערך לגבולות החוקיים, ומעדכן את המטרה כשהיא כבר לא מתאימה למה שנבחר.
    */
-  const changeYears = (track: MortgageTrack, value: number) => {
-    if (!gate.allow(`term:${track.id}`)) return;
-    const baseMonths = clampRefiTermMonths(trackRemainingMonths(track));
-    const nextMonths = clampRefiTermMonths(yearsToMonths(value));
-    const nextGoal = goalForTermChange(goal, nextMonths, baseMonths);
-    if (nextGoal !== goal) {
-      setGoal(nextGoal);
-      setGoalSwitched(true);
+  const applyDraft = (trackId: string, patch: Partial<TrackDraft>) => {
+    const track = currentMix.tracks.find((item) => item.id === trackId);
+    if (!track) return;
+
+    const controlKey = `${Object.keys(patch)[0] ?? 'draft'}:${trackId}`;
+    if (!gate.allow(controlKey)) return;
+
+    const current = drafts[trackId] ?? draftFromTrack(track);
+    const next: TrackDraft = { ...current, ...patch };
+
+    // מעבר לסוג מסלול אחר מביא איתו את הריבית הממוצעת בשוק לאותו סוג
+    if (patch.type && patch.type !== current.type) {
+      const marketRate = market?.rates?.[patch.type];
+      if (typeof marketRate === 'number' && Number.isFinite(marketRate)) {
+        next.interestRate = Number(marketRate.toFixed(2));
+      }
     }
-    setTrackYears((prev) => ({ ...prev, [track.id]: monthsToYears(nextMonths) }));
+
+    if (patch.months !== undefined) {
+      const baseMonths = clampRefiTermMonths(trackRemainingMonths(track));
+      next.months = clampRefiTermMonths(patch.months);
+      const nextGoal = goalForTermChange(goal, next.months, baseMonths);
+      if (nextGoal !== goal) {
+        setGoal(nextGoal);
+        setGoalSwitched(true);
+      }
+    }
+
+    setDrafts((prev) => ({ ...prev, [trackId]: next }));
   };
 
   const changeGoal = (nextGoal: RefinanceGoal) => {
     if (nextGoal === goal) return;
     setGoal(nextGoal);
     setGoalSwitched(false);
+
     // במטרת הקטנת סך הריבית אין מקום לתקופה ארוכה מהקיימת — מיישרים חזרה
     if (nextGoal === 'reduce_interest') {
-      setTrackYears((prev) => {
+      setDrafts((prev) => {
         const next = { ...prev };
         currentMix.tracks.forEach((track) => {
           const baseMonths = clampRefiTermMonths(trackRemainingMonths(track));
-          const selected = clampRefiTermMonths(yearsToMonths(next[track.id] ?? monthsToYears(baseMonths)));
-          if (selected > baseMonths) next[track.id] = monthsToYears(baseMonths);
+          const draft = next[track.id];
+          if (draft && draft.months > baseMonths) {
+            next[track.id] = { ...draft, months: baseMonths };
+          }
         });
         return next;
       });
     }
   };
 
-  const refinedMix = useMemo<MortgageMix>(() => {
-    if (mode === 'whole') return newMix ?? currentMix;
-    return {
+  const changeScope = (nextScope: RefinanceScope) => {
+    setScope(nextScope);
+    if (nextScope === 'single' && !selectedTrackId && currentMix.tracks.length === 1) {
+      setSelectedTrackId(currentMix.tracks[0].id);
+    }
+  };
+
+  /** התמהיל לאחר המיחזור — רק המסלולים שנמצאים בפאנל מושפעים */
+  const refinedMix = useMemo<MortgageMix>(
+    () => ({
       ...currentMix,
-      tracks: currentMix.tracks.map((t) => ({
-        ...t,
-        years: trackYears[t.id] ?? t.years,
-        interestRate: rates[t.id] ?? t.interestRate,
-      })),
-    };
-  }, [mode, newMix, currentMix, trackYears, rates]);
+      tracks: currentMix.tracks.map((track) => {
+        const inPanel = !singleMode || track.id === selectedTrackId;
+        const draft = drafts[track.id];
+        if (!inPanel || !draft) return track;
+        return {
+          ...track,
+          type: draft.type,
+          interestRate: draft.interestRate,
+          years: monthsToYears(draft.months),
+          amortizationType: draft.amortizationType,
+        };
+      }),
+    }),
+    [currentMix, drafts, singleMode, selectedTrackId]
+  );
 
   const refinedCalc = useMemo<MortgageCalculation>(() => calculateMortgageMix(refinedMix), [refinedMix]);
-
-  const baseByTrackId = useMemo(
-    () => Object.fromEntries(baseCalc.trackCalculations.map((c) => [c.track.id, c])),
-    [baseCalc]
-  );
-  const refinedByTrackId = useMemo(
-    () => Object.fromEntries(refinedCalc.trackCalculations.map((c) => [c.track.id, c])),
-    [refinedCalc]
-  );
 
   const monthlyDelta = refinedCalc.summary.totalMonthlyPayment - baseCalc.summary.totalMonthlyPayment;
   const interestDelta = refinedCalc.summary.totalInterest - baseCalc.summary.totalInterest;
   const changed = Math.abs(monthlyDelta) > 1 || Math.abs(interestDelta) > 1;
-  const worse = refinedCalc.summary.totalInterest > baseCalc.summary.totalInterest + 1;
-  const scenarioColor = worse ? ANALYSIS_COLORS.worse : ANALYSIS_COLORS.better;
 
-  const lineData = useMemo(
-    () => mergeSeries(mixYearlySeries(baseCalc), mixYearlySeries(refinedCalc)),
-    [baseCalc, refinedCalc]
-  );
+  const progress = goalProgress({
+    goal,
+    baseMonthly: baseCalc.summary.totalMonthlyPayment,
+    refinedMonthly: refinedCalc.summary.totalMonthlyPayment,
+    baseInterest: baseCalc.summary.totalInterest,
+    refinedInterest: refinedCalc.summary.totalInterest,
+  });
 
-  const principal = currentMix.tracks.reduce((s, t) => s + t.amount, 0);
+  const principal = currentMix.tracks.reduce((sum, track) => sum + track.amount, 0);
 
   /** המסלולים שבהם הריבית שהוזנה גבוהה מהריבית הממוצעת בשוק */
   const marketFindings = useMemo(
@@ -684,58 +464,80 @@ export function RefinanceAnalysis({
   /** מסלולים שבהם נבחרה ריבית גבוהה מהריבית הקיימת — מיחזור כזה מרע את התנאים */
   const worsenedTracks = useMemo(
     () =>
-      perTrack
-        ? currentMix.tracks.filter((track) =>
-            rateWorsensTerms(rates[track.id] ?? track.interestRate, track.interestRate)
-          )
-        : [],
-    [perTrack, currentMix.tracks, rates]
-  );
-
-  /** התמהילים בתצוגה של כלי התמהילים — לפני המיחזור ואחריו */
-  const baseWorkspaceMix = useMemo(
-    () => toWorkspaceMix({ ...currentMix, name: currentMix.name || 'המשכנתא הנוכחית' }),
-    [currentMix]
-  );
-  const refinedWorkspaceMix = useMemo(
-    () =>
-      toWorkspaceMix({
-        ...refinedMix,
-        id: `${refinedMix.id}-refinanced`,
-        name: 'המשכנתא לאחר המיחזור',
+      currentMix.tracks.filter((track) => {
+        const inPanel = !singleMode || track.id === selectedTrackId;
+        const draft = drafts[track.id];
+        return inPanel && !!draft && rateWorsensTerms(draft.interestRate, track.interestRate);
       }),
-    [refinedMix]
+    [currentMix.tracks, drafts, singleMode, selectedTrackId]
   );
 
-  const newMixSeed = useMemo<MortgageMix>(
-    () => ({
-      ...currentMix,
-      id: `refi-target-${currentMix.id}`,
-      name: 'תמהיל מוצע למיחזור',
-      tracks: currentMix.tracks.map((t) => ({ ...t })),
-    }),
-    [currentMix]
+  const baseTrackCalc = selectedTrack
+    ? baseCalc.trackCalculations.find((tc) => tc.track.id === selectedTrack.id)
+    : undefined;
+  const refinedTrackCalc = selectedTrack
+    ? refinedCalc.trackCalculations.find((tc) => tc.track.id === selectedTrack.id)
+    : undefined;
+
+  /* ---------- שורות הדאשבורד ---------- */
+  const rows: ResultRowData[] = [];
+  const currentRow = rowFromCalculation(baseCalc, {
+    id: 'current',
+    title: 'המשכנתא היום',
+    subtitle: `${currentMix.bank ?? 'המשכנתא הנוכחית'} · ${formatCurrency(principal)} קרן`,
+    tone: 'current',
+    composition: currentMix.tracks,
+  });
+  rows.push(currentRow);
+
+  if (singleMode && selectedTrack && baseTrackCalc && refinedTrackCalc) {
+    const trackBaseRow = rowFromTrack(baseTrackCalc, {
+      id: 'track-current',
+      title: `${TRACK_TYPES[selectedTrack.type]} — היום`,
+      subtitle: `המסלול שנבחר למיחזור · ${formatCurrency(selectedTrack.amount)}`,
+      tone: 'track',
+    });
+    rows.push(trackBaseRow);
+    rows.push(
+      rowFromTrack(refinedTrackCalc, {
+        id: 'track-refinanced',
+        title: `${TRACK_TYPES[refinedTrackCalc.track.type]} — לאחר המיחזור`,
+        subtitle: 'המסלול לפי הפאנל שלמעלה',
+        tone: 'track',
+        baseline: baselineOf(trackBaseRow),
+      })
+    );
+  }
+
+  rows.push(
+    rowFromCalculation(refinedCalc, {
+      id: 'refinanced',
+      title: singleMode ? 'המשכנתא כולה לאחר מיחזור המסלול' : 'המשכנתא לאחר המיחזור',
+      subtitle: changed ? 'מתעדכן חי לפי פאנל השליטה' : 'שנו פרמטר בפאנל כדי לראות את ההשפעה',
+      tone: 'refinanced',
+      baseline: baselineOf(currentRow),
+      composition: refinedMix.tracks,
+    })
   );
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* ===== Current state box ===== */}
+    <div className="space-y-3" dir="rtl">
+      {/* ===== כותרת: המצב הנוכחי ===== */}
       <Card className="border-0 shadow-md">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-1.5 pt-3">
           <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="h-4 w-4 text-blue-600" />
               המצב הנוכחי
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onEdit} className="text-slate-500">
+            <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 text-slate-500">
               <Pencil className="h-3.5 w-3.5 ml-1" />
               עריכה
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Compact current-state boxes (centered) */}
-          <div className="flex flex-wrap justify-center gap-3">
+        <CardContent className="pb-3">
+          <div className="flex flex-wrap justify-center gap-2">
             <StateBox
               icon={Wallet}
               label="החזר חודשי"
@@ -755,226 +557,168 @@ export function RefinanceAnalysis({
               gradient="bg-gradient-to-br from-slate-900 to-slate-700"
             />
           </div>
+        </CardContent>
+      </Card>
 
-          {/* ===== המצב לאחר המיחזור — אותם סעיפים, לפי מה שהלקוח משנה ===== */}
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
-            <div className="flex flex-wrap items-center justify-center gap-2 text-center">
-              <RefreshCcw className="h-4 w-4 text-emerald-600" />
-              <p className="text-sm font-bold text-emerald-900">המצב לאחר המיחזור</p>
-              <span className="text-[11px] text-emerald-700">
-                {changed
-                  ? 'מתעדכן לפי השינויים שביצעתם בכל מסלול'
-                  : 'שנו ריבית או תקופה במסלולים כדי לראות את ההשפעה'}
-              </span>
+      {/* ===== מטרה + היקף המיחזור ===== */}
+      <Card className="border-0 shadow-md">
+        <CardContent className="space-y-2 p-3">
+          <div className="grid gap-2 lg:grid-cols-2">
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold text-slate-500">מה המטרה שלכם במיחזור?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <ChoiceButton
+                  active={goal === 'reduce_payment'}
+                  onClick={() => changeGoal('reduce_payment')}
+                  icon={Wallet}
+                  title={REFINANCE_GOAL_LABELS.reduce_payment}
+                  hint="אפשר גם להאריך תקופה"
+                />
+                <ChoiceButton
+                  active={goal === 'reduce_interest'}
+                  onClick={() => changeGoal('reduce_interest')}
+                  icon={Banknote}
+                  title={REFINANCE_GOAL_LABELS.reduce_interest}
+                  hint="קיצור תקופה והורדת ריבית"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3">
-              <StateBox
-                icon={Wallet}
-                label="החזר חודשי"
-                value={formatCurrency(refinedCalc.summary.totalMonthlyPayment)}
-                gradient="bg-gradient-to-br from-emerald-900 to-teal-800"
-                caption="לאחר המיחזור"
-                delta={monthlyDelta}
-              />
-              <StateBox
-                icon={Banknote}
-                label="סך ריבית"
-                value={formatCurrency(refinedCalc.summary.totalInterest)}
-                gradient="bg-gradient-to-br from-emerald-900 to-emerald-700"
-                caption="לאחר המיחזור"
-                delta={interestDelta}
-              />
-              <StateBox
-                icon={Coins}
-                label="סכום הקרן שנותר"
-                value={formatCurrency(refinedMix.tracks.reduce((sum, t) => sum + t.amount, 0))}
-                gradient="bg-gradient-to-br from-emerald-900 to-slate-700"
-                caption="לאחר המיחזור"
-              />
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold text-slate-500">מה ממחזרים?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <ChoiceButton
+                  active={!singleMode}
+                  onClick={() => changeScope('whole')}
+                  icon={Layers}
+                  title="מיחזור כל המשכנתא"
+                  hint="כל המסלולים בפאנל"
+                />
+                <ChoiceButton
+                  active={singleMode}
+                  onClick={() => changeScope('single')}
+                  icon={RefreshCcw}
+                  title="מיחזור מסלול בודד"
+                  hint="בוחרים מסלול אחד"
+                />
+              </div>
             </div>
-
-            {/* התמהיל לאחר המיחזור, בתצוגה של כלי התמהילים */}
-            <MixSummaryCard mix={refinedWorkspaceMix} />
           </div>
 
-          {/* ===== מטרת המיחזור ===== */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-2">
-            <p className="text-sm font-bold text-slate-900 text-center">מה המטרה שלכם במיחזור?</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <GoalButton
-                active={goal === 'reduce_payment'}
-                onClick={() => changeGoal('reduce_payment')}
-                icon={Wallet}
-                title={REFINANCE_GOAL_LABELS.reduce_payment}
-                hint="אפשר גם להאריך תקופה"
-              />
-              <GoalButton
-                active={goal === 'reduce_interest'}
-                onClick={() => changeGoal('reduce_interest')}
-                icon={Banknote}
-                title={REFINANCE_GOAL_LABELS.reduce_interest}
-                hint="קיצור תקופה והורדת ריבית"
-              />
-            </div>
-            <p className="text-[11px] text-slate-500 text-center">
-              {goal === 'reduce_interest'
-                ? 'הבקרות מכוונות לקיצור תקופה ולהורדת הריבית. הארכת תקופה תעביר אתכם אוטומטית להקטנת ההחזר החודשי.'
-                : 'הבקרות מאפשרות גם להאריך תקופה — ההחזר החודשי יורד, וסך הריבית עולה.'}
-            </p>
-            {goalSwitched && goal === 'reduce_payment' && (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] font-medium text-amber-800 text-center">
-                הארכתם את התקופה, ולכן המטרה עברה להקטנת ההחזר החודשי — הארכה מגדילה את סך הריבית.
+          {/* ===== פאנל השליטה — מתחת לבחירת המטרה וההיקף ===== */}
+          <div className="space-y-2 border-t border-slate-100 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                <SlidersHorizontal className="h-4 w-4 text-blue-600" />
+                פאנל השליטה
               </p>
-            )}
-          </div>
-
-          {/* התרעת ריביות מעל הממוצע בשוק */}
-          {marketFindings.length > 0 && market && (
-            <MarketRateNotice findings={marketFindings} market={market} />
-          )}
-
-          {/* מיחזור שמייקר את המשכנתא */}
-          {worsenedTracks.map((track) => (
-            <RateWorsenedNotice
-              key={`worse-${track.id}`}
-              trackName={track.name}
-              baseRate={track.interestRate}
-              nextRate={rates[track.id] ?? track.interestRate}
-            />
-          ))}
-
-          {/* הזמנה להרשמה אחרי שנוצלה הבדיקה החינמית */}
-          {gate.spent && <RegistrationInvite />}
-
-          {/* Refinance mode radio */}
-          <div className="flex justify-center">
-            <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1">
-              <button
-                type="button"
-                onClick={() => setMode('whole')}
-                className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${
-                  mode === 'whole' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                מחזור כל המשכנתא
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('per-track')}
-                className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${
-                  mode === 'per-track' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                מחזור כל מסלול בנפרד
-              </button>
+              <p className="text-[10px] text-slate-500">
+                כל שינוי מתעדכן מיד בדאשבורד שמתחת — בלי שמירה ובלי מעבר מסך
+              </p>
             </div>
-          </div>
 
-          {/* התמהיל הנוכחי, בתצוגה של כלי התמהילים */}
-          <MixSummaryCard mix={baseWorkspaceMix} />
-
-          {/* Track rows */}
-          <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-            {currentMix.tracks.map((track) => (
-              <RefinanceTrackRow
-                key={track.id}
-                track={track}
-                baseTrackCalc={baseByTrackId[track.id]}
-                refinedTrackCalc={perTrack ? refinedByTrackId[track.id] : baseByTrackId[track.id]}
-                rate={rates[track.id] ?? track.interestRate}
-                onRateChange={(v) => changeRate(track.id, v)}
-                years={trackYears[track.id] ?? track.years}
-                onYearsChange={(v) => changeYears(track, v)}
-                editable={perTrack}
-                effectiveYears={trackYears[track.id] ?? track.years}
-                goal={goal}
-                marketRate={market?.rates?.[track.type]}
-              />
-            ))}
-          </div>
-
-          {/* ===== Whole-mortgage graphs (inside the current-state box) ===== */}
-          <div className="pt-4 border-t border-slate-100 space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">השוואה גרפית — המשכנתא כולה</p>
-              <p className="text-[11px] text-slate-500">המצב הנוכחי מול המצב הממוחזר לפי הבקרות שנבחרו.</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <GoalGuidanceStrip goal={goal} />
+              {goalSwitched && goal === 'reduce_payment' && (
+                <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">
+                  הארכתם תקופה — המטרה עברה להקטנת ההחזר החודשי
+                </span>
+              )}
             </div>
-            <AnalysisCharts
-              lineData={lineData}
-              changed={changed}
-              scenarioColor={scenarioColor}
-              scenarioName="ממוחזר"
-              principal={refinedMix.tracks.reduce((s, t) => s + t.amount, 0)}
-              interest={refinedCalc.summary.totalInterest}
-            />
 
-            <CurrentStateAnalysis mix={currentMix} calc={baseCalc} showOptions={perTrack} />
+            <RefinanceControlPanel
+              tracks={currentMix.tracks}
+              drafts={drafts}
+              onDraftChange={applyDraft}
+              goal={goal}
+              market={market}
+              scope={scope}
+              selectedTrackId={selectedTrackId}
+              onSelectTrack={setSelectedTrackId}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* ===== Whole-mortgage: new target mix input (like the first screen) ===== */}
-      <AnimatePresence>
-        {mode === 'whole' && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <Card className="border-0 shadow-md overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500" />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="h-4 w-4 text-blue-600" />
-                  הזנת התמהיל החדש למיחזור
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MortgageMixBuilder
-                  editingMix={newMix ?? newMixSeed}
-                  onSave={(mix) => {
-                    if (!gate.allow('whole-mix')) return;
-                    setNewMix(mix);
-                  }}
-                />
-                {newMix && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                    <div className="rounded-xl bg-gradient-to-br from-slate-900 to-indigo-900 text-white p-4 shadow-md">
-                      <div className="flex items-center gap-2 text-slate-300 text-xs mb-1">
-                        <Wallet className="h-3.5 w-3.5" />
-                        החזר חודשי — בתמהיל החדש
-                      </div>
-                      <p className="text-2xl font-bold">{formatCurrency(refinedCalc.summary.totalMonthlyPayment)}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-slate-400 text-[11px]">נוכחי:</span>
-                        <span className="text-xs">{formatCurrency(baseCalc.summary.totalMonthlyPayment)}</span>
-                        <DeltaBadge value={monthlyDelta} />
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-gradient-to-br from-slate-900 to-blue-900 text-white p-4 shadow-md">
-                      <div className="flex items-center gap-2 text-slate-300 text-xs mb-1">
-                        <Banknote className="h-3.5 w-3.5" />
-                        סך ריבית — בתמהיל החדש
-                      </div>
-                      <p className="text-2xl font-bold">{formatCurrency(refinedCalc.summary.totalInterest)}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-slate-400 text-[11px]">נוכחי:</span>
-                        <span className="text-xs">{formatCurrency(baseCalc.summary.totalInterest)}</span>
-                        <DeltaBadge value={interestDelta} />
-                      </div>
-                    </div>
-                  </div>
+      {/* ===== דאשבורד התוצאות + גרפים ===== */}
+      <Card className="border-0 shadow-md">
+        <CardContent className="space-y-2.5 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+              <LayoutDashboard className="h-4 w-4 text-emerald-600" />
+              דאשבורד התוצאות
+            </p>
+            <GoalProgressChip
+              label={progress.label}
+              delta={progress.delta}
+              tradeoff={progress.tradeoff}
+              achieved={progress.achieved}
+              regressed={progress.regressed}
+              changed={changed}
+            />
+          </div>
+
+          <ResultsDashboard
+            rows={rows}
+            charts={
+              <div className="space-y-3 border-t border-slate-100 pt-2.5">
+                {singleMode && baseTrackCalc && refinedTrackCalc && selectedTrack && (
+                  <TrackComparisonCharts
+                    title={`המסלול שנבחר — ${TRACK_TYPES[selectedTrack.type]}`}
+                    hint="המסלול לפני המיחזור ואחריו."
+                    baseTrack={baseTrackCalc}
+                    refinedTrack={refinedTrackCalc}
+                  />
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <ComparisonCharts
+                  title={singleMode ? 'המשכנתא כולה לאחר מיחזור המסלול' : 'המשכנתא כולה'}
+                  hint="המצב הנוכחי מול המצב שלאחר המיחזור."
+                  baseCalc={baseCalc}
+                  refinedCalc={refinedCalc}
+                />
+              </div>
+            }
+          />
+        </CardContent>
+      </Card>
+
+      {/* ===== התרעות ===== */}
+      {marketFindings.length > 0 && market && (
+        <MarketRateNotice findings={marketFindings} market={market} />
+      )}
+
+      {worsenedTracks.map((track) => (
+        <RateWorsenedNotice
+          key={`worse-${track.id}`}
+          trackName={track.name}
+          baseRate={track.interestRate}
+          nextRate={drafts[track.id]?.interestRate ?? track.interestRate}
+        />
+      ))}
+
+      {gate.spent && <RegistrationInvite />}
+
+      {/* ===== ניתוח סיכון — נפתח בלחיצה, כדי לא להאריך את המסך ===== */}
+      <details className="rounded-xl border border-slate-200 bg-white">
+        <summary className="cursor-pointer list-none p-3 text-sm font-bold text-slate-900">
+          <span className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-blue-600" />
+            ניתוח המצב הנוכחי — סיכון מול חיסכון
+            <ChevronDown className="h-4 w-4 text-slate-400" />
+          </span>
+        </summary>
+        <div className="p-3 pt-0">
+          <CurrentStateAnalysis mix={currentMix} calc={baseCalc} showOptions />
+        </div>
+      </details>
 
       <GuestLimitDialog open={gate.promptOpen} onClose={gate.closePrompt} />
     </div>
   );
 }
 
-/** כפתור בחירת מטרת המיחזור */
-function GoalButton({
+/** כפתור בחירה — מטרת המיחזור והיקפו */
+function ChoiceButton({
   active,
   onClick,
   icon: Icon,
@@ -991,25 +735,69 @@ function GoalButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-w-[180px] flex-1 items-center gap-2.5 rounded-xl border p-3 text-right transition-all sm:flex-none ${
+      className={`flex items-center gap-2 rounded-xl border p-2 text-right transition-all ${
         active
           ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100'
           : 'border-slate-200 bg-white hover:border-slate-300'
       }`}
     >
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
           active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
         }`}
       >
-        <Icon className="h-4.5 w-4.5" />
+        <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">
-        <span className={`block text-sm font-bold ${active ? 'text-blue-900' : 'text-slate-800'}`}>
+        <span className={`block text-[12px] font-bold leading-tight ${active ? 'text-blue-900' : 'text-slate-800'}`}>
           {title}
         </span>
-        <span className="block text-[11px] text-slate-500">{hint}</span>
+        <span className="block text-[10px] leading-tight text-slate-500">{hint}</span>
       </span>
     </button>
+  );
+}
+
+/** כמה התקדמנו לעבר המטרה, ומה המחיר בצד השני */
+function GoalProgressChip({
+  label,
+  delta,
+  tradeoff,
+  achieved,
+  regressed,
+  changed,
+}: {
+  label: string;
+  delta: number;
+  tradeoff: number;
+  achieved: boolean;
+  regressed: boolean;
+  changed: boolean;
+}) {
+  if (!changed) {
+    return (
+      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+        טרם בוצע שינוי בפאנל
+      </span>
+    );
+  }
+
+  const tone = achieved
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+    : regressed
+      ? 'border-red-300 bg-red-50 text-red-800'
+      : 'border-slate-200 bg-slate-50 text-slate-600';
+
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${tone}`}>
+      {label}: {delta < 0 ? '−' : '+'}
+      {formatCurrency(Math.abs(delta))}
+      {Math.abs(tradeoff) > 1 && (
+        <span className="font-medium text-slate-500">
+          {' '}· בצד השני {tradeoff < 0 ? '−' : '+'}
+          {formatCurrency(Math.abs(tradeoff))}
+        </span>
+      )}
+    </span>
   );
 }

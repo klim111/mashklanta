@@ -240,14 +240,13 @@ export function RefinanceMortgageInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
-            className="text-center py-2"
+            className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-1 text-center"
           >
-            <p className="text-sm text-gray-500">המשכנתא הנוכחית</p>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <Building2 className="h-5 w-5 text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-900">{bank}</h2>
-            </div>
-            <p className="text-lg font-semibold text-blue-600 mt-1">{formatCurrency(effectiveTotal)}</p>
+            <span className="text-xs text-gray-500">המשכנתא הנוכחית</span>
+            <Building2 className="h-4 w-4 text-blue-600" />
+            <h2 className="text-base font-bold text-gray-900">{bank}</h2>
+            <span className="text-gray-300">·</span>
+            <p className="text-base font-semibold text-blue-600">{formatCurrency(effectiveTotal)}</p>
           </motion.div>
         ) : (
           <motion.div
