@@ -37,6 +37,8 @@ interface MixListProps {
   activeActions?: React.ReactNode;
   /** פירוט התמהיל שבניתוח לעריכה */
   editor: React.ReactNode;
+  /** מה שמוצג במקום הפאנל כשעוד לא נבחר תמהיל לניתוח */
+  editorPlaceholder?: React.ReactNode;
   onToggleExpanded: () => void;
   onActivate: (item: SavedMix) => void;
   onToggleCompare: (id: string) => void;
@@ -89,6 +91,7 @@ export function MixList({
   scenarioActive = false,
   activeActions,
   editor,
+  editorPlaceholder,
   onToggleExpanded,
   onActivate,
   onToggleCompare,
@@ -239,10 +242,12 @@ export function MixList({
                 </>
               }
             />
-            {expanded && (
+            {expanded ? (
               <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
                 {editor}
               </div>
+            ) : (
+              editorPlaceholder && <div className="mt-2">{editorPlaceholder}</div>
             )}
 
             {/* התמהילים שסומנו נכנסים לאזור העבודה עצמו, ומוזנים לטבלה ולגרפים שמתחת */}

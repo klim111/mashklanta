@@ -13,7 +13,7 @@ import { PLAN_TERM_MONTHS_MAX, monthsToYears, yearsToMonths } from '@/lib/mortga
 export const TRACK_TERM_MONTHS_MIN = 12;
 export const TRACK_TERM_MONTHS_MAX = PLAN_TERM_MONTHS_MAX;
 
-function clampTrackTermMonths(months: number): number {
+export function clampTrackTermMonths(months: number): number {
   if (!Number.isFinite(months) || months <= 0) return TRACK_TERM_MONTHS_MIN;
   return Math.min(TRACK_TERM_MONTHS_MAX, Math.max(TRACK_TERM_MONTHS_MIN, Math.round(months)));
 }

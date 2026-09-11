@@ -10,7 +10,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertTriangle,
   Banknote,
+  BookmarkCheck,
   Home,
+  Plus,
+  SquarePen,
   Save,
   Settings2,
   ShieldAlert,
@@ -28,8 +31,14 @@ import { SaveMixDialog } from '@/components/advisor/SaveMixDialog';
 import { useAdvisorSettings } from '@/components/advisor/useAdvisorCrm';
 import { rateKey } from '@/lib/advisor-crm';
 import type { SaveTarget } from './savedMixes';
-import type { MixEvent, OptimizationConstraints, WorkspaceMix } from './engine';
-import { cloneWorkspaceMix } from './engine';
+import type { MixEvent, MixResult, OptimizationConstraints, WorkspaceMix } from './engine';
+import { cloneWorkspaceMix, computeMix } from './engine';
+import {
+  NoChangeNotice,
+  StateBlocksRow,
+  snapshotFromMixResult,
+} from './analysisDashboard';
+import { formatShekel } from './workspace/primitives';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
@@ -39,7 +48,7 @@ import { MixSetupWizard } from './workspace/MixSetupWizard';
 import type { PropertySetup } from './workspace/MixSetupWizard';
 import { PropertyHeader } from './workspace/PropertyHeader';
 import { MixList } from './workspace/MixList';
-import { MixEditor } from './workspace/MixEditor';
+import { MixControlPanel } from './workspace/MixControlPanel';
 import { SavedMixPicker } from './workspace/SavedMixPicker';
 import { RiskPanel } from './workspace/RiskPanel';
 import { GoalsPanel } from './workspace/GoalsPanel';
@@ -251,6 +260,13 @@ export function MortgageWorkspace({
   }, []);
   /** התמהיל שבניתוח נפתח סגור, כמו כל שאר התמהילים ברשימה */
   const [editorExpanded, setEditorExpanded] = useState(false);
+  /** המסלול שמוצג כרגע באזור הגרפים. null — כל התמהיל */
+  const [focusTrackId, setFocusTrackId] = useState<string | null>(null);
+  /**
+   * התמהיל כפי שנפתח בפאנל, לפני השינויים. מולו נמדד "מה השתנה" בדאשבורד,
+   * כדי שהיועץ יראה בדיוק מה עשה השינוי שביצע.
+   */
+  const [panelBaseline, setPanelBaseline] = useState<WorkspaceMix | null>(null);
 
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [flashSave, setFlashSave] = useState(false);
@@ -295,6 +311,9 @@ export function MortgageWorkspace({
       );
       setSavedSignature(signatureOf(withCap));
       setSelectedMonth(null);
+      // נקודת הייחוס של "מה השתנה" היא התמהיל כפי שנפתח כאן
+      setPanelBaseline(withCap);
+      setFocusTrackId(null);
       setPhase('ready');
     },
     [actions, withProfileCap]
@@ -463,14 +482,20 @@ export function MortgageWorkspace({
         next.delete(item.mix.id);
         return next;
       });
+      const previousId = mix.id;
+      const hadTracks = mix.tracks.length > 0;
       keepCurrentMix();
+      // התמהיל שהיה בפאנל עובר להשוואה, כך שהתמהיל החדש נמדד מולו
+      if (hadTracks && previousId !== item.mix.id && !state.comparedIds.includes(previousId)) {
+        actions.toggleCompared(previousId);
+      }
       // התמהיל נשאר משויך ללקוח שלו, גם כשמגיעים אליו מהאזור האישי
       if (item.clientId) setActiveClientId(item.clientId);
       notifyActive(item);
       openMix(item.mix);
       setEditorExpanded(true);
     },
-    [keepCurrentMix, openMix, notifyActive]
+    [keepCurrentMix, openMix, notifyActive, mix.id, mix.tracks.length, state.comparedIds, actions]
   );
 
   /**
@@ -681,6 +706,34 @@ export function MortgageWorkspace({
     },
     [hiddenFromPage, mix.id, openSavedMix]
   );
+
+  /**
+   * התמהיל כפי שנפתח בפאנל — הבסיס לשורת "מה השתנה".
+   *
+   * הוא מחושב עם ההנחות הנוכחיות ולא עם אלה שהיו ברגע הפתיחה: עקומי הפריים
+   * והאינפלציה נטענים מהשרת אחרי הפתיחה, ותרחיש ריבית חל על שני הצדדים.
+   * בלי היישור הזה ההפרש היה מציג את טעינת העקום כאילו היא שינוי שהיועץ ביצע.
+   */
+  const baselineResult = useMemo<MixResult | null>(
+    () =>
+      panelBaseline
+        ? computeMix({ ...panelBaseline, assumptions: mix.assumptions })
+        : null,
+    [panelBaseline, mix.assumptions]
+  );
+
+  /** האם השינויים בפאנל הזיזו את המספרים */
+  const panelChanged = useMemo(() => {
+    if (!baselineResult) return false;
+    const a = result.summary;
+    const b = baselineResult.summary;
+    return (
+      Math.abs(a.monthlyPayment - b.monthlyPayment) > 1 ||
+      Math.abs(a.totalInterest - b.totalInterest) > 1 ||
+      Math.abs(a.totalPaid - b.totalPaid) > 1 ||
+      Math.abs(a.months - b.months) > 0.5
+    );
+  }, [result.summary, baselineResult]);
 
   const comparisonEntries = useMemo<ComparisonEntry[]>(() => {
     const compared = propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id));
@@ -969,38 +1022,71 @@ export function MortgageWorkspace({
             </>
           }
           editor={
-            mix.locked ? (
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
-                  התמהיל ננעל כתמהיל הסופי למכרז מול הבנקים ואינו ניתן לשינוי.
-                </div>
-                <div className="pointer-events-none select-none opacity-70">
-                  <MixEditor
-                    key={result.mix.id}
-                    result={result}
-                    onUpdateTrack={() => undefined}
-                    onTrackAmountChange={() => undefined}
-                    onRemoveTrack={() => undefined}
-                    onAddTrack={() => undefined}
-                    onPrepay={() => undefined}
-                    onRefinance={() => undefined}
-                    onAmortization={(trackId) => setAmortizationTarget({ trackId })}
-                  />
+            <MixControlPanel
+              key={result.mix.id}
+              result={result}
+              locked={mix.locked}
+              onUpdateTrack={mix.locked ? () => undefined : actions.updateTrack}
+              onTrackAmountChange={mix.locked ? () => undefined : actions.setTrackAmount}
+              onRemoveTrack={mix.locked ? () => undefined : actions.removeTrack}
+              onAddTrack={mix.locked ? () => undefined : actions.addTrack}
+              onPrepay={(trackId: string) => setPrepayTarget({ trackId })}
+              onRefinance={(trackId: string) => setRefinanceTarget({ trackId })}
+              onAmortization={(trackId: string) => setAmortizationTarget({ trackId })}
+              focusTrackId={focusTrackId}
+              onFocusTrack={setFocusTrackId}
+            />
+          }
+          editorPlaceholder={
+            <div className="relative overflow-hidden rounded-2xl border border-blue-200 bg-white">
+              {/* הפאנל מוצג מטושטש עד שנבחר תמהיל לניתוח */}
+              <div className="pointer-events-none select-none blur-[3px] opacity-60">
+                <MixControlPanel
+                  result={result}
+                  locked
+                  onUpdateTrack={() => undefined}
+                  onTrackAmountChange={() => undefined}
+                  onRemoveTrack={() => undefined}
+                  onAddTrack={() => undefined}
+                  onPrepay={() => undefined}
+                  onRefinance={() => undefined}
+                  onAmortization={() => undefined}
+                />
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/40 p-4 text-center">
+                <p className="text-sm font-bold text-slate-900">
+                  בחרו תמהיל לניתוח מתוך התמהילים השמורים, או צרו תמהיל חדש
+                </p>
+                <p className="max-w-md text-[11px] text-slate-600">
+                  לחיצה על שורת תמהיל פותחת אותו כאן בפאנל השליטה — כל המסלולים והפרמטרים שלהם
+                  פתוחים לשינוי, והדאשבורד שמתחת מתעדכן מיד.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 pt-1">
+                  <Button size="sm" className="h-8 text-xs" onClick={() => setEditorExpanded(true)}>
+                    <SquarePen className="h-3.5 w-3.5 ml-1" />
+                    פתחו את התמהיל שבאזור העבודה
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => setSavedPickerOpen(true)}
+                  >
+                    <BookmarkCheck className="h-3.5 w-3.5 ml-1" />
+                    טענו תמהיל שמור
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={startMixForSameProperty}
+                  >
+                    <Plus className="h-3.5 w-3.5 ml-1" />
+                    תמהיל חדש
+                  </Button>
                 </div>
               </div>
-            ) : (
-              <MixEditor
-                key={result.mix.id}
-                result={result}
-                onUpdateTrack={actions.updateTrack}
-                onTrackAmountChange={actions.setTrackAmount}
-                onRemoveTrack={actions.removeTrack}
-                onAddTrack={actions.addTrack}
-                onPrepay={(trackId) => setPrepayTarget({ trackId })}
-                onRefinance={(trackId) => setRefinanceTarget({ trackId })}
-                onAmortization={(trackId) => setAmortizationTarget({ trackId })}
-              />
-            )
+            </div>
           }
         />
 
@@ -1054,6 +1140,28 @@ export function MortgageWorkspace({
           />
         )}
 
+        {/* דאשבורד: מצב התמהיל שבפאנל, ומה השתנה מאז שנפתח */}
+        <div className="space-y-2">
+          <StateBlocksRow
+            title={panelChanged ? 'התמהיל כפי שנפתח' : 'מצב התמהיל'}
+            caption={`${mix.name || 'התמהיל בעבודה'} · ${formatShekel(mix.totalAmount)}`}
+            snapshot={snapshotFromMixResult(baselineResult ?? result)}
+            tone="current"
+          />
+
+          {panelChanged && baselineResult ? (
+            <StateBlocksRow
+              title="אחרי השינויים בפאנל השליטה"
+              caption="ההפרש מול התמהיל כפי שנפתח"
+              snapshot={snapshotFromMixResult(result)}
+              baseline={snapshotFromMixResult(baselineResult)}
+              tone="refinanced"
+            />
+          ) : (
+            <NoChangeNotice text="טרם בוצע שינוי בתמהיל — שנו פרמטר בפאנל השליטה כדי לראות כאן את ההפרש." />
+          )}
+        </div>
+
         {/* הניתוח הגרפי וההשוואה באותו אזור */}
         <AnalysisTabs
           result={result}
@@ -1065,6 +1173,8 @@ export function MortgageWorkspace({
           comparedCount={comparedCount}
           allowSelectFinal={allowSelectFinal}
           onSelectFinal={selectFinalMix}
+          focusTrackId={focusTrackId}
+          onFocusTrack={setFocusTrackId}
         />
 
         <EventsPanel

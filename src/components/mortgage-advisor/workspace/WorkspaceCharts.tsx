@@ -5,12 +5,9 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -19,8 +16,11 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart as LineChartIcon, MousePointerClick } from 'lucide-react';
-import { yearlySeries } from '../engine';
-import type { MixResult } from '../engine';
+import { formatDuration, yearlySeries } from '../engine';
+import type { MixResult, TrackResult } from '../engine';
+import { TrackCompositionStrip } from '../analysisDashboard';
+import { formatPercentage } from '../mortgageCalculations';
+import { AMORTIZATION_TYPES, TRACK_TYPES } from '../types';
 import { CHART_COLORS, compactCurrency, formatShekel, trackColor } from './primitives';
 import {
   CURRENT_RATE_PAYMENT_NOTE,
@@ -38,6 +38,49 @@ interface WorkspaceChartsProps {
   /** החודש שנבחר בלוח ההחזרים או בגרף — מסומן בקו אנכי */
   selectedMonth: number | null;
   onSelectMonth: (month: number) => void;
+  /** המסלול שמוצג כרגע. null — כל התמהיל */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
+}
+
+interface TrackRow {
+  year: number;
+  month: number;
+  balance: number;
+  payment: number;
+  paidPrincipal: number;
+  paidInterest: number;
+}
+
+/** סדרה שנתית למסלול בודד — יתרה, החזר, וקרן מול ריבית מצטברת */
+function trackRows(track: TrackResult): TrackRow[] {
+  const schedule = track.schedule;
+  const rows: TrackRow[] = [
+    {
+      year: 0,
+      month: 0,
+      balance: track.track.amount,
+      payment: schedule[0]?.payment ?? 0,
+      paidPrincipal: 0,
+      paidInterest: 0,
+    },
+  ];
+
+  const years = Math.ceil(schedule.length / 12);
+  for (let y = 1; y <= years; y++) {
+    const index = Math.min(schedule.length, y * 12) - 1;
+    const row = schedule[index];
+    if (!row) continue;
+    rows.push({
+      year: y,
+      month: row.month,
+      balance: row.balanceEnd,
+      payment: row.payment,
+      paidPrincipal: Math.max(0, track.track.amount - row.balanceEnd),
+      paidInterest: row.cumulativeInterest,
+    });
+  }
+  return rows;
 }
 
 interface Row {
@@ -64,7 +107,13 @@ export function WorkspaceCharts({
   scenarioActive,
   selectedMonth,
   onSelectMonth,
+  focusTrackId = null,
+  onFocusTrack,
 }: WorkspaceChartsProps) {
+  /** המסלול שבמיקוד — כל הגרפים והביאורים שלו מוצגים כאן, ולא בתוך הפאנל */
+  const focusTrack = focusTrackId
+    ? result.tracks.find((item) => item.track.id === focusTrackId) ?? null
+    : null;
   const rows = useMemo<Row[]>(() => {
     const current = yearlySeries(result);
     const base = yearlySeries(baseResult);
@@ -85,31 +134,6 @@ export function WorkspaceCharts({
       };
     });
   }, [result, baseResult]);
-
-  /**
-   * שני מסלולים עם אותם נתונים מקבלים את אותו שם אוטומטי. הצירוף של סוג הריבית,
-   * התקופה והריבית אינו מזהה ייחודי, ולכן המקרא ממוספר והזיהוי נעשה לפי מזהה המסלול.
-   */
-  const composition = useMemo(() => {
-    const nameCounts = new Map<string, number>();
-    result.tracks.forEach((t) => {
-      nameCounts.set(t.track.name, (nameCounts.get(t.track.name) ?? 0) + 1);
-    });
-
-    const seen = new Map<string, number>();
-    return result.tracks.map((t) => {
-      const name = t.track.name;
-      const occurrence = (seen.get(name) ?? 0) + 1;
-      seen.set(name, occurrence);
-
-      return {
-        id: t.track.id,
-        name: (nameCounts.get(name) ?? 0) > 1 ? `${name} (${occurrence})` : name,
-        value: t.track.amount,
-        color: trackColor(t.track.type),
-      };
-    });
-  }, [result.tracks]);
 
   const selectedYear = useMemo(() => {
     if (!selectedMonth) return null;
@@ -140,36 +164,42 @@ export function WorkspaceCharts({
           <CardTitle className="text-base flex items-center gap-2">
             <LineChartIcon className="h-4 w-4 text-blue-600" />
             ניתוח גרפי
+            {focusTrack && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-800">
+                {TRACK_TYPES[focusTrack.track.type]}
+              </span>
+            )}
           </CardTitle>
           <span className="text-[11px] text-slate-500 flex items-center gap-1">
             <MousePointerClick className="h-3.5 w-3.5" />
-            לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד
+            {focusTrack
+              ? 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
+              : 'לחיצה על מסלול בפס מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'}
           </span>
+        </div>
+
+        {/* פס ההרכב — אותה תצוגה שבכלי המיחזור, ולחיצה מחליפה את אזור הגרפים */}
+        <div className="pt-2">
+          <TrackCompositionStrip
+            tracks={result.mix.tracks}
+            trackMonths={Object.fromEntries(result.tracks.map((t) => [t.track.id, t.months]))}
+            activeTrackId={focusTrackId}
+            onTrackClick={
+              onFocusTrack
+                ? (trackId) => onFocusTrack(focusTrackId === trackId ? null : trackId)
+                : undefined
+            }
+            actionLabel="לגרפים של המסלול"
+            activeActionLabel="חזרה לכל התמהיל"
+          />
         </div>
       </CardHeader>
 
-      <CardContent className="grid gap-4 lg:grid-cols-2">
-        <ChartPanel title="הרכב התמהיל" hint="חלוקת סכום המשכנתא בין המסלולים.">
-          <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-            <Pie
-              data={composition}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={45}
-              outerRadius={80}
-              paddingAngle={2}
-              label={({ percent }) => `${Math.round((percent ?? 0) * 100)}%`}
-              labelLine={false}
-            >
-              {composition.map((entry) => (
-                <Cell key={entry.id} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip formatter={tooltipFormatter} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
-          </PieChart>
-        </ChartPanel>
+      <CardContent className="grid gap-3 lg:grid-cols-3">
+        {focusTrack && <TrackFocusCharts track={focusTrack} assumptions={result.mix.assumptions} />}
 
+        {!focusTrack && (
+          <>
         <ChartPanel
           title="יתרת החוב"
           hint="קצב סילוק הקרן. במסלולים צמודי מדד היתרה גדלה עם המדד וקצב הסילוק מואט."
@@ -279,7 +309,7 @@ export function WorkspaceCharts({
         </ChartPanel>
 
         {hasPrime && (
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <PrimeForwardChart
               tracks={result.tracks}
               quotedRate={
@@ -292,7 +322,7 @@ export function WorkspaceCharts({
           </div>
         )}
         {hasVariableUnlinked && (
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <VariableForwardChart
               tracks={result.tracks}
               quotedRate={
@@ -305,7 +335,7 @@ export function WorkspaceCharts({
           </div>
         )}
         {hasIndexed && (
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <InflationForecastChart
               assumptions={result.mix.assumptions}
               years={Math.max(
@@ -316,8 +346,191 @@ export function WorkspaceCharts({
             />
           </div>
         )}
+          </>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * הגרפים והביאורים של מסלול בודד. הכול חי כאן, באזור הגרפים, ולא בתוך כרטיס
+ * המסלול — כך שהפאנל נשאר קצר והניתוח נשאר במקום אחד.
+ */
+function TrackFocusCharts({
+  track,
+  assumptions,
+}: {
+  track: TrackResult;
+  assumptions: MixResult['mix']['assumptions'];
+}) {
+  const rows = trackRows(track);
+  const data = track.track;
+  const isGrace =
+    data.amortizationType === 'partial_grace' || data.amortizationType === 'full_grace';
+  const prepayRow = track.schedule.find((row) => row.prepayment > 1);
+  const contractualMonths = Math.max(1, Math.round(data.years * 12));
+  const shortened = Boolean(prepayRow) && track.months < contractualMonths - 0.5;
+
+  const tooltipFormatter = (value: number | string) =>
+    typeof value === 'number' ? formatShekel(value) : value;
+  const labelFormatter = (label: number | string) => `שנה ${label}`;
+
+  return (
+    <>
+      <div className="lg:col-span-3">
+        <div className="grid gap-2 rounded-xl border border-violet-200 bg-violet-50/50 p-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          <TrackStat label="החזר חודשי" value={track.monthlyPayment > 0.01 ? formatShekel(track.monthlyPayment) : 'אין החזר שוטף'} />
+          <TrackStat label="סך ריבית" value={formatShekel(track.totalInterest)} />
+          <TrackStat label="סך תשלום" value={formatShekel(track.totalPaid)} />
+          <TrackStat
+            label="משך בפועל"
+            value={`${formatDuration(track.months)}${shortened ? ` (קוצר מ-${formatDuration(contractualMonths)})` : ''}`}
+          />
+        </div>
+      </div>
+
+      <ChartPanel title="יתרת החוב במסלול" hint="קצב סילוק הקרן במסלול שנבחר.">
+        <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+          <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line
+            type="monotone"
+            dataKey="balance"
+            name="יתרת החוב"
+            stroke={trackColor(data.type)}
+            strokeWidth={2.5}
+            dot={false}
+          />
+        </LineChart>
+      </ChartPanel>
+
+      <ChartPanel title="החזר חודשי במסלול" hint="ההחזר של המסלול לאורך התקופה.">
+        <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+          <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Line
+            type="monotone"
+            dataKey="payment"
+            name="החזר חודשי"
+            stroke={trackColor(data.type)}
+            strokeWidth={2.5}
+            dot={false}
+          />
+        </LineChart>
+      </ChartPanel>
+
+      <ChartPanel title="קרן מול ריבית במסלול" hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן.">
+        <AreaChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+          <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Area
+            type="monotone"
+            dataKey="paidPrincipal"
+            name="קרן שנפרעה"
+            stackId="1"
+            stroke={CHART_COLORS.principal}
+            fill={CHART_COLORS.principal}
+            fillOpacity={0.35}
+          />
+          <Area
+            type="monotone"
+            dataKey="paidInterest"
+            name="ריבית ששולמה"
+            stackId="1"
+            stroke={CHART_COLORS.interest}
+            fill={CHART_COLORS.interest}
+            fillOpacity={0.35}
+          />
+        </AreaChart>
+      </ChartPanel>
+
+      {data.type === 'prime' && track.schedule.length > 1 && (
+        <div className="lg:col-span-3">
+          <PrimeForwardChart tracks={[track]} quotedRate={data.interestRate} height={220} />
+        </div>
+      )}
+      {data.type === 'variable_unlinked' && track.schedule.length > 1 && (
+        <div className="lg:col-span-3">
+          <VariableForwardChart tracks={[track]} quotedRate={data.interestRate} height={220} />
+        </div>
+      )}
+      {isIndexLinked(data.type) && track.schedule.length > 1 && (
+        <div className="lg:col-span-3">
+          <InflationForecastChart assumptions={assumptions} years={data.years} height={220} />
+        </div>
+      )}
+
+      {/* הביאורים של המסלול — אותם הסברים שהיו בתוך המסלול, כאן לצד הגרפים */}
+      <div className="space-y-2 lg:col-span-3">
+        {usesForwardPricedRate(data.type) && track.monthlyPayment > 0.01 && (
+          <p className="text-[11px] leading-snug text-slate-500">{CURRENT_RATE_PAYMENT_NOTE}</p>
+        )}
+
+        {isGrace && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900">
+            {data.amortizationType === 'full_grace' ? (
+              <>
+                בגרייס מלא אין החזר חודשי. הריבית נצברת וצוברת ריבית בעצמה, ובסוף התקופה נפרעים
+                בתשלום אחד הקרן ({formatShekel(data.amount)}) וכל הריבית שנצברה (
+                {formatShekel(track.totalInterest)}) — סך {formatShekel(track.balloonPayment)}.
+              </>
+            ) : (
+              <>
+                בגרייס חלקי משולמת מדי חודש הריבית בלבד ({formatShekel(track.monthlyPayment)}), הקרן
+                אינה קטנה לאורך התקופה, ובסופה היא נפרעת בתשלום אחד של{' '}
+                {formatShekel(track.balloonPayment)}.
+              </>
+            )}
+          </p>
+        )}
+
+        {track.totalIndexation > 1 && (
+          <p className="rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-[11px] leading-relaxed text-violet-800">
+            לפי תחזית האינפלציה של בנק ישראל הקרן גדלה ב-{formatShekel(track.totalIndexation)} לאורך
+            התקופה. הקרן מוגנת מירידת מדד ולא תקטן מתחת לסכום המקורי.
+          </p>
+        )}
+
+        {data.type === 'variable_unlinked' && (
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-[11px] leading-relaxed text-emerald-900">
+            הריבית מתעדכנת כל {data.variablePeriod ?? 5} שנים לפי הפורוורד לאותה תקופה מעקום
+            התשואות השקלי של בנק ישראל, עם המרווח שצוטט מהבנק. בתחנות היציאה יש פטור מעמלת פירעון
+            מוקדם.
+          </p>
+        )}
+
+        {data.type === 'prime' && track.schedule.length > 12 && (
+          <p className="rounded-lg border border-orange-200 bg-orange-50 p-2.5 text-[11px] leading-relaxed text-orange-900">
+            ההחזרים וסך הריבית מחושבים לפי צפי הפריים שנגזר מעקום התשואות השקלי של בנק ישראל. חודש
+            ראשון: {formatPercentage(track.schedule[0].annualRate)}, בסוף התקופה:{' '}
+            {formatPercentage(track.schedule[track.schedule.length - 1].annualRate)}.
+          </p>
+        )}
+
+        <p className="text-[10px] text-slate-400">
+          לוח סילוקין: {AMORTIZATION_TYPES[data.amortizationType || 'spitzer']}
+        </p>
+      </div>
+    </>
+  );
+}
+
+function TrackStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-2 text-center">
+      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs font-bold text-slate-800">{value}</p>
+    </div>
   );
 }
 
