@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   AMORTIZATION_TYPES,
-  DEFAULT_INTEREST_RATES,
   MORTGAGE_BANKS,
   TRACK_TYPES,
 } from '@/components/mortgage-advisor/types';
 import { rateKey } from '@/lib/advisor-crm';
+import { anchorForTrack, defaultRateFor, roundRate } from '@/lib/rate-anchors';
+import { useMarketRates } from '@/hooks/use-market-rates';
+import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
 import { SectionCard } from './ui';
 import { useAdvisorSettings } from './useAdvisorCrm';
 
@@ -19,6 +21,13 @@ type AmortizationType = keyof typeof AMORTIZATION_TYPES;
 
 const TRACK_KEYS = Object.keys(TRACK_TYPES) as TrackType[];
 const AMORTIZATION_KEYS = Object.keys(AMORTIZATION_TYPES) as AmortizationType[];
+
+/**
+ * ההקשר שבו מוצג העוגן בהגדרות: תקופת המשכנתא השכיחה למסלולים קבועים, ותחנת
+ * שינוי של 5 שנים למסלולים משתנים — הנפוצה בשוק. בכלי בניית התמהיל העוגן נלקח
+ * לפי התקופה והתחנה שנבחרו במסלול עצמו.
+ */
+const SETTINGS_ANCHOR_CONTEXT = { years: 25, variablePeriod: 5 };
 
 /**
  * הגדרות היועץ.
@@ -38,7 +47,9 @@ export function AdvisorSettingsPanel({
 
   const [bank, setBank] = useState<string>(MORTGAGE_BANKS[0]);
   const [amortization, setAmortization] = useState<AmortizationType>('spitzer');
+  /** הריבית הסופית לכל מסלול, וה"מרווח" שלה מעל העוגן */
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [spreadDraft, setSpreadDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,24 +89,49 @@ export function AdvisorSettingsPanel({
     if (response.ok) setProfileSaved(true);
   };
 
+  // העוגנים מוצגים לפי הנתונים שנמשכו מבנק ישראל, ומתרעננים איתם
+  const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
+
   const savedRates = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { rate: number; spread: number | null }>();
     settings.rates.forEach((item) =>
-      map.set(rateKey(item.bank, item.amortizationType, item.trackType), item.rate)
+      map.set(rateKey(item.bank, item.amortizationType, item.trackType), {
+        rate: item.rate,
+        spread: typeof item.spread === 'number' ? item.spread : null,
+      })
     );
     return map;
   }, [settings.rates]);
 
+  const anchors = useMemo(() => {
+    const map = new Map<TrackType, ReturnType<typeof anchorForTrack>>();
+    TRACK_KEYS.forEach((track) =>
+      map.set(track, anchorForTrack(track, marketRates, SETTINGS_ANCHOR_CONTEXT))
+    );
+    return map;
+  }, [marketRates]);
+
   // מעבר בין בנקים או לוחות סילוקין טוען את הערכים השמורים לצירוף שנבחר
   useEffect(() => {
-    const next: Record<string, string> = {};
+    const rates: Record<string, string> = {};
+    const spreads: Record<string, string> = {};
     TRACK_KEYS.forEach((track) => {
       const stored = savedRates.get(rateKey(bank, amortization, track));
-      next[track] = stored === undefined ? '' : String(stored);
+      const anchor = anchors.get(track);
+      if (!stored) {
+        rates[track] = '';
+        spreads[track] = '';
+        return;
+      }
+      // ריבית שנשמרה לפני הפירוק לעוגן ומרווח מוצגת עם המרווח שנגזר ממנה
+      const spread = stored.spread ?? (anchor ? roundRate(stored.rate - anchor.rate) : null);
+      rates[track] = String(stored.spread !== null && anchor ? roundRate(anchor.rate + stored.spread) : stored.rate);
+      spreads[track] = spread === null ? '' : String(spread);
     });
-    setDraft(next);
+    setDraft(rates);
+    setSpreadDraft(spreads);
     setSaved(false);
-  }, [bank, amortization, savedRates]);
+  }, [bank, amortization, savedRates, anchors]);
 
   const submit = async () => {
     setSaving(true);
@@ -103,11 +139,15 @@ export function AdvisorSettingsPanel({
     const failure = await saveRates(
       TRACK_KEYS.map((track) => {
         const raw = draft[track]?.trim() ?? '';
+        const rawSpread = spreadDraft[track]?.trim() ?? '';
         return {
           bank,
           amortizationType: amortization,
           trackType: track,
           rate: raw === '' ? null : Number(raw),
+          // המרווח נשמר לצד הריבית, והוא זה שקובע בהרצות הבאות: הריבית הסופית
+          // תיגזר מהעוגן העדכני ועוד המרווח הזה.
+          spread: raw === '' || rawSpread === '' ? null : Number(rawSpread),
         };
       })
     );
@@ -174,8 +214,11 @@ export function AdvisorSettingsPanel({
         }
       >
         <p className="mb-3 text-xs leading-relaxed text-slate-500">
-          הזינו פעם אחת את הריביות שאתם עובדים איתן מול כל בנק ולכל לוח סילוקין. בכל יצירת תמהיל
-          המסלולים ייפתחו עם הערכים האלה, ותוכלו לשנות אותם בעת היצירה בלי שההגדרות ישתנו.
+          הזינו פעם אחת את המרווח שאתם עובדים איתו מול כל בנק ולכל לוח סילוקין. העוגן נמשך
+          אוטומטית מבנק ישראל — ריבית הפריים במשק למסלול פריים, ועקום האפס הנומינלי או הריאלי
+          למסלולים המשתנים והקבועים — והריבית הסופית היא סכומם. אפשר גם להזין ריבית סופית,
+          והמרווח יתעדכן בהתאם. בכל יצירת תמהיל המסלולים ייפתחו עם המרווח הזה על גבי העוגן
+          העדכני, כך שהריביות לא נשארות תקועות על ערך ישן.
         </p>
 
         <div className="mb-3 flex flex-wrap gap-2">
@@ -214,35 +257,39 @@ export function AdvisorSettingsPanel({
             <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
           </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {TRACK_KEYS.map((track) => (
-              <label
-                key={track}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5"
-              >
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-700">
-                  {TRACK_TYPES[track]}
-                </span>
-                <div className="relative w-24">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="25"
-                    value={draft[track] ?? ''}
-                    onChange={(event) => {
-                      setDraft((current) => ({ ...current, [track]: event.target.value }));
+          <div className="grid gap-2 sm:grid-cols-2">
+            {TRACK_KEYS.map((track) => {
+              const anchor = anchors.get(track) ?? null;
+              const rawRate = draft[track]?.trim() ?? '';
+              const rawSpread = spreadDraft[track]?.trim() ?? '';
+              const rate =
+                rawRate === ''
+                  ? defaultRateFor(track, marketRates, SETTINGS_ANCHOR_CONTEXT)
+                  : Number(rawRate);
+              const spread = rawSpread === '' ? null : Number(rawSpread);
+
+              return (
+                <div key={track} className="rounded-xl border border-slate-200 bg-white p-2.5">
+                  <p className="mb-1.5 truncate text-xs font-semibold text-slate-700">
+                    {TRACK_TYPES[track]}
+                  </p>
+                  <AnchorSpreadRate
+                    anchor={anchor}
+                    spread={spread}
+                    rate={Number.isFinite(rate) ? rate : 0}
+                    onRefreshAnchor={refreshMarketRates}
+                    onChange={({ rate: nextRate, spread: nextSpread }) => {
+                      setDraft((current) => ({ ...current, [track]: String(nextRate) }));
+                      setSpreadDraft((current) => ({
+                        ...current,
+                        [track]: nextSpread === undefined ? '' : String(nextSpread),
+                      }));
                       setSaved(false);
                     }}
-                    placeholder={String(DEFAULT_INTEREST_RATES[track])}
-                    className="h-8 pl-6 text-left text-xs"
                   />
-                  <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
-                    %
-                  </span>
                 </div>
-              </label>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -259,7 +306,7 @@ export function AdvisorSettingsPanel({
           )}
           {error && <span className="text-xs text-red-600">{error}</span>}
           <span className="text-[11px] text-slate-400">
-            שדה ריק מחזיר את המסלול לריבית הכללית של המערכת
+            מרווח ריק מחזיר את המסלול למרווח הכללי של המערכת
           </span>
         </div>
       </SectionCard>

@@ -10,7 +10,7 @@ import {
   sanitizeMix,
 } from './factory';
 import { optimizeMix } from './optimize';
-import type { WorkspaceMix } from './types';
+import type { Assumptions, WorkspaceMix } from './types';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
 import { fallbackInflationForecast } from '@/lib/inflation-forecast';
 
@@ -318,7 +318,9 @@ describe('variable rate reset', () => {
       );
     });
 
-  it('prices each prime payment off the government zero curve', () => {
+  it('holds prime at the rate in force now, and ignores the forward curve', () => {
+    // הפריים לא מתומחר לפי צפי: הריבית שנמשכה מבנק ישראל תקפה עד שבנק ישראל
+    // ישנה אותה, ולכן עקום התשואות לא אמור להזיז אף תשלום במסלול פריים.
     const forecast = {
       asOf: '2026-07',
       source: 'fallback' as const,
@@ -329,23 +331,42 @@ describe('variable rate reset', () => {
         { years: 15, yieldPct: 4.3 },
       ],
     };
-    const withCurve = computeMix(
-      singleTrackMix({
-        tracks: [createTrack({ id: 'a', type: 'prime', amount: 500_000, interestRate: 4.5, years: 20 })],
-        assumptions: { rateDeltas: {}, annualInflation: 0, primeForecast: forecast },
-      })
-    );
-    const flat = computeMix(
-      singleTrackMix({
-        tracks: [createTrack({ id: 'a', type: 'prime', amount: 500_000, interestRate: 4.5, years: 20 })],
-        assumptions: { rateDeltas: {}, annualInflation: 0 },
-      })
-    );
+    const primeMix = (assumptions: Assumptions) =>
+      computeMix(
+        singleTrackMix({
+          tracks: [createTrack({ id: 'a', type: 'prime', amount: 500_000, interestRate: 4.5, years: 20 })],
+          assumptions,
+        })
+      );
 
-    expect(withCurve.tracks[0].schedule[0].annualRate).toBeCloseTo(4.5, 6);
-    expect(withCurve.tracks[0].schedule[119].annualRate).not.toBeCloseTo(4.5, 1);
+    const withCurve = primeMix({ rateDeltas: {}, annualInflation: 0, primeForecast: forecast });
+    const flat = primeMix({ rateDeltas: {}, annualInflation: 0 });
+
+    expect(withCurve.tracks[0].schedule.every((row) => Math.abs(row.annualRate - 4.5) < 1e-9)).toBe(
+      true
+    );
     expect(withCurve.tracks[0].schedule).toHaveLength(240);
-    expect(withCurve.summary.totalInterest).not.toBeCloseTo(flat.summary.totalInterest, 0);
+    expect(withCurve.summary.totalInterest).toBeCloseTo(flat.summary.totalInterest, 6);
+    expect(withCurve.summary.monthlyPayment).toBeCloseTo(flat.summary.monthlyPayment, 6);
+  });
+
+  it('moves every future payment when the prime pulled from the BOI changes', () => {
+    const atRate = (rate: number) =>
+      computeMix(
+        singleTrackMix({
+          tracks: [createTrack({ id: 'a', type: 'prime', amount: 500_000, interestRate: rate, years: 20 })],
+          assumptions: { rateDeltas: {}, annualInflation: 0 },
+        })
+      );
+
+    const before = atRate(4.5);
+    const after = atRate(5.25);
+
+    expect(after.tracks[0].schedule.every((row) => Math.abs(row.annualRate - 5.25) < 1e-9)).toBe(true);
+    expect(after.summary.monthlyPayment).toBeGreaterThan(before.summary.monthlyPayment);
+    expect(after.summary.totalInterest).toBeGreaterThan(before.summary.totalInterest);
+    // התקופה נשמרת — רק גובה התשלומים משתנה
+    expect(after.tracks[0].schedule).toHaveLength(before.tracks[0].schedule.length);
   });
 
   it('prices a uniform-style basket total paid with forwards on variable tracks', () => {

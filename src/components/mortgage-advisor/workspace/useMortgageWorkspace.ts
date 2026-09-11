@@ -2,9 +2,9 @@
 
 import { useMemo, useReducer } from 'react';
 import type { MortgageTrack } from '../types';
-import { DEFAULT_INTEREST_RATES } from '../types';
 import {
   allocatedAmount,
+  applyMarketRates,
   computeMix,
   createEmptyMix,
   createTrack,
@@ -28,6 +28,8 @@ import type {
 } from '../engine';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import type { InflationForecast } from '@/lib/inflation-forecast';
+import { fallbackMarketRates, type MarketRatesSnapshot } from '@/lib/market-rates';
+import { anchorForTrack, defaultRateFor as marketDefaultRate, roundRate } from '@/lib/rate-anchors';
 
 export interface WorkspaceState {
   mix: WorkspaceMix;
@@ -39,28 +41,67 @@ export interface WorkspaceState {
   blockedNotice: string | null;
   /**
    * ריביות ברירת המחדל של היועץ, לפי `בנק|לוח סילוקין|סוג מסלול`.
-   * הן נשמרות כמפה פשוטה כדי שהרדיוסר יישאר טהור.
+   * הן נשמרות כמפה פשוטה כדי שהרדוסר יישאר טהור.
    */
   rateDefaults: Record<string, number>;
+  /** המרווחים ששמר היועץ לאותם צירופים — מועדפים על פני ריבית סופית שמורה */
+  rateSpreads: Record<string, number>;
+  /**
+   * הריביות והעקומים שנמשכו מבנק ישראל. הרדוסר צריך אותם כדי לפתוח כל מסלול
+   * חדש עם עוגן עדכני, ולכן הם חלק מהמצב ולא נתון חיצוני.
+   */
+  marketRates: MarketRatesSnapshot;
+}
+
+/** ערך שמור לצירוף בנק + לוח סילוקין + מסלול, עם נפילה ללוח שפיצר */
+function savedFor(
+  map: Record<string, number>,
+  bank: string | undefined,
+  type: TrackType,
+  amortizationType: MortgageTrack['amortizationType']
+): number | undefined {
+  if (!bank) return undefined;
+  const exact = map[`${bank}|${amortizationType ?? 'spitzer'}|${type}`];
+  if (typeof exact === 'number') return exact;
+  const spitzer = map[`${bank}|spitzer|${type}`];
+  return typeof spitzer === 'number' ? spitzer : undefined;
 }
 
 /**
- * הריבית שמסלול חדש נפתח איתה: מה שהיועץ הגדיר לבנק וללוח הסילוקין הזה, ואם
- * לא הגדיר — הריבית הכללית של המערכת. בכל מקרה היא ניתנת לעריכה מיד אחר כך.
+ * הריבית והמרווח שמסלול חדש נפתח איתם.
+ *
+ * סדר העדיפות: מרווח שהיועץ שמר לבנק הזה, אחר כך ריבית סופית שהוא שמר (וממנה
+ * נגזר המרווח מול העוגן), ואם לא הגדיר דבר — המרווח המקובל בשוק. בכל המקרים
+ * הריבית הסופית היא העוגן החי של בנק ישראל ועוד המרווח, כדי שמסלול חדש ייפתח
+ * תמיד עם ריבית עדכנית ולא עם ערך שנכתב בקוד.
  */
 function defaultRateFor(
   state: WorkspaceState,
   type: TrackType,
-  amortizationType: MortgageTrack['amortizationType'] = 'spitzer'
-): number {
+  amortizationType: MortgageTrack['amortizationType'] = 'spitzer',
+  context: { variablePeriod?: number; years?: number } = {}
+): { interestRate: number; rateSpread?: number } {
   const bank = state.mix.bank;
-  if (bank) {
-    const exact = state.rateDefaults[`${bank}|${amortizationType ?? 'spitzer'}|${type}`];
-    if (typeof exact === 'number') return exact;
-    const spitzer = state.rateDefaults[`${bank}|spitzer|${type}`];
-    if (typeof spitzer === 'number') return spitzer;
+  const anchor = anchorForTrack(type, state.marketRates, context);
+
+  const savedSpread = savedFor(state.rateSpreads, bank, type, amortizationType);
+  if (typeof savedSpread === 'number' && anchor) {
+    return { interestRate: roundRate(anchor.rate + savedSpread), rateSpread: savedSpread };
   }
-  return DEFAULT_INTEREST_RATES[type];
+
+  const savedRate = savedFor(state.rateDefaults, bank, type, amortizationType);
+  if (typeof savedRate === 'number') {
+    // ריבית סופית שהיועץ שמר נשמרת כפי שהיא; המרווח נגזר ממנה כדי שהיא תמשיך
+    // לזוז עם העוגן בהרצות הבאות.
+    return anchor
+      ? { interestRate: savedRate, rateSpread: roundRate(savedRate - anchor.rate) }
+      : { interestRate: savedRate };
+  }
+
+  const interestRate = marketDefaultRate(type, state.marketRates, context);
+  return anchor
+    ? { interestRate, rateSpread: roundRate(interestRate - anchor.rate) }
+    : { interestRate };
 }
 
 type Action =
@@ -84,7 +125,8 @@ type Action =
   | { type: 'clearOptimization' }
   | { type: 'toggleCompared'; id: string }
   | { type: 'setCompared'; ids: string[] }
-  | { type: 'setRateDefaults'; rates: Record<string, number> }
+  | { type: 'setRateDefaults'; rates: Record<string, number>; spreads?: Record<string, number> }
+  | { type: 'applyMarketRates'; snapshot: MarketRatesSnapshot }
   | { type: 'dismissNotice' };
 
 function touch(mix: WorkspaceMix): WorkspaceMix {
@@ -148,7 +190,10 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
             ...merged,
             tracks: merged.tracks.map((track) => ({
               ...track,
-              interestRate: defaultRateFor(withBank, track.type, track.amortizationType),
+              ...defaultRateFor(withBank, track.type, track.amortizationType, {
+                variablePeriod: track.variablePeriod,
+                years: track.years,
+              }),
             })),
           },
           blockedNotice: null,
@@ -187,7 +232,7 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
             type,
             amount: remaining || carve || 100_000,
             years,
-            interestRate: defaultRateFor(state, type),
+            ...defaultRateFor(state, type, 'spitzer', { years }),
           }),
         ],
       });
@@ -212,24 +257,57 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
           action.patch.interestRate === undefined &&
           !action.patch.type
         ) {
-          next.interestRate = defaultRateFor(state, next.type, action.patch.amortizationType);
+          Object.assign(
+            next,
+            defaultRateFor(state, next.type, action.patch.amortizationType, {
+              variablePeriod: next.variablePeriod,
+              years: next.years,
+            })
+          );
         }
         // החלפת סוג מסלול מביאה איתה את ריבית ברירת המחדל ואת השדות הרלוונטיים.
         if (action.patch.type && action.patch.type !== t.type) {
+          next.variablePeriod = action.patch.type.includes('variable')
+            ? (action.patch.variablePeriod ?? t.variablePeriod ?? 5)
+            : undefined;
+          // בחירת מסלול מביאה איתה את העוגן העדכני של אותו סוג ריבית, ועליו
+          // המרווח — ולא ערך ריבית שנכתב בקוד.
           if (action.patch.interestRate === undefined) {
-            next.interestRate = defaultRateFor(
-              state,
-              action.patch.type,
-              next.amortizationType
+            Object.assign(
+              next,
+              defaultRateFor(state, action.patch.type, next.amortizationType, {
+                variablePeriod: next.variablePeriod,
+                years: next.years,
+              })
             );
           }
-          next.variablePeriod = action.patch.type.includes('variable')
-            ? (t.variablePeriod ?? 5)
-            : undefined;
           if (action.patch.type === 'dollar') next.currency = 'USD';
           else if (action.patch.type === 'euro') next.currency = 'EUR';
           else next.currency = undefined;
         }
+
+        /**
+         * תחנת השינוי והתקופה הן שקובעות לאיזה טווח בעקום האפס העוגן מתייחס:
+         * מל"צ שמשתנה כל שנתיים מתומחר מול העקום לשנתיים, וכל 5 שנים מול העקום
+         * לחמש. לכן שינוי שלהן מזיז את העוגן, והריבית הסופית נגזרת מחדש כדי
+         * שהיא תישאר עוגן + מרווח ולא תישאר על ערך של תחנה אחרת.
+         */
+        const anchorMoved =
+          (action.patch.variablePeriod !== undefined &&
+            action.patch.variablePeriod !== t.variablePeriod) ||
+          (action.patch.years !== undefined && action.patch.years !== t.years);
+        if (anchorMoved && action.patch.interestRate === undefined) {
+          const spread = next.rateSpread;
+          const anchor =
+            typeof spread === 'number' && Number.isFinite(spread)
+              ? anchorForTrack(next.type, state.marketRates, {
+                  variablePeriod: next.variablePeriod,
+                  years: next.years,
+                })
+              : null;
+          if (anchor) next.interestRate = roundRate(anchor.rate + spread!);
+        }
+
         return next;
       });
       return withMix(state, { ...state.mix, tracks });
@@ -344,7 +422,19 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
       return { ...state, comparedIds: action.ids };
 
     case 'setRateDefaults':
-      return { ...state, rateDefaults: action.rates };
+      return { ...state, rateDefaults: action.rates, rateSpreads: action.spreads ?? {} };
+
+    /**
+     * הנתונים שנמשכו מבנק ישראל נכנסים לתמהיל: העקומים להנחות, והעוגן החי
+     * לכל מסלול שיש עליו מרווח. עדכון כזה לעולם אינו נחסם בגלל תקרת ההחזר —
+     * הוא משקף את המציאות בשוק, לא שינוי שהיועץ ביקש.
+     */
+    case 'applyMarketRates':
+      return {
+        ...state,
+        marketRates: action.snapshot,
+        mix: touch(applyMarketRates(state.mix, action.snapshot)),
+      };
 
     default:
       return state;
@@ -365,6 +455,8 @@ export function createInitialWorkspaceState(initialMix?: WorkspaceMix): Workspac
     lastOptimization: null,
     blockedNotice: null,
     rateDefaults: {},
+    rateSpreads: {},
+    marketRates: fallbackMarketRates(),
   };
 }
 
@@ -402,7 +494,9 @@ export interface MortgageWorkspace {
     setCompared: (ids: string[]) => void;
     dismissNotice: () => void;
     /** ריביות ברירת המחדל של היועץ, כפי שנשמרו בהגדרות שלו */
-    setRateDefaults: (rates: Record<string, number>) => void;
+    setRateDefaults: (rates: Record<string, number>, spreads?: Record<string, number>) => void;
+    /** הריביות והעקומים שנמשכו מבנק ישראל — מתגלגלים לכל המסלולים */
+    applyMarketRates: (snapshot: MarketRatesSnapshot) => void;
   };
 }
 
@@ -454,7 +548,8 @@ export function useMortgageWorkspace(initialMix?: WorkspaceMix): MortgageWorkspa
     clearOptimization: () => dispatch({ type: 'clearOptimization' }),
     toggleCompared: (id) => dispatch({ type: 'toggleCompared', id }),
     setCompared: (ids) => dispatch({ type: 'setCompared', ids }),
-    setRateDefaults: (rates) => dispatch({ type: 'setRateDefaults', rates }),
+    setRateDefaults: (rates, spreads) => dispatch({ type: 'setRateDefaults', rates, spreads }),
+    applyMarketRates: (snapshot) => dispatch({ type: 'applyMarketRates', snapshot }),
     dismissNotice: () => dispatch({ type: 'dismissNotice' }),
   }), [state.mix, state.constraints]);
 

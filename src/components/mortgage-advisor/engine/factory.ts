@@ -83,6 +83,10 @@ export function createTrack(overrides: Partial<MortgageTrack> = {}): MortgageTra
     amount: finiteNumber(overrides.amount, 0),
     percentage: finiteNumber(overrides.percentage, 0),
     interestRate: finiteNumber(overrides.interestRate, DEFAULT_INTEREST_RATES[type]),
+    rateSpread:
+      typeof overrides.rateSpread === 'number' && Number.isFinite(overrides.rateSpread)
+        ? overrides.rateSpread
+        : undefined,
     years: finiteNumber(overrides.years, 25),
     amortizationType: AMORTIZATION_TYPES[overrides.amortizationType ?? 'spitzer']
       ? overrides.amortizationType ?? 'spitzer'

@@ -397,6 +397,8 @@ export function useAdvisorSettings(enabled = true) {
         amortizationType: string;
         trackType: string;
         rate: number | null;
+        /** המרווח מעל העוגן; null שומר רק את הריבית הסופית */
+        spread?: number | null;
       }>
     ): Promise<string | null> => {
       try {

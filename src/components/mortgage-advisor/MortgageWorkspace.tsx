@@ -29,7 +29,7 @@ import { useAdvisorSettings } from '@/components/advisor/useAdvisorCrm';
 import { rateKey } from '@/lib/advisor-crm';
 import type { SaveTarget } from './savedMixes';
 import type { MixEvent, OptimizationConstraints, WorkspaceMix } from './engine';
-import { cloneWorkspaceMix } from './engine';
+import { applyMarketRates, cloneWorkspaceMix } from './engine';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
@@ -53,9 +53,7 @@ import { consumeLegacyAdvisorMixes } from './workspace/legacy';
 import { clearDraft, consumeStagedMix, readDraft, writeDraft } from './workspace/draft';
 import type { WorkspaceDraft } from './workspace/draft';
 import type { ComparisonEntry } from './MixComparison';
-import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
-import { fallbackInflationForecast } from '@/lib/inflation-forecast';
-import type { InflationForecast } from '@/lib/inflation-forecast';
+import { useMarketRates } from '@/hooks/use-market-rates';
 
 type Phase = 'landing' | 'setup' | 'ready';
 
@@ -115,20 +113,6 @@ function signatureOf(mix: WorkspaceMix): string {
   return JSON.stringify(rest);
 }
 
-function inflationFromPayload(data: unknown): InflationForecast | null {
-  if (!data || typeof data !== 'object') return null;
-  const payload = data as {
-    asOf?: unknown;
-    source?: unknown;
-    spots?: unknown;
-  };
-  if (!Array.isArray(payload.spots) || payload.spots.length < 2) return null;
-  return {
-    asOf: typeof payload.asOf === 'string' ? payload.asOf : '',
-    source: payload.source === 'boi' ? 'boi' : 'fallback',
-    spots: payload.spots,
-  };
-}
 
 /**
  * מסך העבודה של יועץ המשכנתאות. הכלי נפתח ריק ומציע ליצור תמהיל חדש או לטעון
@@ -188,10 +172,13 @@ export function MortgageWorkspace({
   useEffect(() => {
     if (!isAdvisor) return;
     const map: Record<string, number> = {};
+    const spreads: Record<string, number> = {};
     advisorSettings.settings.rates.forEach((item) => {
-      map[rateKey(item.bank, item.amortizationType, item.trackType)] = item.rate;
+      const key = rateKey(item.bank, item.amortizationType, item.trackType);
+      map[key] = item.rate;
+      if (typeof item.spread === 'number' && Number.isFinite(item.spread)) spreads[key] = item.spread;
     });
-    actions.setRateDefaults(map);
+    actions.setRateDefaults(map, spreads);
   }, [isAdvisor, advisorSettings.settings.rates, actions]);
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -211,44 +198,18 @@ export function MortgageWorkspace({
   const [showRisk, setShowRisk] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
 
-  /** העקום האחרון שנטען — נשמר בנפרד כדי שלא ייעלם כשמחליפים תמהיל */
-  const primeForecastRef = useRef(mix.assumptions.primeForecast);
-  const inflationForecastRef = useRef(mix.assumptions.inflationForecast);
-
+  /**
+   * הריביות והעקומים של בנק ישראל נמשכים בכל טעינה של הכלי ומתגלגלים לתמהיל:
+   * העקומים נכנסים להנחות, והעוגן החי מעדכן את הריבית של כל מסלול שיש עליו
+   * מרווח. כך ההחזרים, סך הריבית ולוח ההחזרים תמיד לפי המצב העדכני בשוק.
+   */
+  const { snapshot: marketRates } = useMarketRates();
   useEffect(() => {
-    let cancelled = false;
-    fetch('/api/boi/prime-curve')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        const forecast =
-          !data?.spots || !Array.isArray(data.spots) || data.spots.length < 2
-            ? fallbackPrimeForecast()
-            : {
-                asOf: typeof data.asOf === 'string' ? data.asOf : '',
-                source: (data.source === 'boi' ? 'boi' : 'fallback') as 'boi' | 'fallback',
-                boiRate: Number(data.boiRate) || 3.5,
-                spots: data.spots,
-              };
-        primeForecastRef.current = forecast;
-        const inflation = inflationFromPayload(data?.inflation) ?? fallbackInflationForecast();
-        inflationForecastRef.current = inflation;
-        actions.setMarketForecasts(forecast, inflation);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        const forecast = fallbackPrimeForecast();
-        const inflation = fallbackInflationForecast();
-        primeForecastRef.current = forecast;
-        inflationForecastRef.current = inflation;
-        actions.setMarketForecasts(forecast, inflation);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // נטען פעם אחת בפתיחת הכלי. dispatch יציב, אין צורך לתלות ב-actions.
+    actions.applyMarketRates(marketRates);
+    // dispatch יציב; התלות היחידה שמעניינת היא התצלום עצמו
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [marketRates]);
+
   /** התמהיל שבניתוח נפתח סגור, כמו כל שאר התמהילים ברשימה */
   const [editorExpanded, setEditorExpanded] = useState(false);
 
@@ -274,17 +235,9 @@ export function MortgageWorkspace({
 
   const openMix = useCallback(
     (next: WorkspaceMix, constraints?: OptimizationConstraints) => {
-      const forecast = primeForecastRef.current;
-      const inflation = inflationForecastRef.current;
-      const withCurve = {
-        ...next,
-        assumptions: {
-          ...next.assumptions,
-          ...(forecast ? { primeForecast: forecast } : {}),
-          ...(inflation ? { inflationForecast: inflation } : {}),
-        },
-      };
-      const withCap = withProfileCap(withCurve);
+      // כל תמהיל שנפתח מתומחר מחדש לפי הנתונים שנמשכו מבנק ישראל, גם אם נשמר
+      // לפני חודשים עם ריביות אחרות.
+      const withCap = withProfileCap(applyMarketRates(next, marketRates));
       // תקרת ההחזר שנקבעה ללקוח היא גם התקרה שהאופטימיזציה עובדת מולה
       actions.load(
         withCap,
@@ -297,7 +250,7 @@ export function MortgageWorkspace({
       setSelectedMonth(null);
       setPhase('ready');
     },
-    [actions, withProfileCap]
+    [actions, withProfileCap, marketRates]
   );
 
   // תמהילים שהגיעו משלב אחר: פתיחת תמהיל שמור מהאזור האישי, או הסלים האחידים
@@ -783,8 +736,8 @@ export function MortgageWorkspace({
             onBack={backToLanding}
             initialProperty={setupSeed}
             skipPropertyStep={skipPropertySetup}
-            primeForecast={mix.assumptions.primeForecast ?? primeForecastRef.current}
-            inflationForecast={mix.assumptions.inflationForecast ?? inflationForecastRef.current}
+            primeForecast={mix.assumptions.primeForecast ?? marketRates.primeForecast}
+            inflationForecast={mix.assumptions.inflationForecast ?? marketRates.inflationForecast}
             existingMixes={saved}
             onComplete={(created) => {
               persistMix(created);

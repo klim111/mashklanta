@@ -27,7 +27,6 @@ import {
 import {
   AMORTIZATION_TYPES,
   DEAL_TYPES,
-  DEFAULT_INTEREST_RATES,
   MAX_LTV_PERCENT,
   MIN_FIXED_PERCENT,
   isFixedTrackType,
@@ -60,7 +59,7 @@ import {
 import { MaxPaymentDialog } from './MaxPaymentDialog';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { AmountAndPercent, TermMonthsSlider, formatShekel, trackColor } from './primitives';
-import { PrimeForwardChart, VariableForwardChart, previewPrimeForwardPoints, previewVariableForwardPoints, CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { VariableForwardChart, previewVariableForwardPoints, CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
 import { InflationForecastChart } from './InflationForecastChart';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
 import { fallbackPrimeForecast } from '@/lib/prime-forward-curve';
@@ -68,6 +67,10 @@ import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import { fallbackInflationForecast } from '@/lib/inflation-forecast';
 import type { InflationForecast } from '@/lib/inflation-forecast';
 import { isIndexLinked } from '../scenarioCalculations';
+import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
+import { useMarketRates } from '@/hooks/use-market-rates';
+import { anchorForTrack, defaultRateFor, roundRate } from '@/lib/rate-anchors';
+import type { MarketRatesSnapshot } from '@/lib/market-rates';
 
 /** מתחת לשקל אחד נחשב "כוסה במלואו" — שאריות עיגול לא אמורות לחסום את המשך התהליך. */
 const COVERED_EPSILON = 1;
@@ -107,20 +110,32 @@ interface TrackForm {
   amortizationType: NonNullable<MortgageTrack['amortizationType']>;
   interestRate: number;
   variablePeriod: number;
+  /** המרווח מעל העוגן; הריבית הסופית היא העוגן ועוד המרווח */
+  rateSpread?: number;
   /** ריבית שהיועץ הזין ידנית לא תידרס בהחלפת סוג המסלול */
   rateTouched: boolean;
   /** כל עוד הסכום לא נגזר ידנית הוא עוקב אחרי היתרה שנותרה למימון */
   amountTouched: boolean;
 }
 
-function emptyForm(type: TrackType = 'fixed_unlinked'): TrackForm {
+/**
+ * מסלול חדש נפתח עם העוגן העדכני של בנק ישראל ועם המרווח המקובל לאותו סוג
+ * ריבית, ולא עם ערך שנכתב בקוד.
+ */
+function emptyForm(snapshot: MarketRatesSnapshot, type: TrackType = 'fixed_unlinked'): TrackForm {
+  const years = 25;
+  const variablePeriod = 5;
+  const context = { years, variablePeriod };
+  const interestRate = defaultRateFor(type, snapshot, context);
+  const anchor = anchorForTrack(type, snapshot, context);
   return {
     type,
     amount: 0,
-    years: 25,
+    years,
     amortizationType: 'spitzer',
-    interestRate: DEFAULT_INTEREST_RATES[type],
-    variablePeriod: 5,
+    interestRate,
+    rateSpread: anchor ? roundRate(interestRate - anchor.rate) : undefined,
+    variablePeriod,
     rateTouched: false,
     amountTouched: false,
   };
@@ -185,7 +200,18 @@ export function MixSetupWizard({
   }, [initialProperty?.maxMonthlyPayment]);
 
   const [tracks, setTracks] = useState<MortgageTrack[]>([]);
-  const [form, setForm] = useState<TrackForm>(() => emptyForm());
+  const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
+  const [form, setForm] = useState<TrackForm>(() => emptyForm(marketRates));
+
+  /** העוגן של המסלול שנערך כרגע, לפי סוגו ותקופת השינוי שלו */
+  const formAnchor = useMemo(
+    () =>
+      anchorForTrack(form.type, marketRates, {
+        years: form.years,
+        variablePeriod: form.variablePeriod,
+      }),
+    [form.type, form.years, form.variablePeriod, marketRates]
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
@@ -241,12 +267,6 @@ export function MixSetupWizard({
 
   const monthlyPayment = useMemo(() => paymentOf(tracks), [tracks, totalAmount, forecast, cpiForecast]);
 
-  const primePreviewPoints = useMemo(
-    () =>
-      form.type === 'prime' ? previewPrimeForwardPoints(form.interestRate, form.years, forecast) : [],
-    [form.type, form.interestRate, form.years, forecast]
-  );
-
   const variablePreviewPoints = useMemo(
     () =>
       form.type === 'variable_unlinked'
@@ -264,9 +284,18 @@ export function MixSetupWizard({
 
   const changeType = (type: TrackType) => {
     setNotice(null);
+    if (form.rateTouched) {
+      patchForm({ type });
+      return;
+    }
+    // בחירת סוג מסלול מושכת מיד את העוגן המתאים לו ואת המרווח שמעליו
+    const context = { years: form.years, variablePeriod: form.variablePeriod };
+    const interestRate = defaultRateFor(type, marketRates, context);
+    const anchor = anchorForTrack(type, marketRates, context);
     patchForm({
       type,
-      interestRate: form.rateTouched ? form.interestRate : DEFAULT_INTEREST_RATES[type],
+      interestRate,
+      rateSpread: anchor ? roundRate(interestRate - anchor.rate) : undefined,
     });
   };
 
@@ -288,7 +317,7 @@ export function MixSetupWizard({
     patchProperty({ totalAmount: value, ...(dealType ? { dealType } : {}) });
     if (tracks.length > 0 && Math.round(value) !== Math.round(totalAmount)) {
       setTracks([]);
-      setForm(emptyForm());
+      setForm(emptyForm(marketRates));
       setEditingId(null);
       setNotice(null);
     }
@@ -322,6 +351,7 @@ export function MixSetupWizard({
       years: form.years,
       amortizationType: form.amortizationType,
       interestRate: form.interestRate,
+      rateSpread: form.rateSpread,
       variablePeriod: form.type.includes('variable') ? form.variablePeriod : undefined,
     });
     const candidate = editingId
@@ -347,7 +377,7 @@ export function MixSetupWizard({
       () => setJustSavedId((current) => (current === nextTrack.id ? null : current)),
       1400
     );
-    setForm(emptyForm(form.type === 'fixed_unlinked' ? 'prime' : 'fixed_unlinked'));
+    setForm(emptyForm(marketRates, form.type === 'fixed_unlinked' ? 'prime' : 'fixed_unlinked'));
   };
 
   const beginEdit = (track: MortgageTrack) => {
@@ -359,6 +389,7 @@ export function MixSetupWizard({
       years: track.years,
       amortizationType: track.amortizationType || 'spitzer',
       interestRate: track.interestRate,
+      rateSpread: track.rateSpread,
       variablePeriod: track.variablePeriod ?? 5,
       rateTouched: true,
       amountTouched: true,
@@ -368,14 +399,14 @@ export function MixSetupWizard({
   const cancelEdit = () => {
     setNotice(null);
     setEditingId(null);
-    setForm(emptyForm(form.type === 'fixed_unlinked' ? 'prime' : 'fixed_unlinked'));
+    setForm(emptyForm(marketRates, form.type === 'fixed_unlinked' ? 'prime' : 'fixed_unlinked'));
   };
 
   const removeTrack = (id: string) => {
     setNotice(null);
     if (editingId === id) {
       setEditingId(null);
-      setForm(emptyForm());
+      setForm(emptyForm(marketRates));
     }
     setTracks((prev) => prev.filter((t) => t.id !== id));
   };
@@ -865,16 +896,15 @@ export function MixSetupWizard({
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">ריבית שנתית (%)</Label>
-                      <NumericInput
-                        className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                        value={form.interestRate}
-                        onChange={(interestRate) =>
-                          patchForm({
-                            interestRate: interestRate ?? 0,
-                            rateTouched: true,
-                          })
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-xs">ריבית שנתית</Label>
+                      <AnchorSpreadRate
+                        anchor={formAnchor}
+                        spread={form.rateSpread ?? null}
+                        rate={form.interestRate}
+                        onRefreshAnchor={refreshMarketRates}
+                        onChange={({ rate, spread }) =>
+                          patchForm({ interestRate: rate, rateSpread: spread, rateTouched: true })
                         }
                       />
                     </div>
@@ -895,16 +925,6 @@ export function MixSetupWizard({
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                    )}
-
-                    {form.type === 'prime' && primePreviewPoints.length >= 2 && (
-                      <div className="sm:col-span-2">
-                        <PrimeForwardChart
-                          previewPoints={primePreviewPoints}
-                          quotedRate={form.interestRate}
-                          height={180}
-                        />
                       </div>
                     )}
 

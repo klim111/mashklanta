@@ -7,7 +7,10 @@ import { Label } from '@/components/ui/label';
 import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarClock, Coins, RefreshCcw, TrendingDown } from 'lucide-react';
-import { AMORTIZATION_TYPES, DEFAULT_INTEREST_RATES, TRACK_TYPES } from '../types';
+import { AMORTIZATION_TYPES, TRACK_TYPES } from '../types';
+import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
+import { useMarketRates } from '@/hooks/use-market-rates';
+import { anchorForTrack, defaultRateFor, roundRate } from '@/lib/rate-anchors';
 import type { MortgageTrack } from '../types';
 import { computeMix, formatDuration, formatFullDate } from '../engine';
 import type { MixResult, RefinanceEvent, WorkspaceMix } from '../engine';
@@ -34,8 +37,13 @@ export function RefinanceDialog({
   const [trackId, setTrackId] = useState(initialTrackId ?? mix.tracks[0]?.id ?? '');
   const [month, setMonth] = useState(37);
   const [newType, setNewType] = useState<MortgageTrack['type']>('fixed_unlinked');
-  const [newRate, setNewRate] = useState(DEFAULT_INTEREST_RATES.fixed_unlinked);
+  // הריבית במחזור נפתחת על העוגן העדכני של בנק ישראל ועוד המרווח המקובל
+  const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
   const [newYears, setNewYears] = useState(20);
+  const [newRate, setNewRate] = useState(() =>
+    defaultRateFor('fixed_unlinked', marketRates, { years: 20 })
+  );
+  const [newSpread, setNewSpread] = useState<number | null>(null);
   const [newAmortization, setNewAmortization] = useState<NonNullable<MortgageTrack['amortizationType']>>('spitzer');
   const [fee, setFee] = useState(0);
 
@@ -149,8 +157,12 @@ export function RefinanceDialog({
                 value={newType}
                 onValueChange={(value) => {
                   const type = value as MortgageTrack['type'];
+                  const context = { years: newYears };
+                  const rate = defaultRateFor(type, marketRates, context);
+                  const anchor = anchorForTrack(type, marketRates, context);
                   setNewType(type);
-                  setNewRate(DEFAULT_INTEREST_RATES[type]);
+                  setNewRate(rate);
+                  setNewSpread(anchor ? roundRate(rate - anchor.rate) : null);
                 }}
               >
                 <SelectTrigger className="h-9 text-xs">
@@ -182,18 +194,21 @@ export function RefinanceDialog({
           </div>
 
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                  <Coins className="h-3.5 w-3.5 text-amber-600" />
-                  ריבית חדשה
-                </span>
-                <span className="text-sm font-bold text-slate-800">%</span>
-              </div>
-              <NumericInput
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                value={newRate}
-                onChange={(value) => setNewRate(value ?? 0)}
+            <div className="space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                <Coins className="h-3.5 w-3.5 text-amber-600" />
+                ריבית חדשה
+              </span>
+              <AnchorSpreadRate
+                anchor={anchorForTrack(newType, marketRates, { years: newYears })}
+                spread={newSpread}
+                rate={newRate}
+                rateLabel="ריבית חדשה"
+                onRefreshAnchor={refreshMarketRates}
+                onChange={({ rate, spread }) => {
+                  setNewRate(rate);
+                  setNewSpread(spread ?? null);
+                }}
               />
             </div>
             <TermMonthsSlider

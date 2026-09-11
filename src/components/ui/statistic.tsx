@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -9,21 +9,10 @@ import {
   Radio,
   TrendingUp,
 } from "lucide-react";
-import {
-  INTEREST_RATES,
-  INTEREST_RATES_LIST,
-  INTEREST_RATES_METADATA,
-} from "@/lib/interest-rates";
-import {
-  fallbackPrimeForecast,
-  type PrimeForecast,
-} from "@/lib/prime-forward-curve";
-import {
-  fallbackInflationForecast,
-  expectedInflationPath,
-  inflationRateAtMonth,
-  type InflationForecast,
-} from "@/lib/inflation-forecast";
+import { INTEREST_RATES_METADATA } from "@/lib/interest-rates";
+import { expectedInflationPath, inflationRateAtMonth } from "@/lib/inflation-forecast";
+import { liveRatesList } from "@/lib/rate-anchors";
+import { useMarketRates } from "@/hooks/use-market-rates";
 import {
   PrimeForwardChart,
   VariableForwardChart,
@@ -63,40 +52,6 @@ const SHORT_RATE_LABELS: Record<string, string> = {
   euro: "יורו",
 };
 
-function forecastFromPayload(data: unknown): PrimeForecast | null {
-  if (!data || typeof data !== "object") return null;
-  const payload = data as {
-    asOf?: unknown;
-    source?: unknown;
-    boiRate?: unknown;
-    spots?: unknown;
-  };
-  if (!Array.isArray(payload.spots) || payload.spots.length < 2) return null;
-  return {
-    asOf: typeof payload.asOf === "string" ? payload.asOf : "",
-    source: payload.source === "boi" ? "boi" : "fallback",
-    boiRate: Number(payload.boiRate) || 3.5,
-    spots: payload.spots,
-  };
-}
-
-function inflationFromPayload(data: unknown): InflationForecast | null {
-  if (!data || typeof data !== "object") return null;
-  const inflation = (data as { inflation?: unknown }).inflation;
-  if (!inflation || typeof inflation !== "object") return null;
-  const payload = inflation as {
-    asOf?: unknown;
-    source?: unknown;
-    spots?: unknown;
-  };
-  if (!Array.isArray(payload.spots) || payload.spots.length < 2) return null;
-  return {
-    asOf: typeof payload.asOf === "string" ? payload.asOf : "",
-    source: payload.source === "boi" ? "boi" : "fallback",
-    spots: payload.spots,
-  };
-}
-
 function formatPct(value: number, digits = 2) {
   return `${value.toFixed(digits)}%`;
 }
@@ -107,47 +62,27 @@ function formatDate(value: string) {
 }
 
 export default function Statistic() {
-  const [primeForecast, setPrimeForecast] = useState<PrimeForecast>(() =>
-    fallbackPrimeForecast(INTEREST_RATES.prime - 1.5)
-  );
-  const [inflationForecast, setInflationForecast] = useState<InflationForecast>(
-    () => fallbackInflationForecast()
-  );
-  const [live, setLive] = useState(false);
+  // מקור אחד לכל הריביות: מה שנמשך עכשיו מבנק ישראל
+  const { snapshot, live, status } = useMarketRates();
+  const primeForecast = snapshot.primeForecast;
+  const inflationForecast = snapshot.inflationForecast;
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/boi/prime-curve")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        setPrimeForecast(
-          forecastFromPayload(data) ?? fallbackPrimeForecast(INTEREST_RATES.prime - 1.5)
-        );
-        setInflationForecast(inflationFromPayload(data) ?? fallbackInflationForecast());
-        setLive(true);
-      })
-      .catch(() => {
-        if (!cancelled) setLive(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const rates = useMemo(() => liveRatesList(snapshot), [snapshot]);
+  const rateByKey = useMemo(
+    () => new Map(rates.map((item) => [item.key, item.rate])),
+    [rates]
+  );
+  const primeRate = snapshot.primeRate;
+  const variableUnlinked5y = rateByKey.get("variable_unlinked_5y") ?? primeRate;
+  const fixedUnlinked = rateByKey.get("fixed_unlinked") ?? primeRate;
 
   const primePoints = useMemo(
-    () => previewPrimeForwardPoints(INTEREST_RATES.prime, FORECAST_YEARS, primeForecast),
-    [primeForecast]
+    () => previewPrimeForwardPoints(primeRate, FORECAST_YEARS, primeForecast),
+    [primeRate, primeForecast]
   );
   const variablePoints = useMemo(
-    () =>
-      previewVariableForwardPoints(
-        INTEREST_RATES.variable_unlinked_5y,
-        FORECAST_YEARS,
-        5,
-        primeForecast
-      ),
-    [primeForecast]
+    () => previewVariableForwardPoints(variableUnlinked5y, FORECAST_YEARS, 5, primeForecast),
+    [variableUnlinked5y, primeForecast]
   );
 
   const yearOneInflation = inflationRateAtMonth(
@@ -158,15 +93,17 @@ export default function Statistic() {
   const kpis = [
     {
       label: "ריבית פריים",
-      value: INTEREST_RATES.prime,
-      hint: "ברירת מחדל במסלול",
+      value: primeRate,
+      hint: live
+        ? `בנק ישראל ${formatPct(snapshot.boiRate)} + 1.5% · ${formatDate(snapshot.boiRateAsOf)}`
+        : "נתוני נפילה — לא נמשך מבנק ישראל",
       icon: TrendingUp,
       tone: "from-orange-500 to-amber-600",
     },
     {
       label: "ריבית בנק ישראל",
-      value: primeForecast.boiRate,
-      hint: live ? `עודכן ${formatDate(primeForecast.asOf)}` : "נתוני נפילה",
+      value: snapshot.boiRate,
+      hint: live ? `עודכן ${formatDate(snapshot.boiRateAsOf)}` : "נתוני נפילה",
       icon: Landmark,
       tone: "from-blue-500 to-indigo-600",
     },
@@ -179,7 +116,7 @@ export default function Statistic() {
     },
     {
       label: 'קל"צ',
-      value: INTEREST_RATES.fixed_unlinked,
+      value: fixedUnlinked,
       hint: "קבועה לא צמודה",
       icon: Activity,
       tone: "from-cyan-500 to-blue-600",
@@ -218,7 +155,7 @@ export default function Statistic() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
             </span>
-            {live ? "נתוני שוק חיים" : "נתוני שוק"}
+            {live ? "נתוני שוק חיים" : status === "loading" ? "טוען נתוני שוק" : "נתוני שוק"}
             <Radio className="h-4 w-4 text-cyan-200" />
           </div>
           <h2 className="mb-4 text-4xl font-black text-white md:text-5xl">
@@ -266,7 +203,7 @@ export default function Statistic() {
           >
             <PrimeForwardChart
               previewPoints={primePoints}
-              quotedRate={INTEREST_RATES.prime}
+              quotedRate={primeRate}
               height={240}
             />
           </motion.div>
@@ -289,7 +226,7 @@ export default function Statistic() {
         >
           <VariableForwardChart
             previewPoints={variablePoints}
-            quotedRate={INTEREST_RATES.variable_unlinked_5y}
+            quotedRate={variableUnlinked5y}
             height={220}
           />
         </motion.div>
@@ -303,13 +240,16 @@ export default function Statistic() {
             <div>
               <h3 className="text-2xl font-black text-white">מדד ריביות עדכניות</h3>
               <p className="mt-1 text-sm text-slate-300">
-                הריביות שמוזנות כברירת מחדל בבניית התמהיל · עודכן{" "}
-                {INTEREST_RATES_METADATA.lastUpdated}
+                הריביות שמוזנות כברירת מחדל בבניית התמהיל — עוגן מבנק ישראל בתוספת המרווח
+                הבנקאי המקובל ·{" "}
+                {live
+                  ? `נמשך מבנק ישראל ${formatDate(snapshot.boiRateAsOf)}`
+                  : `נתוני נפילה · ${INTEREST_RATES_METADATA.lastUpdated}`}
               </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {INTEREST_RATES_LIST.map((item, index) => (
+            {rates.map((item, index) => (
               <motion.div
                 key={item.key}
                 initial={{ opacity: 0, scale: 0.96 }}
@@ -331,6 +271,11 @@ export default function Statistic() {
                 <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-400">
                   {item.label}
                 </p>
+                {item.anchor !== null && item.spread !== null && (
+                  <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                    עוגן {formatPct(item.anchor)} + מרווח {formatPct(item.spread)}
+                  </p>
+                )}
               </motion.div>
             ))}
           </div>

@@ -146,7 +146,13 @@ export interface AdvisorRateDefaultView {
   bank: string;
   amortizationType: string;
   trackType: string;
+  /** הריבית הסופית שהיועץ שמר */
   rate: number;
+  /**
+   * המרווח מעל העוגן, כשהיועץ הזין אותו. כשהוא קיים הוא מנצח את הריבית
+   * השמורה, כי הריבית הסופית נגזרת מהעוגן החי ועוד המרווח.
+   */
+  spread?: number | null;
 }
 
 export interface MixCategoryView {

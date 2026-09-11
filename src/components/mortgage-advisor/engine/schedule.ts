@@ -1,7 +1,7 @@
 import type { MortgageTrack } from '../types';
 import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 import { expectedInflationPath, inflationRateAtMonth } from '@/lib/inflation-forecast';
-import { expectedMarketPrimePath, isVariableRateStation, primeRateAtMonth, variableUnlinkedRateAtMonth } from '@/lib/prime-forward-curve';
+import { isVariableRateStation, variableUnlinkedRateAtMonth } from '@/lib/prime-forward-curve';
 import type {
   AmortizationType,
   Assumptions,
@@ -47,9 +47,14 @@ function repricesContinuously(type: TrackType): boolean {
 /**
  * הריבית השנתית של מסלול בחודש נתון.
  *
- * במסלול משתנה עם תחנת יציאה (מל"צ / מ"צ) הריבית מתעדכנת רק בתחנה עצמה, ולכן
- * שינוי הריבית בתרחיש נכנס לתוקף מהתחנה הראשונה והלאה ולא באופן מיידי.
- * במל"צ, כשיש עקום תשואות, כל תחנה מתומחרת לפי הפורוורד לאותה תקופה.
+ * פריים ומק"מ אינם מתומחרים לפי תחזית: ריבית הפריים שנמשכה מבנק ישראל תקפה
+ * מהיום ועד שבנק ישראל ישנה אותה, ואיש אינו יודע מתי זה יקרה. לכן כל התשלומים
+ * בלוח מחושבים לפי הריבית התקפה עכשיו, ומשתנים בכל הלוח ברגע שהערך שנמשך
+ * מבנק ישראל משתנה — ולא לפי צפי לאן הפריים "אמור" לזוז.
+ *
+ * במסלול משתנה עם תחנת יציאה (מל"צ / מ"צ) הריבית ידועה שהיא תתעדכן, ובמועד
+ * ידוע מראש, ולכן כל תחנה מתומחרת לפי הפורוורד לאותה תקופה מעקום האפס. שינוי
+ * ריבית בתרחיש נכנס לתוקף מהתחנה הראשונה והלאה ולא באופן מיידי.
  */
 export function rateForMonth(
   baseRate: number,
@@ -57,14 +62,9 @@ export function rateForMonth(
   variablePeriod: number | undefined,
   monthWithinTerm: number,
   assumptions: Assumptions,
-  primePath?: number[],
   calendarMonth?: number
 ): number {
   const lookupMonth = calendarMonth ?? monthWithinTerm;
-
-  if (type === 'prime' && primePath && primePath.length > 0) {
-    return primeRateAtMonth(baseRate, lookupMonth, primePath, assumptions.rateDeltas.prime ?? 0);
-  }
 
   if (type === 'variable_unlinked' && assumptions.primeForecast) {
     return variableUnlinkedRateAtMonth(
@@ -183,9 +183,6 @@ export function simulateTrack({
     ? expectedInflationPath(assumptions.inflationForecast!.spots)
     : undefined;
   const hardLimit = stopAtMonth && stopAtMonth > 0 ? stopAtMonth : 12 * 40 + 12;
-  const primePath = assumptions.primeForecast
-    ? expectedMarketPrimePath(assumptions.primeForecast.spots, assumptions.primeForecast.boiRate)
-    : undefined;
 
   for (let month = 1; month <= hardLimit && balance > 0.01 && remainingMonths > 0; month++) {
     const refinance = refinances.get(month);
@@ -231,7 +228,6 @@ export function simulateTrack({
       variablePeriod,
       monthWithinTerm,
       assumptions,
-      currentType === 'prime' ? primePath : undefined,
       month
     );
     if (Math.abs(annualRate - lastRate) > 1e-9) {

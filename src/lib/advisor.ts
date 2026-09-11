@@ -442,7 +442,7 @@ export async function listRateDefaults(advisorId: string): Promise<AdvisorRateDe
   const rows = await prisma.advisorRateDefault.findMany({
     where: { advisorId },
     orderBy: [{ bank: 'asc' }, { amortizationType: 'asc' }, { trackType: 'asc' }],
-    select: { bank: true, amortizationType: true, trackType: true, rate: true },
+    select: { bank: true, amortizationType: true, trackType: true, rate: true, spread: true },
   });
   return rows;
 }
@@ -453,7 +453,13 @@ export async function listRateDefaults(advisorId: string): Promise<AdvisorRateDe
  */
 export async function saveRateDefaults(
   advisorId: string,
-  entries: Array<{ bank: string; amortizationType: string; trackType: string; rate: number | null }>
+  entries: Array<{
+    bank: string;
+    amortizationType: string;
+    trackType: string;
+    rate: number | null;
+    spread?: number | null;
+  }>
 ): Promise<AdvisorRateDefaultView[]> {
   const removals = entries.filter((entry) => entry.rate === null);
   const upserts = entries.filter(
@@ -488,8 +494,9 @@ export async function saveRateDefaults(
           amortizationType: entry.amortizationType,
           trackType: entry.trackType,
           rate: entry.rate,
+          spread: entry.spread ?? null,
         },
-        update: { rate: entry.rate },
+        update: { rate: entry.rate, spread: entry.spread ?? null },
       })
     ),
   ]);

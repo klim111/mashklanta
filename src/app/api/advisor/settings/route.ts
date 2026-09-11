@@ -24,7 +24,14 @@ function readEntry(raw: unknown) {
     item.rate === null || item.rate === '' ? null : Number(item.rate);
   if (rate !== null && (!Number.isFinite(rate) || rate < 0 || rate > 25)) return null;
 
-  return { bank, amortizationType, trackType, rate };
+  // המרווח יכול להיות שלילי (בנק שמתמחר מתחת לעוגן), ולכן הטווח סימטרי
+  const spread =
+    item.spread === null || item.spread === undefined || item.spread === ''
+      ? null
+      : Number(item.spread);
+  if (spread !== null && (!Number.isFinite(spread) || spread < -10 || spread > 25)) return null;
+
+  return { bank, amortizationType, trackType, rate, spread };
 }
 
 /** ריביות ברירת המחדל והקטגוריות של היועץ */

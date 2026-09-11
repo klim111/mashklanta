@@ -34,9 +34,11 @@ import { autoTrackName, formatDuration } from '../engine';
 import type { TrackResult } from '../engine';
 import type { Assumptions } from '../engine';
 import { AmountAndPercent, SliderField, TermMonthsSlider, formatShekel, trackColor } from './primitives';
+import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
+import { useMarketRates } from '@/hooks/use-market-rates';
+import { trackRateBreakdown } from '../engine';
 import {
   CURRENT_RATE_PAYMENT_NOTE,
-  PrimeForwardChart,
   VariableForwardChart,
   usesForwardPricedRate,
 } from './PrimeForwardChart';
@@ -116,6 +118,14 @@ export function TrackEditor({
   const isGrace = track.amortizationType === 'partial_grace' || track.amortizationType === 'full_grace';
 
   const nameIsAuto = useMemo(() => track.name === autoTrackName(track), [track]);
+
+  // העוגן נגזר מהנתונים החיים של בנק ישראל ומתעדכן מיד כשמחליפים סוג מסלול,
+  // תקופה או תחנת שינוי — בלי שהיועץ צריך לבקש זאת.
+  const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
+  const rateBreakdown = useMemo(
+    () => trackRateBreakdown(track, marketRates),
+    [track, marketRates]
+  );
   const effectiveRate = result.schedule[0]?.annualRate ?? track.interestRate;
   const rateShifted = Math.abs(effectiveRate - track.interestRate) > 0.001;
 
@@ -363,12 +373,20 @@ export function TrackEditor({
                   <Coins className="h-3.5 w-3.5 text-amber-600" />
                   ריבית שנתית
                 </span>
-                <span className="text-sm font-bold text-slate-800">%</span>
               </div>
-              <NumericInput
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                value={track.interestRate}
-                onChange={(interestRate) => patchWithName({ interestRate: interestRate ?? 0 })}
+              {/*
+                הריבית מפורקת לעוגן שנמשך מבנק ישראל ולמרווח שמוזן ידנית.
+                שמירת המרווח על המסלול היא מה שמאפשר לריבית להתעדכן לבד בכל
+                פעם שבנק ישראל מפרסם נתון חדש.
+              */}
+              <AnchorSpreadRate
+                anchor={rateBreakdown.anchor}
+                spread={track.rateSpread ?? rateBreakdown.spread}
+                rate={track.interestRate}
+                onRefreshAnchor={refreshMarketRates}
+                onChange={({ rate, spread }) =>
+                  patchWithName({ interestRate: rate, rateSpread: spread })
+                }
               />
             </div>
 
@@ -408,9 +426,6 @@ export function TrackEditor({
             </div>
           </div>
 
-          {track.type === 'prime' && result.schedule.length > 1 && (
-            <PrimeForwardChart tracks={[result]} quotedRate={track.interestRate} height={180} />
-          )}
           {track.type === 'variable_unlinked' && result.schedule.length > 1 && (
             <VariableForwardChart tracks={[result]} quotedRate={track.interestRate} height={180} />
           )}
@@ -524,21 +539,24 @@ export function TrackEditor({
             </div>
           )}
 
-          {track.type === 'prime' &&
-            result.schedule.length > 12 &&
-            Math.abs(
-              result.schedule[0].annualRate -
-                result.schedule[Math.min(119, result.schedule.length - 1)].annualRate
-            ) > 0.02 && (
+          {track.type === 'prime' && (
             <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-200 p-2.5">
               <TrendingUp className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-orange-900 leading-relaxed">
-                ההחזרים וסך הריבית מחושבים לפי צפי הפריים שנגזר מעקום התשואות השקלי של בנק ישראל.
-                בכל תשלום הריבית היא הפורוורד לאותו חודש, עם המרווח שצוטט מהבנק. חודש ראשון:{' '}
-                {formatPercentage(result.schedule[0].annualRate)}, בעוד 10 שנים:{' '}
-                {formatPercentage(result.schedule[Math.min(119, result.schedule.length - 1)].annualRate)},
-                ובסוף התקופה:{' '}
-                {formatPercentage(result.schedule[result.schedule.length - 1].annualRate)}.
+                כל ההחזרים בלוח מחושבים לפי ריבית הפריים התקפה עכשיו —{' '}
+                {formatPercentage(track.interestRate)} — ולא לפי צפי לאן הפריים יזוז. ריבית הפריים
+                אינה מתעדכנת במועד קבוע, אבל היא עשויה להשתנות בכל החלטת ריבית של בנק ישראל, ואז כל
+                התשלומים העתידיים ישתנו בהתאם.
+                {rateBreakdown.anchor && (
+                  <>
+                    {' '}
+                    העוגן הוא {formatPercentage(rateBreakdown.anchor.rate)} ({rateBreakdown.anchor.label})
+                    {rateBreakdown.spread !== null && (
+                      <> והמרווח {formatPercentage(rateBreakdown.spread)}</>
+                    )}
+                    .
+                  </>
+                )}
               </p>
             </div>
           )}

@@ -18,6 +18,7 @@ import {
 } from '@/lib/mortgage-affordability';
 import { migrateMortgagePlanningUserData } from '@/lib/borrower-loans';
 import { INTEREST_RATES } from '@/lib/interest-rates';
+import { useMarketRates } from '@/hooks/use-market-rates';
 
 type UserData = MortgagePlanningUserData;
 
@@ -78,6 +79,11 @@ export default function UniformMixes() {
   const [isLoading, setIsLoading] = useState(true);
   // The slider-driven selection carried over from the results screen, if any.
   const [selection, setSelection] = useState<MortgagePlanningSelection | null>(null);
+  /**
+   * הריביות החיות של בנק ישראל. הסלים נבנים מהן, ולכן הם נבנים מחדש ברגע
+   * שהמשיכה חוזרת — אחרת הם היו נשארים על ערכי הנפילה שהיו זמינים ברגע הטעינה.
+   */
+  const { snapshot: marketRates } = useMarketRates();
 
   useEffect(() => {
     // Read the affordability-results slider selection (if the user clicked through from there).
@@ -108,7 +114,9 @@ export default function UniformMixes() {
       }
     }
     setIsLoading(false);
-  }, []);
+    // בנייה מחדש כשהריביות מתעדכנות; שאר התלויות יציבות לאורך חיי הדף
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketRates]);
 
   const generateUniformMixes = (
     data: UserData,

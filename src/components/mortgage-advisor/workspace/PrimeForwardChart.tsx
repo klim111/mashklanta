@@ -31,8 +31,15 @@ export interface PrimeForwardPoint {
 export const CURRENT_RATE_PAYMENT_NOTE =
   'ההחזר החודשי המוצג הוא לפי הריביות התקפות לרגע החישוב.';
 
+/**
+ * מסלולים שההחזרים שלהם מתומחרים לפי פורוורד ולא לפי הריבית של היום.
+ *
+ * פריים אינו כזה: מועד השינוי שלו לא ידוע, ולכן הוא מוצג לפי הריבית שנמשכה
+ * מבנק ישראל ותקפה עכשיו. מל"צ כן — מועדי התחנות שלו ידועים מראש, וכל תחנה
+ * מתומחרת לפי הפורוורד לאותה תקופה מעקום האפס.
+ */
 export function usesForwardPricedRate(type: TrackType): boolean {
-  return type === 'prime' || type === 'variable_unlinked';
+  return type === 'variable_unlinked';
 }
 
 export function yearlyPrimeRates(
@@ -119,10 +126,10 @@ const KIND_COPY: Record<
   { title: string; seriesName: string; description: string; border: string; bg: string; titleText: string; body: string }
 > = {
   prime: {
-    title: 'ריבית פורוורד — פריים',
+    title: 'ציפיות השוק לריבית הפריים',
     seriesName: 'פריים צפוי (פורוורד)',
     description:
-      'הריבית שלפיה מחושב כל החזר חודשי חזוי, לפי עקום התשואות השקלי של בנק ישראל והמרווח שצוטט מהבנק.',
+      'הפריים הגלום בעקום התשואות השקלי של בנק ישראל — מידע על ציפיות השוק בלבד. לוחות ההחזרים בפלטפורמה מחושבים לפי ריבית הפריים התקפה עכשיו, ולא לפי התחזית הזו.',
     border: 'border-orange-200',
     bg: 'bg-orange-50/40',
     titleText: 'text-orange-950',
