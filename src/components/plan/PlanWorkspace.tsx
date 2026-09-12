@@ -508,6 +508,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     data={plan.data}
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
+                    advisorRun={advisorRun}
                     onRequestAdvisor={() => setHandoffStage('AUCTION')}
                   />
                 )}

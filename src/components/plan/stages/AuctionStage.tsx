@@ -24,12 +24,18 @@ export function AuctionStage({
   onChange,
   planId,
   onRequestAdvisor,
+  advisorRun = false,
 }: {
   data: PlanData;
   onChange: (next: AuctionData) => void;
   planId: string;
   /** פתיחת מסך הזמנת הליווי — מנוהל ברמת התהליך, כי הוא נוגע לכל השלבים */
   onRequestAdvisor?: () => void;
+  /**
+   * הלקוח כבר שילם על ליווי בשלב הזה. אז אין מה לשאול אותו איך לעבור אותו —
+   * הוא בליווי, גם אם ההזמנה נעשתה מכפתור הליווי שבכותרת ולא ממסך הבחירה.
+   */
+  advisorRun?: boolean;
 }) {
   const value = data.AUCTION;
   const finalMixKey = data.MIX.mixKey;
@@ -77,7 +83,9 @@ export function AuctionStage({
     הבחירה נשאלת לפני כל טעינה של נתונים: היא אינה תלויה בתמהילים, והצגת
     ספינר לפניה רק מעכבת את השאלה היחידה שבאמת נשאלת כאן.
   */
-  if (!value.mode) {
+  const mode = advisorRun ? 'advisor' : value.mode;
+
+  if (!mode) {
     return (
       <AuctionModeChoice
         onChooseAdvisor={() => {
@@ -117,16 +125,19 @@ export function AuctionStage({
 
   return (
     <div className="space-y-5">
-      <ModeBanner mode={value.mode} onChange={() => onChange({ ...value, mode: null })} />
+      <ModeBanner
+        mode={mode}
+        onChange={advisorRun ? undefined : () => onChange({ ...value, mode: null })}
+      />
 
       <AuctionWorkspace
-        role={value.mode === 'advisor' ? 'advised' : 'self'}
+        role={mode === 'advisor' ? 'advised' : 'self'}
         finalMix={finalMix}
         savedMixes={saved}
         signedMixKey={signed?.mixKey ?? null}
         onSelectForSigning={onSelectForSigning}
-        onSavePriced={value.mode === 'self' ? onSavePriced : undefined}
-        onRemovePriced={value.mode === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
+        onSavePriced={mode === 'self' ? onSavePriced : undefined}
+        onRemovePriced={mode === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
       />
 
       {signed && (
@@ -166,7 +177,7 @@ export function AuctionStage({
 }
 
 /** באיזו דרך נבחר לעבור את השלב, עם אפשרות לחזור ולשנות */
-function ModeBanner({ mode, onChange }: { mode: AuctionMode; onChange: () => void }) {
+function ModeBanner({ mode, onChange }: { mode: AuctionMode; onChange?: () => void }) {
   return (
     <div
       className={`flex flex-wrap items-center justify-center gap-3 rounded-2xl border-2 px-4 py-2.5 text-center ${
@@ -178,14 +189,16 @@ function ModeBanner({ mode, onChange }: { mode: AuctionMode; onChange: () => voi
           ? 'היועץ מנהל עבורכם את מכרז הריביות'
           : 'אתם מנהלים את מכרז הריביות בעצמכם'}
       </span>
-      <button
-        type="button"
-        onClick={onChange}
-        className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
-      >
-        <Pencil className="h-3.5 w-3.5" />
-        שינוי הבחירה
-      </button>
+      {onChange && (
+        <button
+          type="button"
+          onClick={onChange}
+          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          שינוי הבחירה
+        </button>
+      )}
     </div>
   );
 }
