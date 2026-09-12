@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BookmarkCheck,
+  ChevronDown,
   Copy,
   GitCompareArrows,
   Layers,
@@ -121,6 +122,13 @@ export function MixList({
   /** התמהיל שעליו מזינים עכשיו את הריביות שהתקבלו מבנק */
   const [quoteEntryMix, setQuoteEntryMix] = useState<WorkspaceMix | null>(null);
 
+  /**
+   * רשימת שאר התמהילים של הנכס נפתחת לפי דרישה, מעל אזור העבודה, ונסגרת ברגע
+   * שנבחר תמהיל. קודם היא ישבה בתוך הזרימה בין פאנל השליטה לדאשבורד ודחפה את
+   * הדאשבורד אל מחוץ למסך — וזה בדיוק מה שהכלי הזה צריך שיישאר גלוי יחד.
+   */
+  const [othersOpen, setOthersOpen] = useState(false);
+
   const scope = address?.trim()
     ? `לנכס ב${address.trim()}`
     : `למשכנתא בסך ${formatShekel(activeResult.mix.totalAmount)}`;
@@ -135,7 +143,7 @@ export function MixList({
 
   return (
     <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-right">
           <CardTitle className="flex items-center justify-center gap-2 text-base sm:justify-start">
             <Layers className="h-4 w-4 text-blue-600" />
@@ -143,6 +151,20 @@ export function MixList({
             <span className="text-xs font-normal text-slate-500">{others.length + 1}</span>
           </CardTitle>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+            {others.length > 0 && (
+              <Button
+                size="sm"
+                variant={othersOpen ? 'default' : 'outline'}
+                className="h-10 w-full text-xs sm:h-8 sm:w-auto"
+                onClick={() => setOthersOpen((open) => !open)}
+              >
+                <Layers className="h-3.5 w-3.5 ml-1" />
+                {othersOpen ? 'סגור את רשימת התמהילים' : `טען תמהילים · ${others.length}`}
+                <ChevronDown
+                  className={`mr-1 h-3.5 w-3.5 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
+                />
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="h-10 w-full text-xs sm:h-8 sm:w-auto" onClick={onCreateForProperty}>
               <Plus className="h-3.5 w-3.5 ml-1" />
               תמהיל נוסף לנכס הזה
@@ -153,40 +175,58 @@ export function MixList({
             </Button>
           </div>
         </div>
-        <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 text-center sm:justify-start sm:text-right">
-          <GitCompareArrows className="h-3.5 w-3.5" />
-          לחיצה על תיבת תמהיל פותחת אותה באזור העבודה. סימון בעיגול שבצד ימין מוסיף את התמהיל
-          לאזור העבודה להשוואה — בלי הגבלה על מספר התמהילים.
-        </p>
+        {othersOpen && (
+          <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-500 sm:justify-start sm:text-right">
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            לחיצה על תיבת תמהיל פותחת אותה באזור העבודה וסוגרת את הרשימה. סימון בעיגול שבצד ימין
+            מוסיף את התמהיל להשוואה ומשאיר את הרשימה פתוחה.
+          </p>
+        )}
         {nameNotice && <p className="text-[11px] font-semibold text-red-700">{nameNotice}</p>}
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-4">
-          <section className="rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-white p-3 shadow-sm">
-            <div className="mb-2.5 flex flex-col items-center gap-2 text-center sm:flex-row sm:flex-wrap sm:items-center sm:text-right">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
-                <SquarePen className="h-3.5 w-3.5" />
-              </span>
-              <div className="min-w-0">
-                <p className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-black text-blue-900 sm:justify-start">
-                  אזור העבודה
-                  {comparedItems.length > 0 && (
-                    <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
-                      {comparedItems.length + 1} תמהילים בהשוואה
-                    </span>
-                  )}
-                </p>
-                <p className="text-[10px] text-blue-700">
-                  {comparedItems.length > 0
+        <div className="space-y-3">
+          {othersOpen && others.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-2">
+              <MixSliderSection
+                items={others}
+                originOf={originOf}
+                comparedIds={comparedIds}
+                onActivate={(item) => {
+                  setOthersOpen(false);
+                  onActivate(item);
+                }}
+                onToggleCompare={onToggleCompare}
+                onRequestQuote={(item) => setQuoteTarget({ mix: item.mix, summary: item.summary })}
+                onEnterQuote={enterQuote && ((item: SavedMix) => enterQuote(item.mix))}
+              />
+            </div>
+          )}
+
+          <section className="rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-white p-2 shadow-sm">
+            {/* כותרת אזור העבודה בשורה אחת — ההסבר עבר ל-title כדי לפנות גובה */}
+            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                className="flex items-center gap-1.5 text-xs font-black text-blue-900"
+                title={
+                  comparedItems.length > 0
                     ? 'הטבלה והגרפים שמתחת מציגים את כל התמהילים שבאזור העבודה'
-                    : 'התמהיל שנפתח לניתוח ולעריכה'}
-                </p>
-              </div>
+                    : 'התמהיל שנפתח לניתוח ולעריכה'
+                }
+              >
+                <SquarePen className="h-3.5 w-3.5 text-blue-600" />
+                אזור העבודה
+              </span>
+              {comparedItems.length > 0 && (
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
+                  {comparedItems.length + 1} תמהילים בהשוואה
+                </span>
+              )}
               {saveDirty && onSaveAsNew && (
                 <Button
                   size="sm"
-                  className={`h-10 w-full text-xs sm:ms-auto sm:h-8 sm:w-auto ${flashSave ? 'save-flash' : ''}`}
+                  className={`h-8 text-xs sm:ms-auto ${flashSave ? 'save-flash' : ''}`}
                   onClick={onSaveAsNew}
                 >
                   <Save className="h-3.5 w-3.5 ml-1" />
@@ -294,24 +334,6 @@ export function MixList({
             )}
           </section>
 
-          {others.length > 0 && (
-            <MixSliderSection
-              items={others}
-              originOf={originOf}
-              comparedIds={comparedIds}
-              onActivate={onActivate}
-              onToggleCompare={onToggleCompare}
-              onRequestQuote={(item) => setQuoteTarget({ mix: item.mix, summary: item.summary })}
-              onEnterQuote={enterQuote && ((item: SavedMix) => enterQuote(item.mix))}
-            />
-          )}
-
-          {others.length === 0 && (
-            <p className="text-[11px] text-slate-500 leading-relaxed px-1">
-              זה התמהיל היחיד {scope}. בנו תמהיל נוסף לאותו נכס כדי להשוות חלופות — כל התמהילים לנכס
-              הזה יוצגו כאן ובאזור האישי תחת אותה כותרת.
-            </p>
-          )}
         </div>
       </CardContent>
 

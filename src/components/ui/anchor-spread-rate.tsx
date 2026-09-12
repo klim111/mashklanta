@@ -25,12 +25,20 @@ export interface AnchorSpreadRateProps {
   onRefreshAnchor?: () => void;
   /** תווית לשדה הריבית הסופית */
   rateLabel?: string;
+  /**
+   * תצוגה לשורה: בלי פסקת ההסבר שמתחת ובלי תוויות המשנה. ההסבר ומקור הנתון
+   * עוברים ל-`title` של תיבת העוגן, כדי שהם יישארו זמינים בלי להוסיף שתי
+   * שורות טקסט לכל מסלול.
+   */
+  compact?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
 const FIELD_CLASS =
   'h-9 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm';
+const COMPACT_FIELD_CLASS =
+  'h-7 w-full rounded-md border border-input bg-transparent px-1 py-0.5 text-[11px] shadow-sm';
 
 export function AnchorSpreadRate({
   anchor,
@@ -39,6 +47,7 @@ export function AnchorSpreadRate({
   onChange,
   onRefreshAnchor,
   rateLabel = 'ריבית שנתית',
+  compact = false,
   disabled = false,
   className = '',
 }: AnchorSpreadRateProps) {
@@ -51,7 +60,7 @@ export function AnchorSpreadRate({
     return (
       <div className={`relative ${className}`}>
         <NumericInput
-          className={`${FIELD_CLASS} pl-7 text-left font-bold`}
+          className={`${compact ? COMPACT_FIELD_CLASS : FIELD_CLASS} pl-7 text-left font-bold`}
           value={rate}
           disabled={disabled}
           onChange={(value) => onChange({ rate: value ?? 0 })}
@@ -77,68 +86,88 @@ export function AnchorSpreadRate({
     onChange({ rate: next, spread: roundRate(next - anchor.rate) });
   };
 
+  const field = compact ? COMPACT_FIELD_CLASS : FIELD_CLASS;
+  const sourceNote =
+    anchor.source === 'boi'
+      ? `${anchor.label} · נמשך מבנק ישראל${anchor.asOf ? ` · ${anchor.asOf}` : ''}`
+      : `${anchor.label} · לא נמשך מבנק ישראל — ערך נפילה`;
+
   return (
-    <div className={`space-y-1.5 ${className}`}>
-      <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-end gap-1.5">
-        <label className="space-y-1">
-          <span className="flex items-center gap-1 text-[11px] font-medium text-slate-600">
-            <Landmark className="h-3 w-3 text-blue-600" />
-            עוגן %
-          </span>
+    <div className={`${compact ? '' : 'space-y-1.5'} ${className}`}>
+      <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-end gap-1">
+        <label className={compact ? '' : 'space-y-1'} title={compact ? sourceNote : undefined}>
+          {!compact && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-slate-600">
+              <Landmark className="h-3 w-3 text-blue-600" />
+              עוגן %
+            </span>
+          )}
           <input
             readOnly
             dir="ltr"
             value={anchorRate.toFixed(2)}
             aria-label="עוגן"
-            className={`${FIELD_CLASS} cursor-default bg-slate-100 text-left font-semibold text-slate-700`}
+            className={`${field} cursor-default bg-slate-100 text-left font-semibold text-slate-700`}
           />
         </label>
 
-        <Plus className="mb-2.5 h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+        <Plus
+          className={`h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`}
+          aria-hidden
+        />
 
-        <label className="space-y-1">
-          <span className="text-[11px] font-medium text-slate-600">מרווח %</span>
+        <label className={compact ? '' : 'space-y-1'}>
+          {!compact && <span className="text-[11px] font-medium text-slate-600">מרווח %</span>}
           <NumericInput
-            className={`${FIELD_CLASS} text-left`}
+            className={`${field} text-left`}
             value={effectiveSpread}
             disabled={disabled}
             onChange={setSpread}
             aria-label="מרווח"
+            title={compact ? 'מרווח מעל העוגן' : undefined}
           />
         </label>
 
-        <Equal className="mb-2.5 h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+        <Equal
+          className={`h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`}
+          aria-hidden
+        />
 
-        <label className="space-y-1">
-          <span className="text-[11px] font-bold text-slate-700">{rateLabel} %</span>
+        <label className={compact ? '' : 'space-y-1'}>
+          {!compact && <span className="text-[11px] font-bold text-slate-700">{rateLabel} %</span>}
           <NumericInput
-            className={`${FIELD_CLASS} text-left font-bold`}
+            className={`${field} text-left font-bold`}
             value={rate}
             disabled={disabled}
             onChange={setRate}
             aria-label={rateLabel}
+            title={compact ? rateLabel : undefined}
           />
         </label>
       </div>
 
-      <p className="flex flex-wrap items-center gap-1 text-[10px] leading-snug text-slate-500">
-        <span>{anchor.label}</span>
-        {anchor.source === 'boi' ? (
-          <span className="text-emerald-700">· נמשך מבנק ישראל{anchor.asOf ? ` · ${anchor.asOf}` : ''}</span>
-        ) : (
-          <span className="text-amber-700">· לא נמשך מבנק ישראל — ערך נפילה</span>
-        )}
-        {onRefreshAnchor && (
-          <button
-            type="button"
-            onClick={onRefreshAnchor}
-            className="inline-flex items-center gap-1 rounded px-1 text-blue-700 hover:bg-blue-50"
-          >
-            <RefreshCcw className="h-3 w-3" />
-            רענון
-          </button>
-        )}
-      </p>
+      {!compact && (
+        <p className="flex flex-wrap items-center gap-1 text-[10px] leading-snug text-slate-500">
+          <span>{anchor.label}</span>
+          {anchor.source === 'boi' ? (
+            <span className="text-emerald-700">
+              · נמשך מבנק ישראל{anchor.asOf ? ` · ${anchor.asOf}` : ''}
+            </span>
+          ) : (
+            <span className="text-amber-700">· לא נמשך מבנק ישראל — ערך נפילה</span>
+          )}
+          {onRefreshAnchor && (
+            <button
+              type="button"
+              onClick={onRefreshAnchor}
+              className="inline-flex items-center gap-1 rounded px-1 text-blue-700 hover:bg-blue-50"
+            >
+              <RefreshCcw className="h-3 w-3" />
+              רענון
+            </button>
+          )}
+        </p>
+      )}
     </div>
   );
 }

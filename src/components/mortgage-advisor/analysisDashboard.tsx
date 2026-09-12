@@ -71,18 +71,18 @@ export function StateBlocksRow({
   const current = tone === 'current';
   return (
     <div
-      className={`rounded-2xl border p-2.5 ${
+      className={`rounded-2xl border p-2 ${
         current ? 'border-slate-200 bg-slate-50/70' : 'border-emerald-300 bg-emerald-50/70'
       }`}
     >
-      <div className="mb-2 flex flex-wrap items-baseline gap-x-2">
+      <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
         <p className={`text-[13px] font-bold ${current ? 'text-slate-900' : 'text-emerald-900'}`}>
           {title}
         </p>
         {caption && <p className="text-[11px] text-slate-500">{caption}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 items-stretch gap-2 lg:grid-cols-5">
         <StateBlock
           icon={Wallet}
           label="החזר חודשי"
@@ -167,19 +167,24 @@ function StateBlock({
       ? `${Math.abs(Math.round(delta ?? 0))} חודשים`
       : formatCurrency(Math.abs(delta ?? 0));
 
+  /*
+    הבלוק נמוך במכוון. שורת ה-&nbsp; שהייתה כאן שמרה על גובה אחיד גם כשאין
+    הפרש, ובפועל הוסיפה שורה ריקה לכל בלוק — מקום שנגרע מהדאשבורד באותו מסך.
+    האחידות נשמרת עכשיו ב-`items-center` של הרשת, בלי שורת רפאים.
+  */
   return (
-    <div className={`rounded-xl ${gradient} px-3 py-2 text-center text-white shadow-md`}>
-      <p className="flex items-center justify-center gap-1.5 text-[10px] text-slate-300">
+    <div
+      className={`flex flex-col items-center justify-center rounded-xl ${gradient} px-2.5 py-1.5 text-center text-white shadow-md`}
+    >
+      <p className="flex items-center justify-center gap-1.5 text-[10px] leading-none text-slate-300">
         <Icon className="h-3 w-3" />
         {label}
       </p>
-      <p className="text-lg font-bold leading-tight">{value}</p>
-      {hasDelta ? (
-        <p className={`text-[11px] font-bold ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
+      <p className="mt-0.5 text-base font-bold leading-tight">{value}</p>
+      {hasDelta && (
+        <p className={`text-[10px] font-bold leading-tight ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
           {improved ? 'חסכתם' : 'תוספת של'} {amount}
         </p>
-      ) : (
-        <p className="text-[10px] text-slate-400">&nbsp;</p>
       )}
     </div>
   );

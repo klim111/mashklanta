@@ -898,7 +898,7 @@ export function MortgageWorkspace({
         </div>
       </div>
 
-      <div className="container mx-auto space-y-4 px-3 py-4 sm:px-4">
+      <div className="container mx-auto space-y-3 px-3 py-3 sm:px-4">
         {/* פרטי הנכס והעסקה בכותרת אחת מעל כל התמהילים ששייכים אליהם */}
         <PropertyHeader
           mix={mix}

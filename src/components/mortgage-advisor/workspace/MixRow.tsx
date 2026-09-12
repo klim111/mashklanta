@@ -10,15 +10,16 @@ import {
   ChevronDown,
   Coins,
   Gavel,
+  Info,
   Pencil,
   Percent,
   Wallet,
 } from 'lucide-react';
-import { TRACK_TYPES } from '../types';
 import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
 import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
-import { CompositionBar, formatShekel, trackColor } from './primitives';
+import { formatShekel } from './primitives';
+import { TrackCompositionStrip } from '../analysisDashboard';
 import { CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
 import { describePaymentDrop } from './paymentDrop';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
@@ -103,6 +104,16 @@ export function MixRow({
     if (!hasPrepay && !staggered) return undefined;
     return computeMix(mix);
   }, [result, mix]);
+
+  /** משך הסילוקין בפועל לכל מסלול, כדי שהכיתוב יראה קיצור אחרי פרעון מוקדם */
+  const trackMonths = useMemo(() => {
+    if (!resolvedResult) return undefined;
+    const map: Record<string, number> = {};
+    resolvedResult.tracks.forEach((entry) => {
+      map[entry.track.id] = entry.months;
+    });
+    return map;
+  }, [resolvedResult]);
 
   useEffect(() => {
     if (!startRenaming) return;
@@ -294,28 +305,26 @@ export function MixRow({
 
         <ForecastDisclaimer mix={mix} compact />
 
+        {/*
+          פס ההרכב והכיתוב שמתחתיו הם בדיוק אותו רכיב שמופיע בהשוואה הגרפית:
+          רוחב כל קטע הוא חלקו של המסלול בתמהיל, והפרטים יושבים מתחת לקטע שלו
+          ובאותו גודל. קודם הופיעה כאן רשימת נקודות שלא הייתה מיושרת לפס.
+        */}
         <div>
-          <CompositionBar tracks={mix.tracks} height={8} />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-            {mix.tracks.map((track) => (
-              <span key={track.id} className="flex items-center gap-1 text-[10px] text-slate-500">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: trackColor(track.type) }}
-                />
-                {TRACK_TYPES[track.type]} {track.percentage.toFixed(0)}%
-              </span>
-            ))}
-            {unallocated > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700">
-                <AlertTriangle className="h-3 w-3" />
-                {formatShekel(unallocated)} לא שובצו
-              </span>
-            )}
-            {hint && !expanded && (
-              <span className="text-[10px] text-slate-400 mr-auto">{hint}</span>
-            )}
-          </div>
+          <TrackCompositionStrip tracks={mix.tracks} trackMonths={trackMonths} />
+          {(unallocated > 0 || (hint && !expanded)) && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {unallocated > 0 && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700">
+                  <AlertTriangle className="h-3 w-3" />
+                  {formatShekel(unallocated)} לא שובצו
+                </span>
+              )}
+              {hint && !expanded && (
+                <span className="text-[10px] text-slate-400 mr-auto">{hint}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -382,6 +391,14 @@ function paymentHint(summary: MixSummary, mix: WorkspaceMix, result?: MixResult)
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
+/**
+ * בלוק מדד בשורת התמהיל.
+ *
+ * הבלוק נמוך ומרוכז במכוון: הוא חוזר על עצמו בכל שורת תמהיל, וכל שורת טקסט
+ * נוספת בו נגרעת מהמקום שנשאר לדאשבורד באותו מסך. ההערות שהיו כאן (ירידת
+ * מדרגה בהחזר, תשלום בלון, הריבית שבתוקף) עברו ל-`title` — הן נשארות זמינות
+ * בריחוף, בלי להאריך את הבלוק.
+ */
 function RowStat({
   icon,
   label,
@@ -396,19 +413,22 @@ function RowStat({
   emphasized?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2">
-      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+    <div
+      title={hint}
+      className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50/70 px-2 py-1 text-center"
+    >
+      <p className="flex items-center gap-1 text-[10px] leading-none text-slate-500">
         {icon}
         {label}
+        {hint && <Info className="h-2.5 w-2.5 text-slate-400" />}
       </p>
       <p
-        className={`font-bold leading-tight ${
-          emphasized ? 'text-base text-blue-600' : 'text-sm text-slate-900'
+        className={`mt-0.5 font-bold leading-tight ${
+          emphasized ? 'text-[15px] text-blue-600' : 'text-[13px] text-slate-900'
         }`}
       >
         {value}
       </p>
-      {hint && <p className="text-[10px] text-amber-700 leading-tight break-words">{hint}</p>}
     </div>
   );
 }
