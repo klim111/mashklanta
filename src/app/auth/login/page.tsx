@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, CheckCircle } from 'lucide-react';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { authErrorMessage } from '@/lib/auth-errors';
 
 function LoginForm() {
   const router = useRouter();
@@ -20,6 +22,8 @@ function LoginForm() {
     if (searchParams.get('advisor') === 'true') {
       setShowAdvisorMessage(true);
     }
+    const oauthError = authErrorMessage(searchParams.get('error'));
+    if (oauthError) setError(oauthError);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +66,7 @@ function LoginForm() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-4">
@@ -70,8 +74,8 @@ function LoginForm() {
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">התחברות</h1>
-            <p className="text-gray-600 mt-2">ברוכים השבים ל-Nadlanium</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">התחברות</h1>
+            <p className="text-gray-600 mt-2">ברוכים השבים למשכלנתא</p>
           </div>
 
           {/* Success Message for Advisor Registration */}
@@ -102,18 +106,18 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                כתובת מייל
+                שם משתמש או מייל
               </label>
               <div className="relative">
                 <input
                   id="email"
-                  type="email"
+                  type="text"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  placeholder="your@email.com"
-                  dir="ltr"
+                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="שם משתמש או your@email.com"
                 />
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
@@ -130,7 +134,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -172,9 +176,14 @@ function LoginForm() {
             </div>
           </div>
 
+          <GoogleAuthButton
+            label="התחברות עם Google"
+            callbackUrl={searchParams.get('callbackUrl') || '/dashboard'}
+            autoStart={searchParams.get('google') === '1'}
+          />
 
           {/* Register Link */}
-          <div className="text-center space-y-3">
+          <div className="mt-8 text-center space-y-3">
             <p className="text-gray-600">
               עדיין אין לך חשבון?{' '}
               <Link

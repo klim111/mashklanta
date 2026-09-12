@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity, TrendingUp, Calculator, PieChart, 
-  ChevronLeft, ArrowRight, Play, BarChart3,
+  ArrowRight, Play, BarChart3,
   DollarSign, Target, Zap, Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import NavBar from '@/components/ui/navbar';
 
 const simulations = [
   {
@@ -129,24 +130,8 @@ export default function SimulationsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
-      {/* Header */}
-      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ChevronLeft className="w-4 h-4" />
-                  חזרה לעמוד הבית
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-6 h-6 text-indigo-600" />
-                <h1 className="text-xl font-bold text-gray-900">סימולציות פיננסיות</h1>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
       </div>
 
       {/* Hero Section */}
@@ -161,7 +146,7 @@ export default function SimulationsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl font-bold text-gray-900 mb-6"
+            className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-6"
           >
             כלי סימולציה מתקדמים
           </motion.h1>
@@ -179,7 +164,7 @@ export default function SimulationsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex justify-center gap-2 mb-8"
+            className="flex flex-wrap justify-center gap-2 mb-8"
           >
             <Button
               variant={selectedCategory === 'all' ? 'default' : 'outline'}

@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Button } from "@/components/ui/button";
+import { parseFormattedNumberInput } from "@/lib/currency";
 
 interface PaymentSchedule {
   month: number;
@@ -25,7 +27,7 @@ export default function MortgageCalculator() {
   const [selectedType, setSelectedType] = useState("");
 
   useEffect(() => {
-    const principal = parseFloat(loanAmount);
+    const principal = parseFormattedNumberInput(loanAmount);
     const annualInterestRate = parseFloat(interestRate) / 100;
     const numberOfPayments = parseInt(loanTermYears) * 12;
     const monthlyInterestRate = annualInterestRate / 12;
@@ -45,7 +47,7 @@ export default function MortgageCalculator() {
   }, [loanAmount, interestRate, loanTermYears]);
 
   const calculateSchedule = () => {
-    const principal = parseFloat(loanAmount);
+    const principal = parseFormattedNumberInput(loanAmount);
     const annualInterestRate = parseFloat(interestRate) / 100;
     const numberOfPayments = parseInt(loanTermYears) * 12;
     const monthlyInterestRate = annualInterestRate / 12;
@@ -97,17 +99,11 @@ export default function MortgageCalculator() {
       <div className="flex flex-row-reverse gap-3">
         <div className="w-full md:w-1/3">
           <label className="block mb-1 text-right">סכום הלוואה</label>
-          <Input
+          <FormattedNumberInput
             className="text-right"
-            type="text"
-            value={Number(loanAmount).toLocaleString()}
+            value={loanAmount}
+            onValueChange={setLoanAmount}
             placeholder="₪"
-            onChange={(e) => {
-              const rawValue = e.target.value.replace(/,/g, '');
-              if (!isNaN(Number(rawValue))) {
-                setLoanAmount(rawValue);
-              }
-            }}
           />
         </div>
         <div className="w-full md:w-1/3">

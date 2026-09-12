@@ -1,0 +1,182 @@
+'use client';
+
+import React from 'react';
+import { motion } from 'framer-motion';
+import { ChevronDown, ChevronUp, Clock, TrendingDown, TrendingUp, UserCheck } from 'lucide-react';
+import type { PlanData, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
+import { stageSnapshot } from '@/lib/plan-stage-snapshot';
+import {
+  advantageHeadline,
+  advantageRows,
+  advisedBaseline,
+  advisedResult,
+} from '@/lib/advised-stage';
+import type { AdvantageRow } from '@/lib/advised-stage';
+import { journeyStageFor } from '@/data/platform/planStages';
+
+interface AdvisorStageSummaryProps {
+  stage: PlanStageId;
+  data: PlanData;
+  status: PlanStageStatus;
+  /** שם היועץ שמבצע את השלב, כשידוע */
+  advisorName?: string | null;
+  /** האם הפירוט המלא פתוח כרגע */
+  detailsOpen: boolean;
+  onToggleDetails: () => void;
+}
+
+/**
+ * התצוגה של שלב שיועץ מבצע.
+ *
+ * במקום הכלים והטפסים של השלב — דאשבורד אחד פשוט: מה קורה בשלב, ואיפה הוא
+ * עומד בארבעה מספרים. מי שרוצה לראות הכול לוחץ "ראה פרטים", והשלב המלא נפתח
+ * מתחת, בדיוק כפי שהוא.
+ */
+export function AdvisorStageSummary({
+  stage,
+  data,
+  status,
+  advisorName,
+  detailsOpen,
+  onToggleDetails,
+}: AdvisorStageSummaryProps) {
+  const journey = journeyStageFor(stage);
+  const snapshot = stageSnapshot(stage, data, status);
+  const Icon = journey.icon;
+
+  /*
+    בשלבי התמהיל והתמחור יש תוצר מדיד — תמהיל או הצעה מתומחרת — ואפשר להראות
+    ללקוח מה הוא שווה מול ההצעה שהיה מקבל בלי הליווי. בשאר השלבים אין מול מה
+    להשוות, ומוצגת רק תמונת המצב.
+  */
+  const result = advisedResult(stage, data);
+  const baseline = advisedBaseline(stage, data);
+  const advantages = advantageRows(result, baseline);
+  const headline = advantageHeadline(advantages);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="overflow-hidden rounded-3xl border border-violet-200 bg-white shadow-sm"
+    >
+      <div className={`h-1.5 w-full bg-gradient-to-l ${journey.gradient}`} />
+
+      <div className="p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${journey.gradient} shadow-lg`}
+          >
+            <Icon className="h-6 w-6 text-white" />
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-black text-violet-700">
+              <UserCheck className="h-3 w-3" />
+              {advisorName ? `היועץ ${advisorName} מבצע עבורכם` : 'היועץ מבצע את השלב עבורכם'}
+            </span>
+            <h3 className="mt-1 text-lg font-black text-slate-900">{snapshot.headline}</h3>
+            <p className="text-xs text-slate-500">
+              {journey.title} · {journey.duration}
+            </p>
+          </div>
+
+          {status === 'COMPLETED' ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black text-emerald-700">
+              הושלם
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800">
+              <Clock className="h-3 w-3" />
+              בביצוע
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {snapshot.items.map((item) => (
+            <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
+              <div className="text-[11px] font-bold text-slate-500">{item.label}</div>
+              <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">
+                {item.value ?? '—'}
+              </div>
+              {item.note && <div className="text-[10px] text-slate-400">{item.note}</div>}
+            </div>
+          ))}
+        </div>
+
+        {result && advantages.length > 0 && baseline && (
+          <div className="mt-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
+            <h4 className="text-center text-base font-black text-slate-900">
+              {headline ?? 'מה הליווי הביא'}
+            </h4>
+            <p className="mt-1 text-center text-xs font-bold text-slate-600">
+              {result.bank ? `${result.label} · בנק ${result.bank}` : result.label} — מול{' '}
+              {baseline.label}
+            </p>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {advantages.map((row) => (
+                <AdvantageTile key={row.label} row={row} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-col items-center gap-2 text-center">
+          <p className="text-xs font-bold text-slate-600">
+            {journey.valueHeadline} — {journey.tagline}
+          </p>
+          <button
+            type="button"
+            onClick={onToggleDetails}
+            className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-800 transition-colors hover:bg-slate-50"
+          >
+            {detailsOpen ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+            {detailsOpen ? 'הסתר פרטים' : 'פרטים נוספים'}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/** שורת יתרון אחת — הערך שהיועץ הביא, וכמה הוא חוסך מול ברירת המחדל */
+function AdvantageTile({ row }: { row: AdvantageRow }) {
+  const shekel = (value: number) => `₪${Math.round(value).toLocaleString('he-IL')}`;
+  const format = (value: number) =>
+    row.unit === 'percent' ? `${value.toFixed(2)}%` : shekel(value);
+  const gap =
+    row.unit === 'percent'
+      ? `${Math.abs(row.delta).toFixed(2)} נקודות`
+      : shekel(Math.abs(row.delta));
+
+  return (
+    <div
+      className={`rounded-2xl border-2 p-3 text-center ${
+        row.better ? 'border-emerald-300 bg-white' : 'border-amber-300 bg-white'
+      }`}
+    >
+      <div className="text-xs font-bold text-slate-600">{row.label}</div>
+      <div className="mt-0.5 text-xl font-black tabular-nums text-slate-900">
+        {format(row.value)}
+      </div>
+      <div
+        className={`mt-1 inline-flex items-center gap-1 text-xs font-black ${
+          row.better ? 'text-emerald-700' : 'text-amber-700'
+        }`}
+      >
+        {row.better ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+        {row.better ? 'נמוך ב' : 'גבוה ב'}
+        {gap}
+      </div>
+      <div className="mt-0.5 text-[11px] font-semibold text-slate-500">
+        בברירת המחדל {format(row.baseline)}
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Calculator, TrendingUp, Merge, PiggyBank, GripVertical } from 'lucide-react';
@@ -22,6 +23,11 @@ import { LoanCard } from './LoanCard';
 import { AmortTable } from './AmortTable';
 import { ComparePanel } from './ComparePanel';
 import { OptimizePanel } from './OptimizePanel';
+import { LoanPlanningImportWizard } from './LoanPlanningImportWizard';
+import {
+  clearConsumerLoansImportSession,
+  readConsumerLoansImportSession,
+} from '@/lib/consumer-loans-import';
 
 // Component for droppable zones
 function DroppableZone({ id, children, className = '' }: { 
@@ -51,6 +57,7 @@ const defaultLoan: Omit<Loan, 'id'> = {
 };
 
 export function LoanPlanner() {
+  const searchParams = useSearchParams();
   const [state, setState] = useState<LoanPlannerState>({
     loans: [],
     selectedForComparison: [],
@@ -61,6 +68,10 @@ export function LoanPlanner() {
   const [activeCompareAction, setActiveCompareAction] = useState<'summary' | 'consolidation' | 'prepayment' | null>(null);
   const [activeTab, setActiveTab] = useState('loans');
   const [draggedLoan, setDraggedLoan] = useState<Loan | null>(null);
+  const [importSession, setImportSession] = useState<ReturnType<
+    typeof readConsumerLoansImportSession
+  >>(null);
+  const [importChecked, setImportChecked] = useState(false);
   
   // Drag and drop sensors
   const sensors = useSensors(
@@ -70,9 +81,33 @@ export function LoanPlanner() {
     })
   );
 
-  // טעינה משמירה מקומית
+  const finishPlanningImport = useCallback((importedLoans: Loan[]) => {
+    setState((prev) => ({
+      ...prev,
+      loans: [...prev.loans, ...importedLoans],
+    }));
+    clearConsumerLoansImportSession();
+    setImportSession(null);
+    setActiveTab('loans');
+  }, []);
+
+  const cancelPlanningImport = useCallback(() => {
+    clearConsumerLoansImportSession();
+    setImportSession(null);
+  }, []);
+
+  // טעינה משמירה מקומית + אשף ייבוא ממסך ההכרות
   useEffect(() => {
     try {
+      const fromPlanning = searchParams.get('import') === 'planning';
+      const session = fromPlanning ? readConsumerLoansImportSession() : null;
+
+      if (session) {
+        setImportSession(session);
+        setImportChecked(true);
+        return;
+      }
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsedState = JSON.parse(saved);
@@ -80,17 +115,26 @@ export function LoanPlanner() {
       }
     } catch (error) {
       console.error('שגיאה בטעינת נתונים מקומיים:', error);
+    } finally {
+      setImportChecked(true);
     }
-  }, []);
+  }, [searchParams]);
 
-  // שמירה מקומית
   useEffect(() => {
+    if (importSession) {
+      setActiveTab('loans');
+    }
+  }, [importSession]);
+
+  // שמירה מקומית (לא במהלך אשף הייבוא)
+  useEffect(() => {
+    if (importSession) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('שגיאה בשמירת נתונים מקומיים:', error);
     }
-  }, [state]);
+  }, [state, importSession]);
 
   const addLoan = () => {
     const newLoan: Loan = {
@@ -210,7 +254,7 @@ export function LoanPlanner() {
       <div className="min-h-screen bg-gray-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:text-4xl">
               מתכנן הלוואות צרכניות והשוואות
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -219,15 +263,15 @@ export function LoanPlanner() {
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="loans" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              ניהול הלוואות
+          <TabsList className="mb-8 grid h-auto w-full grid-cols-3 gap-1 p-1">
+            <TabsTrigger value="loans" className="flex min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm">
+              <Calculator className="h-4 w-4 shrink-0" />
+              <span className="leading-tight">ניהול הלוואות</span>
             </TabsTrigger>
-            <DroppableZone id="compare-tab" className="flex-1">
-              <TabsTrigger value="compare" className="flex items-center gap-2 w-full">
-                <TrendingUp className="h-4 w-4" />
-                השוואה
+            <DroppableZone id="compare-tab" className="flex-1 min-w-0">
+              <TabsTrigger value="compare" className="flex min-w-0 w-full flex-col items-center gap-1 px-1 py-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm">
+                <TrendingUp className="h-4 w-4 shrink-0" />
+                <span className="leading-tight">השוואה</span>
                 {state.selectedForComparison.length > 0 && (
                   <span className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs">
                     {state.selectedForComparison.length}
@@ -238,13 +282,23 @@ export function LoanPlanner() {
                 )}
               </TabsTrigger>
             </DroppableZone>
-            <TabsTrigger value="optimize" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              שילובים
+            <TabsTrigger value="optimize" className="flex min-w-0 flex-col items-center gap-1 px-1 py-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-sm">
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <span className="leading-tight">שילובים</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="loans" className="space-y-6">
+            {importSession && (
+              <LoanPlanningImportWizard
+                loans={importSession.loans}
+                onComplete={finishPlanningImport}
+                onCancel={cancelPlanningImport}
+              />
+            )}
+
+            {!importSession && importChecked && (
+              <>
             {/* כפתור הוספת הלוואה */}
             <div className="text-center">
               <Button onClick={addLoan} className="px-6 py-3">
@@ -370,6 +424,8 @@ export function LoanPlanner() {
                   </div>
                 )}
               </div>
+            )}
+              </>
             )}
           </TabsContent>
 

@@ -36,7 +36,7 @@ export function MortgagePassport({ progress, milestones, currentStep }: Mortgage
 
   return (
     <motion.div
-      className="fixed top-6 right-6 z-40"
+      className="fixed top-6 right-6 z-40 hidden xl:block"
       initial={{ opacity: 0, scale: 0.8, y: -20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.3 }}

@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Download, X } from 'lucide-react';
 import type { Loan, AmortRow } from './types';
 import { buildAmortSchedule } from './loanMath';
-import { formatILS, formatNumber } from '@/lib/currency';
+import { formatILS, parseFormattedNumberInput } from '@/lib/currency';
 
 interface AmortTableProps {
   loan: Loan;
@@ -25,7 +26,7 @@ export function AmortTable({ loan, onClose }: AmortTableProps) {
     principal: loan.principal,
     apr: loan.apr,
     months: loan.months,
-    prepayAmount: showPrepayment ? parseFloat(prepayAmount) || 0 : 0,
+    prepayAmount: showPrepayment ? parseFormattedNumberInput(prepayAmount) : 0,
     prepayMonth: showPrepayment ? parseInt(prepayMonth) || 1 : 0,
     mode: 'reduce',
   });
@@ -102,11 +103,10 @@ export function AmortTable({ loan, onClose }: AmortTableProps) {
               <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg">
                 <div>
                   <Label htmlFor="prepay-amount">סכום פרעון (₪)</Label>
-                  <Input
+                  <FormattedNumberInput
                     id="prepay-amount"
-                    type="number"
                     value={prepayAmount}
-                    onChange={(e) => setPrepayAmount(e.target.value)}
+                    onValueChange={setPrepayAmount}
                     placeholder="0"
                   />
                 </div>

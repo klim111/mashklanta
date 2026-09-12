@@ -40,11 +40,11 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-white">קישורים מהירים</h4>
             <ul className="space-y-2 text-gray-300">
-              <li><a href="#" className="hover:text-white transition-colors">אודותינו</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">שירותים</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">מחשבונים</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">בלוג</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">צור קשר</a></li>
+              <li><a href="/how-it-works" className="hover:text-white transition-colors">איך זה עובד</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">תמחור</a></li>
+              <li><a href="/learn" className="hover:text-white transition-colors">מרכז למידה</a></li>
+              <li><a href="/mortgage-advisor" className="hover:text-white transition-colors">כלי יועצים</a></li>
+              <li><a href="/auth/register" className="hover:text-white transition-colors">הרשמה</a></li>
             </ul>
           </div>
 
@@ -52,11 +52,11 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-white">השירותים שלנו</h4>
             <ul className="space-y-2 text-gray-300">
-              <li><a href="#" className="hover:text-white transition-colors">ייעוץ אוטומטי מלא</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">ייעוץ היברידי</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">כלים בסיסיים</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">בניית תמהילים</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">השוואת הצעות</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">מסלול עצמאי</a></li>
+              <li><a href="/pricing#builder" className="hover:text-white transition-colors">מסלול היברידי</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">ליווי מלא</a></li>
+              <li><a href="/custom-mix-builder" className="hover:text-white transition-colors">בניית תמהילים</a></li>
+              <li><a href="/mortgage-advisor" className="hover:text-white transition-colors">השוואת הצעות</a></li>
             </ul>
           </div>
 
@@ -96,7 +96,7 @@ export default function Footer() {
             <div className="text-gray-400 text-sm">
               © 2024 משכלתנא. כל הזכויות שמורות.
             </div>
-            <div className="flex space-x-6 space-x-reverse text-sm text-gray-400">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 sm:gap-x-6 text-sm text-gray-400">
               <a href="#" className="hover:text-white transition-colors">תנאי שימוש</a>
               <a href="#" className="hover:text-white transition-colors">מדיניות פרטיות</a>
               <a href="#" className="hover:text-white transition-colors">מדיניות עוגיות</a>

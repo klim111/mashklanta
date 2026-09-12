@@ -4,13 +4,14 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, Calculator, AlertCircle } from 'lucide-react';
 import type { Loan, OptimizationInput, Objective } from './types';
 import { findBestPlan } from './optimizer';
 import { calculateLoanSummary } from './loanMath';
-import { formatILS, formatNumber } from '@/lib/currency';
+import { formatILS } from '@/lib/currency';
 
 interface OptimizePanelProps {
   loans: Loan[];
@@ -80,22 +81,20 @@ export function OptimizePanel({ loans }: OptimizePanelProps) {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="cash-available">מזומן זמין (₪)</Label>
-                <Input
+                <FormattedNumberValueInput
                   id="cash-available"
-                  type="number"
-                  value={optimizationInput.cashAvailable || ''}
-                  onChange={(e) => updateInput('cashAvailable', parseFloat(e.target.value) || 0)}
+                  value={optimizationInput.cashAvailable}
+                  onValueChange={(v) => updateInput('cashAvailable', v)}
                   placeholder="0"
                 />
               </div>
               
               <div>
                 <Label htmlFor="upcoming-expense">הוצאה צפויה (₪)</Label>
-                <Input
+                <FormattedNumberValueInput
                   id="upcoming-expense"
-                  type="number"
-                  value={optimizationInput.upcomingExpense || ''}
-                  onChange={(e) => updateInput('upcomingExpense', parseFloat(e.target.value) || 0)}
+                  value={optimizationInput.upcomingExpense}
+                  onValueChange={(v) => updateInput('upcomingExpense', v)}
                   placeholder="0"
                 />
               </div>
@@ -116,11 +115,10 @@ export function OptimizePanel({ loans }: OptimizePanelProps) {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="budget-monthly">תקציב חודשי מקסימלי (₪) - אופציונלי</Label>
-                <Input
+                <FormattedNumberValueInput
                   id="budget-monthly"
-                  type="number"
-                  value={optimizationInput.budgetMonthly || ''}
-                  onChange={(e) => updateInput('budgetMonthly', parseFloat(e.target.value) || undefined)}
+                  value={optimizationInput.budgetMonthly}
+                  onValueChange={(v) => updateInput('budgetMonthly', v > 0 ? v : undefined)}
                   placeholder="ללא הגבלה"
                 />
               </div>

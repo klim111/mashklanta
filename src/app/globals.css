@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* הבזק חד-פעמי שמסב את תשומת הלב לכפתור השמירה כשנוצר שינוי שלא נשמר */
+@keyframes save-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.save-flash {
+  animation: save-flash 0.9s ease-out 1;
+}
+
 /* Financial Dynamics Animations */
 @keyframes pulse-glow {
   0%, 100% {
@@ -94,6 +111,23 @@
 
 .animate-float-slow {
   animation: float-slow 10s ease-in-out infinite 1s;
+}
+
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(28px, -18px) scale(1.08);
+  }
+  66% {
+    transform: translate(-22px, 16px) scale(0.94);
+  }
+}
+
+.animate-blob {
+  animation: blob 12s ease-in-out infinite;
 }
 
 /* Financial Graphics Carousel */
@@ -603,11 +637,20 @@ html {
   font-weight: 600;
 }
 
-/* Hebrew text styling */
-p, span, div {
+/* Hebrew text styling — only apply to elements without an explicit dir attribute,
+   so any `dir="ltr"` (e.g. on slider scales) is honored instead of being overridden. */
+p:not([dir]), span:not([dir]), div:not([dir]) {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   direction: rtl;
   text-align: center;
+}
+
+/* Make sure explicit direction attributes always win over the default RTL above. */
+[dir="ltr"] {
+  direction: ltr;
+}
+[dir="rtl"] {
+  direction: rtl;
 }
 
 /* Custom Animations */
@@ -878,9 +921,80 @@ input[type="number"]::placeholder {
 }
 
 /* Professional Print Styles */
+/* מכתב בקשת הריביות מודפס בצבעים שלו, ולכן שורש ההדפסה שלו מוחרג מכאן */
 @media print {
-  * {
+  body > *:not(.rr-print-root),
+  body > *:not(.rr-print-root) * {
     background: white !important;
     color: black !important;
   }
-} 
+}
+
+/* ---------------------------------------------------------------------------
+   Principal approval report — print / save-as-PDF stylesheet
+
+   Scoped to `body.printing-approval-report`, which the report sets only while
+   its own print dialog is open. Without that scope the "hide everything else"
+   rule would also blank out the rate-request letter (.rr-print-root), which
+   prints through the same global stylesheet.
+--------------------------------------------------------------------------- */
+@media print {
+  body.printing-approval-report {
+    background: #fff !important;
+  }
+
+  /* Hide everything that is not the report sheet. */
+  body.printing-approval-report * {
+    visibility: hidden;
+  }
+
+  body.printing-approval-report #approval-report,
+  body.printing-approval-report #approval-report * {
+    visibility: visible;
+  }
+
+  body.printing-approval-report #approval-report {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    font-size: 11px;
+  }
+
+  body.printing-approval-report .print\:hidden,
+  body.printing-approval-report nav {
+    display: none !important;
+  }
+
+  #approval-report .break-inside-avoid,
+  #approval-report section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #approval-report h1 {
+    font-size: 18px;
+  }
+
+  #approval-report h2 {
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  /* Keep the tinted panels readable in print. */
+  #approval-report .bg-slate-50\/50,
+  #approval-report .bg-slate-50,
+  #approval-report .bg-amber-50\/60 {
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm 10mm;
+}

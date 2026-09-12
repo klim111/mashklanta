@@ -1,57 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
+import { fallbackCpi, fetchCpi, type CpiData } from "@/lib/cpi";
 
-interface CPIData {
-  value: number;
-  date: string;
-  previousValue: number;
-  change: number;
-  changePercentage: number;
-  source: 'api' | 'fallback';
-}
+/** מדד המחירים לצרכן האחרון שפורסם */
+export const dynamic = "force-dynamic";
 
-function buildFallbackCPI(): CPIData {
-  const currentDate = new Date().toISOString().slice(0, 10);
-  // Current CPI estimate based on recent Bank of Israel data
-  // This should be updated with real API data
-  return {
-    value: 127.8, // Current estimated CPI index
-    date: currentDate,
-    previousValue: 126.9,
-    change: 0.9,
-    changePercentage: 0.71,
-    source: 'fallback'
-  };
-}
+const CACHE_KEY = "cpi:current:v2";
 
-export async function GET(req: NextRequest) {
-  const cacheKey = 'boi:cpi:current';
-  const ttlSeconds = parseInt(process.env.CPI_CACHE_TTL ?? "3600", 10); // Cache for 1 hour
+export async function GET() {
+  const ttlSeconds = parseInt(process.env.CPI_CACHE_TTL ?? "3600", 10);
 
   if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      try {
-        return NextResponse.json(JSON.parse(cached));
-      } catch {
-        // ignore parse error and refetch
+    try {
+      const cached = await redis.get(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as CpiData;
+        if (Number.isFinite(parsed?.value)) {
+          return NextResponse.json(parsed, { headers: { "Cache-Control": "no-store" } });
+        }
       }
+    } catch {
+      // מטמון פגום — ממשיכים למשיכה חיה
     }
   }
 
+  let data: CpiData;
   try {
-    // For now, return fallback data
-    // TODO: Implement real Bank of Israel CPI API integration
-    const data = buildFallbackCPI();
-    
-    if (redis) {
-      await redis.set(cacheKey, JSON.stringify(data), "EX", ttlSeconds);
-    }
-    
-    return NextResponse.json(data, { status: 200 });
-  } catch (err: any) {
-    return NextResponse.json({ 
-      error: err?.message ?? "Failed to fetch CPI data" 
-    }, { status: 502 });
+    data = await fetchCpi();
+  } catch {
+    data = fallbackCpi();
   }
+
+  // נתון שלא נמשך לא נשמר במטמון, כדי שהוא לא יקבע לשעה
+  if (redis && data.source !== "fallback") {
+    try {
+      await redis.set(CACHE_KEY, JSON.stringify(data), "EX", ttlSeconds);
+    } catch {
+      // כשלון כתיבה למטמון אינו סיבה להיכשל בבקשה
+    }
+  }
+
+  return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
 }

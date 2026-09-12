@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { parseMortgageDocumentWithOpenAI, extractTextFromImageWithOpenAI, parseSpecificMortgageDocument, MortgageDocumentData } from '@/lib/openai';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { getServerAuth } from '@/lib/auth';
+
+// ה-endpoint פתוח בכוונה (המחשבון הציבורי משתמש בו), ולכן הוא חשוף לניצול על
+// חשבון מפתח ה-OpenAI. המגבלות כאן הן ההגנה היחידה עליו.
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+// הקידוד ל-base64 ועטיפת ה-JSON מנפחים את הבקשה בכשליש מעל גודל הקובץ
+const MAX_REQUEST_BYTES = Math.ceil(MAX_IMAGE_BYTES * 1.4);
+const RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
+const ANONYMOUS_REQUESTS_PER_WINDOW = 5;
+const AUTHENTICATED_REQUESTS_PER_WINDOW = 30;
 
 // Initialize Google Vision client using environment variables
 const client = new ImageAnnotatorClient({
@@ -36,21 +47,48 @@ interface EnhancedMortgageTerms extends MortgageTerms {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerAuth();
+    const userId = (session?.user as any)?.id as string | undefined;
+
+    const { allowed, resetInSeconds } = await rateLimit(
+      userId ? `analyze-image:user:${userId}` : `analyze-image:ip:${getClientIp(request)}`,
+      {
+        limit: userId ? AUTHENTICATED_REQUESTS_PER_WINDOW : ANONYMOUS_REQUESTS_PER_WINDOW,
+        windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
+      }
+    );
+
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'יותר מדי בקשות ניתוח. נסה שוב בעוד מספר דקות.' },
+        { status: 429, headers: { 'Retry-After': String(resetInSeconds) } }
+      );
+    }
+
+    // דחייה לפני קריאת הגוף, כדי שגוף ענק לא ייטען לזיכרון רק כדי להידחות
+    const declaredSize = Number(request.headers.get('content-length'));
+    if (Number.isFinite(declaredSize) && declaredSize > MAX_REQUEST_BYTES) {
+      return NextResponse.json(
+        { error: `הקובץ גדול מדי. הגודל המרבי הוא ${MAX_IMAGE_BYTES / (1024 * 1024)}MB.` },
+        { status: 413 }
+      );
+    }
+
     const { imageData, useOpenAI = true, documentType = 'general' } = await request.json();
 
-    if (!imageData) {
+    if (!imageData || typeof imageData !== 'string') {
       return NextResponse.json({ error: 'No image data provided' }, { status: 400 });
     }
 
-    // Debug environment variables
-    console.log('Environment check:');
-    console.log('OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-    console.log('OPENAI_API_KEY length:', process.env.OPENAI_API_KEY?.length || 0);
-    console.log('OPENAI_MODEL:', process.env.OPENAI_MODEL);
-    console.log('Document type:', documentType);
-
     // Remove data URL prefix if present
     const base64Image = imageData.split(',')[1] || imageData;
+
+    if (Math.floor((base64Image.length * 3) / 4) > MAX_IMAGE_BYTES) {
+      return NextResponse.json(
+        { error: `הקובץ גדול מדי. הגודל המרבי הוא ${MAX_IMAGE_BYTES / (1024 * 1024)}MB.` },
+        { status: 413 }
+      );
+    }
 
     let extractedText = '';
     let mortgageTerms: EnhancedMortgageTerms = {

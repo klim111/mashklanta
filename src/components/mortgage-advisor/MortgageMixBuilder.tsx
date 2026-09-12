@@ -4,23 +4,41 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Save, Calculator, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import type { MortgageMix, MortgageTrack } from './types';
-import { TRACK_TYPES, DEFAULT_INTEREST_RATES } from './types';
+import { Plus, Save, Calculator } from 'lucide-react';
+import type { MortgageMix, MortgageTrack, MortgageBank } from './types';
+import { TRACK_TYPES, DEFAULT_INTEREST_RATES, MORTGAGE_BANKS } from './types';
 import { MortgageTrackCard } from './MortgageTrackCard';
 import { formatCurrency, formatPercentage, calculateMortgageMix } from './mortgageCalculations';
+
+const CUSTOM_MIX_NAME_PREFIX = 'תמהיל מותאם אישית';
+
+export function getNextCustomMixName(existingMixes: MortgageMix[]): string {
+  const pattern = new RegExp(`^${CUSTOM_MIX_NAME_PREFIX}\\s+(\\d+)$`);
+  let maxNum = 0;
+  for (const mix of existingMixes) {
+    const match = mix.name.match(pattern);
+    if (match) {
+      maxNum = Math.max(maxNum, parseInt(match[1], 10));
+    }
+  }
+  return `${CUSTOM_MIX_NAME_PREFIX} ${maxNum + 1}`;
+}
 
 interface MortgageMixBuilderProps {
   onSave: (mix: MortgageMix) => void;
   editingMix?: MortgageMix;
   onCancel?: () => void;
+  existingMixes?: MortgageMix[];
 }
 
-export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMixBuilderProps) {
-  const [mixName, setMixName] = useState(editingMix?.name || 'תמהיל חדש');
+export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes = [] }: MortgageMixBuilderProps) {
+  const defaultMixName = editingMix?.name ?? getNextCustomMixName(existingMixes);
+  const [mixName, setMixName] = useState(defaultMixName);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [bank, setBank] = useState<MortgageBank | ''>(editingMix?.bank ?? '');
   const [totalAmount, setTotalAmount] = useState(editingMix?.totalAmount || 1000000);
   const [tracks, setTracks] = useState<MortgageTrack[]>(editingMix?.tracks || []);
   const [notes, setNotes] = useState(editingMix?.notes || '');
@@ -37,9 +55,12 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
     }
   }, [editingMix]);
 
-  const addTrack = () => {
+  const addTrack = (preferredAmount?: number) => {
     const remainingAmount = totalAmount - tracks.reduce((sum, track) => sum + track.amount, 0);
-    const suggestedAmount = Math.max(100000, remainingAmount);
+    const suggestedAmount =
+      preferredAmount !== undefined
+        ? Math.max(1, preferredAmount)
+        : Math.max(100000, remainingAmount);
     
     const newTrack: MortgageTrack = {
       id: `track-${Date.now()}`,
@@ -74,6 +95,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
     const mix: MortgageMix = {
       id: editingMix?.id || `mix-${Date.now()}`,
       name: mixName,
+      bank: bank || undefined,
       totalAmount,
       tracks,
       notes,
@@ -81,6 +103,11 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
     };
     
     onSave(mix);
+  };
+
+  const commitMixNameEdit = () => {
+    setMixName((prev) => prev.trim() || defaultMixName);
+    setIsEditingName(false);
   };
 
   // חישובים לבדיקת תקינות
@@ -93,18 +120,60 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
     tracks,
     createdAt: new Date()
   }) : null;
+  const amountDifference = totalAmount - totalTracksAmount;
+  const remainingToComplete = Math.max(0, Math.round(amountDifference));
+  const excessToReduce = Math.max(0, Math.round(-amountDifference));
+  const showCompletionCta = !isAmountValid && remainingToComplete > 0;
+  const showReductionCta = !isAmountValid && excessToReduce > 0;
+
+  const reduceLastTrackByExcess = () => {
+    if (tracks.length === 0 || excessToReduce <= 0) return;
+    const lastTrack = tracks[tracks.length - 1];
+    const nextAmount = Math.max(1, lastTrack.amount - excessToReduce);
+    const updatedLastTrack: MortgageTrack = {
+      ...lastTrack,
+      amount: nextAmount,
+      percentage: totalAmount > 0 ? (nextAmount / totalAmount) * 100 : 0,
+    };
+    updateTrack(updatedLastTrack);
+  };
 
   return (
     <div className="space-y-6">
       {/* פרטי התמהיל הכללי */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            {editingMix ? 'עריכת התמהיל' : 'פרטי התמהיל'}
-          </CardTitle>
+        <CardHeader className="text-center">
+          <div className="flex flex-col items-center gap-2">
+            {isEditingName ? (
+              <Input
+                id="mixName"
+                value={mixName}
+                onChange={(e) => setMixName(e.target.value)}
+                onBlur={commitMixNameEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitMixNameEdit();
+                  if (e.key === 'Escape') {
+                    setMixName(editingMix?.name ?? defaultMixName);
+                    setIsEditingName(false);
+                  }
+                }}
+                className="max-w-md text-center text-xl font-bold"
+                autoFocus
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditingName(true)}
+                className="text-2xl font-bold text-gray-900 hover:text-blue-600 underline-offset-4 hover:underline transition-colors"
+                title="לחץ לשינוי שם התמהיל"
+              >
+                {mixName}
+              </button>
+            )}
+            <p className="text-sm text-gray-500">לחץ על השם לשינוי</p>
+          </div>
           {editingMix && (
-            <p className="text-sm text-blue-600 mt-2">
+            <p className="text-sm text-blue-600 mt-2 text-center">
               📝 מצב עריכה - כל המסלולים זמינים לעריכה
             </p>
           )}
@@ -112,22 +181,35 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="mixName">שם התמהיל</Label>
-              <Input
-                id="mixName"
-                value={mixName}
-                onChange={(e) => setMixName(e.target.value)}
-                placeholder="שם התמהיל"
-              />
+              <Label htmlFor="bank">בנק</Label>
+              <Select value={bank} onValueChange={(value) => setBank(value as MortgageBank)}>
+                <SelectTrigger
+                  id="bank"
+                  dir="rtl"
+                  className="[&>span:first-of-type]:flex-1 [&>span:first-of-type]:text-right"
+                >
+                  <SelectValue placeholder="בחר בנק" />
+                </SelectTrigger>
+                <SelectContent dir="rtl" className="text-right">
+                  {MORTGAGE_BANKS.map((bankOption) => (
+                    <SelectItem
+                      key={bankOption}
+                      value={bankOption}
+                      className="pr-8 pl-2 text-right [&>span:first-child]:right-2 [&>span:first-child]:left-auto"
+                    >
+                      {bankOption}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="totalAmount">סך המשכנתא (₪)</Label>
-              <Input
+              <FormattedNumberValueInput
                 id="totalAmount"
-                type="number"
                 value={totalAmount}
-                onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
+                onValueChange={setTotalAmount}
                 placeholder="סך המשכנתא"
               />
             </div>
@@ -145,18 +227,6 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
         </CardContent>
       </Card>
 
-      {/* בדיקת תקינות */}
-      {!isAmountValid && tracks.length > 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>שים לב:</strong> סכום המסלולים ({formatCurrency(totalTracksAmount)}) 
-            לא תואם לסך המשכנתא ({formatCurrency(totalAmount)}).
-            הפרש: {formatCurrency(Math.abs(totalTracksAmount - totalAmount))}
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* רשימת מסלולים */}
       {tracks.length === 0 ? (
         <Card className="text-center py-12">
@@ -168,7 +238,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
             <p className="text-gray-500 mb-6">
               התחל על ידי הוספת המסלול הראשון שלך
             </p>
-            <Button onClick={addTrack} className="px-6 py-3">
+            <Button onClick={() => addTrack()} className="px-6 py-3">
               <Plus className="h-5 w-5 ml-2" />
               הוסף מסלול ראשון
             </Button>
@@ -177,28 +247,44 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel }: MortgageMix
       ) : (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {tracks.map((track) => (
-              <MortgageTrackCard
-                key={track.id}
-                track={track}
-                totalMortgageAmount={totalAmount}
-                onUpdate={updateTrack}
-                onDelete={deleteTrack}
-                isEditing={editingTrackId === track.id}
-                onStartEditing={() => setEditingTrackId(track.id)}
-              />
+            {tracks.map((track, index) => (
+              <React.Fragment key={track.id}>
+                <MortgageTrackCard
+                  track={track}
+                  totalMortgageAmount={totalAmount}
+                  onUpdate={updateTrack}
+                  onDelete={deleteTrack}
+                  isEditing={editingTrackId === track.id}
+                  onStartEditing={() => setEditingTrackId(track.id)}
+                />
+
+                {showCompletionCta && index === tracks.length - 1 && (
+                  <Card className="border-2 border-dashed border-blue-300 bg-blue-50/80">
+                    <CardContent className="h-full flex items-center justify-center p-6">
+                      <Button onClick={() => addTrack(remainingToComplete)} className="px-6 py-3 text-base">
+                        <Plus className="h-5 w-5 ml-2" />
+                        הוסף מסלול להשלמת {formatCurrency(remainingToComplete)} לגובה ההלוואה
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {showReductionCta && index === tracks.length - 1 && (
+                  <Card className="border-2 border-dashed border-amber-300 bg-amber-50/80">
+                    <CardContent className="h-full flex items-center justify-center p-6">
+                      <Button
+                        onClick={reduceLastTrackByExcess}
+                        variant="outline"
+                        className="px-6 py-3 text-base border-amber-400 text-amber-800 hover:bg-amber-100"
+                      >
+                        הפחת מהמסלול האחרון {formatCurrency(excessToReduce)} כדי להגיע לגובה ההלוואה
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </React.Fragment>
             ))}
           </div>
-          
-          {/* כפתור הוספת מסלול נוסף - מופיע רק אם יש מסלולים קיימים */}
-          {!isAmountValid && (
-            <div className="text-center">
-              <Button onClick={addTrack} className="px-6 py-3">
-                <Plus className="h-5 w-5 ml-2" />
-                הוסף מסלול
-              </Button>
-            </div>
-          )}
         </>
       )}
 
