@@ -14,6 +14,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/health',
   '/api/addresses',
   '/api/boi',
+  '/api/market',
   '/api/currency',
   '/api/turn',
 ];

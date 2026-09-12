@@ -8,7 +8,8 @@
 
 import { fallbackInflationForecast, type InflationForecast } from './inflation-forecast';
 import { FALLBACK_NOMINAL_SPOTS, fallbackPrimeForecast, type PrimeForecast } from './prime-forward-curve';
-import { fallbackMarketRates, getMarketRates } from './market-rates';
+import { fallbackMarketRates } from './market-rates';
+import { getSharedMarketRates } from './market-rates-store';
 
 export interface BoiMarketCurves {
   prime: PrimeForecast;
@@ -17,7 +18,7 @@ export interface BoiMarketCurves {
 
 export async function fetchBoiMarketCurves(): Promise<BoiMarketCurves> {
   try {
-    const snapshot = await getMarketRates();
+    const snapshot = await getSharedMarketRates();
     return { prime: snapshot.primeForecast, inflation: snapshot.inflationForecast };
   } catch {
     const snapshot = fallbackMarketRates();

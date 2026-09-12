@@ -152,17 +152,21 @@ export function variableUnlinkedRateAtMonth(
 }
 
 /**
- * 360 נקודות חודשיות של פריים שוק צפוי (באחוזים שנתיים), בלי מרווח המשכנתא
- * הספציפי של הלקוח. המרווח מתווסף במנוע לפי הריבית שצוטטה במסלול.
+ * ריבית בנק ישראל הצפויה בכל חודש קדימה, לפי עקום האפס הנומינלי.
+ *
+ * הריבית הפורוורד לחודש מסוים היא מה שהשוק מגלם כריבית הקצרה שתהיה באותו
+ * חודש, ולכן היא עצמה אומדן ריבית בנק ישראל לאותו מועד — אין צורך לתקן אותה
+ * בפרמיית זמן קבועה כפי שנעשה כאן קודם, תיקון שהזיז את כל העקום מטה בקבוע
+ * שרירותי. הפורוורד מחושב מיחס גורמי ההיוון:
+ *
+ *     (1 + f)^(1/12) = (1 + R₂)^T₂ / (1 + R₁)^T₁
  */
-export function expectedMarketPrimePath(
+export function expectedBoiRatePath(
   spots: YieldSpot[],
   boiRatePct: number,
   months = PRIME_CURVE_MONTHS
 ): number[] {
   const overnight = Math.max(0, boiRatePct) / 100;
-  const firstYearSpot = interpolateSpotDecimal(spots, 1, overnight);
-  const termPremium = Math.max(0, firstYearSpot * 100 - boiRatePct);
 
   const path: number[] = [];
   let prevYears = 0;
@@ -172,13 +176,27 @@ export function expectedMarketPrimePath(
     const years = month / 12;
     const spot = interpolateSpotDecimal(spots, years, overnight);
     const period = forwardRate(prevSpot, prevYears, spot, years);
-    const annual = annualizePeriodRate(period, 1 / 12) * 100;
-    const expectedBoi = annual - termPremium;
-    path.push(expectedBoi + PRIME_OVER_BOI);
+    path.push(annualizePeriodRate(period, 1 / 12) * 100);
     prevYears = years;
     prevSpot = spot;
   }
   return path;
+}
+
+/**
+ * 360 נקודות חודשיות של פריים שוק צפוי (באחוזים שנתיים), בלי מרווח המשכנתא
+ * הספציפי של הלקוח.
+ *
+ * פריים = ריבית בנק ישראל + 1.5%, ולכן כל נקודה היא ריבית בנק ישראל הצפויה
+ * לאותו חודש בתוספת המרווח הקבוע. המרווח של המשכנתא הספציפית מתווסף במנוע
+ * לפי הריבית שצוטטה במסלול.
+ */
+export function expectedMarketPrimePath(
+  spots: YieldSpot[],
+  boiRatePct: number,
+  months = PRIME_CURVE_MONTHS
+): number[] {
+  return expectedBoiRatePath(spots, boiRatePct, months).map((rate) => rate + PRIME_OVER_BOI);
 }
 
 export function primeRateAtMonth(

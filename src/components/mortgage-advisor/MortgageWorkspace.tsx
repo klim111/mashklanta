@@ -203,6 +203,11 @@ export function MortgageWorkspace({
   const [amortizationTarget, setAmortizationTarget] = useState<{ trackId?: string } | null>(null);
   const [prepayTarget, setPrepayTarget] = useState<PrepayTarget | null>(null);
   const [refinanceTarget, setRefinanceTarget] = useState<{ trackId?: string } | null>(null);
+  /**
+   * מחזור נפתח רק על התמהיל שנבחר כסופי. בשלב תכנון התמהיל אין משמעות למחזור —
+   * מה שרוצים לשנות משנים במסלול עצמו, ולא כאירוע עתידי על תמהיל שעוד לא נבחר.
+   */
+  const isFinalMix = mix.locked || (Boolean(finalMixKey) && mix.id === finalMixKey);
 
   const [showRisk, setShowRisk] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
@@ -339,6 +344,11 @@ export function MortgageWorkspace({
 
   const preferredKey = (preferredMixIds ?? []).join('|');
   const basketsOpened = useRef(false);
+  /**
+   * בפתיחת הכלי נפתח התמהיל שהמשתמש עבד עליו לאחרונה, ואם אין כזה — האחרון
+   * שנוצר. הסלים האחידים אינם נבחרים להשוואה מאליהם: השוואה היא פעולה שהמשתמש
+   * מבקש, ובחירה אוטומטית שלהם הציפה את המסך בתמהילים שלא ביקש לראות.
+   */
   useEffect(() => {
     if (basketsOpened.current || initialMix || !ready) return;
     const ids = preferredKey ? preferredKey.split('|') : [];
@@ -350,11 +360,18 @@ export function MortgageWorkspace({
     if (matches.length === 0) return;
 
     basketsOpened.current = true;
+    const mostRecent = [...matches].sort(
+      (a, b) =>
+        Date.parse(b.mix.updatedAt || b.mix.createdAt || '') -
+        Date.parse(a.mix.updatedAt || a.mix.createdAt || '')
+    )[0];
     const selected =
-      (activeMixKey ? matches.find((item) => item.mix.id === activeMixKey) : undefined) ?? matches[0];
+      (activeMixKey ? matches.find((item) => item.mix.id === activeMixKey) : undefined) ??
+      mostRecent ??
+      matches[0];
     notifyActive(selected);
     openMix(selected.mix);
-    actions.setCompared(matches.map((item) => item.mix.id));
+    actions.setCompared([]);
   }, [ready, saved, preferredKey, activeMixKey, initialMix, openMix, actions, notifyActive]);
 
   const soloOpened = useRef(false);
@@ -985,6 +1002,7 @@ export function MortgageWorkspace({
               onAddTrack={mix.locked ? () => undefined : actions.addTrack}
               onPrepay={(trackId: string) => setPrepayTarget({ trackId })}
               onRefinance={(trackId: string) => setRefinanceTarget({ trackId })}
+              allowRefinance={isFinalMix}
               onAmortization={(trackId: string) => setAmortizationTarget({ trackId })}
               focusTrackId={focusTrackId}
               onFocusTrack={setFocusTrackId}
@@ -1134,7 +1152,7 @@ export function MortgageWorkspace({
           result={result}
           onRemove={actions.removeEvent}
           onAddPrepayment={() => setPrepayTarget({})}
-          onAddRefinance={() => setRefinanceTarget({})}
+          onAddRefinance={isFinalMix ? () => setRefinanceTarget({}) : undefined}
         />
       </div>
 

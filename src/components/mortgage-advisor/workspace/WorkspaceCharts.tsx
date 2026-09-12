@@ -5,6 +5,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -52,19 +53,25 @@ interface TrackRow {
   payment: number;
   paidPrincipal: number;
   paidInterest: number;
+  /** פיצול ההחזר של אותו חודש — הסכום שלהם הוא ההחזר עצמו */
+  monthInterest: number;
+  monthPrincipal: number;
 }
 
 /** סדרה שנתית למסלול בודד — יתרה, החזר, וקרן מול ריבית מצטברת */
 function trackRows(track: TrackResult): TrackRow[] {
   const schedule = track.schedule;
+  const first = schedule[0];
   const rows: TrackRow[] = [
     {
       year: 0,
       month: 0,
       balance: track.track.amount,
-      payment: schedule[0]?.payment ?? 0,
+      payment: first?.payment ?? 0,
       paidPrincipal: 0,
       paidInterest: 0,
+      monthPrincipal: Math.max(0, (first?.principal ?? 0) - (first?.prepayment ?? 0)),
+      monthInterest: Math.max(0, (first?.payment ?? 0) - (first?.principal ?? 0)),
     },
   ];
 
@@ -80,6 +87,11 @@ function trackRows(track: TrackResult): TrackRow[] {
       payment: row.payment,
       paidPrincipal: Math.max(0, track.track.amount - row.balanceEnd),
       paidInterest: row.cumulativeInterest,
+      // מה ששולם באותו חודש: הקרן מהלוח, והריבית היא היתרה עד גובה ההחזר.
+      // בגרייס מלא זה נותן אפס בחודשי הצבירה, ובתשלום הסוגר את כל הריבית
+      // שנצברה — באדום, לא כקרן.
+      monthPrincipal: Math.max(0, row.principal - row.prepayment),
+      monthInterest: Math.max(0, row.payment - row.principal),
     });
   }
   return rows;
@@ -94,6 +106,9 @@ interface Row {
   basePayment: number | null;
   paidPrincipal: number;
   paidInterest: number;
+  /** פיצול ההחזר של אותו חודש — הסכום שלהם הוא ההחזר עצמו */
+  monthInterest: number;
+  monthPrincipal: number;
 }
 
 /** Recharts מחזיר את השורה שנלחצה בתוך activePayload; משם נשלף החודש. */
@@ -121,9 +136,26 @@ export function WorkspaceCharts({
     const base = yearlySeries(baseResult);
     const length = Math.max(current.length, base.length);
 
+    // בנקודת הפתיחה עוד לא שולם דבר, ולכן הפיצול נלקח מהתשלום הראשון בפועל
+    const first = result.schedule[0];
+
     return Array.from({ length }, (_, i) => {
       const c = current[i];
       const b = base[i];
+      /*
+        הפיצול הוא של מה ש**שולם** באותו חודש: הקרן מהלוח, והריבית היא היתרה
+        עד לגובה ההחזר. כך הוא נכון בכל לוח סילוקין — בגרייס מלא חודש בלי החזר
+        יוצא אפס בשתי השכבות (הריבית נצברת ואינה משולמת), ובתשלום הסוגר כל
+        הריבית שנצברה נספרת כריבית ולא כקרן.
+      */
+      const paymentOf = i === 0
+        ? Math.max(0, (first?.payment ?? 0) - (first?.prepayment ?? 0))
+        : Math.max(0, c?.payment ?? 0);
+      const principal =
+        i === 0
+          ? Math.max(0, (first?.principal ?? 0) - (first?.prepayment ?? 0))
+          : Math.max(0, c?.principal ?? 0);
+      const interest = Math.max(0, paymentOf - principal);
       return {
         year: c?.year ?? b?.year ?? i,
         month: c?.month ?? b?.month ?? i * 12,
@@ -133,6 +165,8 @@ export function WorkspaceCharts({
         basePayment: b?.payment ?? null,
         paidPrincipal: c ? Math.max(0, result.mix.totalAmount - c.balance) : 0,
         paidInterest: c?.cumulativeInterest ?? 0,
+        monthInterest: interest,
+        monthPrincipal: principal,
       };
     });
   }, [result, baseResult]);
@@ -257,20 +291,50 @@ export function WorkspaceCharts({
         <ChartPanel
           title="החזר חודשי"
           hint={
-            hasForwardPriced
-              ? `${CURRENT_RATE_PAYMENT_NOTE} בתחנות השינוי של מסלול משתנה לא צמודה ההחזר החזוי מתעדכן לפי עקום הפורוורד.`
-              : hasRateChangeNote
-                ? CURRENT_RATE_PAYMENT_NOTE
-                : 'ההחזר לאורך התקופה. בצמודי מדד ובמשתנות ההחזר משתנה בהתאם לתרחיש.'
+            `${
+              hasForwardPriced
+                ? `${CURRENT_RATE_PAYMENT_NOTE} בתחנות השינוי של מסלול משתנה לא צמודה ההחזר החזוי מתעדכן לפי עקום הפורוורד.`
+                : hasRateChangeNote
+                  ? CURRENT_RATE_PAYMENT_NOTE
+                  : 'ההחזר לאורך התקופה.'
+            } מתחת לקו — פיצול כל החזר לקרן (ירוק) ולריבית (אדום), משוקלל לפי לוחות הסילוקין של המסלולים.`
           }
         >
-          <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
+          {/*
+            שתי השכבות מתחת לקו ההחזר הן פיצול אותו החזר: ירוק הוא החלק שהולך
+            לקרן ואדום הוא החלק שהולך לריבית, ולכן סכומן הוא בדיוק ההחזר. בשפיצר
+            הירוק גדל על חשבון האדום לאורך התקופה, בקרן שווה הירוק קבוע, ובגרייס
+            כמעט הכול אדום — כך צורת הגרף מספרת את לוח הסילוקין עצמו.
+          */}
+          <ComposedChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="year" tick={{ fontSize: 10 }} />
             <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
             <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {selectedYear !== null && <ReferenceLine x={selectedYear} stroke="#0f172a" strokeDasharray="4 4" />}
+            <Area
+              type="monotone"
+              dataKey="monthPrincipal"
+              name="מזה קרן"
+              stackId="split"
+              stroke={CHART_COLORS.better}
+              fill={CHART_COLORS.better}
+              fillOpacity={0.3}
+              strokeWidth={1}
+              dot={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="monthInterest"
+              name="מזה ריבית"
+              stackId="split"
+              stroke={CHART_COLORS.interest}
+              fill={CHART_COLORS.interest}
+              fillOpacity={0.3}
+              strokeWidth={1}
+              dot={false}
+            />
             {scenarioActive && (
               <Line
                 type="monotone"
@@ -293,7 +357,7 @@ export function WorkspaceCharts({
               activeDot={{ r: 5 }}
               connectNulls
             />
-          </LineChart>
+          </ComposedChart>
         </ChartPanel>
 
         <ChartPanel
@@ -430,13 +494,38 @@ function TrackFocusCharts({
         </LineChart>
       </ChartPanel>
 
-      <ChartPanel title="החזר חודשי במסלול" hint="ההחזר של המסלול לאורך התקופה.">
-        <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
+      <ChartPanel
+        title="החזר חודשי במסלול"
+        hint="ההחזר של המסלול לאורך התקופה, ומתחתיו פיצול כל החזר לקרן (ירוק) ולריבית (אדום) לפי לוח הסילוקין."
+      >
+        <ComposedChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis dataKey="year" tick={{ fontSize: 10 }} />
           <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
           <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Area
+            type="monotone"
+            dataKey="monthPrincipal"
+            name="מזה קרן"
+            stackId="split"
+            stroke={CHART_COLORS.better}
+            fill={CHART_COLORS.better}
+            fillOpacity={0.3}
+            strokeWidth={1}
+            dot={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="monthInterest"
+            name="מזה ריבית"
+            stackId="split"
+            stroke={CHART_COLORS.interest}
+            fill={CHART_COLORS.interest}
+            fillOpacity={0.3}
+            strokeWidth={1}
+            dot={false}
+          />
           <Line
             type="monotone"
             dataKey="payment"
@@ -445,7 +534,7 @@ function TrackFocusCharts({
             strokeWidth={2.5}
             dot={false}
           />
-        </LineChart>
+        </ComposedChart>
       </ChartPanel>
 
       <ChartPanel title="קרן מול ריבית במסלול" hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן.">

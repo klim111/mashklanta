@@ -128,9 +128,47 @@ export function yearlyInflationRates(path: number[], years: number): InflationYe
   return points;
 }
 
-/** אינפלציית ברק-איבן מזוג תשואות נומינלית/צמודה לאותו אופק */
+/**
+ * אינפלציית ברק-איבן מזוג תשואות נומינלית/צמודה לאותו אופק — נוסחת פישר:
+ *
+ *     (1 + נומינלי) = (1 + ריאלי) × (1 + אינפלציה)
+ *
+ * זו ציפיית האינפלציה שבנק ישראל מפרסם לאותו אופק, ולכן היא — ולא נגזרת שלה —
+ * מה שמוצג בגרף הציפיות.
+ */
 export function breakevenInflationPct(nominalPct: number, realPct: number): number {
   return ((1 + nominalPct / 100) / (1 + realPct / 100) - 1) * 100;
+}
+
+/** הכיוון ההפוך של פישר: תשואה נומינלית מתשואה ריאלית ומאינפלציה */
+export function fisherNominalPct(realPct: number, inflationPct: number): number {
+  return ((1 + realPct / 100) * (1 + inflationPct / 100) - 1) * 100;
+}
+
+/**
+ * ציפיית האינפלציה לאופק נתון — הערך שבנק ישראל מפרסם לאותו טווח, באחוזים
+ * שנתיים. זהו ערך *ספוט*: האינפלציה הממוצעת הצפויה מהיום ועד אותו אופק.
+ *
+ * הוא שונה מהאינפלציה הפורוורד של אותה שנה, שהיא האינפלציה הצפויה בשנה עצמה.
+ * שתיהן נכונות ומשמשות לדברים שונים: הציפיות מוצגות בגרף כדי שיהיה אפשר
+ * להשוות אותן לפרסום של בנק ישראל, והפורוורד הוא מה שמצמיד את הקרן בלוח
+ * הסילוקין חודש בחודשו.
+ */
+export function inflationExpectationPct(spots: InflationSpot[], years: number): number {
+  return interpolateInflationDecimal(spots, years) * 100;
+}
+
+/** נקודה לכל שנה — ציפיית בנק ישראל לאותו אופק */
+export function yearlyInflationExpectations(
+  spots: InflationSpot[],
+  years: number
+): InflationYearPoint[] {
+  const count = Math.max(1, Math.round(years));
+  const points: InflationYearPoint[] = [];
+  for (let year = 1; year <= count; year++) {
+    points.push({ year, rate: inflationExpectationPct(spots, year) });
+  }
+  return points;
 }
 
 export function breakevenSpots(nominal: YieldSpot[], real: YieldSpot[]): InflationSpot[] {

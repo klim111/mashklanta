@@ -13,7 +13,8 @@ interface EventsPanelProps {
   result: MixResult;
   onRemove: (id: string) => void;
   onAddPrepayment: () => void;
-  onAddRefinance: () => void;
+  /** מחזור מסלול. ללא ערך — הכפתור אינו מוצג (תמהיל שאינו סופי) */
+  onAddRefinance?: () => void;
 }
 
 /** רשימת השינויים המתוכננים בתמהיל — פרעונות מוקדמים ומחזורים. */
@@ -45,10 +46,13 @@ export function EventsPanel({ result, onRemove, onAddPrepayment, onAddRefinance 
               <Banknote className="h-3.5 w-3.5 ml-1" />
               פרעון מוקדם
             </Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onAddRefinance}>
-              <RefreshCcw className="h-3.5 w-3.5 ml-1" />
-              מחזור מסלול
-            </Button>
+            {/* מחזור מוצע רק בתמהיל הסופי; בתכנון משנים את המסלול עצמו */}
+            {onAddRefinance && (
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onAddRefinance}>
+                <RefreshCcw className="h-3.5 w-3.5 ml-1" />
+                מחזור מסלול
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -56,8 +60,9 @@ export function EventsPanel({ result, onRemove, onAddPrepayment, onAddRefinance 
       <CardContent>
         {events.length === 0 ? (
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            אין שינויים מתוכננים. הוסיפו סכום חד-פעמי לפרעון מוקדם או מחזור של מסלול, וההשפעה תיכנס מיד
-            לגרפים, לסיכום וללוח ההחזרים.
+            אין שינויים מתוכננים. הוסיפו סכום חד-פעמי לפרעון מוקדם
+            {onAddRefinance ? ' או מחזור של מסלול' : ''}, וההשפעה תיכנס מיד לגרפים, לסיכום וללוח
+            ההחזרים.
           </p>
         ) : (
           <div className="space-y-1.5">

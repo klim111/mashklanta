@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { fallbackMarketRates, getMarketRates } from "@/lib/market-rates";
+import { fallbackMarketRates } from "@/lib/market-rates";
+import { getSharedMarketRates } from "@/lib/market-rates-store";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
  * סביבה — זה מה שקובע אם הריביות שמוצגות בפלטפורמה אמיתיות.
  */
 export async function GET() {
-  const snapshot = await getMarketRates().catch(() => fallbackMarketRates());
+  const snapshot = await getSharedMarketRates().catch(() => fallbackMarketRates());
 
   return NextResponse.json({
     ok: true,

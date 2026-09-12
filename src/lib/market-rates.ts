@@ -469,20 +469,57 @@ export async function fetchMarketRates(reference: Date = new Date()): Promise<Ma
 let memoryCache: { snapshot: MarketRatesSnapshot; expiresAt: number } | null = null;
 let inFlight: Promise<MarketRatesSnapshot> | null = null;
 
+/**
+ * המשיכה המוצלחת האחרונה, ללא תפוגה.
+ *
+ * כשבנק ישראל אינו זמין אין שום סיבה להציג למשתמש ערכים שנכתבו בקוד: הריבית
+ * שנמשכה בהצלחה לפני שעה או לפני יומיים היא עדיין הריבית שבתוקף. לכן כל משיכה
+ * מוצלחת נשמרת כאן, וכל משיכה כושלת נופלת אליה לפני שהיא נופלת לטבלה הסטטית.
+ * ה-`fetchedAt` שנשמר הוא של המשיכה המקורית, כדי שיהיה גלוי מתי הנתון נמשך.
+ */
+let lastGood: MarketRatesSnapshot | null = null;
+
 export function marketRatesTtlSeconds(): number {
   const parsed = parseInt(process.env.MARKET_RATES_CACHE_TTL ?? '900', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 900;
+}
+
+/** האם התצלום מכיל נתונים שנמשכו באמת מבנק ישראל */
+export function isLiveSnapshot(snapshot: MarketRatesSnapshot): boolean {
+  return snapshot.source !== 'fallback';
+}
+
+/**
+ * רישום משיכה מוצלחת כ"אחרונה שהצליחה".
+ *
+ * נקרא גם מהשרת בעליית התהליך, כדי לזרוע את הזיכרון מהמטמון המשותף — כך
+ * משתמש חדש, מחובר או לא, רואה מיד את הערך שנמשך בהצלחה עבור מישהו אחר.
+ */
+export function recordLastGoodMarketRates(snapshot: MarketRatesSnapshot): void {
+  if (!isLiveSnapshot(snapshot)) return;
+  if (lastGood && lastGood.fetchedAt >= snapshot.fetchedAt) return;
+  lastGood = snapshot;
+  applyLiveInterestRates(snapshot);
+}
+
+/** המשיכה המוצלחת האחרונה שידועה לתהליך הזה */
+export function lastGoodMarketRates(): MarketRatesSnapshot | null {
+  return lastGood;
 }
 
 /** ניקוי המטמון — לשימוש בטסטים ובריענון יזום */
 export function clearMarketRatesCache(): void {
   memoryCache = null;
   inFlight = null;
+  lastGood = null;
 }
 
 /**
- * התצלום העדכני. בקשות מקבילות חולקות משיכה אחת, וכשהמשיכה נכשלת לגמרי
- * מוחזר תצלום נפילה — אף פעם לא שגיאה, כדי שהכלים ימשיכו לעבוד גם בלי רשת.
+ * התצלום העדכני.
+ *
+ * בקשות מקבילות חולקות משיכה אחת. כשהמשיכה נכשלת מוחזרת המשיכה המוצלחת
+ * האחרונה, ורק אם מעולם לא הייתה כזו מוחזר תצלום נפילה — אף פעם לא שגיאה,
+ * כדי שהכלים ימשיכו לעבוד גם בלי רשת.
  */
 export async function getMarketRates(options: { force?: boolean } = {}): Promise<MarketRatesSnapshot> {
   const now = Date.now();
@@ -493,13 +530,18 @@ export async function getMarketRates(options: { force?: boolean } = {}): Promise
 
   const request = fetchMarketRates()
     .catch(() => fallbackMarketRates())
-    .then((snapshot) => {
-      // כל תצלום חדש מזרים את הריביות לטבלה המרכזית, כדי שגם קוד שלא חובר
+    .then((fetched) => {
+      // משיכה שלא הביאה דבר מבנק ישראל אינה מחליפה נתון אמיתי שכבר יש לנו
+      const snapshot = isLiveSnapshot(fetched) ? fetched : lastGood ?? fetched;
+      recordLastGoodMarketRates(fetched);
+
+      // כל תצלום שמוחזר מזרים את הריביות לטבלה המרכזית, כדי שגם קוד שלא חובר
       // ישירות לשכבת הנתונים יקרא את הערכים שבתוקף עכשיו.
       applyLiveInterestRates(snapshot);
-      // תצלום נפילה אינו נשמר לזמן מלא, כדי שתקלת רשת רגעית לא תקפיא את
-      // הפלטפורמה על ערכים סטטיים לרבע שעה.
-      const ttl = snapshot.source === 'fallback' ? 60 : marketRatesTtlSeconds();
+
+      // תצלום שאינו חי אינו נשמר לזמן מלא, כדי שתקלת רשת רגעית לא תקפיא את
+      // הפלטפורמה לרבע שעה לפני שננסה שוב.
+      const ttl = isLiveSnapshot(fetched) ? marketRatesTtlSeconds() : 60;
       memoryCache = { snapshot, expiresAt: Date.now() + ttl * 1000 };
       inFlight = null;
       return snapshot;

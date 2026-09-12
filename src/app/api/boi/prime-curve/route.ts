@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { expectedInflationPath } from '@/lib/inflation-forecast';
 import { expectedMarketPrimePath } from '@/lib/prime-forward-curve';
-import { fallbackMarketRates, getMarketRates, type MarketRatesSnapshot } from '@/lib/market-rates';
+import { fallbackMarketRates, type MarketRatesSnapshot } from '@/lib/market-rates';
+import { getSharedMarketRates } from '@/lib/market-rates-store';
 
 /**
  * עקום הפריים וציפיות האינפלציה של בנק ישראל.
@@ -28,7 +29,7 @@ function payload(snapshot: MarketRatesSnapshot) {
 
 export async function GET() {
   try {
-    return NextResponse.json(payload(await getMarketRates()), {
+    return NextResponse.json(payload(await getSharedMarketRates()), {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (err: unknown) {

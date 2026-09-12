@@ -410,16 +410,17 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                   />
                 )}
+                {/*
+                  שלב התמהיל מוצג בלי שורת "כלים נוספים": כלי בניית התמהיל הוא
+                  מסך עבודה מלא, וקישורים לכלים אחרים מעליו רק מושכים החוצה ממנו.
+                */}
                 {stage === 'MIX' && (
-                  <>
-                    <StageTools stage={stage} data={plan.data} planId={plan.id} compact />
-                    <MixStage
-                      data={plan.data}
-                      planId={plan.id}
-                      focusMixKey={focusMixKey}
-                      onChange={(next: MixData) => updateStage('MIX', next)}
-                    />
-                  </>
+                  <MixStage
+                    data={plan.data}
+                    planId={plan.id}
+                    focusMixKey={focusMixKey}
+                    onChange={(next: MixData) => updateStage('MIX', next)}
+                  />
                 )}
                 {showStageFooter && stageFooter}
               </div>

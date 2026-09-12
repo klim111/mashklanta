@@ -61,6 +61,11 @@ interface MixControlPanelProps {
   onAddTrack: (type: TrackType) => void;
   onPrepay: (trackId: string) => void;
   onRefinance: (trackId: string) => void;
+  /**
+   * מחזור מוצג רק בתמהיל שנבחר כסופי. בשלב התכנון אין לו משמעות — משנים את
+   * המסלול עצמו במקום לתכנן מחזור עתידי של תמהיל שעוד לא נבחר.
+   */
+  allowRefinance?: boolean;
   onAmortization: (trackId: string) => void;
   /** המסלול שמוצג כרגע באזור הגרפים */
   focusTrackId?: string | null;
@@ -76,6 +81,7 @@ export function MixControlPanel({
   onAddTrack,
   onPrepay,
   onRefinance,
+  allowRefinance = false,
   onAmortization,
   focusTrackId = null,
   onFocusTrack,
@@ -136,6 +142,7 @@ export function MixControlPanel({
             onRemove={() => onRemoveTrack(trackResult.track.id)}
             onPrepay={() => onPrepay(trackResult.track.id)}
             onRefinance={() => onRefinance(trackResult.track.id)}
+            allowRefinance={allowRefinance}
             onAmortization={() => onAmortization(trackResult.track.id)}
           />
         ))}
@@ -188,6 +195,7 @@ function TrackControlCard({
   onRemove,
   onPrepay,
   onRefinance,
+  allowRefinance,
   onAmortization,
 }: {
   result: TrackResult;
@@ -203,6 +211,7 @@ function TrackControlCard({
   onRemove: () => void;
   onPrepay: () => void;
   onRefinance: () => void;
+  allowRefinance: boolean;
   onAmortization: () => void;
 }) {
   const track = result.track;
@@ -289,26 +298,8 @@ function TrackControlCard({
       </div>
 
       <fieldset disabled={locked} className="space-y-2 disabled:opacity-70">
-        {/* סוג מסלול + לוח סילוקין */}
+        {/* לוח סילוקין מימין, סוג הריבית משמאל */}
         <div className="grid grid-cols-2 gap-2">
-          <Field icon={Layers} label="סוג מסלול">
-            <Select
-              value={track.type}
-              onValueChange={(value) => patchWithName({ type: value as MortgageTrack['type'] })}
-            >
-              <SelectTrigger dir="rtl" className="h-8 text-[11px] [&>span:first-of-type]:text-right">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent dir="rtl" className="text-right">
-                {Object.entries(TRACK_TYPES).map(([key, label]) => (
-                  <SelectItem key={key} value={key} className="pr-7 text-right text-xs">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
           <Field icon={Layers} label="לוח סילוקין">
             <Select
               value={track.amortizationType || 'spitzer'}
@@ -321,6 +312,24 @@ function TrackControlCard({
               </SelectTrigger>
               <SelectContent dir="rtl" className="text-right">
                 {Object.entries(AMORTIZATION_TYPES).map(([key, label]) => (
+                  <SelectItem key={key} value={key} className="pr-7 text-right text-xs">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field icon={Layers} label="סוג מסלול">
+            <Select
+              value={track.type}
+              onValueChange={(value) => patchWithName({ type: value as MortgageTrack['type'] })}
+            >
+              <SelectTrigger dir="rtl" className="h-8 text-[11px] [&>span:first-of-type]:text-right">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent dir="rtl" className="text-right">
+                {Object.entries(TRACK_TYPES).map(([key, label]) => (
                   <SelectItem key={key} value={key} className="pr-7 text-right text-xs">
                     {label}
                   </SelectItem>
@@ -385,9 +394,14 @@ function TrackControlCard({
               max={TRACK_TERM_MONTHS_MAX}
               step={1}
             />
-            <span className="w-16 shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1 py-0.5 text-center text-[12px] font-bold text-slate-700">
-              {months} ח׳
-            </span>
+            <InlineNumberBox
+              value={months}
+              suffix="ח׳"
+              width="w-[70px]"
+              onChange={(value) =>
+                patchWithName({ years: clampTrackTermMonths(value ?? months) / 12 })
+              }
+            />
           </div>
           <p className="text-[10px] text-slate-400">{formatDuration(result.months)} בפועל</p>
         </Field>
@@ -404,9 +418,13 @@ function TrackControlCard({
               max={Math.max(maxAmount, 1)}
               step={5000}
             />
-            <span className="w-[74px] shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1 py-0.5 text-center text-[12px] font-bold text-slate-700">
-              {formatShekel(track.amount)}
-            </span>
+            <InlineNumberBox
+              value={Math.round(track.amount)}
+              suffix="₪"
+              width="w-[104px]"
+              max={Math.max(maxAmount, 0)}
+              onChange={(value) => applyAmount(value ?? 0)}
+            />
           </div>
           <div className="flex items-center justify-between text-[10px] text-slate-400">
             <span>{track.percentage.toFixed(1)}% מהמשכנתא</span>
@@ -440,9 +458,47 @@ function TrackControlCard({
       <div className="mt-2 flex flex-wrap gap-1 border-t border-slate-100 pt-2">
         <ActionButton icon={Banknote} label="פרעון מוקדם" onClick={onPrepay} disabled={locked} />
         <ActionButton icon={Table2} label="לוח החזרים" onClick={onAmortization} />
-        <ActionButton icon={RefreshCcw} label="מחזור" onClick={onRefinance} disabled={locked} />
+        {allowRefinance && (
+          <ActionButton icon={RefreshCcw} label="מחזור" onClick={onRefinance} />
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * תיבת מספר קומפקטית לצד סליידר.
+ *
+ * היא נראית כמו תווית הערך שהייתה כאן קודם, אבל לחיצה עליה פותחת אותה לעריכה:
+ * הסליידר נוח לכוונון גס, וההקלדה היא הדרך היחידה להגיע לסכום מדויק. הפסיקים
+ * נוספים כבר תוך כדי ההקלדה (`integer`), והסמן נשאר במקומו.
+ */
+function InlineNumberBox({
+  value,
+  suffix,
+  width,
+  max,
+  onChange,
+}: {
+  value: number;
+  suffix: string;
+  width: string;
+  max?: number;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <span
+      className={`${width} flex shrink-0 items-center gap-0.5 rounded-md border border-slate-200 bg-slate-50 px-1 py-0.5 focus-within:border-blue-400 focus-within:bg-white`}
+    >
+      <NumericInput
+        integer
+        max={max}
+        className="min-w-0 flex-1 bg-transparent text-center text-[12px] font-bold text-slate-700 outline-none"
+        value={value}
+        onChange={onChange}
+      />
+      <span className="shrink-0 text-[10px] text-slate-400">{suffix}</span>
+    </span>
   );
 }
 

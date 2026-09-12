@@ -288,3 +288,63 @@ describe('פרעון מוקדם, מחזור ושינוי מסלול — הלוח
     expect(result.tracks[0].totalPrepaid).toBeGreaterThan(result.tracks[1].totalPrepaid);
   });
 });
+
+describe('פיצול ההחזר לקרן ולריבית — הבסיס לגרף ההחזר החודשי', () => {
+  /**
+   * הגרף מצייר מתחת לקו ההחזר שתי שכבות: קרן וריבית. כדי שהן יסתדרו עם הקו,
+   * הסכום שלהן חייב להיות ההחזר עצמו (בלי פרעון מוקדם, שאינו החזר שוטף).
+   */
+  AMORTIZATIONS.forEach((amortizationType) => {
+    it(`${amortizationType} — קרן ועוד ריבית הן ההחזר`, () => {
+      const result = computeMix(mixOf([{ type: 'fixed_unlinked', amortizationType }]));
+      result.tracks[0].schedule.forEach((row) => {
+        const principal = row.principal - row.prepayment;
+        const interest = row.payment - row.principal;
+        expect(principal).toBeGreaterThanOrEqual(-1e-9);
+        expect(interest).toBeGreaterThanOrEqual(-1e-9);
+        expect(principal + interest).toBeCloseTo(row.payment - row.prepayment, 6);
+      });
+    });
+  });
+
+  it('בשפיצר חלק הקרן גדל וחלק הריבית קטן לאורך התקופה', () => {
+    const rows = computeMix(mixOf([{ type: 'fixed_unlinked', interestRate: 5 }])).tracks[0].schedule;
+    const firstPrincipal = rows[0].principal;
+    const lastPrincipal = rows.at(-1)!.principal;
+    expect(lastPrincipal).toBeGreaterThan(firstPrincipal);
+    expect(rows.at(-1)!.interest).toBeLessThan(rows[0].interest);
+  });
+
+  it('בקרן שווה חלק הקרן קבוע לאורך כל התקופה', () => {
+    const rows = computeMix(
+      mixOf([{ type: 'fixed_unlinked', amortizationType: 'equal_principal', interestRate: 5 }])
+    ).tracks[0].schedule;
+    rows.forEach((row) => expect(row.principal).toBeCloseTo(rows[0].principal, 4));
+  });
+
+  it('בגרייס חלקי כל ההחזר השוטף הוא ריבית, והקרן נפרעת רק בסוף', () => {
+    const rows = computeMix(
+      mixOf([{ type: 'fixed_unlinked', amortizationType: 'partial_grace', interestRate: 5 }])
+    ).tracks[0].schedule;
+    rows.slice(0, -1).forEach((row) => {
+      expect(row.principal).toBeCloseTo(0, 6);
+      expect(row.interest).toBeCloseTo(row.payment, 6);
+    });
+    expect(rows.at(-1)!.principal).toBeCloseTo(AMOUNT, 2);
+  });
+
+  it('בגרייס מלא הריבית שנצברה נספרת כריבית ולא כקרן', () => {
+    const rows = computeMix(
+      mixOf([{ type: 'fixed_unlinked', amortizationType: 'full_grace', interestRate: 5 }])
+    ).tracks[0].schedule;
+    const last = rows.at(-1)!;
+    expect(last.deferredInterest).toBeGreaterThan(0);
+    // חלק הריבית בתשלום הסוגר כולל את כל מה שנצבר, ולא רק את ריבית החודש
+    expect(last.payment - last.principal).toBeCloseTo(last.interest + last.deferredInterest, 6);
+    expect(last.payment - last.principal).toBeGreaterThan(last.interest);
+    // חודשי הצבירה אינם מציגים תשלום כלל — שתי השכבות אפס
+    const accrual = rows[0];
+    expect(accrual.payment).toBeCloseTo(0, 6);
+    expect(accrual.payment - accrual.principal).toBeCloseTo(0, 6);
+  });
+});

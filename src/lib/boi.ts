@@ -1,4 +1,5 @@
-import { getMarketRates, fallbackMarketRates, type MarketRatesSnapshot } from './market-rates';
+import { fallbackMarketRates, type MarketRatesSnapshot } from './market-rates';
+import { getSharedMarketRates } from './market-rates-store';
 import { defaultRateFor } from './rate-anchors';
 
 export type RatesQuery = { from?: string; to?: string };
@@ -47,7 +48,7 @@ export function ratesFromSnapshot(snapshot: MarketRatesSnapshot): BoiRatesPayloa
  */
 export async function fetchBoiRates(_query: RatesQuery = {}): Promise<BoiRatesPayload> {
   try {
-    return ratesFromSnapshot(await getMarketRates());
+    return ratesFromSnapshot(await getSharedMarketRates());
   } catch {
     return ratesFromSnapshot(fallbackMarketRates());
   }
