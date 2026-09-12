@@ -174,6 +174,13 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     orders.orders.find((order) => order.stages.includes(stage) && order.status === 'PAID')
       ?.advisorName ?? null;
 
+  /*
+    שלב התמחור נפתח בבחירה בין ליווי יועץ לתמחור עצמי, ובשלב הזה אין להציג
+    במסך שום דבר נוסף — גם לא את כפתור הליווי שבכותרת, שכן הוא אחת משתי
+    האפשרויות שהשלב עצמו מציג.
+  */
+  const auctionAwaitingMode = stage === 'AUCTION' && !plan.data.AUCTION.mode && !advisorRun;
+
   const toggleStageDetails = () =>
     setDetailStages((current) =>
       current.includes(stage) ? current.filter((item) => item !== stage) : [...current, stage]
@@ -408,7 +415,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   בכל אחד מחמשת השלבים אפשר להעביר את העבודה ליועץ. הכפתור יושב
                   בכותרת השלב, כי שם ההחלטה מתקבלת — אחרי שרואים מה השלב דורש.
                 */}
-                {!isPreview && (
+                {!isPreview && !auctionAwaitingMode && (
                   <div className="w-full sm:w-auto">
                     <AdvisorHandoffButton
                       stage={stage}
@@ -501,6 +508,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     data={plan.data}
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
+                    onRequestAdvisor={() => setHandoffStage('AUCTION')}
                   />
                 )}
                 {stage === 'SIGNING' && (

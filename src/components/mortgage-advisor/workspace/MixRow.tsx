@@ -62,6 +62,12 @@ interface MixRowProps {
   note?: string;
   /** חץ הפתיחה מוצג רק לתמהיל שבאזור העבודה */
   showExpandIcon?: boolean;
+  /**
+   * המסלול שנבחר בפס ההרכב. כשהוא מועבר, כל קטע בפס הופך ללחיץ — לחיצה עליו
+   * מציגה את הנתונים והגרפים של אותו מסלול בלבד.
+   */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
 }
 
 /**
@@ -94,6 +100,8 @@ export function MixRow({
   hint,
   note,
   showExpandIcon = true,
+  focusTrackId = null,
+  onFocusTrack,
 }: MixRowProps) {
   const [renaming, setRenaming] = useState(startRenaming);
   const [draftName, setDraftName] = useState(startRenaming ? '' : mix.name);
@@ -314,8 +322,15 @@ export function MixRow({
           רוחב כל קטע הוא חלקו של המסלול בתמהיל, והפרטים יושבים מתחת לקטע שלו
           ובאותו גודל. קודם הופיעה כאן רשימת נקודות שלא הייתה מיושרת לפס.
         */}
-        <div>
-          <TrackCompositionStrip tracks={mix.tracks} trackMonths={trackMonths} />
+        <div onClick={onFocusTrack ? stopRowClick : undefined}>
+          <TrackCompositionStrip
+            tracks={mix.tracks}
+            trackMonths={trackMonths}
+            activeTrackId={focusTrackId}
+            onTrackClick={
+              onFocusTrack && ((trackId) => onFocusTrack(focusTrackId === trackId ? null : trackId))
+            }
+          />
           {(unallocated > 0 || (hint && !expanded)) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
               {unallocated > 0 && (

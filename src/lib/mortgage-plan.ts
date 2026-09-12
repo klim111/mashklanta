@@ -347,8 +347,18 @@ export interface SignedMixChoice {
   chosenAt: string;
 }
 
+/**
+ * איך הלקוח בחר לעבור את שלב התמחור: לבד, או בליווי יועץ.
+ *
+ * עד שנבחר — השלב מציג רק את שתי האפשרויות, ושום דבר אחר. זו החלטה שמשנה את
+ * כל המסך שאחריה, ולכן היא נשאלת ראשונה ולבדה.
+ */
+export type AuctionMode = 'self' | 'advisor';
+
 /** שלב 4 — מכרז הריביות */
 export interface AuctionData {
+  /** null — עדיין לא נבחרה דרך, והשלב מציג את שתי האפשרויות בלבד */
+  mode: AuctionMode | null;
   offers: BankOffer[];
   winnerOfferId: string | null;
   /** ההצעה המתומחרת שנבחרה כתמהיל הסופי לחתימה */
@@ -458,7 +468,7 @@ const EMPTY: PlanData = {
     baskets: [],
     note: '',
   },
-  AUCTION: { offers: [], winnerOfferId: null, signedMix: null },
+  AUCTION: { mode: null, offers: [], winnerOfferId: null, signedMix: null },
   SIGNING: {
     bank: null,
     signingDate: null,
@@ -858,7 +868,15 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           ? source.winnerOfferId
           : null;
 
-      return { offers, winnerOfferId, signedMix: parseSignedMix(source.signedMix) } as PlanStageDataMap[S];
+      const mode: AuctionMode | null =
+        source.mode === 'self' || source.mode === 'advisor' ? source.mode : null;
+
+      return {
+        mode,
+        offers,
+        winnerOfferId,
+        signedMix: parseSignedMix(source.signedMix),
+      } as PlanStageDataMap[S];
     }
 
     case 'SIGNING': {
@@ -1451,6 +1469,7 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       break;
     }
     case 'AUCTION':
+      if (!data.AUCTION.mode) missing.push('בחירה בין תמחור עצמי לליווי יועץ');
       missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
       break;
     case 'SIGNING': {

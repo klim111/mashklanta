@@ -164,6 +164,13 @@ describe('סגירת שלבים', () => {
   it('שלב התמחור נסגר בבחירת התמהיל המתומחר שהולכים איתו לחתימה', () => {
     const data = profile();
     expect(stageIsComplete('AUCTION', data)).toBe(false);
+    // עוד לא נבחרה דרך — ולכן זה הדבר הראשון שחסר
+    expect(missingForStage('AUCTION', data)).toEqual([
+      'בחירה בין תמחור עצמי לליווי יועץ',
+      'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
+    ]);
+
+    data.AUCTION = { ...data.AUCTION, mode: 'self' };
     expect(missingForStage('AUCTION', data)).toEqual([
       'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
     ]);
@@ -377,6 +384,13 @@ describe('ניקוי נתונים שהגיעו מבחוץ', () => {
     expect(parsed.offers).toHaveLength(1);
     expect(parsed.offers[0].round).toBe(1);
     expect(parsed.winnerOfferId).toBeNull();
+  });
+
+  it('הדרך שנבחרה לשלב התמחור נקראת, וערך לא מוכר נופל ל-null', () => {
+    expect(parseStageData('AUCTION', { mode: 'self' }).mode).toBe('self');
+    expect(parseStageData('AUCTION', { mode: 'advisor' }).mode).toBe('advisor');
+    expect(parseStageData('AUCTION', { mode: 'whatever' }).mode).toBeNull();
+    expect(parseStageData('AUCTION', {}).mode).toBeNull();
   });
 
   it('התמהיל שנבחר לחתימה נקרא עם הבנק והמספרים שלו', () => {

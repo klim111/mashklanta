@@ -11,7 +11,7 @@ import {
   Save,
   Wallet,
 } from 'lucide-react';
-import { AMORTIZATION_TYPES, MORTGAGE_BANKS, TRACK_TYPES } from '@/components/mortgage-advisor/types';
+import { AMORTIZATION_TYPES, TRACK_TYPES } from '@/components/mortgage-advisor/types';
 import type { MortgageBank } from '@/components/mortgage-advisor/types';
 import { computeMix, formatDuration } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -29,13 +29,18 @@ import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
 import { useMarketRates } from '@/hooks/use-market-rates';
 import { bankTone } from './pricedMixes';
 
-interface BankPricingPanelProps {
+interface BankRateEntryProps {
   /** התמהיל הסופי — המבנה שכל הבנקים מתמחרים, ואינו ניתן לשינוי כאן */
   mix: WorkspaceMix;
+  /** הבנק שהריביות שלו מוזנות. נבחר בשורת הבנקים שמעל */
+  bank: MortgageBank;
   /** שמות ההצעות שכבר נשמרו, כדי ששתי הצעות לא יקבלו אותו שם */
   takenNames: string[];
   /** שמירת ההצעה המתומחרת */
   onSave: (quoted: WorkspaceMix) => Promise<void> | void;
+  /** אחרי שמירה — הטבלה נסגרת וההצעה מופיעה באזור התמהילים המתומחרים */
+  onSaved: () => void;
+  onCancel: () => void;
 }
 
 const fieldClass =
@@ -55,16 +60,21 @@ interface RateEntry {
  * מה שמוזן כאן הוא הריבית לכל מסלול — מפורקת לעוגן ולמרווח, בדיוק כמו בפאנל
  * השליטה — ו"שמור הצעה" יוצרת תמהיל מתומחר על שם הבנק.
  */
-export function BankPricingPanel({ mix, takenNames, onSave }: BankPricingPanelProps) {
+export function BankRateEntry({
+  mix,
+  bank,
+  takenNames,
+  onSave,
+  onSaved,
+  onCancel,
+}: BankRateEntryProps) {
   const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
-  const [bank, setBank] = useState<MortgageBank | null>(null);
   const [receivedAt, setReceivedAt] = useState(() => isoToQuoteDate(new Date().toISOString()));
   const [entries, setEntries] = useState<Record<string, RateEntry>>({});
   const [name, setName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [justSaved, setJustSaved] = useState<string | null>(null);
 
   /*
     ההזנה מתחילה מריביות התכנון של התמהיל הסופי, ולא משדות ריקים: ברוב
@@ -89,7 +99,7 @@ export function BankPricingPanel({ mix, takenNames, onSave }: BankPricingPanelPr
 
   // השם נגזר מהבנק ומהתאריך, עד שנכתב שם ידני
   useEffect(() => {
-    if (nameTouched || !bank) return;
+    if (nameTouched) return;
     setName(uniqueQuoteName(defaultQuoteName(mix, bank, quoteDateToIso(receivedAt)), takenNames));
     // takenNames משתנה בכל רינדור של ההורה, ולכן אינו בתלויות
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -105,10 +115,10 @@ export function BankPricingPanel({ mix, takenNames, onSave }: BankPricingPanelPr
   }, [entries, mix.tracks]);
 
   const untouched = mix.tracks.filter((track) => !entries[track.id]?.touched).length;
-  const ready = Boolean(bank) && Object.keys(rates).length === mix.tracks.length;
+  const ready = Object.keys(rates).length === mix.tracks.length;
 
   const preview = useMemo(() => {
-    if (!ready || !bank) return null;
+    if (!ready) return null;
     const candidate = buildQuotedMix({
       source: mix,
       bank,
@@ -128,16 +138,12 @@ export function BankPricingPanel({ mix, takenNames, onSave }: BankPricingPanelPr
   const planned = useMemo(() => computeMix(mix).summary, [mix]);
 
   const onConfirm = async () => {
-    if (!preview || !bank) return;
+    if (!preview) return;
     setSaving(true);
     try {
       await onSave(preview.mix);
-      setJustSaved(bank);
-      setBank(null);
-      setNameTouched(false);
-      setName('');
-      setNotes('');
-      reset();
+      // הטבלה נסגרת מיד אחרי השמירה — ההצעה כבר מופיעה למטה כשורת תמהיל
+      onSaved();
     } finally {
       setSaving(false);
     }
@@ -148,37 +154,16 @@ export function BankPricingPanel({ mix, takenNames, onSave }: BankPricingPanelPr
   return (
     <div className="space-y-3">
       <div className={`space-y-2 rounded-2xl border p-3 ${tone.border} ${tone.surface}`}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
-            <Building2 className="h-3.5 w-3.5" />
-            הבנק שהחזיר את הריביות
+        <div className="flex items-center justify-center gap-2 text-center">
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-xl"
+            style={{ backgroundColor: tone.dot }}
+          >
+            <Building2 className="h-4 w-4 text-white" />
           </span>
-          {MORTGAGE_BANKS.map((option) => {
-            const optionTone = bankTone(option);
-            const active = bank === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => {
-                  setBank(option);
-                  setJustSaved(null);
-                }}
-                style={active ? { backgroundColor: optionTone.dot, borderColor: optionTone.dot } : undefined}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                  active
-                    ? 'text-white shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                }`}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: active ? '#fff' : optionTone.dot }}
-                />
-                {option}
-              </button>
-            );
-          })}
+          <span className="text-base font-black text-slate-900">
+            הריביות שבנק {bank} הציע
+          </span>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
@@ -328,38 +313,42 @@ export function BankPricingPanel({ mix, takenNames, onSave }: BankPricingPanelPr
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] text-slate-500">
-          {!bank ? (
-            'בחרו את הבנק שהחזיר את הריביות'
-          ) : untouched > 0 ? (
-            <span className="font-semibold text-amber-700">
+      <div className="space-y-2 text-center">
+        <p className="text-sm font-bold">
+          {untouched > 0 ? (
+            <span className="text-amber-700">
               {untouched} מסלולים עדיין בריבית התכנון — עדכנו למה שהבנק נתן
             </span>
           ) : (
-            'כל המסלולים תומחרו'
-          )}
-          {justSaved && (
-            <span className="mr-2 inline-flex items-center gap-1 font-bold text-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              ההצעה של {justSaved} נשמרה
+            <span className="inline-flex items-center gap-1.5 text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" />
+              כל המסלולים תומחרו
             </span>
           )}
-        </div>
+        </p>
 
-        <button
-          type="button"
-          disabled={!preview || saving}
-          onClick={() => void onConfirm()}
-          className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-black text-white transition-all ${
-            preview && !saving
-              ? 'bg-emerald-600 shadow-sm hover:bg-emerald-700'
-              : 'cursor-not-allowed bg-slate-200 text-slate-400'
-          }`}
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          שמור הצעה
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            ביטול
+          </button>
+          <button
+            type="button"
+            disabled={!preview || saving}
+            onClick={() => void onConfirm()}
+            className={`inline-flex items-center gap-2 rounded-2xl px-6 py-2.5 text-sm font-black text-white transition-all ${
+              preview && !saving
+                ? 'bg-emerald-600 shadow-sm hover:bg-emerald-700'
+                : 'cursor-not-allowed bg-slate-200 text-slate-400'
+            }`}
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            שמור הצעה
+          </button>
+        </div>
       </div>
     </div>
   );
