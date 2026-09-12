@@ -56,6 +56,7 @@ model User {
 
   // ───────────────────────── לוח הבקרה של היועץ (CRM) ─────────────────────────
   /**
+   * /**
    * /** המשימות שהיועץ פתח לעצמו, לכל לקוח ולכל שלב
    */
   advisorTasks    AdvisorTask[]        @relation("AdvisorTasks")
@@ -78,17 +79,29 @@ model User {
 
   // ─────────────────────── האישור העקרוני (איסוף פרטי הבקשה) ───────────────────────
   /**
+   * /**
    * תיקי האישור העקרוני שבהם המשתמש הוא הלווה
    */
-  approvalCases   MortgageCase[]       @relation("ApprovalCaseClient")
+  approvalCases    MortgageCase[]   @relation("ApprovalCaseClient")
   /**
    * תיקי האישור העקרוני שהמשתמש מטפל בהם כיועץ
    */
-  advisedApprovals MortgageCase[]      @relation("ApprovalCaseAdvisor")
+  advisedApprovals MortgageCase[]   @relation("ApprovalCaseAdvisor")
   /**
    * הרשאות העריכה שקיבל המשתמש כיועץ על נתונים שהזין הלקוח
    */
-  approvalAccess  ApprovalAccess[]     @relation("ApprovalAccessAdvisor")
+  approvalAccess   ApprovalAccess[] @relation("ApprovalAccessAdvisor")
+
+  // ─────────────────────── הזמנת ליווי יועץ לשלבים ───────────────────────
+  /**
+   * /**
+   * הזמנות הליווי שהמשתמש ביצע בתהליכי המשכנתא שלו
+   */
+  advisorOrders       AdvisorServiceOrder[] @relation("AdvisorOrderClient")
+  /**
+   * הזמנות הליווי שהמשתמש מטפל בהן כיועץ
+   */
+  advisorOrdersServed AdvisorServiceOrder[] @relation("AdvisorOrderAdvisor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -223,24 +236,25 @@ model Client {
   // ריביות מהבנקים
   bankRates Json?
 
-  mixes        MortgageMix[]
-  rateRequests BankRateRequest[]
-  documents    ClientDocument[]
-  actions      ClientAction[]
-  reminders    Reminder[]
-  plans        MortgagePlan[]
+  mixes         MortgageMix[]
+  rateRequests  BankRateRequest[]
+  documents     ClientDocument[]
+  actions       ClientAction[]
+  reminders     Reminder[]
+  advisorOrders AdvisorServiceOrder[]
+  plans         MortgagePlan[]
   /**
    * משימות היועץ עבור הלקוח, לפי שלבי כלי תכנון המשכנתא
    */
-  tasks        AdvisorTask[]
+  tasks         AdvisorTask[]
   /**
    * הערות היועץ בשלבי הלקוח
    */
-  advisorNotes AdvisorNote[]
+  advisorNotes  AdvisorNote[]
   /**
    * הפגישות שנקבעו בין היועץ ללקוח
    */
-  meetings     AdvisorMeeting[]
+  meetings      AdvisorMeeting[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -431,8 +445,9 @@ model MortgagePlan {
 
   completedAt DateTime?
 
-  stages MortgagePlanStage[]
-  mixes  MortgageMix[]
+  stages        MortgagePlanStage[]
+  mixes         MortgageMix[]
+  advisorOrders AdvisorServiceOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -482,6 +497,64 @@ enum PlanStageStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+}
+
+/**
+ * הזמנת ליווי יועץ לשלבים בתהליך.
+ * הלקוח בוחר אילו שלבים יועץ יבצע במקומו — שלב אחד, כמה, או כולם — ומשלם
+ * לפי מודל התמחור של הפלטפורמה. עד שההזמנה שולמה השלב נשאר בידי הלקוח;
+ * מרגע התשלום הוא מוצג כשלב שהיועץ מבצע, והיועץ מקבל עליו משימה באזור שלו.
+ */
+model AdvisorServiceOrder {
+  id      String       @id @default(cuid())
+  planId  String
+  plan    MortgagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User         @relation("AdvisorOrderClient", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /**
+   * היועץ שהבקשה נשלחה אליו — זה שיש לו הרשאות על אותו לקוח. ריק כשעדיין לא
+   * שויך יועץ ללקוח, ואז הבקשה ממתינה לשיוך
+   */
+  advisorId String?
+  advisor   User?   @relation("AdvisorOrderAdvisor", fields: [advisorId], references: [id], onDelete: SetNull)
+  clientId  String?
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * השלבים שהוזמנו, כמערך של PlanStage
+   */
+  stagesJson Json
+  /**
+   * הסכום לתשלום בשקלים, אחרי הנחת החבילה המלאה
+   */
+  amount     Int
+  status     AdvisorOrderStatus @default(PENDING_PAYMENT)
+
+  /**
+   * אישור התנאים והתשלום. פרטי אמצעי התשלום עצמם אינם נשמרים כאן — רק
+   * האסמכתה שמחזיר ספק הסליקה וארבע הספרות האחרונות, לזיהוי החיוב
+   */
+  termsAcceptedAt DateTime?
+  paidAt          DateTime?
+  paymentRef      String?
+  cardLast4       String?
+  payerName       String?
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@index([ownerId])
+  @@index([advisorId, status])
+}
+
+enum AdvisorOrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
 }
 
 model ClientAction {
@@ -544,9 +617,9 @@ model RatesCache {
  * שהמשימות של היועץ ייגזרו מאותו תהליך שהלקוח רואה אצלו — ולא מרצף נפרד.
  */
 model AdvisorTask {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   advisorId String
-  advisor   User   @relation("AdvisorTasks", fields: [advisorId], references: [id], onDelete: Cascade)
+  advisor   User    @relation("AdvisorTasks", fields: [advisorId], references: [id], onDelete: Cascade)
   /**
    * הלקוח שהמשימה שייכת לו. ריק — משימה של היועץ עצמו, בלי שיוך ללקוח
    */
@@ -685,7 +758,6 @@ model AdvisorRateDefault {
   rate             Float
   /**
    * המרווח שהבנק גובה מעל העוגן, בנקודות אחוז.
-   *
    * כשהוא קיים, הריבית הסופית של מסלול חדש נגזרת מהעוגן העדכני של בנק ישראל
    * ועוד המרווח הזה, ולכן היא מתעדכנת עם השוק. כשהוא ריק נעשה שימוש ב-`rate`
    * כפי שהוא, לתאימות עם ריביות שנשמרו לפני הפירוק לעוגן ומרווח.
@@ -772,7 +844,6 @@ model BankRateRequest {
   @@index([clientId])
 }
 
-
 // ─────────────────────── האישור העקרוני — איסוף פרטי הבקשה ───────────────────────
 //
 // שלב איסוף הפרטים לקראת אישור עקרוני: פרטי הלווים והערבים, ההכנסות, חשבונות
@@ -830,7 +901,6 @@ model CaseEntity {
 
 /**
  * תשובה בודדת.
- *
  * ערכים רגישים (הכנסות, הון עצמי, מקורות מימון, מספרי חשבון ותעודות זהות)
  * נשמרים מוצפנים ב-valueEnc דרך src/lib/crypto.ts, באותה מדיניות שנוהגת
  * בשדות הכספיים של מודל Client. שאר הערכים נשמרים כטקסט ב-value.
@@ -875,7 +945,7 @@ model FieldConflict {
   encrypted     Boolean      @default(false)
   status        String       @default("open") // open | resolved
   resolvedValue String?
-  resolvedWith  String?      // profile | case
+  resolvedWith  String? // profile | case
   resolvedById  String?
   resolvedAt    DateTime?
   createdAt     DateTime     @default(now())
