@@ -28,6 +28,11 @@ export interface SavedMix {
   ownerIsAdvisor?: boolean;
   isFinal?: boolean;
   locked?: boolean;
+  /**
+   * האם התמהיל כבר שודר ללקוח. רלוונטי לתמהיל שיועץ בנה או תמחר בתוך תיק
+   * לקוח: עד השידור הוא נראה רק אצל היועץ.
+   */
+  sharedWithClient?: boolean;
 }
 
 /** האם הסיכום ששמור לצד התמהיל שלם, או שצריך לחשב אותו מחדש. */
@@ -90,5 +95,8 @@ export function toSavedMix(raw: unknown): SavedMix | null {
     ownerIsAdvisor: item.ownerIsAdvisor === true,
     isFinal,
     locked,
+    // ברירת המחדל היא "גלוי": כך מתנהג כל תמהיל שהלקוח שמר בעצמו, וכך גם
+    // רשומות שנשמרו לפני שהופרדו טיוטות היועץ
+    sharedWithClient: item.sharedWithClient !== false,
   };
 }

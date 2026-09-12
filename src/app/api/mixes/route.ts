@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
   if (clientId) {
     const client = await findAccessibleClient(userId, clientId);
     if (!client) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    return NextResponse.json(await listMixesForClient(clientId));
+    // רק היועץ של הלקוח רואה גם את מה שעדיין לא שודר — זו העבודה שלו בתהליך
+    return NextResponse.json(
+      await listMixesForClient(clientId, { includeUnshared: client.advisorId === userId })
+    );
   }
 
   return NextResponse.json(await listMixesForUser(userId));
@@ -71,12 +74,24 @@ export async function POST(req: NextRequest) {
     if (own) clientId = own.id;
   }
 
+  /*
+    יועץ ששומר תמהיל בתוך תיק של לקוח שומר טיוטה: היא נשארת אצלו עד שישדר
+    אותה. הלקוח, ששומר לעצמו, רואה תמיד את מה ששמר.
+  */
+  const isAdvisorDraft =
+    session?.user?.role === 'ADVISOR' && typeof requestedClientId === 'string';
+
   const saved = await saveMix({
     ownerId: userId,
     mix,
     clientId,
     planId: requestedPlanId,
     categoryId,
+    ...(body?.sharedWithClient === true
+      ? { sharedWithClient: true }
+      : isAdvisorDraft
+        ? { sharedWithClient: false }
+        : {}),
   });
   // פרטי העסקה בכרטיס הלקוח מושלמים מהתמהיל, כדי שלא יידרש להזין אותם פעמיים
   if (saved.clientId) await fillClientDealFromMix(saved.clientId, mix);

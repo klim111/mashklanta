@@ -15,6 +15,7 @@ const mixSelect = {
   categoryId: true,
   isFinal: true,
   locked: true,
+  sharedWithClient: true,
   savedAt: true,
   mixJson: true,
   summaryJson: true,
@@ -63,6 +64,7 @@ function fromRow(row: MixRow): SavedMix | null {
     ownerIsAdvisor: row.owner?.role === 'ADVISOR',
     isFinal: row.isFinal,
     locked: row.locked,
+    sharedWithClient: row.sharedWithClient,
   });
 }
 
@@ -86,17 +88,34 @@ async function clientIdsOf(userId: string): Promise<string[]> {
 export async function listMixesForUser(userId: string): Promise<SavedMix[]> {
   const clientIds = await clientIdsOf(userId);
   const rows = await prisma.mortgageMix.findMany({
-    where: clientIds.length > 0 ? { OR: [{ ownerId: userId }, { clientId: { in: clientIds } }] } : { ownerId: userId },
+    // תמהיל שהיועץ עדיין לא שידר ללקוח אינו מגיע אליו, גם אם הוא משויך אליו
+    where:
+      clientIds.length > 0
+        ? {
+            OR: [
+              { ownerId: userId },
+              { clientId: { in: clientIds }, sharedWithClient: true },
+            ],
+          }
+        : { ownerId: userId },
     orderBy: { savedAt: 'desc' },
     select: mixSelect,
   });
   return fromRows(rows);
 }
 
-/** התמהילים של לקוח מסוים — אותה רשימה שהיועץ והלקוח רואים */
-export async function listMixesForClient(clientId: string): Promise<SavedMix[]> {
+/**
+ * התמהילים של לקוח מסוים.
+ *
+ * היועץ רואה גם את מה שעדיין לא שידר — זו העבודה שלו בתהליך. כל מי שאינו
+ * היועץ רואה רק את מה ששודר בפועל.
+ */
+export async function listMixesForClient(
+  clientId: string,
+  options: { includeUnshared?: boolean } = {}
+): Promise<SavedMix[]> {
   const rows = await prisma.mortgageMix.findMany({
-    where: { clientId },
+    where: options.includeUnshared ? { clientId } : { clientId, sharedWithClient: true },
     orderBy: { savedAt: 'desc' },
     select: mixSelect,
   });
@@ -115,6 +134,11 @@ export interface SaveMixInput {
    * הם מסודרים לפיה באזור התמהילים השמורים.
    */
   categoryId?: string | null;
+  /**
+   * האם התמהיל גלוי ללקוח. יועץ ששומר בתוך תיק לקוח מעביר false, כדי שהעבודה
+   * תישאר אצלו עד לשידור.
+   */
+  sharedWithClient?: boolean;
 }
 
 /**
@@ -127,6 +151,7 @@ export async function saveMix({
   clientId,
   planId,
   categoryId,
+  sharedWithClient,
 }: SaveMixInput): Promise<SavedMix> {
   const existing = await prisma.mortgageMix.findUnique({
     where: { ownerId_mixKey: { ownerId, mixKey: mix.id } },
@@ -152,6 +177,7 @@ export async function saveMix({
       clientId: clientId ?? null,
       planId: planId ?? null,
       categoryId: categoryId ?? null,
+      sharedWithClient: sharedWithClient ?? true,
       savedAt,
       ...columns,
     },
@@ -159,6 +185,8 @@ export async function saveMix({
       ...(clientId === undefined ? {} : { clientId }),
       ...(planId === undefined ? {} : { planId }),
       ...(categoryId === undefined ? {} : { categoryId }),
+      // שידור הופך תמהיל לגלוי; שמירה חוזרת אינה מחזירה אותו להסתרה
+      ...(sharedWithClient === true ? { sharedWithClient: true } : {}),
       savedAt,
       ...columns,
     },
@@ -283,6 +311,30 @@ export async function setMixCategory(
 }
 
 /** התמהילים ששמורים אצל היועץ ואינם משויכים ללקוח — הם שמסודרים לפי קטגוריה */
+/**
+ * שידור תמהיל ללקוח — מה שהיועץ בנה או תמחר הופך לגלוי אצלו.
+ *
+ * הפעולה שמורה ליועץ שהתמהיל שמור על שמו: הוא זה שעבד עליו, והוא זה שמחליט
+ * מתי הוא מוכן להיראות.
+ */
+export async function shareMixWithClient(
+  advisorId: string,
+  recordId: string
+): Promise<SavedMix | null> {
+  const row = await prisma.mortgageMix.findFirst({
+    where: { id: recordId, ownerId: advisorId },
+    select: { id: true, clientId: true },
+  });
+  if (!row || !row.clientId) return null;
+
+  const updated = await prisma.mortgageMix.update({
+    where: { id: recordId },
+    data: { sharedWithClient: true },
+    select: mixSelect,
+  });
+  return fromRow(updated);
+}
+
 export async function listUnassignedMixes(ownerId: string): Promise<SavedMix[]> {
   const rows = await prisma.mortgageMix.findMany({
     where: { ownerId, clientId: null },

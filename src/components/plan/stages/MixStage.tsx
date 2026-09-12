@@ -51,11 +51,17 @@ export function MixStage({
   onChange,
   planId,
   focusMixKey,
+  clientId,
 }: {
   data: PlanData;
   onChange: (next: MixData) => void;
   planId: string;
   focusMixKey?: string | null;
+  /**
+   * תיק הלקוח, כשהמסך נפתח אצל היועץ. זה ההבדל היחיד בין מה שהיועץ רואה למה
+   * שהלקוח רואה: אותו כלי בדיוק, על התמהילים של אותו לקוח.
+   */
+  clientId?: string;
 }) {
   const analysis = analyzeProfile(data.ANALYSIS);
   const profile = data.ANALYSIS;
@@ -103,6 +109,7 @@ export function MixStage({
         embedded
         skipPropertySetup
         planId={planId}
+        clientId={clientId}
         startInSetup={!data.MIX.mixKey && !basketsSaved && !focusMixKey}
         preferredMixIds={preferredMixIds}
         activeMixKey={focusMixKey || data.MIX.mixKey}

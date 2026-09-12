@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { assignMixDeal, canEditMix, markMixAsFinal, setMixCategory } from '@/lib/mixes';
+import {
+  assignMixDeal,
+  canEditMix,
+  markMixAsFinal,
+  setMixCategory,
+  shareMixWithClient,
+} from '@/lib/mixes';
 import { findAccessibleClient } from '@/lib/clients';
 import { getPlanForUser, persistFinalMix } from '@/lib/mortgage-plans';
 
@@ -28,6 +34,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     const saved = await markMixAsFinal(userId, id, body.planId);
     if (!saved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     await persistFinalMix(userId, body.planId, saved);
+    return NextResponse.json(saved);
+  }
+
+  /*
+    שידור התמהיל ללקוח. עד כאן הוא היה טיוטה של היועץ, ומרגע זה הוא מופיע
+    אצל הלקוח באזור התמהילים שלו.
+  */
+  if (body?.sharedWithClient === true) {
+    const saved = await shareMixWithClient(userId, id);
+    if (!saved) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return NextResponse.json(saved);
   }
 
