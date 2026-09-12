@@ -51,6 +51,14 @@ interface MixComparisonProps {
   entries: ComparisonEntry[];
   allowSelectFinal?: boolean;
   onSelectFinal?: (entryId: string) => void;
+  /**
+   * הכיתוב של בחירת התמהיל. ההשוואה משמשת גם בשלב 3, שבו בוחרים את מבנה
+   * התמהיל הסופי, וגם בשלב 4, שבו בוחרים בין הצעות מתומחרות את זו שהולכים
+   * איתה לחתימה — אותה השוואה בדיוק, החלטה אחרת.
+   */
+  selectFinalLabel?: string;
+  selectFinalConfirm?: string;
+  selectedFinalLabel?: string;
 }
 
 type ComputedMix = ComparisonEntry & {
@@ -80,7 +88,14 @@ function repaidShare(item: ComputedMix, year: number): number {
 }
 
 /** גרף השוואה בין תמהילים — יתרת חוב, החזר חודשי, וסיכום חזותי זה מול זה. */
-export function MixComparison({ entries, allowSelectFinal = false, onSelectFinal }: MixComparisonProps) {
+export function MixComparison({
+  entries,
+  allowSelectFinal = false,
+  onSelectFinal,
+  selectFinalLabel = 'בחר תמהיל זה כתמהיל סופי',
+  selectFinalConfirm = 'לבחור תמהיל זה כתמהיל הסופי? הוא יינעל לשינויים, יישמר בחשבון, והנתונים שלו ייטענו בשלבי המיקוח מול הבנקים והחתימה.',
+  selectedFinalLabel = 'זה התמהיל הסופי שנבחר למכרז',
+}: MixComparisonProps) {
   const [paydownOpen, setPaydownOpen] = useState(false);
 
   const computed = useMemo<ComputedMix[]>(
@@ -287,6 +302,9 @@ export function MixComparison({ entries, allowSelectFinal = false, onSelectFinal
           maxPaid={maxPaid}
           allowSelectFinal={allowSelectFinal}
           onSelectFinal={onSelectFinal}
+          selectFinalLabel={selectFinalLabel}
+          selectFinalConfirm={selectFinalConfirm}
+          selectedFinalLabel={selectedFinalLabel}
           entries={entries}
         />
       </CardContent>
@@ -302,6 +320,9 @@ function HeadToHead({
   maxPaid,
   allowSelectFinal,
   onSelectFinal,
+  selectFinalLabel,
+  selectFinalConfirm,
+  selectedFinalLabel,
   entries,
 }: {
   mixes: ComputedMix[];
@@ -314,6 +335,9 @@ function HeadToHead({
   maxPaid: number;
   allowSelectFinal?: boolean;
   onSelectFinal?: (entryId: string) => void;
+  selectFinalLabel: string;
+  selectFinalConfirm: string;
+  selectedFinalLabel: string;
   entries: ComparisonEntry[];
 }) {
   if (mixes.length === 0 || !best) return null;
@@ -333,6 +357,9 @@ function HeadToHead({
         isFinal={Boolean(entry?.isFinal)}
         allowSelectFinal={allowSelectFinal}
         onSelectFinal={onSelectFinal ? () => onSelectFinal(item.id) : undefined}
+        selectFinalLabel={selectFinalLabel}
+        selectFinalConfirm={selectFinalConfirm}
+        selectedFinalLabel={selectedFinalLabel}
       />
     );
   };
@@ -530,6 +557,9 @@ function MixFaceCard({
   isFinal,
   allowSelectFinal,
   onSelectFinal,
+  selectFinalLabel,
+  selectFinalConfirm,
+  selectedFinalLabel,
 }: {
   item: ComputedMix;
   best: {
@@ -542,6 +572,9 @@ function MixFaceCard({
   isFinal?: boolean;
   allowSelectFinal?: boolean;
   onSelectFinal?: () => void;
+  selectFinalLabel: string;
+  selectFinalConfirm: string;
+  selectedFinalLabel: string;
 }) {
   const wins = {
     interest: best.byInterest.id === item.id,
@@ -651,23 +684,19 @@ function MixFaceCard({
         <div className="relative mt-5">
           {isFinal ? (
             <div className="rounded-xl bg-emerald-600 px-4 py-2.5 text-center text-xs font-black text-white">
-              זה התמהיל הסופי שנבחר למכרז
+              {selectedFinalLabel}
             </div>
           ) : (
             <button
               type="button"
               onClick={() => {
-                if (
-                  window.confirm(
-                    'לבחור תמהיל זה כתמהיל הסופי? הוא יינעל לשינויים, יישמר בחשבון, והנתונים שלו ייטענו בשלבי המיקוח מול הבנקים והחתימה.'
-                  )
-                ) {
+                if (window.confirm(selectFinalConfirm)) {
                   onSelectFinal?.();
                 }
               }}
               className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-slate-700"
             >
-              בחר תמהיל זה כתמהיל סופי
+              {selectFinalLabel}
             </button>
           )}
         </div>

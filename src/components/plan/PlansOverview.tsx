@@ -23,8 +23,9 @@ import { PLAN_STAGES, stageIndex } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { usePlans } from './usePlan';
 import type { PlanView } from './usePlan';
-import { formatDate, formatShekel, NumberField } from './ui';
+import { formatDate, formatPercent, formatShekel, NumberField } from './ui';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { bankTone } from './stages/auction/pricedMixes';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 
@@ -303,6 +304,8 @@ function MortgageCard({
   const journey = journeyStageFor(plan.currentStage);
   const step = stageIndex(plan.currentStage) + 1;
   const signing = plan.data.SIGNING;
+  const signedMix = plan.data.AUCTION.signedMix;
+  const signedTone = bankTone(signedMix?.bank);
   const missingDeal = !plan.propertyAddress || !plan.propertyValue || !plan.mortgageAmount;
   const [showMixes, setShowMixes] = useState(false);
   const [showFinal, setShowFinal] = useState(false);
@@ -443,6 +446,43 @@ function MortgageCard({
               </span>
             )}
           </div>
+        )}
+
+        {/*
+          התמהיל המתומחר שנבחר בשלב 4 הוא המשכנתא של הלקוח. הוא מוצג כאן, באזור
+          האישי, ולחיצה עליו מובילה ישירות לשלב החתימה.
+        */}
+        {signedMix && (
+          <Link
+            href={`/dashboard/plans/${plan.id}?stage=SIGNING`}
+            className={`mt-4 block rounded-2xl border-2 p-4 transition-all hover:shadow-md ${signedTone.border} ${signedTone.surface}`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900">
+                <BadgeCheck className="h-4 w-4 text-emerald-600" />
+                המשכנתא שלי
+              </span>
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black text-white"
+                style={{ backgroundColor: signedTone.dot }}
+              >
+                <Building2 className="h-3 w-3" />
+                בנק {signedMix.bank}
+              </span>
+              <span className="truncate text-[11px] text-slate-600">{signedMix.name}</span>
+              <span className="mr-auto inline-flex items-center gap-1 text-[11px] font-black text-slate-700">
+                לשלב החתימה
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </span>
+            </div>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-4">
+              <Stat label="החזר חודשי" value={formatShekel(signedMix.monthlyPayment)} />
+              <Stat label="ריבית ממוצעת" value={formatPercent(signedMix.averageRate, 2)} />
+              <Stat label="סך ריבית" value={formatShekel(signedMix.totalInterest)} />
+              <Stat label="סך תשלום" value={formatShekel(signedMix.totalPaid)} />
+            </div>
+          </Link>
         )}
 
         <div className="mt-4 flex flex-wrap gap-2">

@@ -436,6 +436,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 {stage === 'AUCTION' && (
                   <AuctionStage
                     data={plan.data}
+                    planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
                   />
                 )}

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { AlertTriangle, Check, PenLine, ShieldCheck } from 'lucide-react';
 import { SIGNING_CHECKS, winningOffer } from '@/lib/mortgage-plan';
-import type { PlanData, SigningData } from '@/lib/mortgage-plan';
+import type { BankOffer, PlanData, SigningData } from '@/lib/mortgage-plan';
 import {
   DateField,
   Metric,
@@ -26,11 +26,28 @@ export function SigningStage({
   onChange: (next: SigningData) => void;
 }) {
   const value = data.SIGNING;
-  const winner = winningOffer(data.AUCTION);
+  const signed = data.AUCTION.signedMix;
+  /*
+    התנאים שאותם מאמתים מול החוזה הם של התמהיל המתומחר שנבחר לחתימה. כשעדיין
+    לא נבחר אחד — למשל בתהליך ישן שבו ההצעות הוזנו ידנית — נשארת ההצעה הזוכה
+    מהרשימה הידנית.
+  */
+  const winner: BankOffer | null = signed
+    ? {
+        id: signed.mixKey,
+        bank: signed.bank,
+        round: 1,
+        monthlyPayment: signed.monthlyPayment,
+        averageRate: signed.averageRate,
+        totalPaid: signed.totalPaid,
+        note: signed.name,
+      }
+    : winningOffer(data.AUCTION);
 
   const preApprovalBank = data.APPLICATIONS.bank;
   const bankOptions = Array.from(
     new Set([
+      ...(signed ? [signed.bank] : []),
       ...data.AUCTION.offers.map((offer) => offer.bank),
       ...(preApprovalBank ? [preApprovalBank] : []),
     ])
@@ -119,7 +136,7 @@ export function SigningStage({
                 onClick={pullFromWinner}
                 className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
               >
-                טענו את תנאי ההצעה הזוכה
+                {signed ? 'טענו את התמהיל שנבחר לחתימה' : 'טענו את תנאי ההצעה הזוכה'}
               </button>
             )}
           </div>
@@ -162,10 +179,12 @@ export function SigningStage({
 
         {winner && (
           <div className="mt-5">
-            <div className="mb-3 text-xs font-black text-slate-600">מול מה שסוכם במכרז</div>
+            <div className="mb-3 text-xs font-black text-slate-600">
+              {signed ? `מול ההצעה של בנק ${signed.bank} שנבחרה לחתימה` : 'מול מה שסוכם במכרז'}
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <Metric
-                label="החזר חודשי במכרז"
+                label={signed ? 'החזר חודשי בהצעה שנבחרה' : 'החזר חודשי במכרז'}
                 value={formatShekel(winner.monthlyPayment)}
                 note={
                   monthlyGap === null

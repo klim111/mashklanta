@@ -1,307 +1,289 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { Crown, Gavel, Plus, Trash2, TrendingDown } from 'lucide-react';
-import { PLAN_BANKS, UNIFORM_BASKETS, bestBasket, uniformBasket, winningOffer } from '@/lib/mortgage-plan';
-import type { AuctionData, BankOffer, PlanData } from '@/lib/mortgage-plan';
+import { useMemo, useState } from 'react';
+import { AlertCircle, BadgePercent, Crown, Loader2, Lock, TrendingDown } from 'lucide-react';
+import { PLAN_STAGES } from '@/lib/mortgage-plan';
+import type { AuctionData, PlanData, SignedMixChoice } from '@/lib/mortgage-plan';
+import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
+import { formatDuration } from '@/components/mortgage-advisor/engine';
+import { TrackCompositionStrip } from '@/components/mortgage-advisor/analysisDashboard';
+import { MixComparison } from '@/components/mortgage-advisor/MixComparison';
+import type { ComparisonEntry } from '@/components/mortgage-advisor/MixComparison';
 import { EmptyHint, Metric, Panel, formatPercent, formatShekel } from '../ui';
-import { NumericInput } from '@/components/ui/numeric-input';
+import { BankPricingPanel } from './auction/BankPricingPanel';
+import { PricedMixesArea } from './auction/PricedMixesArea';
+import {
+  banksWithOffers,
+  bankTone,
+  filterByBanks,
+  offersSpread,
+  pricedMixesFor,
+  toggleBank,
+  winningPricedMix,
+} from './auction/pricedMixes';
 
-function newOffer(bank: string, round: number): BankOffer {
-  return {
-    id: `offer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-    bank,
-    round,
-    monthlyPayment: null,
-    averageRate: null,
-    totalPaid: null,
-    note: '',
-  };
-}
-
-const cellInput =
-  'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10';
-
+/**
+ * שלב 4 — תמחור התמהיל הסופי מול הבנקים.
+ *
+ * מבנה התמהיל כבר נסגר בשלב 3 ואינו ניתן לעריכה כאן. מה שקורה בשלב הזה הוא
+ * תמחור: כל בנק מקבל את אותו מבנה בדיוק, מחזיר ריביות, וההצעה שלו נשמרת
+ * כתמהיל מתומחר על שמו. ההשוואה בין ההצעות היא השוואה אמיתית, כי כל ההבדל
+ * ביניהן הוא הריביות.
+ */
 export function AuctionStage({
   data,
   onChange,
+  planId,
 }: {
   data: PlanData;
   onChange: (next: AuctionData) => void;
+  planId: string;
 }) {
   const value = data.AUCTION;
-  const winner = winningOffer(value);
-  const preApproval = data.APPLICATIONS;
+  const finalMixKey = data.MIX.mixKey;
+  const { saved, ready, save, remove } = useSavedMixes({ planId });
+  const [banks, setBanks] = useState<string[]>([]);
 
-  /** הבנק שנתן את האישור העקרוני פותח את הרשימה — הוא כבר בתוך המשחק */
-  const suggestions = preApproval.bank
-    ? [preApproval.bank, ...PLAN_BANKS.filter((bank) => bank !== preApproval.bank)]
-    : PLAN_BANKS;
+  const finalMix = useMemo(
+    () => saved.find((item) => item.mix.id === finalMixKey) ?? null,
+    [saved, finalMixKey]
+  );
 
-  const addOffer = (bank: string) => {
-    const round = value.offers.filter((offer) => offer.bank === bank).length + 1;
-    onChange({ ...value, offers: [...value.offers, newOffer(bank, round)] });
+  const priced = useMemo(() => pricedMixesFor(saved, finalMixKey), [saved, finalMixKey]);
+  const visible = useMemo(() => filterByBanks(priced, banks), [priced, banks]);
+  const available = useMemo(() => banksWithOffers(priced), [priced]);
+  const winner = useMemo(() => winningPricedMix(visible), [visible]);
+  const spread = useMemo(() => offersSpread(priced), [priced]);
+  const signed = value.signedMix;
+
+  const entries = useMemo<ComparisonEntry[]>(
+    () =>
+      visible.map((item) => ({
+        id: item.mix.id,
+        label: `${item.bank} · ${item.mix.name}`,
+        mix: item.mix,
+        recordId: item.recordId,
+        isFinal: signed?.mixKey === item.mix.id,
+      })),
+    [visible, signed?.mixKey]
+  );
+
+  const takenNames = useMemo(() => saved.map((item) => item.mix.name), [saved]);
+
+  const onSavePriced = async (quoted: WorkspaceMix) => {
+    await save(quoted, { planId });
   };
 
-  const updateOffer = (id: string, patch: Partial<BankOffer>) =>
-    onChange({
-      ...value,
-      offers: value.offers.map((offer) => (offer.id === id ? { ...offer, ...patch } : offer)),
-    });
+  const onRemovePriced = async (mixId: string) => {
+    if (!window.confirm('למחוק את ההצעה הזו?')) return;
+    if (signed?.mixKey === mixId) onChange({ ...value, signedMix: null });
+    await remove(mixId);
+  };
 
-  const removeOffer = (id: string) =>
-    onChange({
-      ...value,
-      offers: value.offers.filter((offer) => offer.id !== id),
-      winnerOfferId: value.winnerOfferId === id ? null : value.winnerOfferId,
-    });
+  const onSelectForSigning = (mixId: string) => {
+    const item = priced.find((row) => row.mix.id === mixId);
+    if (!item) return;
 
-  const comparable = value.offers.filter((offer) => (offer.totalPaid ?? 0) > 0);
-  const cheapest =
-    comparable.length > 0
-      ? comparable.reduce((best, offer) =>
-          (offer.totalPaid ?? 0) < (best.totalPaid ?? 0) ? offer : best
-        )
-      : null;
-  const priciest =
-    comparable.length > 0
-      ? comparable.reduce((worst, offer) =>
-          (offer.totalPaid ?? 0) > (worst.totalPaid ?? 0) ? offer : worst
-        )
-      : null;
-  const spread =
-    cheapest && priciest ? (priciest.totalPaid ?? 0) - (cheapest.totalPaid ?? 0) : 0;
+    const choice: SignedMixChoice = {
+      mixKey: item.mix.id,
+      mixRecordId: item.recordId ?? null,
+      bank: item.bank,
+      name: item.mix.name,
+      monthlyPayment: item.summary.monthlyPayment,
+      averageRate: item.summary.averageRate,
+      totalInterest: item.summary.totalInterest,
+      totalPaid: item.summary.totalPaid,
+      months: item.summary.months,
+      chosenAt: new Date().toISOString(),
+    };
+    onChange({ ...value, signedMix: choice });
+  };
 
-  /** הרף להתמחרות הוא התמהיל הסופי שננעל, ואם אין — הסל הזול מהאישור העקרוני */
-  const finalMix = data.MIX.isFinal ? data.MIX : null;
-  const benchmark = bestBasket(preApproval);
-  const benchmarkName = benchmark ? uniformBasket(benchmark.basketId)?.shortName ?? null : null;
-  const plannedMonthly = finalMix?.monthlyPayment ?? benchmark?.monthlyPayment ?? data.MIX.monthlyPayment;
+  if (!ready) {
+    return (
+      <div className="flex min-h-[30vh] items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!finalMix) {
+    return (
+      <Panel
+        title="עוד לא נבחר תמהיל סופי"
+        description="שלב התמחור עובד על מבנה תמהיל אחד שננעל. חזרו לשלב בניית התמהיל, ובשורת התמהיל שבחרתם לחצו על ׳בחר כתמהיל סופי׳."
+      >
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {data.MIX.mixName
+            ? `התמהיל "${data.MIX.mixName}" נשמר, אך לא נמצא באזור התמהילים של הנכס.`
+            : 'לא נמצא תמהיל שמור לנכס הזה.'}
+        </div>
+      </Panel>
+    );
+  }
+
+  const summary = finalMix.summary;
+  const signedTone = bankTone(signed?.bank);
 
   return (
     <div className="space-y-5">
-      {finalMix && (
-        <Panel
-          title="התמהיל הסופי שנבחר"
-          description="זה התמהיל שננעל בשלב בניית התמהיל. המיקוח מול הבנקים נמדד מולו, והתנאים שלו ייטענו גם בשלב החתימה."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="שם התמהיל" value={finalMix.mixName ?? '—'} />
-            <Metric label="סכום" value={formatShekel(finalMix.totalAmount)} />
-            <Metric label="החזר חודשי" value={formatShekel(finalMix.monthlyPayment)} />
-            <Metric label="ריבית ממוצעת" value={formatPercent(finalMix.averageRate, 2)} />
-          </div>
-        </Panel>
-      )}
-
-      {benchmark && (
-        <Panel
-          title="הרף שקיבלתם באישור העקרוני"
-          description="כל בנק מתמחר על אותם שלושה סלים אחידים, ולכן זו ההשוואה היחידה שהיא באמת השוואה. כל הצעה חדשה נמדדת מול הסל הזול שכבר יש לכם."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="הבנק המאשר" value={preApproval.bank ?? '—'} />
-            <Metric label="הסל הזול" value={benchmarkName ?? '—'} />
-            <Metric label="החזר חודשי" value={formatShekel(benchmark.monthlyPayment)} />
-            <Metric label="סך התשלומים" value={formatShekel(benchmark.totalPaid)} />
-          </div>
-          <p className="mt-3 text-[11px] text-slate-500">
-            {preApproval.baskets.filter((basket) => basket.monthlyPayment !== null).length} מתוך{' '}
-            {UNIFORM_BASKETS.length} סלים מלאים. בקשו מכל בנק לתמחר את שלושתם.
-          </p>
-        </Panel>
-      )}
-
+      {/* התמהיל הסופי — לקריאה בלבד. מכאן והלאה משתנות רק הריביות */}
       <Panel
-        title="ההצעות שקיבלתם"
-        description="הזינו כל הצעה מכל בנק, כולל סבבים חוזרים. ההשוואה נעשית לפי סך התשלומים — המספר היחיד שאומר כמה המשכנתא באמת עולה."
+        title="התמהיל הסופי שנבחר"
+        description="המבנה הזה נעול: מסלולים, סכומים, תקופות ולוחות סילוקין נקבעו בשלב בניית התמהיל. כל בנק מתמחר בדיוק אותו — וזו הסיבה שאפשר להשוות בין ההצעות."
       >
-        <div className="mb-5 grid gap-3 sm:grid-cols-3">
-          <Metric label="הצעות שהוזנו" value={String(value.offers.length)} />
-          <Metric
-            label="פער בין ההצעה הזולה ליקרה"
-            value={spread > 0 ? formatShekel(spread) : '—'}
-            note={spread > 0 ? 'זה מה שההתמחרות שווה לכם' : 'הזינו לפחות שתי הצעות'}
-            tone={spread > 0 ? 'good' : 'default'}
-          />
-          <Metric
-            label="ההצעה הזוכה"
-            value={winner ? winner.bank : 'טרם נבחרה'}
-            note={winner ? `החזר ${formatShekel(winner.monthlyPayment)}` : undefined}
-            tone={winner ? 'good' : 'warn'}
-          />
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-black text-white">
+            <Lock className="h-3 w-3" />
+            {finalMix.mix.name}
+          </span>
+          <span className="text-[11px] text-slate-500">
+            {finalMix.mix.tracks.length} מסלולים · {formatDuration(summary.months)}
+          </span>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-slate-500">הוספת הצעה מ:</span>
-          {suggestions.map((bank) => (
-            <button
-              key={bank}
-              type="button"
-              onClick={() => addOffer(bank)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 transition-all hover:-translate-y-0.5 hover:border-amber-400 hover:text-amber-700 hover:shadow-sm"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {bank}
-            </button>
-          ))}
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="סכום המשכנתא" value={formatShekel(finalMix.mix.totalAmount)} />
+          <Metric label="החזר חודשי בתכנון" value={formatShekel(summary.monthlyPayment)} />
+          <Metric label="סך ריבית בתכנון" value={formatShekel(summary.totalInterest)} />
+          <Metric label="ריבית ממוצעת בתכנון" value={formatPercent(summary.averageRate, 2)} />
         </div>
 
-        {value.offers.length === 0 ? (
+        <TrackCompositionStrip tracks={finalMix.mix.tracks} />
+      </Panel>
+
+      {/* הזנת הריביות מהבנקים על אותו מבנה */}
+      <Panel
+        title="הזנת הריביות מהבנקים"
+        description="לכל בנק שחוזר עם תמחור — בחרו את הבנק, הזינו את הריבית שכל מסלול קיבל ולחצו ׳שמור הצעה׳. נשמר תמהיל מתומחר על שם אותו בנק, והמבנה נשאר זהה."
+      >
+        <BankPricingPanel mix={finalMix.mix} takenNames={takenNames} onSave={onSavePriced} />
+      </Panel>
+
+      {/* התמהילים המתומחרים */}
+      <Panel
+        title="תמהילים מתומחרים"
+        description="כל ההצעות שהתקבלו על התמהיל הסופי, כל אחת בצבע ובסימון של הבנק שתמחר אותה. סמנו בנק אחד או כמה — בלי הגבלה — כדי לצמצם את התצוגה."
+      >
+        {priced.length > 0 && (
+          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+            <Metric label="הצעות שהתקבלו" value={String(priced.length)} />
+            <Metric
+              label="בנקים שתמחרו"
+              value={String(available.length)}
+              note={available.join(' · ')}
+            />
+            <Metric
+              label="פער בין ההצעה הזולה ליקרה"
+              value={spread > 0 ? formatShekel(spread) : '—'}
+              note={spread > 0 ? 'זה מה שהתמחור שווה לכם' : 'צריך שתי הצעות לפחות'}
+              tone={spread > 0 ? 'good' : 'default'}
+            />
+          </div>
+        )}
+
+        <PricedMixesArea
+          items={priced}
+          visible={visible}
+          banks={available}
+          selectedBanks={banks}
+          onToggleBank={(bank) => setBanks((current) => toggleBank(current, bank))}
+          onClearBanks={() => setBanks([])}
+          winnerId={winner?.mix.id ?? null}
+          signedMixKey={signed?.mixKey ?? null}
+          onRemove={(mixId) => void onRemovePriced(mixId)}
+        />
+      </Panel>
+
+      {/* ההשוואה בין ההצעות, ובחירת זו שהולכים איתה לחתימה */}
+      <Panel
+        title="השוואת ההצעות ובחירת התמהיל לחתימה"
+        description="אותה השוואה של שלב בניית התמהיל, הפעם בין ההצעות המתומחרות. ההפרש כולו נובע מהריביות, ולכן ההצעה הזולה בסך התשלומים היא הזוכה."
+      >
+        {priced.length === 0 ? (
           <EmptyHint>
-            עדיין אין הצעות. כשבנק חוזר עם ריביות — הוסיפו אותו כאן. עם שלוש הצעות ומעלה
-            ההתמחרות מתחילה לעבוד לטובתכם.
+            כשתישמר ההצעה הראשונה היא תופיע כאן. עם שתי הצעות ומעלה מתחילה ההשוואה לעבוד
+            לטובתכם.
           </EmptyHint>
         ) : (
-          <div className="space-y-2.5">
-            <AnimatePresence initial={false}>
-              {value.offers.map((offer) => {
-                const isWinner = offer.id === value.winnerOfferId;
-                const isCheapest = cheapest?.id === offer.id;
+          <div className="space-y-4">
+            {winner && (
+              <div
+                className={`flex flex-wrap items-center gap-3 rounded-2xl border-2 px-4 py-3 ${
+                  signed ? 'border-emerald-500 bg-emerald-50' : 'border-amber-300 bg-amber-50'
+                }`}
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: bankTone(winner.bank).dot }}
+                >
+                  <Crown className="h-4 w-4 text-white" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-black text-slate-900">
+                    ההצעה הזוכה: {winner.bank}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    {winner.mix.name} · החזר {formatShekel(winner.summary.monthlyPayment)} · סך
+                    תשלום {formatShekel(winner.summary.totalPaid)} · ריבית ממוצעת{' '}
+                    {formatPercent(winner.summary.averageRate, 2)}
+                  </div>
+                </div>
+                {spread > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-black text-emerald-700">
+                    <TrendingDown className="h-3.5 w-3.5" />
+                    חוסכת {formatShekel(spread)} מול ההצעה היקרה
+                  </span>
+                )}
+              </div>
+            )}
 
-                return (
-                  <motion.div
-                    key={offer.id}
-                    layout
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className={`rounded-2xl border-2 p-4 shadow-sm transition-colors ${
-                      isWinner ? 'border-amber-400 bg-amber-50/60' : 'border-slate-200 bg-white'
-                    }`}
-                  >
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-2 text-sm font-black text-slate-900">
-                        <Gavel className="h-4 w-4 text-amber-600" />
-                        {offer.bank}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
-                        סבב {offer.round}
-                      </span>
-                      {isCheapest && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">
-                          <TrendingDown className="h-3 w-3" />
-                          העלות הנמוכה ביותר
-                        </span>
-                      )}
-
-                      <div className="mr-auto flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onChange({
-                              ...value,
-                              winnerOfferId: isWinner ? null : offer.id,
-                            })
-                          }
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black transition-all ${
-                            isWinner
-                              ? 'bg-amber-500 text-white shadow-sm'
-                              : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700'
-                          }`}
-                        >
-                          <Crown className="h-3.5 w-3.5" />
-                          {isWinner ? 'ההצעה הזוכה' : 'בחרו כזוכה'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeOffer(offer.id)}
-                          aria-label="מחיקת ההצעה"
-                          className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-bold text-slate-500">
-                          החזר חודשי
-                        </span>
-                        <NumericInput
-                          integer
-                          className={cellInput}
-                          value={offer.monthlyPayment}
-                          onChange={(monthlyPayment) => updateOffer(offer.id, { monthlyPayment })}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-bold text-slate-500">
-                          ריבית ממוצעת משוקללת
-                        </span>
-                        <NumericInput
-                          className={cellInput}
-                          value={offer.averageRate}
-                          onChange={(averageRate) => updateOffer(offer.id, { averageRate })}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="mb-1 block text-[11px] font-bold text-slate-500">
-                          סך התשלומים לאורך התקופה
-                        </span>
-                        <NumericInput
-                          integer
-                          className={cellInput}
-                          value={offer.totalPaid}
-                          onChange={(totalPaid) => updateOffer(offer.id, { totalPaid })}
-                        />
-                      </label>
-                    </div>
-
-                    <input
-                      value={offer.note}
-                      onChange={(event) => updateOffer(offer.id, { note: event.target.value })}
-                      placeholder="מה ביקשתם לשפר? איזה מסלול היה היקר בהצעה?"
-                      className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                    />
-
-                    {plannedMonthly !== null && offer.monthlyPayment !== null && (
-                      <p className="mt-2 text-[11px] text-slate-500">
-                        {benchmark
-                          ? `מול ${benchmarkName} של האישור העקרוני`
-                          : 'מול התמהיל שתכננתם'}{' '}
-                        ({formatShekel(plannedMonthly)}):{' '}
-                        <span
-                          className={
-                            offer.monthlyPayment <= plannedMonthly
-                              ? 'font-bold text-emerald-600'
-                              : 'font-bold text-rose-600'
-                          }
-                        >
-                          {offer.monthlyPayment <= plannedMonthly ? 'זול יותר ב' : 'יקר יותר ב'}
-                          {formatShekel(Math.abs(offer.monthlyPayment - plannedMonthly))} בחודש
-                        </span>
-                      </p>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+            <MixComparison
+              entries={entries}
+              allowSelectFinal
+              onSelectFinal={onSelectForSigning}
+              selectFinalLabel="בחר תמהיל זה כתמהיל סופי לחתימה"
+              selectFinalConfirm="לבחור את ההצעה הזו כתמהיל הסופי לחתימה? היא תופיע באזור האישי כ׳המשכנתא שלי׳, ומולה יאומתו מסמכי הבנק בשלב החתימה."
+              selectedFinalLabel="זה התמהיל שנבחר לחתימה"
+            />
           </div>
         )}
       </Panel>
 
-      {winner && (
+      {signed && (
         <Panel
-          title="ההצעה שתעבור לחתימה"
-          description="התנאים האלה הם מה שתאמתו מול מסמכי הבנק בשלב הבא."
+          title="המשכנתא שלי"
+          description="זו ההצעה שנבחרה לחתימה. היא מופיעה גם באזור האישי, ומולה מאומתים מסמכי הבנק בשלב החתימה."
         >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="הבנק" value={winner.bank} tone="good" />
-            <Metric label="החזר חודשי" value={formatShekel(winner.monthlyPayment)} />
-            <Metric label="ריבית ממוצעת" value={formatPercent(winner.averageRate, 2)} />
-            <Metric label="סך התשלומים" value={formatShekel(winner.totalPaid)} />
-          </div>
-          {spread > 0 && cheapest && winner.id !== cheapest.id && (
-            <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              שימו לב: ההצעה של {cheapest.bank} זולה יותר ב-
-              {formatShekel((winner.totalPaid ?? 0) - (cheapest.totalPaid ?? 0))} בסך התשלומים.
-              אם בחרתם אחרת — כדאי שתהיה לכך סיבה שאתם יכולים לנמק.
+          <div className={`rounded-2xl border-2 p-4 ${signedTone.border} ${signedTone.surface}`}>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-black text-white"
+                style={{ backgroundColor: signedTone.dot }}
+              >
+                <BadgePercent className="h-3 w-3" />
+                בנק {signed.bank}
+              </span>
+              <span className="text-sm font-black text-slate-900">{signed.name}</span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric label="החזר חודשי" value={formatShekel(signed.monthlyPayment)} tone="good" />
+              <Metric label="סך ריבית" value={formatShekel(signed.totalInterest)} />
+              <Metric label="סך תשלום" value={formatShekel(signed.totalPaid)} />
+              <Metric label="ריבית ממוצעת" value={formatPercent(signed.averageRate, 2)} />
+            </div>
+
+            <p className="mt-3 text-[11px] text-slate-500">
+              אפשר לשנות את הבחירה כל עוד לא נחתם — בחרו הצעה אחרת בהשוואה שלמעלה. השלב הבא הוא
+              שלב {PLAN_STAGES.length} — החתימה בבנק.
             </p>
-          )}
+          </div>
         </Panel>
       )}
     </div>
   );
 }
+

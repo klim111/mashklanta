@@ -323,10 +323,36 @@ export interface BankOffer {
   note: string;
 }
 
+/**
+ * ההצעה המתומחרת שנבחרה כתמהיל הסופי לחתימה.
+ *
+ * זה המבנה שנבחר בשלב 3, בריביות שבנק מסוים נתן עליו בשלב 4. משנבחר, הוא
+ * המשכנתא של הלקוח: הוא מופיע באזור האישי כ"המשכנתא שלי", והוא מה שמאומת מול
+ * מסמכי הבנק בשלב החתימה.
+ */
+export interface SignedMixChoice {
+  /** מזהה התמהיל המתומחר */
+  mixKey: string;
+  /** מזהה הרשומה בבסיס הנתונים, אם נשמרה */
+  mixRecordId: string | null;
+  /** הבנק שתמחר אותו */
+  bank: string;
+  name: string;
+  monthlyPayment: number | null;
+  averageRate: number | null;
+  totalInterest: number | null;
+  totalPaid: number | null;
+  months: number | null;
+  /** מתי נבחר (ISO) */
+  chosenAt: string;
+}
+
 /** שלב 4 — מכרז הריביות */
 export interface AuctionData {
   offers: BankOffer[];
   winnerOfferId: string | null;
+  /** ההצעה המתומחרת שנבחרה כתמהיל הסופי לחתימה */
+  signedMix: SignedMixChoice | null;
 }
 
 /** שלב 5 — החתימה בבנק */
@@ -432,7 +458,7 @@ const EMPTY: PlanData = {
     baskets: [],
     note: '',
   },
-  AUCTION: { offers: [], winnerOfferId: null },
+  AUCTION: { offers: [], winnerOfferId: null, signedMix: null },
   SIGNING: {
     bank: null,
     signingDate: null,
@@ -492,6 +518,34 @@ let idCounter = 0;
 function rowId(prefix: string): string {
   idCounter += 1;
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`;
+}
+
+/**
+ * ההצעה שנבחרה לחתימה, כפי שהיא נשמרה. בלי מזהה תמהיל ובלי בנק אין מה לשחזר,
+ * ולכן רשומה חלקית נקראת כאילו עוד לא נבחר דבר.
+ */
+function parseSignedMix(value: unknown): SignedMixChoice | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const mixKey = typeof source.mixKey === 'string' ? source.mixKey.trim() : '';
+  const bank = pickBank(source.bank);
+  if (!mixKey || !bank) return null;
+
+  return {
+    mixKey,
+    mixRecordId: typeof source.mixRecordId === 'string' ? source.mixRecordId : null,
+    bank,
+    name: str(source.name) || 'התמהיל שנבחר לחתימה',
+    monthlyPayment: num(source.monthlyPayment),
+    averageRate: num(source.averageRate),
+    totalInterest: num(source.totalInterest),
+    totalPaid: num(source.totalPaid),
+    months: num(source.months),
+    chosenAt:
+      typeof source.chosenAt === 'string' && source.chosenAt
+        ? source.chosenAt
+        : new Date().toISOString(),
+  };
 }
 
 function pickEmployment(value: unknown): EmploymentType | null {
@@ -804,7 +858,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           ? source.winnerOfferId
           : null;
 
-      return { offers, winnerOfferId } as PlanStageDataMap[S];
+      return { offers, winnerOfferId, signedMix: parseSignedMix(source.signedMix) } as PlanStageDataMap[S];
     }
 
     case 'SIGNING': {
@@ -1361,7 +1415,9 @@ export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
       );
     }
     case 'AUCTION':
-      return winningOffer(data.AUCTION) !== null;
+      // מה שסוגר את השלב הוא בחירת התמהיל שהולכים איתו לחתימה. הזנה ידנית של
+      // הצעות היא המסלול הישן, ולכן היא עדיין סוגרת את השלב כשהיא בשימוש.
+      return data.AUCTION.signedMix !== null || winningOffer(data.AUCTION) !== null;
     case 'SIGNING':
       return (
         Boolean(data.SIGNING.bank) &&
@@ -1395,8 +1451,7 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       break;
     }
     case 'AUCTION':
-      if (data.AUCTION.offers.length === 0) missing.push('הצעה אחת לפחות');
-      else missing.push('בחירת ההצעה הזוכה');
+      missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
       break;
     case 'SIGNING': {
       if (!data.SIGNING.bank) missing.push('הבנק שאיתו נחתם');
@@ -1441,6 +1496,7 @@ export function planSnapshot(data: PlanData): PlanSnapshot {
 
   const monthlyPayment =
     data.SIGNING.finalMonthlyPayment ??
+    data.AUCTION.signedMix?.monthlyPayment ??
     winner?.monthlyPayment ??
     data.MIX.monthlyPayment ??
     basket?.monthlyPayment ??

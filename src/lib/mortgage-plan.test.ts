@@ -161,6 +161,53 @@ describe('סגירת שלבים', () => {
     expect(missingForStage('ANALYSIS', profile())).toEqual([]);
   });
 
+  it('שלב התמחור נסגר בבחירת התמהיל המתומחר שהולכים איתו לחתימה', () => {
+    const data = profile();
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+    expect(missingForStage('AUCTION', data)).toEqual([
+      'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
+    ]);
+
+    data.AUCTION = {
+      ...data.AUCTION,
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: null,
+        bank: 'דיסקונט',
+        name: 'התמהיל הסופי · ריביות דיסקונט',
+        monthlyPayment: 7_100,
+        averageRate: 4.2,
+        totalInterest: 590_000,
+        totalPaid: 1_590_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    };
+
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
+  });
+
+  it('ההחזר של התמהיל שנבחר לחתימה הוא מה שמוצג על כרטיס התהליך', () => {
+    const data = profile();
+    data.AUCTION = {
+      ...data.AUCTION,
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: null,
+        bank: 'דיסקונט',
+        name: 'התמהיל הסופי · ריביות דיסקונט',
+        monthlyPayment: 7_100,
+        averageRate: 4.2,
+        totalInterest: 590_000,
+        totalPaid: 1_590_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    };
+
+    expect(planSnapshot(data).monthlyPayment).toBe(7_100);
+  });
+
   it('שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו', () => {
     const data = profile();
     data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי' };
@@ -330,6 +377,35 @@ describe('ניקוי נתונים שהגיעו מבחוץ', () => {
     expect(parsed.offers).toHaveLength(1);
     expect(parsed.offers[0].round).toBe(1);
     expect(parsed.winnerOfferId).toBeNull();
+  });
+
+  it('התמהיל שנבחר לחתימה נקרא עם הבנק והמספרים שלו', () => {
+    const parsed = parseStageData('AUCTION', {
+      offers: [],
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: 'rec-9',
+        bank: 'מזרחי',
+        name: 'התמהיל הסופי · ריביות מזרחי',
+        monthlyPayment: 7_400,
+        averageRate: 4.31,
+        totalInterest: 620_000,
+        totalPaid: 1_620_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    });
+
+    expect(parsed.signedMix?.mixKey).toBe('mix-quoted-1');
+    expect(parsed.signedMix?.bank).toBe('מזרחי');
+    expect(parsed.signedMix?.monthlyPayment).toBe(7_400);
+    expect(parsed.signedMix?.chosenAt).toBe('2026-09-12T10:00:00.000Z');
+  });
+
+  it('בחירה בלי מזהה תמהיל או בלי בנק נקראת כאילו עוד לא נבחר דבר', () => {
+    expect(parseStageData('AUCTION', { signedMix: { bank: 'לאומי' } }).signedMix).toBeNull();
+    expect(parseStageData('AUCTION', { signedMix: { mixKey: 'mix-1' } }).signedMix).toBeNull();
+    expect(parseStageData('AUCTION', {}).signedMix).toBeNull();
   });
 
   it('סימוני מסמכים שאינם בקטלוג אינם נשמרים', () => {
