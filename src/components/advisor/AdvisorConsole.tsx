@@ -18,6 +18,7 @@ import {
   PieChart,
   Search,
   Settings,
+  Sparkles,
   UserPlus,
   UserRound,
   Users,
@@ -32,15 +33,24 @@ import { MixesPanel } from './MixesPanel';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { AdvisorSettingsPanel } from './AdvisorSettingsPanel';
 import { TasksPanel } from './TasksPanel';
+import { ServiceRequestsPanel, useAdvisorRequests } from './ServiceRequestsPanel';
 import { StageChip } from './ui';
 import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
 
-type TabId = 'clients' | 'tasks' | 'calendar' | 'mixes' | 'rate-requests' | 'settings';
+type TabId =
+  | 'clients'
+  | 'requests'
+  | 'tasks'
+  | 'calendar'
+  | 'mixes'
+  | 'rate-requests'
+  | 'settings';
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'clients', label: 'לקוחות', icon: Users },
+  { id: 'requests', label: 'בקשות ליווי', icon: Sparkles },
   { id: 'tasks', label: 'משימות', icon: ListChecks },
   { id: 'calendar', label: 'לוח שנה', icon: CalendarDays },
   { id: 'mixes', label: 'תמהילים שמורים', icon: Layers },
@@ -76,6 +86,8 @@ export function AdvisorConsole() {
     if (client) setFocusClientId(client);
   }, []);
 
+  const { requests, ready: requestsReady, refresh: refreshRequests } = useAdvisorRequests();
+
   const { clients, ready, error, addClient, refresh: refreshClients } = useAdvisorClients(true);
   const { overview, refresh: refreshOverview } = useAdvisorOverview(true);
   const { propose } = useMeetings();
@@ -98,7 +110,7 @@ export function AdvisorConsole() {
   }, [clients, query]);
 
   const refreshAll = async () => {
-    await Promise.all([refreshClients(), refreshOverview()]);
+    await Promise.all([refreshClients(), refreshOverview(), refreshRequests()]);
   };
 
   const openMeeting = (client: AdvisorClient | null) => {
@@ -295,6 +307,16 @@ export function AdvisorConsole() {
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
+                    {/* בקשה חדשה מלקוח צריכה להיראות בלי להיכנס ללשונית */}
+                    {item.id === 'requests' && requests.length > 0 && (
+                      <span
+                        className={`rounded-full px-1.5 text-[10px] font-black ${
+                          active ? 'bg-violet-100 text-violet-700' : 'bg-violet-500 text-white'
+                        }`}
+                      >
+                        {requests.length}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -360,6 +382,17 @@ export function AdvisorConsole() {
                 onQueryChange={setQuery}
               />
             </div>
+          )}
+
+          {tab === 'requests' && (
+            <ServiceRequestsPanel
+              requests={requests}
+              ready={requestsReady}
+              onOpenClient={(clientId) => {
+                setFocusClientId(clientId);
+                setTab('clients');
+              }}
+            />
           )}
 
           {tab === 'tasks' && (

@@ -190,6 +190,42 @@ async function notifyAdvisor(
   });
 }
 
+/** בקשת ליווי כפי שהיועץ רואה אותה — מי ביקש, על איזה נכס, ואילו שלבים */
+export interface AdvisorOrderRequest extends AdvisorOrder {
+  clientId: string | null;
+  clientName: string;
+  planName: string;
+  propertyAddress: string | null;
+}
+
+/**
+ * בקשות הליווי ששולמו ומופנות ליועץ.
+ *
+ * זו ההתראה שלו על לקוח חדש שביקש שיעשה עבורו שלב: הרשימה מסודרת מהחדשה
+ * לישנה, כדי שבקשה שהגיעה עכשיו תהיה למעלה.
+ */
+export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrderRequest[]> {
+  const rows = await prisma.advisorServiceOrder.findMany({
+    where: { advisorId, status: 'PAID' },
+    orderBy: { paidAt: 'desc' },
+    select: {
+      ...orderSelect,
+      clientId: true,
+      client: { select: { name: true } },
+      owner: { select: { name: true, email: true } },
+      plan: { select: { name: true, propertyAddress: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    ...toView(row),
+    clientId: row.clientId,
+    clientName: row.client?.name ?? row.owner?.name ?? row.owner?.email ?? 'לקוח',
+    planName: row.plan?.name ?? 'תהליך משכנתא',
+    propertyAddress: row.plan?.propertyAddress ?? null,
+  }));
+}
+
 export async function cancelOrder(userId: string, orderId: string): Promise<boolean> {
   const result = await prisma.advisorServiceOrder.updateMany({
     where: { id: orderId, ownerId: userId, status: 'PENDING_PAYMENT' },
