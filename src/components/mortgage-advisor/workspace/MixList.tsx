@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  BookmarkCheck,
   ChevronDown,
   Copy,
   GitCompareArrows,
@@ -52,7 +51,6 @@ interface MixListProps {
   /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם — שדה השם נפתח ריק */
   pendingRenameId?: string | null;
   onCreateForProperty: () => void;
-  onLoadSaved: () => void;
   /** כשיש שינויים שלא נשמרו — כפתור שמירה כתמהיל חדש בשורת אזור העבודה */
   onSaveAsNew?: () => void;
   saveDirty?: boolean;
@@ -66,6 +64,8 @@ interface MixListProps {
    * שמירת תמהיל שהריביות בו התקבלו מבנק. בלעדיה אין הזנת ריביות — התמהיל של
    * הבנק נשמר כתמהיל רגיל לנכס, ולכן השמירה נעשית באותו מקום כמו כל שמירה.
    */
+  /** בחירת תמהיל כתמהיל הסופי — ממשיך לשלב 4 */
+  onSelectAsFinal?: (mixId: string) => void;
   onSaveBankQuote?: (quoted: WorkspaceMix) => Promise<void> | void;
   /** פתיחת התמהיל שהתקבל מהבנק באזור העבודה */
   onOpenBankQuote?: (quoted: WorkspaceMix) => void;
@@ -103,7 +103,6 @@ export function MixList({
   onDuplicateActive,
   pendingRenameId,
   onCreateForProperty,
-  onLoadSaved,
   onSaveAsNew,
   saveDirty = false,
   flashSave = false,
@@ -112,6 +111,7 @@ export function MixList({
   disposableIncome,
   onSaveBankQuote,
   onOpenBankQuote,
+  onSelectAsFinal,
 }: MixListProps) {
   /** התמהיל שממנו מפיקים עכשיו מכתב בקשת ריביות לבנקים */
   const [quoteTarget, setQuoteTarget] = useState<{
@@ -168,10 +168,6 @@ export function MixList({
             <Button size="sm" variant="outline" className="h-10 w-full text-xs sm:h-8 sm:w-auto" onClick={onCreateForProperty}>
               <Plus className="h-3.5 w-3.5 ml-1" />
               תמהיל נוסף לנכס הזה
-            </Button>
-            <Button size="sm" variant="outline" className="h-10 w-full text-xs sm:h-8 sm:w-auto" onClick={onLoadSaved}>
-              <BookmarkCheck className="h-3.5 w-3.5 ml-1" />
-              טען תמהיל שמור
             </Button>
           </div>
         </div>
@@ -259,7 +255,7 @@ export function MixList({
               onRequestQuote={() =>
                 setQuoteTarget({ mix: activeResult.mix, summary: activeResult.summary })
               }
-              onEnterQuote={enterQuote && (() => enterQuote(activeResult.mix))}
+              onSelectAsFinal={onSelectAsFinal && (() => onSelectAsFinal(activeResult.mix.id))}
               actions={
                 <>
                   <button
@@ -290,48 +286,11 @@ export function MixList({
               editorPlaceholder && <div className="mt-2">{editorPlaceholder}</div>
             )}
 
-            {/* התמהילים שסומנו נכנסים לאזור העבודה עצמו, ומוזנים לטבלה ולגרפים שמתחת */}
-            {comparedItems.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {comparedItems.map((item) => (
-                  <MixRow
-                    key={item.mix.id}
-                    mix={item.mix}
-                    summary={item.summary}
-                    selected
-                    showExpandIcon={false}
-                    onToggleSelect={() => onToggleCompare(item.mix.id)}
-                    onClick={() => onActivate(item)}
-                    onRename={(name) => onRename(item.mix.id, name)}
-                    hint="לחצו כדי לפתוח אותו לעריכה"
-                    onRequestQuote={() =>
-                      setQuoteTarget({ mix: item.mix, summary: item.summary })
-                    }
-                    onEnterQuote={enterQuote && (() => enterQuote(item.mix))}
-                    actions={
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onDuplicate(item)}
-                          title="שכפול התמהיל"
-                          className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 sm:p-1.5"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDismiss(item.mix.id)}
-                          title="הסרה מהעמוד — התמהיל יישמר בתמהילים השמורים"
-                          className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 sm:p-1.5"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </>
-                    }
-                  />
-                ))}
-              </div>
-            )}
+            {/*
+              התמהילים שסומנו להשוואה אינם מוצגים כאן יותר. הם מוזנים ישירות
+              ללשונית ההשוואה שבאזור הגרפים, ששם גם בוחרים אותם — כך אזור
+              העבודה נשאר התמהיל שעורכים, והדאשבורד נשאר על המסך.
+            */}
           </section>
 
         </div>
@@ -370,7 +329,7 @@ export function MixList({
  * שהיועץ הציע לו הם שני דברים שונים, גם כשהם לאותה עסקה. בתוך כל קבוצה נשמרת
  * ההבחנה בין ברירת המחדל של הבנק לתמהיל שנבנה בכלי, על הכרטיס עצמו.
  */
-function MixSliderSection({
+export function MixSliderSection({
   items,
   originOf,
   comparedIds,

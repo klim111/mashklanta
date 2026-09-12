@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertTriangle,
   Banknote,
+  CalendarClock,
   BookmarkCheck,
   Home,
   Plus,
@@ -53,6 +54,8 @@ import { SavedMixPicker } from './workspace/SavedMixPicker';
 import { RiskPanel } from './workspace/RiskPanel';
 import { GoalsPanel } from './workspace/GoalsPanel';
 import { EventsPanel } from './workspace/EventsPanel';
+import { MixSliderSection } from './workspace/MixList';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AnalysisTabs } from './workspace/AnalysisTabs';
 import { AmortizationDialog } from './workspace/AmortizationDialog';
 import { SnapshotDialog } from './workspace/SnapshotDialog';
@@ -203,6 +206,11 @@ export function MortgageWorkspace({
   const [amortizationTarget, setAmortizationTarget] = useState<{ trackId?: string } | null>(null);
   const [prepayTarget, setPrepayTarget] = useState<PrepayTarget | null>(null);
   const [refinanceTarget, setRefinanceTarget] = useState<{ trackId?: string } | null>(null);
+  /**
+   * רשימת השינויים המתוכננים ירדה מהזרימה שמתחת לגרפים ועברה לחלון שנפתח
+   * מהשורה. היא נדרשת רק כשיש מה להסיר, ולא הצדיקה שורה קבועה מתחת לדאשבורד.
+   */
+  const [eventsOpen, setEventsOpen] = useState(false);
   /**
    * מחזור נפתח רק על התמהיל שנבחר כסופי. בשלב תכנון התמהיל אין משמעות למחזור —
    * מה שרוצים לשנות משנים במסלול עצמו, ולא כאירוע עתידי על תמהיל שעוד לא נבחר.
@@ -641,6 +649,15 @@ export function MortgageWorkspace({
    */
   const toggleCompared = useCallback((id: string) => actions.toggleCompared(id), [actions]);
 
+  /** סיווג התמהיל לצורך הקיבוץ בסרגל הבחירה — זהה לזה שברשימת התמהילים */
+  const originOf = useCallback(
+    (item: SavedMix): 'quote' | 'bank' | 'custom' => {
+      if (item.mix.quote) return 'quote';
+      return (preferredMixIds ?? []).includes(item.mix.id) ? 'bank' : 'custom';
+    },
+    [preferredMixIds]
+  );
+
   const dismissFromPage = useCallback(
     (id: string) => {
       setHiddenFromPage((prev) => {
@@ -944,7 +961,6 @@ export function MortgageWorkspace({
           onDuplicateActive={() => duplicateMix(mix)}
           pendingRenameId={pendingCloneId}
           onCreateForProperty={startMixForSameProperty}
-          onLoadSaved={() => setSavedPickerOpen(true)}
           saveDirty={dirty}
           flashSave={flashSave}
           onSaveAsNew={saveAsNewMix}
@@ -953,6 +969,7 @@ export function MortgageWorkspace({
           disposableIncome={disposableIncome}
           onSaveBankQuote={saveBankQuote}
           onOpenBankQuote={openBankQuote}
+          onSelectAsFinal={allowSelectFinal ? selectFinalMix : undefined}
           activeActions={
             <>
               <Button
@@ -989,6 +1006,18 @@ export function MortgageWorkspace({
                 <Table2 className="h-3.5 w-3.5 ml-1" />
                 לוח החזרים
               </Button>
+              {mix.events.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 px-3 text-xs sm:h-8 sm:px-3"
+                  title="הצגה והסרה של הפרעונות והמחזורים המתוכננים"
+                  onClick={() => setEventsOpen(true)}
+                >
+                  <CalendarClock className="h-3.5 w-3.5 ml-1" />
+                  שינויים מתוכננים · {mix.events.length}
+                </Button>
+              )}
             </>
           }
           editor={
@@ -1122,7 +1151,7 @@ export function MortgageWorkspace({
 
           {panelChanged && baselineResult ? (
             <StateBlocksRow
-              title="אחרי השינויים בפאנל השליטה"
+              title="אחרי השינויים בתמהיל בפאנל השליטה"
               caption="ההפרש מול התמהיל כפי שנפתח"
               snapshot={snapshotFromMixResult(result)}
               baseline={snapshotFromMixResult(baselineResult)}
@@ -1146,15 +1175,44 @@ export function MortgageWorkspace({
           onSelectFinal={selectFinalMix}
           focusTrackId={focusTrackId}
           onFocusTrack={setFocusTrackId}
-        />
-
-        <EventsPanel
-          result={result}
-          onRemove={actions.removeEvent}
-          onAddPrepayment={() => setPrepayTarget({})}
-          onAddRefinance={isFinalMix ? () => setRefinanceTarget({}) : undefined}
+          comparePicker={
+            propertyMixes.length > 0 ? (
+              <MixSliderSection
+                items={propertyMixes}
+                originOf={originOf}
+                comparedIds={state.comparedIds}
+                onActivate={openSavedMix}
+                onToggleCompare={toggleCompared}
+                onRequestQuote={() => undefined}
+              />
+            ) : null
+          }
         />
       </div>
+
+      <Dialog open={eventsOpen} onOpenChange={setEventsOpen}>
+        <DialogContent dir="rtl" className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>שינויים מתוכננים בתמהיל</DialogTitle>
+          </DialogHeader>
+          <EventsPanel
+            result={result}
+            onRemove={actions.removeEvent}
+            onAddPrepayment={() => {
+              setEventsOpen(false);
+              setPrepayTarget({});
+            }}
+            onAddRefinance={
+              isFinalMix
+                ? () => {
+                    setEventsOpen(false);
+                    setRefinanceTarget({});
+                  }
+                : undefined
+            }
+          />
+        </DialogContent>
+      </Dialog>
 
       <AmortizationDialog
         result={result}

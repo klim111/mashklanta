@@ -54,6 +54,42 @@ export function snapshotFromMixResult(result: MixResult): StateSnapshot {
   };
 }
 
+
+/**
+ * הצבע של בלוק "אחרי השינויים" נגזר מהשינוי עצמו.
+ *
+ * ערך שגדל נצבע בגוון חם — ככל שהעלייה גדולה יותר ביחס לערך הבסיס, כך הגוון
+ * נוטה מכתום לאדום. ערך שירד נצבע בירוק, ובאותו היגיון: ירידה גדולה נותנת
+ * ירוק עמוק יותר. שינוי זניח נשאר אפור, כדי שהצבע יסמן שינוי אמיתי בלבד.
+ *
+ * היחס מחושב מול הבסיס ולא מול סכום מוחלט, כי אותה תוספת בשקלים משמעותה שונה
+ * לגמרי בהחזר חודשי ובסך תשלום.
+ */
+export function deltaGradient(delta: number | undefined, baseline: number | undefined): string {
+  const neutral = 'bg-gradient-to-br from-slate-800 to-slate-600';
+  if (typeof delta !== 'number' || !Number.isFinite(delta)) return neutral;
+
+  const reference = Math.abs(baseline ?? 0);
+  const share = reference > 0 ? Math.abs(delta) / reference : Math.abs(delta) > 0 ? 1 : 0;
+  if (share < 0.001) return neutral;
+
+  // שלוש מדרגות: עד 2%, עד 10%, ומעל — טווחים שמרגישים נכון בהחזר ובסך תשלום
+  const level = share < 0.02 ? 0 : share < 0.1 ? 1 : 2;
+
+  if (delta > 0) {
+    return [
+      'bg-gradient-to-br from-amber-600 to-orange-600',
+      'bg-gradient-to-br from-orange-600 to-red-600',
+      'bg-gradient-to-br from-red-600 to-red-800',
+    ][level];
+  }
+  return [
+    'bg-gradient-to-br from-emerald-600 to-teal-600',
+    'bg-gradient-to-br from-emerald-700 to-emerald-600',
+    'bg-gradient-to-br from-emerald-800 to-emerald-600',
+  ][level];
+}
+
 export function StateBlocksRow({
   title,
   caption,
@@ -89,9 +125,9 @@ export function StateBlocksRow({
           value={formatCurrency(snapshot.monthlyPayment)}
           delta={baseline ? snapshot.monthlyPayment - baseline.monthlyPayment : undefined}
           gradient={
-            current
-              ? 'bg-gradient-to-br from-slate-900 to-indigo-900'
-              : 'bg-gradient-to-br from-emerald-900 to-teal-800'
+            baseline
+              ? deltaGradient(snapshot.monthlyPayment - baseline.monthlyPayment, baseline.monthlyPayment)
+              : 'bg-gradient-to-br from-slate-900 to-indigo-900'
           }
         />
         <StateBlock
@@ -100,9 +136,9 @@ export function StateBlocksRow({
           value={formatCurrency(snapshot.totalInterest)}
           delta={baseline ? snapshot.totalInterest - baseline.totalInterest : undefined}
           gradient={
-            current
-              ? 'bg-gradient-to-br from-slate-900 to-blue-900'
-              : 'bg-gradient-to-br from-emerald-900 to-emerald-700'
+            baseline
+              ? deltaGradient(snapshot.totalInterest - baseline.totalInterest, baseline.totalInterest)
+              : 'bg-gradient-to-br from-slate-900 to-blue-900'
           }
         />
         <StateBlock
@@ -111,9 +147,9 @@ export function StateBlocksRow({
           value={formatCurrency(snapshot.totalPaid)}
           delta={baseline ? snapshot.totalPaid - baseline.totalPaid : undefined}
           gradient={
-            current
-              ? 'bg-gradient-to-br from-slate-900 to-slate-700'
-              : 'bg-gradient-to-br from-emerald-900 to-slate-700'
+            baseline
+              ? deltaGradient(snapshot.totalPaid - baseline.totalPaid, baseline.totalPaid)
+              : 'bg-gradient-to-br from-slate-900 to-slate-700'
           }
         />
         <StateBlock
@@ -123,9 +159,9 @@ export function StateBlocksRow({
           delta={baseline ? snapshot.months - baseline.months : undefined}
           deltaFormat="months"
           gradient={
-            current
-              ? 'bg-gradient-to-br from-slate-800 to-slate-600'
-              : 'bg-gradient-to-br from-emerald-800 to-teal-700'
+            baseline
+              ? deltaGradient(snapshot.months - baseline.months, baseline.months)
+              : 'bg-gradient-to-br from-slate-800 to-slate-600'
           }
         />
         <StateBlock
@@ -134,9 +170,9 @@ export function StateBlocksRow({
           value={formatCurrency(snapshot.principal)}
           delta={baseline ? snapshot.principal - baseline.principal : undefined}
           gradient={
-            current
-              ? 'bg-gradient-to-br from-slate-800 to-indigo-800'
-              : 'bg-gradient-to-br from-emerald-800 to-emerald-600'
+            baseline
+              ? deltaGradient(snapshot.principal - baseline.principal, baseline.principal)
+              : 'bg-gradient-to-br from-slate-800 to-indigo-800'
           }
         />
       </div>

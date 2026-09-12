@@ -53,6 +53,8 @@ interface MixRowProps {
   onRequestQuote?: () => void;
   /** הזנת הריביות שהתקבלו מבנק על מבנה התמהיל שבשורה */
   onEnterQuote?: () => void;
+  /** בחירת התמהיל כתמהיל הסופי — משם ממשיכים להזנת הריביות מהבנקים בשלב 4 */
+  onSelectAsFinal?: () => void;
   /** מה שנפתח מתחת לשורה כשהיא פתוחה */
   detail?: React.ReactNode;
   hint?: string;
@@ -87,6 +89,7 @@ export function MixRow({
   actions,
   onRequestQuote,
   onEnterQuote,
+  onSelectAsFinal,
   detail,
   hint,
   note,
@@ -258,9 +261,10 @@ export function MixRow({
             </p>
           </div>
 
-          {(actions || onRequestQuote || onEnterQuote) && (
+          {(actions || onRequestQuote || onEnterQuote || onSelectAsFinal) && (
             <span onClick={stopRowClick} className="flex w-full flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:justify-end">
               {onRequestQuote && <RequestQuoteButton onClick={onRequestQuote} />}
+              {onSelectAsFinal && <SelectFinalButton onClick={onSelectAsFinal} />}
               {onEnterQuote && <EnterQuoteButton onClick={onEnterQuote} />}
               {actions}
             </span>
@@ -353,6 +357,33 @@ export function RequestQuoteButton({
     >
       <Gavel className="h-3.5 w-3.5" />
       הצעה לבנקים
+    </button>
+  );
+}
+
+/**
+ * בחירת התמהיל כתמהיל הסופי.
+ *
+ * זו נקודת המעבר לשלב 4: מכאן והלאה מבנה התמהיל נעול, ומולו מזינים את הריביות
+ * שכל בנק נתן. לכן הכפתור הזה מחליף את "ריביות מהבנק" שהיה כאן — הזנת הריביות
+ * אינה פעולה על תמהיל בעבודה אלא על התמהיל שנבחר.
+ */
+export function SelectFinalButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="נעילת התמהיל כתמהיל הסופי והמשך להזנת הריביות מהבנקים"
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
+    >
+      <Gavel className="h-3.5 w-3.5" />
+      בחר כתמהיל סופי
     </button>
   );
 }
