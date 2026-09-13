@@ -23,6 +23,7 @@ export function PricedDashboard({
   winnerId,
   signedMixKey,
   onSelectForSigning,
+  emptyHint,
 }: {
   featured: PricedMix | null;
   /** התמהיל כפי שתוכנן — הבסיס שמולו נמדדת ההצעה בגרפים */
@@ -31,6 +32,8 @@ export function PricedDashboard({
   signedMixKey?: string | null;
   /** בחירת ההצעה שמוצגת כתמהיל הסופי לחתימה */
   onSelectForSigning?: (mixId: string) => void;
+  /** מה נאמר כשעדיין אין הצעה להציג */
+  emptyHint: string;
 }) {
   const [focusTrackId, setFocusTrackId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
@@ -38,11 +41,7 @@ export function PricedDashboard({
   const result = useMemo(() => (featured ? computeMix(featured.mix) : null), [featured]);
 
   if (!featured || !result) {
-    return (
-      <StageEmpty>
-        כשתתקבל ההצעה הראשונה היא תיפתח כאן במלואה — כל המסלולים, המספרים והגרפים.
-      </StageEmpty>
-    );
+    return <StageEmpty>{emptyHint}</StageEmpty>;
   }
 
   const tone = bankTone(featured.bank);

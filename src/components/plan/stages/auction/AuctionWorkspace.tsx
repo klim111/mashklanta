@@ -7,7 +7,8 @@ import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { computeMix, formatDuration } from '@/components/mortgage-advisor/engine';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { BankPricingRow } from './BankPricingRow';
-import { BankFilterRow, BankOffersTable } from './BankOffersTable';
+import { AdvisorOffersList } from './AdvisorOffersList';
+import { BankFilterRow } from './BankFilterRow';
 import { OffersStatsRow } from './AuctionSummaryRows';
 import { OfferComparisonArea } from './OfferComparisonArea';
 import { PricedDashboard } from './PricedDashboard';
@@ -160,7 +161,7 @@ export function AuctionWorkspace({
       {canPrice && onSavePriced && (
         <StagePanel
           title="הזנת הריביות מהבנקים"
-          description="לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת מיד לטבלה שמתחת."
+          description="לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת."
         >
           <BankPricingRow
             mix={finalMix.mix}
@@ -171,46 +172,44 @@ export function AuctionWorkspace({
         </StagePanel>
       )}
 
-      {/* 3. טבלת ההשוואה בין ההצעות, ומתחתיה הפילטרים — שניהם פתוחים תמיד */}
-      <StagePanel
-        badge={
-          priced.length > 0 ? (
-            <PanelBadge tone="emerald">{priced.length} הצעות</PanelBadge>
-          ) : undefined
-        }
-        title="ההצעות שהתקבלו"
-        description="בכל שורה הריביות שהבנק נקב יושבות בתוך המסלול שהן שייכות לו. לחיצה על שורה — או על שם בנק — פותחת את ההצעה שלו בדאשבורד שמתחת."
-      >
-        <div className="space-y-4">
-          <BankOffersTable
+      {/* 3. רשימת העבודה של היועץ — קיימת רק אצלו, ולא במסך של הלקוח */}
+      {role === 'advisor' && onBroadcast && (
+        <StagePanel
+          badge={
+            priced.length > 0 ? (
+              <PanelBadge tone="emerald">{priced.length} הצעות</PanelBadge>
+            ) : undefined
+          }
+          title="ההצעות שהזנתם"
+          description="כל הצעה שנשמרה, עם הריביות שתומחרו לכל מסלול. שידור מעביר אותה ללקוח, ולחיצה על שורה פותחת אותה בדאשבורד שמתחת."
+        >
+          <AdvisorOffersList
             items={visible}
+            broadcastIds={broadcastIds}
+            onBroadcast={onBroadcast}
+            onRemove={onRemovePriced}
+            winnerId={winner?.mix.id ?? null}
             featuredId={featured?.mix.id ?? null}
             onFeature={setFeaturedId}
-            winnerId={winner?.mix.id ?? null}
-            onRemove={onRemovePriced}
-            broadcastIds={broadcastIds}
-            onBroadcast={role === 'advisor' ? onBroadcast : undefined}
-            emptyHint={
-              role === 'advised'
-                ? 'היועץ פונה לבנקים. כל הצעה שהוא ישדר אליכם תופיע כאן מיד, בלי צורך לרענן את הדף.'
-                : 'עדיין לא נשמרה אף הצעה. לחצו למעלה על הבנק שחזר אליכם, הזינו את הריביות שנתן ולחצו ״שמור הצעה״.'
-            }
           />
+        </StagePanel>
+      )}
 
-          <BankFilterRow
-            banks={available}
-            counts={offersPerBank}
-            selectedBanks={banks}
-            onToggleBank={onToggleBankChip}
-            onClearBanks={() => {
-              setBanks([]);
-              setFeaturedId(null);
-            }}
-          />
-        </div>
-      </StagePanel>
+      {/* 4. שורת הבנקים — הדרך להחליף את ההצעה שמוצגת בדאשבורד */}
+      {available.length > 0 && (
+        <BankFilterRow
+          banks={available}
+          counts={offersPerBank}
+          selectedBanks={banks}
+          onToggleBank={onToggleBankChip}
+          onClearBanks={() => {
+            setBanks([]);
+            setFeaturedId(null);
+          }}
+        />
+      )}
 
-      {/* 4. הדאשבורד — ההצעה שנבחרה, פתוחה במלואה */}
+      {/* 5. הדאשבורד — ההצעה שנבחרה, פתוחה במלואה */}
       <StagePanel
         title={
           featured && featured.mix.id === winner?.mix.id
@@ -226,6 +225,11 @@ export function AuctionWorkspace({
             winnerId={winner?.mix.id ?? null}
             signedMixKey={signedMixKey ?? null}
             onSelectForSigning={onSelectForSigning}
+            emptyHint={
+              role === 'advised'
+                ? 'היועץ פונה לבנקים. ההצעה הראשונה שהוא ישדר אליכם תיפתח כאן במלואה, בלי צורך לרענן את הדף.'
+                : 'כשתתקבל ההצעה הראשונה היא תיפתח כאן במלואה — כל המסלולים, המספרים והגרפים.'
+            }
           />
 
           <OfferComparisonArea cheapest={winner} featured={featured} costliest={costliest} />
