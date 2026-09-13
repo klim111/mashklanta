@@ -149,9 +149,45 @@ export function winningPricedMix(items: PricedMix[]): PricedMix | null {
   return items.reduce((best, item) => (item.summary.totalPaid < best.summary.totalPaid ? item : best));
 }
 
-/** הפער בין ההצעה הזולה ליקרה — מה שההתמחרות שווה ללקוח */
+/**
+ * הפער בין ההצעה הזולה ליקרה במדד מסוים — מה שההתמחרות שווה ללקוח.
+ *
+ * עם הצעה אחת אין פער, ולכן מוחזר null ולא אפס: "אפס" היה נקרא כאילו כל
+ * הבנקים נתנו את אותו מחיר, וזה בדיוק ההפך ממה שקרה.
+ */
+export function spreadOf(
+  items: PricedMix[],
+  metric: (item: PricedMix) => number
+): number | null {
+  if (items.length < 2) return null;
+  const values = items.map(metric);
+  return Math.max(...values) - Math.min(...values);
+}
+
+/** הפער בסך התשלומים */
 export function offersSpread(items: PricedMix[]): number {
-  if (items.length < 2) return 0;
-  const totals = items.map((item) => item.summary.totalPaid);
-  return Math.max(...totals) - Math.min(...totals);
+  return spreadOf(items, (item) => item.summary.totalPaid) ?? 0;
+}
+
+/** הפער בהחזר החודשי */
+export function monthlySpread(items: PricedMix[]): number | null {
+  return spreadOf(items, (item) => item.summary.monthlyPayment);
+}
+
+/** הפער בסך הריבית */
+export function interestSpread(items: PricedMix[]): number | null {
+  return spreadOf(items, (item) => item.summary.totalInterest);
+}
+
+/**
+ * ההצעות מהזולה ליקרה, לפי סך התשלומים — הסדר שבו הן מוצגות בהשוואה.
+ * `pricedMixesFor` כבר מחזיר בסדר הזה, וזו הדרך לשמור עליו אחרי סינון.
+ */
+export function byTotalPaid(items: PricedMix[]): PricedMix[] {
+  return [...items].sort((a, b) => a.summary.totalPaid - b.summary.totalPaid);
+}
+
+/** ההצעה הזולה של בנק מסוים — זו שנכנסת לדאשבורד כשלוחצים על שמו */
+export function cheapestOfBank(items: PricedMix[], bank: string): PricedMix | null {
+  return winningPricedMix(items.filter((item) => item.bank === bank));
 }

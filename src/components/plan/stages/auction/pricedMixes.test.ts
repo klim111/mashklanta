@@ -5,6 +5,10 @@ import { buildQuotedMix } from '@/components/mortgage-advisor/bankQuote/quote';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import type { MortgageBank } from '@/components/mortgage-advisor/types';
 import {
+  byTotalPaid,
+  cheapestOfBank,
+  interestSpread,
+  monthlySpread,
   banksWithOffers,
   bankTone,
   filterByBanks,
@@ -165,5 +169,61 @@ describe('סימון הבנק', () => {
 
   it('הכיתוב אומר איזה בנק תמחר', () => {
     expect(pricedMixLabel('מזרחי')).toContain('מזרחי');
+  });
+});
+
+describe('פערים בין ההצעות', () => {
+  it('הפער בהחזר ובריבית נמדד בין הזולה ליקרה', () => {
+    const source = finalMix();
+    const priced = pricedMixesFor(
+      [offer(source, 'לאומי', 4.6), offer(source, 'מזרחי', 4.0), offer(source, 'דיסקונט', 4.3)],
+      'mix-final'
+    );
+
+    const monthly = priced.map((item) => item.summary.monthlyPayment);
+    const interest = priced.map((item) => item.summary.totalInterest);
+
+    expect(monthlySpread(priced)).toBeCloseTo(Math.max(...monthly) - Math.min(...monthly), 6);
+    expect(interestSpread(priced)).toBeCloseTo(Math.max(...interest) - Math.min(...interest), 6);
+    expect(monthlySpread(priced)).toBeGreaterThan(0);
+  });
+
+  it('עם הצעה אחת אין פער — null ולא אפס', () => {
+    const source = finalMix();
+    const priced = pricedMixesFor([offer(source, 'לאומי', 4.2)], 'mix-final');
+    expect(monthlySpread(priced)).toBeNull();
+    expect(interestSpread(priced)).toBeNull();
+    expect(monthlySpread([])).toBeNull();
+  });
+});
+
+describe('סדר ובחירה', () => {
+  it('ההצעות מסודרות מהזולה ליקרה בסך התשלומים', () => {
+    const source = finalMix();
+    const priced = pricedMixesFor(
+      [offer(source, 'לאומי', 4.6), offer(source, 'מזרחי', 4.0), offer(source, 'דיסקונט', 4.3)],
+      'mix-final'
+    );
+    const shuffled = [priced[2], priced[0], priced[1]];
+    expect(byTotalPaid(shuffled).map((item) => item.bank)).toEqual(
+      priced.map((item) => item.bank)
+    );
+  });
+
+  it('לחיצה על בנק בוחרת את ההצעה הזולה שלו', () => {
+    const source = finalMix();
+    const priced = pricedMixesFor(
+      [offer(source, 'לאומי', 4.6), offer(source, 'לאומי', 4.1), offer(source, 'מזרחי', 4.3)],
+      'mix-final'
+    );
+
+    const chosen = cheapestOfBank(priced, 'לאומי');
+    expect(chosen?.bank).toBe('לאומי');
+    expect(chosen?.summary.totalPaid).toBe(
+      Math.min(
+        ...priced.filter((item) => item.bank === 'לאומי').map((item) => item.summary.totalPaid)
+      )
+    );
+    expect(cheapestOfBank(priced, 'ירושלים')).toBeNull();
   });
 });

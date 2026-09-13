@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AlertCircle, BadgePercent, Loader2, Pencil } from 'lucide-react';
 import type { AuctionData, AuctionMode, PlanData, SignedMixChoice } from '@/lib/mortgage-plan';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
@@ -39,7 +39,7 @@ export function AuctionStage({
 }) {
   const value = data.AUCTION;
   const finalMixKey = data.MIX.mixKey;
-  const { saved, ready, save, remove } = useSavedMixes({ planId });
+  const { saved, ready, save, remove, refresh } = useSavedMixes({ planId });
 
   const finalMix = useMemo(
     () => saved.find((item) => item.mix.id === finalMixKey) ?? null,
@@ -47,6 +47,22 @@ export function AuctionStage({
   );
 
   const signed = value.signedMix;
+
+  /*
+    בליווי, ההצעות נכנסות מהמסך של היועץ ולא מכאן. רענון תקופתי הוא מה שגורם
+    להן להופיע אצל הלקוח מיד אחרי השידור, בלי שיצטרך לטעון את הדף מחדש.
+  */
+  const advised = advisorRun || value.mode === 'advisor';
+  useEffect(() => {
+    if (!advised) return;
+    const timer = window.setInterval(() => void refresh(), 15_000);
+    const onFocus = () => void refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [advised, refresh]);
 
   const setMode = (mode: AuctionMode) => onChange({ ...value, mode });
 
