@@ -168,7 +168,14 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   */
   const advisorRun = isAdvisorStage(orders.orders, stage);
   const showingDetails = detailStages.includes(stage);
-  const advisorSummaryOnly = advisorRun && !showingDetails;
+  /*
+    שלב התמחור מציג בעצמו את כל מה שהלקוח בליווי צריך לראות — ההצעות שהיועץ
+    שידר, הדאשבורד של הזולה שבהן והפערים ביניהן — והוא חי, מתעדכן מעצמו. כרטיס
+    סיכום מעליו רק היה חוסם את זה מאחורי לחיצה, ולכן השלב הזה אינו עובר דרכו.
+  */
+  const stageHasOwnAdvisedView = stage === 'AUCTION';
+  const showAdvisorSummary = advisorRun && !stageHasOwnAdvisedView;
+  const advisorSummaryOnly = showAdvisorSummary && !showingDetails;
   const waitingOrder = pendingOrder(orders.orders);
   const advisorName =
     orders.orders.find((order) => order.stages.includes(stage) && order.status === 'PAID')
@@ -431,7 +438,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
             {/* מה שהיועץ כתב ללקוח בשלב הזה, מעל תוכן השלב עצמו */}
             <AdvisorStageNotes stage={stage} />
 
-            {advisorRun && (
+            {showAdvisorSummary && (
               <div className="mb-4">
                 <AdvisorStageSummary
                   stage={stage}

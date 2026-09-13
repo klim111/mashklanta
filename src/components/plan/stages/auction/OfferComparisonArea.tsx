@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Crown, PiggyBank, TrendingDown } from 'lucide-react';
-import { MixComparison } from '@/components/mortgage-advisor/MixComparison';
-import type { ComparisonEntry } from '@/components/mortgage-advisor/MixComparison';
+import React from 'react';
+import { AlertTriangle, Crown, PiggyBank, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatPercentage } from '@/components/mortgage-advisor/mortgageCalculations';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { bankTone } from './pricedMixes';
@@ -16,71 +14,27 @@ interface OfferComparisonAreaProps {
   featured: PricedMix | null;
   /** ההצעה היקרה ביותר — מולה נמדד החיסכון */
   costliest: PricedMix | null;
-  signedMixKey?: string | null;
-  onSelectForSigning?: (mixId: string) => void;
 }
 
 /**
  * מה שמוצג מתחת לדאשבורד.
  *
- * כשההצעה שבדאשבורד היא הזולה ביותר אין מה להשוות — מוצג כמה היא חוסכת מול
- * ההצעה היקרה שהתקבלה. כשנלחצה הצעה אחרת, מוצגת ההשוואה המלאה בינה לבין
- * הזולה: זו השאלה היחידה שנשאלת ברגע כזה — מה עולה לוותר על הזולה לטובתה.
+ * במסך מוצגת הצעה אחת בכל רגע, ולא כולן יחד. כשזו הזולה — מוצג כמה היא חוסכת
+ * מול ההצעה היקרה שהתקבלה. כשנפתחה הצעה אחרת — נאמר במפורש שהיא אינה
+ * המשתלמת ביותר, וכמה היא עולה יותר מהזולה. זו השאלה היחידה שנשאלת ברגע כזה.
  */
 export function OfferComparisonArea({
   cheapest,
   featured,
   costliest,
-  signedMixKey,
-  onSelectForSigning,
 }: OfferComparisonAreaProps) {
-  const comparing = Boolean(
-    cheapest && featured && featured.mix.id !== cheapest.mix.id
-  );
-
-  const entries = useMemo<ComparisonEntry[]>(() => {
-    if (!comparing || !cheapest || !featured) return [];
-    return [
-      {
-        id: cheapest.mix.id,
-        label: `${cheapest.bank} · ההצעה הזולה`,
-        mix: cheapest.mix,
-        recordId: cheapest.recordId,
-        isFinal: signedMixKey === cheapest.mix.id,
-      },
-      {
-        id: featured.mix.id,
-        label: `${featured.bank} · ${featured.mix.name}`,
-        mix: featured.mix,
-        recordId: featured.recordId,
-        current: true,
-        isFinal: signedMixKey === featured.mix.id,
-      },
-    ];
-  }, [comparing, cheapest, featured, signedMixKey]);
-
   if (!cheapest || !featured) return null;
 
-  if (!comparing) {
+  if (featured.mix.id === cheapest.mix.id) {
     return <BestOfferNote cheapest={cheapest} costliest={costliest} />;
   }
 
-  return (
-    <div className="space-y-3">
-      <p className="text-center text-base font-black text-slate-800">
-        {featured.bank} מול ההצעה הזולה של {cheapest.bank}
-      </p>
-
-      <MixComparison
-        entries={entries}
-        allowSelectFinal={Boolean(onSelectForSigning)}
-        onSelectFinal={onSelectForSigning}
-        selectFinalLabel="בחר תמהיל זה כתמהיל סופי לחתימה"
-        selectFinalConfirm="לבחור את ההצעה הזו כתמהיל הסופי לחתימה? היא תופיע באזור האישי כ׳המשכנתא שלי׳, ומולה יאומתו מסמכי הבנק בשלב החתימה."
-        selectedFinalLabel="זה התמהיל שנבחר לחתימה"
-      />
-    </div>
-  );
+  return <NotBestOfferNote featured={featured} cheapest={cheapest} />;
 }
 
 /** ההצעה המשתלמת ביותר, וכמה היא חוסכת מול היקרה שהתקבלה */
@@ -126,9 +80,9 @@ function BestOfferNote({
           </h4>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <SavingTile label="בסך התשלומים" value={formatShekel(saving.paid)} />
-            <SavingTile label="בסך הריבית" value={formatShekel(saving.interest)} />
-            <SavingTile label="בהחזר החודשי" value={formatShekel(saving.monthly)} />
+            <GapTile label="בסך התשלומים" value={formatShekel(saving.paid)} better />
+            <GapTile label="בסך הריבית" value={formatShekel(saving.interest)} better />
+            <GapTile label="בהחזר החודשי" value={formatShekel(saving.monthly)} better />
           </div>
         </>
       ) : (
@@ -140,12 +94,81 @@ function BestOfferNote({
   );
 }
 
-function SavingTile({ label, value }: { label: string; value: string }) {
+/** ההצעה שנפתחה אינה הזולה — כמה היא עולה יותר, ומול מי */
+function NotBestOfferNote({
+  featured,
+  cheapest,
+}: {
+  featured: PricedMix;
+  cheapest: PricedMix;
+}) {
+  const tone = bankTone(cheapest.bank);
+  const gap = {
+    paid: featured.summary.totalPaid - cheapest.summary.totalPaid,
+    monthly: featured.summary.monthlyPayment - cheapest.summary.monthlyPayment,
+    interest: featured.summary.totalInterest - cheapest.summary.totalInterest,
+  };
+
   return (
-    <div className="rounded-2xl border-2 border-emerald-200 bg-white p-3 text-center">
+    <div className="rounded-3xl border-2 border-amber-300 bg-amber-50/60 p-5 text-center">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-sm font-black text-white">
+        <AlertTriangle className="h-4 w-4" />
+        זו אינה ההצעה המשתלמת ביותר
+      </span>
+
+      <h4 className="mt-3 text-lg font-black text-slate-900">
+        ההצעה של {featured.bank} יקרה ב-{formatShekel(Math.abs(gap.paid))} מזו של{' '}
+        <span
+          className="rounded-full px-2.5 py-0.5 text-white"
+          style={{ backgroundColor: tone.dot }}
+        >
+          {cheapest.bank}
+        </span>
+      </h4>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <GapTile label="בסך התשלומים" value={formatShekel(Math.abs(gap.paid))} better={gap.paid < 0} />
+        <GapTile
+          label="בסך הריבית"
+          value={formatShekel(Math.abs(gap.interest))}
+          better={gap.interest < 0}
+        />
+        <GapTile
+          label="בהחזר החודשי"
+          value={formatShekel(Math.abs(gap.monthly))}
+          better={gap.monthly < 0}
+        />
+      </div>
+
+      <p className="mt-3 text-sm font-bold text-slate-600">
+        להצגת ההצעה המשתלמת ביותר — לחצו על {cheapest.bank} בשורת הבנקים או בטבלה שלמעלה.
+      </p>
+    </div>
+  );
+}
+
+function GapTile({
+  label,
+  value,
+  better,
+}: {
+  label: string;
+  value: string;
+  better: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border-2 bg-white p-3 text-center ${
+        better ? 'border-emerald-200' : 'border-amber-200'
+      }`}
+    >
       <span className="text-xs font-bold text-slate-600">{label}</span>
-      <span className="mt-0.5 flex items-center justify-center gap-1 text-xl font-black tabular-nums text-emerald-700">
-        <TrendingDown className="h-4 w-4" />
+      <span
+        className={`mt-0.5 flex items-center justify-center gap-1 text-xl font-black tabular-nums ${
+          better ? 'text-emerald-700' : 'text-amber-700'
+        }`}
+      >
+        {better ? <TrendingDown className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
         {value}
       </span>
     </div>

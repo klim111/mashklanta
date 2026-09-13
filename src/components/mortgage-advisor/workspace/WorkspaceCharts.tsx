@@ -44,6 +44,12 @@ interface WorkspaceChartsProps {
   /** המסלול שמוצג כרגע. null — כל התמהיל */
   focusTrackId?: string | null;
   onFocusTrack?: (trackId: string | null) => void;
+  /**
+   * גרפי הציפיות — עקום הפריים, המשתנה הלא צמודה והאינפלציה. הם תחזיות שוק
+   * ולא נתוני התמהיל עצמו, ולכן במסכים שכל עניינם השוואה בין הצעות שכבר
+   * התקבלו אפשר לכבות אותם: שם השאלה היא מה בנק נתן, לא לאן השוק הולך.
+   */
+  showForecasts?: boolean;
 }
 
 interface TrackRow {
@@ -126,6 +132,7 @@ export function WorkspaceCharts({
   onSelectMonth,
   focusTrackId = null,
   onFocusTrack,
+  showForecasts = true,
 }: WorkspaceChartsProps) {
   /** המסלול שבמיקוד — כל הגרפים והביאורים שלו מוצגים כאן, ולא בתוך הפאנל */
   const focusTrack = focusTrackId
@@ -248,7 +255,13 @@ export function WorkspaceCharts({
       </CardHeader>
 
       <CardContent className="grid gap-3 lg:grid-cols-3">
-        {focusTrack && <TrackFocusCharts track={focusTrack} assumptions={result.mix.assumptions} />}
+        {focusTrack && (
+          <TrackFocusCharts
+            track={focusTrack}
+            assumptions={result.mix.assumptions}
+            showForecasts={showForecasts}
+          />
+        )}
 
         {!focusTrack && (
           <>
@@ -392,7 +405,7 @@ export function WorkspaceCharts({
           </AreaChart>
         </ChartPanel>
 
-        {primeExpectations.length >= 2 && (
+        {showForecasts && primeExpectations.length >= 2 && (
           <div className="lg:col-span-3">
             <PrimeForwardChart
               previewPoints={primeExpectations}
@@ -401,7 +414,7 @@ export function WorkspaceCharts({
             />
           </div>
         )}
-        {hasVariableUnlinked && (
+        {showForecasts && hasVariableUnlinked && (
           <div className="lg:col-span-3">
             <VariableForwardChart
               tracks={result.tracks}
@@ -414,7 +427,7 @@ export function WorkspaceCharts({
             />
           </div>
         )}
-        {hasIndexed && (
+        {showForecasts && hasIndexed && (
           <div className="lg:col-span-3">
             <InflationForecastChart
               assumptions={result.mix.assumptions}
@@ -440,9 +453,11 @@ export function WorkspaceCharts({
 function TrackFocusCharts({
   track,
   assumptions,
+  showForecasts,
 }: {
   track: TrackResult;
   assumptions: MixResult['mix']['assumptions'];
+  showForecasts: boolean;
 }) {
   const rows = trackRows(track);
   const data = track.track;
@@ -565,7 +580,7 @@ function TrackFocusCharts({
         </AreaChart>
       </ChartPanel>
 
-      {data.type === 'prime' && primeExpectations.length >= 2 && (
+      {showForecasts && data.type === 'prime' && primeExpectations.length >= 2 && (
         <div className="lg:col-span-3">
           <PrimeForwardChart
             previewPoints={primeExpectations}
@@ -574,12 +589,12 @@ function TrackFocusCharts({
           />
         </div>
       )}
-      {data.type === 'variable_unlinked' && track.schedule.length > 1 && (
+      {showForecasts && data.type === 'variable_unlinked' && track.schedule.length > 1 && (
         <div className="lg:col-span-3">
           <VariableForwardChart tracks={[track]} quotedRate={data.interestRate} height={220} />
         </div>
       )}
-      {isIndexLinked(data.type) && track.schedule.length > 1 && (
+      {showForecasts && isIndexLinked(data.type) && track.schedule.length > 1 && (
         <div className="lg:col-span-3">
           <InflationForecastChart assumptions={assumptions} years={data.years} height={220} />
         </div>

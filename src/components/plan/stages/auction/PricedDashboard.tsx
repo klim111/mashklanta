@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Building2, Crown } from 'lucide-react';
+import { Building2, Crown, Gavel } from 'lucide-react';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { MixResult } from '@/components/mortgage-advisor/engine';
 import { MixRow } from '@/components/mortgage-advisor/workspace/MixRow';
@@ -22,12 +22,15 @@ export function PricedDashboard({
   baseResult,
   winnerId,
   signedMixKey,
+  onSelectForSigning,
 }: {
   featured: PricedMix | null;
   /** התמהיל כפי שתוכנן — הבסיס שמולו נמדדת ההצעה בגרפים */
   baseResult: MixResult;
   winnerId: string | null;
   signedMixKey?: string | null;
+  /** בחירת ההצעה שמוצגת כתמהיל הסופי לחתימה */
+  onSelectForSigning?: (mixId: string) => void;
 }) {
   const [focusTrackId, setFocusTrackId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
@@ -93,10 +96,33 @@ export function PricedDashboard({
                 onSelectMonth={setSelectedMonth}
                 focusTrackId={focusTrackId}
                 onFocusTrack={setFocusTrackId}
+                showForecasts={false}
               />
             </div>
           }
         />
+
+        {/* בחירת ההצעה שמוצגת כתמהיל הסופי לחתימה */}
+        {onSelectForSigning && featured.mix.id !== signedMixKey && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'לבחור את ההצעה הזו כתמהיל הסופי לחתימה? היא תופיע באזור האישי כ׳המשכנתא שלי׳, ומולה יאומתו מסמכי הבנק בשלב החתימה.'
+                  )
+                ) {
+                  onSelectForSigning(featured.mix.id);
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-black text-white transition-colors hover:bg-slate-700"
+            >
+              <Gavel className="h-4 w-4" />
+              בחר תמהיל זה כתמהיל סופי לחתימה
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

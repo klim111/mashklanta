@@ -225,15 +225,10 @@ export function AuctionWorkspace({
             baseResult={baseResult}
             winnerId={winner?.mix.id ?? null}
             signedMixKey={signedMixKey ?? null}
-          />
-
-          <OfferComparisonArea
-            cheapest={winner}
-            featured={featured}
-            costliest={costliest}
-            signedMixKey={signedMixKey ?? null}
             onSelectForSigning={onSelectForSigning}
           />
+
+          <OfferComparisonArea cheapest={winner} featured={featured} costliest={costliest} />
         </div>
       </StagePanel>
     </div>
