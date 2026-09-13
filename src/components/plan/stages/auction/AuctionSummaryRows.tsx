@@ -16,6 +16,9 @@ export function OffersStatsRow({
   monthlyGap,
   interestGap,
   formatMoney,
+  activeBank,
+  onHoverBank,
+  onSelectBank,
 }: {
   offers: number;
   /** שמות הבנקים שתמחרו, ולא רק מספרם */
@@ -23,6 +26,14 @@ export function OffersStatsRow({
   monthlyGap: number | null;
   interestGap: number | null;
   formatMoney: (value: number) => string;
+  /** הבנק שההצעה שלו פתוחה כרגע בדאשבורד */
+  activeBank?: string | null;
+  /**
+   * מעבר עכבר על שם בנק — הפסים של התמהיל שמעל מציגים את הריביות שלו. זו הדרך
+   * לסרוק את ההצעות בלי ללחוץ ובלי לעזוב את המסך.
+   */
+  onHoverBank?: (bank: string | null) => void;
+  onSelectBank?: (bank: string) => void;
 }) {
   const single = 'יש כרגע הצעה אחת בלבד';
 
@@ -31,20 +42,44 @@ export function OffersStatsRow({
       <StatBlock label="הצעות שהתקבלו" value={String(offers)} />
 
       <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-slate-200 bg-white p-3 text-center shadow-sm">
-        <span className="text-xs font-bold text-slate-600">הבנקים שהציעו</span>
+        <span className="text-xs font-bold text-slate-600">
+          הבנקים שהציעו
+          {onSelectBank && banks.length > 0 && (
+            <span className="mr-1 font-medium text-slate-500">
+              · העבירו עכבר לתצוגת הריביות
+            </span>
+          )}
+        </span>
         {banks.length === 0 ? (
           <span className="mt-1 text-sm font-black text-slate-500">טרם התקבלו הצעות</span>
         ) : (
-          <span className="mt-1 flex flex-wrap items-center justify-center gap-1">
-            {banks.map((bank) => (
-              <span
-                key={bank}
-                className="rounded-full px-2.5 py-0.5 text-sm font-black text-white"
-                style={{ backgroundColor: bankTone(bank).dot }}
-              >
-                {bank}
-              </span>
-            ))}
+          <span
+            className="mt-1 flex flex-wrap items-center justify-center gap-1"
+            onMouseLeave={() => onHoverBank?.(null)}
+          >
+            {banks.map((bank) => {
+              const tone = bankTone(bank);
+              const active = activeBank === bank;
+
+              return (
+                <button
+                  key={bank}
+                  type="button"
+                  disabled={!onSelectBank}
+                  onMouseEnter={() => onHoverBank?.(bank)}
+                  onFocus={() => onHoverBank?.(bank)}
+                  onBlur={() => onHoverBank?.(null)}
+                  onClick={() => onSelectBank?.(bank)}
+                  title={onSelectBank ? `להצגת ההצעה של ${bank} בדאשבורד` : undefined}
+                  style={{ backgroundColor: tone.dot }}
+                  className={`rounded-full px-2.5 py-0.5 text-sm font-black text-white transition-transform ${
+                    onSelectBank ? 'cursor-pointer hover:scale-105' : ''
+                  } ${active ? 'ring-2 ring-slate-900 ring-offset-1' : ''}`}
+                >
+                  {bank}
+                </button>
+              );
+            })}
           </span>
         )}
       </div>

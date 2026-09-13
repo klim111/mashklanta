@@ -50,6 +50,11 @@ interface WorkspaceChartsProps {
    * התקבלו אפשר לכבות אותם: שם השאלה היא מה בנק נתן, לא לאן השוק הולך.
    */
   showForecasts?: boolean;
+  /**
+   * פס ההרכב שבראש אזור הגרפים. במסכים שבהם שורת התמהיל שמעל כבר מציגה אותו,
+   * הוא חוזר על עצמו ורק גוזל גובה — ואז אפשר לכבות אותו כאן.
+   */
+  showCompositionStrip?: boolean;
 }
 
 interface TrackRow {
@@ -133,6 +138,7 @@ export function WorkspaceCharts({
   focusTrackId = null,
   onFocusTrack,
   showForecasts = true,
+  showCompositionStrip = true,
 }: WorkspaceChartsProps) {
   /** המסלול שבמיקוד — כל הגרפים והביאורים שלו מוצגים כאן, ולא בתוך הפאנל */
   const focusTrack = focusTrackId
@@ -238,6 +244,7 @@ export function WorkspaceCharts({
         </div>
 
         {/* פס ההרכב — אותה תצוגה שבכלי המיחזור, ולחיצה מחליפה את אזור הגרפים */}
+        {showCompositionStrip && (
         <div className="pt-2">
           <TrackCompositionStrip
             tracks={result.mix.tracks}
@@ -252,6 +259,7 @@ export function WorkspaceCharts({
             activeActionLabel="חזרה לכל התמהיל"
           />
         </div>
+        )}
       </CardHeader>
 
       <CardContent className="grid gap-3 lg:grid-cols-3">

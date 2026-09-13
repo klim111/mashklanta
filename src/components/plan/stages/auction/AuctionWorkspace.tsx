@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Lock } from 'lucide-react';
+import { BadgePercent, Lock, X } from 'lucide-react';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { computeMix, formatDuration } from '@/components/mortgage-advisor/engine';
@@ -52,6 +52,11 @@ interface AuctionWorkspaceProps {
   onBroadcast?: (item: PricedMix) => void;
   /** ההצעות שכבר שודרו ללקוח, לסימון בשורה */
   broadcastIds?: readonly string[];
+  /**
+   * גם לקוח שקנה ליווי יכול להביא הצעה שהשיג בעצמו. היא נשמרת ומתנהגת בדיוק
+   * כמו כל הצעה אחרת, ולכן ההזנה נפתחת בכפתור ולא יושבת פתוחה על המסך.
+   */
+  allowSelfEntry?: boolean;
 }
 
 /**
@@ -73,10 +78,15 @@ export function AuctionWorkspace({
   onRemovePriced,
   onBroadcast,
   broadcastIds = [],
+  allowSelfEntry = false,
 }: AuctionWorkspaceProps) {
   const [banks, setBanks] = useState<string[]>([]);
   /** ההצעה שפתוחה בדאשבורד. null — הזולה ביותר, שנבחרת אוטומטית */
   const [featuredId, setFeaturedId] = useState<string | null>(null);
+  /** הבנק שהעכבר נמצא עליו — הפסים של התמהיל מציגים את הריביות שלו */
+  const [hoveredBank, setHoveredBank] = useState<string | null>(null);
+  /** הזנת ריביות עצמאית, אצל לקוח שקנה ליווי */
+  const [selfEntryOpen, setSelfEntryOpen] = useState(false);
 
   const baseResult = useMemo(() => computeMix(finalMix.mix), [finalMix.mix]);
   const priced = useMemo(
@@ -111,6 +121,23 @@ export function AuctionWorkspace({
   const takenNames = useMemo(() => savedMixes.map((item) => item.mix.name), [savedMixes]);
   const canPrice = (role === 'self' || role === 'advisor') && Boolean(onSavePriced);
 
+  /** הריביות של הבנק שהעכבר עליו, להצצה בתוך הפסים */
+  const previewRates = useMemo(() => {
+    if (!hoveredBank) return null;
+    const offer = cheapestOfBank(priced, hoveredBank);
+    if (!offer) return null;
+
+    const rates: Record<string, number> = {};
+    for (const track of offer.mix.tracks) rates[track.id] = track.interestRate;
+    return { rates, order: offer.mix.tracks.map((track) => track.interestRate) };
+  }, [hoveredBank, priced]);
+
+  /** לחיצה על שם בנק בשורת הסיכום — פותחת את ההצעה שלו בדאשבורד */
+  const onSelectBank = (bank: string) => {
+    const offer = cheapestOfBank(priced, bank);
+    if (offer) setFeaturedId(offer.mix.id);
+  };
+
   /** לחיצה על שם בנק מסננת אליו וגם מעלה את ההצעה הזולה שלו לדאשבורד */
   const onToggleBankChip = (bank: string) => {
     setBanks((current) => {
@@ -128,6 +155,43 @@ export function AuctionWorkspace({
 
   return (
     <div className="space-y-5">
+      {/* הזנת ריביות עצמאית, בליווי — נפתחת בכפתור ואינה יושבת על המסך */}
+      {role === 'advised' && allowSelfEntry && onSavePriced && (
+        <div className="space-y-3">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setSelfEntryOpen((open) => !open)}
+              className={`inline-flex items-center gap-2 rounded-2xl border-2 px-5 py-2.5 text-sm font-black transition-colors ${
+                selfEntryOpen
+                  ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100'
+              }`}
+            >
+              {selfEntryOpen ? <X className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
+              {selfEntryOpen ? 'סגירת ההזנה' : 'הזן ריביות מהצעה שקיבלת עצמאית'}
+            </button>
+          </div>
+
+          {selfEntryOpen && (
+            <StagePanel
+              title="הזנת ריביות מהצעה שהשגתם בעצמכם"
+              description="ההצעה תישמר בדיוק כמו הצעה שהיועץ הזין: היא תופיע בשורת הבנקים, בדאשבורד ובהשוואה, ותיכנס לחישוב ההצעה הזולה."
+            >
+              <BankPricingRow
+                mix={finalMix.mix}
+                takenNames={takenNames}
+                offersPerBank={offersPerBank}
+                onSave={async (quoted) => {
+                  await onSavePriced(quoted);
+                  setSelfEntryOpen(false);
+                }}
+              />
+            </StagePanel>
+          )}
+        </div>
+      )}
+
       {/* 1. המבנה שכל הבנקים מתמחרים — בלי ריביות, כי הן מה שעוד לא ידוע */}
       <StagePanel
         tone="locked"
@@ -140,7 +204,7 @@ export function AuctionWorkspace({
         title="התמהיל שהולך לתמחור"
         description="המבנה נקבע בשלב בניית התמהיל: מסלולים, סכומים ותקופות. כל בנק מתמחר בדיוק אותו — וזו הסיבה שאפשר להשוות בין ההצעות."
       >
-        <TrackStrip tracks={finalMix.mix.tracks} variant="structure" />
+        <TrackStrip tracks={finalMix.mix.tracks} variant="structure" preview={previewRates} />
 
         <p className="mt-3 text-center text-sm font-bold text-slate-600">
           {formatShekel(finalMix.mix.totalAmount)} · {finalMix.mix.tracks.length} מסלולים ·{' '}
@@ -155,6 +219,9 @@ export function AuctionWorkspace({
         monthlyGap={monthlySpread(priced)}
         interestGap={interestSpread(priced)}
         formatMoney={formatShekel}
+        activeBank={featured?.bank ?? null}
+        onHoverBank={setHoveredBank}
+        onSelectBank={priced.length > 0 ? onSelectBank : undefined}
       />
 
       {/* שורת הבנקים להזנת ריביות — רק למי שמזין */}

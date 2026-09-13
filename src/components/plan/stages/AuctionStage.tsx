@@ -152,8 +152,9 @@ export function AuctionStage({
         savedMixes={saved}
         signedMixKey={signed?.mixKey ?? null}
         onSelectForSigning={onSelectForSigning}
-        onSavePriced={mode === 'self' ? onSavePriced : undefined}
+        onSavePriced={onSavePriced}
         onRemovePriced={mode === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
+        allowSelfEntry
       />
 
       {signed && (

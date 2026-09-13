@@ -96,6 +96,7 @@ export function PricedDashboard({
                 focusTrackId={focusTrackId}
                 onFocusTrack={setFocusTrackId}
                 showForecasts={false}
+                showCompositionStrip={false}
               />
             </div>
           }
