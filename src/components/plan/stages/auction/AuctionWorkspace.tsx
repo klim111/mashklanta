@@ -7,13 +7,15 @@ import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { computeMix, formatDuration } from '@/components/mortgage-advisor/engine';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { BankPricingRow } from './BankPricingRow';
-import { BankOffersTable } from './BankOffersTable';
-import { CheapestOfferRow, OffersStatsRow } from './AuctionSummaryRows';
+import { BankFilterRow, BankOffersTable } from './BankOffersTable';
+import { OffersStatsRow } from './AuctionSummaryRows';
+import { OfferComparisonArea } from './OfferComparisonArea';
 import { PricedDashboard } from './PricedDashboard';
 import { TrackStrip } from './TrackStrip';
 import {
   banksWithOffers,
   cheapestOfBank,
+  costliestPricedMix,
   filterByBanks,
   interestSpread,
   monthlySpread,
@@ -86,6 +88,7 @@ export function AuctionWorkspace({
   /* ההצעה הזולה נגזרת מכל ההצעות ולא מהמסוננות: השורה העליונה אומרת מה הטוב
      ביותר שיש על השולחן, ולא מה הטוב ביותר מבין מה שסומן כרגע. */
   const winner = useMemo(() => winningPricedMix(priced), [priced]);
+  const costliest = useMemo(() => costliestPricedMix(priced), [priced]);
 
   const featured = useMemo(() => {
     const chosen = featuredId ? priced.find((item) => item.mix.id === featuredId) : null;
@@ -114,6 +117,9 @@ export function AuctionWorkspace({
       if (next.includes(bank)) {
         const cheapest = cheapestOfBank(priced, bank);
         if (cheapest) setFeaturedId(cheapest.mix.id);
+      } else if (featured?.bank === bank) {
+        // ביטול הסימון של הבנק שההצעה שלו פתוחה מחזיר את הדאשבורד לזולה ביותר
+        setFeaturedId(null);
       }
       return next;
     });
@@ -121,18 +127,7 @@ export function AuctionWorkspace({
 
   return (
     <div className="space-y-5">
-      {/* 1. ההצעה הזולה ביותר — תמיד, בלי קשר לסינון ולבחירה */}
-      <CheapestOfferRow winner={winner} />
-
-      {/* 2. מצב ההתמחרות */}
-      <OffersStatsRow
-        offers={priced.length}
-        banks={available.length}
-        monthlyGap={monthlySpread(priced)}
-        interestGap={interestSpread(priced)}
-      />
-
-      {/* 3. המבנה שכל הבנקים מתמחרים — בלי ריביות, כי הן מה שעוד לא ידוע */}
+      {/* 1. המבנה שכל הבנקים מתמחרים — בלי ריביות, כי הן מה שעוד לא ידוע */}
       <StagePanel
         tone="locked"
         badge={
@@ -152,6 +147,15 @@ export function AuctionWorkspace({
         </p>
       </StagePanel>
 
+      {/* 2. מצב ההתמחרות */}
+      <OffersStatsRow
+        offers={priced.length}
+        banks={available}
+        monthlyGap={monthlySpread(priced)}
+        interestGap={interestSpread(priced)}
+        formatMoney={formatShekel}
+      />
+
       {/* שורת הבנקים להזנת ריביות — רק למי שמזין */}
       {canPrice && onSavePriced && (
         <StagePanel
@@ -167,7 +171,7 @@ export function AuctionWorkspace({
         </StagePanel>
       )}
 
-      {/* 4. הבנקים שתמחרו, וטבלת ההצעות שלהם */}
+      {/* 3. טבלת ההשוואה בין ההצעות, ומתחתיה הפילטרים — שניהם פתוחים תמיד */}
       <StagePanel
         badge={
           priced.length > 0 ? (
@@ -175,43 +179,62 @@ export function AuctionWorkspace({
           ) : undefined
         }
         title="ההצעות שהתקבלו"
-        description="לחיצה על שם בנק מצמצמת את הטבלה אליו ופותחת את ההצעה שלו בדאשבורד שמתחת. בכל שורה הריביות שהבנק נקב יושבות בתוך המסלול שהן שייכות לו."
+        description="בכל שורה הריביות שהבנק נקב יושבות בתוך המסלול שהן שייכות לו. לחיצה על שורה — או על שם בנק — פותחת את ההצעה שלו בדאשבורד שמתחת."
       >
-        <BankOffersTable
-          items={visible}
-          banks={available}
-          selectedBanks={banks}
-          onToggleBank={onToggleBankChip}
-          onClearBanks={() => setBanks([])}
-          featuredId={featured?.mix.id ?? null}
-          onFeature={setFeaturedId}
-          winnerId={winner?.mix.id ?? null}
-          onRemove={onRemovePriced}
-          broadcastIds={broadcastIds}
-          onBroadcast={role === 'advisor' ? onBroadcast : undefined}
-          emptyHint={
-            role === 'advised'
-              ? 'היועץ פונה לבנקים. כל הצעה שהוא ישדר אליכם תופיע כאן מיד, בלי צורך לרענן את הדף.'
-              : 'עדיין לא נשמרה אף הצעה. לחצו למעלה על הבנק שחזר אליכם, הזינו את הריביות שנתן ולחצו ״שמור הצעה״.'
-          }
-        />
+        <div className="space-y-4">
+          <BankOffersTable
+            items={visible}
+            featuredId={featured?.mix.id ?? null}
+            onFeature={setFeaturedId}
+            winnerId={winner?.mix.id ?? null}
+            onRemove={onRemovePriced}
+            broadcastIds={broadcastIds}
+            onBroadcast={role === 'advisor' ? onBroadcast : undefined}
+            emptyHint={
+              role === 'advised'
+                ? 'היועץ פונה לבנקים. כל הצעה שהוא ישדר אליכם תופיע כאן מיד, בלי צורך לרענן את הדף.'
+                : 'עדיין לא נשמרה אף הצעה. לחצו למעלה על הבנק שחזר אליכם, הזינו את הריביות שנתן ולחצו ״שמור הצעה״.'
+            }
+          />
 
+          <BankFilterRow
+            banks={available}
+            counts={offersPerBank}
+            selectedBanks={banks}
+            onToggleBank={onToggleBankChip}
+            onClearBanks={() => {
+              setBanks([]);
+              setFeaturedId(null);
+            }}
+          />
+        </div>
       </StagePanel>
 
-      {/* 5. הדאשבורד — הצעה אחת במלואה, והשוואה מאחורי "הצג פרטים" */}
+      {/* 4. הדאשבורד — ההצעה שנבחרה, פתוחה במלואה */}
       <StagePanel
-        title="ההצעה במלואה"
-        description="ברירת המחדל היא ההצעה הזולה. לחיצה על בנק בכל אחד מהאזורים שלמעלה מחליפה את ההצעה שמוצגת כאן, ו״הצג פרטים״ פותח את הגרפים ואת ההשוואה המלאה בין כל ההצעות."
+        title={
+          featured && featured.mix.id === winner?.mix.id
+            ? 'ההצעה הזולה ביותר — במלואה'
+            : 'ההצעה שבחרתם — במלואה'
+        }
+        description="התמהיל, המספרים והגרפים של ההצעה שמוצגת. לחיצה על בנק באחד האזורים שלמעלה מחליפה אותה."
       >
-        <PricedDashboard
-          items={visible}
-          featured={featured}
-          onFeature={setFeaturedId}
-          baseResult={baseResult}
-          winnerId={winner?.mix.id ?? null}
-          signedMixKey={signedMixKey ?? null}
-          onSelectForSigning={onSelectForSigning}
-        />
+        <div className="space-y-4">
+          <PricedDashboard
+            featured={featured}
+            baseResult={baseResult}
+            winnerId={winner?.mix.id ?? null}
+            signedMixKey={signedMixKey ?? null}
+          />
+
+          <OfferComparisonArea
+            cheapest={winner}
+            featured={featured}
+            costliest={costliest}
+            signedMixKey={signedMixKey ?? null}
+            onSelectForSigning={onSelectForSigning}
+          />
+        </div>
       </StagePanel>
     </div>
   );

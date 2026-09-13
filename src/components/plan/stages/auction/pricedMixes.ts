@@ -164,6 +164,14 @@ export function spreadOf(
   return Math.max(...values) - Math.min(...values);
 }
 
+/** ההצעה היקרה ביותר — מולה נמדד מה ההצעה הזולה חוסכת */
+export function costliestPricedMix(items: PricedMix[]): PricedMix | null {
+  if (items.length === 0) return null;
+  return items.reduce((worst, item) =>
+    item.summary.totalPaid > worst.summary.totalPaid ? item : worst
+  );
+}
+
 /** הפער בסך התשלומים */
 export function offersSpread(items: PricedMix[]): number {
   return spreadOf(items, (item) => item.summary.totalPaid) ?? 0;

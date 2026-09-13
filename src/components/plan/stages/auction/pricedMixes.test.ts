@@ -6,6 +6,7 @@ import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import type { MortgageBank } from '@/components/mortgage-advisor/types';
 import {
   byTotalPaid,
+  costliestPricedMix,
   cheapestOfBank,
   interestSpread,
   monthlySpread,
@@ -135,7 +136,21 @@ describe('התמהיל המנצח', () => {
 
   it('בלי הצעות אין מנצח ואין פער', () => {
     expect(winningPricedMix([])).toBeNull();
+    expect(costliestPricedMix([])).toBeNull();
     expect(offersSpread([])).toBe(0);
+  });
+
+  it('ההצעה היקרה היא זו שמולה נמדד החיסכון', () => {
+    const source = finalMix();
+    const priced = pricedMixesFor(
+      [offer(source, 'לאומי', 4.6), offer(source, 'מזרחי', 4.0), offer(source, 'דיסקונט', 4.3)],
+      'mix-final'
+    );
+    expect(costliestPricedMix(priced)?.bank).toBe('לאומי');
+    expect(
+      (costliestPricedMix(priced)?.summary.totalPaid ?? 0) -
+        (winningPricedMix(priced)?.summary.totalPaid ?? 0)
+    ).toBeCloseTo(offersSpread(priced), 6);
   });
 
   it('הפער הוא בין ההצעה היקרה לזולה', () => {
