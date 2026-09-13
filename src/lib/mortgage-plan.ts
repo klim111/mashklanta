@@ -99,8 +99,14 @@ export interface FutureLumpSum {
  */
 export type ProfileIntent = 'HAS_PROPERTY' | 'FEASIBILITY';
 
-/** המסכים הפנימיים של שלב הפרופיל — אחד בכל פעם, מהשאלה הראשונה עד הנכס */
-export const PROFILE_SCREENS = ['intent', 'borrowers', 'future', 'deal'] as const;
+/**
+ * המסכים הפנימיים של שלב הפרופיל — אחד בכל פעם, מההסבר על השלב ועד הדוח.
+ *
+ * השלב נפתח בהסבר ולא בשאלה: לפני שמזינים נתונים כדאי לדעת מה השלב עושה ומה
+ * יוצא ממנו. השאלה אם כבר נמצא נכס עברה למסך הנכס והעסקה, שם היא נשאלת
+ * במקומה. המסך האחרון הוא התוצר — דוח הפרופיל הפיננסי.
+ */
+export const PROFILE_SCREENS = ['overview', 'borrowers', 'future', 'deal', 'report'] as const;
 export type ProfileScreen = (typeof PROFILE_SCREENS)[number];
 
 /** הלוואה צרכנית של לווה אחד, כמו בכלי «מה אני יכול להרשות לעצמי» */
@@ -226,7 +232,7 @@ export function analysisFromPlanning(
 
   return {
     intent: carry?.intent ?? (propertyValue ? 'HAS_PROPERTY' : null),
-    profileScreen: carry?.profileScreen ?? 'intent',
+    profileScreen: carry?.profileScreen ?? 'overview',
     household: couple ? 'COUPLE' : 'SINGLE',
     bankAccountMode: couple ? (carry?.bankAccountMode ?? null) : null,
     primaryBank: carry?.primaryBank ?? null,
@@ -416,7 +422,7 @@ export function clampPlanYears(years: number): number {
 const EMPTY: PlanData = {
   ANALYSIS: {
     intent: null,
-    profileScreen: 'intent',
+    profileScreen: 'overview',
     household: 'SINGLE',
     bankAccountMode: null,
     age: null,
@@ -567,6 +573,8 @@ function pickIntent(value: unknown): ProfileIntent | null {
 }
 
 function pickProfileScreen(value: unknown): ProfileScreen | null {
+  // תהליכים שנפתחו לפני שהשלב נפתח בהסבר נשמרו על מסך השאלה; הוא כבר לא קיים
+  if (value === 'intent') return 'overview';
   return typeof value === 'string' && (PROFILE_SCREENS as readonly string[]).includes(value)
     ? (value as ProfileScreen)
     : null;
@@ -757,10 +765,10 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         profileScreen:
           carry.profileScreen ??
           (carry.intent || seed.intent
-            ? seed.profileScreen === 'intent'
+            ? seed.profileScreen === 'overview'
               ? 'borrowers'
               : seed.profileScreen
-            : 'intent'),
+            : 'overview'),
         dealType,
         propertyValue,
         mortgageAmount,

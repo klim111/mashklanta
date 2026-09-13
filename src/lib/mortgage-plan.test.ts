@@ -386,6 +386,13 @@ describe('ניקוי נתונים שהגיעו מבחוץ', () => {
     expect(parsed.winnerOfferId).toBeNull();
   });
 
+  it('מסך השאלה הישן נקרא כמסך ההסבר, ומסך לא מוכר נופל לברירת המחדל', () => {
+    expect(parseStageData('ANALYSIS', { profileScreen: 'intent' }).profileScreen).toBe('overview');
+    expect(parseStageData('ANALYSIS', { profileScreen: 'report' }).profileScreen).toBe('report');
+    expect(parseStageData('ANALYSIS', { profileScreen: 'nope' }).profileScreen).toBe('overview');
+    expect(parseStageData('ANALYSIS', {}).profileScreen).toBe('overview');
+  });
+
   it('הדרך שנבחרה לשלב התמחור נקראת, וערך לא מוכר נופל ל-null', () => {
     expect(parseStageData('AUCTION', { mode: 'self' }).mode).toBe('self');
     expect(parseStageData('AUCTION', { mode: 'advisor' }).mode).toBe('advisor');

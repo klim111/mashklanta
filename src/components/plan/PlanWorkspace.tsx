@@ -156,10 +156,11 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const save = saveLabels[saveState];
   /** כלי בניית התמהיל רחב מדי לפריסה עם סרגל צדדי; שלב הפרופיל מקבל את כל הרוחב כדי שהשאלה הראשונה תישב במרכז */
   const usesExistingTool = stage === 'MIX' || stage === 'ANALYSIS';
+  /* המסך האחרון בשלב הפרופיל הוא הדוח — התוצר שלו — ולכן שם נסגר השלב */
   const analysisOnLastSubstep =
     stage !== 'ANALYSIS' ||
     (Boolean(plan.data.ANALYSIS.intent) &&
-      (plan.data.ANALYSIS.profileScreen || 'borrowers') === 'deal');
+      (plan.data.ANALYSIS.profileScreen || 'overview') === 'report');
   const showStageFooter = !isPreview && analysisOnLastSubstep && (canComplete || isDone);
 
   /*
@@ -484,6 +485,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   <AnalysisStage
                     data={plan.data}
                     planId={plan.id}
+                    planName={plan.propertyAddress || plan.name}
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                   />
                 )}
