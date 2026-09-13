@@ -50,7 +50,6 @@ import type {
   ProfileScreen,
 } from '@/lib/mortgage-plan';
 import {
-  EmptyHint,
   Metric,
   NumberField,
   Panel,
@@ -1396,9 +1395,9 @@ function FeasibilityPanel({
 /**
  * מצב משולב — אחוז מימון שנקבע ידנית.
  *
- * הוא יושב בשורת סוגי העסקה ככרטיס נוסף, ונבחר בדיוק כמוהם. רק אחרי שנבחר
- * נפתח בתוכו שדה האחוז, ריק — כך שהערך שמוצג הוא תמיד מה שהוזן, ולא מספר
- * שהופיע מעצמו והפך לברירת מחדל שקטה.
+ * הוא יושב בשורת סוגי העסקה ככרטיס נוסף, ונבחר בדיוק כמוהם. שדה האחוז נפתח
+ * רק בלחיצה ומתחיל ריק: אחוז שמופיע מעצמו הופך לברירת מחדל שקטה, ומי שלא שם
+ * לב אליה מקבל חישוב שלא ביקש.
  */
 function CombinedLtvOption({
   active,
@@ -1409,41 +1408,51 @@ function CombinedLtvOption({
   percent: number | null;
   onChange: (value: number | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const showField = active || open;
+
   return (
     <div
       className={`rounded-2xl border-2 px-4 py-3 text-center transition-all ${
-        active ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300'
+        active
+          ? 'border-blue-500 bg-blue-50 shadow-sm'
+          : 'border-slate-200 bg-white hover:border-blue-300'
       }`}
     >
       <button
         type="button"
-        onClick={() => {
-          if (!active) onChange(null);
-        }}
+        onClick={() => setOpen(true)}
         className="block w-full"
+        aria-expanded={showField}
       >
         <span className={`block text-sm font-black ${active ? 'text-blue-700' : 'text-slate-700'}`}>
           מצב משולב
         </span>
         <span className="mt-0.5 block text-xs font-bold text-slate-500">
-          {active ? 'אחוז מימון ידני' : 'לחצו להזנת אחוז'}
+          {active ? `מימון ${percent}%` : showField ? 'הזינו אחוז' : 'לחצו להזנת אחוז'}
         </span>
       </button>
 
-      <div className="mt-2 flex items-center justify-center gap-1">
-        <NumericInput
-          value={percent}
-          onChange={onChange}
-          max={75}
-          placeholder="—"
-          aria-label="אחוז מימון"
-          title="כל אחוז עד 75, בתוך מגבלות בנק ישראל"
-          className={`w-16 rounded-lg border-2 bg-white px-1.5 py-1 text-center text-base font-black text-slate-900 outline-none transition-all focus:border-blue-500 ${
-            active ? 'border-blue-300' : 'border-slate-200'
-          }`}
-        />
-        <span className="text-sm font-black text-slate-500">%</span>
-      </div>
+      {showField && (
+        <div className="mt-2 flex items-center justify-center gap-1">
+          <NumericInput
+            autoFocus={open && !active}
+            value={percent}
+            onChange={(value) => {
+              onChange(value);
+              if (value === null) setOpen(true);
+            }}
+            max={75}
+            placeholder="—"
+            aria-label="אחוז מימון"
+            title="כל אחוז עד 75, בתוך מגבלות בנק ישראל"
+            className={`w-16 rounded-lg border-2 bg-white px-1.5 py-1 text-center text-base font-black text-slate-900 outline-none transition-all focus:border-blue-500 ${
+              active ? 'border-blue-300' : 'border-slate-200'
+            }`}
+          />
+          <span className="text-sm font-black text-slate-500">%</span>
+        </div>
+      )}
     </div>
   );
 }
