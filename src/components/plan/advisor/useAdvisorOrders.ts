@@ -82,5 +82,32 @@ export function useAdvisorOrders(planId: string) {
     [planId, refresh]
   );
 
-  return { orders, ready, error, refresh, request, pay, cancel };
+  /** בקשת ליווי חינמית לשלב אחד — היועץ מטפל, התשלום בהמשך */
+  const requestFree = useCallback(
+    async (stage: PlanStageId): Promise<boolean> => {
+      const response = await fetch(`/api/plans/${planId}/advisor-orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ free: true, stage }),
+      });
+      if (!response.ok) {
+        setError('הבקשה לא נשלחה. נסו שוב.');
+        return false;
+      }
+      await refresh();
+      return true;
+    },
+    [planId, refresh]
+  );
+
+  /** ביטול בקשת ליווי חינמית — הלקוח חוזר לעבוד על השלב בעצמו */
+  const cancelFree = useCallback(
+    async (stage: PlanStageId): Promise<void> => {
+      await fetch(`/api/plans/${planId}/advisor-orders?stage=${stage}`, { method: 'DELETE' });
+      await refresh();
+    },
+    [planId, refresh]
+  );
+
+  return { orders, ready, error, refresh, request, pay, cancel, requestFree, cancelFree };
 }

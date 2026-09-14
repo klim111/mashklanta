@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { AlertCircle, BadgePercent, Loader2, Pencil } from 'lucide-react';
-import type { AuctionData, AuctionMode, PlanData, SignedMixChoice } from '@/lib/mortgage-plan';
+import { AlertCircle, BadgePercent, Loader2 } from 'lucide-react';
+import type { AuctionData, PlanData, SignedMixChoice } from '@/lib/mortgage-plan';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
-import { AuctionModeChoice } from './auction/AuctionModeChoice';
 import { AuctionWorkspace } from './auction/AuctionWorkspace';
 import { bankTone, pricedMixesFor } from './auction/pricedMixes';
 import { PanelBadge, StagePanel, StageStat } from './auction/ui';
@@ -23,18 +22,12 @@ export function AuctionStage({
   data,
   onChange,
   planId,
-  onRequestAdvisor,
   advisorRun = false,
 }: {
   data: PlanData;
   onChange: (next: AuctionData) => void;
   planId: string;
-  /** פתיחת מסך הזמנת הליווי — מנוהל ברמת התהליך, כי הוא נוגע לכל השלבים */
-  onRequestAdvisor?: () => void;
-  /**
-   * הלקוח כבר שילם על ליווי בשלב הזה. אז אין מה לשאול אותו איך לעבור אותו —
-   * הוא בליווי, גם אם ההזמנה נעשתה מכפתור הליווי שבכותרת ולא ממסך הבחירה.
-   */
+  /** השלב מטופל על ידי יועץ (בקשת ליווי) — אז מוצג מסך הליווי במקום העצמי */
   advisorRun?: boolean;
 }) {
   const value = data.AUCTION;
@@ -52,7 +45,7 @@ export function AuctionStage({
     בליווי, ההצעות נכנסות מהמסך של היועץ ולא מכאן. רענון תקופתי הוא מה שגורם
     להן להופיע אצל הלקוח מיד אחרי השידור, בלי שיצטרך לטעון את הדף מחדש.
   */
-  const advised = advisorRun || value.mode === 'advisor';
+  const advised = advisorRun;
   useEffect(() => {
     if (!advised) return;
     const timer = window.setInterval(() => void refresh(), 15_000);
@@ -63,8 +56,6 @@ export function AuctionStage({
       window.removeEventListener('focus', onFocus);
     };
   }, [advised, refresh]);
-
-  const setMode = (mode: AuctionMode) => onChange({ ...value, mode });
 
   const onSavePriced = async (quoted: WorkspaceMix) => {
     await save(quoted, { planId });
@@ -95,23 +86,8 @@ export function AuctionStage({
     onChange({ ...value, signedMix: choice });
   };
 
-  /*
-    הבחירה נשאלת לפני כל טעינה של נתונים: היא אינה תלויה בתמהילים, והצגת
-    ספינר לפניה רק מעכבת את השאלה היחידה שבאמת נשאלת כאן.
-  */
-  const mode = advisorRun ? 'advisor' : value.mode;
-
-  if (!mode) {
-    return (
-      <AuctionModeChoice
-        onChooseAdvisor={() => {
-          setMode('advisor');
-          onRequestAdvisor?.();
-        }}
-        onChooseSelf={() => setMode('self')}
-      />
-    );
-  }
+  /* התפקיד נקבע לפי מי מטפל בשלב: בליווי — advised, אחרת — self */
+  const role: 'advised' | 'self' = advisorRun ? 'advised' : 'self';
 
   if (!ready) {
     return (
@@ -141,19 +117,14 @@ export function AuctionStage({
 
   return (
     <div className="space-y-5">
-      <ModeBanner
-        mode={mode}
-        onChange={advisorRun ? undefined : () => onChange({ ...value, mode: null })}
-      />
-
       <AuctionWorkspace
-        role={mode === 'advisor' ? 'advised' : 'self'}
+        role={role}
         finalMix={finalMix}
         savedMixes={saved}
         signedMixKey={signed?.mixKey ?? null}
         onSelectForSigning={onSelectForSigning}
         onSavePriced={onSavePriced}
-        onRemovePriced={mode === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
+        onRemovePriced={role === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
         allowSelfEntry
       />
 
@@ -188,33 +159,6 @@ export function AuctionStage({
             </p>
           </div>
         </StagePanel>
-      )}
-    </div>
-  );
-}
-
-/** באיזו דרך נבחר לעבור את השלב, עם אפשרות לחזור ולשנות */
-function ModeBanner({ mode, onChange }: { mode: AuctionMode; onChange?: () => void }) {
-  return (
-    <div
-      className={`flex flex-wrap items-center justify-center gap-3 rounded-2xl border-2 px-4 py-2.5 text-center ${
-        mode === 'advisor' ? 'border-violet-300 bg-violet-50' : 'border-blue-200 bg-blue-50'
-      }`}
-    >
-      <span className="text-sm font-black text-slate-800">
-        {mode === 'advisor'
-          ? 'היועץ מנהל עבורכם את מכרז הריביות'
-          : 'אתם מנהלים את מכרז הריביות בעצמכם'}
-      </span>
-      {onChange && (
-        <button
-          type="button"
-          onClick={onChange}
-          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          שינוי הבחירה
-        </button>
       )}
     </div>
   );

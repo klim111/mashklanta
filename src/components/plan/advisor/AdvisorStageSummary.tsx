@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, ChevronUp, Clock, TrendingDown, TrendingUp, UserCheck } from 'lucide-react';
+import { CalendarClock, ChevronDown, ChevronUp, Clock, MapPin, TrendingDown, TrendingUp, UserCheck } from 'lucide-react';
 import type { PlanData, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import { stageSnapshot } from '@/lib/plan-stage-snapshot';
 import {
@@ -14,12 +14,21 @@ import {
 import type { AdvantageRow } from '@/lib/advised-stage';
 import { journeyStageFor } from '@/data/platform/planStages';
 
+interface StageMeeting {
+  startsAt: string;
+  title: string;
+  location: string | null;
+  status: string;
+}
+
 interface AdvisorStageSummaryProps {
   stage: PlanStageId;
   data: PlanData;
   status: PlanStageStatus;
   /** שם היועץ שמבצע את השלב, כשידוע */
   advisorName?: string | null;
+  /** פגישה שהיועץ קבע לשלב, אם נקבעה */
+  meeting?: StageMeeting | null;
   /** האם הפירוט המלא פתוח כרגע */
   detailsOpen: boolean;
   onToggleDetails: () => void;
@@ -37,6 +46,7 @@ export function AdvisorStageSummary({
   data,
   status,
   advisorName,
+  meeting = null,
   detailsOpen,
   onToggleDetails,
 }: AdvisorStageSummaryProps) {
@@ -73,7 +83,7 @@ export function AdvisorStageSummary({
           <div className="min-w-0 flex-1">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-black text-violet-700">
               <UserCheck className="h-3 w-3" />
-              {advisorName ? `היועץ ${advisorName} מבצע עבורכם` : 'היועץ מבצע את השלב עבורכם'}
+              {advisorName ? `היועץ ${advisorName} מטפל בשלב זה` : 'היועץ מטפל בשלב זה'}
             </span>
             <h3 className="mt-1 text-lg font-black text-slate-900">{snapshot.headline}</h3>
             <p className="text-xs text-slate-500">
@@ -92,6 +102,8 @@ export function AdvisorStageSummary({
             </span>
           )}
         </div>
+
+        {meeting && <StageMeetingRow meeting={meeting} />}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {snapshot.items.map((item) => (
@@ -142,6 +154,36 @@ export function AdvisorStageSummary({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+/** הפגישה שהיועץ קבע לשלב — מוצגת גם כאן וגם בדאשבורד */
+function StageMeetingRow({ meeting }: { meeting: StageMeeting }) {
+  const when = new Date(meeting.startsAt);
+  const date = when.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  const proposed = meeting.status === 'PROPOSED';
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 px-4 py-3 text-center">
+      <span className="inline-flex items-center gap-1.5 text-sm font-black text-emerald-900">
+        <CalendarClock className="h-4 w-4" />
+        פגישה עם היועץ — {date} בשעה {time}
+      </span>
+      {meeting.location && (
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-600">
+          <MapPin className="h-3.5 w-3.5" />
+          {meeting.location}
+        </span>
+      )}
+      <span
+        className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
+          proposed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'
+        }`}
+      >
+        {proposed ? 'ממתינה לאישורכם' : 'מאושרת'}
+      </span>
+    </div>
   );
 }
 

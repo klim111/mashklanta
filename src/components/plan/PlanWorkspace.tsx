@@ -42,10 +42,11 @@ import { StageTools } from './StageTools';
 import { formatShekel } from './ui';
 import { AdvisorStageNotes } from './AdvisorStageNotes';
 import { AdvisorHandoffButton } from './advisor/AdvisorHandoffButton';
-import { AdvisorOrderDialog } from './advisor/AdvisorOrderDialog';
 import { AdvisorStageSummary } from './advisor/AdvisorStageSummary';
+import { StageGate } from './StageGate';
 import { useAdvisorOrders } from './advisor/useAdvisorOrders';
-import { advisorStages, isAdvisorStage, pendingOrder } from '@/lib/advisor-orders';
+import { useClientMeetings, meetingForStage } from './advisor/useClientMeetings';
+import { isAdvisorStage } from '@/lib/advisor-orders';
 import { AnalysisStage } from './stages/AnalysisStage';
 import { MixStage } from './stages/MixStage';
 import { PreApprovalStage } from './stages/PreApprovalStage';
@@ -78,14 +79,54 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const [draftName, setDraftName] = useState('');
   const [viewingStage, setViewingStage] = useState<PlanStageId | null>(null);
   const [focusMixKey, setFocusMixKey] = useState<string | null>(null);
-  /** השלב שעבורו נפתח מסך הזמנת הליווי */
-  const [handoffStage, setHandoffStage] = useState<PlanStageId | null>(null);
   /**
-   * השלבים שהלקוח פתח בהם את הפירוט המלא למרות שיועץ מבצע אותם. ברירת המחדל
-   * היא הסיכום, ו"ראה פרטים" פותח את השלב עצמו.
+   * השלבים שהלקוח פתח בהם את הפירוט המלא למרות שיועץ מטפל בהם. ברירת המחדל
+   * היא הסיכום, ו"הצג פרטים" פותח את השלב עצמו.
    */
   const [detailStages, setDetailStages] = useState<PlanStageId[]>([]);
+  /**
+   * השלבים שהלקוח בחר לעבור בעצמו ("נתח לבד"). נשמר בדפדפן לפי התהליך, כדי
+   * שהשער לא יופיע שוב בכל טעינה אחרי שכבר נכנס לעבוד.
+   */
+  const [enteredStages, setEnteredStages] = useState<PlanStageId[]>([]);
+  /** השלב שעבורו נשלחת כעת בקשת ליווי חינמית */
+  const [handoffBusy, setHandoffBusy] = useState<PlanStageId | null>(null);
   const orders = useAdvisorOrders(planId);
+  const { meetings } = useClientMeetings();
+
+  const enteredKey = `mashklanta:stage-diy:${planId}`;
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(enteredKey);
+      const parsed = raw ? (JSON.parse(raw) as string[]) : [];
+      setEnteredStages(PLAN_STAGES.filter((stage) => parsed.includes(stage)));
+    } catch {
+      setEnteredStages([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId]);
+
+  const enterStage = (stage: PlanStageId) => {
+    setEnteredStages((prev) => {
+      if (prev.includes(stage)) return prev;
+      const next = [...prev, stage];
+      try {
+        window.localStorage.setItem(enteredKey, JSON.stringify(next));
+      } catch {
+        // אחסון חסום — נמשיך בלי לשמור, השער יופיע שוב בטעינה הבאה
+      }
+      return next;
+    });
+  };
+
+  const requestFreeHandoff = async (stage: PlanStageId) => {
+    setHandoffBusy(stage);
+    try {
+      await orders.requestFree(stage);
+    } finally {
+      setHandoffBusy(null);
+    }
+  };
 
   const statuses = useMemo(() => {
     const map = {} as Record<PlanStageId, PlanStageStatus>;
@@ -167,27 +208,33 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     שלב שהלקוח הזמין ליווי עליו ושילם עובר לתצוגת סיכום: דאשבורד אחד קצר
     במקום הכלים, עם כפתור "ראה פרטים" שפותח את השלב המלא כמו שהוא.
   */
+  /*
+    שלב שהלקוח ביקש עליו ליווי מטופל על ידי היועץ: מוצג כרטיס סיכום עם הפגישה
+    שנקבעה, ו"הצג פרטים" פותח את השלב המלא. זהה בכל חמשת השלבים.
+  */
   const advisorRun = isAdvisorStage(orders.orders, stage);
   const showingDetails = detailStages.includes(stage);
-  /*
-    שלב התמחור מציג בעצמו את כל מה שהלקוח בליווי צריך לראות — ההצעות שהיועץ
-    שידר, הדאשבורד של הזולה שבהן והפערים ביניהן — והוא חי, מתעדכן מעצמו. כרטיס
-    סיכום מעליו רק היה חוסם את זה מאחורי לחיצה, ולכן השלב הזה אינו עובר דרכו.
-  */
-  const stageHasOwnAdvisedView = stage === 'AUCTION';
-  const showAdvisorSummary = advisorRun && !stageHasOwnAdvisedView;
+  const showAdvisorSummary = advisorRun;
   const advisorSummaryOnly = showAdvisorSummary && !showingDetails;
-  const waitingOrder = pendingOrder(orders.orders);
   const advisorName =
-    orders.orders.find((order) => order.stages.includes(stage) && order.status === 'PAID')
-      ?.advisorName ?? null;
+    orders.orders.find(
+      (order) =>
+        order.stages.includes(stage) &&
+        (order.status === 'PAID' || order.status === 'REQUESTED')
+    )?.advisorName ?? null;
+  const stageMeeting = meetingForStage(meetings, stage);
 
   /*
-    שלב התמחור נפתח בבחירה בין ליווי יועץ לתמחור עצמי, ובשלב הזה אין להציג
-    במסך שום דבר נוסף — גם לא את כפתור הליווי שבכותרת, שכן הוא אחת משתי
-    האפשרויות שהשלב עצמו מציג.
+    שער השלב: לפני שנכנסים לעבוד, כל שלב (למעט הפרופיל, שיש לו מסך "על השלב"
+    משלו) מציע לבחור בין ניתוח עצמי לבין ליווי יועץ. השער מוצג רק כשעדיין לא
+    נבחרה דרך, השלב אינו מטופל על ידי יועץ, וטרם נסגר.
   */
-  const auctionAwaitingMode = stage === 'AUCTION' && !plan.data.AUCTION.mode && !advisorRun;
+  const needsGate =
+    !isPreview &&
+    !advisorRun &&
+    !isDone &&
+    stage !== 'ANALYSIS' &&
+    !enteredStages.includes(stage);
 
   const toggleStageDetails = () =>
     setDetailStages((current) =>
@@ -423,13 +470,13 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   בכל אחד מחמשת השלבים אפשר להעביר את העבודה ליועץ. הכפתור יושב
                   בכותרת השלב, כי שם ההחלטה מתקבלת — אחרי שרואים מה השלב דורש.
                 */}
-                {!isPreview && !auctionAwaitingMode && (
+                {!isPreview && !needsGate && (
                   <div className="w-full sm:w-auto">
                     <AdvisorHandoffButton
                       stage={stage}
                       taken={advisorRun}
-                      pending={Boolean(waitingOrder)}
-                      onClick={() => setHandoffStage(stage)}
+                      busy={handoffBusy === stage}
+                      onClick={() => void requestFreeHandoff(stage)}
                     />
                   </div>
                 )}
@@ -446,6 +493,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   data={plan.data}
                   status={statuses[stage]}
                   advisorName={advisorName}
+                  meeting={stageMeeting}
                   detailsOpen={showingDetails}
                   onToggleDetails={toggleStageDetails}
                 />
@@ -460,11 +508,21 @@ export function PlanWorkspace({ planId }: { planId: string }) {
               />
             )}
 
+            {/* שער השלב: הבחירה בין ניתוח עצמי לבין ליווי יועץ, זהה בכל השלבים */}
+            {!advisorSummaryOnly && needsGate && (
+              <StageGate
+                stage={stage}
+                onSelfService={() => enterStage(stage)}
+                onAdvisor={() => void requestFreeHandoff(stage)}
+                busy={handoffBusy === stage}
+              />
+            )}
+
             {/*
-              כשיועץ מבצע את השלב, מה שמוצג הוא הסיכום בלבד. "ראה פרטים" פותח
-              את השלב המלא — אותם כלים, אותם מסכים, בלי שום הסתרה.
+              כשיועץ מטפל בשלב, מה שמוצג הוא הסיכום בלבד. "הצג פרטים" פותח את
+              השלב המלא — אותם כלים, אותם מסכים, בלי שום הסתרה.
             */}
-            {!advisorSummaryOnly && (
+            {!advisorSummaryOnly && !needsGate && (
             <div className={isPreview ? 'relative' : undefined}>
               {isPreview && (
                 <div
@@ -486,6 +544,8 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     data={plan.data}
                     planId={plan.id}
                     planName={plan.propertyAddress || plan.name}
+                    onRequestAdvisor={() => void requestFreeHandoff('ANALYSIS')}
+                    advisorBusy={handoffBusy === 'ANALYSIS'}
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                   />
                 )}
@@ -518,7 +578,6 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
                     advisorRun={advisorRun}
-                    onRequestAdvisor={() => setHandoffStage('AUCTION')}
                   />
                 )}
                 {stage === 'SIGNING' && (
@@ -538,19 +597,6 @@ export function PlanWorkspace({ planId }: { planId: string }) {
         </AnimatePresence>
       </main>
 
-      {/* הזמנת ליווי יועץ לשלבים, ותשלום עליה */}
-      {handoffStage && (
-        <AdvisorOrderDialog
-          open
-          onOpenChange={(next) => {
-            if (!next) setHandoffStage(null);
-          }}
-          stage={handoffStage}
-          alreadyOrdered={advisorStages(orders.orders)}
-          onRequest={(stages) => orders.request(stages)}
-          onPay={(orderId, details) => orders.pay(orderId, details)}
-        />
-      )}
     </div>
   );
 }

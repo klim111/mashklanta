@@ -132,12 +132,17 @@ export function AnalysisStage({
   onChange,
   planId,
   planName,
+  onRequestAdvisor,
+  advisorBusy = false,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
   planId: string;
   /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
   planName?: string;
+  /** בקשת ליווי חינמית לשלב הפרופיל — מכפתור "תן ליועץ" שבמסך "על השלב" */
+  onRequestAdvisor?: () => void;
+  advisorBusy?: boolean;
 }) {
   const profile = data.ANALYSIS;
   const savedProfile = useRef<ClientProfileFinancials | null>(null);
@@ -236,7 +241,11 @@ export function AnalysisStage({
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' && (
           <motion.div key="overview" {...reveal}>
-            <StageOverview onStart={() => go('borrowers')} />
+            <StageOverview
+              onStart={() => go('deal')}
+              onAdvisor={onRequestAdvisor}
+              advisorBusy={advisorBusy}
+            />
           </motion.div>
         )}
 

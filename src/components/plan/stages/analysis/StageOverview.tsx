@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, BadgeCheck, Calculator, FileCheck2, ShieldCheck, Wallet } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Calculator, FileCheck2, Loader2, ShieldCheck, Sparkles, Wallet, Wrench } from 'lucide-react';
 
 /**
  * מסך הפתיחה של שלב הפרופיל הפיננסי.
@@ -11,7 +11,16 @@ import { ArrowLeft, BadgeCheck, Calculator, FileCheck2, ShieldCheck, Wallet } fr
  * וההון שיש בפועל. מי שמגיש לבנק בלי הבדיקה הזו מגלה את התשובה אחרי שנרשם
  * סירוב בתיק — וסירוב נשאר שם.
  */
-export function StageOverview({ onStart }: { onStart: () => void }) {
+export function StageOverview({
+  onStart,
+  onAdvisor,
+  advisorBusy = false,
+}: {
+  onStart: () => void;
+  /** בקשת ליווי חינמית ליועץ — התשלום בהמשך */
+  onAdvisor?: () => void;
+  advisorBusy?: boolean;
+}) {
   const steps = [
     {
       icon: <Calculator className="h-6 w-6 text-white" />,
@@ -80,15 +89,52 @@ export function StageOverview({ onStart }: { onStart: () => void }) {
         </p>
       </div>
 
-      <div className="mt-7 flex justify-center">
+      {/* שתי הדרכים לעבור את השלב — זהה לשאר השלבים */}
+      <div className="mt-7 grid gap-3 md:grid-cols-2">
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-base font-black text-white shadow-lg transition-all hover:bg-slate-700"
+          className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-200 bg-blue-50/40 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg"
         >
-          בואו נתחיל
-          <ArrowLeft className="h-5 w-5" />
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
+            <Wrench className="h-6 w-6 text-white" />
+          </span>
+          <span className="text-base font-black text-slate-900">נתחו את הנתונים לבד באמצעות משכלנתא</span>
+          <span className="text-sm font-medium leading-snug text-slate-600">
+            בונים את הפרופיל בעצמכם, צעד אחר צעד
+          </span>
+          <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-black text-blue-700">
+            בואו נתחיל
+            <ArrowLeft className="h-4 w-4" />
+          </span>
         </button>
+
+        {onAdvisor && (
+          <button
+            type="button"
+            onClick={onAdvisor}
+            disabled={advisorBusy}
+            className="flex flex-col items-center gap-2 rounded-3xl border-2 border-violet-300 bg-violet-50/50 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+          >
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
+              {advisorBusy ? (
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
+              ) : (
+                <Sparkles className="h-6 w-6 text-white" />
+              )}
+            </span>
+            <span className="text-base font-black text-slate-900">
+              תנו ליועץ משכלנתא לעשות לכם את העבודה
+            </span>
+            <span className="text-sm font-medium leading-snug text-slate-600">
+              יועץ יטפל בשלב עבורכם ויחזור אליכם לתיאום — בקשה חינמית, התשלום בהמשך
+            </span>
+            <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-black text-violet-700">
+              שלחו בקשה ליועץ
+              <ArrowLeft className="h-4 w-4" />
+            </span>
+          </button>
+        )}
       </div>
     </section>
   );
