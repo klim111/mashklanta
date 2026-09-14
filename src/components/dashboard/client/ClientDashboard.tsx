@@ -145,8 +145,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
       const badge = badges[item.id];
       const base =
         tone === 'sidebar'
-          ? 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-[15px] font-bold transition-colors'
-          : 'inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-colors';
+          ? 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-base font-bold transition-colors'
+          : 'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[15px] font-bold transition-colors';
       const state = active
         ? 'bg-white text-slate-900 shadow-lg'
         : 'text-white/70 hover:bg-white/10 hover:text-white';
@@ -229,7 +229,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           <nav className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">{navItems('bar')}</nav>
         </header>
 
-        <main className="flex-1 px-4 py-5 sm:px-6 xl:px-8">
+        <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8">
           <div className="mx-auto max-w-[1400px]">
             {/* כותרת האזור — ממורכזת, עם השם והתאריך */}
             <div className="mb-5 text-center">
@@ -295,6 +295,18 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             </motion.div>
           </div>
         </main>
+
+        {/* חזרה לדאשבורד המלא — זמינה תמיד, גם אחרי גלילה, מכל אזור שנכנסים אליו */}
+        {section !== 'overview' && (
+          <button
+            type="button"
+            onClick={() => navigate('overview')}
+            className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            חזרה לדאשבורד
+          </button>
+        )}
       </div>
     </div>
   );
