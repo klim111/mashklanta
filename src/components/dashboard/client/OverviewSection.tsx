@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
@@ -8,22 +9,27 @@ import {
   Calculator,
   Check,
   Compass,
+  Eye,
   FileText,
   Gavel,
+  Layers,
   ListChecks,
   Loader2,
   MapPin,
   RefreshCw,
   Search,
   UserRound,
+  X,
 } from 'lucide-react';
 import { journeyStageFor, PLAN_JOURNEY_STAGES } from '@/data/platform/planStages';
 import { formatDate, formatTime, relativeDayLabel } from '@/lib/advisor-crm';
-import { summarizePlan, upcomingEvents } from '@/lib/client-agenda';
+import { planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
 import { StartCard, useStartPlan } from '@/components/plan/StartCard';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
+import { PlanMixDetail, planMixOf } from './PlanMixDetail';
+import { PlanPeekDialog } from './PlanPeekDialog';
 import { TaskItem } from './TaskItem';
 import { DashCard } from './ui';
 import type { ClientDashboardData } from './useClientDashboard';
@@ -35,29 +41,35 @@ function shortDayLabel(iso: string): string {
 }
 
 /**
- * הסקירה — המסך הראשון, בלי גלילה במסך רגיל.
+ * הסקירה — המסך הראשון.
  *
- * "איפה אתם בתהליך" הוא נקודת ההתחלה של הכול, ולכן כשעדיין אין תהליך הוא
- * במרכז המסך; כשכבר יש תהליך הוא יושב לצד מצב התהליכים. מתחת: ארבעה מספרים,
- * היומן הקרוב, המשימות הבאות, הפעולות המהירות והפנייה ליועץ. כל כרטיס מוביל
- * לאזור המפורט שלו.
+ * כשעדיין אין תהליך, פגישה או משימה, "איפה אתם בתהליך" הוא מרכז המסך: משם
+ * מתחיל הכול, ושאר האזורים יושבים מתחתיו. אחרי הפעולה הראשונה התצוגה מתהפכת —
+ * מצב התהליכים ולוח השנה למעלה, המשימות והפעולות מתחתם, והפנייה ליועץ בשורה
+ * שלמה בתחתית. שאלת הפתיחה עצמה נשארת זמינה תמיד, בתפריט הצד.
  */
 export function OverviewSection({
   data,
+  detailPlanId,
+  onDetailPlan,
   onNavigate,
 }: {
   data: ClientDashboardData;
+  /** התהליך שהתמהיל שלו נפתח בשורת הפירוט — נבחר גם מאזור המשכנתאות */
+  detailPlanId: string | null;
+  onDetailPlan: (planId: string | null) => void;
   onNavigate: (section: DashboardSection, day?: string) => void;
 }) {
-  const { plansState, tasks, events, requests, advisorStages, ready } = data;
+  const { plansState, mixesState, tasks, events, requests, advisorStages, ready, firstVisit } = data;
   const { startPlan, busy } = useStartPlan(plansState.start);
+  const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
+
   const active = plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const summaries = active.map((plan) => summarizePlan(plan, advisorStages[plan.id]));
   const upcoming = upcomingEvents(events, new Date(), 3);
   const next = upcoming[0] ?? null;
   const urgent = tasks.filter((task) => task.tone === 'urgent').length;
   const lead = summaries[0] ?? null;
-  const hasPlans = plansState.plans.length > 0;
 
   const go = (target: AgendaTarget) => {
     if (target.kind === 'section') onNavigate(target.section);
@@ -71,6 +83,25 @@ export function OverviewSection({
       </div>
     );
   }
+
+  const detailPlan = plansState.plans.find((plan) => plan.id === detailPlanId) ?? null;
+  const detailMixes = detailPlan
+    ? mixesState.saved.filter(
+        (mix) =>
+          mix.planId === detailPlan.id ||
+          (mix.mix.propertyAddress ?? '').trim() === (detailPlan.propertyAddress ?? '').trim()
+      )
+    : [];
+  const detailMix = detailPlan ? planMixOf(detailPlan, detailMixes) : null;
+
+  const peekPlan = plansState.plans.find((plan) => plan.id === peekPlanId) ?? null;
+  const peekMixes = peekPlan
+    ? mixesState.saved.filter(
+        (mix) =>
+          mix.planId === peekPlan.id ||
+          (mix.mix.propertyAddress ?? '').trim() === (peekPlan.propertyAddress ?? '').trim()
+      )
+    : [];
 
   const kpis = (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -87,7 +118,7 @@ export function OverviewSection({
         tone="violet"
         label="השלב הנוכחי"
         value={lead ? `שלב ${lead.stageNumber}` : '—'}
-        hint={lead ? journeyStageFor(lead.currentStage).shortTitle : 'מתחילים ב"איפה אתם בתהליך"'}
+        hint={lead ? journeyStageFor(lead.currentStage).shortTitle : 'מתחילים ב״איפה אתם בתהליך״'}
         onClick={() => (lead ? window.location.assign(lead.href) : onNavigate('mortgages'))}
       />
       <KpiTile
@@ -109,38 +140,43 @@ export function OverviewSection({
     </div>
   );
 
-  const agendaCard = (
+  const calendarCard = (
     <DashCard
-      title="היומן הקרוב"
+      title="לוח השנה שלי"
       icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
       action={<CardLink onClick={() => onNavigate('agenda')}>ללוח המלא</CardLink>}
     >
       <div className="space-y-3">
-        {upcoming.length === 0 ? (
-          <p className="rounded-xl bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">
-            אין פגישות או מועדים קרובים
-          </p>
-        ) : (
-          upcoming.map((event) => (
-            <button
-              key={event.id}
-              type="button"
-              onClick={() => go(event.target)}
-              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right transition-colors hover:border-blue-300"
-            >
-              <span className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 text-slate-800">
-                <span className="text-[11px] font-bold leading-none text-slate-500">{shortDayLabel(event.at)}</span>
-                <span className="mt-0.5 text-sm font-black leading-none">{formatTime(event.at)}</span>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-black text-slate-900">{event.title}</span>
-                <span className="block truncate text-[13px] text-slate-500">{event.subtitle}</span>
-              </span>
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${eventTone(event).dot}`} />
-            </button>
-          ))
-        )}
         <MiniCalendar events={events} onSelect={(day) => onNavigate('agenda', day)} />
+        <div className="space-y-2 border-t border-slate-100 pt-3">
+          <p className="text-center text-[13px] font-black text-slate-500">הקרוב ביומן</p>
+          {upcoming.length === 0 ? (
+            <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-center text-sm text-slate-500">
+              אין פגישות או מועדים קרובים
+            </p>
+          ) : (
+            upcoming.map((event) => (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => go(event.target)}
+                className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right transition-colors hover:border-blue-300"
+              >
+                <span className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 text-slate-800">
+                  <span className="text-[11px] font-bold leading-none text-slate-500">
+                    {shortDayLabel(event.at)}
+                  </span>
+                  <span className="mt-0.5 text-sm font-black leading-none">{formatTime(event.at)}</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-black text-slate-900">{event.title}</span>
+                  <span className="block truncate text-[13px] text-slate-500">{event.subtitle}</span>
+                </span>
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${eventTone(event).dot}`} />
+              </button>
+            ))
+          )}
+        </div>
       </div>
     </DashCard>
   );
@@ -152,14 +188,14 @@ export function OverviewSection({
       action={<CardLink onClick={() => onNavigate('agenda')}>לכל המשימות</CardLink>}
     >
       {tasks.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <div className="flex items-center justify-center gap-3 py-5 text-center">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
             <Check className="h-5 w-5" />
           </span>
           <p className="text-[15px] font-bold text-slate-700">אין משימות פתוחות</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-2 md:grid-cols-2">
           {tasks.slice(0, 4).map((task) => (
             <TaskItem key={task.id} task={task} compact onOpen={go} />
           ))}
@@ -168,46 +204,84 @@ export function OverviewSection({
     </DashCard>
   );
 
-  const actionsColumn = (
-    <div className="flex flex-col gap-4">
-      <DashCard title="פעולות מהירות" icon={<Calculator className="h-5 w-5 text-blue-600" />}>
-        <div className="grid grid-cols-2 gap-2">
-          <QuickAction href="/principal-approval" icon={<FileText className="h-4 w-4" />} label="אישור עקרוני — פרטי הבקשה" />
-          <QuickAction
-            onClick={() => onNavigate('rate-requests')}
-            icon={<Gavel className="h-4 w-4" />}
-            label="תמהילים שהוגשו לבנקים"
-            badge={requests.length}
-          />
-          <QuickAction href="/dashboard/mix-planner" icon={<Calculator className="h-4 w-4" />} label="בניית תמהיל" />
-          <QuickAction
-            href="/mortgage-planning?flow=affordability"
-            icon={<Search className="h-4 w-4" />}
-            label="בדיקת היתכנות"
-          />
-          <QuickAction href="/mortgage-refinance" icon={<RefreshCw className="h-4 w-4" />} label="מיחזור משכנתא" />
-          <QuickAction
-            onClick={() => onNavigate('settings')}
-            icon={<UserRound className="h-4 w-4" />}
-            label="פרטי הלווים והחשבון"
-          />
-        </div>
-      </DashCard>
-      <AdvisorCta variant="banner" />
-    </div>
+  const quickActions = (
+    <DashCard title="פעולות מהירות" icon={<Calculator className="h-5 w-5 text-blue-600" />}>
+      <div className="grid grid-cols-2 gap-2">
+        <QuickAction
+          href="/principal-approval"
+          icon={<FileText className="h-4 w-4" />}
+          label="אישור עקרוני — פרטי הבקשה"
+        />
+        <QuickAction
+          onClick={() => onNavigate('rate-requests')}
+          icon={<Gavel className="h-4 w-4" />}
+          label="תמהילים שהוגשו לבנקים"
+          badge={requests.length}
+        />
+        <QuickAction href="/dashboard/mix-planner" icon={<Calculator className="h-4 w-4" />} label="בניית תמהיל" />
+        <QuickAction
+          href="/mortgage-planning?flow=affordability"
+          icon={<Search className="h-4 w-4" />}
+          label="בדיקת היתכנות"
+        />
+        <QuickAction href="/mortgage-refinance" icon={<RefreshCw className="h-4 w-4" />} label="מיחזור משכנתא" />
+        <QuickAction
+          onClick={() => onNavigate('settings')}
+          icon={<UserRound className="h-4 w-4" />}
+          label="פרטי הלווים והחשבון"
+        />
+      </div>
+    </DashCard>
   );
 
-  if (active.length === 0) {
-    // בלי תהליך — נקודת ההתחלה היא המסך
+  /** שורת הפירוט: התמהיל של התהליך שנבחר, דוחפת את שאר השורות מטה */
+  const detailRow = detailPlan && detailMix && (
+    <DashCard
+      title="התמהיל של המשכנתא שנבחרה"
+      icon={<Layers className="h-5 w-5 text-blue-600" />}
+      action={
+        <button
+          type="button"
+          onClick={() => onDetailPlan(null)}
+          className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-sm font-black text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+        >
+          <X className="h-4 w-4" />
+          סגירה
+        </button>
+      }
+    >
+      <p className="mb-3 text-center text-[15px] font-bold text-slate-600">
+        {detailPlan.propertyAddress || detailPlan.name} · {planCreatedLabel(detailPlan.createdAt)}
+      </p>
+      <PlanMixDetail mix={detailMix} planId={detailPlan.id} />
+    </DashCard>
+  );
+
+  const peekDialog = peekPlan && (
+    <PlanPeekDialog
+      plan={peekPlan}
+      mixes={peekMixes}
+      advisorStages={advisorStages[peekPlan.id] ?? []}
+      open
+      onOpenChange={(open) => {
+        if (!open) setPeekPlanId(null);
+      }}
+      onShowMix={() => onDetailPlan(peekPlan.id)}
+    />
+  );
+
+  if (firstVisit) {
+    // עדיין לא קרה דבר — נקודת ההתחלה היא המסך, ושאר האזורים מתחתיה
     return (
       <div className="grid gap-4">
-        <StartCard variant="hero" onStart={startPlan} busy={busy} hasPlans={hasPlans} />
+        <StartCard variant="hero" onStart={startPlan} busy={busy} hasPlans={false} />
         {kpis}
-        <div className="grid gap-4 lg:grid-cols-3">
-          {agendaCard}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           {tasksCard}
-          {actionsColumn}
+          {calendarCard}
         </div>
+        {quickActions}
+        <AdvisorCta variant="row" />
       </div>
     );
   }
@@ -222,21 +296,55 @@ export function OverviewSection({
           icon={<Compass className="h-5 w-5 text-blue-600" />}
           action={<CardLink onClick={() => onNavigate('mortgages')}>לכל המשכנתאות</CardLink>}
         >
-          <div className="max-h-[420px] space-y-3 overflow-y-auto pl-1">
-            {summaries.map((summary) => (
-              <PlanStatusRow key={summary.id} summary={summary} />
-            ))}
-          </div>
+          {summaries.length === 0 ? (
+            <EmptyPlans onOpen={() => onNavigate('mortgages')} />
+          ) : (
+            <div className="max-h-[430px] space-y-3 overflow-y-auto pl-1">
+              {summaries.map((summary) => (
+                <PlanStatusRow
+                  key={summary.id}
+                  summary={summary}
+                  onPeek={() => setPeekPlanId(summary.id)}
+                />
+              ))}
+            </div>
+          )}
         </DashCard>
 
-        <StartCard variant="compact" onStart={startPlan} busy={busy} hasPlans={hasPlans} />
+        {calendarCard}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {agendaCard}
+      {detailRow}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         {tasksCard}
-        {actionsColumn}
+        {quickActions}
       </div>
+
+      <AdvisorCta variant="row" />
+      {peekDialog}
+    </div>
+  );
+}
+
+function EmptyPlans({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-6 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+        <MapPin className="h-7 w-7" />
+      </span>
+      <p className="text-lg font-black text-slate-900">עוד אין משכנתא בתהליך</p>
+      <p className="max-w-sm text-[15px] leading-relaxed text-slate-500">
+        פתחו תהליך חדש מ״איפה אתם בתהליך״ בתפריט הצד, ונתחיל מהשלב הראשון.
+      </p>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-1 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-[15px] font-black text-white hover:bg-slate-700"
+      >
+        לאזור המשכנתאות
+        <ArrowLeft className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -297,7 +405,13 @@ function CardLink({ onClick, children }: { onClick: () => void; children: ReactN
 }
 
 /** שורת מצב של תהליך אחד: חמשת השלבים כמסלול, ומה הפעולה הבאה */
-function PlanStatusRow({ summary }: { summary: ReturnType<typeof summarizePlan> }) {
+function PlanStatusRow({
+  summary,
+  onPeek,
+}: {
+  summary: ReturnType<typeof summarizePlan>;
+  onPeek: () => void;
+}) {
   const journey = journeyStageFor(summary.currentStage);
   const progress = Math.round((summary.completedStages / summary.stages.length) * 100);
 
@@ -312,6 +426,7 @@ function PlanStatusRow({ summary }: { summary: ReturnType<typeof summarizePlan> 
           שלב {summary.stageNumber} · {journey.shortTitle}
         </span>
       </div>
+      <p className="mt-0.5 text-[13px] text-slate-500">{planCreatedLabel(summary.createdAt)}</p>
 
       <ol className="mt-4 grid grid-cols-5 gap-1">
         {PLAN_JOURNEY_STAGES.map((stage, index) => {
@@ -338,21 +453,29 @@ function PlanStatusRow({ summary }: { summary: ReturnType<typeof summarizePlan> 
         })}
       </ol>
 
-      <div className="mt-4 flex items-center gap-3">
-        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="h-2.5 min-w-[6rem] flex-1 overflow-hidden rounded-full bg-slate-200">
           <div
             className={`h-full rounded-full bg-gradient-to-l ${journey.gradient}`}
             style={{ width: `${Math.max(progress, 4)}%` }}
           />
         </div>
         <span className="text-sm font-black text-slate-700">{progress}%</span>
+        <button
+          type="button"
+          onClick={onPeek}
+          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-[15px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+        >
+          <Eye className="h-4 w-4" />
+          להציץ בפרטים
+        </button>
         <Link
           href={summary.href}
           className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[15px] font-black text-white ${
             summary.advisorStage ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-900 hover:bg-slate-700'
           }`}
         >
-          {summary.advisorStage ? 'היועץ מטפל · הצג פרטים' : 'המשיכו מהמקום שעצרתם'}
+          {summary.advisorStage ? 'היועץ מטפל · הצג פרטים' : 'המשיכו'}
           <ArrowLeft className="h-4 w-4" />
         </Link>
       </div>

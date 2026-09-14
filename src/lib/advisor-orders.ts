@@ -42,6 +42,8 @@ export interface AdvisorOrder {
   createdAt: string;
   paidAt: string | null;
   termsAcceptedAt: string | null;
+  /** היועץ סימן שהוא כבר עובד על השלב, אחרי שהתשלום סודר מולו */
+  workStartedAt: string | null;
   /** היועץ שקיבל את הבקשה, כשיש כזה */
   advisorName: string | null;
 }
@@ -118,6 +120,17 @@ export function advisorStages(orders: readonly AdvisorOrder[]): PlanStageId[] {
 /** האם השלב מבוצע על ידי יועץ */
 export function isAdvisorStage(orders: readonly AdvisorOrder[], stage: PlanStageId): boolean {
   return advisorStages(orders).includes(stage);
+}
+
+/**
+ * שלבים שהיועץ כבר עובד עליהם בתשלום.
+ *
+ * משלב זה אי אפשר למחוק את התהליך: העבודה שולמה והיא מתבצעת, וביטול היה מוחק
+ * גם את מה שהיועץ כבר עשה. הביטול אפשרי שוב כשהיועץ מסיים את השלב.
+ */
+export function lockedStages(orders: readonly AdvisorOrder[]): PlanStageId[] {
+  const locked = orders.filter((order) => order.workStartedAt !== null);
+  return PLAN_STAGES.filter((stage) => locked.some((order) => order.stages.includes(stage)));
 }
 
 /** הזמנה שממתינה לתשלום, אם יש כזו */

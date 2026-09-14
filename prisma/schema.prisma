@@ -566,6 +566,12 @@ model AdvisorServiceOrder {
   cardLast4       String?
   payerName       String?
 
+  /**
+   * היועץ סימן שהוא כבר עובד על השלב, אחרי שהתשלום עליו סודר מולו. משלב זה
+   * הלקוח אינו יכול למחוק את התהליך — העבודה כבר שולמה ומתבצעת
+   */
+  workStartedAt DateTime?
+
   note String?
 
   createdAt DateTime @default(now())

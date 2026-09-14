@@ -66,6 +66,7 @@ export interface CalendarEvent {
 export interface AgendaPlan {
   id: string;
   name: string;
+  createdAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED';
   currentStage: PlanStageId;
   propertyAddress: string | null;
@@ -116,6 +117,40 @@ export function daysUntil(iso: string, now = new Date()): number {
 
 function planLabel(plan: AgendaPlan): string {
   return plan.propertyAddress?.trim() || plan.name;
+}
+
+/**
+ * הכותרת של תהליך ברשימה: הכתובת של הנכס וגובה המשכנתא.
+ *
+ * "תכנון משכנתא" הוא שם שנוצר אוטומטית ואינו אומר דבר — שני תהליכים נראים בו
+ * זהים. הכתובת והסכום הם מה שמבדיל ביניהם, ולכן הם הכותרת עצמה, ושם התהליך
+ * משמש רק כשעדיין אין אף אחד מהם.
+ */
+export function planHeadline(
+  plan: Pick<AgendaPlan, 'name' | 'propertyAddress' | 'mortgageAmount'>
+): string {
+  const place = plan.propertyAddress?.trim();
+  const amount =
+    plan.mortgageAmount && plan.mortgageAmount > 0
+      ? `משכנתא ₪${Math.round(plan.mortgageAmount).toLocaleString('he-IL')}`
+      : null;
+  if (place && amount) return `${place} · ${amount}`;
+  return place || amount || plan.name;
+}
+
+const CREATED_FORMAT = new Intl.DateTimeFormat('he-IL', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+/** מועד פתיחת התהליך, ליום ולדקה — כדי להבדיל בין תהליכים שנפתחו באותו יום */
+export function planCreatedLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `נפתח ב-${CREATED_FORMAT.format(date)}`;
 }
 
 function planHref(plan: AgendaPlan, stage?: PlanStageId): string {
@@ -373,6 +408,7 @@ export function upcomingEvents(events: CalendarEvent[], now = new Date(), limit 
 export interface PlanStatusSummary {
   id: string;
   label: string;
+  createdAt: string;
   currentStage: PlanStageId;
   stageNumber: number;
   /** מצב כל אחד מחמשת השלבים לפי הסדר */
@@ -390,7 +426,8 @@ export function summarizePlan(plan: AgendaPlan, advisorStages: PlanStageId[] = [
   const stages = order.map((stage) => byStage.get(stage) ?? 'PENDING');
   return {
     id: plan.id,
-    label: planLabel(plan),
+    label: planHeadline(plan),
+    createdAt: plan.createdAt,
     currentStage: plan.currentStage,
     stageNumber: planStageNumber(plan.currentStage),
     stages,

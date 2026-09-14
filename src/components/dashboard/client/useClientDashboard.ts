@@ -11,6 +11,10 @@ import { buildCalendarEvents, buildClientTasks } from '@/lib/client-agenda';
 import type { AgendaInput, AgendaRateRequest } from '@/lib/client-agenda';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { isUnassociatedMix } from '@/components/plan/PlansOverview';
+import {
+  CONTACTED_ADVISOR_EVENT,
+  CONTACTED_ADVISOR_KEY,
+} from '@/components/plan/advisor/AdvisorLeadDialog';
 
 /**
  * כל הנתונים של האזור האישי, במקום אחד.
@@ -55,6 +59,25 @@ export function useClientDashboard() {
     void refreshAdvisorStages();
   }, [refreshAdvisorStages]);
 
+  /**
+   * האם הלקוח כבר פנה ליועץ. הפנייה עצמה נשמרת בשרת בלי קשר לתהליך, ולכן
+   * הסימון כאן מקומי — הוא משמש רק כדי להחליף את מסך הפתיחה בדאשבורד המלא.
+   */
+  const [contactedAdvisor, setContactedAdvisor] = useState(false);
+
+  useEffect(() => {
+    const read = () => {
+      try {
+        setContactedAdvisor(window.localStorage.getItem(CONTACTED_ADVISOR_KEY) === '1');
+      } catch {
+        setContactedAdvisor(false);
+      }
+    };
+    read();
+    window.addEventListener(CONTACTED_ADVISOR_EVENT, read);
+    return () => window.removeEventListener(CONTACTED_ADVISOR_EVENT, read);
+  }, []);
+
   const rateRequests = useMemo<AgendaRateRequest[]>(
     () =>
       requests.map((request) => ({
@@ -90,6 +113,17 @@ export function useClientDashboard() {
   const tasks = useMemo(() => buildClientTasks(input), [input]);
   const events = useMemo(() => buildCalendarEvents(input), [input]);
 
+  /**
+   * כניסה ראשונה: עדיין אין תהליך, פגישה, משימה או פנייה ליועץ. במצב הזה
+   * הדאשבורד מציג את שאלת הפתיחה במרכז המסך במקום את תמונת המצב.
+   */
+  const firstVisit =
+    plansState.plans.length === 0 &&
+    events.length === 0 &&
+    tasks.length === 0 &&
+    requests.length === 0 &&
+    !contactedAdvisor;
+
   return {
     plansState,
     mixesState,
@@ -99,6 +133,8 @@ export function useClientDashboard() {
     advisorStages,
     tasks,
     events,
+    contactedAdvisor,
+    firstVisit,
     ready: plansState.ready && mixesState.ready && meetingsState.ready && requestsReady,
   };
 }

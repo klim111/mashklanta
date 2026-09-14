@@ -7,6 +7,7 @@ import {
   ALL_STAGES_PRICE,
   advisorStages,
   isAdvisorStage,
+  lockedStages,
   parseStages,
   pendingOrder,
   quoteOrder,
@@ -24,6 +25,7 @@ function order(overrides: Partial<AdvisorOrder>): AdvisorOrder {
     createdAt: '2026-09-12T10:00:00.000Z',
     paidAt: null,
     termsAcceptedAt: null,
+    workStartedAt: null,
     advisorName: null,
     ...overrides,
   };
@@ -117,5 +119,25 @@ describe('השלבים שהיועץ מבצע', () => {
     expect(pendingOrder([waiting])?.id).toBe('w');
     expect(pendingOrder([order({ status: 'PAID' })])).toBeNull();
     expect(pendingOrder([])).toBeNull();
+  });
+});
+
+describe('שלבים נעולים בעבודת היועץ', () => {
+  it('רק שלב שהיועץ סימן שהתחיל לעבוד עליו נחשב נעול', () => {
+    const orders = [
+      order({ id: 'a', stages: ['ANALYSIS'], status: 'PAID', workStartedAt: '2026-09-14T08:00:00.000Z' }),
+      order({ id: 'b', stages: ['MIX'], status: 'REQUESTED' }),
+    ];
+    expect(lockedStages(orders)).toEqual(['ANALYSIS']);
+  });
+
+  it('בלי סימון עבודה אין נעילה, והשלבים חוזרים לפי סדר התהליך', () => {
+    expect(lockedStages([order({ stages: ['AUCTION'], status: 'PAID' })])).toEqual([]);
+    expect(
+      lockedStages([
+        order({ id: 'a', stages: ['AUCTION'], workStartedAt: '2026-09-14T08:00:00.000Z' }),
+        order({ id: 'b', stages: ['MIX'], workStartedAt: '2026-09-14T08:00:00.000Z' }),
+      ])
+    ).toEqual(['MIX', 'AUCTION']);
   });
 });

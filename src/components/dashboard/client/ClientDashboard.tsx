@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signOut } from 'next-auth/react';
@@ -10,7 +9,6 @@ import {
   CalendarDays,
   Calculator,
   Compass,
-  FileText,
   Gavel,
   Home as HomeIcon,
   LayoutDashboard,
@@ -21,6 +19,7 @@ import {
 import { isDashboardSection } from '@/lib/client-agenda';
 import type { DashboardSection } from '@/lib/client-agenda';
 import { PlansOverview } from '@/components/plan/PlansOverview';
+import { StartCard, useStartPlan } from '@/components/plan/StartCard';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
@@ -109,7 +108,10 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const [section, setSection] = useState<DashboardSection>('overview');
   /** יום שנבחר בלוח המוקטן — נפתח בלוח המלא */
   const [agendaDay, setAgendaDay] = useState<string | undefined>(undefined);
+  /** התהליך שהתמהיל שלו מוצג בשורת הפירוט שבסקירה */
+  const [detailPlanId, setDetailPlanId] = useState<string | null>(null);
   const data = useClientDashboard();
+  const { startPlan, busy: startBusy } = useStartPlan(data.plansState.start);
 
   useEffect(() => {
     const fromHash = () => setSection(sectionFromHash());
@@ -186,6 +188,12 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         <nav className="mt-2 space-y-1">{navItems('sidebar')}</nav>
 
         <div className="mt-auto space-y-3 pt-6">
+          <StartCard
+            variant="sidebar"
+            onStart={startPlan}
+            busy={startBusy}
+            hasPlans={data.plansState.plans.length > 0}
+          />
           <AdvisorCta variant="sidebar" />
           <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10">
@@ -231,6 +239,18 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
         <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8">
           <div className="mx-auto max-w-[1400px]">
+            {/* במסך צר אין תפריט צד — שאלת הפתיחה יושבת מעל התוכן */}
+            {!(section === 'overview' && data.firstVisit) && (
+              <div className="mb-4 rounded-2xl bg-slate-950 p-3 lg:hidden">
+                <StartCard
+                  variant="sidebar"
+                  onStart={startPlan}
+                  busy={startBusy}
+                  hasPlans={data.plansState.plans.length > 0}
+                />
+              </div>
+            )}
+
             {/* כותרת האזור — ממורכזת, עם השם והתאריך */}
             <div className="mb-5 text-center">
               {section === 'overview' ? (
@@ -265,18 +285,25 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
             >
-              {section === 'overview' && <OverviewSection data={data} onNavigate={navigate} />}
+              {section === 'overview' && (
+                <OverviewSection
+                  data={data}
+                  detailPlanId={detailPlanId}
+                  onDetailPlan={setDetailPlanId}
+                  onNavigate={navigate}
+                />
+              )}
 
               {section === 'mortgages' && (
-                <div className="space-y-5">
-                  <SectionRow
-                    href="/principal-approval"
-                    icon={<FileText className="h-5 w-5" />}
-                    title="אישור עקרוני — פרטי הבקשה"
-                    hint="פרטי הלווים והערבים, הכנסות, חשבונות בנק ומקורות מימון — עם דוח מסכם להורדה"
-                  />
-                  <PlansOverview plansState={data.plansState} mixesState={data.mixesState} />
-                </div>
+                <PlansOverview
+                  plansState={data.plansState}
+                  mixesState={data.mixesState}
+                  advisorStages={data.advisorStages}
+                  onShowMix={(planId) => {
+                    setDetailPlanId(planId);
+                    navigate('overview');
+                  }}
+                />
               )}
 
               {section === 'agenda' && (
@@ -309,37 +336,5 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         )}
       </div>
     </div>
-  );
-}
-
-function SectionRow({
-  href,
-  icon,
-  title,
-  hint,
-}: {
-  href: string;
-  icon: ReactNode;
-  title: string;
-  hint: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-l from-indigo-50/80 to-white p-5 shadow-sm transition-all hover:border-indigo-300 hover:shadow-md"
-    >
-      <span className="flex items-center gap-3.5">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200">
-          {icon}
-        </span>
-        <span>
-          <span className="block text-base font-black text-slate-900">{title}</span>
-          <span className="block text-sm text-slate-500">{hint}</span>
-        </span>
-      </span>
-      <span className="text-sm font-black text-indigo-600 transition-transform group-hover:-translate-x-1">
-        להזנת הפרטים ←
-      </span>
-    </Link>
   );
 }

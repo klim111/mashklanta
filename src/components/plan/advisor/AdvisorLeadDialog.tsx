@@ -13,6 +13,10 @@ import {
 import { LEAD_TOPIC_LABELS } from '@/lib/advisor-leads';
 import type { LeadTopic } from '@/lib/advisor-leads';
 
+/** סימון מקומי שנשלחה פנייה ליועץ — כדי שהדאשבורד לא יציג יותר מסך פתיחה */
+export const CONTACTED_ADVISOR_KEY = 'mashklanta:contacted-advisor';
+export const CONTACTED_ADVISOR_EVENT = 'mashklanta:contacted-advisor-changed';
+
 /**
  * טופס פנייה לליווי — "אל דאגה, יועצי משכלנתא כאן כדי לעזור".
  *
@@ -61,6 +65,13 @@ export function AdvisorLeadDialog({
         body: JSON.stringify({ topic, name, phone, email, notes }),
       });
       if (!response.ok) throw new Error(String(response.status));
+      // הדאשבורד מציג מסך פתיחה אחר אחרי הפנייה הראשונה ליועץ
+      try {
+        window.localStorage.setItem(CONTACTED_ADVISOR_KEY, '1');
+        window.dispatchEvent(new Event(CONTACTED_ADVISOR_EVENT));
+      } catch {
+        // דפדפן שחוסם אחסון מקומי — הפנייה עצמה כבר נשלחה
+      }
       setSent(true);
     } catch {
       setError('הפנייה לא נשלחה. בדקו את החיבור ונסו שוב.');

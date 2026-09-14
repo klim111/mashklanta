@@ -2,7 +2,17 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, HeartHandshake, Loader2, Mail, MapPin, Phone, Sparkles, UserRound } from 'lucide-react';
+import {
+  ArrowLeft,
+  BriefcaseBusiness,
+  HeartHandshake,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Sparkles,
+  UserRound,
+} from 'lucide-react';
 import type { AdvisorOrderRequest } from '@/lib/advisor-order-store';
 import type { AdvisorLeadView } from '@/lib/advisor-leads';
 import { formatOrderPrice } from '@/lib/advisor-orders';
@@ -71,6 +81,7 @@ export function ServiceRequestsPanel({
   leads = [],
   leadsReady = true,
   onOpenClient,
+  onMarkWork,
 }: {
   requests: AdvisorOrderRequest[];
   ready: boolean;
@@ -79,6 +90,8 @@ export function ServiceRequestsPanel({
   leadsReady?: boolean;
   /** מעבר לתיק הלקוח שממנו הגיעה הבקשה */
   onOpenClient?: (clientId: string) => void;
+  /** סימון שהשלב בעבודה והתשלום עליו סודר — נועל את התהליך מפני מחיקה */
+  onMarkWork?: (orderId: string, inWork: boolean) => Promise<void>;
 }) {
   if (!ready) {
     return (
@@ -126,7 +139,12 @@ export function ServiceRequestsPanel({
               </h4>
             )}
             {requests.map((request) => (
-              <RequestRow key={request.id} request={request} onOpenClient={onOpenClient} />
+              <RequestRow
+                key={request.id}
+                request={request}
+                onOpenClient={onOpenClient}
+                onMarkWork={onMarkWork}
+              />
             ))}
           </div>
         )}
@@ -202,11 +220,25 @@ function LeadRow({
 function RequestRow({
   request,
   onOpenClient,
+  onMarkWork,
 }: {
   request: AdvisorOrderRequest;
   onOpenClient?: (clientId: string) => void;
+  onMarkWork?: (orderId: string, inWork: boolean) => Promise<void>;
 }) {
+  const [busy, setBusy] = useState(false);
   const paid = request.paidAt ? new Date(request.paidAt) : null;
+  const inWork = request.workStartedAt !== null;
+
+  const toggleWork = async () => {
+    if (!onMarkWork) return;
+    setBusy(true);
+    try {
+      await onMarkWork(request.id, !inWork);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-violet-200 bg-violet-50/40 p-3">
@@ -224,7 +256,11 @@ function RequestRow({
         )}
 
         <span className="mr-auto text-[11px] font-black text-slate-700">
-          {request.status === 'REQUESTED' ? (
+          {inWork ? (
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">
+              בעבודה · התשלום סודר
+            </span>
+          ) : request.status === 'REQUESTED' ? (
             <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-700">
               בקשה חינמית · לקבוע פגישה
             </span>
@@ -250,6 +286,27 @@ function RequestRow({
             ? `הלקוח ביקש שתבצעו את שלב ${planStageNumber(request.stages[0])}`
             : `הלקוח ביקש שתבצעו ${request.stages.length} שלבים`}
         </span>
+
+        {onMarkWork && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void toggleWork()}
+            title={
+              inWork
+                ? 'הסרת הסימון תחזיר ללקוח את האפשרות לבטל את התהליך'
+                : 'סימון שהשלב בעבודה אצלכם ושהתשלום עליו סודר — הלקוח לא יוכל למחוק את התהליך'
+            }
+            className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-black transition-colors disabled:opacity-60 ${
+              inWork
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <BriefcaseBusiness className="h-3 w-3" />}
+            {inWork ? 'בעבודה — לסיום הסימון' : 'סמנו: בעבודה, התשלום סודר'}
+          </button>
+        )}
 
         {request.clientId &&
           (onOpenClient ? (

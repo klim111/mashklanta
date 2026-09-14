@@ -200,6 +200,32 @@ export function pickProfileFromAnalysis(analysis: AnalysisData): ClientProfileFi
   return parseClientProfile(analysis);
 }
 
+/** ערך שיש בו ממש — שדה ריק בתהליך לא ידרוס ערך שכבר שמור בפרופיל */
+function hasValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+/**
+ * מיזוג פרופיל שנאסף בתהליך אל תוך הפרופיל השמור.
+ *
+ * זה מה שקורה כשלקוח מוחק תהליך: מה שהזין בשלביו נשמר עליו, כדי שתהליך חדש
+ * ייפתח עם אותם נתונים. שדה שנשאר ריק בתהליך אינו מוחק ערך שכבר היה בפרופיל.
+ */
+export function mergeProfiles(
+  base: ClientProfileFinancials,
+  incoming: ClientProfileFinancials
+): ClientProfileFinancials {
+  const merged = { ...base };
+  PROFILE_ANALYSIS_KEYS.forEach((key) => {
+    if (hasValue(incoming[key])) {
+      (merged as Record<string, unknown>)[key] = incoming[key];
+    }
+  });
+  return profileToJson(merged);
+}
+
 export function valuesEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }

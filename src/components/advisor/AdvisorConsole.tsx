@@ -391,6 +391,14 @@ export function AdvisorConsole() {
               ready={requestsReady}
               leads={leads}
               leadsReady={leadsReady}
+              onMarkWork={async (orderId, inWork) => {
+                await fetch('/api/advisor/service-orders', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ orderId, inWork }),
+                });
+                await refreshRequests();
+              }}
               onOpenClient={(clientId) => {
                 setFocusClientId(clientId);
                 setTab('clients');

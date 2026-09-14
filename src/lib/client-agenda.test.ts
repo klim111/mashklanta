@@ -4,6 +4,8 @@ import {
   buildCalendarEvents,
   buildClientTasks,
   daysUntil,
+  planCreatedLabel,
+  planHeadline,
   summarizePlan,
   upcomingEvents,
 } from './client-agenda';
@@ -17,6 +19,7 @@ function plan(overrides: Partial<AgendaPlan> = {}): AgendaPlan {
   return {
     id: 'p1',
     name: 'המשכנתא שלי',
+    createdAt: '2026-09-10T08:30:00.000Z',
     status: 'IN_PROGRESS',
     currentStage: 'ANALYSIS',
     propertyAddress: 'הרצל 5, תל אביב',
@@ -140,6 +143,12 @@ describe('סדר היום של הלקוח', () => {
   it('daysUntil סופר ימים שלמים, ו-summarizePlan סופר שלבים שהושלמו', () => {
     expect(daysUntil('2026-09-16T23:00:00', NOW)).toBe(2);
     expect(daysUntil('2026-09-13T01:00:00', NOW)).toBe(-1);
+
+    expect(planHeadline(plan())).toBe('הרצל 5, תל אביב · משכנתא ₪1,400,000');
+    expect(planHeadline(plan({ propertyAddress: null }))).toBe('משכנתא ₪1,400,000');
+    expect(planHeadline(plan({ propertyAddress: null, mortgageAmount: null }))).toBe('המשכנתא שלי');
+    expect(planCreatedLabel('2026-09-10T08:30:00.000Z')).toContain('נפתח ב-');
+    expect(planCreatedLabel('not-a-date')).toBe('');
 
     const summary = summarizePlan(
       plan({

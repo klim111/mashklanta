@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { quoteOrder, parseStages } from './advisor-orders';
+import { PLAN_STAGES } from './mortgage-plan';
 import type { AdvisorOrder, AdvisorOrderStatus } from './advisor-orders';
 import type { PlanStageId } from './mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
@@ -22,6 +23,7 @@ const orderSelect = {
   createdAt: true,
   paidAt: true,
   termsAcceptedAt: true,
+  workStartedAt: true,
   advisor: { select: { name: true, email: true } },
 } satisfies Prisma.AdvisorServiceOrderSelect;
 
@@ -37,6 +39,7 @@ function toView(row: OrderRow): AdvisorOrder {
     createdAt: row.createdAt.toISOString(),
     paidAt: row.paidAt?.toISOString() ?? null,
     termsAcceptedAt: row.termsAcceptedAt?.toISOString() ?? null,
+    workStartedAt: row.workStartedAt?.toISOString() ?? null,
     advisorName: row.advisor?.name ?? row.advisor?.email ?? null,
   };
 }
@@ -293,6 +296,50 @@ export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrd
     planName: row.plan?.name ?? 'תהליך משכנתא',
     propertyAddress: row.plan?.propertyAddress ?? null,
   }));
+}
+
+/**
+ * היועץ מסמן שהוא התחיל לעבוד על השלב, אחרי שהתשלום עליו סודר מולו.
+ *
+ * מרגע זה הבקשה נחשבת משולמת, והלקוח אינו יכול למחוק את התהליך — העבודה כבר
+ * שולמה ומתבצעת. הסימון הפיך: `inWork: false` מחזיר את הבקשה למצב חינמי,
+ * למשל כשהיועץ סיים את השלב.
+ */
+export async function markOrderInWork(
+  advisorId: string,
+  orderId: string,
+  inWork: boolean
+): Promise<AdvisorOrder | null> {
+  const existing = await prisma.advisorServiceOrder.findFirst({
+    where: { id: orderId, advisorId, status: { in: ['REQUESTED', 'PAID'] } },
+    select: { id: true },
+  });
+  if (!existing) return null;
+
+  const now = new Date();
+  const row = await prisma.advisorServiceOrder.update({
+    where: { id: orderId },
+    data: inWork
+      ? { workStartedAt: now, status: 'PAID', paidAt: now }
+      : { workStartedAt: null, status: 'REQUESTED', paidAt: null },
+    select: orderSelect,
+  });
+  return toView(row);
+}
+
+/**
+ * השלבים בתהליך שהיועץ כבר עובד עליהם בתשלום — אלה שחוסמים מחיקה של התהליך.
+ */
+export async function lockedStagesForPlan(
+  userId: string,
+  planId: string
+): Promise<PlanStageId[]> {
+  const rows = await prisma.advisorServiceOrder.findMany({
+    where: { planId, ownerId: userId, workStartedAt: { not: null } },
+    select: { stagesJson: true },
+  });
+  const stages = new Set(rows.flatMap((row) => parseStages(row.stagesJson)));
+  return PLAN_STAGES.filter((stage) => stages.has(stage));
 }
 
 export async function cancelOrder(userId: string, orderId: string): Promise<boolean> {

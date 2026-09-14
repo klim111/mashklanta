@@ -69,8 +69,17 @@ export async function createPlan(name?: string): Promise<PlanView> {
   return readPlan(response);
 }
 
-export async function archivePlan(planId: string): Promise<void> {
-  await fetch(`/api/plans/${planId}`, { method: 'DELETE' });
+/**
+ * מחיקת תהליך מבסיס הנתונים.
+ *
+ * מחזירה הודעת שגיאה כשהמחיקה נדחתה — למשל כששלב כבר בעבודה אצל היועץ
+ * והתשלום עליו סודר — כדי שהלקוח יראה בדיוק מה מונע את הביטול.
+ */
+export async function deletePlanRequest(planId: string): Promise<string | null> {
+  const response = await fetch(`/api/plans/${planId}`, { method: 'DELETE' });
+  if (response.ok) return null;
+  const body = await response.json().catch(() => null);
+  return typeof body?.error === 'string' ? body.error : 'לא הצלחנו למחוק את התהליך. נסו שוב.';
 }
 
 /** רשימת התהליכים באזור האישי */
@@ -106,9 +115,12 @@ export function usePlans() {
     }
   }, []);
 
-  const remove = useCallback(async (planId: string) => {
+  /** מחיקה סופית. התהליך יורד מהרשימה רק כשהשרת אישר שהוא נמחק */
+  const remove = useCallback(async (planId: string): Promise<string | null> => {
+    const failure = await deletePlanRequest(planId);
+    if (failure) return failure;
     setPlans((current) => current.filter((plan) => plan.id !== planId));
-    await archivePlan(planId);
+    return null;
   }, []);
 
   const patchDeal = useCallback(
