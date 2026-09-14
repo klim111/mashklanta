@@ -13,6 +13,7 @@ import {
   CalendarClock,
   BookmarkCheck,
   Home,
+  LogIn,
   Plus,
   SquarePen,
   Save,
@@ -33,7 +34,7 @@ import { useAdvisorSettings } from '@/components/advisor/useAdvisorCrm';
 import { rateKey } from '@/lib/advisor-crm';
 import type { SaveTarget } from './savedMixes';
 import type { MixEvent, MixResult, OptimizationConstraints, WorkspaceMix } from './engine';
-import { applyMarketRates, cloneWorkspaceMix, computeMix } from './engine';
+import { applyMarketRates, cloneWorkspaceMix, computeMix, remainingAmount } from './engine';
 import {
   NoChangeNotice,
   StateBlocksRow,
@@ -44,9 +45,8 @@ import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
 import { DEFAULT_CONSTRAINTS, useMortgageWorkspace } from './workspace/useMortgageWorkspace';
-import { WorkspaceLanding } from './workspace/WorkspaceLanding';
-import { MixSetupWizard } from './workspace/MixSetupWizard';
-import type { PropertySetup } from './workspace/MixSetupWizard';
+import { createFirstMix } from './workspace/firstMix';
+import type { PropertySetup } from './workspace/firstMix';
 import { PropertyHeader } from './workspace/PropertyHeader';
 import { MixList } from './workspace/MixList';
 import { MixControlPanel } from './workspace/MixControlPanel';
@@ -63,11 +63,14 @@ import { PrepaymentDialog } from './workspace/PrepaymentDialog';
 import { RefinanceDialog } from './workspace/RefinanceDialog';
 import { consumeLegacyAdvisorMixes } from './workspace/legacy';
 import { clearDraft, consumeStagedMix, readDraft, writeDraft } from './workspace/draft';
-import type { WorkspaceDraft } from './workspace/draft';
 import type { ComparisonEntry } from './MixComparison';
 import { useMarketRates } from '@/hooks/use-market-rates';
 
-type Phase = 'landing' | 'setup' | 'ready';
+/**
+ * הכלי נפתח ישר על תמהיל: 'loading' הוא רק הרגע שבו מתברר איזה תמהיל לפתוח —
+ * שמור, טיוטה, או תמהיל ראשון חדש — ומיד אחריו הכלי במצב עבודה.
+ */
+type Phase = 'loading' | 'ready';
 
 export interface PendingPrepay {
   mixId: string;
@@ -88,15 +91,11 @@ interface MortgageWorkspaceProps {
   initialMix?: WorkspaceMix;
   /** בתוך דשבורד התהליך — בלי סרגל ניווט כפול */
   embedded?: boolean;
-  /** כשמוטמע בתהליך בלי תמהיל שמור — לפתוח ישר באשף תמהיל חדש */
-  startInSetup?: boolean;
-  /** מתהליך חמשת השלבים: מדלגים על מסך הנכס והעסקה באשף */
-  skipPropertySetup?: boolean;
   /** תמהילי הסלים האחידים שנשמרו בשלב הקודם — נפתחים ברשימה */
   preferredMixIds?: string[];
   /** התמהיל הפעיל בתהליך, אם כבר נבחר אחד */
   activeMixKey?: string | null;
-  /** ערכי ברירת מחדל לאשף (סוג עסקה ותקרת החזר מהפרופיל) */
+  /** פרטי הנכס והעסקה שהתמהיל הראשון נפתח איתם (סוג עסקה, סכום ותקרת החזר מהפרופיל) */
   defaultSetupSeed?: Partial<PropertySetup>;
   /** ההכנסה הפנויה שחושבה בשלב הניתוח הפיננסי — מוצגת במכתב הבקשה לבנקים */
   disposableIncome?: number;
@@ -127,15 +126,13 @@ function signatureOf(mix: WorkspaceMix): string {
 
 
 /**
- * מסך העבודה של יועץ המשכנתאות. הכלי נפתח ריק ומציע ליצור תמהיל חדש או לטעון
- * תמהיל שמור; משהתמהיל קיים, כל הבקרים, הסיכום, הגרפים וההשוואה חיים באותו מסך
- * וכל שינוי מחשב מחדש את התמונה כולה.
+ * מסך העבודה של יועץ המשכנתאות. הכלי נפתח ישר על תמהיל — שמור אם יש, ואחרת
+ * תמהיל ראשון עם מסלול קבועה לא צמודה בשליש מהמשכנתא — וכל הבקרים, הסיכום,
+ * הגרפים וההשוואה חיים באותו מסך, כשכל שינוי מחשב מחדש את התמונה כולה.
  */
 export function MortgageWorkspace({
   initialMix,
   embedded = false,
-  startInSetup = false,
-  skipPropertySetup = false,
   preferredMixIds,
   activeMixKey,
   defaultSetupSeed,
@@ -195,12 +192,9 @@ export function MortgageWorkspace({
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  const [phase, setPhase] = useState<Phase>(
-    initialMix ? 'ready' : startInSetup ? 'setup' : 'landing'
-  );
-  const [pendingDraft, setPendingDraft] = useState<WorkspaceDraft | null>(null);
-  /** פרטי נכס שממולאים מראש באשף, כשבונים תמהיל נוסף לאותו נכס */
-  const [setupSeed, setSetupSeed] = useState<Partial<PropertySetup> | undefined>(defaultSetupSeed);
+  const [phase, setPhase] = useState<Phase>(initialMix ? 'ready' : 'loading');
+  /** התמהיל החדש שנבנה עכשיו בכלי וטרם נשמר — עד שכל סכום המשכנתא משובץ */
+  const [newMixId, setNewMixId] = useState<string | null>(null);
 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [amortizationTarget, setAmortizationTarget] = useState<{ trackId?: string } | null>(null);
@@ -262,8 +256,16 @@ export function MortgageWorkspace({
     [profileCap]
   );
 
+  /**
+   * סימון שהכלי כבר קיבל תמהיל לעבודה. הוא נקבע בתוך `openMix` כדי שכל הפותחים —
+   * תמהיל שמור, סל אחיד, טיוטה — יסמנו אותו מיד, בלי להמתין לרינדור הבא, וכך
+   * פתיחת התמהיל הראשון החדש לא תדרוס תמהיל שכבר נפתח באותו מחזור.
+   */
+  const mixClaimed = useRef(Boolean(initialMix));
+
   const openMix = useCallback(
     (next: WorkspaceMix, constraints?: OptimizationConstraints) => {
+      mixClaimed.current = true;
       // כל תמהיל שנפתח מתומחר מחדש לפי הנתונים שנמשכו מבנק ישראל, גם אם נשמר
       // לפני חודשים עם ריביות אחרות.
       const withCap = withProfileCap(applyMarketRates(next, marketRates));
@@ -308,10 +310,7 @@ export function MortgageWorkspace({
       incoming.forEach((item) => save(item));
       openMix(incoming[incoming.length - 1]);
       actions.setCompared(incoming.map((item) => item.id));
-      return;
     }
-
-    setPendingDraft(readDraft());
   }, [initialMix, save, actions, openMix, embedded]);
 
   // הטיוטה נשמרת רק כשיש תמהיל בעבודה, כדי שהכלי ייפתח נקי בפעם הבאה אלא אם
@@ -400,14 +399,40 @@ export function MortgageWorkspace({
   const clientMixOpened = useRef(false);
   useEffect(() => {
     if (!clientId || clientMixOpened.current || initialMix || !ready) return;
-    if (phase !== 'landing' || saved.length === 0) return;
+    if (mixClaimed.current || saved.length === 0) return;
     const newest = [...saved].sort(
       (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
     )[0];
     clientMixOpened.current = true;
     notifyActive(newest);
     openMix(newest.mix);
-  }, [clientId, ready, saved, phase, initialMix, openMix, notifyActive]);
+  }, [clientId, ready, saved, initialMix, openMix, notifyActive]);
+
+  /**
+   * אין מסך ביניים: אם אף תמהיל שמור לא נתפס לאזור העבודה, הכלי נפתח על תמהיל
+   * ראשון חדש — פרטי הנכס מהשלבים הקודמים ומסלול קבועה לא צמודה בשליש מהמשכנתא —
+   * ומכאן ממשיכים בתוך הכלי עצמו. טיוטה שנשארה מהפעם הקודמת קודמת לתמהיל חדש,
+   * כדי שעבודה שלא נשמרה לא תאבד.
+   */
+  const firstMixSeeded = useRef(false);
+  useEffect(() => {
+    if (firstMixSeeded.current || mixClaimed.current || initialMix || !ready) return;
+    firstMixSeeded.current = true;
+
+    const draft = embedded ? null : readDraft();
+    if (draft && draft.mix.tracks.length > 0) {
+      // טיוטה שלא הגיעה לשמירה ממשיכה להיחשב תמהיל בבנייה, ותישמר כשתכוסה במלואה
+      if (!saved.some((item) => item.mix.id === draft.mix.id)) setNewMixId(draft.mix.id);
+      openMix(draft.mix, draft.constraints);
+      setEditorExpanded(true);
+      return;
+    }
+
+    const first = createFirstMix({ seed: defaultSetupSeed, existingMixes: saved });
+    setNewMixId(first.id);
+    openMix(first);
+    setEditorExpanded(true);
+  }, [ready, initialMix, embedded, defaultSetupSeed, saved, openMix]);
 
   const persistMix = useCallback(
     (next: WorkspaceMix) => {
@@ -425,6 +450,26 @@ export function MortgageWorkspace({
     actions.patchMix({ maxMonthlyPayment: profileCap });
     actions.setConstraints({ maxMonthlyPayment: profileCap });
   }, [phase, mix.id, mix.maxMonthlyPayment, profileCap, actions]);
+
+  /** תמהיל חדש שנבנה עכשיו בכלי וטרם כוסה במלואו */
+  const buildingNewMix = phase === 'ready' && newMixId === mix.id;
+
+  /**
+   * התמהיל החדש נשמר ברגע שכל סכום המשכנתא שובץ במסלולים — זו נקודת ה"נוצר"
+   * שלו. מכאן הוא תמהיל רגיל לכל דבר, וכל שינוי נוסף נשמר כרגיל דרך הכלי.
+   */
+  const autoSavedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!buildingNewMix) return;
+    if (mix.totalAmount <= 0 || mix.tracks.length === 0) return;
+    if (remainingAmount(mix) > 0) return;
+    if (autoSavedId.current === mix.id) return;
+
+    autoSavedId.current = mix.id;
+    persistMix(mix);
+    setSavedSignature(signatureOf(mix));
+    setNewMixId(null);
+  }, [buildingNewMix, mix, persistMix]);
 
   /**
    * שמירת המצב הנוכחי כתמהיל חדש: המקור נשאר כמו שנשמר, והעותק עם השינויים
@@ -445,12 +490,14 @@ export function MortgageWorkspace({
    */
   const keepCurrentMix = useCallback((): boolean => {
     if (phase !== 'ready' || mix.tracks.length === 0) return false;
+    // תמהיל חדש שסכום המשכנתא בו טרם שובץ במלואו עדיין לא נוצר, ולכן אינו נשמר
+    if (newMixId === mix.id && remainingAmount(mix) > 0) return false;
     if (dirty) {
       persistMix(mix);
       setSavedSignature(signatureOf(mix));
     }
     return true;
-  }, [phase, mix, dirty, persistMix]);
+  }, [phase, mix, dirty, persistMix, newMixId]);
 
   const openSavedMix = useCallback(
     (item: SavedMix) => {
@@ -588,13 +635,19 @@ export function MortgageWorkspace({
   }, [pendingPrepay, mix, phase, saved, openMix, openSavedMix, onPendingPrepayHandled]);
 
 
+  /**
+   * תמהיל חדש נבנה בתוך הכלי עצמו: התמהיל שבעבודה נשמר, ובמקומו נפתח תמהיל
+   * עם אותם פרטי נכס ומסלול פתיחה אחד, מוכן להוספת מסלולים.
+   */
   const startNewMix = useCallback(
     (seed?: Partial<PropertySetup>) => {
       keepCurrentMix();
-      setSetupSeed(seed ?? defaultSetupSeed);
-      setPhase('setup');
+      const next = createFirstMix({ seed: seed ?? defaultSetupSeed, existingMixes: saved });
+      setNewMixId(next.id);
+      openMix(next);
+      setEditorExpanded(true);
     },
-    [keepCurrentMix, defaultSetupSeed]
+    [keepCurrentMix, defaultSetupSeed, saved, openMix]
   );
 
   /** תמהיל נוסף לאותו נכס — פרטי הנכס והעסקה עוברים כמו שהם */
@@ -608,12 +661,20 @@ export function MortgageWorkspace({
     });
   }, [mix, startNewMix]);
 
-  const backToLanding = useCallback(() => {
-    // תמהיל שנשמר אינו טיוטה, ולכן מסך הפתיחה לא יציע להמשיך ממנו
+  /**
+   * הסרת התמהיל האחרון מאזור העבודה לא משאירה מסך ריק — הוא נשמר בתמהילים
+   * השמורים, ובמקומו נפתח תמהיל חדש לאותו נכס.
+   */
+  const resetToNewMix = useCallback(() => {
     if (keepCurrentMix()) clearDraft();
-    setPendingDraft(embedded ? null : readDraft());
-    setPhase('landing');
-  }, [keepCurrentMix, embedded]);
+    startNewMix({
+      propertyValue: mix.propertyValue ?? 0,
+      dealType: dealTypeOf(mix),
+      totalAmount: mix.totalAmount,
+      maxMonthlyPayment: mix.maxMonthlyPayment ?? 0,
+      propertyAddress: mix.propertyAddress ?? '',
+    });
+  }, [keepCurrentMix, startNewMix, mix]);
 
   /**
    * השוואה נעשית רק בין תמהילים לאותו נכס — או לאותו סכום משכנתא כשלא הוזנה
@@ -642,6 +703,16 @@ export function MortgageWorkspace({
     () => propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id)).length,
     [propertyMixes, state.comparedIds]
   );
+
+  /**
+   * הכיתוב של אזור העבודה כשבונים בו תמהיל חדש. התמהיל הראשון לנכס הוא נקודת
+   * הפתיחה להשוואה, ולכן הוא מסומן ככזה.
+   */
+  const buildLabel = buildingNewMix
+    ? propertyMixes.length === 0
+      ? 'בנה תמהיל ראשון להשוואה'
+      : 'בנה תמהיל נוסף להשוואה'
+    : null;
 
   /**
    * סימון תמהיל מכניס אותו לאזור העבודה להשוואה. אין תקרה על מספר התמהילים —
@@ -674,9 +745,9 @@ export function MortgageWorkspace({
         openSavedMix(remaining[0]);
         return;
       }
-      backToLanding();
+      resetToNewMix();
     },
-    [state.comparedIds, actions, mix.id, propertyMixes, hiddenFromPage, openSavedMix, backToLanding]
+    [state.comparedIds, actions, mix.id, propertyMixes, hiddenFromPage, openSavedMix, resetToNewMix]
   );
 
   const restoreSavedMix = useCallback(
@@ -768,73 +839,9 @@ export function MortgageWorkspace({
     [planId, allowSelectFinal, saved, mix, save, onSelectFinal, actions, refresh]
   );
 
-  if (phase === 'landing') {
-    return (
-      <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
-        <div className="container mx-auto px-4 py-6">
-          <WorkspaceLanding
-            saved={saved}
-            signedIn={signedIn}
-            clientsPanel={
-              isAdvisor && !clientId ? (
-                <Card className="border-slate-200 shadow-sm">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        <Users className="h-4 w-4 text-blue-600" />
-                        הלקוחות שלי
-                      </p>
-                      <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
-                        <Link href="/advisor-dashboard">לאזור האישי</Link>
-                      </Button>
-                    </div>
-                    <ClientList
-                      clients={clients.clients}
-                      ready={clients.ready}
-                      error={clients.error}
-                      onAddClient={clients.addClient}
-                      emptyHint="עדיין אין לקוחות. צרפו לקוח לפי האימייל שאיתו נרשם, ואז כל תמהיל שתשמרו יופיע גם אצלו."
-                    />
-                  </CardContent>
-                </Card>
-              ) : undefined
-            }
-            draftMix={pendingDraft?.mix ?? null}
-            onCreateNew={() => startNewMix()}
-            onOpenSaved={openSavedMix}
-            onResumeDraft={() => {
-              if (pendingDraft) openMix(pendingDraft.mix, pendingDraft.constraints);
-            }}
-            onDiscardDraft={() => {
-              clearDraft();
-              setPendingDraft(null);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === 'setup') {
-    return (
-      <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
-        <div className="container mx-auto px-4 py-6">
-          <MixSetupWizard
-            onBack={backToLanding}
-            initialProperty={setupSeed}
-            skipPropertyStep={skipPropertySetup}
-            primeForecast={mix.assumptions.primeForecast ?? marketRates.primeForecast}
-            inflationForecast={mix.assumptions.inflationForecast ?? marketRates.inflationForecast}
-            existingMixes={saved}
-            onComplete={(created) => {
-              persistMix(created);
-              openMix(created);
-              setSetupSeed(undefined);
-            }}
-          />
-        </div>
-      </div>
-    );
+  // עד שמתברר איזה תמהיל נפתח — שמור, טיוטה או תמהיל ראשון חדש — לא מוצג מסך ביניים
+  if (phase !== 'ready') {
+    return <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl" />;
   }
 
   return (
@@ -916,6 +923,19 @@ export function MortgageWorkspace({
       </div>
 
       <div className="container mx-auto space-y-3 px-3 py-3 sm:px-4">
+        {!signedIn && (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <LogIn className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-xs leading-relaxed text-amber-900">
+              אתם לא מחוברים, ולכן התמהילים נשמרים בדפדפן הזה בלבד.{' '}
+              <Link href="/auth/login" className="font-semibold underline">
+                התחברו
+              </Link>{' '}
+              כדי לשמור אותם בחשבון — הם יעברו אליו אוטומטית ויהיו זמינים בכל מכשיר.
+            </p>
+          </div>
+        )}
+
         {/* פרטי הנכס והעסקה בכותרת אחת מעל כל התמהילים ששייכים אליהם */}
         <PropertyHeader
           mix={mix}
@@ -961,7 +981,8 @@ export function MortgageWorkspace({
           onDuplicateActive={() => duplicateMix(mix)}
           pendingRenameId={pendingCloneId}
           onCreateForProperty={startMixForSameProperty}
-          saveDirty={dirty}
+          buildLabel={buildLabel}
+          saveDirty={dirty && !buildingNewMix}
           flashSave={flashSave}
           onSaveAsNew={saveAsNewMix}
           uniformMixIds={preferredMixIds}

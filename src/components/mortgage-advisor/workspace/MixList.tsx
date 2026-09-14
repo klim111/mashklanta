@@ -51,6 +51,11 @@ interface MixListProps {
   /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם — שדה השם נפתח ריק */
   pendingRenameId?: string | null;
   onCreateForProperty: () => void;
+  /**
+   * כיתוב אזור העבודה כשנבנה בו תמהיל חדש שטרם כוסה במלואו — למשל "בנה תמהיל
+   * ראשון להשוואה". בלעדיו מוצג הכיתוב הרגיל של אזור העבודה.
+   */
+  buildLabel?: string | null;
   /** כשיש שינויים שלא נשמרו — כפתור שמירה כתמהיל חדש בשורת אזור העבודה */
   onSaveAsNew?: () => void;
   saveDirty?: boolean;
@@ -103,6 +108,7 @@ export function MixList({
   onDuplicateActive,
   pendingRenameId,
   onCreateForProperty,
+  buildLabel,
   onSaveAsNew,
   saveDirty = false,
   flashSave = false,
@@ -206,13 +212,15 @@ export function MixList({
               <span
                 className="flex items-center gap-1.5 text-xs font-black text-blue-900"
                 title={
-                  comparedItems.length > 0
-                    ? 'הטבלה והגרפים שמתחת מציגים את כל התמהילים שבאזור העבודה'
-                    : 'התמהיל שנפתח לניתוח ולעריכה'
+                  buildLabel
+                    ? 'הוסיפו מסלול אחרי מסלול עד שכל סכום המשכנתא משובץ — ואז התמהיל נשמר אוטומטית'
+                    : comparedItems.length > 0
+                      ? 'הטבלה והגרפים שמתחת מציגים את כל התמהילים שבאזור העבודה'
+                      : 'התמהיל שנפתח לניתוח ולעריכה'
                 }
               >
                 <SquarePen className="h-3.5 w-3.5 text-blue-600" />
-                אזור העבודה
+                {buildLabel || 'אזור העבודה'}
               </span>
               {comparedItems.length > 0 && (
                 <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">

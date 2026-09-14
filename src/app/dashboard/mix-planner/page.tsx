@@ -25,8 +25,6 @@ function MixPlannerBody() {
         </div>
       </div>
       <MortgageWorkspace
-        skipPropertySetup
-        startInSetup={!mixKey}
         soloMixKey={mixKey || undefined}
         activeMixKey={mixKey}
       />

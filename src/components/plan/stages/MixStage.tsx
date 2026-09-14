@@ -75,10 +75,9 @@ export function MixStage({
 
 
   /**
-   * כשהסלים האחידים כבר נשמרו כתמהילים, השלב נפתח ברשימת התמהילים ולא באשף —
-   * כדי שהלקוח יתחיל מהסלים שקיבל בפועל ולא יזין הכול מחדש.
+   * הסלים האחידים שנשמרו באישור העקרוני נפתחים ברשימת התמהילים של השלב, כדי
+   * שהלקוח ימשיך מהסלים שקיבל בפועל ולא יזין אותם מחדש.
    */
-  const basketsSaved = preApproval.baskets.some((basket) => basket.mixKey);
   const preferredMixIds = useMemo(() => {
     const fromBaskets = preApproval.baskets.flatMap((basket) =>
       basket.mixKey ? [basket.mixKey] : []
@@ -107,10 +106,8 @@ export function MixStage({
       */}
       <MortgageWorkspace
         embedded
-        skipPropertySetup
         planId={planId}
         clientId={clientId}
-        startInSetup={!data.MIX.mixKey && !basketsSaved && !focusMixKey}
         preferredMixIds={preferredMixIds}
         activeMixKey={focusMixKey || data.MIX.mixKey}
         soloMixKey={focusMixKey || undefined}
