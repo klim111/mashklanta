@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { AlertCircle, BadgePercent, Loader2 } from 'lucide-react';
+import { banksWithPreApproval } from '@/lib/mortgage-plan';
 import type { AuctionData, PlanData, SignedMixChoice } from '@/lib/mortgage-plan';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -89,6 +90,9 @@ export function AuctionStage({
   /* התפקיד נקבע לפי מי מטפל בשלב: בליווי — advised, אחרת — self */
   const role: 'advised' | 'self' = advisorRun ? 'advised' : 'self';
 
+  /* הבנקים שנתנו אישור עקרוני בשלב הקודם — רק מהם אפשר לבקש תמחור בפועל */
+  const approvedBanks = banksWithPreApproval(data);
+
   if (!ready) {
     return (
       <div className="flex min-h-[30vh] items-center justify-center">
@@ -125,6 +129,7 @@ export function AuctionStage({
         onSelectForSigning={onSelectForSigning}
         onSavePriced={onSavePriced}
         onRemovePriced={role === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
+        approvedBanks={approvedBanks}
         allowSelfEntry
       />
 

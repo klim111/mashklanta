@@ -116,6 +116,8 @@ interface MortgageWorkspaceProps {
   allowSelectFinal?: boolean;
   finalMixKey?: string | null;
   onSelectFinal?: (item: SavedMix) => void;
+  /** אחרי שהתמהיל הסופי אושר — התהליך ממשיך לשלב הבא */
+  onFinalConfirmed?: () => void;
 }
 
 /** חתימת התמהיל לזיהוי שינויים שלא נשמרו. חותמות הזמן לא נחשבות שינוי. */
@@ -147,6 +149,7 @@ export function MortgageWorkspace({
   allowSelectFinal = false,
   finalMixKey,
   onSelectFinal,
+  onFinalConfirmed,
 }: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
   const { data: session } = useSession();
@@ -817,6 +820,14 @@ export function MortgageWorkspace({
     ];
   }, [state.comparedIds, propertyMixes, mix, saved, finalMixKey]);
 
+  /**
+   * בחירת התמהיל הסופי היא מעבר חד-כיווני: התמהיל ננעל, הוא זה שנשלח לבנקים
+   * לתמחור, והתהליך עובר לשלב הבא. לכן היא עוברת קודם דרך חלון אישור שאומר
+   * בדיוק את זה, ורק "אישור" בו מבצע אותה.
+   */
+  const [finalCandidateId, setFinalCandidateId] = useState<string | null>(null);
+  const [confirmingFinal, setConfirmingFinal] = useState(false);
+
   const selectFinalMix = useCallback(
     async (entryId: string) => {
       if (!planId || !allowSelectFinal) return;
@@ -835,9 +846,36 @@ export function MortgageWorkspace({
       if (!stored.mix || stored.mix.id === mix.id) {
         actions.patchMix({ locked: true });
       }
+      onFinalConfirmed?.();
     },
-    [planId, allowSelectFinal, saved, mix, save, onSelectFinal, actions, refresh]
+    [planId, allowSelectFinal, saved, mix, save, onSelectFinal, actions, refresh, onFinalConfirmed]
   );
+
+  /** התמהיל שעליו נשאלת שאלת האישור — מהשורה שנלחצה, ואחרת זה שבעבודה */
+  const finalCandidate = useMemo(() => {
+    if (!finalCandidateId) return null;
+    if (finalCandidateId === mix.id) return { name: mix.name, summary: result.summary, totalAmount: mix.totalAmount, tracks: mix.tracks.length };
+    const item = saved.find((entry) => entry.mix.id === finalCandidateId);
+    return item
+      ? {
+          name: item.mix.name,
+          summary: item.summary,
+          totalAmount: item.mix.totalAmount,
+          tracks: item.mix.tracks.length,
+        }
+      : null;
+  }, [finalCandidateId, mix, result.summary, saved]);
+
+  const confirmFinalMix = useCallback(async () => {
+    if (!finalCandidateId) return;
+    setConfirmingFinal(true);
+    try {
+      await selectFinalMix(finalCandidateId);
+    } finally {
+      setConfirmingFinal(false);
+      setFinalCandidateId(null);
+    }
+  }, [finalCandidateId, selectFinalMix]);
 
   // עד שמתברר איזה תמהיל נפתח — שמור, טיוטה או תמהיל ראשון חדש — לא מוצג מסך ביניים
   if (phase !== 'ready') {
@@ -990,7 +1028,7 @@ export function MortgageWorkspace({
           disposableIncome={disposableIncome}
           onSaveBankQuote={saveBankQuote}
           onOpenBankQuote={openBankQuote}
-          onSelectAsFinal={allowSelectFinal ? selectFinalMix : undefined}
+          onSelectAsFinal={allowSelectFinal ? setFinalCandidateId : undefined}
           activeActions={
             <>
               <Button
@@ -1193,7 +1231,7 @@ export function MortgageWorkspace({
           entries={comparisonEntries}
           comparedCount={comparedCount}
           allowSelectFinal={allowSelectFinal}
-          onSelectFinal={selectFinalMix}
+          onSelectFinal={setFinalCandidateId}
           focusTrackId={focusTrackId}
           onFocusTrack={setFocusTrackId}
           comparePicker={
@@ -1293,6 +1331,58 @@ export function MortgageWorkspace({
         onClose={() => setRefinanceTarget(null)}
         onConfirm={actions.addRefinance}
       />
+
+      {/* אישור בחירת התמהיל הסופי — מה שקורה אחריו, לפני שהוא קורה */}
+      <Dialog
+        open={finalCandidateId !== null}
+        onOpenChange={(open) => {
+          if (!open && !confirmingFinal) setFinalCandidateId(null);
+        }}
+      >
+        <DialogContent dir="rtl" className="max-w-lg text-right">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-black text-slate-900">
+              לבחור את התמהיל הזה כתמהיל הסופי?
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {finalCandidate && (
+              <div className="rounded-2xl border-2 border-blue-300 bg-blue-50/60 p-3">
+                <p className="text-sm font-black text-blue-950">
+                  {finalCandidate.name || 'תמהיל ללא שם'}
+                </p>
+                <p className="mt-0.5 text-xs font-bold text-blue-800">
+                  {formatShekel(finalCandidate.totalAmount)} · {finalCandidate.tracks} מסלולים ·
+                  החזר חודשי {formatShekel(finalCandidate.summary.monthlyPayment)}
+                </p>
+              </div>
+            )}
+
+            <p className="text-sm leading-relaxed text-slate-700">
+              התמהיל הזה ייבחר כתמהיל הסופי, והוא זה שיישלח לבנקים לצורך תמחור מולם: כל בנק
+              יתמחר בדיוק את המבנה הזה, וכך אפשר יהיה להשוות בין ההצעות שיחזרו.
+            </p>
+            <p className="text-sm leading-relaxed text-slate-700">
+              מרגע האישור התמהיל ננעל לשינויים, והתהליך עובר לשלב הבא. אפשר להמשיך לבנות
+              תמהילים נוספים להשוואה בכל שלב.
+            </p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              disabled={confirmingFinal}
+              onClick={() => setFinalCandidateId(null)}
+            >
+              ביטול
+            </Button>
+            <Button className="min-w-32" disabled={confirmingFinal} onClick={() => void confirmFinalMix()}>
+              {confirmingFinal ? 'רגע…' : 'אישור'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

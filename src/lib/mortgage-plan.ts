@@ -328,6 +328,25 @@ export interface PreApprovalBasket {
 }
 
 /**
+ * בקשה לאישור עקרוני שהוגשה לבנק מסוים.
+ *
+ * הלקוח שמגיש בעצמו פונה לכמה בנקים במקביל — כל אחד מהם נרשם כאן בנפרד, עם
+ * המסמך שהתקבל ממנו. הבנקים שסומנו כאן הם אלה שנפתחים לתמחור בשלב המכרז.
+ */
+export interface BankPreApproval {
+  bank: string;
+  /** נשלחה בקשה לבנק הזה */
+  submittedAt: string | null;
+  /** האישור העקרוני התקבל מהבנק */
+  approved: boolean;
+  approvedAt: string | null;
+  approvedAmount: number | null;
+  /** שם הקובץ של האישור שהועלה לתיק התהליך */
+  documentName: string | null;
+  note: string;
+}
+
+/**
  * שלב 2 — הבקשה לאישור עקרוני. הבקשה מוגשת לבנק אחד, ובסופה הלקוח מזין את
  * הריביות שהבנק נקב לכל אחד משלושת הסלים האחידים.
  */
@@ -342,6 +361,11 @@ export interface PreApprovalData {
   approvedAmount: number | null;
   validUntil: string | null;
   baskets: PreApprovalBasket[];
+  /**
+   * הבקשות לפי בנק, כשהלקוח מגיש בעצמו. השדות `bank` ו-`approved` שמעל נשארים
+   * הבנק המוביל של התהליך, כדי שכל מה שנשען עליהם ימשיך לעבוד כמו קודם.
+   */
+  bankApprovals: BankPreApproval[];
   note: string;
 }
 
@@ -500,6 +524,7 @@ const EMPTY: PlanData = {
     approvedAmount: null,
     validUntil: null,
     baskets: [],
+    bankApprovals: [],
     note: '',
   },
   AUCTION: { mode: null, offers: [], winnerOfferId: null, signedMix: null },
@@ -869,14 +894,44 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         ];
       });
 
+      const approvalRows = Array.isArray(source.bankApprovals) ? source.bankApprovals : [];
+      const bankApprovals: BankPreApproval[] = approvalRows.flatMap((item) => {
+        if (!item || typeof item !== 'object') return [];
+        const row = item as Record<string, unknown>;
+        const bank = pickBank(row.bank);
+        if (!bank) return [];
+        return [
+          {
+            bank,
+            submittedAt: typeof row.submittedAt === 'string' ? row.submittedAt : null,
+            approved: bool(row.approved),
+            approvedAt: typeof row.approvedAt === 'string' ? row.approvedAt : null,
+            approvedAmount: num(row.approvedAmount),
+            documentName: typeof row.documentName === 'string' ? row.documentName : null,
+            note: str(row.note),
+          },
+        ];
+      });
+
+      // הבנק המוביל של התהליך: מה שנשמר, ואחרת הבנק הראשון שאישר בהגשה העצמית
+      const leading =
+        pickBank(source.bank) ??
+        legacy.bank ??
+        bankApprovals.find((row) => row.approved)?.bank ??
+        null;
+
       return {
-        bank: pickBank(source.bank) ?? legacy.bank,
+        bank: leading,
         submittedAt: typeof source.submittedAt === 'string' ? source.submittedAt : null,
         documents: flagMap(source.documents, ALL_PRE_APPROVAL_DOCUMENT_KEYS),
-        approved: source.approved === undefined ? legacy.approved : bool(source.approved),
+        approved:
+          source.approved === undefined
+            ? legacy.approved || bankApprovals.some((row) => row.approved)
+            : bool(source.approved),
         approvedAmount: num(source.approvedAmount),
         validUntil: typeof source.validUntil === 'string' ? source.validUntil : null,
         baskets,
+        bankApprovals,
         note: str(source.note),
       } as PlanStageDataMap[S];
     }
@@ -1245,6 +1300,19 @@ export function preApprovalAmount(data: PlanData): number | null {
 /** האם הפרופיל שלם דיו כדי להגיש בקשה לאישור עקרוני */
 export function profileReadyForPreApproval(data: PlanData): boolean {
   return preApprovalRequirements(data).every((item) => item.ok);
+}
+
+/**
+ * הבנקים שנתנו אישור עקרוני. אלה הבנקים שנפתחים לתמחור בשלב המכרז, כי רק מהם
+ * אפשר לבקש ריביות על התמהיל הסופי.
+ */
+export function banksWithPreApproval(data: PlanData): string[] {
+  const banks = data.APPLICATIONS.bankApprovals
+    .filter((row) => row.approved)
+    .map((row) => row.bank);
+  const leading = data.APPLICATIONS.approved ? data.APPLICATIONS.bank : null;
+  if (leading && !banks.includes(leading)) banks.push(leading);
+  return banks;
 }
 
 export const SIGNING_CHECKS: ReadonlyArray<{ key: string; label: string }> = [

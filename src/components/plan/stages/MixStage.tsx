@@ -52,11 +52,14 @@ export function MixStage({
   planId,
   focusMixKey,
   clientId,
+  onFinalConfirmed,
 }: {
   data: PlanData;
   onChange: (next: MixData) => void;
   planId: string;
   focusMixKey?: string | null;
+  /** אחרי אישור התמהיל הסופי — סגירת השלב ומעבר לשלב האישור העקרוני */
+  onFinalConfirmed?: () => void;
   /**
    * תיק הלקוח, כשהמסך נפתח אצל היועץ. זה ההבדל היחיד בין מה שהיועץ רואה למה
    * שהלקוח רואה: אותו כלי בדיוק, על התמהילים של אותו לקוח.
@@ -129,6 +132,7 @@ export function MixStage({
           persist.current(toMixData(item, notes.current, current.finalLocked && current.mixKey === item.mix.id));
         }}
         onSelectFinal={(item) => persist.current(toMixData(item, notes.current, true))}
+        onFinalConfirmed={onFinalConfirmed}
       />
     </div>
   );

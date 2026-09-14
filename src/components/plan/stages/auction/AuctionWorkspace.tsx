@@ -57,6 +57,8 @@ interface AuctionWorkspaceProps {
    * כמו כל הצעה אחרת, ולכן ההזנה נפתחת בכפתור ולא יושבת פתוחה על המסך.
    */
   allowSelfEntry?: boolean;
+  /** הבנקים שנתנו אישור עקרוני בשלב הקודם — הם שנפתחים לתמחור כברירת מחדל */
+  approvedBanks?: readonly string[];
 }
 
 /**
@@ -79,6 +81,7 @@ export function AuctionWorkspace({
   onBroadcast,
   broadcastIds = [],
   allowSelfEntry = false,
+  approvedBanks = [],
 }: AuctionWorkspaceProps) {
   const [banks, setBanks] = useState<string[]>([]);
   /** ההצעה שפתוחה בדאשבורד. null — הזולה ביותר, שנבחרת אוטומטית */
@@ -182,6 +185,7 @@ export function AuctionWorkspace({
                 mix={finalMix.mix}
                 takenNames={takenNames}
                 offersPerBank={offersPerBank}
+                approvedBanks={approvedBanks}
                 onSave={async (quoted) => {
                   await onSavePriced(quoted);
                   setSelfEntryOpen(false);
@@ -228,12 +232,17 @@ export function AuctionWorkspace({
       {canPrice && onSavePriced && (
         <StagePanel
           title="הזנת הריביות מהבנקים"
-          description="לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת."
+          description={
+            approvedBanks.length > 0
+              ? 'הבנקים שנתנו אישור עקרוני פתוחים כאן לתמחור. לחיצה על שם בנק פותחת את טבלת הריביות שלו, ואחרי השמירה ההצעה מצטרפת לשורת הבנקים שמתחת.'
+              : 'לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת.'
+          }
         >
           <BankPricingRow
             mix={finalMix.mix}
             takenNames={takenNames}
             offersPerBank={offersPerBank}
+            approvedBanks={approvedBanks}
             onSave={onSavePriced}
           />
         </StagePanel>

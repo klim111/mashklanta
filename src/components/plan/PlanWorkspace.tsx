@@ -319,6 +319,16 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     setCompleting(false);
   };
 
+  /**
+   * אישור התמהיל הסופי סוגר את שלב בניית התמהיל וממשיך לאישור העקרוני: זו
+   * המשמעות של הבחירה, ולכן אין טעם להשאיר את המשתמש על המסך שכבר סיים.
+   */
+  const finishMixStage = async () => {
+    await completeStage('MIX');
+    setViewingStage(null);
+    await goToStage('APPLICATIONS');
+  };
+
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
       {/* כותרת התהליך ופס השלבים */}
@@ -545,6 +555,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     planId={plan.id}
                     focusMixKey={focusMixKey}
                     onChange={(next: MixData) => updateStage('MIX', next)}
+                    onFinalConfirmed={() => void finishMixStage()}
                   />
                 )}
                 {showStageFooter && stageFooter}
@@ -554,6 +565,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 {stage === 'APPLICATIONS' && (
                   <PreApprovalStage
                     data={plan.data}
+                    planId={plan.id}
                     onChange={(next: PreApprovalData) => updateStage('APPLICATIONS', next)}
                     onGoToProfile={() => selectStage('ANALYSIS')}
                   />
