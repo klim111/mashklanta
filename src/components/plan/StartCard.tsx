@@ -101,11 +101,13 @@ export function StartCard({
   onStart: () => void;
   busy: boolean;
   hasPlans: boolean;
-  variant?: 'hero' | 'sidebar';
+  variant?: 'hero' | 'sidebar' | 'dialog';
 }) {
   const [foundOpen, setFoundOpen] = useState(false);
   const [leadTopic, setLeadTopic] = useState<LeadTopic | null>(null);
   const hero = variant === 'hero';
+  /** על רקע כהה (המסך הראשון ותפריט הצד) מול רקע בהיר (חלון צף) */
+  const dark = variant !== 'dialog';
 
   const dialog = (
     <AdvisorLeadDialog
@@ -119,12 +121,20 @@ export function StartCard({
 
   const entryBase =
     'group flex w-full items-center justify-between gap-3 rounded-2xl border-2 text-right transition-all';
-  const entryIdle = hero
+  const entryIdle = dark
     ? 'border-white/20 bg-white/10 text-white hover:border-white/45 hover:bg-white/15'
-    : 'border-white/15 bg-white/10 text-white hover:border-white/35 hover:bg-white/15';
-  const entryOpen = 'border-blue-400 bg-blue-500/20 text-white';
-  const entrySize = hero ? 'px-5 py-4' : 'px-3.5 py-3';
-  const titleSize = hero ? 'text-lg' : 'text-[15px]';
+    : 'border-slate-200 bg-white text-slate-900 hover:border-blue-300 hover:bg-blue-50/50';
+  const entryOpen = dark
+    ? 'border-blue-400 bg-blue-500/20 text-white'
+    : 'border-blue-500 bg-blue-50 text-slate-900';
+  const entrySize = variant === 'sidebar' ? 'px-3.5 py-3' : 'px-5 py-4';
+  const titleSize = variant === 'sidebar' ? 'text-[15px]' : 'text-lg';
+  const hintTone = dark ? 'text-white/65' : 'text-slate-500';
+  const optionCard = dark
+    ? 'border-white/15 bg-white/5 hover:border-white/35 hover:bg-white/10'
+    : 'border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-white';
+  const optionTitle = dark ? 'text-white' : 'text-slate-900';
+  const optionHint = dark ? 'text-white/60' : 'text-slate-500';
 
   const entry = (
     <div className="space-y-2.5">
@@ -136,13 +146,17 @@ export function StartCard({
       >
         <span className="min-w-0">
           <span className={`flex items-center gap-2 font-black ${titleSize}`}>
-            <MapPin className={hero ? 'h-5 w-5' : 'h-4 w-4'} />
+            <MapPin className={variant === 'sidebar' ? 'h-4 w-4' : 'h-5 w-5'} />
             מצאתי נכס
           </span>
-          {hero && <span className="mt-0.5 block text-sm text-white/65">יש נכס על השולחן — נתקדם איתו</span>}
+          {variant !== 'sidebar' && (
+            <span className={`mt-0.5 block text-sm ${hintTone}`}>יש נכס על השולחן — נתקדם איתו</span>
+          )}
         </span>
         <ChevronDown
-          className={`h-5 w-5 shrink-0 text-white/70 transition-transform ${foundOpen ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 shrink-0 transition-transform ${foundOpen ? 'rotate-180' : ''} ${
+            dark ? 'text-white/70' : 'text-slate-400'
+          }`}
         />
       </button>
 
@@ -155,7 +169,7 @@ export function StartCard({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className={`grid gap-2.5 ${hero ? 'sm:grid-cols-2' : ''}`}>
+            <div className={`grid gap-2.5 ${variant === 'sidebar' ? '' : 'sm:grid-cols-2'}`}>
               {FOUND_OPTIONS.map((option) => (
                 <button
                   key={option.id}
@@ -165,7 +179,7 @@ export function StartCard({
                     if (option.action === 'start') onStart();
                     else if (option.topic) setLeadTopic(option.topic);
                   }}
-                  className="flex items-center gap-3 rounded-2xl border-2 border-white/15 bg-white/5 p-3.5 text-right transition-all hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/10 disabled:opacity-60"
+                  className={`flex items-center gap-3 rounded-2xl border-2 p-3.5 text-right transition-all hover:-translate-y-0.5 disabled:opacity-60 ${optionCard}`}
                 >
                   <span
                     className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${option.gradient}`}
@@ -181,8 +195,10 @@ export function StartCard({
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[15px] font-black leading-snug text-white">{option.label}</span>
-                    <span className="mt-0.5 block text-[13px] leading-snug text-white/60">{option.hint}</span>
+                    <span className={`block text-[15px] font-black leading-snug ${optionTitle}`}>
+                      {option.label}
+                    </span>
+                    <span className={`mt-0.5 block text-[13px] leading-snug ${optionHint}`}>{option.hint}</span>
                   </span>
                 </button>
               ))}
@@ -194,24 +210,37 @@ export function StartCard({
       <EntryLink
         href="/mortgage-planning?flow=affordability"
         className={`${entryBase} ${entrySize} ${entryIdle}`}
-        icon={<Search className={hero ? 'h-5 w-5' : 'h-4 w-4'} />}
+        icon={<Search className={variant === 'sidebar' ? 'h-4 w-4' : 'h-5 w-5'} />}
         title="מעוניין לבדוק היתכנות רכישת נכס"
-        hint={hero ? 'נחשב לאיזה מחיר נכס אפשר לכוון' : undefined}
+        hint={variant === 'sidebar' ? undefined : 'נחשב לאיזה מחיר נכס אפשר לכוון'}
         titleSize={titleSize}
+        hintTone={hintTone}
+        arrowTone={dark ? 'text-white/70' : 'text-slate-400'}
       />
 
       <EntryLink
         href="/mortgage-refinance"
         className={`${entryBase} ${entrySize} ${entryIdle}`}
-        icon={<RefreshCw className={hero ? 'h-5 w-5' : 'h-4 w-4'} />}
+        icon={<RefreshCw className={variant === 'sidebar' ? 'h-4 w-4' : 'h-5 w-5'} />}
         title="יש לי משכנתא — בדיקת מיחזור"
-        hint={hero ? 'נבדוק אם אפשר לשפר את התנאים הקיימים' : undefined}
+        hint={variant === 'sidebar' ? undefined : 'נבדוק אם אפשר לשפר את התנאים הקיימים'}
         titleSize={titleSize}
+        hintTone={hintTone}
+        arrowTone={dark ? 'text-white/70' : 'text-slate-400'}
       />
     </div>
   );
 
-  if (!hero) {
+  if (variant === 'dialog') {
+    return (
+      <div className="space-y-3">
+        {entry}
+        {dialog}
+      </div>
+    );
+  }
+
+  if (variant === 'sidebar') {
     return (
       <div className="rounded-2xl bg-white/5 p-3">
         <p className="mb-2.5 px-1 text-center text-[13px] font-black text-white/70">
@@ -261,6 +290,8 @@ function EntryLink({
   title,
   hint,
   titleSize,
+  hintTone,
+  arrowTone,
 }: {
   href: string;
   className: string;
@@ -268,6 +299,8 @@ function EntryLink({
   title: string;
   hint?: string;
   titleSize: string;
+  hintTone: string;
+  arrowTone: string;
 }) {
   return (
     <Link href={href} className={className}>
@@ -276,9 +309,9 @@ function EntryLink({
           {icon}
           {title}
         </span>
-        {hint && <span className="mt-0.5 block text-sm text-white/65">{hint}</span>}
+        {hint && <span className={`mt-0.5 block text-sm ${hintTone}`}>{hint}</span>}
       </span>
-      <ArrowLeft className="h-4 w-4 shrink-0 text-white/70 transition-transform group-hover:-translate-x-1" />
+      <ArrowLeft className={`h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-1 ${arrowTone}`} />
     </Link>
   );
 }

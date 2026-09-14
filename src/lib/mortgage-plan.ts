@@ -728,12 +728,13 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
       const dealType =
         targetLtvPercent !== null ? dealTypeForCombinedLtv(targetLtvPercent, dealTypeRaw) : dealTypeRaw;
       const equity = has('equity') ? num(source.equity) : seed.equity;
-      const maxPrice = maxPropertyForEquity(equity, dealType);
-      const propertyValueRaw = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
-      const propertyValue =
-        propertyValueRaw && maxPrice !== null && propertyValueRaw > maxPrice
-          ? maxPrice
-          : propertyValueRaw;
+      /*
+        מחיר הנכס נשאר בדיוק כפי שהוזן. פעם הוא הוגבל כאן לפי ההון העצמי, וכך
+        הזנת הון עצמי שינתה את מחיר הנכס למספר שהלקוח מעולם לא הקליד — ואיתו גם
+        את ההון המינימלי הנדרש, שנגזר ממנו. הון עצמי שאינו מספיק אינו שגיאה
+        בנתון אלא פער שצריך להציג, ומסך הנכס מציג אותו.
+      */
+      const propertyValue = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
       const computedMortgage = requestedMortgage(propertyValue ?? 0, equity, dealType, targetLtvPercent);
       const mortgageAmount =
         (has('mortgageAmount') ? num(source.mortgageAmount) : seed.mortgageAmount) ??

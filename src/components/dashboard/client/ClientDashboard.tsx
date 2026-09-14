@@ -60,8 +60,8 @@ const SECTIONS: SectionMeta[] = [
   },
   {
     id: 'rate-requests',
-    label: 'תמהילים שהוגשו לבנקים',
-    title: 'תמהילים שהוגשו לבנקים',
+    label: 'תמהילים שמורים',
+    title: 'תמהילים שמורים',
     description: 'מכתבי הבקשה ששלחתם, ההצעות שהתקבלו עליהם, וההשוואה ביניהן.',
     icon: Gavel,
   },

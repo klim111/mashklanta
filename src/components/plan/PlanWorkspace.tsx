@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Cloud,
   CloudOff,
+  LayoutDashboard,
   Loader2,
   PartyPopper,
   Pencil,
@@ -41,7 +42,6 @@ import { StageLockedPreview } from './StageLockedPreview';
 import { StageTools } from './StageTools';
 import { formatShekel } from './ui';
 import { AdvisorStageNotes } from './AdvisorStageNotes';
-import { AdvisorHandoffButton } from './advisor/AdvisorHandoffButton';
 import { AdvisorStageSummary } from './advisor/AdvisorStageSummary';
 import { StageGate } from './StageGate';
 import { useAdvisorOrders } from './advisor/useAdvisorOrders';
@@ -466,20 +466,6 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   <p className="text-sm text-slate-500">{action.hint}</p>
                 </div>
 
-                {/*
-                  בכל אחד מחמשת השלבים אפשר להעביר את העבודה ליועץ. הכפתור יושב
-                  בכותרת השלב, כי שם ההחלטה מתקבלת — אחרי שרואים מה השלב דורש.
-                */}
-                {!isPreview && !needsGate && (
-                  <div className="w-full sm:w-auto">
-                    <AdvisorHandoffButton
-                      stage={stage}
-                      taken={advisorRun}
-                      busy={handoffBusy === stage}
-                      onClick={() => void requestFreeHandoff(stage)}
-                    />
-                  </div>
-                )}
               </div>
             </div>
 
@@ -597,6 +583,14 @@ export function PlanWorkspace({ planId }: { planId: string }) {
         </AnimatePresence>
       </main>
 
+      {/* חזרה לדאשבורד — זמינה תמיד, גם אחרי גלילה לתוך השלב */}
+      <Link
+        href="/dashboard"
+        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+      >
+        <LayoutDashboard className="h-5 w-5" />
+        חזרה לדאשבורד
+      </Link>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   Layers,
   Loader2,
   MapPin,
+  Plus,
   Trash2,
 } from 'lucide-react';
 import { planCreatedLabel, planHeadline } from '@/lib/client-agenda';
@@ -26,6 +27,8 @@ import type { PlanView } from './usePlan';
 import { formatDate, formatPercent, formatShekel, NumberField } from './ui';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { bankTone } from './stages/auction/pricedMixes';
+import { NewMortgageDialog } from './NewMortgageDialog';
+import { useStartPlan } from './StartCard';
 import { DeletePlanDialog } from '@/components/dashboard/client/DeletePlanDialog';
 import { PlanPeekDialog } from '@/components/dashboard/client/PlanPeekDialog';
 import type { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
@@ -64,8 +67,10 @@ export function PlansOverview({
   /** הצגת התמהיל של התהליך בשורת הפירוט שבסקירה */
   onShowMix?: (planId: string) => void;
 }) {
-  const { plans, ready, error, remove, patchDeal } = plansState;
+  const { plans, ready, error, remove, patchDeal, start } = plansState;
   const { saved, ready: mixesReady, remove: removeMix } = mixesState;
+  const { startPlan, busy: starting } = useStartPlan(start);
+  const [addOpen, setAddOpen] = useState(false);
 
   const active = plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const completed = plans.filter((plan) => plan.status === 'COMPLETED');
@@ -102,9 +107,9 @@ export function PlansOverview({
 
       <Section
         icon={<Compass className="h-5 w-5 text-blue-600" />}
-        title="משכנתאות בתהליך"
+        title={active.length === 1 ? 'המשכנתא שלי' : 'משכנתאות בתהליך'}
         count={active.length}
-        empty="אין כרגע משכנתא פתוחה. פתחו תהליך חדש מ׳איפה אתם בתהליך׳ בתפריט הצד."
+        empty="אין כרגע משכנתא פתוחה. פתחו תהליך חדש בכפתור שבתחתית העמוד."
       >
         <AnimatePresence initial={false}>{active.map((plan) => cardFor(plan, false))}</AnimatePresence>
       </Section>
@@ -126,6 +131,26 @@ export function PlansOverview({
       >
         <UnassignedMixes mixes={unassigned} onDelete={removeMix} />
       </Section>
+
+      {/* פתיחת תהליך נוסף — מתחת לכל המשכנתאות, מאותה שאלת פתיחה */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-base font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+        >
+          <Plus className="h-5 w-5" />
+          הוסף משכנתא חדשה
+        </button>
+      </div>
+
+      <NewMortgageDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onStart={startPlan}
+        busy={starting}
+        hasPlans={plans.length > 0}
+      />
     </div>
   );
 }

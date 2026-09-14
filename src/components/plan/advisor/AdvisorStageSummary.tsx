@@ -2,7 +2,17 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CalendarClock, ChevronDown, ChevronUp, Clock, MapPin, TrendingDown, TrendingUp, UserCheck } from 'lucide-react';
+import {
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Mail,
+  MapPin,
+  TrendingDown,
+  TrendingUp,
+  UserCheck,
+} from 'lucide-react';
 import type { PlanData, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import { stageSnapshot } from '@/lib/plan-stage-snapshot';
 import {
@@ -64,6 +74,15 @@ export function AdvisorStageSummary({
   const advantages = advantageRows(result, baseline);
   const headline = advantageHeadline(advantages);
 
+  /*
+    מיד אחרי הפנייה עוד אין נתונים בשלב, ומסך של בלוקים ריקים אינו אומר דבר.
+    לכן המספרים מוצגים רק כשהלקוח כבר הספיק להזין משהו — ואז הם יושבים מתחת
+    ל"פרטים נוספים", יחד עם שאר תוכן השלב.
+  */
+  const hasValues = snapshot.items.some(
+    (item) => item.value !== null && item.value !== undefined && item.value !== '—'
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -103,19 +122,21 @@ export function AdvisorStageSummary({
           )}
         </div>
 
-        {meeting && <StageMeetingRow meeting={meeting} />}
+        {meeting ? <StageMeetingRow meeting={meeting} /> : <AwaitingAdvisorRow />}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {snapshot.items.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
-              <div className="text-[11px] font-bold text-slate-500">{item.label}</div>
-              <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">
-                {item.value ?? '—'}
+        {detailsOpen && hasValues && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {snapshot.items.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
+                <div className="text-[13px] font-bold text-slate-500">{item.label}</div>
+                <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">
+                  {item.value ?? '—'}
+                </div>
+                {item.note && <div className="text-[11px] text-slate-400">{item.note}</div>}
               </div>
-              {item.note && <div className="text-[10px] text-slate-400">{item.note}</div>}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {result && advantages.length > 0 && baseline && (
           <div className="mt-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
@@ -136,7 +157,7 @@ export function AdvisorStageSummary({
         )}
 
         <div className="mt-4 flex flex-col items-center gap-2 text-center">
-          <p className="text-xs font-bold text-slate-600">
+          <p className="text-[15px] font-bold text-slate-600">
             {journey.valueHeadline} — {journey.tagline}
           </p>
           <button
@@ -154,6 +175,27 @@ export function AdvisorStageSummary({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+/**
+ * המצב שבין הפנייה לקביעת הפגישה.
+ *
+ * זה מה שהלקוח רואה מיד אחרי "העבירו פנייה ליועץ": מה קורה עכשיו, ואיפה תופיע
+ * הפגישה כשתיקבע. בלי זה המסך נראה כאילו לא קרה דבר.
+ */
+function AwaitingAdvisorRow() {
+  return (
+    <div className="mt-4 rounded-2xl border-2 border-violet-200 bg-violet-50/60 px-4 py-4 text-center">
+      <p className="flex flex-wrap items-center justify-center gap-2 text-base font-black text-violet-900">
+        <Clock className="h-4 w-4" />
+        יועץ משכלנתא עובר על הפנייה שלכם ויקבע לכם פגישת ייעוץ בהקדם
+      </p>
+      <p className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[15px] font-medium leading-relaxed text-slate-600">
+        <Mail className="h-4 w-4 shrink-0" />
+        את פרטי הפגישה תראו במסך הזה ובאזור האישי שלכם במשכלנתא, וגם יישלח אליכם מייל התרעה.
+      </p>
+    </div>
   );
 }
 

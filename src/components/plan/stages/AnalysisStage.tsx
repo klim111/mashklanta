@@ -58,13 +58,7 @@ import {
   formatShekel,
 } from '../ui';
 import { NumericInput } from '@/components/ui/numeric-input';
-import { ProfileSyncDialog } from '@/components/dashboard/ProfileSyncDialog';
-import {
-  divergedProfileKeys,
-  parseClientProfile,
-  pickProfileFromAnalysis,
-} from '@/lib/client-profile';
-import type { ClientProfileFinancials, ProfileAnalysisKey } from '@/lib/client-profile';
+import { pickProfileFromAnalysis } from '@/lib/client-profile';
 import { StageOverview } from './analysis/StageOverview';
 import { ProfileReportPanel } from './analysis/ProfileReportPanel';
 import { IncomeCalculatorDialog } from './analysis/IncomeCalculatorDialog';
@@ -145,57 +139,35 @@ export function AnalysisStage({
   advisorBusy?: boolean;
 }) {
   const profile = data.ANALYSIS;
-  const savedProfile = useRef<ClientProfileFinancials | null>(null);
-  const dismissed = useRef<Set<string>>(new Set());
-  const [pendingKeys, setPendingKeys] = useState<ProfileAnalysisKey[]>([]);
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const profileSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/profile', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body) => {
-        if (!cancelled && body) savedProfile.current = parseClientProfile(body);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  /**
+   * כל הזנה נשמרת אוטומטית — גם בתהליך עצמו וגם בפרופיל של הלקוח.
+   *
+   * הפרופיל הוא אותם נתונים בדיוק (הכנסות, גילים, הון עצמי, הלוואות וצפי), ולכן
+   * אין מה לשאול עליו: מה שהוזן כאן הוא המצב הנכון, והוא נשמר בשקט אחרי הפוגה
+   * קצרה בהקלדה. כך גם משכנתא חדשה תיפתח עם הנתונים המעודכנים.
+   */
   const patch = (next: Partial<AnalysisData>) => {
     const merged = { ...profile, ...next };
     onChange(merged);
-    const stored = savedProfile.current;
-    if (!stored) return;
-    const keys = divergedProfileKeys(profile, merged, stored).filter(
-      (key) => !dismissed.current.has(key)
-    );
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    if (keys.length === 0) return;
-    syncTimer.current = setTimeout(() => setPendingKeys(keys), 900);
-  };
 
-  const acceptProfileSync = async () => {
-    const keys = pendingKeys;
-    setPendingKeys([]);
-    try {
-      await fetch('/api/profile', {
+    if (profileSaveTimer.current) clearTimeout(profileSaveTimer.current);
+    profileSaveTimer.current = setTimeout(() => {
+      void fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pickProfileFromAnalysis({ ...profile })),
-      });
-      savedProfile.current = pickProfileFromAnalysis(profile);
-    } catch {
-      // השינוי במשכנתא כבר נשמר; עדכון ההגדרות ייכשל בשקט
-    }
-    keys.forEach((key) => dismissed.current.add(key));
+        body: JSON.stringify(pickProfileFromAnalysis(merged)),
+      }).catch(() => undefined);
+    }, 900);
   };
 
-  const declineProfileSync = () => {
-    pendingKeys.forEach((key) => dismissed.current.add(key));
-    setPendingKeys([]);
-  };
+  useEffect(
+    () => () => {
+      if (profileSaveTimer.current) clearTimeout(profileSaveTimer.current);
+    },
+    []
+  );
 
   const go = (profileScreen: ProfileScreen) => patch({ profileScreen });
 
@@ -224,11 +196,6 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
-      <ProfileSyncDialog
-        keys={pendingKeys}
-        onAccept={() => void acceptProfileSync()}
-        onDecline={declineProfileSync}
-      />
       {screen !== 'overview' && (
         <ScreenRail
           current={screen}
@@ -596,15 +563,16 @@ function ScreenRail({
   personalDone: boolean;
   onSelect: (screen: ProfileScreen) => void;
 }) {
+  // הסדר כאן הוא סדר התת-שלבים בפועל (PROFILE_SCREENS), ולא סדר אחר
   const items: Array<{ id: ProfileScreen; label: string; unlocked: boolean }> = [
     { id: 'overview', label: 'על השלב', unlocked: true },
-    { id: 'borrowers', label: 'מי לוקח', unlocked: true },
-    { id: 'future', label: 'הכנסות עתידיות', unlocked: personalDone },
     {
       id: 'deal',
       label: intent === 'FEASIBILITY' ? 'היתכנות' : 'הנכס והעסקה',
-      unlocked: personalDone,
+      unlocked: true,
     },
+    { id: 'borrowers', label: 'מי לוקח', unlocked: true },
+    { id: 'future', label: 'הכנסות עתידיות', unlocked: personalDone },
     { id: 'report', label: 'דוח הפרופיל', unlocked: personalDone && Boolean(intent) },
   ];
 

@@ -562,9 +562,17 @@ describe('גזירה מכלי בניית הפרופיל', () => {
     expect(mortgageFromLtvPercent(2_400_000, 60, 'first_home')).toBe(1_440_000);
     expect(mortgageFromLtvPercent(2_400_000, 90, 'first_home')).toBe(1_800_000);
     expect(maxPropertyForEquity(700_000, 'first_home')).toBe(2_800_000);
-    expect(parseStageData('ANALYSIS', { ...profile().ANALYSIS, propertyValue: 3_500_000 }).propertyValue).toBe(
-      2_800_000
-    );
+  });
+
+  it('מחיר הנכס נשמר כפי שהוזן, גם כשההון העצמי אינו מספיק לו', () => {
+    // הון עצמי נמוך הוא פער שמוצג במסך הנכס, ולא סיבה לשנות מחיר שהלקוח הקליד
+    const parsed = parseStageData('ANALYSIS', {
+      ...profile().ANALYSIS,
+      propertyValue: 3_500_000,
+      equity: 700_000,
+    });
+    expect(parsed.propertyValue).toBe(3_500_000);
+    expect(parsed.mortgageAmount).toBe(2_625_000);
   });
 
   it('הלוואות לפי לווה נסכמות להחזר החודשי הקיים', () => {

@@ -18,6 +18,7 @@ import {
   MapPin,
   RefreshCw,
   Search,
+  Trash2,
   UserRound,
   X,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
 import { StartCard, useStartPlan } from '@/components/plan/StartCard';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
+import { DeletePlanDialog } from './DeletePlanDialog';
 import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
 import { TaskItem } from './TaskItem';
@@ -63,6 +65,7 @@ export function OverviewSection({
   const { plansState, mixesState, tasks, events, requests, advisorStages, ready, firstVisit } = data;
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
 
   const active = plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const summaries = active.map((plan) => summarizePlan(plan, advisorStages[plan.id]));
@@ -94,6 +97,7 @@ export function OverviewSection({
     : [];
   const detailMix = detailPlan ? planMixOf(detailPlan, detailMixes) : null;
 
+  const planToDelete = plansState.plans.find((plan) => plan.id === deletePlanId) ?? null;
   const peekPlan = plansState.plans.find((plan) => plan.id === peekPlanId) ?? null;
   const peekMixes = peekPlan
     ? mixesState.saved.filter(
@@ -305,6 +309,7 @@ export function OverviewSection({
                   key={summary.id}
                   summary={summary}
                   onPeek={() => setPeekPlanId(summary.id)}
+                  onDelete={() => setDeletePlanId(summary.id)}
                 />
               ))}
             </div>
@@ -323,6 +328,16 @@ export function OverviewSection({
 
       <AdvisorCta variant="row" />
       {peekDialog}
+      {planToDelete && (
+        <DeletePlanDialog
+          plan={planToDelete}
+          open
+          onOpenChange={(open) => {
+            if (!open) setDeletePlanId(null);
+          }}
+          onDelete={() => plansState.remove(planToDelete.id)}
+        />
+      )}
     </div>
   );
 }
@@ -408,9 +423,11 @@ function CardLink({ onClick, children }: { onClick: () => void; children: ReactN
 function PlanStatusRow({
   summary,
   onPeek,
+  onDelete,
 }: {
   summary: ReturnType<typeof summarizePlan>;
   onPeek: () => void;
+  onDelete: () => void;
 }) {
   const journey = journeyStageFor(summary.currentStage);
   const progress = Math.round((summary.completedStages / summary.stages.length) * 100);
@@ -478,6 +495,15 @@ function PlanStatusRow({
           {summary.advisorStage ? 'היועץ מטפל · הצג פרטים' : 'המשיכו'}
           <ArrowLeft className="h-4 w-4" />
         </Link>
+        <button
+          type="button"
+          onClick={onDelete}
+          title="מחיקת התהליך"
+          aria-label="מחיקת התהליך"
+          className="inline-flex items-center justify-center rounded-xl border-2 border-slate-200 bg-white p-2.5 text-slate-400 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
