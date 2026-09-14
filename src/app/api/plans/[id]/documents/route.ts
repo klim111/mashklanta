@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import {
-  MAX_DOCUMENT_BYTES,
   isAllowedDocumentType,
   listPlanDocuments,
-  uploadPlanDocument,
+  planDocumentFailure,
+  recordPlanDocument,
 } from '@/lib/plan-documents';
 
 interface RouteContext {
@@ -18,14 +18,20 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
-  return NextResponse.json(await listPlanDocuments(userId, id));
+  try {
+    return NextResponse.json(await listPlanDocuments(userId, id));
+  } catch (error) {
+    console.error('[plan-documents] list failed', error);
+    const failure = planDocumentFailure(error);
+    return NextResponse.json({ error: failure.message }, { status: failure.status });
+  }
 }
 
 /**
- * העלאת מסמך.
+ * רישום קובץ שהדפדפן כבר העלה.
  *
- * הקובץ עובר דרך השרת ולא ישירות ל-Blob: כך ההרשאה נבדקת לפני שנכתב משהו,
- * והכתובת של האובייקט אינה מגיעה לדפדפן בשום שלב.
+ * ההעלאה עצמה נעשית ישירות מול האחסון עם טוקן מוגבל, וכאן נשמרת הרשומה
+ * שמקשרת את הקובץ למסמך שהוא ממלא בתיק.
  */
 export async function POST(req: NextRequest, { params }: RouteContext) {
   const session = await getServerAuth();
@@ -33,30 +39,36 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
+  const body = await req.json().catch(() => null);
 
-  const form = await req.formData().catch(() => null);
-  const file = form?.get('file');
-  const key = form?.get('key');
-  const name = form?.get('name');
+  const key = typeof body?.key === 'string' ? body.key : '';
+  const name = typeof body?.name === 'string' ? body.name : '';
+  const fileName = typeof body?.fileName === 'string' ? body.fileName : '';
+  const contentType = typeof body?.contentType === 'string' ? body.contentType : '';
+  const blobPath = typeof body?.blobPath === 'string' ? body.blobPath : '';
+  const size = Number(body?.size);
 
-  if (!(file instanceof File) || typeof key !== 'string' || typeof name !== 'string') {
-    return NextResponse.json({ error: 'נדרש קובץ ומזהה מסמך' }, { status: 400 });
+  if (!key || !name || !fileName || !blobPath || !Number.isFinite(size)) {
+    return NextResponse.json({ error: 'חסרים פרטי המסמך' }, { status: 400 });
   }
-  if (!isAllowedDocumentType(file.type)) {
+  if (!isAllowedDocumentType(contentType)) {
     return NextResponse.json({ error: 'אפשר להעלות PDF או תמונה בלבד' }, { status: 415 });
   }
-  if (file.size > MAX_DOCUMENT_BYTES) {
-    return NextResponse.json({ error: 'הקובץ גדול מדי — עד 15MB' }, { status: 413 });
+
+  try {
+    const document = await recordPlanDocument(userId, id, {
+      key,
+      name,
+      fileName,
+      contentType,
+      size,
+      blobPath,
+    });
+    if (!document) return NextResponse.json({ error: 'ההעלאה נדחתה' }, { status: 403 });
+    return NextResponse.json(document, { status: 201 });
+  } catch (error) {
+    console.error('[plan-documents] record failed', error);
+    const failure = planDocumentFailure(error);
+    return NextResponse.json({ error: failure.message }, { status: failure.status });
   }
-
-  const document = await uploadPlanDocument(userId, id, {
-    key,
-    name,
-    fileName: file.name,
-    contentType: file.type,
-    body: await file.arrayBuffer(),
-  });
-
-  if (!document) return NextResponse.json({ error: 'ההעלאה נדחתה' }, { status: 403 });
-  return NextResponse.json(document, { status: 201 });
 }

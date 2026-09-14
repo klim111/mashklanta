@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 
 /**
@@ -18,9 +19,15 @@ export function usePlanDocuments(planId: string) {
   const refresh = useCallback(async () => {
     try {
       const response = await fetch(`/api/plans/${planId}/documents`, { cache: 'no-store' });
-      if (!response.ok) throw new Error(String(response.status));
-      const body = await response.json();
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        // תקלת הגדרה — טבלה שלא נוצרה או אחסון שלא הוגדר — נאמרת במפורש
+        setError(typeof body?.error === 'string' ? body.error : 'לא הצלחנו לטעון את המסמכים');
+        setDocuments([]);
+        return;
+      }
       setDocuments(Array.isArray(body) ? body : []);
+      setError(null);
     } catch {
       setDocuments([]);
     } finally {
@@ -32,18 +39,35 @@ export function usePlanDocuments(planId: string) {
     void refresh();
   }, [refresh]);
 
-  const upload = useCallback(
+  /**
+   * העלאת קובץ.
+   *
+   * הקובץ עולה ישירות לאחסון עם טוקן שהשרת מנפיק לנתיב אחד בלבד, ולא דרך
+   * הפונקציה עצמה — כך גם קובץ סרוק גדול עובר, בלי להיתקל במגבלת גוף הבקשה.
+   * אחרי שההעלאה הסתיימה נרשמת הרשומה שמקשרת את הקובץ למסמך בתיק.
+   */
+  const uploadDocument = useCallback(
     async (key: string, name: string, file: File) => {
       setBusyKey(key);
       setError(null);
       try {
-        const form = new FormData();
-        form.append('file', file);
-        form.append('key', key);
-        form.append('name', name);
+        const blob = await upload(`plans/${planId}/${key}`, file, {
+          access: 'private',
+          handleUploadUrl: `/api/plans/${planId}/documents/upload`,
+          contentType: file.type,
+        });
+
         const response = await fetch(`/api/plans/${planId}/documents`, {
           method: 'POST',
-          body: form,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key,
+            name,
+            fileName: file.name,
+            contentType: file.type,
+            size: file.size,
+            blobPath: blob.pathname,
+          }),
         });
         if (!response.ok) {
           const body = await response.json().catch(() => null);
@@ -51,6 +75,8 @@ export function usePlanDocuments(planId: string) {
           return;
         }
         await refresh();
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'ההעלאה נכשלה. נסו שוב.');
       } finally {
         setBusyKey(null);
       }
@@ -71,7 +97,7 @@ export function usePlanDocuments(planId: string) {
     [planId, refresh]
   );
 
-  return { documents, ready, error, busyKey, upload, remove, refresh };
+  return { documents, ready, error, busyKey, upload: uploadDocument, remove, refresh };
 }
 
 /** הכתובת המאומתת שממנה נצפה מסמך — תקפה רק למשתמש המחובר */

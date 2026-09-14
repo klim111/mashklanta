@@ -100,38 +100,58 @@ export async function listClientDocuments(
   return rows.map(toView);
 }
 
-export interface UploadInput {
+/** התחילית שכל קובץ של התהליך חייב לשבת תחתיה */
+export function planDocumentPrefix(planId: string): string {
+  return `plans/${planId}/`;
+}
+
+/** האם אחסון הקבצים מוגדר בכלל בסביבה הזו */
+export function blobIsConfigured(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+/**
+ * ההרשאה להעלות לתהליך, ועמה הנתונים שיירשמו אחר כך.
+ *
+ * זו נקודת הבדיקה של העלאת הלקוח: היא רצה לפני שנוצר טוקן ההעלאה, ובלעדיה
+ * לא נכתב כלום.
+ */
+export async function canUploadToPlan(userId: string, planId: string): Promise<boolean> {
+  const plan = await planForViewer(userId, planId);
+  return Boolean(plan && plan.ownerId === userId);
+}
+
+export interface RecordInput {
   key: string;
   name: string;
   fileName: string;
   contentType: string;
-  body: ArrayBuffer;
+  size: number;
+  /** הנתיב שהתקבל מ-Blob אחרי ההעלאה */
+  blobPath: string;
 }
 
 /**
- * העלאת מסמך. מסמך קיים לאותו מפתח מוחלף — גם ברשומה וגם ב-Blob, כדי שלא
- * יישארו קבצים יתומים שאיש כבר לא מגיע אליהם.
+ * רישום קובץ שהועלה.
+ *
+ * הקובץ עצמו כבר יושב ב-Blob — הלקוח העלה אותו ישירות עם טוקן מוגבל — וכאן
+ * נשמרת הרשומה שמקשרת אותו לתהליך. הנתיב נבדק מול התחילית של התהליך, כדי
+ * שאי אפשר יהיה לרשום קובץ של מישהו אחר. מסמך קודם לאותו מפתח מוחלף, וקובצו
+ * נמחק מהאחסון.
  */
-export async function uploadPlanDocument(
+export async function recordPlanDocument(
   userId: string,
   planId: string,
-  input: UploadInput
+  input: RecordInput
 ): Promise<PlanDocumentView | null> {
   const plan = await planForViewer(userId, planId);
-  // רק בעל התהליך מעלה מסמכים — היועץ צופה בהם בלבד
   if (!plan || plan.ownerId !== userId) return null;
+  if (!input.blobPath.startsWith(planDocumentPrefix(planId))) return null;
   if (!isAllowedDocumentType(input.contentType)) return null;
-  if (input.body.byteLength === 0 || input.body.byteLength > MAX_DOCUMENT_BYTES) return null;
 
   const existing = await prisma.planDocument.findUnique({
     where: { planId_key: { planId, key: input.key } },
     select: { id: true, blobPath: true },
-  });
-
-  const blob = await put(`plans/${planId}/${input.key}`, Buffer.from(input.body), {
-    access: 'private',
-    addRandomSuffix: true,
-    contentType: input.contentType,
   });
 
   const data = {
@@ -142,22 +162,53 @@ export async function uploadPlanDocument(
     name: input.name,
     fileName: input.fileName,
     contentType: input.contentType,
-    size: input.body.byteLength,
-    blobPath: blob.pathname,
+    size: Math.max(0, Math.min(input.size, MAX_DOCUMENT_BYTES)),
+    blobPath: input.blobPath,
     uploadedAt: new Date(),
   };
 
   const row = existing
-    ? await prisma.planDocument.update({
-        where: { id: existing.id },
-        data,
-        select: documentSelect,
-      })
+    ? await prisma.planDocument.update({ where: { id: existing.id }, data, select: documentSelect })
     : await prisma.planDocument.create({ data, select: documentSelect });
 
-  if (existing) await del(existing.blobPath).catch(() => undefined);
+  // הקובץ הישן כבר אינו מקושר לדבר — אין טעם להשאיר אותו באחסון
+  if (existing && existing.blobPath !== input.blobPath) {
+    await del(existing.blobPath).catch(() => undefined);
+  }
 
   return toView(row);
+}
+
+/**
+ * תרגום כשל לתשובה שאפשר לפעול לפיה.
+ *
+ * שני הכשלים הצפויים בפריסה חדשה הם טבלה שטרם נוצרה וטוקן אחסון שלא הוגדר,
+ * ושניהם נראים בדפדפן כ-500 סתום. ההודעות כאן אומרות בדיוק מה חסר.
+ */
+export function planDocumentFailure(error: unknown): { status: number; message: string } {
+  const code = (error as { code?: string })?.code;
+  const text = error instanceof Error ? error.message : String(error);
+
+  // P2021 — הטבלה אינה קיימת; P2022 — עמודה חסרה. שניהם: מיגרציה שלא רצה
+  if (code === 'P2021' || code === 'P2022') {
+    return {
+      status: 503,
+      message: 'מסד הנתונים עדיין לא עודכן לתמיכה בתיק המסמכים. יש להריץ prisma migrate deploy.',
+    };
+  }
+
+  if (!blobIsConfigured() || /No token found|BLOB_READ_WRITE_TOKEN/i.test(text)) {
+    return {
+      status: 503,
+      message: 'אחסון הקבצים אינו מוגדר. חסר BLOB_READ_WRITE_TOKEN בסביבה.',
+    };
+  }
+
+  if (/store.*not.*found|suspended/i.test(text)) {
+    return { status: 503, message: 'מאגר הקבצים לא נמצא או מושהה. בדקו את חיבור ה-Blob בפרויקט.' };
+  }
+
+  return { status: 500, message: `ההעלאה נכשלה: ${text}` };
 }
 
 /** הקובץ עצמו, לצפייה — רק למי שרשאי לראות את התהליך */
