@@ -112,7 +112,7 @@ export type ProfileIntent = 'HAS_PROPERTY' | 'FEASIBILITY';
  * יוצא ממנו. השאלה אם כבר נמצא נכס עברה למסך הנכס והעסקה, שם היא נשאלת
  * במקומה. המסך האחרון הוא התוצר — דוח הפרופיל הפיננסי.
  */
-export const PROFILE_SCREENS = ['overview', 'borrowers', 'future', 'deal', 'report'] as const;
+export const PROFILE_SCREENS = ['overview', 'deal', 'borrowers', 'future', 'report'] as const;
 export type ProfileScreen = (typeof PROFILE_SCREENS)[number];
 
 /** הלוואה צרכנית של לווה אחד, כמו בכלי «מה אני יכול להרשות לעצמי» */
