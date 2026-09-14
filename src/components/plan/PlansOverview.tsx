@@ -23,14 +23,14 @@ import {
 } from 'lucide-react';
 import { PLAN_STAGES, stageIndex } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
-import { usePlans } from './usePlan';
+import type { usePlans } from './usePlan';
 import type { PlanView } from './usePlan';
 import { formatDate, formatPercent, formatShekel, NumberField } from './ui';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { AdvisorLeadDialog } from './advisor/AdvisorLeadDialog';
 import type { LeadTopic } from '@/lib/advisor-leads';
 import { bankTone } from './stages/auction/pricedMixes';
-import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
+import type { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 
 type DashTab = 'mortgages' | 'unassigned';
@@ -49,14 +49,27 @@ function mixBelongsToPlan(mix: SavedMix, plan: PlanView): boolean {
   return false;
 }
 
-function isUnassociatedMix(mix: SavedMix): boolean {
+/** תמהיל שנשמר בלי שיוך לנכס — מוצג בלשונית נפרדת עד שמשייכים אותו */
+export function isUnassociatedMix(mix: SavedMix): boolean {
   return !mix.planId && !(mix.mix.propertyAddress ?? '').trim();
 }
 
-export function PlansOverview() {
+/**
+ * אזור המשכנתאות באזור האישי.
+ *
+ * התהליכים והתמהילים מגיעים מהדאשבורד שמעליו ולא נטענים כאן, כדי שהמספרים
+ * בסקירה ובפירוט יהיו אותם מספרים.
+ */
+export function PlansOverview({
+  plansState,
+  mixesState,
+}: {
+  plansState: ReturnType<typeof usePlans>;
+  mixesState: ReturnType<typeof useSavedMixes>;
+}) {
   const router = useRouter();
-  const { plans, ready, error, start, remove, patchDeal } = usePlans();
-  const { saved, ready: mixesReady, remove: removeMix } = useSavedMixes();
+  const { plans, ready, error, start, remove, patchDeal } = plansState;
+  const { saved, ready: mixesReady, remove: removeMix } = mixesState;
   const [starting, setStarting] = useState(false);
   const [tab, setTab] = useState<DashTab>('mortgages');
 
@@ -80,7 +93,7 @@ export function PlansOverview() {
     <div dir="rtl" className="space-y-6">
       <StartCard onStart={startPlan} busy={starting} hasPlans={plans.length > 0} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <TabChip
           active={tab === 'mortgages'}
           onClick={() => setTab('mortgages')}
@@ -111,12 +124,12 @@ export function PlansOverview() {
         <>
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
             <SectionTitle
-              icon={<Compass className="h-4 w-4 text-blue-600" />}
+              icon={<Compass className="h-5 w-5 text-blue-600" />}
               title="משכנתאות בתהליך"
               count={active.length}
             />
             {active.length === 0 ? (
-              <p className="text-sm text-slate-500">אין כרגע משכנתא פתוחה. התחילו תהליך חדש למעלה.</p>
+              <p className="text-center text-[15px] text-slate-500">אין כרגע משכנתא פתוחה. התחילו תהליך חדש למעלה.</p>
             ) : (
               <div className="grid gap-4">
                 <AnimatePresence initial={false}>
@@ -136,12 +149,12 @@ export function PlansOverview() {
 
           <section className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm md:p-6">
             <SectionTitle
-              icon={<BadgeCheck className="h-4 w-4 text-emerald-600" />}
+              icon={<BadgeCheck className="h-5 w-5 text-emerald-600" />}
               title="משכנתאות שלקחתי"
               count={completed.length}
             />
             {completed.length === 0 ? (
-              <p className="text-sm text-emerald-800/70">
+              <p className="text-center text-[15px] text-emerald-800/70">
                 כאן יופיעו משכנתאות שחמשת השלבים בהן הסתיימו.
               </p>
             ) : (
@@ -180,12 +193,12 @@ function TabChip({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all ${
+      className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[15px] font-bold transition-all ${
         active ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-400'
       }`}
     >
       {label}
-      <span className={`rounded-full px-2 py-0.5 text-[11px] ${active ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>
+      <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>
         {count}
       </span>
     </button>
@@ -202,10 +215,10 @@ function SectionTitle({
   count: number;
 }) {
   return (
-    <h2 className="mb-4 flex items-center gap-2 text-base font-black text-slate-900">
+    <h2 className="mb-4 flex items-center justify-center gap-2 text-center text-lg font-black text-slate-900">
       {icon}
       {title}
-      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
         {count}
       </span>
     </h2>

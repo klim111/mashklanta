@@ -13,6 +13,7 @@ export type LeadTopic =
   | 'FOUND_PROPERTY_DONT_KNOW'
   | 'FEASIBILITY'
   | 'EQUITY'
+  | 'FULL_SERVICE'
   | 'OTHER';
 
 const LEAD_TOPICS: readonly LeadTopic[] = [
@@ -20,6 +21,7 @@ const LEAD_TOPICS: readonly LeadTopic[] = [
   'FOUND_PROPERTY_DONT_KNOW',
   'FEASIBILITY',
   'EQUITY',
+  'FULL_SERVICE',
   'OTHER',
 ];
 
@@ -28,6 +30,7 @@ export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
   FOUND_PROPERTY_DONT_KNOW: 'לא יודע/ת מהיכן להתחיל',
   FEASIBILITY: 'בדיקת היתכנות לרכישת נכס',
   EQUITY: 'עזרה בגיוס הון עצמי',
+  FULL_SERVICE: 'ליווי מלא של יועץ משכלנתא',
   OTHER: 'פנייה כללית',
 };
 
