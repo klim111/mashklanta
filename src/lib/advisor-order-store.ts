@@ -161,9 +161,76 @@ export async function payOrder(
   await notifyAdvisor(existing.advisorId, existing.clientId, parseStages(existing.stagesJson), {
     planName: existing.plan?.name ?? 'תהליך משכנתא',
     propertyAddress: existing.plan?.propertyAddress ?? null,
+    paid: true,
   });
 
   return toView(row);
+}
+
+/**
+ * בקשת ליווי חינמית לשלב אחד.
+ *
+ * זו הדרך שבה "תנו ליועץ לעשות לכם את העבודה" עובד בכל השלבים: הבקשה נפתחת
+ * מיד (בלי תשלום), השלב עובר לטיפול היועץ, והיועץ מקבל משימה ופנייה באזור
+ * שלו. התשלום מסודר בהמשך מולו. בקשה קיימת לאותו שלב אינה משוכפלת.
+ */
+export async function requestStageHandoff(
+  userId: string,
+  planId: string,
+  stage: PlanStageId
+): Promise<AdvisorOrder | null> {
+  const plan = await planForUser(userId, planId);
+  if (!plan) return null;
+
+  const existing = await prisma.advisorServiceOrder.findFirst({
+    where: {
+      planId,
+      ownerId: userId,
+      status: { in: ['REQUESTED', 'PAID'] },
+      stagesJson: { array_contains: stage },
+    },
+    select: orderSelect,
+  });
+  if (existing) return toView(existing);
+
+  const row = await prisma.advisorServiceOrder.create({
+    data: {
+      planId,
+      ownerId: userId,
+      advisorId: plan.client?.advisorId ?? null,
+      clientId: plan.clientId,
+      stagesJson: [stage],
+      amount: 0,
+      status: 'REQUESTED',
+    },
+    select: orderSelect,
+  });
+
+  await notifyAdvisor(plan.client?.advisorId ?? null, plan.clientId, [stage], {
+    planName: plan.name,
+    propertyAddress: plan.propertyAddress,
+    paid: false,
+  });
+
+  return toView(row);
+}
+
+/** ביטול בקשת ליווי חינמית לשלב — הלקוח בחר לחזור לעבוד עליו בעצמו */
+export async function cancelStageHandoff(
+  userId: string,
+  planId: string,
+  stage: PlanStageId
+): Promise<boolean> {
+  const result = await prisma.advisorServiceOrder.updateMany({
+    where: {
+      planId,
+      ownerId: userId,
+      status: 'REQUESTED',
+      stagesJson: { array_contains: stage },
+    },
+    data: { status: 'CANCELLED' },
+  });
+  return result.count > 0;
 }
 
 /**
@@ -174,7 +241,7 @@ async function notifyAdvisor(
   advisorId: string | null,
   clientId: string | null,
   stages: PlanStageId[],
-  context: { planName: string; propertyAddress: string | null }
+  context: { planName: string; propertyAddress: string | null; paid: boolean }
 ): Promise<void> {
   if (!advisorId || stages.length === 0) return;
 
@@ -185,7 +252,9 @@ async function notifyAdvisor(
       clientId,
       stage,
       title: `בקשת ליווי חדשה — ${journeyStageFor(stage).title}`,
-      details: `הלקוח ביקש שתבצעו עבורו את השלב בתהליך "${place}". התשלום התקבל.`,
+      details: context.paid
+        ? `הלקוח ביקש שתבצעו עבורו את השלב בתהליך "${place}". התשלום התקבל.`
+        : `הלקוח ביקש שתבצעו עבורו את השלב בתהליך "${place}". בקשה חינמית — קבעו פגישה, התשלום בהמשך.`,
     })),
   });
 }
@@ -206,8 +275,8 @@ export interface AdvisorOrderRequest extends AdvisorOrder {
  */
 export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrderRequest[]> {
   const rows = await prisma.advisorServiceOrder.findMany({
-    where: { advisorId, status: 'PAID' },
-    orderBy: { paidAt: 'desc' },
+    where: { advisorId, status: { in: ['REQUESTED', 'PAID'] } },
+    orderBy: { createdAt: 'desc' },
     select: {
       ...orderSelect,
       clientId: true,

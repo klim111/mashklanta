@@ -58,6 +58,7 @@ model User {
   /**
    * /**
    * /**
+   * /**
    * /** המשימות שהיועץ פתח לעצמו, לכל לקוח ולכל שלב
    */
   advisorTasks    AdvisorTask[]        @relation("AdvisorTasks")
@@ -82,6 +83,7 @@ model User {
   /**
    * /**
    * /**
+   * /**
    * תיקי האישור העקרוני שבהם המשתמש הוא הלווה
    */
   approvalCases    MortgageCase[]   @relation("ApprovalCaseClient")
@@ -98,6 +100,7 @@ model User {
   /**
    * /**
    * /**
+   * /**
    * הזמנות הליווי שהמשתמש ביצע בתהליכי המשכנתא שלו
    */
   advisorOrders       AdvisorServiceOrder[] @relation("AdvisorOrderClient")
@@ -105,6 +108,16 @@ model User {
    * הזמנות הליווי שהמשתמש מטפל בהן כיועץ
    */
   advisorOrdersServed AdvisorServiceOrder[] @relation("AdvisorOrderAdvisor")
+
+  // ─────────────────────── פניות ליווי כלליות ───────────────────────
+  /**
+   * /** פניות שהמשתמש שלח מהאזור האישי (מצאתי נכס / סירוב / גיוס הון וכו')
+   */
+  advisorLeads       AdvisorLead[] @relation("AdvisorLeadClient")
+  /**
+   * פניות שהופנו למשתמש כיועץ
+   */
+  advisorLeadsServed AdvisorLead[] @relation("AdvisorLeadAdvisor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -245,6 +258,7 @@ model Client {
   actions       ClientAction[]
   reminders     Reminder[]
   advisorOrders AdvisorServiceOrder[]
+  advisorLeads  AdvisorLead[]
   plans         MortgagePlan[]
   /**
    * משימות היועץ עבור הלקוח, לפי שלבי כלי תכנון המשכנתא
@@ -563,9 +577,58 @@ model AdvisorServiceOrder {
 }
 
 enum AdvisorOrderStatus {
+  /**
+   * בקשת ליווי חינמית שהלקוח שלח מתוך שלב — היועץ מטפל, התשלום בהמשך
+   */
+  REQUESTED
   PENDING_PAYMENT
   PAID
   CANCELLED
+}
+
+/**
+ * פנייה כללית לליווי מיועץ, שנשלחה מהאזור האישי דרך טופס "אל דאגה — יועצי
+ * משכלנתא כאן כדי לעזור". להבדיל מהזמנת ליווי לשלב, היא אינה קשורה בהכרח
+ * לתהליך פתוח, ומחזיקה את פרטי הקשר ואת נושא הפנייה כדי שהיועץ יחזור ללקוח.
+ */
+model AdvisorLead {
+  id        String  @id @default(cuid())
+  /**
+   * הלקוח ששלח, כשהוא מחובר. פנייה יכולה להישלח גם בלי חשבון
+   */
+  ownerId   String?
+  owner     User?   @relation("AdvisorLeadClient", fields: [ownerId], references: [id], onDelete: SetNull)
+  /**
+   * היועץ שהפנייה שויכה אליו, אם ללקוח כבר יש יועץ
+   */
+  advisorId String?
+  advisor   User?   @relation("AdvisorLeadAdvisor", fields: [advisorId], references: [id], onDelete: SetNull)
+  clientId  String?
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * נושא הפנייה — הכפתור שממנו נפתחה: REJECTED / DONT_KNOW / EQUITY / FEASIBILITY
+   */
+  topic String
+
+  name  String
+  phone String
+  email String
+  notes String?
+
+  status AdvisorLeadStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([advisorId, status])
+  @@index([ownerId])
+}
+
+enum AdvisorLeadStatus {
+  OPEN
+  HANDLED
+  CLOSED
 }
 
 model ClientAction {

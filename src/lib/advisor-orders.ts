@@ -30,7 +30,7 @@ export const ALL_STAGES_PRICE = PLAN_STAGES.reduce(
   0
 );
 
-export type AdvisorOrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
+export type AdvisorOrderStatus = 'REQUESTED' | 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED';
 
 export interface AdvisorOrder {
   id: string;
@@ -102,14 +102,17 @@ export function parseStages(value: unknown): PlanStageId[] {
 }
 
 /**
- * השלבים שיועץ מבצע בפועל — אלה ששולמו.
+ * השלבים שיועץ מטפל בהם בפועל.
  *
- * הזמנה שממתינה לתשלום אינה מעבירה את השלב ליועץ: עד שלא שולם, הלקוח ממשיך
- * לעבוד על השלב בעצמו.
+ * בקשת ליווי חינמית (REQUESTED) מעבירה את השלב ליועץ מיד — התשלום מגיע
+ * בהמשך מול היועץ — וכך גם הזמנה ששולמה (PAID). הזמנה שממתינה לתשלום
+ * (PENDING_PAYMENT) אינה מעבירה עדיין, כי היא רק טיוטה של רכישה שלא הושלמה.
  */
 export function advisorStages(orders: readonly AdvisorOrder[]): PlanStageId[] {
-  const paid = orders.filter((order) => order.status === 'PAID');
-  return PLAN_STAGES.filter((stage) => paid.some((order) => order.stages.includes(stage)));
+  const active = orders.filter(
+    (order) => order.status === 'PAID' || order.status === 'REQUESTED'
+  );
+  return PLAN_STAGES.filter((stage) => active.some((order) => order.stages.includes(stage)));
 }
 
 /** האם השלב מבוצע על ידי יועץ */
