@@ -33,7 +33,7 @@ import { MixesPanel } from './MixesPanel';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { AdvisorSettingsPanel } from './AdvisorSettingsPanel';
 import { TasksPanel } from './TasksPanel';
-import { ServiceRequestsPanel, useAdvisorRequests } from './ServiceRequestsPanel';
+import { ServiceRequestsPanel, useAdvisorLeads, useAdvisorRequests } from './ServiceRequestsPanel';
 import { StageChip } from './ui';
 import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
@@ -87,6 +87,7 @@ export function AdvisorConsole() {
   }, []);
 
   const { requests, ready: requestsReady, refresh: refreshRequests } = useAdvisorRequests();
+  const { leads, ready: leadsReady, refresh: refreshLeads } = useAdvisorLeads();
 
   const { clients, ready, error, addClient, refresh: refreshClients } = useAdvisorClients(true);
   const { overview, refresh: refreshOverview } = useAdvisorOverview(true);
@@ -110,7 +111,7 @@ export function AdvisorConsole() {
   }, [clients, query]);
 
   const refreshAll = async () => {
-    await Promise.all([refreshClients(), refreshOverview(), refreshRequests()]);
+    await Promise.all([refreshClients(), refreshOverview(), refreshRequests(), refreshLeads()]);
   };
 
   const openMeeting = (client: AdvisorClient | null) => {
@@ -308,13 +309,13 @@ export function AdvisorConsole() {
                     <Icon className="h-4 w-4" />
                     {item.label}
                     {/* בקשה חדשה מלקוח צריכה להיראות בלי להיכנס ללשונית */}
-                    {item.id === 'requests' && requests.length > 0 && (
+                    {item.id === 'requests' && requests.length + leads.length > 0 && (
                       <span
                         className={`rounded-full px-1.5 text-[10px] font-black ${
                           active ? 'bg-violet-100 text-violet-700' : 'bg-violet-500 text-white'
                         }`}
                       >
-                        {requests.length}
+                        {requests.length + leads.length}
                       </span>
                     )}
                   </button>
@@ -388,6 +389,8 @@ export function AdvisorConsole() {
             <ServiceRequestsPanel
               requests={requests}
               ready={requestsReady}
+              leads={leads}
+              leadsReady={leadsReady}
               onOpenClient={(clientId) => {
                 setFocusClientId(clientId);
                 setTab('clients');

@@ -10,12 +10,14 @@ import {
   BadgeCheck,
   Building2,
   CalendarCheck,
+  ChevronDown,
   Compass,
+  HeartHandshake,
   Layers,
   Loader2,
   MapPin,
-  Plus,
   RefreshCw,
+  Search,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -25,6 +27,8 @@ import { usePlans } from './usePlan';
 import type { PlanView } from './usePlan';
 import { formatDate, formatPercent, formatShekel, NumberField } from './ui';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { AdvisorLeadDialog } from './advisor/AdvisorLeadDialog';
+import type { LeadTopic } from '@/lib/advisor-leads';
 import { bankTone } from './stages/auction/pricedMixes';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
@@ -208,6 +212,55 @@ function SectionTitle({
   );
 }
 
+type FoundOption = {
+  id: string;
+  label: string;
+  hint: string;
+  action: 'start' | 'lead';
+  topic?: LeadTopic;
+  gradient: string;
+};
+
+const FOUND_OPTIONS: FoundOption[] = [
+  {
+    id: 'start',
+    label: 'נתחיל תהליך לקיחת משכנתא מהתחלה',
+    hint: 'בונים פרופיל, תמהיל ואישור עקרוני — צעד אחר צעד',
+    action: 'start',
+    gradient: 'from-blue-500 to-indigo-600',
+  },
+  {
+    id: 'have-approval',
+    label: 'יש לי כבר אישור עקרוני מבנק אחד לפחות',
+    hint: 'נמשיך מכאן להתמחרות ולבחירת התמהיל הטוב ביותר',
+    action: 'start',
+    gradient: 'from-emerald-500 to-teal-600',
+  },
+  {
+    id: 'rejected',
+    label: 'הבנק סירב לתת לי אישור עקרוני',
+    hint: 'יועץ יבין למה, ויעזור לתקן לפני שמגישים שוב',
+    action: 'lead',
+    topic: 'FOUND_PROPERTY_REJECTED',
+    gradient: 'from-amber-500 to-orange-600',
+  },
+  {
+    id: 'dont-know',
+    label: 'אני לא יודע ממה להתחיל — עזרו לי',
+    hint: 'יועץ ילווה אתכם מהצעד הראשון',
+    action: 'lead',
+    topic: 'FOUND_PROPERTY_DONT_KNOW',
+    gradient: 'from-violet-500 to-purple-600',
+  },
+];
+
+/**
+ * "איפה אתם בתהליך" — נקודת הכניסה לאזור האישי.
+ *
+ * במקום כפתור "התחל תכנון" יחיד, הלקוח אומר קודם איפה הוא עומד. "מצאתי נכס"
+ * פורש ארבע אפשרויות: שתיים שפותחות תהליך, ושתיים שפותחות טופס פנייה ליועץ.
+ * "בדיקת היתכנות" מובילה לכלי בדיקת ההיתכנות.
+ */
 function StartCard({
   onStart,
   busy,
@@ -217,6 +270,9 @@ function StartCard({
   busy: boolean;
   hasPlans: boolean;
 }) {
+  const [foundOpen, setFoundOpen] = useState(false);
+  const [leadTopic, setLeadTopic] = useState<LeadTopic | null>(null);
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 shadow-xl md:p-8">
       <div className="pointer-events-none absolute inset-0">
@@ -224,62 +280,124 @@ function StartCard({
         <div className="absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-violet-600/25 blur-3xl" />
       </div>
 
-      <div className="relative flex flex-wrap items-center justify-between gap-6">
-        <div className="max-w-xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/80 backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" />
-            חמישה שלבים · הכל נשמר בחשבון שלכם
-          </span>
-          <h2 className="mt-3 text-2xl font-black leading-tight text-white md:text-3xl">
-            {hasPlans ? 'מתכננים משכנתא נוספת?' : 'התחילו לתכנן את המשכנתא שלכם'}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/60">
-            דשבורד אחד שמלווה אתכם מהניתוח הפיננסי ועד החתימה בבנק. אפשר להזין פרטי נכס כבר כאן —
-            והם יופיעו כברירת מחדל בשלב המתאים.
-          </p>
+      <div className="relative">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/80 backdrop-blur">
+          <Sparkles className="h-3.5 w-3.5" />
+          משכלנתא מלווה אתכם מהצעד הראשון ועד החתימה
+        </span>
+        <h2 className="mt-3 text-2xl font-black leading-tight text-white md:text-3xl">
+          {hasPlans ? 'מתכננים משכנתא נוספת? איפה אתם בתהליך?' : 'איפה אתם בתהליך?'}
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
+          נתחיל מהמקום שבו אתם נמצאים. בחרו את המצב שמתאים לכם, ונתאים לכם את הצעד הבא.
+        </p>
 
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {PLAN_STAGES.map((stage, index) => {
-              const journey = journeyStageFor(stage);
-              return (
-                <span
-                  key={stage}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/70"
-                >
-                  <span className="text-white/40">{index + 1}</span>
-                  {journey.shortTitle}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* שתי דרכי הכניסה לתהליך: משכנתא חדשה, ומיחזור של משכנתא קיימת */}
-        <div className="flex w-full flex-col gap-2.5 sm:w-auto">
+        {/* שתי נקודות הפתיחה */}
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={onStart}
-            disabled={busy}
-            className="group inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-4 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70"
+            onClick={() => setFoundOpen((v) => !v)}
+            aria-expanded={foundOpen}
+            className={`group flex items-center justify-between gap-3 rounded-2xl border-2 px-5 py-4 text-right transition-all ${
+              foundOpen
+                ? 'border-blue-400 bg-blue-500/15'
+                : 'border-white/20 bg-white/10 hover:border-white/40 hover:bg-white/15'
+            }`}
           >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-            התחל תכנון משכנתא חדשה
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>
+              <span className="flex items-center gap-2 text-base font-black text-white">
+                <MapPin className="h-5 w-5" />
+                מצאתי נכס
+              </span>
+              <span className="mt-0.5 block text-xs text-white/60">יש נכס על השולחן — נתקדם איתו</span>
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 shrink-0 text-white/70 transition-transform ${foundOpen ? 'rotate-180' : ''}`}
+            />
           </button>
 
           <Link
-            href="/mortgage-refinance"
-            className="group inline-flex items-center justify-center gap-2.5 rounded-2xl border border-white/25 bg-white/10 px-7 py-4 text-base font-black text-white transition-all hover:-translate-y-0.5 hover:bg-white/15"
+            href="/mortgage-planning?flow=affordability"
+            className="group flex items-center justify-between gap-3 rounded-2xl border-2 border-white/20 bg-white/10 px-5 py-4 text-right transition-all hover:border-white/40 hover:bg-white/15"
           >
-            <RefreshCw className="h-5 w-5" />
-            מיחזור משכנתא קיימת
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>
+              <span className="flex items-center gap-2 text-base font-black text-white">
+                <Search className="h-5 w-5" />
+                מעוניין לבדוק היתכנות רכישת נכס
+              </span>
+              <span className="mt-0.5 block text-xs text-white/60">נחשב לאיזה מחיר אפשר לכוון</span>
+            </span>
+            <ArrowLeft className="h-4 w-4 shrink-0 text-white/70 transition-transform group-hover:-translate-x-1" />
           </Link>
-          <p className="text-center text-[11px] text-white/50">
-            כלי המיחזור פתוח לחשבון שלכם ללא הגבלה על מספר השינויים
-          </p>
+        </div>
+
+        {/* ארבע האפשרויות שנפרשות מ"מצאתי נכס" */}
+        <AnimatePresence initial={false}>
+          {foundOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 grid gap-2.5 rounded-2xl border border-white/15 bg-white/5 p-3 sm:grid-cols-2">
+                {FOUND_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (option.action === 'start') onStart();
+                      else if (option.topic) setLeadTopic(option.topic);
+                    }}
+                    className="flex flex-col gap-1 rounded-2xl border-2 border-white/15 bg-white/5 p-4 text-right transition-all hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/10 disabled:opacity-60"
+                  >
+                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${option.gradient}`}>
+                      {option.action === 'start' ? (
+                        busy ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <ArrowLeft className="h-4 w-4 text-white" />
+                      ) : (
+                        <HeartHandshake className="h-4 w-4 text-white" />
+                      )}
+                    </span>
+                    <span className="text-sm font-black leading-snug text-white">{option.label}</span>
+                    <span className="text-[11px] leading-snug text-white/55">{option.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {PLAN_STAGES.map((stage, index) => {
+            const journey = journeyStageFor(stage);
+            return (
+              <span
+                key={stage}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/70"
+              >
+                <span className="text-white/40">{index + 1}</span>
+                {journey.shortTitle}
+              </span>
+            );
+          })}
+          <Link
+            href="/mortgage-refinance"
+            className="mr-auto inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs font-black text-white transition-all hover:bg-white/15"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            מיחזור משכנתא קיימת
+          </Link>
         </div>
       </div>
+
+      <AdvisorLeadDialog
+        open={leadTopic !== null}
+        onOpenChange={(next) => {
+          if (!next) setLeadTopic(null);
+        }}
+        topic={leadTopic ?? 'OTHER'}
+      />
     </div>
   );
 }

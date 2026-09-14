@@ -62,6 +62,11 @@ export function stageIndex(stage: PlanStageId): number {
   return index < 0 ? 0 : index;
 }
 
+/** מספר השלב בתהליך (1–5), לפי הסדר בפועל — לא לפי המספר הקבוע בעמוד "איך זה עובד" */
+export function planStageNumber(stage: PlanStageId): number {
+  return stageIndex(stage) + 1;
+}
+
 /** שלבים קודמים שטרם נסגרו — בלי אלה אי אפשר באמת לעבוד בשלב הנוכחי */
 export function unfinishedPrerequisites(
   stage: PlanStageId,
