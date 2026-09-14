@@ -35,10 +35,11 @@ import { parseFormattedNumberInput } from './currency';
  * שהבנק נוקב באישור העקרוני הן הבסיס שממנו נבנים התמהילים. המכרז מגיע אחרי
  * התמהיל — מתמחרים את מה שנבנה, לא רק את הסלים האחידים.
  *
- * המזהים הם ערכי enum בבסיס הנתונים ולכן נשארו כפי שהם: `APPLICATIONS` הוא
- * שלב האישור העקרוני ו-`AUCTION` הוא מכרז הריביות.
+ * הסדר בפועל: פרופיל, בניית תמהיל, אישור עקרוני, מכרז ריביות, חתימה. המזהים
+ * הם ערכי enum בבסיס הנתונים ולכן נשארו כפי שהם: `APPLICATIONS` הוא שלב האישור
+ * העקרוני ו-`AUCTION` הוא מכרז הריביות. סדר ה-enum אינו קובע את סדר התהליך.
  */
-export const PLAN_STAGES = ['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING'] as const;
+export const PLAN_STAGES = ['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING'] as const;
 export type PlanStageId = (typeof PLAN_STAGES)[number];
 
 export type PlanStageStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';

@@ -50,8 +50,8 @@ function profile(): PlanData {
 }
 
 describe('סדר השלבים', () => {
-  it('בניית התמהיל באה אחרי האישור העקרוני ולפני מכרז הריביות', () => {
-    expect(PLAN_STAGES).toEqual(['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING']);
+  it('בניית התמהיל באה לפני האישור העקרוני, ואחריהם מכרז הריביות', () => {
+    expect(PLAN_STAGES).toEqual(['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING']);
   });
 
   it('שלבים קודמים שטרם נסגרו הם אלה שצריך להשלים לפני עבודה בשלב', () => {
@@ -63,7 +63,8 @@ describe('סדר השלבים', () => {
       SIGNING: 'PENDING',
     } as const;
     expect(unfinishedPrerequisites('ANALYSIS', statuses)).toEqual([]);
-    expect(unfinishedPrerequisites('MIX', statuses)).toEqual(['ANALYSIS', 'APPLICATIONS']);
+    expect(unfinishedPrerequisites('MIX', statuses)).toEqual(['ANALYSIS']);
+    expect(unfinishedPrerequisites('APPLICATIONS', statuses)).toEqual(['ANALYSIS', 'MIX']);
   });
 });
 

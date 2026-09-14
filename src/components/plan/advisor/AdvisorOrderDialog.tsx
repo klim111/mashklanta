@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PLAN_STAGES } from '@/lib/mortgage-plan';
+import { PLAN_STAGES, planStageNumber } from '@/lib/mortgage-plan';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import {
@@ -399,7 +399,7 @@ function StageChooser({
 
               <div className="min-w-0">
                 <div className="text-[10px] font-bold text-slate-500">
-                  שלב {journey.number} · {journey.duration}
+                  שלב {planStageNumber(stage)} · {journey.duration}
                 </div>
                 <div className="text-sm font-black text-slate-900">{journey.title}</div>
                 <p className="text-[11px] leading-snug text-slate-600">
@@ -446,7 +446,7 @@ function OrderSummary({ stages, amount }: { stages: PlanStageId[]; amount: numbe
           return (
             <li key={stage} className="flex items-center justify-between gap-2 text-xs">
               <span className="font-bold text-slate-800">
-                שלב {journey.number} · {journey.title}
+                שלב {planStageNumber(stage)} · {journey.title}
               </span>
               <span className="tabular-nums text-slate-600">
                 {formatOrderPrice(ADVISOR_STAGE_PRICE[stage])}
