@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { banksWithPreApproval } from '@/lib/mortgage-plan';
 import type { AuctionData, SignedMixChoice } from '@/lib/mortgage-plan';
 import { usePlan } from '@/components/plan/usePlan';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
@@ -123,6 +124,7 @@ export function AdvisorAuctionPanel({
         onRemovePriced={(mixId) => void remove(mixId)}
         onBroadcast={setBroadcastTarget}
         broadcastIds={broadcastIds}
+        approvedBanks={plan ? banksWithPreApproval(plan.data) : []}
       />
 
       {broadcastTarget && (

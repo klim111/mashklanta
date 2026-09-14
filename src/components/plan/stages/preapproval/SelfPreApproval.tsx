@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   CircleDashed,
@@ -68,39 +68,89 @@ export function SelfPreApproval({
     value.bankApprovals.find((row) => row.bank === bank) ?? null;
 
   /**
-   * עדכון הרשומה של בנק אחד. הבנק המוביל של התהליך והדגל `approved` שמעליו
-   * נגזרים מחדש בכל שינוי, כי עליהם נשענים תנאי סגירת השלב והשלבים שאחריו.
+   * האישור מכל בנק נגזר מהמסמך שבתיק: קובץ שהועלה לאותו בנק הוא האישור ממנו.
+   * מקור אמת אחד — ולכן העלאה שנכשלה פשוט לא מסמנת אישור, ומחיקת הקובץ מסירה
+   * אותו. מה שנשמר בנפרד הוא רק מה שאינו נגזר מהקובץ: שהבקשה הוגשה.
    */
-  const patchBank = (bank: string, patch: Partial<BankPreApproval>) => {
-    const existing = approvalOf(bank);
-    const row: BankPreApproval = {
-      bank,
-      submittedAt: null,
-      approved: false,
-      approvedAt: null,
-      approvedAmount: null,
-      documentName: null,
-      note: '',
-      ...(existing ?? {}),
-      ...patch,
-    };
+  const derived = useMemo<BankPreApproval[]>(
+    () => [
+      ...PRE_APPROVAL_BANKS.flatMap((info) => {
+        const document = byKey.get(preApprovalDocumentKey(info.slug)) ?? null;
+        const existing = value.bankApprovals.find((row) => row.bank === info.bank) ?? null;
+        if (!document && !existing) return [];
+        return [
+          {
+            bank: info.bank,
+            submittedAt: existing?.submittedAt ?? document?.uploadedAt ?? null,
+            approved: Boolean(document),
+            approvedAt: document ? existing?.approvedAt ?? document.uploadedAt : null,
+            approvedAmount: existing?.approvedAmount ?? null,
+            documentName: document?.fileName ?? null,
+            note: existing?.note ?? '',
+          },
+        ];
+      }),
+      // בנק שנרשם במסך היועץ ואינו ברשימה כאן נשאר כפי שהוא, ולא נמחק מכאן
+      ...value.bankApprovals.filter(
+        (row) => !PRE_APPROVAL_BANKS.some((info) => info.bank === row.bank)
+      ),
+    ],
+    [byKey, value.bankApprovals]
+  );
 
-    const bankApprovals = existing
-      ? value.bankApprovals.map((item) => (item.bank === bank ? row : item))
-      : [...value.bankApprovals, row];
-
+  /**
+   * הבנק המוביל של התהליך והדגל `approved` שמעליו נגזרים מהאישורים כאן, כי
+   * עליהם נשענים תנאי סגירת השלב והשלבים שאחריו. כשאין כאן אף אישור, מה
+   * שנקבע במסך היועץ נשאר כפי שהוא.
+   */
+  const withApprovals = (bankApprovals: BankPreApproval[]): PreApprovalData => {
     const leading = bankApprovals.find((item) => item.approved) ?? null;
-    // כשאין כאן אף אישור, מה שנקבע במסך היועץ נשאר כפי שהוא ולא נמחק מכאן
     const ownedHere = value.bankApprovals.some((item) => item.approved);
-
-    onChange({
+    return {
       ...value,
       bankApprovals,
       bank: leading ? leading.bank : ownedHere ? null : value.bank,
       approved: leading ? true : ownedHere ? false : value.approved,
       submittedAt: leading?.submittedAt ?? value.submittedAt,
       approvedAmount: leading?.approvedAmount ?? value.approvedAmount,
-    });
+    };
+  };
+
+  /* יישור הנתונים לתיק המסמכים, פעם אחת לכל שינוי אמיתי */
+  const lastPushed = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    const serialized = JSON.stringify(derived);
+    if (serialized === JSON.stringify(value.bankApprovals) || serialized === lastPushed.current) {
+      return;
+    }
+    lastPushed.current = serialized;
+    onChange(withApprovals(derived));
+    // withApprovals נגזר מ-value, שכבר בתלויות
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, derived, value, onChange]);
+
+  /** סימון שהבקשה הוגשה לבנק — הדבר היחיד כאן שאינו נגזר מהמסמך */
+  const markSubmitted = (bank: string) => {
+    const existing = approvalOf(bank);
+    if (existing?.submittedAt) return;
+
+    const row: BankPreApproval = {
+      bank,
+      approved: false,
+      approvedAt: null,
+      approvedAmount: null,
+      documentName: null,
+      note: '',
+      ...(existing ?? {}),
+      submittedAt: new Date().toISOString(),
+    };
+    const bankApprovals = existing
+      ? value.bankApprovals.map((item) => (item.bank === bank ? row : item))
+      : [...value.bankApprovals, row];
+
+    lastPushed.current = null;
+    onChange(withApprovals(bankApprovals));
   };
 
   const approvedCount = value.bankApprovals.filter((row) => row.approved).length;
@@ -160,24 +210,12 @@ export function SelfPreApproval({
               approval={approvalOf(info.bank)}
               uploaded={byKey.get(preApprovalDocumentKey(info.slug)) ?? null}
               busy={busyKey === preApprovalDocumentKey(info.slug) || !ready}
-              onUpload={async (file) => {
-                const key = preApprovalDocumentKey(info.slug);
-                await upload(key, `אישור עקרוני · ${info.bank}`, file);
-                patchBank(info.bank, {
-                  approved: true,
-                  approvedAt: new Date().toISOString(),
-                  submittedAt: approvalOf(info.bank)?.submittedAt ?? new Date().toISOString(),
-                  documentName: file.name,
-                });
-              }}
-              onRemove={async (documentId) => {
-                await remove(documentId, preApprovalDocumentKey(info.slug));
-                patchBank(info.bank, { approved: false, approvedAt: null, documentName: null });
-              }}
-              onView={setViewing}
-              onMarkSubmitted={() =>
-                patchBank(info.bank, { submittedAt: new Date().toISOString() })
+              onUpload={(file) =>
+                upload(preApprovalDocumentKey(info.slug), `אישור עקרוני · ${info.bank}`, file)
               }
+              onRemove={(documentId) => remove(documentId, preApprovalDocumentKey(info.slug))}
+              onView={setViewing}
+              onMarkSubmitted={() => markSubmitted(info.bank)}
             />
           ))}
         </div>
@@ -209,7 +247,7 @@ function BankCard({
   onMarkSubmitted: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const approved = Boolean(uploaded) || Boolean(approval?.approved);
+  const approved = Boolean(uploaded);
 
   return (
     <section
