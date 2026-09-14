@@ -309,7 +309,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       tone: 'info',
       due: null,
       stage: 'MIX',
-      target: { kind: 'section', section: 'mortgages' },
+      target: { kind: 'section', section: 'rate-requests' },
     });
   }
 

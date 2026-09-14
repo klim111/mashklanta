@@ -537,7 +537,12 @@ export function AnalysisStage({
 
         {screen === 'report' && (
           <motion.div key="report" {...reveal} className="space-y-5">
-            <ProfileReportPanel data={data} planName={planName} />
+            <ProfileReportPanel
+              data={data}
+              planId={planId}
+              planName={planName}
+              onDocumentsMode={(documentsMode) => patch({ documentsMode })}
+            />
             <ScreenFooter
               backLabel={profile.intent === 'FEASIBILITY' ? 'היתכנות' : 'הנכס והעסקה'}
               onBack={() => go('deal')}

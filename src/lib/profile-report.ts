@@ -18,7 +18,7 @@ import {
   preApprovalDocumentGroups,
   requestedMortgage,
 } from './mortgage-plan';
-import type { PlanData } from './mortgage-plan';
+import type { AnalysisData, PlanData } from './mortgage-plan';
 import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 
 /** תוצאת בדיקה בודדת מול מגבלה */
@@ -196,6 +196,9 @@ export function reportRecommendations(data: PlanData): ReportRecommendation[] {
   const profile = data.ANALYSIS;
   const out: ReportRecommendation[] = [];
 
+  const appraisal = appraisalRecommendation(profile);
+  if (appraisal) out.push(appraisal);
+
   const lumpSums = profile.futureLumpSums.filter(
     (item) => (item.amount ?? 0) > 0 && (item.inYears ?? 0) > 0
   );
@@ -218,6 +221,53 @@ export function reportRecommendations(data: PlanData): ReportRecommendation[] {
   }
 
   return out;
+}
+
+/**
+ * כמה מתחת למחיר העסקה השמאות עדיין מספיקה.
+ *
+ * הבנק מממן אחוז מהנמוך מבין מחיר העסקה והשמאות. לכן כשההון העצמי בקושי
+ * מספיק, שמאות נמוכה ממחיר המכר מקטינה את המשכנתא המרבית — ופתאום חסר כסף
+ * לסגירת העסקה. זה המרווח שנשאר, באחוזים ממחיר העסקה.
+ */
+export function appraisalTolerance(profile: AnalysisData): number | null {
+  const price = profile.propertyValue ?? 0;
+  const maxLtv = dealMaxLtv(profile.dealType);
+  if (price <= 0 || maxLtv <= 0) return null;
+
+  const needed = Math.max(0, price - (profile.equity ?? 0));
+  if (needed <= 0) return null;
+
+  // השמאות המינימלית שבה המשכנתא המרבית עדיין מכסה את מה שחסר
+  const minAppraisal = needed / (maxLtv / 100);
+  return ((price - minAppraisal) / price) * 100;
+}
+
+/** מתחת למרווח הזה כדאי לשמאות מוקדמת — לפני החתימה על חוזה המכר */
+const APPRAISAL_TOLERANCE_LIMIT = 10;
+
+/**
+ * שמאות מוקדמת, כשיחס המימון קרוב לתקרה.
+ *
+ * היא עולה כסף פעמיים — לפני העסקה ושוב לבנק — אבל היא זולה בהרבה מהחלופה:
+ * חוזה חתום שאי אפשר לממן, ומולו קנס ביטול או מימון חוץ-בנקאי יקר.
+ */
+function appraisalRecommendation(profile: AnalysisData): ReportRecommendation | null {
+  const tolerance = appraisalTolerance(profile);
+  if (tolerance === null || tolerance > APPRAISAL_TOLERANCE_LIMIT) return null;
+
+  const gap = Math.max(0, Math.round(tolerance * 10) / 10);
+  const maxLtv = dealMaxLtv(profile.dealType);
+
+  return {
+    title: 'יחס המימון קרוב לתקרה — שקלו שמאות מוקדמת לפני חתימת חוזה המכר',
+    body:
+      `המשכנתא המבוקשת מנצלת כמעט את מלוא תקרת המימון (${maxLtv}%), והבנק מממן אחוז מהנמוך מבין ` +
+      `מחיר העסקה והשמאות. לפי הנתונים, שמאות שתהיה נמוכה ביותר מ-${gap}% ממחיר העסקה כבר לא תאפשר ` +
+      `לקבל את הסכום הדרוש. שמאות מוקדמת, לפני החתימה, מייקרת את התהליך — משלמים עליה פעמיים, ` +
+      `כי הבנק ידרוש שמאות משלו — אבל היא מונעת את התרחיש הגרוע: חוזה חתום שהמשכנתא המרבית אינה ` +
+      `מספיקה למימונו, ואז נותרים קנס ביטול חוזה גבוה מאוד או גיוס ההפרש ממימון חוץ-בנקאי יקר.`,
+  };
 }
 
 /** הדוח המלא, מוכן לתצוגה ולהורדה */

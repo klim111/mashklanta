@@ -4,6 +4,8 @@ import React, { useMemo } from 'react';
 import { AlertTriangle, CheckCircle2, Download, HelpCircle, Lightbulb, XCircle } from 'lucide-react';
 import type { PlanData } from '@/lib/mortgage-plan';
 import { buildProfileReport, overallHeadline, DOCUMENT_CONSISTENCY_WARNING } from '@/lib/profile-report';
+import type { DocumentsMode } from '@/lib/mortgage-plan';
+import { DocumentVault } from '@/components/plan/documents/DocumentVault';
 import type { CheckStatus } from '@/lib/profile-report';
 import { printProfileReport } from './reportDocument';
 
@@ -43,10 +45,15 @@ const STATUS_STYLE: Record<CheckStatus, { box: string; text: string; label: stri
  */
 export function ProfileReportPanel({
   data,
+  planId,
   planName,
+  onDocumentsMode,
 }: {
   data: PlanData;
+  /** התהליך שאליו מועלים המסמכים */
+  planId?: string;
   planName?: string;
+  onDocumentsMode?: (mode: DocumentsMode) => void;
 }) {
   const report = useMemo(() => buildProfileReport(data), [data]);
   const verdict = STATUS_STYLE[report.overall];
@@ -108,30 +115,43 @@ export function ProfileReportPanel({
         ))}
       </div>
 
-      <h4 className="mt-7 text-center text-lg font-black text-slate-900">
-        המסמכים שיידרשו לאימות הנתונים
-      </h4>
-      <p className="mx-auto mt-1 max-w-3xl text-center text-sm font-medium leading-relaxed text-slate-600">
-        הבנק אינו מסתמך על מה שהוצהר אלא מאמת אותו מול מסמכים. אלה המסמכים שיידרשו לפי הרכב
-        הלווים ואופן ההעסקה שהוזנו — שלושה חודשים אחורה בכל מסמך שוטף.
-      </p>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {report.documents.map((group) => (
-          <div key={group.title} className="rounded-2xl border-2 border-slate-200 bg-white p-4">
-            <h5 className="text-center text-base font-black text-slate-900">{group.title}</h5>
-            <ul className="mt-2 space-y-1">
-              {group.documents.map((name) => (
-                <li
-                  key={name}
-                  className="flex items-start gap-2 text-sm font-semibold leading-relaxed text-slate-700"
-                >
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
-                  {name}
-                </li>
+      {/*
+        תיק המסמכים הוא חלק מהתוצר: לא רק רשימה, אלא מקום להעלות אליו — או
+        להצהיר שההגשה תיעשה אחרת. בתצוגת הדפדוף בלבד (בלי תהליך) נשארת הרשימה.
+      */}
+      <div className="mt-7">
+        {planId && onDocumentsMode ? (
+          <DocumentVault
+            planId={planId}
+            data={data}
+            mode={data.ANALYSIS.documentsMode}
+            onModeChange={onDocumentsMode}
+          />
+        ) : (
+          <>
+            <h4 className="text-center text-lg font-black text-slate-900">
+              המסמכים שיידרשו לאימות הנתונים
+            </h4>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {report.documents.map((group) => (
+                <div key={group.title} className="rounded-2xl border-2 border-slate-200 bg-white p-4">
+                  <h5 className="text-center text-base font-black text-slate-900">{group.title}</h5>
+                  <ul className="mt-2 space-y-1">
+                    {group.documents.map((name) => (
+                      <li
+                        key={name}
+                        className="flex items-start gap-2 text-sm font-semibold leading-relaxed text-slate-700"
+                      >
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
-          </div>
-        ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mt-5 rounded-3xl border-2 border-amber-300 bg-amber-50/70 p-5">

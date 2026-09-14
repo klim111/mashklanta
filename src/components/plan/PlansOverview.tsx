@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -68,13 +67,12 @@ export function PlansOverview({
   onShowMix?: (planId: string) => void;
 }) {
   const { plans, ready, error, remove, patchDeal, start } = plansState;
-  const { saved, ready: mixesReady, remove: removeMix } = mixesState;
+  const { saved, ready: mixesReady } = mixesState;
   const { startPlan, busy: starting } = useStartPlan(start);
   const [addOpen, setAddOpen] = useState(false);
 
   const active = plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const completed = plans.filter((plan) => plan.status === 'COMPLETED');
-  const unassigned = useMemo(() => saved.filter(isUnassociatedMix), [saved]);
 
   if (!ready || !mixesReady) {
     return (
@@ -114,23 +112,16 @@ export function PlansOverview({
         <AnimatePresence initial={false}>{active.map((plan) => cardFor(plan, false))}</AnimatePresence>
       </Section>
 
-      <Section
-        icon={<BadgeCheck className="h-5 w-5 text-emerald-600" />}
-        title="משכנתאות שלקחתי"
-        count={completed.length}
-        empty="כאן יופיעו משכנתאות שחמשת השלבים בהן הסתיימו."
-      >
-        <AnimatePresence initial={false}>{completed.map((plan) => cardFor(plan, true))}</AnimatePresence>
-      </Section>
-
-      <Section
-        icon={<Layers className="h-5 w-5 text-violet-600" />}
-        title="תמהילים ללא שיוך לנכס"
-        count={unassigned.length}
-        empty="אין תמהילים כלליים. אפשר ליצור אותם בכלי תכנון המשכנתאות."
-      >
-        <UnassignedMixes mixes={unassigned} onDelete={removeMix} />
-      </Section>
+      {/* משכנתאות שהסתיימו — רק כשיש כאלה. אזור ריק קבוע הוא רעש */}
+      {completed.length > 0 && (
+        <Section
+          icon={<BadgeCheck className="h-5 w-5 text-emerald-600" />}
+          title="משכנתאות שלקחתי"
+          count={completed.length}
+        >
+          <AnimatePresence initial={false}>{completed.map((plan) => cardFor(plan, true))}</AnimatePresence>
+        </Section>
+      )}
 
       {/* פתיחת תהליך נוסף — מתחת לכל המשכנתאות, מאותה שאלת פתיחה */}
       <div className="flex justify-center">
@@ -166,7 +157,7 @@ function Section({
   icon: ReactNode;
   title: string;
   count: number;
-  empty: string;
+  empty?: string;
   children: ReactNode;
 }) {
   return (
@@ -178,7 +169,7 @@ function Section({
           {count}
         </span>
       </h2>
-      {count === 0 ? (
+      {count === 0 && empty ? (
         <p className="py-4 text-center text-[15px] text-slate-500">{empty}</p>
       ) : (
         <div className="grid gap-4">{children}</div>
@@ -426,138 +417,6 @@ function MortgageCard({
       />
       <DeletePlanDialog plan={plan} open={deleteOpen} onOpenChange={setDeleteOpen} onDelete={onRemove} />
     </motion.article>
-  );
-}
-
-function UnassignedMixes({
-  mixes,
-  onDelete,
-}: {
-  mixes: SavedMix[];
-  onDelete: (mixId: string) => void;
-}) {
-  const router = useRouter();
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const attach = async (mix: SavedMix, deal: { address: string; value: number | null; amount: number | null }) => {
-    if (!mix.recordId) return;
-    setBusyId(mix.recordId);
-    try {
-      const response = await fetch('/api/plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromMixId: mix.recordId,
-          propertyAddress: deal.address,
-          propertyValue: deal.value,
-          mortgageAmount: deal.amount,
-        }),
-      });
-      if (!response.ok) throw new Error('failed');
-      const plan = await response.json();
-      router.push(`/dashboard/plans/${plan.id}`);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  if (mixes.length === 0) {
-    return (
-      <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center">
-        <p className="text-sm text-slate-500">
-          אין תמהילים כלליים. אפשר ליצור אותם ב{' '}
-          <Link href="/dashboard/mix-planner" className="font-black text-blue-600">
-            כלי תכנון המשכנתאות
-          </Link>
-          .
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-4">
-      {mixes.map((mix) => (
-        <UnassignedMixCard
-          key={mix.mix.id}
-          mix={mix}
-          busy={busyId === mix.recordId}
-          onAttach={(deal) => void attach(mix, deal)}
-          onDelete={() => onDelete(mix.mix.id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function UnassignedMixCard({
-  mix,
-  busy,
-  onAttach,
-  onDelete,
-}: {
-  mix: SavedMix;
-  busy: boolean;
-  onAttach: (deal: { address: string; value: number | null; amount: number | null }) => void;
-  onDelete: () => void;
-}) {
-  const [address, setAddress] = useState('');
-  const [value, setValue] = useState<number | null>(mix.mix.propertyValue ?? null);
-  const [amount, setAmount] = useState<number | null>(mix.mix.totalAmount || null);
-
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-black text-slate-900">{mix.mix.name || 'תמהיל ללא שם'}</h3>
-          <p className="mt-1 text-xs text-slate-500">תמהיל כללי · ממתין לשיוך לנכס</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard/mix-planner?mix=${encodeURIComponent(mix.mix.id)}`}
-            className="text-xs font-black text-blue-600"
-          >
-            פתיחה בכלי התכנון
-          </Link>
-          {/* תמהיל כללי אינו קשור לשום תהליך, ולכן אפשר למחוק אותו מכאן */}
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm('למחוק את התמהיל הזה? הוא אינו משויך לנכס, והמחיקה סופית.')) {
-                onDelete();
-              }
-            }}
-            aria-label="מחיקת התמהיל"
-            title="מחיקת התמהיל"
-            className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <Stat label="סכום" value={formatShekel(mix.mix.totalAmount)} />
-        <Stat label="החזר" value={formatShekel(mix.summary.monthlyPayment)} />
-        <Stat label="ריבית ממוצעת" value={`${mix.summary.averageRate.toFixed(2)}%`} />
-      </div>
-      <div className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-3">
-        <div className="sm:col-span-3">
-          <AddressAutocomplete value={address} onChange={setAddress} placeholder="כתובת הנכס לשיוך" />
-        </div>
-        <NumberField label="עלות הנכס" value={value} onChange={setValue} suffix="₪" />
-        <NumberField label="גובה המשכנתא" value={amount} onChange={setAmount} suffix="₪" />
-        <div className="flex items-end">
-          <button
-            type="button"
-            disabled={busy || !address.trim()}
-            onClick={() => onAttach({ address, value, amount })}
-            className="w-full rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-black text-white disabled:opacity-50"
-          >
-            {busy ? 'משייך…' : 'שייכו לנכס והפכו למשכנתא בתהליך'}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 

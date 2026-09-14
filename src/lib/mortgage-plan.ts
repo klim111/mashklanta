@@ -112,6 +112,21 @@ export type ProfileIntent = 'HAS_PROPERTY' | 'FEASIBILITY';
  * יוצא ממנו. השאלה אם כבר נמצא נכס עברה למסך הנכס והעסקה, שם היא נשאלת
  * במקומה. המסך האחרון הוא התוצר — דוח הפרופיל הפיננסי.
  */
+/**
+ * הדרך שבה הלקוח מטפל בתיק המסמכים.
+ *
+ * העלאה כאן היא ברירת המחדל, אבל אפשר גם לדלג: מי שמגיש לבנק בעצמו, ומי
+ * שמעדיף להעלות בשלב האישור העקרוני, כשהתיק כבר נדרש בפועל.
+ */
+export const DOCUMENTS_MODES = ['UPLOAD', 'SELF_SUBMIT', 'LATER'] as const;
+export type DocumentsMode = (typeof DOCUMENTS_MODES)[number];
+
+export const DOCUMENTS_MODE_LABELS: Record<DocumentsMode, string> = {
+  UPLOAD: 'מעלים את המסמכים כאן',
+  SELF_SUBMIT: 'הגשה עצמאית לבנק',
+  LATER: 'נעלה בשלב האישור העקרוני',
+};
+
 export const PROFILE_SCREENS = ['overview', 'deal', 'borrowers', 'future', 'report'] as const;
 export type ProfileScreen = (typeof PROFILE_SCREENS)[number];
 
@@ -167,6 +182,11 @@ export interface AnalysisData {
   /** תקופת המשכנתא המבוקשת בשנים — נשמרת ברזולוציית חודשים (48–360) */
   years: number;
   futureLumpSums: FutureLumpSum[];
+  /**
+   * איך הלקוח בחר לטפל בתיק המסמכים: להעלות כאן, להגיש בעצמו לבנק, או לדחות
+   * להעלאה בשלב האישור העקרוני.
+   */
+  documentsMode: DocumentsMode | null;
   /** תוספת חודשית צפויה להכנסה הפנויה, ובעוד כמה שנים */
   futureMonthlyIncrease: number | null;
   futureMonthlyIncreaseInYears: number | null;
@@ -250,6 +270,7 @@ export function analysisFromPlanning(
     employmentType: carry?.employmentType ?? null,
     partnerEmploymentType: couple ? carry?.partnerEmploymentType ?? null : null,
     futureLumpSums: carry?.futureLumpSums ?? [],
+    documentsMode: carry?.documentsMode ?? null,
     futureMonthlyIncrease: carry?.futureMonthlyIncrease ?? null,
     futureMonthlyIncreaseInYears: carry?.futureMonthlyIncreaseInYears ?? null,
     expenses: null,
@@ -451,6 +472,7 @@ const EMPTY: PlanData = {
     propertyAddress: '',
     years: DEFAULT_PLAN_YEARS,
     futureLumpSums: [],
+    documentsMode: null,
     futureMonthlyIncrease: null,
     futureMonthlyIncreaseInYears: null,
   },
@@ -667,6 +689,9 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         employmentType: pickEmployment(source.employmentType),
         partnerEmploymentType: pickEmployment(source.partnerEmploymentType),
         futureLumpSums: parseLumpSums(source.futureLumpSums),
+        documentsMode: DOCUMENTS_MODES.includes(source.documentsMode as DocumentsMode)
+          ? (source.documentsMode as DocumentsMode)
+          : undefined,
         futureMonthlyIncrease: num(source.futureMonthlyIncrease),
         futureMonthlyIncreaseInYears: num(source.futureMonthlyIncreaseInYears),
         borrowerLoans: has('borrowerLoans') ? parseProfileLoans(source.borrowerLoans) : undefined,
@@ -918,29 +943,44 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
 export const PLAN_BANKS: readonly string[] = MORTGAGE_BANKS;
 
 /**
- * מסמכי חשבון הבנק: תדפיס עובר ושב, אישור ניהול חשבון, ודוח ריכוז יתרות.
- * בחשבון משותף הם בראש תיק משק הבית; בחשבונות נפרדים — לכל לווה בנפרד.
+ * מסמכי חשבון הבנק — תדפיס עובר ושב ואישור ניהול חשבון.
+ *
+ * בחשבון משותף הם נדרשים פעם אחת לשני בני הזוג; בחשבונות נפרדים — מכל לווה
+ * בנפרד, כי אלה שני חשבונות שונים.
  */
 export const BANK_ACCOUNT_DOCUMENTS: StageDocument[] = [
-  { key: 'bank_statements', name: 'תדפיס עובר ושב ל-3 חודשים אחרונים' },
+  { key: 'bank_statements', name: 'תדפיס עובר ושב ל-3 החודשים האחרונים' },
   { key: 'account_management', name: 'אישור ניהול חשבון' },
-  { key: 'loans_report', name: 'דוח ריכוז יתרות והלוואות' },
+];
+
+/** תעודת זהות — מכל לווה בנפרד, שכיר כעצמאי */
+export const IDENTITY_DOCUMENT: StageDocument = {
+  key: 'id_card',
+  name: 'צילום תעודת זהות + ספח',
+};
+
+/** דוח יתרת הלוואה — נדרש רק מלווה שיש לו הלוואות קיימות */
+export const LOAN_BALANCE_DOCUMENT: StageDocument = {
+  key: 'loans_report',
+  name: 'דוח יתרת הלוואה',
+};
+
+/**
+ * מסמכי הנכס והעסקה.
+ *
+ * הם אינם שייכים לאף לווה אלא לעסקה עצמה, ולכן הם רובריקה נפרדת בתיק.
+ */
+export const PROPERTY_DOCUMENTS: StageDocument[] = [
+  { key: 'sale_contract', name: 'חוזה מכר' },
+  { key: 'appraisal', name: 'אישור שמאות' },
 ];
 
 /**
- * המסמכים שהבנק דורש מכל בקשה, ללא תלות באופן ההעסקה של הלווים ובלי מסמכי
- * חשבון הבנק — אלה מצטרפים לפי חשבון משותף או נפרד. הרשימה נגזרת מקטלוג
- * המסמכים של תהליך הליווי, כדי שהלקוח באזור האישי והיועץ בכרטיס הלקוח יעבדו
- * מול אותה רשימה בדיוק. מסמכי הנכס עצמו אינם נדרשים בשלב הזה.
+ * המסמכים שאינם תלויים בלווה מסוים — מסמכי הנכס והעסקה.
+ *
+ * השם נשמר כי גם תהליך האישור העקרוני נשען עליו.
  */
-export const SHARED_PRE_APPROVAL_DOCUMENTS: StageDocument[] = [
-  ...STAGE_DOCUMENTS.INTAKE,
-  ...STAGE_DOCUMENTS.DOCUMENTS.filter(
-    (doc) =>
-      !['payslips', 'self_employed_tax', 'bank_statements', 'loans_report'].includes(doc.key)
-  ),
-  ...STAGE_DOCUMENTS.BANK_SUBMISSION,
-];
+export const SHARED_PRE_APPROVAL_DOCUMENTS: StageDocument[] = PROPERTY_DOCUMENTS;
 
 /** תחילית מפתח המסמך של כל לווה, כדי ששני בני הזוג יסומנו בנפרד */
 const BORROWER_KEYS = ['b1', 'b2'] as const;
@@ -959,12 +999,16 @@ export function usesSeparateBankAccounts(profile: Pick<AnalysisData, 'household'
  * לפני שינוי אופן ההעסקה לא יימחק בקריאה הבאה מבסיס הנתונים.
  */
 export const ALL_PRE_APPROVAL_DOCUMENT_KEYS: string[] = [
-  ...SHARED_PRE_APPROVAL_DOCUMENTS.map((doc) => doc.key),
+  ...PROPERTY_DOCUMENTS.map((doc) => doc.key),
   ...BANK_ACCOUNT_DOCUMENTS.map((doc) => doc.key),
+  LOAN_BALANCE_DOCUMENT.key,
   ...BORROWER_KEYS.flatMap((borrower) =>
-    [...BANK_ACCOUNT_DOCUMENTS, ...EMPLOYMENT_TYPES.flatMap((type) => EMPLOYMENT_DOCUMENTS[type])].map(
-      (doc) => borrowerDocKey(borrower, doc.key)
-    )
+    [
+      IDENTITY_DOCUMENT,
+      LOAN_BALANCE_DOCUMENT,
+      ...BANK_ACCOUNT_DOCUMENTS,
+      ...EMPLOYMENT_TYPES.flatMap((type) => EMPLOYMENT_DOCUMENTS[type]),
+    ].map((doc) => borrowerDocKey(borrower, doc.key))
   ),
 ];
 
@@ -977,40 +1021,64 @@ export interface DocumentGroup {
 }
 
 /**
- * תיק המסמכים לאישור עקרוני, מחולק לפי לווה.
+ * תיק המסמכים לאישור עקרוני.
  *
- * לכל לווה נדרשים מסמכים אחרים לפי אופן ההעסקה שלו, ולכן זוג שבו אחד שכיר
- * והשני עצמאי מקבל שתי רשימות נפרדות ולא רשימה מאוחדת שאי אפשר לעקוב אחריה.
+ * לכל לווה רשימה משלו: תעודת זהות, המסמך שמוכיח את ההכנסה לפי אופן ההעסקה
+ * שלו — תלושים לשכיר, דוח רווחים לעצמאי — ודוח יתרת הלוואה כשיש לו הלוואות.
+ * מסמכי חשבון הבנק נדרשים פעם אחת בחשבון משותף ומכל לווה בחשבונות נפרדים,
+ * ומסמכי הנכס והעסקה יושבים ברובריקה נפרדת משלהם.
  */
 export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
   const profile = data.ANALYSIS;
   const couple = profile.household === 'COUPLE';
-  const separateAccounts = usesSeparateBankAccounts(profile);
+  const sharedAccount = couple && profile.bankAccountMode !== 'SEPARATE';
 
   const tagged = (borrower: BorrowerKey, docs: StageDocument[]) =>
     docs.map((doc) => ({ ...doc, key: borrowerDocKey(borrower, doc.key) }));
 
-  const personal = (borrower: BorrowerKey, type: EmploymentType | null, title: string) => ({
+  const personal = (
+    borrower: BorrowerKey,
+    type: EmploymentType | null,
+    title: string,
+    loans: ProfileLoan[]
+  ): DocumentGroup => ({
     id: borrower,
     title,
     subtitle: type ? EMPLOYMENT_LABELS[type] : null,
-    documents: [
-      ...(separateAccounts ? tagged(borrower, BANK_ACCOUNT_DOCUMENTS) : []),
-      ...(type ? tagged(borrower, EMPLOYMENT_DOCUMENTS[type]) : []),
-    ],
+    documents: tagged(borrower, [
+      IDENTITY_DOCUMENT,
+      ...(type ? EMPLOYMENT_DOCUMENTS[type] : []),
+      ...(sharedAccount ? [] : BANK_ACCOUNT_DOCUMENTS),
+      ...(sumProfileLoans(loans) > 0 ? [LOAN_BALANCE_DOCUMENT] : []),
+    ]),
   });
 
   return [
+    ...(sharedAccount
+      ? [
+          {
+            id: 'household',
+            title: 'חשבון הבנק המשותף',
+            subtitle: null,
+            documents: BANK_ACCOUNT_DOCUMENTS,
+          },
+        ]
+      : []),
+    personal(
+      'b1',
+      profile.employmentType,
+      couple ? 'מסמכים של לווה 1' : 'המסמכים שלי',
+      profile.borrowerLoans
+    ),
+    ...(couple
+      ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2', profile.partnerLoans)]
+      : []),
     {
-      id: 'shared',
-      title: 'מסמכי משק הבית והעסקה',
+      id: 'property',
+      title: 'הנכס והעסקה',
       subtitle: null,
-      documents: separateAccounts
-        ? SHARED_PRE_APPROVAL_DOCUMENTS
-        : [...BANK_ACCOUNT_DOCUMENTS, ...SHARED_PRE_APPROVAL_DOCUMENTS],
+      documents: PROPERTY_DOCUMENTS,
     },
-    personal('b1', profile.employmentType, couple ? 'מסמכים של לווה 1' : 'מסמכים לפי אופן ההעסקה'),
-    ...(couple ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2')] : []),
   ];
 }
 

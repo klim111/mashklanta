@@ -118,6 +118,10 @@ model User {
    * פניות שהופנו למשתמש כיועץ
    */
   advisorLeadsServed AdvisorLead[] @relation("AdvisorLeadAdvisor")
+  /**
+   * מסמכים תומכים שהמשתמש העלה לתהליכי המשכנתא שלו
+   */
+  planDocuments      PlanDocument[] @relation("PlanDocumentOwner")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -260,6 +264,7 @@ model Client {
   advisorOrders AdvisorServiceOrder[]
   advisorLeads  AdvisorLead[]
   plans         MortgagePlan[]
+  planDocuments PlanDocument[]
   /**
    * משימות היועץ עבור הלקוח, לפי שלבי כלי תכנון המשכנתא
    */
@@ -473,6 +478,7 @@ model MortgagePlan {
   stages        MortgagePlanStage[]
   mixes         MortgageMix[]
   advisorOrders AdvisorServiceOrder[]
+  documents     PlanDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -499,6 +505,46 @@ model MortgagePlanStage {
   updatedAt DateTime @updatedAt
 
   @@unique([planId, stage])
+}
+
+/**
+ * מסמך תומך שהלקוח העלה לתהליך.
+ *
+ * הקובץ עצמו יושב ב-Vercel Blob כאובייקט פרטי, ורק הנתיב אליו נשמר כאן. הנתיב
+ * אינו נמסר לדפדפן: הצפייה עוברת דרך מסלול מאומת שבודק שהמבקש הוא בעל התהליך
+ * או היועץ שמלווה אותו, ורק אז מזרים את הקובץ. כך אין כתובת שניתן לשתף.
+ */
+model PlanDocument {
+  id      String       @id @default(cuid())
+  planId  String
+  plan    MortgagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User         @relation("PlanDocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /**
+   * כרטיס הלקוח אצל היועץ, כשקיים — כך המסמך מופיע בתיק המסמכים שלו
+   */
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * מפתח המסמך מהקטלוג, למשל b1:payslips — מסמך אחד לכל מפתח בתהליך
+   */
+  key  String
+  name String
+
+  fileName    String
+  contentType String
+  size        Int
+  /**
+   * הנתיב ב-Vercel Blob. אינו נחשף לדפדפן לעולם
+   */
+  blobPath String
+
+  uploadedAt DateTime @default(now())
+
+  @@unique([planId, key])
+  @@index([clientId])
+  @@index([ownerId])
 }
 
 /**

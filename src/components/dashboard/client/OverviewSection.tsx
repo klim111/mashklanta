@@ -16,6 +16,7 @@ import {
   ListChecks,
   Loader2,
   MapPin,
+  Plus,
   RefreshCw,
   Search,
   Trash2,
@@ -27,6 +28,7 @@ import { formatDate, formatTime, relativeDayLabel } from '@/lib/advisor-crm';
 import { planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
 import { StartCard, useStartPlan } from '@/components/plan/StartCard';
+import { NewMortgageDialog } from '@/components/plan/NewMortgageDialog';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
@@ -66,6 +68,7 @@ export function OverviewSection({
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const active = plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const summaries = active.map((plan) => summarizePlan(plan, advisorStages[plan.id]));
@@ -314,6 +317,18 @@ export function OverviewSection({
               ))}
             </div>
           )}
+
+          {/* פתיחת תהליך נוסף — מתחת למשכנתא האחרונה */}
+          <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+            >
+              <Plus className="h-5 w-5" />
+              הוסף משכנתא חדשה
+            </button>
+          </div>
         </DashCard>
 
         {calendarCard}
@@ -327,6 +342,13 @@ export function OverviewSection({
       </div>
 
       <AdvisorCta variant="row" />
+      <NewMortgageDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onStart={startPlan}
+        busy={busy}
+        hasPlans={plansState.plans.length > 0}
+      />
       {peekDialog}
       {planToDelete && (
         <DeletePlanDialog

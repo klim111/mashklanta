@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { isDashboardSection } from '@/lib/client-agenda';
 import type { DashboardSection } from '@/lib/client-agenda';
-import { PlansOverview } from '@/components/plan/PlansOverview';
+import { PlansOverview, isUnassociatedMix } from '@/components/plan/PlansOverview';
+import { UnassignedMixesSection } from '@/components/plan/UnassignedMixes';
 import { StartCard, useStartPlan } from '@/components/plan/StartCard';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
@@ -48,7 +49,7 @@ const SECTIONS: SectionMeta[] = [
     id: 'mortgages',
     label: 'המשכנתאות שלי',
     title: 'המשכנתאות שלי',
-    description: 'התהליכים הפתוחים, המשכנתאות שלקחתם ותמהילים שעדיין לא שויכו לנכס.',
+    description: 'כל המשכנתאות שלכם — הפתוחות ואלה שכבר נלקחו — עם מצב חמשת השלבים בכל אחת.',
     icon: Compass,
   },
   {
@@ -62,7 +63,7 @@ const SECTIONS: SectionMeta[] = [
     id: 'rate-requests',
     label: 'תמהילים שמורים',
     title: 'תמהילים שמורים',
-    description: 'מכתבי הבקשה ששלחתם, ההצעות שהתקבלו עליהם, וההשוואה ביניהן.',
+    description: 'מכתבי הבקשה ששלחתם, ההצעות שהתקבלו עליהם, ותמהילים שעדיין לא שויכו לנכס.',
     icon: Gavel,
   },
   {
@@ -311,8 +312,14 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               )}
 
               {section === 'rate-requests' && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-                  <BankRateRequests />
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+                    <BankRateRequests />
+                  </div>
+                  <UnassignedMixesSection
+                    mixes={data.mixesState.saved.filter(isUnassociatedMix)}
+                    onDelete={data.mixesState.remove}
+                  />
                 </div>
               )}
 

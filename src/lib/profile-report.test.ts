@@ -115,12 +115,27 @@ describe('תוכן הדוח', () => {
 });
 
 describe('ההמלצות שנגזרות מהנתונים', () => {
-  it('בלי הכנסות עתידיות אין המלצות', () => {
-    expect(reportRecommendations(profile())).toEqual([]);
+  /** עסקה עם מרווח מימון נוח — כדי לבודד את המלצות ההכנסות העתידיות */
+  const roomy = (overrides: Partial<PlanData['ANALYSIS']> = {}) =>
+    profile({ equity: 1_200_000, ...overrides });
+
+  it('בלי הכנסות עתידיות ועם מרווח מימון נוח אין המלצות', () => {
+    expect(reportRecommendations(roomy())).toEqual([]);
+  });
+
+  it('יחס מימון קרוב לתקרה מוביל להמלצה על שמאות מוקדמת', () => {
+    // 2.4 מיליון עם 700 אלף הון עצמי — 70.8% מימון מול תקרה של 75%
+    const recommendations = reportRecommendations(profile());
+    expect(recommendations).toHaveLength(1);
+    expect(recommendations[0].title).toMatch(/שמאות מוקדמת/);
+    expect(recommendations[0].body).toMatch(/קנס ביטול חוזה|חוץ-בנקאי/);
+
+    // הון עצמי גדול מרחיק מהתקרה, והאזהרה נעלמת
+    expect(reportRecommendations(roomy())).toEqual([]);
   });
 
   it('סכום חד-פעמי צפוי מוביל להמלצה על פירעון מוקדם או בלון', () => {
-    const data = profile();
+    const data = roomy();
     data.ANALYSIS.futureLumpSums = [
       { id: 'l1', label: 'קרן השתלמות', amount: 200_000, inYears: 6 },
     ];
@@ -130,7 +145,7 @@ describe('ההמלצות שנגזרות מהנתונים', () => {
   });
 
   it('צפי לגידול בהכנסה מוביל להמלצה לשקול מחזור', () => {
-    const data = profile();
+    const data = roomy();
     data.ANALYSIS.futureMonthlyIncrease = 2_000;
     data.ANALYSIS.futureMonthlyIncreaseInYears = 4;
     const recommendations = reportRecommendations(data);
@@ -139,14 +154,14 @@ describe('ההמלצות שנגזרות מהנתונים', () => {
   });
 
   it('שני המצבים יחד נותנים שתי המלצות, והן נכנסות לדוח', () => {
-    const data = profile();
+    const data = roomy();
     data.ANALYSIS.futureLumpSums = [{ id: 'l1', label: 'מענק', amount: 120_000, inYears: 3 }];
     data.ANALYSIS.futureMonthlyIncrease = 1_500;
     expect(buildProfileReport(data).recommendations).toHaveLength(2);
   });
 
   it('סכום בלי מועד, או מועד בלי סכום, אינם מייצרים המלצה', () => {
-    const data = profile();
+    const data = roomy();
     data.ANALYSIS.futureLumpSums = [
       { id: 'l1', label: 'ללא מועד', amount: 120_000, inYears: null },
       { id: 'l2', label: 'ללא סכום', amount: null, inYears: 5 },
