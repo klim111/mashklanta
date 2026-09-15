@@ -67,21 +67,27 @@ export function parseFormattedNumberInput(value: string | number | undefined | n
  * הפונקציה משרתת שדות ריבית ואחוזים בלבד (סכומים בשקלים עוברים במסלול השלם),
  * ולכן פסיק יחיד בלי נקודה הוא תמיד עשרוני ולא אלפים.
  */
-export function sanitizeDecimalInput(raw: string): string {
+export function sanitizeDecimalInput(raw: string, options: { allowNegative?: boolean } = {}): string {
   const commas = (raw.match(/,/g) ?? []).length;
   const normalized =
     !raw.includes('.') && commas === 1 ? raw.replace(',', '.') : raw.replace(/,/g, '');
 
+  // סימן מינוס נשמר רק כשהשדה מתיר ערכים שליליים (מרווח מתחת לעוגן, למשל),
+  // ורק בתחילת הקלט — מינוס באמצע המספר הוא הקלדה שגויה
+  const negative = Boolean(options.allowNegative) && normalized.trimStart().startsWith('-');
   const cleaned = normalized.replace(/[^\d.]/g, '');
   const first = cleaned.indexOf('.');
-  if (first === -1) return cleaned;
-  return cleaned.slice(0, first + 1) + cleaned.slice(first + 1).replace(/\./g, '');
+  const digits =
+    first === -1
+      ? cleaned
+      : cleaned.slice(0, first + 1) + cleaned.slice(first + 1).replace(/\./g, '');
+  return negative ? `-${digits}` : digits;
 }
 
 /** מפרסר קלט עשרוני. מחרוזת ריקה או נקודה בלבד → null, לא אפס */
-export function parseDecimalInput(raw: string): number | null {
-  const cleaned = sanitizeDecimalInput(raw);
-  if (cleaned === '' || cleaned === '.') return null;
+export function parseDecimalInput(raw: string, options: { allowNegative?: boolean } = {}): number | null {
+  const cleaned = sanitizeDecimalInput(raw, options);
+  if (cleaned === '' || cleaned === '.' || cleaned === '-' || cleaned === '-.') return null;
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : null;
 }

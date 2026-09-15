@@ -19,6 +19,7 @@ import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
 import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import { formatShekel } from './primitives';
+import { InfoTip, RATE_EXPLANATIONS } from '@/components/ui/info-tip';
 import { TrackCompositionStrip } from '../analysisDashboard';
 import { CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
 import { describePaymentDrop } from './paymentDrop';
@@ -115,6 +116,12 @@ export function MixRow({
     if (!hasPrepay && !staggered) return undefined;
     return computeMix(mix);
   }, [result, mix]);
+
+  /** תמהילים שנשמרו לפני שהריבית המתואמת נוספה לסיכום — מחושבת מהתמהיל עצמו */
+  const irr = useMemo(
+    () => (typeof summary.irr === 'number' ? summary.irr : (resolvedResult ?? computeMix(mix)).summary.irr),
+    [summary.irr, resolvedResult, mix]
+  );
 
   /** משך הסילוקין בפועל לכל מסלול, כדי שהכיתוב יראה קיצור אחרי פרעון מוקדם */
   const trackMonths = useMemo(() => {
@@ -287,8 +294,8 @@ export function MixRow({
           )}
         </div>
 
-        {/* תת-השורה האחידה: ההחזר החודשי, סך הריבית, סך התשלום והריבית הממוצעת */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* תת-השורה האחידה: ההחזר החודשי, סך הריבית, סך התשלום ושני מדדי הריבית */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <RowStat
             icon={<Wallet className="h-3 w-3 text-blue-600" />}
             label="החזר חודשי"
@@ -312,6 +319,13 @@ export function MixRow({
             icon={<Percent className="h-3 w-3 text-amber-600" />}
             label="ריבית ממוצעת"
             value={formatPercentage(summary.averageRate)}
+            info={RATE_EXPLANATIONS.mixAverage}
+          />
+          <RowStat
+            icon={<Percent className="h-3 w-3 text-rose-600" />}
+            label="מתואמת IRR"
+            value={formatPercentage(irr)}
+            info={RATE_EXPLANATIONS.mixIrr}
           />
         </div>
 
@@ -450,12 +464,15 @@ function RowStat({
   label,
   value,
   hint,
+  info,
   emphasized = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
+  /** הסבר קצר שנפתח בלחיצה או במעבר עכבר על סימן המידע */
+  info?: string;
   emphasized?: boolean;
 }) {
   return (
@@ -466,7 +483,8 @@ function RowStat({
       <p className="flex items-center gap-1 text-[10px] leading-none text-slate-500">
         {icon}
         {label}
-        {hint && <Info className="h-2.5 w-2.5 text-slate-400" />}
+        {hint && !info && <Info className="h-2.5 w-2.5 text-slate-400" />}
+        {info && <InfoTip text={info} label={`הסבר על ${label}`} />}
       </p>
       <p
         className={`mt-0.5 font-bold leading-tight ${

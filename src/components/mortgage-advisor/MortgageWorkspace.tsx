@@ -44,6 +44,9 @@ import { formatShekel } from './workspace/primitives';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
+import { checkDealLimits } from './dealGuard';
+import type { DealField } from './dealGuard';
+import type { DealPatch } from './workspace/PropertyHeader';
 import { DEFAULT_CONSTRAINTS, useMortgageWorkspace } from './workspace/useMortgageWorkspace';
 import { createFirstMix } from './workspace/firstMix';
 import type { PropertySetup } from './workspace/firstMix';
@@ -106,6 +109,12 @@ interface MortgageWorkspaceProps {
   onPendingPrepayHandled?: () => void;
   /** כשנשמר או נטען תמהיל — כדי שהתהליך יקבל את פרטי הנכס והסכום */
   onActiveMix?: (item: SavedMix) => void;
+  /**
+   * עריכה תקינה של פרטי העסקה בכותרת הנכס (סכום, עלות, הון עצמי, תקרת החזר,
+   * סוג עסקה, כתובת). נקרא רק אחרי שהבדיקה הרגולטורית עברה — כדי שהתהליך
+   * ישמור את הנתונים ושאר המסכים ימשכו אותם משם.
+   */
+  onDealChange?: (deal: DealChange) => void;
   /** תהליך המשכנתא שאליו משויכות השמירות */
   planId?: string;
   /** הלקוח שהכלי נפתח עליו — כשהוא מוטמע בדף הלקוח אצל היועץ */
@@ -118,6 +127,25 @@ interface MortgageWorkspaceProps {
   onSelectFinal?: (item: SavedMix) => void;
   /** אחרי שהתמהיל הסופי אושר — התהליך ממשיך לשלב הבא */
   onFinalConfirmed?: () => void;
+}
+
+/** פרטי העסקה אחרי עריכה שעברה את הבדיקה הרגולטורית */
+export interface DealChange {
+  propertyValue: number | null;
+  mortgageAmount: number;
+  equity: number | null;
+  dealType: WorkspaceMix['dealType'];
+  propertyAddress: string;
+  maxMonthlyPayment: number | null;
+}
+
+/** שינוי סכום המשכנתא שומר על הרכב התמהיל — כמו ב-setTotalAmount של ה-reducer */
+function rescaleTracks(mix: WorkspaceMix, amount: number): WorkspaceMix['tracks'] {
+  const previous = mix.tracks.reduce((sum, track) => sum + track.amount, 0);
+  if (previous > 0) {
+    return mix.tracks.map((track) => ({ ...track, amount: (track.amount / previous) * amount }));
+  }
+  return mix.tracks.map((track, index) => ({ ...track, amount: index === 0 ? amount : 0 }));
 }
 
 /** חתימת התמהיל לזיהוי שינויים שלא נשמרו. חותמות הזמן לא נחשבות שינוי. */
@@ -143,6 +171,7 @@ export function MortgageWorkspace({
   pendingPrepay,
   onPendingPrepayHandled,
   onActiveMix,
+  onDealChange,
   planId,
   clientId,
   soloMixKey,
@@ -241,6 +270,9 @@ export function MortgageWorkspace({
 
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [flashSave, setFlashSave] = useState(false);
+  /** משוב אחרי "שמור תמהיל": ההודעה נשארת כמה שניות, ההנפשה של כפתור הטעינה פעם אחת */
+  const [saveFeedback, setSaveFeedback] = useState<{ message: string; nudge: boolean } | null>(null);
+  const saveFeedbackTimers = useRef<number[]>([]);
   /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם לפני שהוא נשאר באזור העבודה */
   const [pendingCloneId, setPendingCloneId] = useState<string | null>(null);
   const [savedPickerOpen, setSavedPickerOpen] = useState(false);
@@ -486,6 +518,119 @@ export function MortgageWorkspace({
     setFlashSave(false);
     void save(clone).then((stored) => notifyActive(stored));
   }, [mix, openMix, save, notifyActive]);
+
+  /**
+   * שמירת התמהיל שבעבודה כמו שהוא — כפתור "שמור תמהיל" של הלקוח. אחרי השמירה
+   * מוצגת ההודעה "התמהיל נשמר", וכפתור "טען תמהיל" מודגש פעם אחת כדי להראות
+   * מאיפה טוענים אותו ומשווים אליו.
+   */
+  const saveCurrentMix = useCallback(() => {
+    if (phase !== 'ready' || mix.tracks.length === 0 || mix.locked) return;
+    persistMix(mix);
+    setSavedSignature(signatureOf(mix));
+    setFlashSave(false);
+    saveFeedbackTimers.current.forEach((timer) => window.clearTimeout(timer));
+    setSaveFeedback({ message: 'התמהיל נשמר', nudge: true });
+    saveFeedbackTimers.current = [
+      window.setTimeout(() => setSaveFeedback((current) => (current ? { ...current, nudge: false } : null)), 1600),
+      window.setTimeout(() => setSaveFeedback(null), 6000),
+    ];
+  }, [phase, mix, persistMix]);
+
+  useEffect(
+    () => () => {
+      saveFeedbackTimers.current.forEach((timer) => window.clearTimeout(timer));
+    },
+    []
+  );
+
+  /** הודעת חסימה מעריכת פרטי העסקה שחרגה ממגבלות בנק ישראל */
+  const [dealNotice, setDealNotice] = useState<string | null>(null);
+
+  /**
+   * עריכת פרטי העסקה מכותרת הנכס. כל השדות התלויים נגזרים מהמצב הסופי —
+   * ההון העצמי מעלות הנכס פחות המשכנתא, יחס המימון משניהם, וההחזר החודשי
+   * מהתמהיל אחרי שינוי הסכום — ורק אם אף מגבלה לא נחרגה השינוי נכנס לתמהיל
+   * ונשלח לתהליך לשמירה. עריכה שחורגת נחסמת עם ההסבר ולא נשמרת.
+   */
+  const commitDeal = useCallback(
+    (patch: DealPatch, edited: DealField): boolean => {
+      if (mix.locked) return false;
+      if (edited === 'propertyAddress') {
+        const propertyAddress = patch.propertyAddress?.trim() || undefined;
+        actions.patchMix({ propertyAddress });
+        onDealChange?.({
+          propertyValue: mix.propertyValue ?? null,
+          mortgageAmount: Math.round(mix.totalAmount),
+          equity: mix.propertyValue ? Math.max(0, Math.round(mix.propertyValue - mix.totalAmount)) : null,
+          dealType: dealTypeOf(mix),
+          propertyAddress: propertyAddress ?? '',
+          maxMonthlyPayment: mix.maxMonthlyPayment ?? null,
+        });
+        return true;
+      }
+      const nextTotal = patch.totalAmount ?? mix.totalAmount;
+      const candidate: WorkspaceMix = {
+        ...mix,
+        ...(patch.propertyValue !== undefined
+          ? { propertyValue: patch.propertyValue > 0 ? patch.propertyValue : undefined }
+          : {}),
+        ...(patch.dealType ? { dealType: patch.dealType } : {}),
+        ...(patch.propertyAddress !== undefined
+          ? { propertyAddress: patch.propertyAddress.trim() || undefined }
+          : {}),
+        ...(patch.maxMonthlyPayment !== undefined
+          ? { maxMonthlyPayment: patch.maxMonthlyPayment > 0 ? patch.maxMonthlyPayment : undefined }
+          : {}),
+        totalAmount: nextTotal,
+        tracks: patch.totalAmount !== undefined ? rescaleTracks(mix, nextTotal) : mix.tracks,
+      };
+      const monthlyPayment =
+        patch.totalAmount !== undefined
+          ? computeMix(candidate).summary.monthlyPayment
+          : result.summary.monthlyPayment;
+
+      const violations = checkDealLimits(
+        {
+          propertyValue: candidate.propertyValue ?? 0,
+          totalAmount: nextTotal,
+          dealType: dealTypeOf(candidate),
+          maxMonthlyPayment: candidate.maxMonthlyPayment,
+          monthlyPayment,
+          profileCap,
+        },
+        edited
+      );
+      if (violations.length > 0) {
+        setDealNotice(violations.map((violation) => violation.message).join(' '));
+        return false;
+      }
+      setDealNotice(null);
+
+      const mixPatch: Partial<WorkspaceMix> = {};
+      if (patch.propertyValue !== undefined) mixPatch.propertyValue = candidate.propertyValue;
+      if (patch.dealType) mixPatch.dealType = candidate.dealType;
+      if (patch.propertyAddress !== undefined) mixPatch.propertyAddress = candidate.propertyAddress;
+      if (patch.maxMonthlyPayment !== undefined) mixPatch.maxMonthlyPayment = candidate.maxMonthlyPayment;
+      if (Object.keys(mixPatch).length > 0) actions.patchMix(mixPatch);
+      if (patch.totalAmount !== undefined) actions.setTotalAmount(nextTotal);
+      if (patch.maxMonthlyPayment !== undefined && (candidate.maxMonthlyPayment ?? 0) > 0) {
+        actions.setConstraints({ maxMonthlyPayment: candidate.maxMonthlyPayment });
+      }
+
+      const propertyValue = candidate.propertyValue ?? null;
+      onDealChange?.({
+        propertyValue,
+        mortgageAmount: Math.round(nextTotal),
+        equity: propertyValue && propertyValue > 0 ? Math.max(0, Math.round(propertyValue - nextTotal)) : null,
+        dealType: dealTypeOf(candidate),
+        propertyAddress: candidate.propertyAddress ?? '',
+        maxMonthlyPayment: candidate.maxMonthlyPayment ?? null,
+      });
+      return true;
+    },
+    [mix, result.summary.monthlyPayment, profileCap, actions, onDealChange]
+  );
 
   /**
    * תמהיל חדש נוסף לרשימה ולא מחליף את הקודם, ולכן כל מעבר לתמהיל אחר שומר
@@ -980,8 +1125,9 @@ export function MortgageWorkspace({
           monthlyPayment={result.summary.monthlyPayment}
           mixCount={propertyMixes.length + 1}
           profileMaxMonthlyPayment={profileCap}
-          onPatch={mix.locked ? () => undefined : actions.patchMix}
-          onTotalAmountChange={mix.locked ? () => undefined : actions.setTotalAmount}
+          onCommitDeal={commitDeal}
+          notice={dealNotice}
+          onDismissNotice={() => setDealNotice(null)}
         />
 
         {/* שינוי שנחסם בגלל חריגה מתקרת ההחזר. נדבק לראש המסך כדי שההודעה תיראה
@@ -1023,6 +1169,9 @@ export function MortgageWorkspace({
           saveDirty={dirty && !buildingNewMix}
           flashSave={flashSave}
           onSaveAsNew={saveAsNewMix}
+          onSaveCurrent={isAdvisor ? undefined : saveCurrentMix}
+          savedCount={propertySavedMixes.length}
+          saveFeedback={saveFeedback}
           uniformMixIds={preferredMixIds}
           nameNotice={nameNotice}
           disposableIncome={disposableIncome}

@@ -2,8 +2,9 @@
 
 import { useMemo, useRef } from 'react';
 import { analyzeProfile, requestedMortgage } from '@/lib/mortgage-plan';
-import type { MixData, PlanData } from '@/lib/mortgage-plan';
+import type { AnalysisData, MixData, PlanData } from '@/lib/mortgage-plan';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
+import type { DealChange } from '@/components/mortgage-advisor/MortgageWorkspace';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import type { PrepaymentEvent } from '@/components/mortgage-advisor/engine';
 
@@ -49,6 +50,7 @@ function plannedPrepayments(data: PlanData): PrepaymentEvent[] {
 export function MixStage({
   data,
   onChange,
+  onAnalysisChange,
   planId,
   focusMixKey,
   clientId,
@@ -56,6 +58,11 @@ export function MixStage({
 }: {
   data: PlanData;
   onChange: (next: MixData) => void;
+  /**
+   * עדכון הפרופיל כשפרטי העסקה נערכו בכלי התמהילים ועברו את הבדיקה
+   * הרגולטורית — כדי שהתהליך ישמור אותם ושאר המסכים ימשכו אותם משם.
+   */
+  onAnalysisChange?: (next: AnalysisData) => void;
   planId: string;
   focusMixKey?: string | null;
   /** אחרי אישור התמהיל הסופי — סגירת השלב ומעבר לשלב האישור העקרוני */
@@ -75,6 +82,44 @@ export function MixStage({
   notes.current = data.MIX.notes;
   const mixState = useRef(data.MIX);
   mixState.current = data.MIX;
+  const analysisState = useRef(data.ANALYSIS);
+  analysisState.current = data.ANALYSIS;
+  const persistAnalysis = useRef(onAnalysisChange);
+  persistAnalysis.current = onAnalysisChange;
+
+  /**
+   * עריכה תקינה של פרטי העסקה בכלי נכתבת לפרופיל (שלב 1) ולסיכום התמהיל
+   * (שלב 2), ומשם נמשכת לכרטיס התהליך, לדוח ולשאר המסכים. ההון העצמי הוא
+   * ההפרש בין עלות הנכס למשכנתא; אחוז המימון שנבחר בפרופיל, אם נבחר, מתעדכן
+   * לאחוז בפועל כדי שלא ידרוס את הסכום שנערך.
+   */
+  const applyDealChange = (deal: DealChange) => {
+    const current = analysisState.current;
+    const propertyValue = deal.propertyValue && deal.propertyValue > 0 ? deal.propertyValue : null;
+    const actualLtv =
+      propertyValue && deal.mortgageAmount > 0
+        ? Math.round((deal.mortgageAmount / propertyValue) * 1000) / 10
+        : null;
+    persistAnalysis.current?.({
+      ...current,
+      propertyValue,
+      mortgageAmount: deal.mortgageAmount > 0 ? deal.mortgageAmount : null,
+      equity: deal.equity ?? current.equity,
+      dealType: deal.dealType ?? current.dealType,
+      propertyAddress: deal.propertyAddress,
+      targetLtvPercent: current.targetLtvPercent !== null ? actualLtv : null,
+    });
+
+    const mixData = mixState.current;
+    if (mixData.mixKey) {
+      persist.current({
+        ...mixData,
+        totalAmount: deal.mortgageAmount,
+        propertyValue,
+        propertyAddress: deal.propertyAddress,
+      });
+    }
+  };
 
 
   /**
@@ -133,6 +178,7 @@ export function MixStage({
         }}
         onSelectFinal={(item) => persist.current(toMixData(item, notes.current, true))}
         onFinalConfirmed={onFinalConfirmed}
+        onDealChange={onAnalysisChange ? applyDealChange : undefined}
       />
     </div>
   );

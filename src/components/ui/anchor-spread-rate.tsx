@@ -26,9 +26,9 @@ export interface AnchorSpreadRateProps {
   /** תווית לשדה הריבית הסופית */
   rateLabel?: string;
   /**
-   * תצוגה לשורה: בלי פסקת ההסבר שמתחת ובלי תוויות המשנה. ההסבר ומקור הנתון
-   * עוברים ל-`title` של תיבת העוגן, כדי שהם יישארו זמינים בלי להוסיף שתי
-   * שורות טקסט לכל מסלול.
+   * תצוגה לשורה: בלי פסקת ההסבר שמתחת, עם כותרות קטנות מעל השדות. ההסבר
+   * ומקור הנתון עוברים ל-`title` של תיבת העוגן, כדי שהם יישארו זמינים בלי
+   * להוסיף שורת טקסט לכל מסלול.
    */
   compact?: boolean;
   disabled?: boolean;
@@ -92,16 +92,24 @@ export function AnchorSpreadRate({
       ? `${anchor.label} · נמשך מבנק ישראל${anchor.asOf ? ` · ${anchor.asOf}` : ''}`
       : `${anchor.label} · לא נמשך מבנק ישראל — ערך נפילה`;
 
+  /*
+    לכל שדה כותרת משלו, ממורכזת מעליו — "עוגן", "מרווח", "ריבית" — במקום
+    כותרת אחת משותפת עם הנוסחה. בתצוגת השורה הכותרות קטנות כמו של שאר השדות
+    בשורת המסלול, כדי שהשדות יישארו מיושרים לגובה השכנים.
+  */
+  const labelClass = compact
+    ? 'mb-0.5 block truncate text-center text-[9px] font-medium leading-none text-slate-500'
+    : 'flex items-center justify-center gap-1 text-center text-[11px] font-medium text-slate-600';
+  const operatorClass = `h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`;
+
   return (
     <div className={`${compact ? '' : 'space-y-1.5'} ${className}`}>
       <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-end gap-1">
-        <label className={compact ? '' : 'space-y-1'} title={compact ? sourceNote : undefined}>
-          {!compact && (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-slate-600">
-              <Landmark className="h-3 w-3 text-blue-600" />
-              עוגן %
-            </span>
-          )}
+        <label className="min-w-0" title={sourceNote}>
+          <span className={labelClass}>
+            {!compact && <Landmark className="h-3 w-3 text-blue-600" />}
+            עוגן
+          </span>
           <input
             readOnly
             dir="ltr"
@@ -111,37 +119,34 @@ export function AnchorSpreadRate({
           />
         </label>
 
-        <Plus
-          className={`h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`}
-          aria-hidden
-        />
+        <Plus className={operatorClass} aria-hidden />
 
-        <label className={compact ? '' : 'space-y-1'}>
-          {!compact && <span className="text-[11px] font-medium text-slate-600">מרווח %</span>}
+        <label className="min-w-0">
+          <span className={labelClass}>מרווח</span>
           <NumericInput
             className={`${field} text-left`}
             value={effectiveSpread}
             disabled={disabled}
+            allowNegative
             onChange={setSpread}
             aria-label="מרווח"
-            title={compact ? 'מרווח מעל העוגן' : undefined}
+            title="מרווח מעל העוגן — ערך שלילי הוא מרווח מתחת לעוגן"
           />
         </label>
 
-        <Equal
-          className={`h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`}
-          aria-hidden
-        />
+        <Equal className={operatorClass} aria-hidden />
 
-        <label className={compact ? '' : 'space-y-1'}>
-          {!compact && <span className="text-[11px] font-bold text-slate-700">{rateLabel} %</span>}
+        <label className="min-w-0">
+          <span className={`${labelClass} font-bold text-slate-700`}>
+            ריבית
+          </span>
           <NumericInput
             className={`${field} text-left font-bold`}
             value={rate}
             disabled={disabled}
             onChange={setRate}
             aria-label={rateLabel}
-            title={compact ? rateLabel : undefined}
+            title={rateLabel}
           />
         </label>
       </div>

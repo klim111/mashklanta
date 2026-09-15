@@ -1,3 +1,4 @@
+import { scheduleIrr } from './irr';
 import type { MortgageTrack } from '../types';
 import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 import { expectedInflationPath, inflationRateAtMonth } from '@/lib/inflation-forecast';
@@ -376,7 +377,21 @@ export function simulateTrack({
     inflationCost: 0,
     totalPrepaid,
     months: schedule.length,
+    averageRate: balanceWeightedRate(schedule),
+    irr: scheduleIrr(track.amount, schedule),
   };
+}
+
+/** ממוצע הריבית השנתית לאורך הלוח, משוקלל לפי היתרה הפתוחה בכל חודש */
+function balanceWeightedRate(rows: Array<Pick<ScheduleRow, 'balanceStart' | 'annualRate'>>): number {
+  let weighted = 0;
+  let balance = 0;
+  rows.forEach((row) => {
+    if (row.balanceStart <= 0) return;
+    weighted += row.balanceStart * row.annualRate;
+    balance += row.balanceStart;
+  });
+  return balance > 0 ? weighted / balance : 0;
 }
 
 /**

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
+import { InfoTip, RATE_EXPLANATIONS } from '@/components/ui/info-tip';
 import { useMarketRates } from '@/hooks/use-market-rates';
 import { trackRateBreakdown } from '../engine';
 import { Slider } from '@/components/ui/slider';
@@ -260,13 +261,14 @@ function TrackControlCard({
     >
       <fieldset disabled={locked} className="disabled:opacity-70">
         <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5 p-1.5">
-          {/* זהות המסלול — לחיצה מציגה אותו באזור הגרפים */}
+          {/* זהות המסלול — לחיצה מציגה אותו באזור הגרפים; מתחתיה שני מדדי הריבית */}
+          <div className="flex min-w-[170px] flex-1 flex-col gap-0.5">
           <button
             type="button"
             disabled={false}
             onClick={onFocus}
             title="הצגת המסלול באזור הגרפים"
-            className="flex min-w-[150px] flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-right transition-colors hover:bg-slate-50"
+            className="flex items-center gap-1.5 rounded-md px-1 py-0.5 text-right transition-colors hover:bg-slate-50"
           >
             <span
               className="h-8 w-1.5 shrink-0 rounded-full"
@@ -291,6 +293,17 @@ function TrackControlCard({
               <BarChart3 className="h-3.5 w-3.5" />
             </span>
           </button>
+          <div className="flex flex-wrap items-center gap-1 px-1 text-[10px] leading-none text-slate-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5">
+              ממוצעת <b className="text-slate-900">{formatPercentage(result.averageRate)}</b>
+              <InfoTip text={RATE_EXPLANATIONS.trackAverage} label="הסבר על הריבית הממוצעת" align="start" />
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-1.5 py-0.5">
+              מתואמת IRR <b className="text-slate-900">{formatPercentage(result.irr)}</b>
+              <InfoTip text={RATE_EXPLANATIONS.trackIrr} label="הסבר על הריבית המתואמת" align="start" />
+            </span>
+          </div>
+          </div>
 
           <RowField label="לוח סילוקין" className="w-[118px]">
             <Select
@@ -352,7 +365,7 @@ function TrackControlCard({
 
           {/* ריבית — עוגן מבנק ישראל ועוד המרווח של הבנק */}
           <RowField
-            label={rateBreakdown.anchor ? 'עוגן + מרווח = ריבית' : 'ריבית שנתית'}
+            label={rateBreakdown.anchor ? undefined : 'ריבית שנתית'}
             className={rateBreakdown.anchor ? 'w-[212px]' : 'w-[80px]'}
           >
             <AnchorSpreadRate
@@ -464,15 +477,18 @@ function RowField({
   className = '',
   children,
 }: {
-  label: string;
+  /** בלי כותרת — כשלשדה שבפנים יש כותרות משלו (עוגן/מרווח/ריבית) */
+  label?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <label className={`${className} min-w-0 shrink-0`}>
-      <span className="mb-0.5 block truncate text-[9px] font-medium leading-none text-slate-500">
-        {label}
-      </span>
+      {label && (
+        <span className="mb-0.5 block truncate text-[9px] font-medium leading-none text-slate-500">
+          {label}
+        </span>
+      )}
       {children}
     </label>
   );

@@ -9,6 +9,7 @@ import {
   GitCompareArrows,
   Layers,
   Plus,
+  BookmarkCheck,
   Save,
   SquarePen,
   Trash2,
@@ -60,6 +61,15 @@ interface MixListProps {
   onSaveAsNew?: () => void;
   saveDirty?: boolean;
   flashSave?: boolean;
+  /**
+   * שמירת התמהיל שבעבודה כמו שהוא (ללקוח, שאין לו את דיאלוג השמירה של היועץ).
+   * אחרי השמירה מוצגת הודעה, וכפתור הטעינה מודגש פעם אחת.
+   */
+  onSaveCurrent?: () => void;
+  /** מספר התמהילים השמורים לנכס, כולל זה שבעבודה */
+  savedCount?: number;
+  /** ההודעה שמוצגת אחרי שמירה ("התמהיל נשמר"), ואם להנפיש את כפתור הטעינה */
+  saveFeedback?: { message: string; nudge: boolean } | null;
   /** מזהי הסלים האחידים שנשמרו מהאישור העקרוני */
   uniformMixIds?: string[];
   nameNotice?: string | null;
@@ -112,6 +122,9 @@ export function MixList({
   onSaveAsNew,
   saveDirty = false,
   flashSave = false,
+  onSaveCurrent,
+  savedCount = 0,
+  saveFeedback = null,
   uniformMixIds = [],
   nameNotice,
   disposableIncome,
@@ -157,15 +170,33 @@ export function MixList({
             <span className="text-xs font-normal text-slate-500">{others.length + 1}</span>
           </CardTitle>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-            {others.length > 0 && (
+            {onSaveCurrent && (
+              <Button
+                size="sm"
+                className={`h-10 w-full text-xs sm:h-8 sm:w-auto ${
+                  saveDirty && flashSave ? 'save-flash' : ''
+                }`}
+                onClick={onSaveCurrent}
+                disabled={Boolean(activeResult.mix.locked)}
+                title="שמירת התמהיל שבעבודה — אחרי השמירה אפשר לטעון אותו ולהשוות אליו"
+              >
+                <Save className="h-3.5 w-3.5 ml-1" />
+                שמור תמהיל
+              </Button>
+            )}
+            {(others.length > 0 || savedCount > 0) && (
               <Button
                 size="sm"
                 variant={othersOpen ? 'default' : 'outline'}
-                className="h-10 w-full text-xs sm:h-8 sm:w-auto"
+                className={`h-10 w-full text-xs sm:h-8 sm:w-auto ${
+                  saveFeedback?.nudge ? 'load-nudge' : ''
+                }`}
                 onClick={() => setOthersOpen((open) => !open)}
               >
                 <Layers className="h-3.5 w-3.5 ml-1" />
-                {othersOpen ? 'סגור את רשימת התמהילים' : `טען תמהילים · ${others.length}`}
+                {othersOpen
+                  ? 'סגור את רשימת התמהילים'
+                  : `טען תמהיל · ${Math.max(others.length, savedCount)}`}
                 <ChevronDown
                   className={`mr-1 h-3.5 w-3.5 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
                 />
@@ -182,6 +213,21 @@ export function MixList({
             <GitCompareArrows className="h-3.5 w-3.5" />
             לחיצה על תיבת תמהיל פותחת אותה באזור העבודה וסוגרת את הרשימה. סימון בעיגול שבצד ימין
             מוסיף את התמהיל להשוואה ומשאיר את הרשימה פתוחה.
+          </p>
+        )}
+        {saveFeedback && (
+          <p
+            role="status"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-center text-[11px] font-semibold text-emerald-800 sm:justify-start sm:text-right"
+          >
+            <BookmarkCheck className="h-3.5 w-3.5 shrink-0" />
+            {saveFeedback.message}
+            <span className="font-normal text-emerald-700">· התמהיל זמין לטעינה והשוואה</span>
+          </p>
+        )}
+        {othersOpen && others.length === 0 && (
+          <p className="text-center text-[11px] text-slate-500 sm:text-right">
+            התמהיל שבעבודה הוא היחיד השמור לנכס. צרו תמהיל נוסף כדי לטעון ולהשוות ביניהם.
           </p>
         )}
         {nameNotice && <p className="text-[11px] font-semibold text-red-700">{nameNotice}</p>}

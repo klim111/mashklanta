@@ -217,6 +217,10 @@ export interface TrackResult {
   inflationCost: number;
   totalPrepaid: number;
   months: number;
+  /** ריבית ממוצעת לאורך המסלול, משוקללת לפי היתרה בכל חודש — במסלול קבוע זו הריבית הנקובה */
+  averageRate: number;
+  /** ריבית מתואמת (IRR) שנתית באחוזים — העלות האפקטיבית של המסלול */
+  irr: number;
 }
 
 /** שורה מאוחדת לכל התמהיל */
@@ -259,7 +263,13 @@ export interface MixSummary {
   /** סך התשלום העודף מול מדד קפוא — הכסף שנשרף על אינפלציה */
   inflationCost: number;
   totalPrepaid: number;
+  /** ריבית ממוצעת משוקללת לפי סכום המסלולים — הריבית הנקובה של התמהיל */
   averageRate: number;
+  /**
+   * ריבית מתואמת (IRR) שנתית — הריבית האפקטיבית שבה כל התשלומים בלוח המאוחד
+   * שווים לקרן. כוללת הצמדה, פרעונות ובלון, ולכן היא העלות האמיתית של הכסף.
+   */
+  irr: number;
   weightedAverageYears: number;
   months: number;
   /** יחס סך התשלום לקרן — "כמה שקלים שולמו על כל שקל שהתקבל" */

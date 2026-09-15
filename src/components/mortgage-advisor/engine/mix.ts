@@ -1,3 +1,4 @@
+import { monthlyCashFlowIrr } from './irr';
 import type { PrepaymentEvent } from './types';
 import type {
   MixResult,
@@ -192,6 +193,10 @@ function summarize(mix: WorkspaceMix, tracks: TrackResult[], schedule: MixSchedu
     inflationCost: 0,
     totalPrepaid,
     averageRate: principalSum > 0 ? weightedRateSum / principalSum : 0,
+    irr: monthlyCashFlowIrr(
+      principalSum,
+      schedule.map((row) => row.payment)
+    ),
     weightedAverageYears: principalSum > 0 ? weightedYearsSum / principalSum : 0,
     months: schedule.length,
     costPerShekel: principalSum > 0 ? totalPaid / principalSum : 0,

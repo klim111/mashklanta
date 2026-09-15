@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { formatNumberInput, parseFormattedNumberInput } from '@/lib/currency';
+import { moveCaretToEnd } from '@/lib/caret';
 import { cn } from '@/lib/utils';
 import type { ComponentProps } from 'react';
 
@@ -11,7 +12,13 @@ type FormattedNumberInputProps = Omit<ComponentProps<typeof Input>, 'type' | 'on
   onValueChange: (value: string) => void;
 };
 
-export function FormattedNumberInput({ value, onValueChange, className, ...props }: FormattedNumberInputProps) {
+export function FormattedNumberInput({
+  value,
+  onValueChange,
+  className,
+  onFocus,
+  ...props
+}: FormattedNumberInputProps) {
   return (
     <Input
       {...props}
@@ -21,6 +28,11 @@ export function FormattedNumberInput({ value, onValueChange, className, ...props
       autoComplete="off"
       className={cn('text-right', className)}
       value={value}
+      onFocus={(e) => {
+        // הסמן לסוף הערך — אחרת לחיצה על החלק הריק של השדה מונעת מחיקה מיידית
+        moveCaretToEnd(e.currentTarget);
+        onFocus?.(e);
+      }}
       onChange={(e) => onValueChange(formatNumberInput(e.target.value))}
     />
   );

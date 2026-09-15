@@ -54,6 +54,7 @@ export function AdvisorMixPanel({
         planId={plan.id}
         clientId={clientId}
         onChange={(next: MixData) => updateStage('MIX', next)}
+        onAnalysisChange={(next) => updateStage('ANALYSIS', next)}
       />
     </div>
   );

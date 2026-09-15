@@ -556,6 +556,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                     focusMixKey={focusMixKey}
                     onChange={(next: MixData) => updateStage('MIX', next)}
                     onFinalConfirmed={() => void finishMixStage()}
+                    onAnalysisChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                   />
                 )}
                 {showStageFooter && stageFooter}
