@@ -7,7 +7,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
+import { formatMoneyFields, parseFormattedNumberInput } from '@/lib/currency';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import NavBar from '@/components/ui/navbar';
@@ -94,7 +96,10 @@ export default function CustomMixBuilder() {
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        setUserData(parsedData.userData);
+        setUserData(formatMoneyFields(parsedData.userData));
+        if (parsedData.profile) {
+          setProfile((prev) => ({ ...prev, ...formatMoneyFields(parsedData.profile) }));
+        }
       } catch (error) {
         console.error('Error loading saved data:', error);
       }
@@ -111,16 +116,16 @@ export default function CustomMixBuilder() {
     if (!userData) return;
 
     // Calculate monthly sensitivity
-    const monthlyIncome = parseFloat(userData.monthlyIncome) || 0;
-    const monthlyLoanPayment = parseFloat(userData.monthlyLoanPayment) || 0;
-    const allowanceAmount = profile.hasAllowances ? parseFloat(profile.allowanceAmount) || 0 : 0;
+    const monthlyIncome = parseFormattedNumberInput(userData.monthlyIncome);
+    const monthlyLoanPayment = parseFormattedNumberInput(userData.monthlyLoanPayment);
+    const allowanceAmount = profile.hasAllowances ? parseFormattedNumberInput(profile.allowanceAmount) : 0;
     
     const totalIncome = monthlyIncome + allowanceAmount;
     const freeIncome = totalIncome - monthlyLoanPayment;
     
     // Calculate estimated mortgage payment (rough estimate)
-    const propertyPrice = parseFloat(userData.propertyPrice) || 0;
-    const ownCapital = parseFloat(userData.ownCapital) || 0;
+    const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+    const ownCapital = parseFormattedNumberInput(userData.ownCapital);
     const loanAmount = propertyPrice - ownCapital;
     const estimatedMonthlyPayment = loanAmount * 0.005; // Rough estimate 0.5% per month
     
@@ -300,8 +305,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם יש לך קצבאות או הכנסות נוספות?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם יש לך קצבאות או הכנסות נוספות?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.hasAllowances ? "default" : "outline"}
@@ -329,11 +334,10 @@ export default function CustomMixBuilder() {
                 <Label htmlFor="allowanceAmount" className="text-base font-medium mb-2 block">
                   סכום הקצבאות/הכנסות נוספות חודשיות
                 </Label>
-                <Input
+                <FormattedNumberInput
                   id="allowanceAmount"
-                  type="number"
                   value={profile.allowanceAmount}
-                  onChange={(e) => updateProfile({ allowanceAmount: e.target.value })}
+                  onValueChange={(value) => updateProfile({ allowanceAmount: value })}
                   placeholder="₪"
                   className="text-right"
                 />
@@ -350,8 +354,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם אתה צופה סכום חד-פעמי בעתיד?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם אתה צופה סכום חד-פעמי בעתיד?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.expectsLumpSum ? "default" : "outline"}
@@ -381,17 +385,16 @@ export default function CustomMixBuilder() {
                   <Label htmlFor="expectedLumpSum" className="text-base font-medium mb-2 block">
                     סכום משוער
                   </Label>
-                  <Input
+                  <FormattedNumberInput
                     id="expectedLumpSum"
-                    type="number"
                     value={profile.expectedLumpSum}
-                    onChange={(e) => updateProfile({ expectedLumpSum: e.target.value })}
+                    onValueChange={(value) => updateProfile({ expectedLumpSum: value })}
                     placeholder="₪"
                     className="text-right"
                   />
                 </div>
 
-                <div>
+                <motion.div>
                   <Label className="text-base font-medium mb-2 block">מתי אתה צופה לקבל את הסכום?</Label>
                   <Select value={profile.lumpSumTimeframe} onValueChange={(value) => updateProfile({ lumpSumTimeframe: value })}>
                     <SelectTrigger>
@@ -404,7 +407,7 @@ export default function CustomMixBuilder() {
                       <SelectItem value="10-plus-years">מעל 10 שנים</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </motion.div>
               </motion.div>
             )}
           </CardContent>
@@ -453,8 +456,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם יש תוכניות להרחבת המשפחה?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם יש תוכניות להרחבת המשפחה?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.plansFamilyExpansion ? "default" : "outline"}
@@ -655,8 +658,8 @@ export default function CustomMixBuilder() {
   const renderDashboard = () => {
     if (!userData) return null;
 
-    const propertyPrice = parseFloat(userData.propertyPrice) || 0;
-    const ownCapital = parseFloat(userData.ownCapital) || 0;
+    const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+    const ownCapital = parseFormattedNumberInput(userData.ownCapital);
     const loanAmount = propertyPrice - ownCapital;
     const ltvRatio = propertyPrice > 0 ? ((loanAmount / propertyPrice) * 100) : 0;
 
@@ -799,7 +802,7 @@ export default function CustomMixBuilder() {
                 <h4 className="font-semibold text-gray-900 mb-2">מצב תעסוקתי</h4>
                 <div className="space-y-1 text-sm">
                   <div>ותק: <span className="font-medium">{profile.employmentYears} שנים</span></div>
-                  <div>הכנסות נוספות: <span className="font-medium">{profile.hasAllowances ? `₪${parseFloat(profile.allowanceAmount || '0').toLocaleString()}` : 'אין'}</span></div>
+                  <div>הכנסות נוספות: <span className="font-medium">{profile.hasAllowances ? `₪${parseFormattedNumberInput(profile.allowanceAmount).toLocaleString()}` : 'אין'}</span></div>
                 </div>
               </div>
               
@@ -807,7 +810,7 @@ export default function CustomMixBuilder() {
                 <h4 className="font-semibold text-gray-900 mb-2">תוכניות עתיד</h4>
                 <div className="space-y-1 text-sm">
                   <div>הרחבת משפחה: <span className="font-medium">{profile.plansFamilyExpansion ? `כן (${profile.expectedNewChildren} ילדים)` : 'לא'}</span></div>
-                  <div>סכום חד-פעמי: <span className="font-medium">{profile.expectsLumpSum ? `₪${parseFloat(profile.expectedLumpSum || '0').toLocaleString()}` : 'לא צפוי'}</span></div>
+                  <div>סכום חד-פעמי: <span className="font-medium">{profile.expectsLumpSum ? `₪${parseFormattedNumberInput(profile.expectedLumpSum).toLocaleString()}` : 'לא צפוי'}</span></div>
                 </div>
               </div>
             </div>
@@ -867,7 +870,7 @@ export default function CustomMixBuilder() {
           <NavBar />
         </div>
         
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
           <div className="max-w-2xl mx-auto text-center">
             <h1 className="text-3xl font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
             <p className="text-lg text-gray-600 mb-8">
@@ -892,7 +895,7 @@ export default function CustomMixBuilder() {
         <NavBar />
       </div>
       
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {currentStep === 'personal' && renderPersonalStep()}
         {currentStep === 'financial' && renderFinancialStep()}
         {currentStep === 'future' && renderFutureStep()}

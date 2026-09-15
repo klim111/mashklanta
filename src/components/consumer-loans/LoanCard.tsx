@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Copy, Calculator, Edit3, Check, X, TrendingUp, GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Loan } from './types';
 import { calculateLoanSummary } from './loanMath';
-import { formatILS, formatPercent } from '@/lib/currency';
+import { formatILS, formatPercent, formatNumberInput, parseFormattedNumberInput } from '@/lib/currency';
 import { AmortChart } from './AmortChart';
 
 interface LoanCardProps {
@@ -35,7 +36,7 @@ export function LoanCard({
   const [showChart, setShowChart] = useState(false);
   const [editForm, setEditForm] = useState({
     name: loan.name,
-    principal: loan.principal.toString(),
+    principal: formatNumberInput(String(loan.principal)),
     apr: loan.apr.toString(),
     months: loan.months.toString(),
   });
@@ -61,7 +62,7 @@ export function LoanCard({
     const updatedLoan: Loan = {
       ...loan,
       name: editForm.name,
-      principal: parseFloat(editForm.principal) || 0,
+      principal: parseFormattedNumberInput(editForm.principal),
       apr: parseFloat(editForm.apr) || 0,
       months: parseInt(editForm.months) || 0,
     };
@@ -72,7 +73,7 @@ export function LoanCard({
   const handleCancel = () => {
     setEditForm({
       name: loan.name,
-      principal: loan.principal.toString(),
+      principal: formatNumberInput(String(loan.principal)),
       apr: loan.apr.toString(),
       months: loan.months.toString(),
     });
@@ -152,11 +153,10 @@ export function LoanCard({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor={`principal-${loan.id}`}>קרן (₪)</Label>
-              <Input
+              <FormattedNumberInput
                 id={`principal-${loan.id}`}
-                type="number"
                 value={editForm.principal}
-                onChange={(e) => setEditForm(prev => ({ ...prev, principal: e.target.value }))}
+                onValueChange={(v) => setEditForm((prev) => ({ ...prev, principal: v }))}
                 placeholder="0"
               />
             </div>
