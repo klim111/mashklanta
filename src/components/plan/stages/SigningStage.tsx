@@ -1,9 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { AlertTriangle, Check, PenLine, ShieldCheck } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertTriangle, ArrowLeft, Check, PenLine, ShieldCheck } from 'lucide-react';
 import { SIGNING_CHECKS, winningOffer } from '@/lib/mortgage-plan';
-import type { BankOffer, PlanData, SigningData } from '@/lib/mortgage-plan';
+import type { BankOffer, PlanData, SigningData, SigningScreen } from '@/lib/mortgage-plan';
 import {
   DateField,
   Metric,
@@ -13,17 +13,44 @@ import {
   formatPercent,
   formatShekel,
 } from '../ui';
+import { StageOverview } from './signing/StageOverview';
+import { ScenarioPicker, resolveSelection } from './signing/ScenarioPicker';
+import type { ScenarioSelection } from './signing/ScenarioPicker';
+import { DocumentsChecklist } from './signing/DocumentsChecklist';
+import { FinalTermsPanel } from './signing/FinalTermsPanel';
 
 /** פער שאינו נובע מעיגול — סימן שמשהו בחוזה שונה ממה שסוכם */
 const MONTHLY_TOLERANCE = 5;
 const RATE_TOLERANCE = 0.01;
 
+const reveal = {
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+  transition: { duration: 0.3 },
+};
+
+/**
+ * שלב 5 — ההכנה לחתימה על תיק המשכנתא והחתימה עצמה.
+ *
+ * בכניסה לשלב מוצג עמוד ההסבר, כמו מסך הפתיחה של הפרופיל הפיננסי: מה מהות
+ * השלב, מה מקבלים בביצוע עצמי ומה כולל הליווי. אחריו, בביצוע עצמי, הלקוח בוחר
+ * את תרחיש הרכישה שלו — וממנו נגזרת רשימת המסמכים שהבנק ידרוש. לצידה מוצג
+ * התמהיל המתומחר מהמכרז, שמולו מאמתים את הצעת המשכנתא הסופית של הבנק.
+ */
 export function SigningStage({
   data,
+  planId,
   onChange,
+  onRequestAdvisor,
+  advisorBusy = false,
 }: {
   data: PlanData;
+  planId: string;
   onChange: (next: SigningData) => void;
+  /** בקשת ליווי חינמית ליועץ, מתוך מסך ההסבר */
+  onRequestAdvisor?: () => void;
+  advisorBusy?: boolean;
 }) {
   const value = data.SIGNING;
   const signed = data.AUCTION.signedMix;
@@ -43,6 +70,7 @@ export function SigningStage({
         note: signed.name,
       }
     : winningOffer(data.AUCTION);
+  const { deal, registry, scenario } = resolveSelection(value);
 
   const preApprovalBank = data.APPLICATIONS.bank;
   const bankOptions = Array.from(
@@ -55,6 +83,18 @@ export function SigningStage({
 
   const set = <K extends keyof SigningData>(key: K, next: SigningData[K]) =>
     onChange({ ...value, [key]: next });
+
+  const go = (screen: SigningScreen) => set('screen', screen);
+
+  const selectScenario = (next: ScenarioSelection) =>
+    onChange({ ...value, ...next });
+
+  const toggleDocument = (key: string) => {
+    const documents = { ...value.documents };
+    if (documents[key]) delete documents[key];
+    else documents[key] = true;
+    onChange({ ...value, documents });
+  };
 
   const toggleCheck = (key: string) => {
     const checklist = { ...value.checklist };
@@ -101,24 +141,63 @@ export function SigningStage({
 
   const done = SIGNING_CHECKS.filter((check) => value.checklist[check.key]).length;
 
+  const screen = value.screen || 'overview';
+
+  if (screen === 'overview') {
+    return (
+      <StageOverview
+        onStart={() => go('documents')}
+        onAdvisor={onRequestAdvisor}
+        advisorBusy={advisorBusy}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
-      {data.MIX.isFinal && (
-        <Panel
-          title="התמהיל הסופי שנבחר"
-          description="אלה התנאים שננעלו בשלב בניית התמהיל. אפשר לטעון אותם לחוזה ואז לאמת מול מה שנחתם בפועל."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="שם התמהיל" value={data.MIX.mixName ?? '—'} />
-            <Metric label="סכום" value={formatShekel(data.MIX.totalAmount)} />
-            <Metric label="החזר חודשי" value={formatShekel(data.MIX.monthlyPayment)} />
-            <Metric label="ריבית ממוצעת" value={formatPercent(data.MIX.averageRate, 2)} />
-          </div>
-        </Panel>
-      )}
-      <Panel
+      <ScreenRail current={screen} dealLabel={scenario ? deal?.short ?? null : null} onSelect={go} />
+
+      <AnimatePresence mode="wait" initial={false}>
+        {screen === 'documents' ? (
+          <motion.div key="documents" {...reveal} className="space-y-5">
+            <ScenarioPicker
+              value={{
+                dealTypeId: value.dealTypeId,
+                registryId: value.registryId,
+                scenarioId: value.scenarioId,
+              }}
+              onChange={selectScenario}
+            />
+
+            {deal && scenario && (
+              <>
+                <DocumentsChecklist
+                  deal={deal}
+                  registry={registry}
+                  scenario={scenario}
+                  collected={value.documents}
+                  onToggle={toggleDocument}
+                />
+                <div className="flex justify-start">
+                  <button
+                    type="button"
+                    onClick={() => go('verify')}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+                  >
+                    להשוואת ההצעה הסופית
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div key="verify" {...reveal} className="space-y-5">
+            <FinalTermsPanel data={data} planId={planId} />
+
+            <Panel
         title="התנאים שנחתמו בפועל"
-        description="העתיקו מהחוזה את מה שכתוב בו — לא את מה שסוכם בטלפון. כאן מתגלים הפערים."
+        description="העתיקו מהאישור הסופי של הבנק את מה שכתוב בו — לא את מה שסוכם בטלפון. כאן מתגלים הפערים."
         action={
           <div className="flex flex-wrap gap-2">
             {data.MIX.isFinal && (
@@ -291,6 +370,56 @@ export function SigningStage({
           })}
         </div>
       </Panel>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** ניווט בין תת-המסכים של השלב, כמו בפרופיל הפיננסי */
+function ScreenRail({
+  current,
+  dealLabel,
+  onSelect,
+}: {
+  current: SigningScreen;
+  /** סוג העסקה שנבחר, כשכבר נבחר תרחיש */
+  dealLabel: string | null;
+  onSelect: (screen: SigningScreen) => void;
+}) {
+  const items: Array<{ id: SigningScreen; label: string }> = [
+    { id: 'overview', label: 'על השלב' },
+    { id: 'documents', label: dealLabel ? `המסמכים · ${dealLabel}` : 'מסמכי התיק' },
+    { id: 'verify', label: 'אימות ההצעה והחתימה' },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item, index) => {
+        const active = item.id === current;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+              active
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-400'
+            }`}
+          >
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                active ? 'bg-white/20' : 'bg-slate-200 text-slate-600'
+              }`}
+            >
+              {index + 1}
+            </span>
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

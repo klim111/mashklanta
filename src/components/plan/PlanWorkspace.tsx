@@ -52,6 +52,7 @@ import { MixStage } from './stages/MixStage';
 import { PreApprovalStage } from './stages/PreApprovalStage';
 import { AuctionStage } from './stages/AuctionStage';
 import { SigningStage } from './stages/SigningStage';
+import { StageOverview as SigningStageOverview } from './stages/signing/StageOverview';
 
 const saveLabels: Record<SaveState, { label: string; className: string }> = {
   idle: { label: 'הכל שמור', className: 'text-white/80' },
@@ -203,6 +204,12 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     (Boolean(plan.data.ANALYSIS.intent) &&
       (plan.data.ANALYSIS.profileScreen || 'overview') === 'report');
   const showStageFooter = !isPreview && analysisOnLastSubstep && (canComplete || isDone);
+  /**
+   * מסך "על השלב" של החתימה נפתח גם למי שקפץ לשלב לפני שסגר את קודמיו: הוא
+   * רק מסביר מה השלב עושה, ולכן הוא נשאר פעיל מעל התוכן הנעול.
+   */
+  const signingOverviewOpen =
+    stage === 'SIGNING' && (plan.data.SIGNING.screen || 'overview') === 'overview';
 
   /*
     שלב שהלקוח הזמין ליווי עליו ושילם עובר לתצוגת סיכום: דאשבורד אחד קצר
@@ -225,15 +232,16 @@ export function PlanWorkspace({ planId }: { planId: string }) {
   const stageMeeting = meetingForStage(meetings, stage);
 
   /*
-    שער השלב: לפני שנכנסים לעבוד, כל שלב (למעט הפרופיל, שיש לו מסך "על השלב"
-    משלו) מציע לבחור בין ניתוח עצמי לבין ליווי יועץ. השער מוצג רק כשעדיין לא
-    נבחרה דרך, השלב אינו מטופל על ידי יועץ, וטרם נסגר.
+    שער השלב: לפני שנכנסים לעבוד, כל שלב (למעט הפרופיל והחתימה, שיש להם מסך
+    "על השלב" משלהם) מציע לבחור בין ניתוח עצמי לבין ליווי יועץ. השער מוצג רק
+    כשעדיין לא נבחרה דרך, השלב אינו מטופל על ידי יועץ, וטרם נסגר.
   */
   const needsGate =
     !isPreview &&
     !advisorRun &&
     !isDone &&
     stage !== 'ANALYSIS' &&
+    stage !== 'SIGNING' &&
     !enteredStages.includes(stage);
 
   const toggleStageDetails = () =>
@@ -504,6 +512,20 @@ export function PlanWorkspace({ planId }: { planId: string }) {
               />
             )}
 
+            {/*
+              מסך "על השלב" של החתימה, כשהגיעו אליו לפני שנסגרו קודמיו: ההסבר
+              עצמו פעיל, והתוכן הנעול שמתחתיו מוחלף בו עד שבוחרים להתחיל.
+            */}
+            {isPreview && signingOverviewOpen && (
+              <SigningStageOverview
+                onStart={() =>
+                  updateStage('SIGNING', { ...plan.data.SIGNING, screen: 'documents' })
+                }
+                onAdvisor={() => void requestFreeHandoff('SIGNING')}
+                advisorBusy={handoffBusy === 'SIGNING'}
+              />
+            )}
+
             {/* שער השלב: הבחירה בין ניתוח עצמי לבין ליווי יועץ, זהה בכל השלבים */}
             {!advisorSummaryOnly && needsGate && (
               <StageGate
@@ -518,7 +540,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
               כשיועץ מטפל בשלב, מה שמוצג הוא הסיכום בלבד. "הצג פרטים" פותח את
               השלב המלא — אותם כלים, אותם מסכים, בלי שום הסתרה.
             */}
-            {!advisorSummaryOnly && !needsGate && (
+            {!advisorSummaryOnly && !needsGate && !(isPreview && signingOverviewOpen) && (
             <div className={isPreview ? 'relative' : undefined}>
               {isPreview && (
                 <div
@@ -582,7 +604,10 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 {stage === 'SIGNING' && (
                   <SigningStage
                     data={plan.data}
+                    planId={plan.id}
                     onChange={(next: SigningData) => updateStage('SIGNING', next)}
+                    onRequestAdvisor={() => void requestFreeHandoff('SIGNING')}
+                    advisorBusy={handoffBusy === 'SIGNING'}
                   />
                 )}
 

@@ -29,6 +29,13 @@ import {
   type MortgagePlanningUserData,
 } from './mortgage-affordability';
 import { parseFormattedNumberInput } from './currency';
+import {
+  ALL_SIGNING_DOCUMENT_KEYS,
+  registryOfScenario,
+  signingDealType,
+  signingRegistry,
+  signingScenario,
+} from './signing-documents';
 
 /**
  * סדר השלבים בתהליך. הבקשה לאישור עקרוני קודמת לבניית התמהיל, כי הריביות
@@ -422,6 +429,10 @@ export interface AuctionData {
   signedMix: SignedMixChoice | null;
 }
 
+/** תת-המסכים של שלב החתימה, לפי הסדר שבו עוברים בהם */
+export const SIGNING_SCREENS = ['overview', 'documents', 'verify'] as const;
+export type SigningScreen = (typeof SIGNING_SCREENS)[number];
+
 /** שלב 5 — החתימה בבנק */
 export interface SigningData {
   bank: string | null;
@@ -431,6 +442,15 @@ export interface SigningData {
   finalAverageRate: number | null;
   /** מפתח בדיקה מרשימת החתימה → האם אומתה */
   checklist: Record<string, boolean>;
+  /** תת-המסך הפתוח: ההסבר על השלב, תיק המסמכים או אימות התנאים */
+  screen: SigningScreen;
+  /** תרחיש הרכישה, שקובע את רשימת המסמכים שהבנק ידרוש */
+  dealTypeId: string | null;
+  /** אופן רישום הזכויות, בעסקאות שבהן הוא מפצל את התרחישים */
+  registryId: string | null;
+  scenarioId: string | null;
+  /** `${scenarioId}:${documentKey}` → האם המסמך נאסף */
+  documents: Record<string, boolean>;
 }
 
 export interface PlanStageDataMap {
@@ -535,6 +555,11 @@ const EMPTY: PlanData = {
     finalMonthlyPayment: null,
     finalAverageRate: null,
     checklist: {},
+    screen: 'overview',
+    dealTypeId: null,
+    registryId: null,
+    scenarioId: null,
+    documents: {},
   },
 };
 
@@ -615,6 +640,12 @@ function parseSignedMix(value: unknown): SignedMixChoice | null {
         ? source.chosenAt
         : new Date().toISOString(),
   };
+}
+
+function pickSigningScreen(value: unknown): SigningScreen | null {
+  return typeof value === 'string' && (SIGNING_SCREENS as readonly string[]).includes(value)
+    ? (value as SigningScreen)
+    : null;
 }
 
 function pickEmployment(value: unknown): EmploymentType | null {
@@ -975,6 +1006,15 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
     }
 
     case 'SIGNING': {
+      /** בחירה שאינה קיימת בקטלוג נזרקת, כדי שלא תישמר דרך שאי אפשר להציג */
+      const deal = signingDealType(str(source.dealTypeId) || null);
+      const scenario = signingScenario(deal, str(source.scenarioId) || null);
+      const registry = deal
+        ? (scenario
+            ? registryOfScenario(deal, scenario.id)
+            : signingRegistry(deal, str(source.registryId) || null))
+        : null;
+
       return {
         bank: pickBank(source.bank),
         signingDate: typeof source.signingDate === 'string' ? source.signingDate : null,
@@ -985,6 +1025,11 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           source.checklist,
           SIGNING_CHECKS.map((check) => check.key)
         ),
+        screen: pickSigningScreen(source.screen) ?? 'overview',
+        dealTypeId: deal?.id ?? null,
+        registryId: registry?.id ?? null,
+        scenarioId: scenario?.id ?? null,
+        documents: flagMap(source.documents, ALL_SIGNING_DOCUMENT_KEYS),
       } as PlanStageDataMap[S];
     }
 
