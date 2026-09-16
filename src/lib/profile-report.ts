@@ -11,15 +11,24 @@
  */
 
 import {
+  DEFAULT_PLAN_YEARS,
+  EMPLOYMENT_LABELS,
+  PLAN_TERM_MONTHS_MAX,
   REPAYMENT_RATIO_COMFORT,
   REPAYMENT_RATIO_LIMIT,
+  accountBanks,
   analyzeProfile,
+  countedLoans,
   dealMaxLtv,
+  describeMonths,
   preApprovalDocumentGroups,
   requestedMortgage,
+  sumProfileLoans,
+  yearsToMonths,
 } from './mortgage-plan';
-import type { AnalysisData, PlanData } from './mortgage-plan';
-import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
+import type { AnalysisData, PlanData, ProfileScreen } from './mortgage-plan';
+import { INTEREST_RATES } from './interest-rates';
+import { DEAL_TYPES, MIN_FIXED_PERCENT } from '@/components/mortgage-advisor/types';
 
 /** תוצאת בדיקה בודדת מול מגבלה */
 export type CheckStatus = 'pass' | 'near' | 'fail' | 'unknown';
@@ -46,6 +55,102 @@ export interface ReportDocumentGroup {
   documents: string[];
 }
 
+export type RecommendationTone = 'info' | 'warning' | 'critical';
+
+export type ProfileRecommendationId =
+  | 'repayment-ratio'
+  | 'grace-track'
+  | 'early-appraisal'
+  | 'primary-bank';
+
+/**
+ * המלצה שצפה תוך כדי ההזנה, במסך שבו הנתון הרלוונטי מוזן, ומשתקפת בדוח.
+ * כולן נגזרות מהפרופיל בלבד — אין מצב נפרד לכל אחת.
+ */
+export interface ProfileRecommendation {
+  id: ProfileRecommendationId;
+  tone: RecommendationTone;
+  title: string;
+  body: string;
+  bullets?: string[];
+  /** המסכים שבהם ההמלצה צפה בזמן ההזנה */
+  screens: ProfileScreen[];
+}
+
+export interface GraceReason {
+  kind: 'income' | 'loan';
+  /** בעוד כמה חודשים ההחזר החודשי הפנוי גדל */
+  months: number;
+  label: string;
+}
+
+export interface GraceHorizon {
+  /** אורך מסלול הגרייס המומלץ — עד האירוע הקרוב ביותר שמגדיל את ההכנסה הפנויה */
+  months: number;
+  reasons: GraceReason[];
+}
+
+export interface ReportRisk {
+  id: string;
+  tone: RecommendationTone;
+  title: string;
+  body: string;
+}
+
+export interface ReportGuideline {
+  id: string;
+  title: string;
+  body: string;
+}
+
+export interface ReportBorrower {
+  label: string;
+  age: number | null;
+  income: number | null;
+  employment: string | null;
+  bank: string | null;
+  loanPayment: number;
+}
+
+/** מספרי המפתח של הדשבורד — כמספרים, כדי שהתצוגה תעצב אותם */
+export interface ReportSummary {
+  mortgageAmount: number;
+  propertyValue: number | null;
+  equity: number | null;
+  equityInDeal: number;
+  equityGap: number;
+  ltv: number | null;
+  maxLtv: number;
+  ltvStatus: CheckStatus;
+  repaymentRatio: number | null;
+  ratioStatus: CheckStatus;
+  ratioLimit: number;
+  ratioComfort: number;
+  totalIncome: number;
+  existingLoans: number;
+  disposableIncome: number;
+  /** ההכנסה הפנויה שתישאר אחרי תשלום המשכנתא */
+  disposableAfterMortgage: number;
+  maxMonthlyPayment: number;
+  estimatedMonthlyPayment: number;
+  years: number;
+  months: number;
+  /** תקופה מרבית לפי גיל הלווה המבוגר — מדיניות מקובלת בבנקים */
+  maxYearsByAge: number | null;
+  totalPaid: number;
+  totalInterest: number;
+  /** סך הריביות כאחוז מהקרן */
+  interestShare: number | null;
+  estimateRate: number;
+  /** האם יש די נתונים כדי שהמספרים יהיו משמעותיים */
+  ready: boolean;
+  dealTypeLabel: string | null;
+  propertyAddress: string | null;
+  couple: boolean;
+  borrowers: ReportBorrower[];
+  grace: GraceHorizon | null;
+}
+
 export interface ProfileReport {
   generatedAt: string;
   /** תיאור העסקה בשורה אחת */
@@ -56,6 +161,13 @@ export interface ProfileReport {
   figures: Array<{ label: string; value: string }>;
   documents: ReportDocumentGroup[];
   recommendations: ReportRecommendation[];
+  /** מספרי המפתח לדשבורד: עסקה, משק בית, עלות */
+  summary: ReportSummary;
+  /** ההמלצות שצפו בזמן מילוי הפרטים (השמאות המוקדמת כבר בהמלצות לתמהיל) */
+  alerts: ProfileRecommendation[];
+  risks: ReportRisk[];
+  /** קווים מנחים לבניית התמהיל — איזון בין עלות, גמישות, סיכון ויציבות */
+  guidelines: ReportGuideline[];
 }
 
 const shekel = new Intl.NumberFormat('he-IL', {
@@ -321,6 +433,8 @@ export function buildProfileReport(data: PlanData, now: Date = new Date()): Prof
     ? `${dealLabel} · נכס ב-${money(profile.propertyValue)} · משכנתא ${money(mortgage)}`
     : `${dealLabel} · בדיקת היתכנות לפני בחירת נכס`;
 
+  const summary = reportSummary(profile, mortgage ?? 0, checks);
+
   return {
     generatedAt: now.toISOString(),
     headline,
@@ -329,6 +443,10 @@ export function buildProfileReport(data: PlanData, now: Date = new Date()): Prof
     figures,
     documents: documentsOf(data),
     recommendations: reportRecommendations(data),
+    summary,
+    alerts: profileRecommendations(profile).filter((item) => item.id !== 'early-appraisal'),
+    risks: reportRisks(profile, summary),
+    guidelines: mixGuidelines(profile, summary),
   };
 }
 
@@ -355,3 +473,360 @@ export function overallHeadline(status: CheckStatus): string {
  */
 export const DOCUMENT_CONSISTENCY_WARNING =
   'הסכומים חייבים להיות זהים בכל המסמכים: מה שמופיע בתלוש חייב להופיע באותו סכום ובאותו מועד בתדפיס העו״ש, וכך גם הכנסות קבועות אחרות, שכר דירה, קצבאות והחזרי הלוואות. פער בין המסמכים — גם אם הוא נובע מעיגול או ממועד זיכוי — נקרא אצל הבנק כבעיית אמינות, והוא עלול לדחות את המסמכים או לדרוש חיתום מחמיר. לפני ההגשה כדאי להצליב את שלושת החודשים האחרונים שורה מול שורה.';
+
+// ───────────────────────── ההמלצות שצפות בזמן ההזנה ─────────────────────────
+
+/** הלוואה שמסתיימת בטווח הזה משחררת החזר חודשי בתוך חיי המשכנתא — סיבה לגרייס */
+export const GRACE_LOAN_MIN_MONTHS = 18;
+export const GRACE_LOAN_MAX_MONTHS = 60;
+/** הגיל שבו רוב הבנקים דורשים שהמשכנתא תסתיים — מדיניות מקובלת, לא הוראת בנק ישראל */
+export const MAX_BORROWER_AGE_AT_END = 75;
+/** חלקו המרבי של מסלול הפריים בתמהיל לפי הוראות בנק ישראל */
+export const PRIME_MAX_SHARE_PERCENT = 66.7;
+/** הריבית המשוערת שבה מחושבים ההחזר וסך הריביות בדוח */
+export const REPORT_ESTIMATE_RATE = INTEREST_RATES.fixed_unlinked;
+
+/** מיקום יחס ההחזר מול המגבלה — אותו סיווג שמשמש את בדיקת הדוח */
+export function repaymentRatioStatus(ratio: number | null): CheckStatus {
+  if (ratio === null || !Number.isFinite(ratio)) return 'unknown';
+  if (ratio > REPAYMENT_RATIO_LIMIT) return 'fail';
+  if (ratio > REPAYMENT_RATIO_COMFORT) return 'near';
+  return 'pass';
+}
+
+/** האם צריך לשאול אם צפויה עלייה בהכנסה הפנויה — רק כשיחס ההחזר קרוב למגבלה או מעבר לה */
+export function shouldAskIncomeIncrease(profile: AnalysisData): boolean {
+  const status = repaymentRatioStatus(analyzeProfile(profile).repaymentRatio);
+  return status === 'near' || status === 'fail';
+}
+
+/**
+ * מסלול גרייס (בלון/בוליט) מקל על ההחזר בתקופה הראשונה. הוא מוצדק כשידוע
+ * שההכנסה הפנויה תגדל: עלייה צפויה בהכנסה כשיחס ההחזר גבוה, או הלוואה
+ * שמסתיימת בתוך פחות מחמש שנים. אורכו נקבע לפי האירוע הקרוב ביותר.
+ */
+export function graceHorizon(profile: AnalysisData): GraceHorizon | null {
+  const reasons: GraceReason[] = [];
+
+  if (
+    shouldAskIncomeIncrease(profile) &&
+    profile.expectsIncomeIncrease === true &&
+    (profile.futureMonthlyIncreaseInYears ?? 0) > 0
+  ) {
+    const months = Math.round((profile.futureMonthlyIncreaseInYears ?? 0) * 12);
+    const amount = profile.futureMonthlyIncrease ?? 0;
+    reasons.push({
+      kind: 'income',
+      months,
+      label:
+        amount > 0
+          ? `העלייה הצפויה בהכנסה הפנויה (${money(amount)} לחודש) בעוד ${describeMonths(months)}`
+          : `העלייה הצפויה בהכנסה הפנויה בעוד ${describeMonths(months)}`,
+    });
+  }
+
+  countedLoans(profile).forEach((loan) => {
+    const remaining = loan.remainingMonths ?? 0;
+    if (remaining > GRACE_LOAN_MIN_MONTHS && remaining < GRACE_LOAN_MAX_MONTHS) {
+      reasons.push({
+        kind: 'loan',
+        months: remaining,
+        label: `סיום הלוואה עם החזר של ${money(loan.monthlyPayment ?? 0)} לחודש בעוד ${describeMonths(remaining)}`,
+      });
+    }
+  });
+
+  if (reasons.length === 0) return null;
+  reasons.sort((a, b) => a.months - b.months);
+  return { months: reasons[0].months, reasons };
+}
+
+/**
+ * ההמלצות שצפות תוך כדי ההזנה ומשתקפות בדוח הסופי.
+ *
+ * כולן נגזרות מהפרופיל בלבד, ולכן אותה המלצה מופיעה בזמן ההקלדה ובדוח —
+ * בלי מצב נפרד לכל אחת. השמאות המוקדמת היא אותה המלצה שכבר נכנסת להמלצות
+ * התמהיל, כאן רק עם המסך שבו היא צפה.
+ */
+export function profileRecommendations(profile: AnalysisData): ProfileRecommendation[] {
+  const items: ProfileRecommendation[] = [];
+  const analysis = analyzeProfile(profile);
+  const ratio = analysis.repaymentRatio;
+  const ratioState = repaymentRatioStatus(ratio);
+
+  if (ratio !== null && (ratioState === 'near' || ratioState === 'fail')) {
+    items.push({
+      id: 'repayment-ratio',
+      tone: ratioState === 'fail' ? 'critical' : 'warning',
+      title:
+        ratioState === 'fail'
+          ? `יחס ההחזר המשוער (${percent(ratio)}) חורג מהמגבלה המקובלת בבנקים (${REPAYMENT_RATIO_LIMIT}%)`
+          : `יחס ההחזר המשוער (${percent(ratio)}) קרוב לגבול העליון (${REPAYMENT_RATIO_LIMIT}%)`,
+      body:
+        'נסו להגיע לבנק עם תלושי שכר גבוהים ככל האפשר בחודשים שלפני ההגשה — תגבורים, שעות נוספות, בונוסים ועמלות — כדי להציג לבנק תמונת מצב של הכנסה גבוהה. ככל שיחס ההחזר נמוך יותר, הבנק נותן ריביות נמוכות יותר, וכך גם ההחזר החודשי וסך הריביות שישולמו לאורך חיי המשכנתא יהיו נמוכים יותר.',
+      bullets: [
+        'שימו לב: ההכנסה הפנויה הריאלית שתישאר לכם עשויה להיות נמוכה יותר אחרי שתחזרו לרמות ההכנסה הרגילות. שקלו מהלך כזה בכובד ראש, וודאו שההחזר החודשי נסבל גם בלי התוספות.',
+        'הבנק בוחן את ההכנסה נטו הממוצעת בשלושת התלושים האחרונים — תגבור חד-פעמי בחודש אחד משפיע פחות מתוספת עקבית.',
+      ],
+      screens: ['borrowers', 'deal'],
+    });
+  }
+
+  const grace = graceHorizon(profile);
+  if (grace) {
+    const fromIncome = grace.reasons.some((reason) => reason.kind === 'income');
+    const fromLoan = grace.reasons.some((reason) => reason.kind === 'loan');
+    items.push({
+      id: 'grace-track',
+      tone: 'info',
+      title: `שקלו מסלול בלון (בוליט/גרייס) של ${describeMonths(grace.months)} בתמהיל`,
+      body: `${
+        fromIncome && fromLoan
+          ? 'ההכנסה הפנויה שלכם צפויה לגדול גם מהעלייה בהכנסה וגם מסיום הלוואה קיימת.'
+          : fromIncome
+            ? 'ההכנסה הפנויה שלכם צפויה לגדול בהמשך.'
+            : 'הלוואה קיימת מסתיימת בתוך פחות מחמש שנים ומשחררת החזר חודשי.'
+      } מסלול שבו משלמים בתקופה הראשונה רק ריבית (או לא משלמים כלל) מקל על ההחזר החודשי עד שההכנסה הפנויה גדלה, ואז הקרן נפרסת על יתרת התקופה. אורך הגרייס המומלץ הוא עד האירוע הקרוב ביותר — ${describeMonths(grace.months)} — ולא יותר, כי כל חודש של גרייס עולה בריבית שאינה מקטינה את הקרן.`,
+      bullets: grace.reasons.map((reason) => reason.label),
+      screens: ['borrowers', 'future', 'deal'],
+    });
+  }
+
+  const appraisal = appraisalRecommendation(profile);
+  if (appraisal) {
+    items.push({
+      id: 'early-appraisal',
+      tone: 'warning',
+      title: appraisal.title,
+      body: appraisal.body,
+      screens: ['deal'],
+    });
+  }
+
+  const banks = accountBanks(profile);
+  if (banks.length > 0) {
+    const names = banks.map((bank) => `בנק ${bank}`).join(' ו');
+    items.push({
+      id: 'primary-bank',
+      tone: 'info',
+      title: `כללו את ${names} בין הבנקים שאליהם תוגש הבקשה לאישור עקרוני`,
+      body: 'בנקים שבהם הלקוח מנהל את חשבונו נוטים לתת תנאים טובים יותר — הם מכירים את ההתנהלות בחשבון ורוצים לשמור אותו אצלם. הצעה ראשונית זולה יחסית מהבנק שלכם תקל בשלב המיקוח: תוכלו לפנות איתה לבנקים אחרים ולחסוך סבבי מיקוח.',
+      screens: ['borrowers'],
+    });
+  }
+
+  return items;
+}
+
+// ───────────────────────── מספרי הדשבורד, סיכונים וקווים מנחים ─────────────────────────
+
+function oldestBorrowerAge(profile: AnalysisData): number | null {
+  const ages = [profile.age, profile.household === 'COUPLE' ? profile.partnerAge : null].filter(
+    (age): age is number => age !== null && age > 0
+  );
+  return ages.length > 0 ? Math.max(...ages) : null;
+}
+
+function reportSummary(profile: AnalysisData, mortgageAmount: number, checks: ReportCheck[]): ReportSummary {
+  const analysis = analyzeProfile(profile);
+  const couple = profile.household === 'COUPLE';
+  const propertyValue = profile.propertyValue ?? null;
+  const years = profile.years || DEFAULT_PLAN_YEARS;
+  const months = yearsToMonths(years);
+  const payment = analysis.estimatedMonthlyPayment;
+  const totalPaid = payment * months;
+  const totalInterest = Math.max(0, totalPaid - mortgageAmount);
+  const oldest = oldestBorrowerAge(profile);
+  const maxYearsByAge =
+    oldest !== null
+      ? Math.max(0, Math.min(PLAN_TERM_MONTHS_MAX / 12, MAX_BORROWER_AGE_AT_END - oldest))
+      : null;
+  const statusOf = (key: string): CheckStatus =>
+    checks.find((check) => check.key === key)?.status ?? 'unknown';
+
+  const borrowers: ReportBorrower[] = [
+    {
+      label: couple ? 'לווה 1' : 'הלווה',
+      age: profile.age,
+      income: profile.income,
+      employment: profile.employmentType ? EMPLOYMENT_LABELS[profile.employmentType] : null,
+      bank: profile.primaryBank,
+      loanPayment: sumProfileLoans(profile.borrowerLoans.filter((loan) => !loan.shared)),
+    },
+  ];
+  if (couple) {
+    borrowers.push({
+      label: 'לווה 2',
+      age: profile.partnerAge,
+      income: profile.partnerIncome,
+      employment: profile.partnerEmploymentType ? EMPLOYMENT_LABELS[profile.partnerEmploymentType] : null,
+      bank: profile.partnerPrimaryBank,
+      loanPayment: sumProfileLoans(profile.partnerLoans.filter((loan) => !loan.shared)),
+    });
+  }
+
+  return {
+    mortgageAmount,
+    propertyValue,
+    equity: profile.equity,
+    equityInDeal: propertyValue ? Math.max(0, propertyValue - mortgageAmount) : 0,
+    equityGap: analysis.equityGap,
+    ltv: analysis.ltv,
+    maxLtv: analysis.maxLtv,
+    ltvStatus: statusOf('ltv'),
+    repaymentRatio: analysis.repaymentRatio,
+    ratioStatus: statusOf('repayment'),
+    ratioLimit: REPAYMENT_RATIO_LIMIT,
+    ratioComfort: REPAYMENT_RATIO_COMFORT,
+    totalIncome: analysis.totalIncome,
+    existingLoans: profile.existingLoans ?? 0,
+    disposableIncome: analysis.disposableIncome,
+    disposableAfterMortgage: analysis.disposableIncome - payment,
+    maxMonthlyPayment: analysis.maxMonthlyPayment,
+    estimatedMonthlyPayment: payment,
+    years,
+    months,
+    maxYearsByAge,
+    totalPaid,
+    totalInterest,
+    interestShare: mortgageAmount > 0 ? (totalInterest / mortgageAmount) * 100 : null,
+    estimateRate: REPORT_ESTIMATE_RATE,
+    ready: analysis.hasInputs,
+    dealTypeLabel: profile.dealType ? DEAL_TYPES[profile.dealType] : null,
+    propertyAddress: profile.propertyAddress.trim() || null,
+    couple,
+    borrowers,
+    grace: graceHorizon(profile),
+  };
+}
+
+/** מה יכול לעצור את הבקשה או להכביד על התזרים — נגזר מהנתונים, לא רשימה קבועה */
+function reportRisks(profile: AnalysisData, summary: ReportSummary): ReportRisk[] {
+  const risks: ReportRisk[] = [];
+  const couple = profile.household === 'COUPLE';
+
+  if (profile.intent === 'FEASIBILITY' || !summary.propertyValue) {
+    risks.push({
+      id: 'no-property',
+      tone: 'info',
+      title: 'עוד אין נכס קונקרטי',
+      body: 'המספרים בדוח מבוססים על הפרופיל בלבד. כשייבחר נכס, שיעור המימון ויחס ההחזר יחושבו מולו.',
+    });
+  }
+  if (summary.ratioStatus === 'fail' || summary.ratioStatus === 'near') {
+    risks.push({
+      id: 'ratio',
+      tone: summary.ratioStatus === 'fail' ? 'critical' : 'warning',
+      title: summary.ratioStatus === 'fail' ? 'יחס החזר מעל המגבלה' : 'יחס החזר קרוב למגבלה',
+      body: `ההחזר המשוער הוא ${money(summary.estimatedMonthlyPayment)} מתוך ${money(summary.totalIncome - summary.existingLoans)} הכנסה נטו אחרי הלוואות. עליית ריבית או ירידה בהכנסה תכביד מיד על התזרים. הארכת תקופה, סגירת הלוואות או הקטנת מחיר הנכס מורידות את היחס.`,
+    });
+  }
+  if (summary.ltvStatus === 'fail' || summary.ltvStatus === 'near') {
+    risks.push({
+      id: 'ltv',
+      tone: summary.ltvStatus === 'fail' ? 'critical' : 'warning',
+      title: summary.ltvStatus === 'fail' ? 'שיעור מימון מעל התקרה' : 'שיעור מימון קרוב לתקרה',
+      body: 'הבנק מחשב את המשכנתא לפי הנמוך מבין מחיר הרכישה לשווי השמאות. פער שמאות בעסקה שקרובה לתקרה יוצר חור בתקציב שצריך לסגור מהון עצמי או במימון יקר.',
+    });
+  }
+  if (summary.equityGap > 0) {
+    risks.push({
+      id: 'equity-gap',
+      tone: 'critical',
+      title: `חסרים ${money(summary.equityGap)} בהון העצמי`,
+      body: 'לפי ההון העצמי שהוצהר אי אפשר לעמוד בתקרת המימון של סוג העסקה. יש להשלים הון, להקטין את מחיר הנכס, או לבדוק מקורות הון נוספים.',
+    });
+  }
+  if (summary.existingLoans > 0 && summary.totalIncome > 0) {
+    const share = (summary.existingLoans / summary.totalIncome) * 100;
+    risks.push({
+      id: 'loans',
+      tone: share > 10 ? 'warning' : 'info',
+      title: `הלוואות קיימות: ${money(summary.existingLoans)} לחודש (${share.toFixed(0)}% מההכנסה)`,
+      body: 'הבנק מנכה את ההחזרים מההכנסה לפני חישוב יחס ההחזר. סגירה או איחוד של הלוואות לפני ההגשה מגדילים את הסכום שיאושר ומשפרים את הריביות.',
+    });
+  }
+  if (summary.maxYearsByAge !== null && summary.years > summary.maxYearsByAge) {
+    risks.push({
+      id: 'age',
+      tone: 'warning',
+      title: 'התקופה המבוקשת ארוכה ממה שהגיל מאפשר',
+      body: `לפי גיל הלווה המבוגר, רוב הבנקים יאשרו עד ${describeMonths(summary.maxYearsByAge * 12)}. תקופה קצרה יותר מעלה את ההחזר החודשי — בדקו את יחס ההחזר מולה.`,
+    });
+  }
+  if (
+    profile.employmentType === 'SELF_EMPLOYED' ||
+    (couple && profile.partnerEmploymentType === 'SELF_EMPLOYED')
+  ) {
+    risks.push({
+      id: 'self-employed',
+      tone: 'info',
+      title: 'לווה עצמאי — החיתום נשען על שומות ודוחות',
+      body: 'הבנק בוחן שומת מס אחרונה, דוח רווח והפסד ואישור מקדמות. הכנסה שאינה מגובה בדיווח לרשויות לא תיספר — כדאי להתחיל לאסוף את המסמכים כבר עכשיו.',
+    });
+  }
+  return risks;
+}
+
+/**
+ * הקווים המנחים לבניית התמהיל: המסגרת הרגולטורית, ואז האיזון בין יציבות,
+ * גמישות לפירעונות מוקדמים, הצמדה, תקופה, והעברת הכספים מול חוזה המכר —
+ * כולם מנוסחים לפי הפרופיל שהוזן.
+ */
+function mixGuidelines(profile: AnalysisData, summary: ReportSummary): ReportGuideline[] {
+  const lumpTotal = profile.futureLumpSums.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const comfortable = summary.ratioStatus === 'pass';
+
+  const guidelines: ReportGuideline[] = [
+    {
+      id: 'frame',
+      title: 'המסגרת הרגולטורית',
+      body: `לפחות ${MIN_FIXED_PERCENT}% בריבית קבועה (קל"צ או ק"צ), הפריים עד ${Math.round(PRIME_MAX_SHARE_PERCENT)}%, ומסלולים משתנים שמתעדכנים מתחת לחמש שנים עד שליש. בתוך המסגרת הזו נבנה האיזון בין עלות, גמישות ויציבות.`,
+    },
+    {
+      id: 'stability',
+      title: comfortable
+        ? 'יציבות: הבסיס הקבוע יכול להיות מינימלי'
+        : 'יציבות: הגדילו את החלק הקבוע הלא-צמוד',
+      body: comfortable
+        ? `יחס ההחזר שלכם משאיר מרווח נשימה, ולכן אפשר לשאת יותר מסלולים משתנים זולים (פריים, משתנה כל 5 שנים) ולהשאיר את הקל"צ סביב השליש הנדרש. ודאו שגם בעליית ריבית של 2% ההחזר נשאר מתחת ל-${REPAYMENT_RATIO_COMFORT}% מההכנסה.`
+        : 'כשההחזר קרוב למגבלה אין מקום לזעזועים. שקלו קל"צ של 50% ויותר, כדי שרוב ההחזר ידוע מראש ולא יקפוץ עם ריבית בנק ישראל או המדד. הפער בריבית מול הפריים הוא המחיר של הביטוח הזה.',
+    },
+    {
+      id: 'flexibility',
+      title: 'גמישות לפירעונות מוקדמים ולשינויים',
+      body:
+        lumpTotal > 0
+          ? `צפויים לכם ${money(lumpTotal)} בהכנסות חד-פעמיות. ייעדו למסלול הפריים (או למסלול משתנה בנקודת עדכון) חלק מהמשכנתא בסדר גודל דומה — במסלולים אלה אין עמלת היוון בפירעון מוקדם, וכך הכסף יוצא מהמשכנתא בלי קנס, ובתזמון שכבר ידוע.`
+          : 'שמרו חלק מהמשכנתא במסלול פריים או במסלול משתנה: בהם פירעון מוקדם ומיחזור אינם כרוכים בעמלת היוון, ולכן הם השסתום לשינויים בעתיד — עלייה בהכנסה, ירושה, או ירידת ריביות שתצדיק מיחזור.',
+    },
+    {
+      id: 'linkage',
+      title: 'הצמדה למדד — בזהירות',
+      body: 'מסלולים צמודי מדד מציעים ריבית נומינלית נמוכה יותר והחזר התחלתי נמוך, אבל הקרן גדלה עם המדד ולאורך שנים היתרה יכולה לעלות במקום לרדת. הם מתאימים לחלק קטן מהתמהיל, לתקופות קצרות או לכסף שמתוכנן להיפרע מוקדם.',
+    },
+    {
+      id: 'term',
+      title:
+        summary.maxYearsByAge !== null
+          ? `תקופה: ${describeMonths(summary.months)} מבוקשות, עד ${describeMonths(Math.min(30, summary.maxYearsByAge) * 12)} לפי גיל`
+          : `תקופה: ${describeMonths(summary.months)} מבוקשות`,
+      body: 'תקופה ארוכה מקטינה את ההחזר החודשי אך מגדילה את סך הריביות. בתמהיל לכל מסלול תקופה משלו — אפשר לקצר את המסלולים היקרים ולהאריך את הזולים, ולתכנן פירעון מוקדם שמקצר את הכל.',
+    },
+    {
+      id: 'cash-flow',
+      title: 'העברת הכספים והתזמון מול חוזה המכר',
+      body: 'ההון העצמי משולם ראשון לפי לוח התשלומים בחוזה, והמשכנתא משוחררת בפעימה האחרונה — רק אחרי חתימה בבנק, ביטוחים ורישום הערת אזהרה. תאמו את מועדי התשלום בחוזה עם תוקף האישור העקרוני (בדרך כלל 24 ימים, עם אפשרות הארכה) ועם זמן הביצוע בבנק, כדי שלא תגיעו למועד תשלום בלי כסף זמין.',
+    },
+  ];
+
+  if (summary.grace) {
+    guidelines.splice(2, 0, {
+      id: 'grace',
+      title: `גרייס: מסלול בלון של ${describeMonths(summary.grace.months)}`,
+      body: `כדי להקל על ההחזר בתקופה הראשונה, חלק מהמשכנתא יכול להיות במסלול שבו משלמים בתחילה רק ריבית. אורכו — עד ${summary.grace.reasons[0].label}. הגדירו את סכום המסלול לפי הפער בין ההחזר הרצוי היום להחזר שתוכלו לשאת אחרי האירוע, ולא יותר.`,
+    });
+  }
+
+  return guidelines;
+}

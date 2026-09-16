@@ -8,6 +8,7 @@
 
 import type { CheckStatus, ProfileReport } from '@/lib/profile-report';
 import { DOCUMENT_CONSISTENCY_WARNING, overallHeadline } from '@/lib/profile-report';
+import { describeMonths } from '@/lib/mortgage-plan';
 
 const PRINT_STYLE_ID = 'pr-print-style';
 export const PROFILE_REPORT_PRINT_ROOT_CLASS = 'pr-print-root';
@@ -175,6 +176,41 @@ export const PROFILE_REPORT_CSS = `
 }
 .pr-doc .pr-rec b { display: block; font-size: 13px; margin-bottom: 3px; color: var(--pr-navy); }
 
+.pr-doc .pr-tiles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.pr-doc .pr-tile {
+  flex: 1 1 160px;
+  border: 1px solid var(--pr-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--pr-soft);
+}
+.pr-doc .pr-tile .k { display: block; font-size: 11px; color: var(--pr-muted); font-weight: 700; }
+.pr-doc .pr-tile .v { display: block; font-size: 18px; font-weight: 900; color: var(--pr-navy); }
+.pr-doc .pr-tile .n { display: block; font-size: 10.5px; color: var(--pr-muted); }
+.pr-doc .pr-cols { display: flex; gap: 12px; }
+.pr-doc .pr-col { flex: 1 1 0; border: 1px solid var(--pr-line); border-radius: 12px; padding: 10px 12px; }
+.pr-doc .pr-col h4 { margin: 0 0 6px; font-size: 13px; font-weight: 900; color: var(--pr-navy); }
+.pr-doc .pr-row { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--pr-line); padding: 3px 0; font-size: 12px; }
+.pr-doc .pr-row:last-child { border-bottom: 0; }
+.pr-doc .pr-row b { font-weight: 800; }
+.pr-doc .pr-risk {
+  border: 1px solid var(--pr-line);
+  border-right: 4px solid var(--pr-near);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: #fff;
+}
+.pr-doc .pr-risk.critical { border-right-color: var(--pr-fail); }
+.pr-doc .pr-risk.info { border-right-color: var(--pr-blue); }
+.pr-doc .pr-risk b { display: block; font-size: 12.5px; margin-bottom: 2px; }
+.pr-doc .pr-guide { display: flex; gap: 8px; margin-bottom: 7px; }
+.pr-doc .pr-guide .num {
+  flex: 0 0 20px; height: 20px; border-radius: 50%; background: var(--pr-pass);
+  color: #fff; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+}
+.pr-doc .pr-guide b { display: block; font-size: 12.5px; color: var(--pr-navy); }
+
 .pr-doc .pr-foot {
   margin-top: 18px;
   padding-top: 10px;
@@ -219,6 +255,9 @@ export const PROFILE_REPORT_PRINT_CSS = `
   .pr-print-root .pr-doc thead { display: table-header-group; }
   .pr-print-root .pr-doc .pr-warn,
   .pr-print-root .pr-doc .pr-rec,
+  .pr-print-root .pr-doc .pr-risk,
+  .pr-print-root .pr-doc .pr-guide,
+  .pr-print-root .pr-doc .pr-col,
   .pr-print-root .pr-doc .pr-verdict { page-break-inside: avoid; }
 }
 `;
@@ -260,6 +299,89 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
     )
     .join('');
 
+  const money = (value: number | null | undefined) =>
+    value === null || value === undefined || !Number.isFinite(value)
+      ? '—'
+      : `₪${Math.round(value).toLocaleString('he-IL')}`;
+  const pct = (value: number | null) => (value === null ? '—' : `${value.toFixed(1)}%`);
+  const { summary } = report;
+
+  const tiles = [
+    { k: 'סכום המשכנתא', v: summary.ready ? money(summary.mortgageAmount) : '—', n: summary.propertyValue ? `מתוך נכס בשווי ${money(summary.propertyValue)}` : '' },
+    { k: 'שיעור מימון', v: pct(summary.ltv), n: `תקרה ${summary.maxLtv}%` },
+    { k: 'יחס החזר', v: pct(summary.repaymentRatio), n: `מגבלה ${summary.ratioLimit}%` },
+    { k: 'החזר חודשי משוער', v: summary.ready ? money(summary.estimatedMonthlyPayment) : '—', n: `${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% להערכה` },
+    { k: 'הכנסה פנויה אחרי המשכנתא', v: summary.ready ? money(summary.disposableAfterMortgage) : '—', n: 'הכנסה נטו פחות הלוואות ופחות ההחזר' },
+    { k: 'סך הריביות לאורך התקופה', v: summary.ready ? money(summary.totalInterest) : '—', n: summary.interestShare !== null ? `${summary.interestShare.toFixed(0)}% מהקרן · סך תשלומים ${money(summary.totalPaid)}` : '' },
+    { k: 'החזר חודשי מרבי לפי הבנקים', v: money(summary.maxMonthlyPayment), n: `${summary.ratioLimit}% מההכנסה הפנויה` },
+    { k: 'הון עצמי בעסקה', v: summary.ready ? money(summary.equityInDeal) : money(summary.equity), n: summary.equityGap > 0 ? `חסרים ${money(summary.equityGap)}` : '' },
+  ]
+    .map(
+      (tile) => `
+      <div class="pr-tile">
+        <span class="k">${escapeHtml(tile.k)}</span>
+        <span class="v">${escapeHtml(tile.v)}</span>
+        ${tile.n ? `<span class="n">${escapeHtml(tile.n)}</span>` : ''}
+      </div>`
+    )
+    .join('');
+
+  const row = (label: string, value: string) =>
+    `<div class="pr-row"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`;
+  const dealRows = [
+    row('סוג העסקה', summary.dealTypeLabel ?? '—'),
+    row('כתובת הנכס', summary.propertyAddress ?? '—'),
+    row('מחיר הנכס', money(summary.propertyValue)),
+    row('הון עצמי מוצהר', money(summary.equity)),
+    row('סכום המשכנתא המבוקש', summary.ready ? money(summary.mortgageAmount) : '—'),
+    row('תקופה מבוקשת', describeMonths(summary.months)),
+    ...(summary.maxYearsByAge !== null
+      ? [row('תקופה מרבית לפי גיל (מדיניות מקובלת)', describeMonths(Math.min(30, summary.maxYearsByAge) * 12))]
+      : []),
+  ].join('');
+  const householdRows = [
+    ...summary.borrowers.map((borrower) =>
+      row(
+        `${borrower.label} · הכנסה נטו`,
+        `${money(borrower.income)}${borrower.age !== null ? ` · גיל ${borrower.age}` : ''}${borrower.employment ? ` · ${borrower.employment}` : ''}${borrower.bank ? ` · בנק ${borrower.bank}` : ''}`
+      )
+    ),
+    row('הכנסה חודשית מוכרת', money(summary.totalIncome)),
+    row('החזר על הלוואות קיימות', money(summary.existingLoans)),
+    row('הכנסה פנויה לחישוב ההחזר', money(summary.disposableIncome)),
+  ].join('');
+
+  const risks = report.risks
+    .map(
+      (risk) => `
+      <div class="pr-risk ${risk.tone}">
+        <b>${escapeHtml(risk.title)}</b>
+        <span>${escapeHtml(risk.body)}</span>
+      </div>`
+    )
+    .join('');
+
+  const alerts = report.alerts
+    .map(
+      (item) => `
+      <div class="pr-rec">
+        <b>${escapeHtml(item.title)}</b>
+        <span>${escapeHtml(item.body)}</span>
+        ${item.bullets && item.bullets.length > 0 ? `<ul>${item.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join('')}</ul>` : ''}
+      </div>`
+    )
+    .join('');
+
+  const guidelines = report.guidelines
+    .map(
+      (item, index) => `
+      <div class="pr-guide">
+        <span class="num">${index + 1}</span>
+        <div><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.body)}</span></div>
+      </div>`
+    )
+    .join('');
+
   const recommendations = report.recommendations
     .map(
       (item) => `
@@ -281,7 +403,15 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       <h2>${escapeHtml(overallHeadline(report.overall))}</h2>
     </div>
 
-    <h3>עמידה בדרישות הרגולטוריות</h3>
+    <h3>מספרי המפתח</h3>
+    <div class="pr-tiles">${tiles}</div>
+
+    <div class="pr-cols">
+      <div class="pr-col"><h4>נתוני העסקה</h4>${dealRows}</div>
+      <div class="pr-col"><h4>פרופיל הלקוח</h4>${householdRows}</div>
+    </div>
+
+    <h3>עמידה בדרישות הבנקים ובמגבלות הרגולציה</h3>
     <table class="pr-table">
       <thead>
         <tr>
@@ -297,6 +427,10 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
 
     <h3>התמונה הפיננסית</h3>
     <div class="pr-figures">${figures}</div>
+
+    ${risks ? `<h3>סיכונים</h3>${risks}` : ''}
+
+    ${alerts ? `<h3>המלצות שצפו בזמן מילוי הפרטים</h3>${alerts}` : ''}
 
     <h3>המסמכים שיידרשו לאימות הנתונים</h3>
     <p class="pr-note">
@@ -316,6 +450,10 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
         ? `<h3>המלצות לתכנון התמהיל</h3>${recommendations}`
         : ''
     }
+
+    <h3>קווים מנחים לבניית התמהיל</h3>
+    <p class="pr-note">איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל הפיננסי שלכם.</p>
+    ${guidelines}
 
     <div class="pr-foot">
       הדוח מסכם את הנתונים שהוזנו בשלב הפרופיל הפיננסי ואת בדיקתם מול מגבלות בנק ישראל

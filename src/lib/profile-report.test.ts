@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { emptyPlanData } from './mortgage-plan';
+import { analyzeProfile, emptyPlanData } from './mortgage-plan';
 import type { PlanData } from './mortgage-plan';
 import {
   buildProfileReport,
+  graceHorizon,
   overallHeadline,
+  profileRecommendations,
+  repaymentRatioStatus,
   reportRecommendations,
+  shouldAskIncomeIncrease,
   DOCUMENT_CONSISTENCY_WARNING,
 } from './profile-report';
 
@@ -167,5 +171,138 @@ describe('ההמלצות שנגזרות מהנתונים', () => {
       { id: 'l2', label: 'ללא סכום', amount: null, inYears: 5 },
     ];
     expect(reportRecommendations(data)).toEqual([]);
+  });
+});
+
+describe('ההמלצות שצפות בזמן ההזנה', () => {
+  it('יחס החזר קרוב לגבול העליון מעלה את המלצת התלושים, ומעבר לו היא הופכת לקריטית', () => {
+    // 1,700,000 ל-25 שנים ≈ ₪9,780 בחודש; הכנסה נטו אחרי הלוואות של 26,000 → כ-37.6%
+    const near = profile({ income: 15_000, partnerIncome: 12_500, existingLoans: 1_500 }).ANALYSIS;
+    expect(repaymentRatioStatus(analyzeProfile(near).repaymentRatio)).toBe('near');
+    const nearRec = profileRecommendations(near).find((item) => item.id === 'repayment-ratio');
+    expect(nearRec?.tone).toBe('warning');
+    expect(nearRec?.body).toMatch(/תלושי שכר/);
+    expect(nearRec?.bullets?.[0]).toMatch(/ההכנסה הפנויה הריאלית/);
+    expect(nearRec?.screens).toEqual(['borrowers', 'deal']);
+
+    const over = { ...near, income: 10_000, partnerIncome: 9_000 };
+    expect(profileRecommendations(over).find((item) => item.id === 'repayment-ratio')?.tone).toBe('critical');
+
+    expect(profileRecommendations(profile().ANALYSIS).some((item) => item.id === 'repayment-ratio')).toBe(false);
+  });
+
+  it('עלייה צפויה בהכנסה כשהיחס גבוה פותחת מסלול גרייס באורך התקופה עד העלייה', () => {
+    const data = profile({ income: 15_000, partnerIncome: 12_500, existingLoans: 1_500 }).ANALYSIS;
+    expect(shouldAskIncomeIncrease(data)).toBe(true);
+    expect(graceHorizon(data)).toBeNull();
+
+    data.expectsIncomeIncrease = true;
+    data.futureMonthlyIncrease = 3_000;
+    data.futureMonthlyIncreaseInYears = 3;
+    const grace = graceHorizon(data);
+    expect(grace?.months).toBe(36);
+    expect(grace?.reasons[0].kind).toBe('income');
+    expect(profileRecommendations(data).find((item) => item.id === 'grace-track')?.title).toMatch(/3 שנים/);
+
+    // כשהיחס תקין השאלה אינה נשאלת, והתשובה שנשמרה אינה פותחת גרייס
+    const roomy = { ...data, income: 22_000, partnerIncome: 12_000 };
+    expect(shouldAskIncomeIncrease(roomy)).toBe(false);
+    expect(graceHorizon(roomy)).toBeNull();
+  });
+
+  it('הלוואה שמסתיימת בתוך פחות מחמש שנים מצדיקה גרייס גם כשיחס ההחזר תקין, ואורכו לפי האירוע הקרוב', () => {
+    const data = profile().ANALYSIS;
+    data.borrowerLoans = [{ id: 'a', monthlyPayment: 1_500, remainingMonths: 30 }];
+    data.partnerLoans = [{ id: 'b', monthlyPayment: 500, remainingMonths: 48 }];
+
+    const grace = graceHorizon(data);
+    expect(grace?.months).toBe(30);
+    expect(grace?.reasons).toHaveLength(2);
+    expect(profileRecommendations(data).find((item) => item.id === 'grace-track')?.bullets).toHaveLength(2);
+
+    // מעל חמש שנים או מתחת ל-18 חודשים — אין סיבה לגרייס
+    data.borrowerLoans = [{ id: 'a', monthlyPayment: 1_500, remainingMonths: 72 }];
+    data.partnerLoans = [{ id: 'b', monthlyPayment: 500, remainingMonths: 12 }];
+    expect(graceHorizon(data)).toBeNull();
+  });
+
+  it('שמאות מוקדמת צפה במסך הנכס עם אותו נוסח של המלצת התמהיל, ואינה נכפלת בדוח', () => {
+    const tight = profile({ equity: 610_000 });
+    const inline = profileRecommendations(tight.ANALYSIS).find((item) => item.id === 'early-appraisal');
+    expect(inline?.screens).toEqual(['deal']);
+    const report = buildProfileReport(tight);
+    expect(report.recommendations.some((item) => item.title === inline?.title)).toBe(true);
+    expect(report.alerts.some((item) => item.id === 'early-appraisal')).toBe(false);
+  });
+
+  it('בחירת הבנק של החשבון מעלה המלצה לכלול אותו בהגשה, פעם אחת לכל בנק', () => {
+    const data = profile().ANALYSIS;
+    expect(profileRecommendations(data).some((item) => item.id === 'primary-bank')).toBe(false);
+
+    data.primaryBank = 'לאומי';
+    data.partnerPrimaryBank = 'לאומי';
+    const rec = profileRecommendations(data).find((item) => item.id === 'primary-bank');
+    expect(rec?.title).toBe('כללו את בנק לאומי בין הבנקים שאליהם תוגש הבקשה לאישור עקרוני');
+    expect(rec?.body).toMatch(/סבבי מיקוח/);
+
+    data.partnerPrimaryBank = 'הפועלים';
+    expect(profileRecommendations(data).find((item) => item.id === 'primary-bank')?.title).toMatch(
+      /בנק לאומי ובנק הפועלים/
+    );
+  });
+});
+
+describe('מספרי הדשבורד, הסיכונים והקווים המנחים', () => {
+  it('מחשב את ההכנסה הפנויה אחרי המשכנתא ואת סך הריביות לאורך התקופה', () => {
+    const data = profile();
+    const { summary } = buildProfileReport(data);
+    const analysis = analyzeProfile(data.ANALYSIS);
+
+    expect(summary.ready).toBe(true);
+    expect(summary.mortgageAmount).toBe(1_700_000);
+    expect(summary.months).toBe(300);
+    expect(summary.disposableAfterMortgage).toBeCloseTo(
+      analysis.disposableIncome - analysis.estimatedMonthlyPayment,
+      5
+    );
+    expect(summary.totalPaid).toBeCloseTo(analysis.estimatedMonthlyPayment * 300, 5);
+    expect(summary.totalInterest).toBeCloseTo(summary.totalPaid - 1_700_000, 5);
+    expect(summary.interestShare).toBeGreaterThan(0);
+    expect(summary.ratioStatus).toBe('pass');
+    expect(summary.borrowers).toHaveLength(2);
+  });
+
+  it('הסיכונים והקווים המנחים מגיבים לפרופיל', () => {
+    const data = profile({
+      partnerEmploymentType: 'SELF_EMPLOYED',
+      futureLumpSums: [{ id: 'l', label: 'קרן השתלמות', amount: 150_000, inYears: 4 }],
+      borrowerLoans: [{ id: 'a', monthlyPayment: 1_500, remainingMonths: 24 }],
+    });
+    const report = buildProfileReport(data);
+
+    expect(report.risks.some((risk) => risk.id === 'self-employed')).toBe(true);
+    expect(report.risks.some((risk) => risk.id === 'loans')).toBe(true);
+    expect(report.guidelines.map((item) => item.id)).toEqual([
+      'frame',
+      'stability',
+      'grace',
+      'flexibility',
+      'linkage',
+      'term',
+      'cash-flow',
+    ]);
+    expect(report.guidelines.find((item) => item.id === 'flexibility')?.body).toMatch(/150,000/);
+  });
+
+  it('גיל מבוגר מקצר את התקופה המותרת ומסומן כסיכון', () => {
+    const report = buildProfileReport(profile({ partnerAge: 58 }));
+    expect(report.summary.maxYearsByAge).toBe(17);
+    expect(report.risks.some((risk) => risk.id === 'age')).toBe(true);
+  });
+
+  it('בלי נכס הדשבורד אינו מוכן אך אינו נופל', () => {
+    const report = buildProfileReport(profile({ intent: 'FEASIBILITY', propertyValue: null }));
+    expect(report.summary.ready).toBe(false);
+    expect(report.risks[0].id).toBe('no-property');
   });
 });

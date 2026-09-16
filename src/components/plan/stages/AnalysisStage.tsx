@@ -14,6 +14,7 @@ import {
   Check,
   ChevronRight,
   CreditCard,
+  Landmark,
   MapPin,
   Plus,
   Trash2,
@@ -59,9 +60,13 @@ import {
 } from '../ui';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { pickProfileFromAnalysis } from '@/lib/client-profile';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 import { StageOverview } from './analysis/StageOverview';
 import { ProfileReportPanel } from './analysis/ProfileReportPanel';
 import { IncomeCalculatorDialog } from './analysis/IncomeCalculatorDialog';
+import { DocumentsScreen } from './analysis/DocumentsScreen';
+import { RecommendationCallouts } from './analysis/RecommendationCallouts';
+import { AdvisorHelpButton } from './analysis/AdvisorHelpButton';
 import { AdvisorLeadDialog } from '../advisor/AdvisorLeadDialog';
 
 const AFFORDABILITY_TOOL = '/mortgage-planning?flow=affordability';
@@ -118,8 +123,9 @@ const reveal = {
 /**
  * שלב 1 — הפרופיל הפיננסי.
  *
- * ארבעה מסכים אחד אחרי השני: איפה בתהליך, מי לוקח, הכנסות עתידיות, ואז הנכס
- * או בדיקת ההיתכנות. הכל נשמר תוך כדי הקלדה.
+ * ההסבר על השלב, ואחריו המסכים אחד אחרי השני: הנכס והעסקה, מי לוקח, הכנסות
+ * עתידיות, תיק המסמכים והדוח הסופי. הכל נשמר תוך כדי הקלדה, וההמלצות צפות
+ * במסך שבו הנתון הרלוונטי מוזן. כפתור צף להיעזר ביועץ מלווה את כל המסכים.
  */
 export function AnalysisStage({
   data,
@@ -180,6 +186,9 @@ export function AnalysisStage({
 
   const screen: ProfileScreen = profile.profileScreen || 'overview';
 
+  /* מי שכבר רכש את המסלול העצמאי אינו צריך לבחור שוב "לבד או עם יועץ" */
+  const { access } = usePlatformAccess();
+
   /* טופס פנייה ליועץ — נפתח מכפתור גיוס ההון העצמי כשההון חסר */
   const [equityHelpOpen, setEquityHelpOpen] = useState(false);
   const onEquityHelp = () => setEquityHelpOpen(true);
@@ -196,6 +205,8 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
+      <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />
+
       {screen !== 'overview' && (
         <ScreenRail
           current={screen}
@@ -212,6 +223,7 @@ export function AnalysisStage({
               onStart={() => go('deal')}
               onAdvisor={onRequestAdvisor}
               advisorBusy={advisorBusy}
+              selfServicePaid={access.active}
             />
           </motion.div>
         )}
@@ -429,6 +441,19 @@ export function AnalysisStage({
                               )
                             );
                           }}
+                          onRemainingChange={(remainingMonths) => {
+                            patch(
+                              syncedLoans(
+                                profile,
+                                profile.borrowerLoans.map((item) =>
+                                  item.id === loan.id ? { ...item, remainingMonths } : item
+                                ),
+                                profile.partnerLoans.map((item) =>
+                                  item.id === loan.id ? { ...item, remainingMonths } : item
+                                )
+                              )
+                            );
+                          }}
                           onUnshare={() => {
                             patch(
                               syncedLoans(
@@ -492,6 +517,8 @@ export function AnalysisStage({
               )}
             </Panel>
 
+            <RecommendationCallouts profile={profile} screen="borrowers" patch={patch} />
+
             <ScreenFooter
               backLabel="הנכס והעסקה"
               onBack={() => go('deal')}
@@ -513,10 +540,25 @@ export function AnalysisStage({
         {screen === 'future' && (
           <motion.div key="future" {...reveal} className="space-y-5">
             <FutureIncomePanel profile={profile} patch={patch} />
+            <RecommendationCallouts profile={profile} screen="future" patch={patch} />
             <ScreenFooter
               backLabel="מי לוקח את המשכנתא"
               onBack={() => go('borrowers')}
-              nextLabel="המשך לדוח הפרופיל"
+              nextLabel="המשך לתיק המסמכים"
+              onNext={() => go('documents')}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'documents' && (
+          <motion.div key="documents" {...reveal} className="space-y-5">
+            <DocumentsScreen data={data} planId={planId} patch={patch} />
+            <ScreenFooter
+              backLabel="צפי להכנסות עתידיות"
+              onBack={() => go('future')}
+              nextLabel={
+                profile.documentsMode && profile.documentsMode !== 'UPLOAD' ? 'לדוח הפרופיל' : null
+              }
               onNext={() => go('report')}
             />
           </motion.div>
@@ -525,6 +567,7 @@ export function AnalysisStage({
         {screen === 'deal' && (
           <motion.div key="deal" {...reveal} className="space-y-5">
             <PropertyPanel profile={profile} patch={patch} onNeedEquityHelp={onEquityHelp} />
+            <RecommendationCallouts profile={profile} screen="deal" patch={patch} />
 
             <ScreenFooter
               backLabel="על השלב"
@@ -537,17 +580,8 @@ export function AnalysisStage({
 
         {screen === 'report' && (
           <motion.div key="report" {...reveal} className="space-y-5">
-            <ProfileReportPanel
-              data={data}
-              planId={planId}
-              planName={planName}
-              onDocumentsMode={(documentsMode) => patch({ documentsMode })}
-            />
-            <ScreenFooter
-              backLabel={profile.intent === 'FEASIBILITY' ? 'היתכנות' : 'הנכס והעסקה'}
-              onBack={() => go('deal')}
-              nextLabel={null}
-            />
+            <ProfileReportPanel data={data} planName={planName} />
+            <ScreenFooter backLabel="תיק המסמכים" onBack={() => go('documents')} nextLabel={null} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -578,6 +612,7 @@ function ScreenRail({
     },
     { id: 'borrowers', label: 'מי לוקח', unlocked: true },
     { id: 'future', label: 'הכנסות עתידיות', unlocked: personalDone },
+    { id: 'documents', label: 'מסמכים', unlocked: personalDone },
     { id: 'report', label: 'דוח הפרופיל', unlocked: personalDone && Boolean(intent) },
   ];
 
@@ -772,6 +807,21 @@ function BankChooser({
           );
         })}
       </div>
+      {/* ההתרעה בשורה — ברגע שנבחר הבנק. ההמלצה המלאה מופיעה למטה ובדוח הסופי */}
+      {bank && (
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-right text-[11px] leading-relaxed text-blue-900"
+        >
+          <Landmark className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
+          <span>
+            <span className="font-black">מומלץ לכלול את בנק {bank} בבנקים שאליהם תוגש הבקשה לאישור עקרוני.</span>{' '}
+            בנק שמנהל את החשבון שלכם נוטה לתת תנאים טובים יותר — הצעה ראשונית זולה ממנו תקל
+            בשלב המיקוח מול בנקים אחרים ותחסוך סבבי מיקוח. ההמלצה תופיע גם בדוח הסופי.
+          </span>
+        </motion.p>
+      )}
     </div>
   );
 }
@@ -870,7 +920,7 @@ function BorrowerWorkCard({
           {loans.map((loan, index) => (
             <div key={loan.id} className="space-y-1.5">
               <div className="flex items-end gap-2">
-                <div className="min-w-0 flex-1">
+                <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
                   <NumberField
                     label={loans.length > 1 ? `הלוואה ${index + 1} — החזר חודשי` : 'החזר חודשי'}
                     value={loan.monthlyPayment}
@@ -881,6 +931,19 @@ function BorrowerWorkCard({
                     }
                     suffix="₪"
                     placeholder="2,500"
+                  />
+                  <NumberField
+                    label="חודשים שנותרו"
+                    hint="הלוואה שמסתיימת בתוך פחות מחמש שנים משחררת החזר חודשי — ואז נמליץ על מסלול גרייס בתמהיל עד לסיומה."
+                    value={loan.remainingMonths ?? null}
+                    onChange={(remainingMonths) =>
+                      onLoansChange(
+                        loans.map((item) => (item.id === loan.id ? { ...item, remainingMonths } : item))
+                      )
+                    }
+                    suffix="חודשים"
+                    max={360}
+                    placeholder="36"
                   />
                 </div>
                 {(loans.length > 1 || allowShared) && (
@@ -928,6 +991,7 @@ function SharedLoanRow({
   index,
   count,
   onChange,
+  onRemainingChange,
   onUnshare,
   onRemove,
 }: {
@@ -935,19 +999,28 @@ function SharedLoanRow({
   index: number;
   count: number;
   onChange: (monthlyPayment: number | null) => void;
+  onRemainingChange: (remainingMonths: number | null) => void;
   onUnshare: () => void;
   onRemove: () => void;
 }) {
   return (
     <div className="rounded-xl border border-blue-200 bg-white p-3">
       <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
           <NumberField
             label={count > 1 ? `הלוואה משותפת ${index + 1} — החזר חודשי` : 'החזר חודשי משותף'}
             value={loan.monthlyPayment}
             onChange={onChange}
             suffix="₪"
             placeholder="2,500"
+          />
+          <NumberField
+            label="חודשים שנותרו"
+            value={loan.remainingMonths ?? null}
+            onChange={onRemainingChange}
+            suffix="חודשים"
+            max={360}
+            placeholder="36"
           />
         </div>
         <button

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   PLAN_STAGES,
+  accountBanks,
+  describeMonths,
   analysisFromPlanning,
   analyzeProfile,
   clampDealMortgage,
@@ -652,5 +654,37 @@ describe('גזירה מכלי בניית הפרופיל', () => {
     expect(parsed.primaryBank).toBe('לאומי');
     expect(parsed.partnerPrimaryBank).toBe('הפועלים');
     expect(suggestedPreApprovalBank(parsed)).toEqual({ bank: 'הפועלים', source: 'partner' });
+  });
+});
+
+describe('שדות הפרופיל להמלצות ולתת-שלב המסמכים', () => {
+  it('חודשי ההלוואה שנותרו ותשובת ההכנסה נשמרים, ותת-שלב המסמכים הוא מסך תקף', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      expectsIncomeIncrease: true,
+      profileScreen: 'documents',
+      borrowerLoans: [{ id: 'a', monthlyPayment: 900, remainingMonths: 30.4 }],
+    });
+
+    expect(parsed.expectsIncomeIncrease).toBe(true);
+    expect(parsed.profileScreen).toBe('documents');
+    expect(parsed.borrowerLoans[0].remainingMonths).toBe(30);
+    expect(parseStageData('ANALYSIS', { expectsIncomeIncrease: 'yes' }).expectsIncomeIncrease).toBeNull();
+    expect(parseStageData('ANALYSIS', {}).expectsIncomeIncrease).toBeNull();
+  });
+
+  it('תיאור תקופות בעברית, והבנקים של החשבונות בלי כפילויות', () => {
+    expect(describeMonths(18)).toBe('18 חודשים');
+    expect(describeMonths(24)).toBe('שנתיים');
+    expect(describeMonths(36)).toBe('3 שנים');
+    expect(describeMonths(40)).toBe('3 שנים ו-4 חודשים');
+    expect(describeMonths(12)).toBe('שנה');
+
+    const data = profile().ANALYSIS;
+    data.primaryBank = 'לאומי';
+    data.partnerPrimaryBank = 'לאומי';
+    expect(accountBanks(data)).toEqual(['לאומי']);
+    data.partnerPrimaryBank = 'הפועלים';
+    expect(accountBanks(data)).toEqual(['לאומי', 'הפועלים']);
+    expect(accountBanks({ ...data, household: 'SINGLE' })).toEqual(['לאומי']);
   });
 });

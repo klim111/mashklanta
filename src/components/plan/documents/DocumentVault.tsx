@@ -39,11 +39,14 @@ export function DocumentVault({
   data,
   mode,
   onModeChange,
+  hideModes = false,
 }: {
   planId: string;
   data: PlanData;
   mode: DocumentsMode | null;
   onModeChange: (mode: DocumentsMode) => void;
+  /** תת-שלב המסמכים כבר בחר את הדרך — כפתורי הבחירה מיותרים בתוכו */
+  hideModes?: boolean;
 }) {
   const groups = preApprovalDocumentGroups(data);
   const { documents, ready, error, busyKey, upload, remove } = usePlanDocuments(planId);
@@ -72,6 +75,7 @@ export function DocumentVault({
       </header>
 
       {/* איך מטפלים בתיק — העלאה כאן, או דילוג מוצהר */}
+      {!hideModes && (
       <div className="mt-4 grid gap-2 md:grid-cols-3">
         {(Object.keys(DOCUMENTS_MODE_LABELS) as DocumentsMode[]).map((option) => (
           <button
@@ -88,8 +92,9 @@ export function DocumentVault({
           </button>
         ))}
       </div>
+      )}
 
-      {skipped && (
+      {!hideModes && skipped && (
         <p className="mt-3 rounded-2xl border-2 border-amber-200 bg-amber-50/70 px-4 py-3 text-center text-[15px] font-bold leading-relaxed text-amber-900">
           {mode === 'SELF_SUBMIT'
             ? 'סימנתם הגשה עצמאית לבנק — הרשימה כאן היא מה שצריך להביא איתכם.'

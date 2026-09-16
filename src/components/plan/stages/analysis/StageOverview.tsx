@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -8,20 +8,28 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
-  Banknote,
-  Calculator,
+  BarChart3,
+  CalendarClock,
   CheckCircle2,
+  Compass,
+  Download,
+  Eye,
+  EyeOff,
   FileCheck2,
-  FileText,
+  Landmark,
   Layers,
   Loader2,
+  PiggyBank,
+  Play,
   ShieldCheck,
   Sparkles,
-  TrendingUp,
+  Users,
   Video,
   Wallet,
   Wrench,
 } from 'lucide-react';
+import { ProfileReportPanel } from './ProfileReportPanel';
+import { SAMPLE_PLAN_NAME, sampleProfileData } from './sampleProfile';
 
 /** אחרי 40 שניות המסך עובר הלאה מעצמו — מי שקורא מהר לוחץ "המשך" */
 const AUTO_ADVANCE_MS = 40_000;
@@ -36,23 +44,102 @@ const reveal = {
   transition: { duration: 0.4 },
 };
 
+/** חמש העבודות של השלב — מה עושים בו */
+const STAGE_ACTIONS: Array<{ icon: ReactNode; gradient: string; title: string; body: string }> = [
+  {
+    icon: <Users className="h-6 w-6 text-white" />,
+    gradient: 'from-blue-600 to-indigo-600',
+    title: 'בונים פרופיל עסקה ופרופיל פיננסי של הלקוח',
+    body: 'מי הלווים, מה הם מרוויחים ומה הם מחזירים היום, כמה הון עצמי יש, ואיזו עסקה על השולחן — במספרים שהבנק בוחן.',
+  },
+  {
+    icon: <ShieldCheck className="h-6 w-6 text-white" />,
+    gradient: 'from-emerald-600 to-teal-600',
+    title: 'מוודאים עמידה בדרישות הבנקים ובדרישות הרגולציה',
+    body: 'שיעור המימון מול תקרת בנק ישראל לסוג העסקה, יחס ההחזר מול המגבלה, התקופה והגיל — לפני שהבנק בודק אותם.',
+  },
+  {
+    icon: <FileCheck2 className="h-6 w-6 text-white" />,
+    gradient: 'from-indigo-600 to-blue-600',
+    title: 'מגדירים מה צריך לכלול תיק המסמכים להגשה לבנק',
+    body: 'רשימה לפי אופן ההעסקה של כל לווה, ניהול החשבון וסוג העסקה — ומוודאים שכל מסמך שיוגש יהיה תקין ומלא.',
+  },
+  {
+    icon: <CalendarClock className="h-6 w-6 text-white" />,
+    gradient: 'from-amber-500 to-orange-600',
+    title: 'בונים תהליך מותאם אישית ומתזמנים את השלבים בו',
+    body: 'לאילו בנקים מגישים, מתי, מה מכינים לפני החוזה ומה אחרי — לפי הצפי להכנסות ולמועדי התשלום שלכם.',
+  },
+  {
+    icon: <Compass className="h-6 w-6 text-white" />,
+    gradient: 'from-violet-600 to-purple-600',
+    title: 'מגדירים את העקרונות והקווים המנחים לתמהיל מותאם אישית',
+    body: 'איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל הפיננסי, כולל העברת הכספים ותזמונם.',
+  },
+];
+
+/** מה הדוח נותן — הבלוקים שעולים מעל הדוח לדוגמה, אחד אחרי השני */
+const REPORT_OUTPUTS: Array<{ icon: ReactNode; title: string; body: string; accent: string }> = [
+  {
+    icon: <BarChart3 className="h-4 w-4 text-white" />,
+    title: 'יחס מימון, יחס החזר והבטוחה מול מגבלות הרגולציה',
+    body: 'כל מגבלה בשורה אחת: מה בעסקה שלכם, מה המותר, ובאיזה צבע אתם.',
+    accent: 'from-blue-600 to-cyan-500',
+  },
+  {
+    icon: <FileCheck2 className="h-4 w-4 text-white" />,
+    title: 'רשימת המסמכים הנדרשת להגשת הבקשה לבנקים',
+    body: 'לפי הלווים ולפי העסקה, עם מה שאופציונלי בשלב הזה ומה חובה.',
+    accent: 'from-indigo-600 to-blue-500',
+  },
+  {
+    icon: <Compass className="h-4 w-4 text-white" />,
+    title: 'תיאור התמהיל המותאם לפרופיל',
+    body: 'איזון בין עלויות מימון, גמישות לשינויים ופירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל הפיננסי שלכם.',
+    accent: 'from-emerald-600 to-teal-500',
+  },
+  {
+    icon: <Wallet className="h-4 w-4 text-white" />,
+    title: 'הכסף הפנוי שיישאר אחרי תשלום המשכנתא',
+    body: 'הערכת תמונת המצב החודשית שלכם ביום שאחרי החתימה.',
+    accent: 'from-violet-600 to-fuchsia-500',
+  },
+  {
+    icon: <PiggyBank className="h-4 w-4 text-white" />,
+    title: 'סך הריביות שישולמו לאורך תקופת המשכנתא',
+    body: 'המספר שהתמהיל בשלב הבא ינסה להוריד — כאן הוא נקודת הפתיחה.',
+    accent: 'from-amber-500 to-orange-500',
+  },
+  {
+    icon: <Landmark className="h-4 w-4 text-white" />,
+    title: 'הסבר על הסיכונים והמלצות לבניית התמהיל',
+    body: 'כל המלצה שצפה תוך כדי מילוי הפרטים — תלושים, שמאות מוקדמת, גרייס, הבנק שלכם — נאספת לדוח.',
+    accent: 'from-rose-600 to-pink-500',
+  },
+];
+
 /**
- * מסך הפתיחה של שלב הפרופיל הפיננסי.
+ * מסך «על השלב» — הפתיח של שלב הפרופיל הפיננסי.
  *
- * לפני שמזינים נתון ראשון כדאי לדעת למה מזינים אותו, ולכן ההסבר בא ברצף של
- * שלושה מסכים מלאים: מה השלב, איך הוא עובד, ומה יוצא ממנו. כל מסך עובר הלאה
- * בלחיצה על "המשך" או מעצמו אחרי 40 שניות, ובסוף שלושתם נאספים למסך אחד עם
- * שתי הדרכים לעבור את השלב.
+ * לפני שמזינים נתון ראשון כדאי לדעת למה מזינים אותו, ולכן ההסבר בא ברצף:
+ * מה השלב ולמה הוא קריטי, חמש העבודות שעושים בו, והתוצר — דוח לדוגמה שהבלוקים
+ * המסבירים אותו עולים מעליו אחד אחרי השני. בסוף כפתור «התחל שלב».
+ *
+ * מי שכבר רכש את המסלול העצמאי אינו צריך לבחור שוב «לבד או עם יועץ» — הוא
+ * מקבל את כפתור ההתחלה בלבד, והיועץ זמין לו מהכפתור הצף בכל מסך.
  */
 export function StageOverview({
   onStart,
   onAdvisor,
   advisorBusy = false,
+  selfServicePaid = false,
 }: {
   onStart: () => void;
   /** בקשת ליווי חינמית ליועץ — התשלום בהמשך */
   onAdvisor?: () => void;
   advisorBusy?: boolean;
+  /** הלקוח שילם על המסלול העצמאי — אין צורך בכפתור «בצעו לבד» */
+  selfServicePaid?: boolean;
 }) {
   const [slide, setSlide] = useState<Slide>('intro');
   /** מסך ההסבר על הליווי, שנפתח מהכפתור "תנו ליועץ" */
@@ -64,7 +151,8 @@ export function StageOverview({
   };
 
   useEffect(() => {
-    if (slide === 'all' || advisorIntent) return;
+    // מסך הדוח לדוגמה אינו מתקדם מעצמו — הבלוקים שלו עולים בקצב שלהם
+    if (slide === 'all' || slide === 'output' || advisorIntent) return;
     const timer = setTimeout(next, AUTO_ADVANCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,7 +187,7 @@ export function StageOverview({
       {slide === 'output' && (
         <motion.section key="output" {...reveal}>
           <OutputSlide />
-          <SlideFooter slide={slide} onNext={next} />
+          <SlideFooter slide={slide} onNext={next} autoAdvance={false} />
         </motion.section>
       )}
 
@@ -109,7 +197,7 @@ export function StageOverview({
           <ProcessSlide compact />
           <OutputSlide compact />
 
-          {/* שורת הבחירה — נכנסת אחרונה, ונעה פעם אחת כדי למשוך אליה את העין */}
+          {/* שורת ההתחלה — נכנסת אחרונה, ונעה פעם אחת כדי למשוך אליה את העין */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0, x: [0, -16, 0] }}
@@ -118,48 +206,53 @@ export function StageOverview({
               y: { duration: 0.45, delay: 0.25 },
               x: { delay: 1.1, duration: 0.85, times: [0, 0.5, 1], ease: 'easeInOut' },
             }}
-            className="grid gap-3 md:grid-cols-2"
+            className={`grid gap-3 ${selfServicePaid || !onAdvisor ? '' : 'md:grid-cols-2'}`}
           >
-            <button
-              type="button"
-              onClick={onStart}
-              className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-300 bg-blue-50/50 p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
-                <Wrench className="h-7 w-7 text-white" />
-              </span>
-              <span className="text-lg font-black text-slate-900">
-                בצעו את השלב לבד באמצעות משכלנתא
-              </span>
-              <span className="text-[15px] font-medium leading-snug text-slate-600">
-                בונים את הפרופיל בעצמכם, צעד אחר צעד, עם כל החישובים והבדיקות
-              </span>
-              <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-blue-700">
-                בואו נתחיל
-                <ArrowLeft className="h-4 w-4" />
-              </span>
-            </button>
+            {selfServicePaid || !onAdvisor ? (
+              <StartStageCard onStart={onStart} />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onStart}
+                  className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-300 bg-blue-50/50 p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
+                    <Wrench className="h-7 w-7 text-white" />
+                  </span>
+                  <span className="text-lg font-black text-slate-900">
+                    בצעו את השלב לבד באמצעות משכלנתא
+                  </span>
+                  <span className="text-[15px] font-medium leading-snug text-slate-600">
+                    בונים את הפרופיל בעצמכם, צעד אחר צעד, עם כל החישובים והבדיקות
+                  </span>
+                  <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-blue-700">
+                    <Play className="h-4 w-4" />
+                    התחל שלב
+                    <ArrowLeft className="h-4 w-4" />
+                  </span>
+                </button>
 
-            {onAdvisor && (
-              <button
-                type="button"
-                onClick={() => setAdvisorIntent(true)}
-                className="flex flex-col items-center gap-2 rounded-3xl border-2 border-violet-300 bg-violet-50/50 p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
-                  <Sparkles className="h-7 w-7 text-white" />
-                </span>
-                <span className="text-lg font-black text-slate-900">
-                  תנו ליועץ משכלנתא לעשות לכם את העבודה
-                </span>
-                <span className="text-[15px] font-medium leading-snug text-slate-600">
-                  פגישת ייעוץ אונליין שבסופה הדוח מוכן — בקשה חינמית, התשלום בהמשך
-                </span>
-                <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-violet-700">
-                  איך זה עובד?
-                  <ArrowLeft className="h-4 w-4" />
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setAdvisorIntent(true)}
+                  className="flex flex-col items-center gap-2 rounded-3xl border-2 border-violet-300 bg-violet-50/50 p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
+                    <Sparkles className="h-7 w-7 text-white" />
+                  </span>
+                  <span className="text-lg font-black text-slate-900">
+                    תנו ליועץ משכלנתא לעשות לכם את העבודה
+                  </span>
+                  <span className="text-[15px] font-medium leading-snug text-slate-600">
+                    פגישת ייעוץ אונליין שבסופה הדוח מוכן — בקשה חינמית, התשלום בהמשך
+                  </span>
+                  <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-violet-700">
+                    איך זה עובד?
+                    <ArrowLeft className="h-4 w-4" />
+                  </span>
+                </button>
+              </>
             )}
           </motion.div>
         </motion.section>
@@ -168,8 +261,43 @@ export function StageOverview({
   );
 }
 
+/** כפתור ההתחלה היחיד — למי שכבר במסלול העצמאי, או כשאין דרך לבקש יועץ מכאן */
+function StartStageCard({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="flex flex-col items-center gap-3 rounded-3xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 via-white to-cyan-50 p-6 text-center shadow-sm md:p-8">
+      <h3 className="text-xl font-black text-slate-900">מוכנים? מתחילים בנכס ובעסקה</h3>
+      <p className="max-w-lg text-[15px] leading-relaxed text-slate-600">
+        משם ממשיכים ללווים, להכנסות העתידיות, לתיק המסמכים ולדוח. הכול נשמר תוך כדי, ואפשר
+        לחזור לכל מסך.
+      </p>
+      <motion.button
+        type="button"
+        onClick={onStart}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.98 }}
+        className="mt-1 inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-600 to-cyan-500 px-8 py-4 text-base font-black text-white shadow-[0_14px_36px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_18px_44px_rgba(37,99,235,0.45)]"
+      >
+        <Play className="h-5 w-5" />
+        התחל שלב
+        <ArrowLeft className="h-5 w-5" />
+      </motion.button>
+      <p className="text-[12px] text-slate-500">
+        בכל רגע אפשר להיעזר ביועץ משכנתא להשלמת השלב — הכפתור הצף מלווה את כל המסכים.
+      </p>
+    </section>
+  );
+}
+
 /** ניווט בין מסכי ההסבר: נקודות התקדמות וכפתור "המשך" */
-function SlideFooter({ slide, onNext }: { slide: Slide; onNext: () => void }) {
+function SlideFooter({
+  slide,
+  onNext,
+  autoAdvance = true,
+}: {
+  slide: Slide;
+  onNext: () => void;
+  autoAdvance?: boolean;
+}) {
   return (
     <div className="mt-5 flex flex-col items-center gap-3">
       <div className="flex items-center gap-2">
@@ -190,7 +318,7 @@ function SlideFooter({ slide, onNext }: { slide: Slide; onNext: () => void }) {
         המשך
         <ArrowLeft className="h-4 w-4" />
       </button>
-      <p className="text-[13px] text-slate-400">המסך יתקדם מעצמו בעוד רגע</p>
+      {autoAdvance && <p className="text-[13px] text-slate-400">המסך יתקדם מעצמו בעוד רגע</p>}
     </div>
   );
 }
@@ -235,31 +363,32 @@ function IntroSlide({ compact = false }: { compact?: boolean }) {
   const points = [
     {
       icon: <Wallet className="h-5 w-5" />,
-      text: 'אוספים את התמונה הפיננסית המלאה: הכנסות, הוצאות, הון עצמי והתחייבויות קיימות',
-    },
-    {
-      icon: <FileText className="h-5 w-5" />,
-      text: 'מכינים את כל המסמכים התומכים שהבנק ידרוש — שלושה חודשים אחורה',
+      text: 'אוספים את התמונה הפיננסית המלאה: הכנסות, הוצאות, הון עצמי והתחייבויות קיימות — ואת פרטי העסקה שעל השולחן',
     },
     {
       icon: <ShieldCheck className="h-5 w-5" />,
       text: 'מזהים מראש את מה שהבנק יבדוק, לפני שהוא בודק — ולפני שנרשם סירוב בתיק',
     },
     {
+      icon: <FileCheck2 className="h-5 w-5" />,
+      text: 'מגדירים את תיק המסמכים ומוודאים שכל מסמך שיוגש יהיה תקין ומלא — מסמך חסר או חלקי הוא הסיבה הנפוצה ביותר לעיכוב',
+    },
+    {
       icon: <Layers className="h-5 w-5" />,
-      text: 'יוצאים עם פרופיל שעליו ייבנה התמהיל בשלב הבא, כך שיתאים לכם ולא למישהו אחר',
+      text: 'יוצאים עם דוח פרופיל וקווים מנחים לתמהיל, שעליהם ייבנו השלבים הבאים — כך שיתאימו לכם ולא למישהו אחר',
     },
   ];
 
   return (
     <SlideCard
       tone="border-blue-200"
-      badge={<Badge icon={<Sparkles className="h-4 w-4" />} text="שלב 1 מתוך 5" tone="bg-blue-600" />}
+      badge={<Badge icon={<Sparkles className="h-4 w-4" />} text="על השלב · שלב 1 מתוך 5" tone="bg-blue-600" />}
       title="הפרופיל הפיננסי שלכם"
       lead={
         <p className="mx-auto mt-3 max-w-3xl rounded-2xl bg-blue-50/70 px-5 py-4 text-lg font-black leading-relaxed text-slate-800 md:text-xl">
-          שלב קריטי שבו מכינים את כל המידע והמסמכים התומכים שיידרשו לצורך הגשת האישור העקרוני
-          לבנק, ולבניית תמהיל שמותאם לצרכים הכלכליים שלכם.
+          שלב קריטי שבו בונים את פרופיל העסקה והפרופיל הפיננסי, בודקים עמידה בדרישות הבנקים
+          והרגולציה, ומכינים את תיק המסמכים ואת הקווים המנחים לתמהיל — הבסיס שכל שאר השלבים
+          נשענים עליו.
         </p>
       }
     >
@@ -280,89 +409,81 @@ function IntroSlide({ compact = false }: { compact?: boolean }) {
   );
 }
 
-/** מסך 2 — שלושת החלקים של השלב */
+/** מסך 2 — חמש העבודות של השלב */
 function ProcessSlide({ compact = false }: { compact?: boolean }) {
-  const steps = [
-    {
-      icon: <Calculator className="h-7 w-7 text-white" />,
-      gradient: 'from-blue-600 to-indigo-600',
-      title: 'בונים פרופיל פיננסי',
-      body: 'אוספים את ההכנסות, ההוצאות, ההון העצמי וההתחייבויות הקיימות — ומחשבים מהם את ההכנסה הפנויה ואת יכולת ההחזר האמיתית שלכם.',
-    },
-    {
-      icon: <ShieldCheck className="h-7 w-7 text-white" />,
-      gradient: 'from-emerald-600 to-teal-600',
-      title: 'מוודאים עמידה בדרישות הרגולטוריות',
-      body: 'כל מגבלה של בנק ישראל נבדקת מול העסקה שלכם: תקרת המימון לפי סוג הדירה, יחס ההחזר המרבי, וההרכב המותר של המסלולים.',
-    },
-    {
-      icon: <TrendingUp className="h-7 w-7 text-white" />,
-      gradient: 'from-violet-600 to-purple-600',
-      title: 'מנתחים יכולת עמידה בהחזר לאורך חיי המשכנתא',
-      body: 'לא רק היום: בודקים מה קורה להחזר בעליית ריבית, בשינויים בהכנסה ובאירועים צפויים — לאורך כל התקופה.',
-    },
-  ];
-
   return (
     <SlideCard
       tone="border-slate-200"
-      badge={<Badge icon={<Layers className="h-4 w-4" />} text="איך השלב עובד" tone="bg-slate-900" />}
-      title="שלושה חלקים, בסדר הזה"
+      badge={<Badge icon={<Layers className="h-4 w-4" />} text="מה עושים בשלב" tone="bg-slate-900" />}
+      title="חמש עבודות, בסדר הזה"
       lead={
         !compact ? (
           <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
-            כל חלק נשען על זה שלפניו, וכולם יחד מרכיבים את הדוח שיוצא בסוף השלב.
+            כל עבודה נשענת על זו שלפניה, וכולן יחד מרכיבות את הדוח שיוצא בסוף השלב.
           </p>
         ) : undefined
       }
     >
-      <ol className="grid gap-4 md:grid-cols-3">
-        {steps.map((step, index) => (
-          <li
+      <ol className={`grid gap-3 ${compact ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
+        {STAGE_ACTIONS.map((step, index) => (
+          <motion.li
             key={step.title}
-            className="flex flex-col items-center gap-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center"
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ delay: index * 0.08, duration: 0.35 }}
+            className="flex gap-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-4"
           >
-            <span
-              className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${step.gradient} shadow-lg`}
-            >
+            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${step.gradient} shadow-lg`}>
               {step.icon}
             </span>
-            <span className="rounded-full bg-white px-3 py-0.5 text-[13px] font-black text-slate-500 ring-1 ring-slate-200">
-              חלק {index + 1}
-            </span>
-            <h4 className="text-lg font-black leading-snug text-slate-900">{step.title}</h4>
-            <p className="text-[15px] font-medium leading-relaxed text-slate-600">{step.body}</p>
-          </li>
+            <div>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">
+                {index + 1}
+              </span>
+              <h4 className="mt-1 text-[15px] font-black leading-snug text-slate-900">{step.title}</h4>
+              {!compact && (
+                <p className="mt-1 text-[13px] font-medium leading-relaxed text-slate-600">{step.body}</p>
+              )}
+            </div>
+          </motion.li>
         ))}
       </ol>
     </SlideCard>
   );
 }
 
-/** מסך 3 — מה יוצא מהשלב */
+/**
+ * מסך 3 — התוצר. ברקע דוח לדוגמה, ומעליו הבלוקים שמסבירים מה כל חלק בו נותן,
+ * עולים אחד אחרי השני. אפשר גם לפתוח את הדוח לדוגמה במלואו.
+ */
 function OutputSlide({ compact = false }: { compact?: boolean }) {
-  const items = [
-    {
-      icon: <Banknote className="h-5 w-5" />,
-      title: 'כמה כסף יישאר לכם בחודש',
-      body: 'ההכנסה הפנויה שנשארת אחרי תשלום המשכנתא וכל ההתחייבויות הקיימות.',
-    },
-    {
-      icon: <Calculator className="h-5 w-5" />,
-      title: 'כמה תשלמו בסך הכול — וכמה מזה ריבית',
-      body: 'הערכה של סך התשלומים על המשכנתא לאורך כל התקופה, והחלק מתוכם שהוא ריבית בלבד.',
-    },
-    {
-      icon: <Layers className="h-5 w-5" />,
-      title: 'המלצות לאופן בניית התמהיל',
-      body: 'איזה הרכב מסלולים מתאים לפרופיל שנבנה — ליציבות, לגמישות או לפירעון מוקדם מתוכנן.',
-    },
-    {
-      icon: <FileCheck2 className="h-5 w-5" />,
-      title: 'רשימת המסמכים שיידרשו',
-      body: 'בדיוק מה להביא לבנקים כדי להגיש בקשה לאישור עקרוני, מסמך אחרי מסמך.',
-    },
-  ];
+  const sample = useMemo(() => sampleProfileData(), []);
+  const [showFullSample, setShowFullSample] = useState(false);
+
+  if (compact) {
+    return (
+      <SlideCard
+        tone="border-emerald-300"
+        badge={<Badge icon={<BadgeCheck className="h-4 w-4" />} text="התוצר של השלב" tone="bg-emerald-600" />}
+        title="דוח פרופיל פיננסי — מודרני, ברור, להורדה כ-PDF"
+      >
+        <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {REPORT_OUTPUTS.map((item) => (
+            <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-3.5">
+              <p className="flex items-center gap-2 text-[14px] font-black text-slate-900">
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}>
+                  {item.icon}
+                </span>
+                {item.title}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <CriticalNote />
+      </SlideCard>
+    );
+  }
 
   return (
     <SlideCard
@@ -370,33 +491,88 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
       badge={<Badge icon={<BadgeCheck className="h-4 w-4" />} text="התוצר של השלב" tone="bg-emerald-600" />}
       title="דוח פרופיל פיננסי"
       lead={
-        !compact ? (
-          <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
-            דוח אחד להורדה, שאוסף את כל מה שנבנה בשלב.
-          </p>
-        ) : undefined
+        <p className="mx-auto mt-3 max-w-3xl text-[15px] font-medium leading-relaxed text-slate-600">
+          דוח אחד להורדה, שאוסף את כל מה שנבנה בשלב — דשבורד של בלוקים עם המידע העיקרי
+          והקריטי: נתוני העסקה, פרופיל הלקוח, סיכונים והמלצות, וקווים מנחים לבניית התמהיל.
+          ברקע דוח לדוגמה, ומעליו מה שכל חלק בו נותן לכם.
+        </p>
       }
     >
-      <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2">
-        {items.map((item) => (
-          <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-4">
-            <p className="flex items-center gap-2 text-[15px] font-black text-slate-900">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                {item.icon}
-              </span>
-              {item.title}
-            </p>
-            <p className="mt-2 text-[15px] font-medium leading-relaxed text-slate-600">{item.body}</p>
-          </li>
-        ))}
-      </ul>
+      <div className="mb-3 flex justify-center">
+        <button
+          type="button"
+          onClick={() => setShowFullSample((value) => !value)}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:border-slate-900"
+        >
+          {showFullSample ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {showFullSample ? 'חזרה להסבר על הדוח' : 'צפייה בדוח לדוגמה במלואו'}
+        </button>
+      </div>
 
-      <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-[15px] font-bold leading-relaxed text-slate-800">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-        השלב הזה קריטי למזעור הסיכוי לסירוב או לעיכוב בתהליך — ולהבנה מלאה של איך ייראה המצב
-        הכלכלי של משק הבית שלכם אחרי לקיחת המשכנתא.
-      </p>
+      <div className={`relative overflow-hidden rounded-3xl ${showFullSample ? '' : 'max-h-[780px]'}`}>
+        <div
+          aria-hidden={!showFullSample}
+          className={
+            showFullSample
+              ? ''
+              : 'pointer-events-none select-none scale-[0.985] opacity-70 blur-[1.5px] transition-all'
+          }
+        >
+          <ProfileReportPanel data={sample} planName={SAMPLE_PLAN_NAME} sample />
+        </div>
+
+        {!showFullSample && (
+          <>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white via-white/80 to-transparent" />
+            <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8">
+              <div className="grid w-full max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {REPORT_OUTPUTS.map((item, index) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, y: 28, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: 0.3 + index * 0.4, duration: 0.45, ease: 'easeOut' }}
+                    className="rounded-2xl border border-white/60 bg-white/92 p-4 text-right shadow-[0_18px_40px_rgba(15,23,42,0.18)] backdrop-blur"
+                  >
+                    <span className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent} shadow-md`}>
+                      {item.icon}
+                    </span>
+                    <h4 className="text-sm font-black leading-snug text-slate-900">{item.title}</h4>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.body}</p>
+                  </motion.div>
+                ))}
+                <motion.div
+                  initial={{ opacity: 0, y: 28 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + REPORT_OUTPUTS.length * 0.4, duration: 0.45 }}
+                  className="flex items-center gap-3 rounded-2xl bg-slate-900 p-4 text-right text-white shadow-xl sm:col-span-2 lg:col-span-3"
+                >
+                  <Download className="h-5 w-5 shrink-0 text-cyan-300" />
+                  <p className="text-sm leading-relaxed">
+                    <span className="font-black">דוח סופי מרשים, מודרני וקריא</span> — ניתן להורדה כ-PDF,
+                    עם ההמלצות שצפו במהלך המילוי: אם יחס ההחזר קרוב לגבול, אם המימון קרוב לתקרה,
+                    ואיזה בנק לכלול בהגשה.
+                  </p>
+                </motion.div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <CriticalNote />
     </SlideCard>
+  );
+}
+
+function CriticalNote() {
+  return (
+    <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-[15px] font-bold leading-relaxed text-slate-800">
+      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+      השלב הזה קריטי למזעור הסיכוי לסירוב או לעיכוב בתהליך, ולוודא שכל המסמכים שיוגשו יהיו
+      תקינים ומלאים — ולהבנה מלאה של איך ייראה המצב הכלכלי של משק הבית שלכם אחרי לקיחת
+      המשכנתא.
+    </p>
   );
 }
 

@@ -134,7 +134,14 @@ export const DOCUMENTS_MODE_LABELS: Record<DocumentsMode, string> = {
   LATER: 'נעלה בשלב האישור העקרוני',
 };
 
-export const PROFILE_SCREENS = ['overview', 'deal', 'borrowers', 'future', 'report'] as const;
+export const PROFILE_SCREENS = [
+  'overview',
+  'deal',
+  'borrowers',
+  'future',
+  'documents',
+  'report',
+] as const;
 export type ProfileScreen = (typeof PROFILE_SCREENS)[number];
 
 /** הלוואה צרכנית של לווה אחד, כמו בכלי «מה אני יכול להרשות לעצמי» */
@@ -143,6 +150,11 @@ export interface ProfileLoan {
   monthlyPayment: number | null;
   /** הלוואה משותפת לשני בני הזוג — מוצגת על פני שתי העמודות */
   shared?: boolean;
+  /**
+   * כמה חודשים נותרו עד סיום ההלוואה. הלוואה שמסתיימת בתוך פחות מחמש שנים
+   * משחררת החזר חודשי — ולכן היא סיבה למסלול גרייס בתמהיל.
+   */
+  remainingMonths?: number | null;
 }
 
 export function sumProfileLoans(loans: ProfileLoan[]): number {
@@ -197,6 +209,11 @@ export interface AnalysisData {
   /** תוספת חודשית צפויה להכנסה הפנויה, ובעוד כמה שנים */
   futureMonthlyIncrease: number | null;
   futureMonthlyIncreaseInYears: number | null;
+  /**
+   * תשובת הלקוח לשאלה אם צפויה עלייה בהכנסה הפנויה. השאלה נשאלת כשיחס ההחזר
+   * קרוב למגבלה, כי תשובה חיובית פותחת מסלול גרייס בתמהיל.
+   */
+  expectsIncomeIncrease: boolean | null;
   /** הנתונים כמו שהכלי «מה אני יכול להרשות לעצמי» שומר אותם */
   planning?: MortgagePlanningUserData;
   planningStep?: string;
@@ -278,6 +295,7 @@ export function analysisFromPlanning(
     partnerEmploymentType: couple ? carry?.partnerEmploymentType ?? null : null,
     futureLumpSums: carry?.futureLumpSums ?? [],
     documentsMode: carry?.documentsMode ?? null,
+    expectsIncomeIncrease: carry?.expectsIncomeIncrease ?? null,
     futureMonthlyIncrease: carry?.futureMonthlyIncrease ?? null,
     futureMonthlyIncreaseInYears: carry?.futureMonthlyIncreaseInYears ?? null,
     expenses: null,
@@ -517,6 +535,7 @@ const EMPTY: PlanData = {
     years: DEFAULT_PLAN_YEARS,
     futureLumpSums: [],
     documentsMode: null,
+    expectsIncomeIncrease: null,
     futureMonthlyIncrease: null,
     futureMonthlyIncreaseInYears: null,
   },
@@ -681,11 +700,13 @@ function parseProfileLoans(value: unknown): ProfileLoan[] {
   return value.flatMap((item) => {
     if (!item || typeof item !== 'object') return [];
     const row = item as Record<string, unknown>;
+    const remaining = num(row.remainingMonths);
     return [
       {
         id: typeof row.id === 'string' && row.id ? row.id : rowId('loan'),
         monthlyPayment: num(row.monthlyPayment),
         shared: row.shared === true,
+        remainingMonths: remaining !== null && remaining > 0 ? Math.round(remaining) : null,
       },
     ];
   });
@@ -750,6 +771,12 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           : undefined,
         futureMonthlyIncrease: num(source.futureMonthlyIncrease),
         futureMonthlyIncreaseInYears: num(source.futureMonthlyIncreaseInYears),
+        expectsIncomeIncrease:
+          source.expectsIncomeIncrease === true
+            ? true
+            : source.expectsIncomeIncrease === false
+              ? false
+              : null,
         borrowerLoans: has('borrowerLoans') ? parseProfileLoans(source.borrowerLoans) : undefined,
         partnerLoans: has('partnerLoans') ? parseProfileLoans(source.partnerLoans) : undefined,
         bankAccountMode:
@@ -1873,4 +1900,34 @@ export function stageHints(stage: PlanStageId, data: PlanData): StageHint[] {
   }
 
   return hints;
+}
+
+/** תיאור תקופה בחודשים בעברית טבעית: "18 חודשים", "שנתיים", "3 שנים ו-4 חודשים" */
+export function describeMonths(months: number): string {
+  const whole = Math.max(0, Math.round(months));
+  const years = Math.floor(whole / 12);
+  const rest = whole % 12;
+  const yearsText = years === 1 ? 'שנה' : years === 2 ? 'שנתיים' : `${years} שנים`;
+  if (years === 0) return `${whole} חודשים`;
+  if (rest === 0) return yearsText;
+  if (years < 2) return `${whole} חודשים`;
+  return `${yearsText} ו-${rest} חודשים`;
+}
+
+/** כל ההלוואות שנספרות בפרופיל — של הלווה, ושל בן/בת הזוג בהגשה זוגית, בלי כפילות של הלוואה משותפת */
+export function countedLoans(profile: AnalysisData): ProfileLoan[] {
+  const partner = profile.household === 'COUPLE' ? profile.partnerLoans : [];
+  const seen = new Set<string>();
+  return [...profile.borrowerLoans, ...partner].filter((loan) => {
+    if (seen.has(loan.id)) return false;
+    seen.add(loan.id);
+    return true;
+  });
+}
+
+/** הבנקים שבהם הלווים מנהלים את החשבונות הראשיים, בלי כפילויות */
+export function accountBanks(profile: AnalysisData): string[] {
+  const banks = [profile.primaryBank];
+  if (profile.household === 'COUPLE') banks.push(profile.partnerPrimaryBank);
+  return Array.from(new Set(banks.filter((bank): bank is string => Boolean(bank))));
 }
