@@ -1,34 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { redis } from "@/lib/redis";
 import { fetchBoiRates } from "@/lib/boi";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const from = searchParams.get("from") || undefined;
-  const to = searchParams.get("to") || undefined;
+/**
+ * ריביות המסלולים לפי הנתונים החיים של בנק ישראל.
+ *
+ * המטמון יושב בשכבת `market-rates` עצמה ומשותף לכל הצרכנים בפלטפורמה, ולכן
+ * המסלול הזה לא מחזיק מטמון משלו — אחרת ריבית שהתעדכנה הייתה מגיעה לכלי אחד
+ * ולא לאחר.
+ */
+export const dynamic = "force-dynamic";
 
-  const cacheKey = `boi:${from ?? ""}:${to ?? ""}`;
-  const ttlSeconds = parseInt(process.env.RATES_CACHE_TTL ?? "900", 10);
-
-  if (redis) {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      try {
-        return NextResponse.json(JSON.parse(cached));
-      } catch {
-        // ignore parse error and refetch
-      }
-    }
-  }
-
+export async function GET(_req: NextRequest) {
   try {
-    const data = await fetchBoiRates({ from, to });
-    const isFallback = data && typeof data === "object" && data.source === "fallback";
-    if (redis && !isFallback) {
-      await redis.set(cacheKey, JSON.stringify(data), "EX", ttlSeconds);
-    }
-    return NextResponse.json(data, { status: 200 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Failed to fetch rates" }, { status: 502 });
+    const data = await fetchBoiRates();
+    return NextResponse.json(data, {
+      status: 200,
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch rates";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

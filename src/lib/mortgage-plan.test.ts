@@ -50,8 +50,8 @@ function profile(): PlanData {
 }
 
 describe('סדר השלבים', () => {
-  it('בניית התמהיל באה אחרי האישור העקרוני ולפני מכרז הריביות', () => {
-    expect(PLAN_STAGES).toEqual(['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING']);
+  it('בניית התמהיל באה לפני האישור העקרוני, ואחריהם מכרז הריביות', () => {
+    expect(PLAN_STAGES).toEqual(['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING']);
   });
 
   it('שלבים קודמים שטרם נסגרו הם אלה שצריך להשלים לפני עבודה בשלב', () => {
@@ -63,7 +63,8 @@ describe('סדר השלבים', () => {
       SIGNING: 'PENDING',
     } as const;
     expect(unfinishedPrerequisites('ANALYSIS', statuses)).toEqual([]);
-    expect(unfinishedPrerequisites('MIX', statuses)).toEqual(['ANALYSIS', 'APPLICATIONS']);
+    expect(unfinishedPrerequisites('MIX', statuses)).toEqual(['ANALYSIS']);
+    expect(unfinishedPrerequisites('APPLICATIONS', statuses)).toEqual(['ANALYSIS', 'MIX']);
   });
 });
 
@@ -161,6 +162,60 @@ describe('סגירת שלבים', () => {
     expect(missingForStage('ANALYSIS', profile())).toEqual([]);
   });
 
+  it('שלב התמחור נסגר בבחירת התמהיל המתומחר שהולכים איתו לחתימה', () => {
+    const data = profile();
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+    // עוד לא נבחרה דרך — ולכן זה הדבר הראשון שחסר
+    expect(missingForStage('AUCTION', data)).toEqual([
+      'בחירה בין תמחור עצמי לליווי יועץ',
+      'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
+    ]);
+
+    data.AUCTION = { ...data.AUCTION, mode: 'self' };
+    expect(missingForStage('AUCTION', data)).toEqual([
+      'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
+    ]);
+
+    data.AUCTION = {
+      ...data.AUCTION,
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: null,
+        bank: 'דיסקונט',
+        name: 'התמהיל הסופי · ריביות דיסקונט',
+        monthlyPayment: 7_100,
+        averageRate: 4.2,
+        totalInterest: 590_000,
+        totalPaid: 1_590_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    };
+
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
+  });
+
+  it('ההחזר של התמהיל שנבחר לחתימה הוא מה שמוצג על כרטיס התהליך', () => {
+    const data = profile();
+    data.AUCTION = {
+      ...data.AUCTION,
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: null,
+        bank: 'דיסקונט',
+        name: 'התמהיל הסופי · ריביות דיסקונט',
+        monthlyPayment: 7_100,
+        averageRate: 4.2,
+        totalInterest: 590_000,
+        totalPaid: 1_590_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    };
+
+    expect(planSnapshot(data).monthlyPayment).toBe(7_100);
+  });
+
   it('שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו', () => {
     const data = profile();
     data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי' };
@@ -180,35 +235,64 @@ describe('סגירת שלבים', () => {
     expect(missingForStage('APPLICATIONS', data)[0]).toMatch(/אופן ההעסקה של לווה 2/);
   });
 
-  it('תיק המסמכים נבנה לכל לווה לפי אופן ההעסקה שלו', () => {
+  it('לכל לווה תעודת זהות והמסמך שמוכיח את ההכנסה לפי אופן ההעסקה שלו', () => {
     const data = profile();
     const groups = preApprovalDocumentGroups(data);
-    const borrowers = groups.filter((group) => group.id !== 'shared');
+    const b1 = groups.find((group) => group.id === 'b1');
+    const b2 = groups.find((group) => group.id === 'b2');
 
-    expect(borrowers).toHaveLength(2);
-    expect(borrowers[0].documents.some((doc) => doc.key === 'b1:payslips')).toBe(true);
-    expect(borrowers[1].documents.some((doc) => doc.key === 'b2:self_employed_tax')).toBe(true);
+    expect(b1?.documents.some((doc) => doc.key === 'b1:id_card')).toBe(true);
+    expect(b2?.documents.some((doc) => doc.key === 'b2:id_card')).toBe(true);
+    expect(b1?.documents.some((doc) => doc.key === 'b1:payslips')).toBe(true);
+    expect(b2?.documents.some((doc) => doc.key === 'b2:profit_report')).toBe(true);
     // מסמכי שכיר אינם נדרשים מהעצמאי, ולהיפך
-    expect(borrowers[1].documents.some((doc) => doc.key.endsWith('payslips'))).toBe(false);
+    expect(b2?.documents.some((doc) => doc.key.endsWith('payslips'))).toBe(false);
+    expect(b1?.documents.some((doc) => doc.key.endsWith('profit_report'))).toBe(false);
   });
 
-  it('ליחיד יש רשימה אחת, ובלי אופן העסקה היא ריקה', () => {
+  it('מסמכי הנכס והעסקה הם רובריקה נפרדת', () => {
+    const property = preApprovalDocumentGroups(profile()).find((group) => group.id === 'property');
+    expect(property?.documents.map((doc) => doc.key)).toEqual(['sale_contract', 'appraisal']);
+  });
+
+  it('דוח יתרת הלוואה נדרש רק מלווה שיש לו הלוואות', () => {
+    const data = profile();
+    data.ANALYSIS.borrowerLoans = [{ id: 'l1', monthlyPayment: 1_500 }];
+    data.ANALYSIS.partnerLoans = [];
+    const groups = preApprovalDocumentGroups(data);
+
+    expect(groups.find((g) => g.id === 'b1')?.documents.some((d) => d.key === 'b1:loans_report')).toBe(
+      true
+    );
+    expect(groups.find((g) => g.id === 'b2')?.documents.some((d) => d.key === 'b2:loans_report')).toBe(
+      false
+    );
+  });
+
+  it('ליחיד יש רשימה אחת, ובלי אופן העסקה נשארים רק זהות וחשבון', () => {
     const data = profile();
     data.ANALYSIS.household = 'SINGLE';
     data.ANALYSIS.employmentType = null;
+    data.ANALYSIS.borrowerLoans = [];
     const groups = preApprovalDocumentGroups(data);
 
-    expect(groups.filter((group) => group.id !== 'shared')).toHaveLength(1);
-    expect(preApprovalDocuments(data).every((doc) => !doc.key.includes(':'))).toBe(true);
+    expect(groups.map((group) => group.id)).toEqual(['b1', 'property']);
+    expect(groups[0].documents.map((doc) => doc.key)).toEqual([
+      'b1:id_card',
+      'b1:bank_statements',
+      'b1:account_management',
+    ]);
   });
 
-  it('חשבון משותף שם את תדפיס העו"ש בראש מסמכי משק הבית', () => {
+  it('חשבון משותף מרכז את מסמכי החשבון פעם אחת', () => {
     const data = profile();
     data.ANALYSIS.bankAccountMode = 'JOINT';
-    const shared = preApprovalDocumentGroups(data).find((group) => group.id === 'shared');
-    const keys = shared?.documents.map((doc) => doc.key) ?? [];
+    const household = preApprovalDocumentGroups(data).find((group) => group.id === 'household');
 
-    expect(keys.slice(0, 3)).toEqual(['bank_statements', 'account_management', 'loans_report']);
+    expect(household?.documents.map((doc) => doc.key)).toEqual([
+      'bank_statements',
+      'account_management',
+    ]);
     expect(preApprovalDocuments(data).some((doc) => doc.key === 'b1:bank_statements')).toBe(false);
   });
 
@@ -216,16 +300,13 @@ describe('סגירת שלבים', () => {
     const data = profile();
     data.ANALYSIS.bankAccountMode = 'SEPARATE';
     const groups = preApprovalDocumentGroups(data);
-    const shared = groups.find((group) => group.id === 'shared');
-    const b1 = groups.find((group) => group.id === 'b1');
-    const b2 = groups.find((group) => group.id === 'b2');
 
-    expect(shared?.documents.some((doc) => doc.key === 'bank_statements')).toBe(false);
-    expect(b1?.documents.map((doc) => doc.key)).toEqual(
-      expect.arrayContaining(['b1:bank_statements', 'b1:account_management', 'b1:loans_report'])
+    expect(groups.some((group) => group.id === 'household')).toBe(false);
+    expect(groups.find((g) => g.id === 'b1')?.documents.map((doc) => doc.key)).toEqual(
+      expect.arrayContaining(['b1:bank_statements', 'b1:account_management'])
     );
-    expect(b2?.documents.map((doc) => doc.key)).toEqual(
-      expect.arrayContaining(['b2:bank_statements', 'b2:account_management', 'b2:loans_report'])
+    expect(groups.find((g) => g.id === 'b2')?.documents.map((doc) => doc.key)).toEqual(
+      expect.arrayContaining(['b2:bank_statements', 'b2:account_management'])
     );
   });
 
@@ -332,18 +413,61 @@ describe('ניקוי נתונים שהגיעו מבחוץ', () => {
     expect(parsed.winnerOfferId).toBeNull();
   });
 
+  it('מסך השאלה הישן נקרא כמסך ההסבר, ומסך לא מוכר נופל לברירת המחדל', () => {
+    expect(parseStageData('ANALYSIS', { profileScreen: 'intent' }).profileScreen).toBe('overview');
+    expect(parseStageData('ANALYSIS', { profileScreen: 'report' }).profileScreen).toBe('report');
+    expect(parseStageData('ANALYSIS', { profileScreen: 'nope' }).profileScreen).toBe('overview');
+    expect(parseStageData('ANALYSIS', {}).profileScreen).toBe('overview');
+  });
+
+  it('הדרך שנבחרה לשלב התמחור נקראת, וערך לא מוכר נופל ל-null', () => {
+    expect(parseStageData('AUCTION', { mode: 'self' }).mode).toBe('self');
+    expect(parseStageData('AUCTION', { mode: 'advisor' }).mode).toBe('advisor');
+    expect(parseStageData('AUCTION', { mode: 'whatever' }).mode).toBeNull();
+    expect(parseStageData('AUCTION', {}).mode).toBeNull();
+  });
+
+  it('התמהיל שנבחר לחתימה נקרא עם הבנק והמספרים שלו', () => {
+    const parsed = parseStageData('AUCTION', {
+      offers: [],
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: 'rec-9',
+        bank: 'מזרחי',
+        name: 'התמהיל הסופי · ריביות מזרחי',
+        monthlyPayment: 7_400,
+        averageRate: 4.31,
+        totalInterest: 620_000,
+        totalPaid: 1_620_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    });
+
+    expect(parsed.signedMix?.mixKey).toBe('mix-quoted-1');
+    expect(parsed.signedMix?.bank).toBe('מזרחי');
+    expect(parsed.signedMix?.monthlyPayment).toBe(7_400);
+    expect(parsed.signedMix?.chosenAt).toBe('2026-09-12T10:00:00.000Z');
+  });
+
+  it('בחירה בלי מזהה תמהיל או בלי בנק נקראת כאילו עוד לא נבחר דבר', () => {
+    expect(parseStageData('AUCTION', { signedMix: { bank: 'לאומי' } }).signedMix).toBeNull();
+    expect(parseStageData('AUCTION', { signedMix: { mixKey: 'mix-1' } }).signedMix).toBeNull();
+    expect(parseStageData('AUCTION', {}).signedMix).toBeNull();
+  });
+
   it('סימוני מסמכים שאינם בקטלוג אינם נשמרים', () => {
     const parsed = parseStageData('APPLICATIONS', {
       bank: 'לאומי',
       documents: {
         'b1:payslips': true,
-        'b2:self_employed_tax': true,
+        'b2:profit_report': true,
         made_up_key: true,
         bank_statements: false,
       },
     });
 
-    expect(parsed.documents).toEqual({ 'b1:payslips': true, 'b2:self_employed_tax': true });
+    expect(parsed.documents).toEqual({ 'b1:payslips': true, 'b2:profit_report': true });
   });
 
   it('סל אחיד שאינו בקטלוג נזרק, וריביות של מסלולים זרים אינן נשמרות', () => {
@@ -464,9 +588,17 @@ describe('גזירה מכלי בניית הפרופיל', () => {
     expect(mortgageFromLtvPercent(2_400_000, 60, 'first_home')).toBe(1_440_000);
     expect(mortgageFromLtvPercent(2_400_000, 90, 'first_home')).toBe(1_800_000);
     expect(maxPropertyForEquity(700_000, 'first_home')).toBe(2_800_000);
-    expect(parseStageData('ANALYSIS', { ...profile().ANALYSIS, propertyValue: 3_500_000 }).propertyValue).toBe(
-      2_800_000
-    );
+  });
+
+  it('מחיר הנכס נשמר כפי שהוזן, גם כשההון העצמי אינו מספיק לו', () => {
+    // הון עצמי נמוך הוא פער שמוצג במסך הנכס, ולא סיבה לשנות מחיר שהלקוח הקליד
+    const parsed = parseStageData('ANALYSIS', {
+      ...profile().ANALYSIS,
+      propertyValue: 3_500_000,
+      equity: 700_000,
+    });
+    expect(parsed.propertyValue).toBe(3_500_000);
+    expect(parsed.mortgageAmount).toBe(2_625_000);
   });
 
   it('הלוואות לפי לווה נסכמות להחזר החודשי הקיים', () => {

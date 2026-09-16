@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  expectedBoiRatePath,
   expectedMarketPrimePath,
   fallbackPrimeForecast,
   forwardRate,
@@ -72,5 +73,52 @@ describe('פורוורד לתקופת מל"צ', () => {
       variableUnlinkedRateAtMonth(4.6, 61, 61, 5, forecast, 0) + 1,
       8
     );
+  });
+});
+
+describe('ריבית בנק ישראל הצפויה והפריים שנגזר ממנה', () => {
+  /** עקום עולה — הפורוורד חייב להיות מעל הספוט */
+  const rising = [
+    { years: 1, yieldPct: 4 },
+    { years: 2, yieldPct: 4.5 },
+    { years: 5, yieldPct: 5 },
+  ];
+
+  it('הפריים הוא ריבית בנק ישראל הצפויה ועוד 1.5% בכל חודש', () => {
+    const boi = expectedBoiRatePath(rising, 4);
+    const prime = expectedMarketPrimePath(rising, 4);
+    expect(prime).toHaveLength(boi.length);
+    prime.forEach((rate, index) => {
+      expect(rate).toBeCloseTo(boi[index] + PRIME_OVER_BOI, 10);
+    });
+  });
+
+  it('עקום שטוח — הפורוורד שווה לעקום, בלי תיקון שרירותי', () => {
+    // כשכל התשואות שוות לריבית הקצרה, אין ציפייה לשינוי ולכן הפורוורד קבוע
+    const flat = [
+      { years: 1, yieldPct: 4 },
+      { years: 5, yieldPct: 4 },
+      { years: 10, yieldPct: 4 },
+    ];
+    const boi = expectedBoiRatePath(flat, 4);
+    boi.slice(0, 120).forEach((rate) => expect(rate).toBeCloseTo(4, 6));
+  });
+
+  it('עקום עולה — הריבית הצפויה עולה עם הזמן ומעל הריבית של היום', () => {
+    const boi = expectedBoiRatePath(rising, 4);
+    expect(boi[0]).toBeCloseTo(4, 1);
+    expect(boi[59]).toBeGreaterThan(boi[0]);
+    expect(boi[59]).toBeGreaterThan(4.5);
+  });
+
+  it('הצטברות הפורוורד מחזירה את תשואת האפס לאותו אופק', () => {
+    const boi = expectedBoiRatePath(rising, 4);
+    const months = 24;
+    const compounded = boi
+      .slice(0, months)
+      .reduce((acc, annualPct) => acc * (1 + annualPct / 100) ** (1 / 12), 1);
+    const implied = (compounded ** (12 / months) - 1) * 100;
+    // תשואת האפס לשנתיים היא 4.5% — הפורוורדים חייבים להצטבר בדיוק אליה
+    expect(implied).toBeCloseTo(4.5, 1);
   });
 });

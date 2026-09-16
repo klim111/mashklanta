@@ -19,6 +19,40 @@
   animation: save-flash 0.9s ease-out 1;
 }
 
+/* הדגשה חד-פעמית של כפתור "טען תמהיל" אחרי שמירה: זוהר כחול ותזוזה קלה */
+@keyframes load-nudge {
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
+  60% {
+    transform: translateX(-3px);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+  }
+  80% {
+    transform: translateX(3px);
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+.load-nudge {
+  animation: load-nudge 1.4s ease-in-out 1;
+  border-color: rgb(37 99 235) !important;
+  color: rgb(29 78 216) !important;
+  background-color: rgb(239 246 255) !important;
+}
+
 /* Financial Dynamics Animations */
 @keyframes pulse-glow {
   0%, 100% {

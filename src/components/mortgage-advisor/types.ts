@@ -4,7 +4,16 @@ export interface MortgageTrack {
   type: 'fixed_unlinked' | 'fixed_linked' | 'prime' | 'variable_unlinked' | 'variable_linked' | 'makam' | 'dollar' | 'euro' | 'eligibility' | 'five_year_plan' | 'grant';
   amount: number; // סכום במסלול בש"ח
   percentage: number; // אחוז מסך המשכנתא
-  interestRate: number; // ריבית שנתית באחוזים
+  interestRate: number; // ריבית שנתית באחוזים — הריבית הסופית, עוגן + מרווח
+  /**
+   * המרווח שהבנק גובה מעל העוגן, בנקודות אחוז.
+   *
+   * כשהוא קיים, הריבית הסופית נגזרת מחדש בכל הרצה כ"עוגן חי + מרווח", כך
+   * שעדכון של בנק ישראל מתגלגל לכל התשלומים. מסלול שהריבית בו הוזנה ידנית
+   * בלי פירוק (או שנשמר לפני שהפירוק היה קיים) נשאר בלי מרווח, והריבית שלו
+   * לא זזה מעצמה.
+   */
+  rateSpread?: number;
   years: number; // תקופה בשנים
   monthlyPayment?: number; // תשלום חודשי מחושב
   totalInterest?: number; // סך הריבית
@@ -18,6 +27,11 @@ export interface MortgageTrack {
   currency?: 'USD' | 'EUR'; // סוג מטבע
   // לוח סילוקין
   amortizationType?: 'spitzer' | 'equal_principal' | 'partial_grace' | 'full_grace' | 'ability_based' | 'secured';
+  // ─── מועדי התשלומים (משמש במיחזור, שבו התקופה היא הזמן שנותר בפועל) ───
+  /** תאריך התשלום האחרון של המסלול (ISO / YYYY-MM-DD) */
+  endDate?: string;
+  /** יום החיוב בחודש (1-28) */
+  paymentDay?: number;
 }
 
 /** סוג העסקה — קובע את תקרת המימון של בנק ישראל */

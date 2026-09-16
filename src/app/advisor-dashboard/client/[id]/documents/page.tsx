@@ -8,6 +8,7 @@ import { AlertTriangle, ArrowRight, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientDocumentsPanel } from '@/components/advisor/ClientDocumentsPanel';
+import { ClientUploadedDocuments } from '@/components/advisor/ClientUploadedDocuments';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
 
 /**
@@ -73,12 +74,15 @@ export default function ClientDocumentsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-5">
-        <ClientDocumentsPanel
-          documents={client.documents}
-          stage={client.stage}
-          onStageChange={(stage) => void patch({ stage })}
-          onStatusChange={(documentId, next) => void setDocumentStatus(documentId, next)}
-        />
+        <div className="space-y-4">
+          <ClientUploadedDocuments clientId={clientId} />
+          <ClientDocumentsPanel
+            documents={client.documents}
+            stage={client.stage}
+            onStageChange={(stage) => void patch({ stage })}
+            onStatusChange={(documentId, next) => void setDocumentStatus(documentId, next)}
+          />
+        </div>
       </main>
     </div>
   );

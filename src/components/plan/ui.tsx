@@ -273,12 +273,35 @@ export function Panel({
   description,
   action,
   children,
+  centered = false,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
+  /**
+   * כותרת ממורכזת ובפונט גדול יותר. משמש במסכים שהם רצף של אזורים — שם עיגון
+   * במרכז הוא מה שמאפשר לעין למצוא איפה אזור אחד נגמר והבא מתחיל.
+   */
+  centered?: boolean;
 }) {
+  if (centered) {
+    return (
+      <section className="rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <header className="mb-5 text-center">
+          <h3 className="text-xl font-black text-slate-900 md:text-2xl">{title}</h3>
+          {description && (
+            <p className="mx-auto mt-2 max-w-3xl text-sm font-medium leading-relaxed text-slate-600 md:text-base">
+              {description}
+            </p>
+          )}
+          {action && <div className="mt-3 flex justify-center">{action}</div>}
+        </header>
+        {children}
+      </section>
+    );
+  }
+
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">

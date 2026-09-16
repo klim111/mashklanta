@@ -63,17 +63,8 @@ export const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
  * כל אחד מביא רשימה משלו — ולכן הרשימות נפרדות ולא מאוחדות.
  */
 export const EMPLOYMENT_DOCUMENTS: Record<EmploymentType, StageDocument[]> = {
-  SALARIED: [
-    { key: 'payslips', name: '3 תלושי שכר אחרונים' },
-    { key: 'form_106', name: 'טופס 106 של השנה שהסתיימה' },
-    { key: 'employment_letter', name: 'אישור העסקה ותק', required: false },
-  ],
-  SELF_EMPLOYED: [
-    { key: 'self_employed_tax', name: 'שומת מס אחרונה ואישור רו"ח' },
-    { key: 'profit_loss', name: 'דוח רווח והפסד לשנה השוטפת' },
-    { key: 'advance_payments', name: 'אישור תשלום מקדמות מס וביטוח לאומי' },
-    { key: 'business_account', name: 'תדפיסי חשבון העסק ל-3 החודשים האחרונים' },
-  ],
+  SALARIED: [{ key: 'payslips', name: '3 תלושי שכר של חודשים עוקבים אחרונים' }],
+  SELF_EMPLOYED: [{ key: 'profit_report', name: 'דוח רווחים' }],
 };
 
 export const STAGE_DOCUMENTS: Record<ClientStage, StageDocument[]> = {

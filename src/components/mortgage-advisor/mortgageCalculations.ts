@@ -1,15 +1,28 @@
 import type { MortgageTrack, MortgageMix, MortgageCalculation, TrackCalculation, AmortRow } from './types';
 
 /**
+ * מספר התשלומים בתקופה. התקופה נשמרת בשנים גם כשהיא נמדדת בחודשים (למשל
+ * 239 חודשים במיחזור), ולכן היא מעוגלת כאן לחודש שלם — אחרת החודש האחרון
+ * נעלם מלוח הסילוקין ומסך הריבית.
+ */
+export function monthsInTerm(years: number): number {
+  const months = Math.round((Number.isFinite(years) ? years : 0) * 12);
+  return Math.max(0, months);
+}
+
+/**
  * חישוב תשלום חודשי לפי נוסחת האנונה
  */
 export function calculateMonthlyPayment(principal: number, annualRate: number, years: number): number {
+  // מספר התשלומים תמיד שלם: תקופה של 239 חודשים נשמרת כשנים ומכפלה חוזרת בשתים-עשרה
+  // מחזירה 238.9999, ובלי עיגול היה נופל תשלום שלם מהחישוב.
+  const numPayments = monthsInTerm(years);
+
   if (annualRate === 0) {
-    return principal / (years * 12);
+    return principal / numPayments;
   }
-  
+
   const monthlyRate = annualRate / 100 / 12;
-  const numPayments = years * 12;
   
   const monthlyPayment = principal * 
     (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
@@ -23,7 +36,7 @@ export function calculateMonthlyPayment(principal: number, annualRate: number, y
  * הקרן החודשית קבועה, והריבית מחושבת לפי יתרה נוכחית ולכן סך התשלום החודשי פוחת לאורך הזמן.
  */
 export function calculateEqualPrincipalFirstPayment(principal: number, annualRate: number, years: number): number {
-  const numPayments = years * 12;
+  const numPayments = monthsInTerm(years);
   if (numPayments <= 0) return 0;
   const principalPayment = principal / numPayments;
   const monthlyRate = annualRate / 100 / 12;
@@ -42,7 +55,7 @@ export function generateAmortizationSchedule(
 ): AmortRow[] {
   const monthlyPayment = calculateMonthlyPayment(principal, annualRate, years);
   const monthlyRate = annualRate / 100 / 12;
-  const numPayments = years * 12;
+  const numPayments = monthsInTerm(years);
   
   const schedule: AmortRow[] = [];
   let balance = principal;

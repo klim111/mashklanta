@@ -10,12 +10,13 @@ import { getToken } from 'next-auth/jwt';
  */
 const PUBLIC_API_PREFIXES = [
   '/api/auth',
-  // בקשת ליווי נשלחת גם מעמוד הבית, בלי חשבון; הקריאה עצמה מאמתת הרשאות לקריאה
-  '/api/guidance-requests',
+  // פנייה ליועץ נשלחת גם מעמוד הבית, בלי חשבון; הנתיב עצמו מגביל קצב ומאמת פרטים
+  '/api/advisor-leads',
   '/api/auth-diagnostics',
   '/api/health',
   '/api/addresses',
   '/api/boi',
+  '/api/market',
   '/api/currency',
   '/api/turn',
 ];

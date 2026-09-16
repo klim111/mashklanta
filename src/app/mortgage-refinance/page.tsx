@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, Target, Banknote, Clock } from 'lucide-react';
 import type { MortgageMix } from '@/components/mortgage-advisor/types';
@@ -12,6 +13,8 @@ import { ScenarioAnalysis } from '@/components/mortgage-advisor/ScenarioAnalysis
 import { MortgageDetailsModal } from '@/components/mortgage-advisor/MortgageDetailsModal';
 import { RefinanceMortgageInput } from '@/components/mortgage-refinance/RefinanceMortgageInput';
 import { calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
+import { useMarketRates } from '@/hooks/useMarketRates';
+import { mixWithRemainingTerms } from '@/lib/refinance';
 
 type RefinanceStep = 'tracks' | 'goal';
 
@@ -24,6 +27,10 @@ const EMPTY_MIX: MortgageMix = {
 };
 
 export default function MortgageRefinancePage() {
+  const { data: session, status } = useSession();
+  /** הכלי פתוח לכולם. למשתמש שאינו רשום הוא מוגבל לבדיקה אחת */
+  const isGuest = status !== 'loading' && !session;
+  const { market } = useMarketRates();
   const [currentMix, setCurrentMix] = useState<MortgageMix>(EMPTY_MIX);
   const [currentStep, setCurrentStep] = useState<RefinanceStep>('tracks');
   const [inputMethod, setInputMethod] = useState<'scan' | 'manual'>('manual');
@@ -42,7 +49,8 @@ export default function MortgageRefinancePage() {
 
   const mixWithCalculations = (): MortgageMix => {
     if (currentMix.tracks.length === 0) return currentMix;
-    const calc = calculateMortgageMix(currentMix);
+    // התקופה של כל מסלול היא מה שנותר עד סוף המשכנתא לפי התאריכים שהוזנו
+    const calc = calculateMortgageMix(mixWithRemainingTerms(currentMix));
     return {
       ...calc.mix,
       name: `המשכנתא הנוכחית${currentMix.bank ? ` - ${currentMix.bank}` : ''}`,
@@ -166,18 +174,27 @@ export default function MortgageRefinancePage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="max-w-6xl mx-auto"
+      className={mixSummaryRevealed ? "max-w-7xl mx-auto" : "max-w-6xl mx-auto"}
     >
-      <div className="text-center mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
-        </p>
-        <Button variant="link" className="mt-4 text-blue-600" onClick={() => setInputMethod('scan')}>
-          <Upload className="w-4 h-4 ml-2" />
-          העלאת דוח יתרות לסילוק במקום הזנה ידנית
-        </Button>
-      </div>
+      {/* אחרי שהניתוח נפתח הכותרת מתכווצת לשורה אחת — כדי שהפאנל והדאשבורד
+          ייכנסו למסך בלי גלילה מיותרת */}
+      {mixSummaryRevealed ? (
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-center">
+          <h1 className="text-lg font-bold text-gray-900">מיחזור המשכנתא שלכם</h1>
+          <span className="text-sm text-gray-500">— שנו פרמטרים בפאנל וראו מיד את התוצאה</span>
+        </div>
+      ) : (
+        <div className="text-center mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
+          </p>
+          <Button variant="link" className="mt-4 text-blue-600" onClick={() => setInputMethod('scan')}>
+            <Upload className="w-4 h-4 ml-2" />
+            העלאת דוח יתרות לסילוק במקום הזנה ידנית
+          </Button>
+        </div>
+      )}
 
       <RefinanceMortgageInput
         mix={currentMix}
@@ -193,6 +210,8 @@ export default function MortgageRefinancePage() {
         onProceedToRefinanceOptions={() => setCurrentStep('goal')}
         onShowDetails={setShowDetailsModal}
         onAnalyzeScenarios={setShowScenarioAnalysis}
+        isGuest={isGuest}
+        market={market}
       />
 
       <div className="flex gap-4 justify-center mt-8">

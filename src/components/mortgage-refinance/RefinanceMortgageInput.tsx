@@ -7,12 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Calculator, RefreshCw, PieChart, Building2 } from 'lucide-react';
+import { Plus, Calculator, RefreshCw, PieChart, Building2, CalendarClock } from 'lucide-react';
 import type { MortgageMix, MortgageTrack, MortgageBank } from '@/components/mortgage-advisor/types';
 import { MORTGAGE_BANKS, DEFAULT_INTEREST_RATES } from '@/components/mortgage-advisor/types';
 import { MortgageTrackCard } from '@/components/mortgage-advisor/MortgageTrackCard';
 import { RefinanceAnalysis } from '@/components/mortgage-refinance/RefinanceAnalysis';
 import { formatCurrency, calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
+import { MarketRateNotice, RegistrationInvite } from '@/components/mortgage-refinance/RefinanceNotices';
+import {
+  DEFAULT_PAYMENT_DAY,
+  clampPaymentDay,
+  endDateFromMonths,
+  findAboveMarketTracks,
+  formatPaymentDate,
+  mixWithRemainingTerms,
+  remainingPayments,
+  toDateInputValue,
+  trackRemainingMonths,
+} from '@/lib/refinance';
+import type { MarketRates } from '@/lib/refinance';
 import { cn } from '@/lib/utils';
 
 interface RefinanceMortgageInputProps {
@@ -26,6 +39,10 @@ interface RefinanceMortgageInputProps {
   onProceedToRefinanceOptions?: () => void;
   onShowDetails?: (mix: MortgageMix) => void;
   onAnalyzeScenarios?: (mix: MortgageMix) => void;
+  /** משתמש שאינו רשום — הכלי פתוח לבדיקה אחת בלבד */
+  isGuest?: boolean;
+  /** ריביות ממוצעות בשוק לפי בנק ישראל */
+  market?: MarketRates | null;
 }
 
 export function RefinanceMortgageInput({
@@ -37,6 +54,8 @@ export function RefinanceMortgageInput({
   readyForGoal = false,
   onReadyForGoalChange,
   onProceedToRefinanceOptions,
+  isGuest = false,
+  market = null,
 }: RefinanceMortgageInputProps) {
   const { tracks, totalAmount, bank } = mix;
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
@@ -81,6 +100,11 @@ export function RefinanceMortgageInput({
           ? 100000
           : Math.max(100000, remainingAmount);
 
+    // ברירת המחדל של מועדי התשלום: יום החיוב המקובל, וסיום בעוד עשרים שנה.
+    // הלקוח מדייק את התאריך בכרטיס המסלול, ומשם נגזרת התקופה שנותרה בפועל.
+    const defaultPaymentDay = tracks[0]?.paymentDay ?? DEFAULT_PAYMENT_DAY;
+    const defaultEndDate = toDateInputValue(endDateFromMonths(240, defaultPaymentDay));
+
     const newTrack: MortgageTrack = {
       id: `track-${Date.now()}`,
       name: `מסלול ${tracks.length + 1}`,
@@ -90,6 +114,8 @@ export function RefinanceMortgageInput({
       interestRate: DEFAULT_INTEREST_RATES.fixed_unlinked,
       years: 20,
       amortizationType: 'spitzer',
+      endDate: defaultEndDate,
+      paymentDay: defaultPaymentDay,
     };
 
     const nextTracks = [...tracks, newTrack];
@@ -169,8 +195,13 @@ export function RefinanceMortgageInput({
     }
   }, [tracks.length, perTrackRefinanceEnabled, onReadyForGoalChange, onMixSummaryRevealedChange]);
 
+  /** מסלולים שהריבית בהם גבוהה מהריבית הממוצעת בשוק לפי בנק ישראל */
+  const aboveMarketFindings = findAboveMarketTracks(tracks, market);
+
   const buildDisplayMix = (): MortgageMix => {
-    const calc = calculateMortgageMix(mix);
+    // התקופה של כל מסלול היא הזמן שנותר בפועל עד סוף המשכנתא, לפי התאריך
+    // המדויק ויום החיוב שהלקוח הזין — זו נקודת המוצא של המיחזור.
+    const calc = calculateMortgageMix(mixWithRemainingTerms(mix));
     return {
       ...calc.mix,
       id: mix.id,
@@ -209,14 +240,13 @@ export function RefinanceMortgageInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
-            className="text-center py-2"
+            className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-1 text-center"
           >
-            <p className="text-sm text-gray-500">המשכנתא הנוכחית</p>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <Building2 className="h-5 w-5 text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-900">{bank}</h2>
-            </div>
-            <p className="text-lg font-semibold text-blue-600 mt-1">{formatCurrency(effectiveTotal)}</p>
+            <span className="text-xs text-gray-500">המשכנתא הנוכחית</span>
+            <Building2 className="h-4 w-4 text-blue-600" />
+            <h2 className="text-base font-bold text-gray-900">{bank}</h2>
+            <span className="text-gray-300">·</span>
+            <p className="text-base font-semibold text-blue-600">{formatCurrency(effectiveTotal)}</p>
           </motion.div>
         ) : (
           <motion.div
@@ -318,10 +348,54 @@ export function RefinanceMortgageInput({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <RefinanceAnalysis currentMix={buildDisplayMix()} onEdit={hideMixSummary} />
+          <RefinanceAnalysis
+            currentMix={buildDisplayMix()}
+            onEdit={hideMixSummary}
+            isGuest={isGuest}
+            market={market}
+          />
         </motion.div>
       ) : (
         <>
+          {/* מועדי סיום התשלומים — הבסיס לחישוב מה שנותר לשלם */}
+          {tracks.length > 0 && (
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-blue-600" />
+                  <p className="text-sm font-bold text-blue-900">מועדי התשלומים במשכנתא הקיימת</p>
+                </div>
+                <p className="text-xs text-blue-800">
+                  ההחזר וסך הריבית מחושבים לפי הזמן שנותר בפועל עד סוף כל מסלול. עדכנו בכל מסלול את
+                  תאריך התשלום האחרון ואת יום החיוב בחודש כדי שהמספרים יהיו מדויקים.
+                </p>
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  {tracks.map((track) => {
+                    const dates = remainingPayments({
+                      endDate: track.endDate,
+                      paymentDay: track.paymentDay,
+                    });
+                    return (
+                      <li key={`dates-${track.id}`} className="text-[11px] text-blue-900">
+                        <span className="font-semibold">{track.name}</span> · נותרו{' '}
+                        {trackRemainingMonths(track)} תשלומים · אחרון{' '}
+                        {formatPaymentDate(dates.lastPaymentDate)} · חיוב ב-
+                        {clampPaymentDay(track.paymentDay ?? DEFAULT_PAYMENT_DAY)} לחודש
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ריבית גבוהה מהממוצע בשוק — הזדמנות למיחזור */}
+          {market && aboveMarketFindings.length > 0 && (
+            <MarketRateNotice findings={aboveMarketFindings} market={market} />
+          )}
+
+          {isGuest && tracks.length > 0 && <RegistrationInvite compact />}
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {tracks.map((track, index) => (
               <React.Fragment key={track.id}>
@@ -332,6 +406,7 @@ export function RefinanceMortgageInput({
                   onDelete={deleteTrack}
                   isEditing={editingTrackId === track.id}
                   onStartEditing={() => setEditingTrackId(track.id)}
+                  termMode="end-date"
                 />
 
                 {showCompletionCta && index === tracks.length - 1 && (

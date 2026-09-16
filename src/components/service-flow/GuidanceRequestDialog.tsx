@@ -4,8 +4,12 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Loader2, MessageSquareText, Send, UserRound } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { GOAL_LABELS, SERVICE_LABELS } from '@/lib/service-flow';
+import { GOAL_LABELS, SERVICE_LABELS, leadTopicFor } from '@/lib/service-flow';
 import type { MortgageGoal, ServiceType } from '@/lib/service-flow';
+import {
+  CONTACTED_ADVISOR_EVENT,
+  CONTACTED_ADVISOR_KEY,
+} from '@/components/plan/advisor/AdvisorLeadDialog';
 
 export interface GuidanceRequestDialogProps {
   open: boolean;
@@ -60,22 +64,28 @@ export function GuidanceRequestDialog({
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch('/api/guidance-requests', {
+      const response = await fetch('/api/advisor-leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          goal,
-          serviceType,
+          topic: leadTopicFor(goal, serviceType),
           name: mode === 'guest' ? name : undefined,
           email: mode === 'guest' ? email : undefined,
           phone: phone || undefined,
-          note: note.trim() || undefined,
+          notes: note.trim() || undefined,
         }),
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         setError(body?.error ?? 'שליחת הבקשה נכשלה. נסו שוב.');
         return;
+      }
+      // הדאשבורד מציג מסך פתיחה אחר אחרי הפנייה הראשונה ליועץ
+      try {
+        window.localStorage.setItem(CONTACTED_ADVISOR_KEY, '1');
+        window.dispatchEvent(new Event(CONTACTED_ADVISOR_EVENT));
+      } catch {
+        // דפדפן שחוסם אחסון מקומי — הבקשה עצמה כבר נשלחה
       }
       setSent(true);
       setNote('');
@@ -103,7 +113,8 @@ export function GuidanceRequestDialog({
             </DialogTitle>
             <p className="mt-3 text-sm leading-relaxed text-slate-500">
               הבקשה ל{SERVICE_LABELS[serviceType].title} ({GOAL_LABELS[goal].title}) נרשמה אצל היועצים
-              שלנו. בינתיים אפשר להמשיך לעבוד בפלטפורמה — כל מה שתזינו יעמוד לרשות היועץ.
+              שלנו, עם ההערה שלכם אם הוספתם. בינתיים אפשר להמשיך לעבוד בפלטפורמה — כל מה שתזינו
+              יעמוד לרשות היועץ.
             </p>
             <button
               type="button"

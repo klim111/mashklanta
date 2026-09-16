@@ -8,15 +8,16 @@ import {
   ArrowLeft,
   ArrowUpLeft,
   Briefcase,
+  Banknote,
   Building2,
+  Calculator,
   Check,
   ChevronRight,
   CreditCard,
-  Home,
   MapPin,
   Plus,
-  Search,
   Trash2,
+  HeartHandshake,
   TrendingUp,
   User,
 } from 'lucide-react';
@@ -33,7 +34,7 @@ import {
   EMPLOYMENT_TYPES,
   analyzeProfile,
   dealMaxLtv,
-  maxPropertyForEquity,
+  dealMaxMortgage,
   profileRequirements,
   requestedMortgage,
   sumProfileLoans,
@@ -48,7 +49,6 @@ import type {
   ProfileScreen,
 } from '@/lib/mortgage-plan';
 import {
-  EmptyHint,
   Metric,
   NumberField,
   Panel,
@@ -57,13 +57,12 @@ import {
   formatPercent,
   formatShekel,
 } from '../ui';
-import { ProfileSyncDialog } from '@/components/dashboard/ProfileSyncDialog';
-import {
-  divergedProfileKeys,
-  parseClientProfile,
-  pickProfileFromAnalysis,
-} from '@/lib/client-profile';
-import type { ClientProfileFinancials, ProfileAnalysisKey } from '@/lib/client-profile';
+import { NumericInput } from '@/components/ui/numeric-input';
+import { pickProfileFromAnalysis } from '@/lib/client-profile';
+import { StageOverview } from './analysis/StageOverview';
+import { ProfileReportPanel } from './analysis/ProfileReportPanel';
+import { IncomeCalculatorDialog } from './analysis/IncomeCalculatorDialog';
+import { AdvisorLeadDialog } from '../advisor/AdvisorLeadDialog';
 
 const AFFORDABILITY_TOOL = '/mortgage-planning?flow=affordability';
 const CONSUMER_LOANS_TOOL = '/consumer-loans';
@@ -126,63 +125,49 @@ export function AnalysisStage({
   data,
   onChange,
   planId,
+  planName,
+  onRequestAdvisor,
+  advisorBusy = false,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
   planId: string;
+  /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
+  planName?: string;
+  /** בקשת ליווי חינמית לשלב הפרופיל — מכפתור "תן ליועץ" שבמסך "על השלב" */
+  onRequestAdvisor?: () => void;
+  advisorBusy?: boolean;
 }) {
   const profile = data.ANALYSIS;
-  const savedProfile = useRef<ClientProfileFinancials | null>(null);
-  const dismissed = useRef<Set<string>>(new Set());
-  const [pendingKeys, setPendingKeys] = useState<ProfileAnalysisKey[]>([]);
-  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const profileSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/profile', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body) => {
-        if (!cancelled && body) savedProfile.current = parseClientProfile(body);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  /**
+   * כל הזנה נשמרת אוטומטית — גם בתהליך עצמו וגם בפרופיל של הלקוח.
+   *
+   * הפרופיל הוא אותם נתונים בדיוק (הכנסות, גילים, הון עצמי, הלוואות וצפי), ולכן
+   * אין מה לשאול עליו: מה שהוזן כאן הוא המצב הנכון, והוא נשמר בשקט אחרי הפוגה
+   * קצרה בהקלדה. כך גם משכנתא חדשה תיפתח עם הנתונים המעודכנים.
+   */
   const patch = (next: Partial<AnalysisData>) => {
     const merged = { ...profile, ...next };
     onChange(merged);
-    const stored = savedProfile.current;
-    if (!stored) return;
-    const keys = divergedProfileKeys(profile, merged, stored).filter(
-      (key) => !dismissed.current.has(key)
-    );
-    if (syncTimer.current) clearTimeout(syncTimer.current);
-    if (keys.length === 0) return;
-    syncTimer.current = setTimeout(() => setPendingKeys(keys), 900);
-  };
 
-  const acceptProfileSync = async () => {
-    const keys = pendingKeys;
-    setPendingKeys([]);
-    try {
-      await fetch('/api/profile', {
+    if (profileSaveTimer.current) clearTimeout(profileSaveTimer.current);
+    profileSaveTimer.current = setTimeout(() => {
+      void fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pickProfileFromAnalysis({ ...profile })),
-      });
-      savedProfile.current = pickProfileFromAnalysis(profile);
-    } catch {
-      // השינוי במשכנתא כבר נשמר; עדכון ההגדרות ייכשל בשקט
-    }
-    keys.forEach((key) => dismissed.current.add(key));
+        body: JSON.stringify(pickProfileFromAnalysis(merged)),
+      }).catch(() => undefined);
+    }, 900);
   };
 
-  const declineProfileSync = () => {
-    pendingKeys.forEach((key) => dismissed.current.add(key));
-    setPendingKeys([]);
-  };
+  useEffect(
+    () => () => {
+      if (profileSaveTimer.current) clearTimeout(profileSaveTimer.current);
+    },
+    []
+  );
 
   const go = (profileScreen: ProfileScreen) => patch({ profileScreen });
 
@@ -193,16 +178,25 @@ export function AnalysisStage({
     .filter((item) => PERSONAL_KEYS.includes(item.key))
     .every((item) => item.ok);
 
-  const screen: ProfileScreen = !profile.intent ? 'intent' : profile.profileScreen || 'borrowers';
+  const screen: ProfileScreen = profile.profileScreen || 'overview';
+
+  /* טופס פנייה ליועץ — נפתח מכפתור גיוס ההון העצמי כשההון חסר */
+  const [equityHelpOpen, setEquityHelpOpen] = useState(false);
+  const onEquityHelp = () => setEquityHelpOpen(true);
+
+  /*
+    התהליך נפתח תמיד סביב נכס קונקרטי (בדיקת היתכנות נעשית מהאזור האישי בכלי
+    נפרד). לכן אם עוד לא נקבעה נקודת פתיחה — נקבע אותה כאן, כדי שהשלב ייסגר
+    והדוח ייפתח בלי לשאול שוב.
+  */
+  useEffect(() => {
+    if (!profile.intent) patch({ intent: 'HAS_PROPERTY' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.intent]);
 
   return (
     <div className="space-y-5">
-      <ProfileSyncDialog
-        keys={pendingKeys}
-        onAccept={() => void acceptProfileSync()}
-        onDecline={declineProfileSync}
-      />
-      {screen !== 'intent' && (
+      {screen !== 'overview' && (
         <ScreenRail
           current={screen}
           intent={profile.intent}
@@ -212,11 +206,12 @@ export function AnalysisStage({
       )}
 
       <AnimatePresence mode="wait" initial={false}>
-        {screen === 'intent' && (
-          <motion.div key="intent" {...reveal}>
-            <IntentChoice
-              value={profile.intent}
-              onSelect={(intent) => patch({ intent, profileScreen: 'borrowers' })}
+        {screen === 'overview' && (
+          <motion.div key="overview" {...reveal}>
+            <StageOverview
+              onStart={() => go('deal')}
+              onAdvisor={onRequestAdvisor}
+              advisorBusy={advisorBusy}
             />
           </motion.div>
         )}
@@ -224,6 +219,7 @@ export function AnalysisStage({
         {screen === 'borrowers' && (
           <motion.div key="borrowers" {...reveal} className="space-y-5">
             <Panel
+              centered
               title="מי לוקח את המשכנתא"
               description="ההכנסות, הגילים, אופן ההעסקה וההלוואות הקיימות הם מה שהבנק בוחן קודם כול. הנתונים נשמרים אוטומטית."
             >
@@ -264,6 +260,7 @@ export function AnalysisStage({
                   onAge={(age) => patch({ age })}
                   onIncome={(income) => patch({ income })}
                   onBank={(primaryBank) => patch({ primaryBank })}
+                  showBank={!couple || profile.bankAccountMode !== 'JOINT'}
                 />
                 {couple && (
                   <BorrowerBasicsCard
@@ -274,11 +271,30 @@ export function AnalysisStage({
                     onAge={(partnerAge) => patch({ partnerAge })}
                     onIncome={(partnerIncome) => patch({ partnerIncome })}
                     onBank={(partnerPrimaryBank) => patch({ partnerPrimaryBank })}
+                    showBank={profile.bankAccountMode !== 'JOINT'}
                   />
                 )}
               </div>
 
-              {couple && (
+              {/* חשבון משותף: הבנק מוצג פעם אחת, כבלוק המשתרע על פני שני הלווים */}
+              {couple && profile.bankAccountMode === 'JOINT' && (
+                <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-4">
+                  <BankChooser
+                    title="הבנק של החשבון המשותף"
+                    bank={profile.primaryBank}
+                    onBank={(bank) => patch({ primaryBank: bank, partnerPrimaryBank: bank })}
+                  />
+                </div>
+              )}
+
+              {/*
+                השאלה על ניהול החשבון מופיעה רק כששני הלווים בחרו את אותו בנק —
+                אחרת אין בכלל אפשרות לחשבון משותף.
+              */}
+              {couple &&
+                ((Boolean(profile.primaryBank) &&
+                  profile.primaryBank === profile.partnerPrimaryBank) ||
+                  profile.bankAccountMode === 'JOINT') && (
                 <div className="mt-5 max-w-lg">
                   <span className="mb-2 block text-xs font-bold text-slate-600">
                     מנהלים חשבון בנק משותף או כל אחד בנפרד?
@@ -286,7 +302,13 @@ export function AnalysisStage({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => patch({ bankAccountMode: 'JOINT' })}
+                      onClick={() =>
+                        patch({
+                          bankAccountMode: 'JOINT',
+                          partnerPrimaryBank: profile.primaryBank ?? profile.partnerPrimaryBank,
+                          primaryBank: profile.primaryBank ?? profile.partnerPrimaryBank,
+                        })
+                      }
                       className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-sm font-bold transition-all ${
                         profile.bankAccountMode === 'JOINT'
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -314,29 +336,6 @@ export function AnalysisStage({
                 </div>
               )}
 
-              <div className="mt-5 max-w-sm">
-                <NumberField
-                  label="הון עצמי פנוי לעסקה"
-                  hint="חיסכון, מתנה מההורים, תמורה ממכירת נכס — כל מה שייכנס לעסקה מחוץ למשכנתא."
-                  value={profile.equity}
-                  onChange={(equity) =>
-                    patch({
-                      equity,
-                      mortgageAmount:
-                        (profile.propertyValue ?? 0) > 0
-                          ? requestedMortgage(
-                              profile.propertyValue ?? 0,
-                              equity,
-                              profile.dealType,
-                              profile.targetLtvPercent
-                            )
-                          : profile.mortgageAmount,
-                    })
-                  }
-                  suffix="₪"
-                  placeholder="500,000"
-                />
-              </div>
 
               <div className={`mt-5 grid gap-4 ${couple ? 'lg:grid-cols-2' : ''}`}>
                 <BorrowerWorkCard
@@ -494,8 +493,8 @@ export function AnalysisStage({
             </Panel>
 
             <ScreenFooter
-              backLabel="איפה אתם בתהליך"
-              onBack={() => go('intent')}
+              backLabel="הנכס והעסקה"
+              onBack={() => go('deal')}
               nextLabel="המשך לצפי הכנסות עתידיות"
               onNext={() => go('future')}
               nextDisabled={!personalDone}
@@ -517,32 +516,43 @@ export function AnalysisStage({
             <ScreenFooter
               backLabel="מי לוקח את המשכנתא"
               onBack={() => go('borrowers')}
-              nextLabel={
-                profile.intent === 'FEASIBILITY' ? 'המשך לבדיקת היתכנות' : 'המשך לפרטי הנכס'
-              }
-              onNext={() => go('deal')}
+              nextLabel="המשך לדוח הפרופיל"
+              onNext={() => go('report')}
             />
           </motion.div>
         )}
 
         {screen === 'deal' && (
           <motion.div key="deal" {...reveal} className="space-y-5">
-            {profile.intent === 'FEASIBILITY' ? (
-              <FeasibilityPanel
-                planId={planId}
-                onFoundProperty={() => patch({ intent: 'HAS_PROPERTY' })}
-              />
-            ) : (
-              <PropertyPanel profile={profile} patch={patch} />
-            )}
+            <PropertyPanel profile={profile} patch={patch} onNeedEquityHelp={onEquityHelp} />
+
             <ScreenFooter
-              backLabel="צפי להכנסות עתידיות"
-              onBack={() => go('future')}
+              backLabel="על השלב"
+              onBack={() => go('overview')}
+              nextLabel="המשך למי לוקח את המשכנתא"
+              onNext={() => go('borrowers')}
+            />
+          </motion.div>
+        )}
+
+        {screen === 'report' && (
+          <motion.div key="report" {...reveal} className="space-y-5">
+            <ProfileReportPanel
+              data={data}
+              planId={planId}
+              planName={planName}
+              onDocumentsMode={(documentsMode) => patch({ documentsMode })}
+            />
+            <ScreenFooter
+              backLabel={profile.intent === 'FEASIBILITY' ? 'היתכנות' : 'הנכס והעסקה'}
+              onBack={() => go('deal')}
               nextLabel={null}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AdvisorLeadDialog open={equityHelpOpen} onOpenChange={setEquityHelpOpen} topic="EQUITY" />
     </div>
   );
 }
@@ -558,15 +568,17 @@ function ScreenRail({
   personalDone: boolean;
   onSelect: (screen: ProfileScreen) => void;
 }) {
+  // הסדר כאן הוא סדר התת-שלבים בפועל (PROFILE_SCREENS), ולא סדר אחר
   const items: Array<{ id: ProfileScreen; label: string; unlocked: boolean }> = [
-    { id: 'intent', label: 'איפה בתהליך', unlocked: true },
-    { id: 'borrowers', label: 'מי לוקח', unlocked: Boolean(intent) },
-    { id: 'future', label: 'הכנסות עתידיות', unlocked: personalDone },
+    { id: 'overview', label: 'על השלב', unlocked: true },
     {
       id: 'deal',
       label: intent === 'FEASIBILITY' ? 'היתכנות' : 'הנכס והעסקה',
-      unlocked: personalDone,
+      unlocked: true,
     },
+    { id: 'borrowers', label: 'מי לוקח', unlocked: true },
+    { id: 'future', label: 'הכנסות עתידיות', unlocked: personalDone },
+    { id: 'report', label: 'דוח הפרופיל', unlocked: personalDone && Boolean(intent) },
   ];
 
   return (
@@ -650,99 +662,6 @@ function ScreenFooter({
 }
 
 /** השאלה הראשונה — גדולה במרכז המסך עד שנבחרת תשובה */
-function IntentChoice({
-  value,
-  onSelect,
-}: {
-  value: ProfileIntent | null;
-  onSelect: (intent: ProfileIntent) => void;
-}) {
-  const options: Array<{
-    id: ProfileIntent;
-    title: string;
-    description: string;
-    icon: typeof Home;
-    gradient: string;
-  }> = [
-    {
-      id: 'HAS_PROPERTY',
-      title: 'מצאתי נכס שאני מעוניין לרכוש',
-      description: 'יש מחיר ועסקה על השולחן — נבנה פרופיל, נגיש בקשה לאישור עקרוני ונתקדם לתמהיל.',
-      icon: Home,
-      gradient: 'from-blue-600 to-indigo-600',
-    },
-    {
-      id: 'FEASIBILITY',
-      title: 'אני מעוניין לבדוק היתכנות',
-      description: 'עוד לא נבחר נכס. נחשב לאיזה מחיר אפשר לכוון, ונחזור לכאן כשתדעו על מה מגישים.',
-      icon: Search,
-      gradient: 'from-violet-600 to-fuchsia-600',
-    },
-  ];
-
-  return (
-    <div className="flex min-h-[min(68vh,640px)] flex-col items-center justify-center px-2 py-6">
-      <p className="mb-2 text-xs font-black tracking-wide text-slate-400">שאלה ראשונה</p>
-      <h3 className="text-center text-3xl font-black text-slate-900 md:text-5xl">
-        איפה אתם בתהליך?
-      </h3>
-      <p className="mt-3 mb-10 max-w-lg text-center text-base leading-relaxed text-slate-500">
-        שאלה אחת שקובעת את המשך הדרך. אפשר לשנות אותה בכל רגע.
-      </p>
-      <div className="grid w-full max-w-3xl gap-5 md:grid-cols-2">
-        {options.map((option) => {
-          const selected = value === option.id;
-          const Icon = option.icon;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => onSelect(option.id)}
-              className={`group relative overflow-hidden rounded-3xl border-2 p-7 text-right transition-all ${
-                selected
-                  ? 'border-slate-900 bg-slate-900 shadow-2xl'
-                  : 'border-slate-200 bg-white hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl'
-              }`}
-            >
-              <div
-                className={`pointer-events-none absolute -left-10 -top-10 h-36 w-36 rounded-full bg-gradient-to-br ${option.gradient} opacity-25 blur-2xl transition-opacity group-hover:opacity-50`}
-              />
-              <div className="relative">
-                <span
-                  className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${option.gradient} shadow-lg`}
-                >
-                  <Icon className="h-7 w-7 text-white" />
-                </span>
-                <div className="flex items-center gap-2">
-                  <h4
-                    className={`text-lg font-black leading-snug md:text-xl ${
-                      selected ? 'text-white' : 'text-slate-900'
-                    }`}
-                  >
-                    {option.title}
-                  </h4>
-                  {selected && (
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400">
-                      <Check className="h-3 w-3 text-slate-900" />
-                    </span>
-                  )}
-                </div>
-                <p
-                  className={`mt-2 text-sm leading-relaxed ${
-                    selected ? 'text-white/70' : 'text-slate-500'
-                  }`}
-                >
-                  {option.description}
-                </p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function BorrowerBasicsCard({
   title,
   age,
@@ -751,6 +670,7 @@ function BorrowerBasicsCard({
   onAge,
   onIncome,
   onBank,
+  showBank = true,
 }: {
   title: string;
   age: number | null;
@@ -759,54 +679,98 @@ function BorrowerBasicsCard({
   onAge: (value: number | null) => void;
   onIncome: (value: number | null) => void;
   onBank: (value: string | null) => void;
+  /** בחשבון משותף הבנק מוצג בבלוק נפרד המשותף לשני הלווים, ולא בכרטיס */
+  showBank?: boolean;
 }) {
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50/80 to-white p-4 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="rounded-2xl border-2 border-slate-200 bg-gradient-to-b from-slate-50/80 to-white p-4 shadow-sm">
+      <div className="mb-4 flex items-center justify-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900">
           <User className="h-4 w-4 text-white" />
         </span>
-        <h4 className="text-sm font-black text-slate-900">{title}</h4>
+        <h4 className="text-base font-black text-slate-900">{title}</h4>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <NumberField
-          label="הכנסה חודשית נטו"
-          value={income}
-          onChange={onIncome}
-          suffix="₪"
-          placeholder="15,000"
-        />
+        <div>
+          <NumberField
+            label="הכנסה חודשית נטו"
+            value={income}
+            onChange={onIncome}
+            suffix="₪"
+            placeholder="15,000"
+          />
+          {/*
+            הבנק עובד על ממוצע שלושה חודשים ולא על המשכורת האחרונה, ורוב
+            הלקוחות מזינים כאן את האחרונה. הכפתור עושה את החישוב במקומם.
+          */}
+          <button
+            type="button"
+            onClick={() => setCalculatorOpen(true)}
+            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-800 transition-colors hover:bg-blue-100"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            עזרו לי לחשב את ההכנסה הפנויה
+          </button>
+        </div>
         <NumberField label="גיל" value={age} onChange={onAge} max={90} placeholder="35" />
       </div>
 
-      <div className="mt-4">
-        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-          <Building2 className="h-3.5 w-3.5 text-slate-400" />
-          הבנק של החשבון הראשי
-        </span>
-        <p className="mb-2 text-[11px] leading-relaxed text-slate-400">
-          החשבון שאליו מועברת ההכנסה העיקרית בכל חודש. יוצע כברירת מחדל באישור העקרוני.
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {MORTGAGE_BANKS.map((item) => {
-            const selected = bank === item;
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => onBank(selected ? null : item)}
-                className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all ${
-                  selected
-                    ? 'border-blue-500 bg-blue-600 text-white'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
-                }`}
-              >
-                {item}
-              </button>
-            );
-          })}
+      <IncomeCalculatorDialog
+        open={calculatorOpen}
+        onOpenChange={setCalculatorOpen}
+        borrowerLabel={title}
+        onApply={onIncome}
+      />
+
+      {showBank && (
+        <div className="mt-4 text-center">
+          <BankChooser bank={bank} onBank={onBank} />
         </div>
+      )}
+    </div>
+  );
+}
+
+/** בורר הבנק של החשבון הראשי — משמש בכרטיס לווה יחיד ובבלוק המשותף לזוג */
+function BankChooser({
+  bank,
+  onBank,
+  title = 'הבנק של החשבון הראשי',
+}: {
+  bank: string | null;
+  onBank: (value: string | null) => void;
+  title?: string;
+}) {
+  return (
+    <div className="text-center">
+      <span className="mb-1.5 flex items-center justify-center gap-1.5 text-sm font-bold text-slate-700">
+        <Building2 className="h-4 w-4 text-slate-400" />
+        {title}
+      </span>
+      <p className="mb-2 text-xs leading-relaxed text-slate-500">
+        החשבון שאליו מועברת ההכנסה העיקרית בכל חודש. יוצע כברירת מחדל באישור העקרוני.
+      </p>
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {MORTGAGE_BANKS.map((item) => {
+          const selected = bank === item;
+          return (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onBank(selected ? null : item)}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all ${
+                selected
+                  ? 'border-blue-500 bg-blue-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+              }`}
+            >
+              {item}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1074,16 +1038,19 @@ function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId
 function PropertyPanel({
   profile,
   patch,
+  onNeedEquityHelp,
 }: {
   profile: AnalysisData;
   patch: (next: Partial<AnalysisData>) => void;
+  /** נפתח כשההון העצמי הזמין נמוך מהנדרש — טופס פנייה לגיוס הון */
+  onNeedEquityHelp: () => void;
 }) {
-  const [priceCapped, setPriceCapped] = useState(false);
   const analysis = analyzeProfile(profile);
   const dealType = profile.dealType;
   const propertyValue = profile.propertyValue ?? 0;
   const maxLtv = dealType ? dealMaxLtv(dealType) : null;
-  const maxPrice = dealType ? maxPropertyForEquity(profile.equity, dealType) : null;
+  const combined = profile.targetLtvPercent !== null && profile.targetLtvPercent > 0;
+
   const computedMortgage = requestedMortgage(
     propertyValue,
     profile.equity,
@@ -1091,22 +1058,42 @@ function PropertyPanel({
     profile.targetLtvPercent
   );
   const leftoverEquity = propertyValue > 0 ? Math.max(0, propertyValue - (computedMortgage ?? 0)) : 0;
-  const combined = profile.targetLtvPercent !== null && profile.targetLtvPercent > 0;
+
+  /*
+    ההון העצמי המינימלי הנדרש הוא מחיר הנכס פחות המשכנתא המרבית שהבנק ייתן:
+    במצב משולב לפי האחוז שהוזן, אחרת לפי תקרת סוג העסקה. מתחתיו הלקוח מזין
+    את ההון הזמין, ואם הוא נמוך מהנדרש — מוצעת עזרה בגיוס הון.
+  */
+  const maxMortgage = combined
+    ? Math.round(propertyValue * ((profile.targetLtvPercent ?? 0) / 100))
+    : dealType
+      ? dealMaxMortgage(propertyValue, dealType)
+      : 0;
+  const requiredEquity = propertyValue > 0 ? Math.max(0, propertyValue - maxMortgage) : 0;
+  const availableEquity = profile.equity ?? 0;
+  const equityShort = propertyValue > 0 && availableEquity > 0 && availableEquity < requiredEquity;
+  const equityEntered = profile.equity !== null && profile.equity > 0;
 
   const applyPropertyValue = (
     value: number | null,
     nextDeal: DealType | null,
     nextLtv: number | null = profile.targetLtvPercent
   ) => {
-    const cap = maxPropertyForEquity(profile.equity, nextDeal);
-    const exceeded = value !== null && cap !== null && value > cap;
-    const nextPrice = exceeded ? cap : value;
-    setPriceCapped(Boolean(exceeded));
     patch({
       dealType: nextDeal,
-      propertyValue: nextPrice,
+      propertyValue: value,
       targetLtvPercent: nextLtv,
-      mortgageAmount: requestedMortgage(nextPrice ?? 0, profile.equity, nextDeal, nextLtv),
+      mortgageAmount: requestedMortgage(value ?? 0, profile.equity, nextDeal, nextLtv),
+    });
+  };
+
+  const applyEquity = (equity: number | null) => {
+    patch({
+      equity,
+      mortgageAmount:
+        propertyValue > 0
+          ? requestedMortgage(propertyValue, equity, dealType, profile.targetLtvPercent)
+          : profile.mortgageAmount,
     });
   };
 
@@ -1122,13 +1109,14 @@ function PropertyPanel({
 
   return (
     <Panel
+      centered
       title="הנכס והעסקה"
-      description="קודם הכתובת וסוג העסקה. אחרי הבחירה מופיע מחיר הנכס המרבי מול ההון העצמי — והמשכנתא מחושבת לבד."
+      description="הכתובת, סוג העסקה ומחיר הנכס. אחרי המחיר נראה מה ההון העצמי המינימלי הנדרש, ותזינו את ההון הזמין לכם."
     >
-      <div className="space-y-5">
-        <div>
-          <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-            <MapPin className="h-3.5 w-3.5 text-slate-400" />
+      <div className="space-y-6">
+        <div className="mx-auto max-w-xl text-center">
+          <span className="mb-1.5 flex items-center justify-center gap-1.5 text-sm font-bold text-slate-700">
+            <MapPin className="h-4 w-4 text-slate-400" />
             כתובת הנכס
           </span>
           <AddressAutocomplete
@@ -1137,15 +1125,17 @@ function PropertyPanel({
             value={profile.propertyAddress}
             onChange={(propertyAddress) => patch({ propertyAddress })}
           />
-          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
             תמהילים לאותה כתובת מקובצים ומושווים יחד באזור האישי. בלי כתובת הם מקובצים לפי סכום
             המשכנתא.
           </p>
         </div>
 
         <div>
-          <span className="mb-1.5 block text-xs font-bold text-slate-600">סוג העסקה</span>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <span className="mb-2 block text-center text-base font-black text-slate-800">
+            סוג העסקה
+          </span>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {DEAL_TYPE_KEYS.map((key: DealType) => {
               const selected = !combined && profile.dealType === key;
               return (
@@ -1153,7 +1143,7 @@ function PropertyPanel({
                   key={key}
                   type="button"
                   onClick={() => applyPropertyValue(profile.propertyValue, key, null)}
-                  className={`rounded-2xl border-2 px-4 py-3 text-right transition-all ${
+                  className={`rounded-2xl border-2 px-4 py-3 text-center transition-all ${
                     selected
                       ? 'border-blue-500 bg-blue-50 shadow-sm'
                       : 'border-slate-200 bg-white hover:border-blue-300'
@@ -1166,98 +1156,106 @@ function PropertyPanel({
                   >
                     {DEAL_TYPES[key]}
                   </span>
-                  <span className="mt-0.5 block text-[11px] font-bold text-slate-400">
+                  <span className="mt-0.5 block text-xs font-bold text-slate-500">
                     מימון עד {MAX_LTV_PERCENT[key]}%
                   </span>
                 </button>
               );
             })}
-          </div>
-          <div
-            className={`mt-3 rounded-2xl border-2 p-4 ${
-              combined ? 'border-blue-500 bg-blue-50/70' : 'border-slate-200 bg-white'
-            }`}
-          >
-            <NumberField
-              label="מצב משולב — אחוז מימון ידני"
-              hint="כל אחוז בין 1 ל-75. סכום המשכנתא, ההון העצמי וההחזר המשוער יחושבו לפי האחוז שהוזן, בתוך מגבלות בנק ישראל."
-              value={profile.targetLtvPercent}
+
+            {/*
+              המצב המשולב הוא סוג עסקה נוסף בשורה, ולא טופס שתופס שורה שלמה:
+              לחיצה עליו בוחרת אותו ופותחת בתוכו שדה לאחוז המימון.
+            */}
+            <CombinedLtvOption
+              active={combined}
+              percent={profile.targetLtvPercent}
               onChange={applyCombinedLtv}
-              suffix="%"
-              max={75}
-              placeholder="60"
             />
-            {combined && propertyValue > 0 && (
-              <p className="mt-2 text-[11px] leading-relaxed text-blue-800">
-                מימון {profile.targetLtvPercent}% · משכנתא {formatShekel(computedMortgage)} · הון עצמי
-                בעסקה {formatShekel(leftoverEquity)}
-                {profile.dealType ? ` · לפי ${DEAL_TYPES[profile.dealType]}` : ''}
-              </p>
-            )}
           </div>
+
+          {combined && propertyValue > 0 && (
+            <p className="mt-2 text-center text-sm font-bold text-blue-800">
+              מימון {profile.targetLtvPercent}% · משכנתא {formatShekel(computedMortgage)} · הון עצמי
+              בעסקה {formatShekel(leftoverEquity)}
+            </p>
+          )}
         </div>
 
         {dealType && (
-          <div>
-            <NumberField
-              label="מחיר הנכס"
-              hint={
-                maxPrice !== null
-                  ? `מקסימום ל${DEAL_TYPES[dealType]} מול הון עצמי ${formatShekel(profile.equity)}: ${formatShekel(maxPrice)} (מימון עד ${maxLtv}%).`
-                  : 'כדי לחשב את מחיר הנכס המרבי הזינו הון עצמי במסך מי לוקח המשכנתא.'
-              }
-              value={profile.propertyValue}
-              onChange={(value) => applyPropertyValue(value, dealType)}
-              suffix="₪"
-              placeholder={maxPrice ? maxPrice.toLocaleString('he-IL') : '2,000,000'}
-            />
-            {priceCapped && maxPrice !== null && (
-              <p className="mt-2 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                המחיר גבוה מהמותר לסוג העסקה עם ההון העצמי שהוזן. הסכום חזר למקסימום האפשרי:{' '}
-                {formatShekel(maxPrice)}.
-              </p>
-            )}
+          <div className="text-center">
+            <span className="mb-2 block text-base font-black text-slate-800">מחיר הנכס</span>
+            <div className="mx-auto w-56">
+              <NumberField
+                label=""
+                value={profile.propertyValue}
+                onChange={(value) => applyPropertyValue(value, dealType)}
+                suffix="₪"
+                placeholder="2,000,000"
+              />
+            </div>
           </div>
         )}
 
+        {/* ההון העצמי — נדרש מול זמין, אחרי שנקבע מחיר הנכס */}
         {dealType && propertyValue > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric
-              label="סכום המשכנתא"
-              value={formatShekel(computedMortgage)}
-              note={
-                combined
-                  ? `לפי מימון ${profile.targetLtvPercent}% שהוזן במצב משולב`
-                  : 'מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה'
-              }
-            />
-            <Metric
-              label="אחוז מימון"
-              value={formatPercent(analysis.ltv)}
-              note={maxLtv !== null ? `תקרה ${maxLtv}%` : undefined}
-              tone={analysis.ltvOk ? 'good' : 'bad'}
-            />
-            <Metric
-              label="הון עצמי בעסקה"
-              value={formatShekel(leftoverEquity)}
-              note={
-                profile.equity !== null
-                  ? `הוצהר בפרופיל ${formatShekel(profile.equity)}`
-                  : 'מחיר הנכס פחות המשכנתא'
-              }
-              tone={analysis.equityGap > 0 ? 'warn' : 'good'}
-            />
-            <Metric
-              label="החזר חודשי משוער"
-              value={formatShekel(analysis.estimatedMonthlyPayment)}
-              note={
-                analysis.repaymentRatio !== null
-                  ? `יחס החזר ${formatPercent(analysis.repaymentRatio)}`
-                  : undefined
-              }
-              tone={analysis.ratioOk ? 'default' : 'warn'}
-            />
+          <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
+            <div>
+              <span className="block text-sm font-bold text-slate-600">הון עצמי מינימלי נדרש</span>
+              <span className="mt-0.5 block text-2xl font-black tabular-nums text-slate-900">
+                {formatShekel(requiredEquity)}
+              </span>
+              <span className="mt-0.5 block text-xs font-medium text-slate-500">
+                {combined
+                  ? `לפי מימון ${profile.targetLtvPercent}% שהוזן`
+                  : `מחיר הנכס פחות מימון של עד ${maxLtv}%`}
+              </span>
+            </div>
+
+            <div className="mx-auto w-56">
+              <NumberField
+                label="הון עצמי זמין"
+                value={profile.equity}
+                onChange={applyEquity}
+                suffix="₪"
+                placeholder="500,000"
+              />
+            </div>
+
+            {equityShort ? (
+              <div className="space-y-2 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-center">
+                <p className="flex items-center justify-center gap-2 text-sm font-black text-amber-900">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  חסרים {formatShekel(requiredEquity - availableEquity)} כדי לעמוד בתקרת המימון
+                </p>
+                <p className="text-xs font-medium leading-relaxed text-amber-800">
+                  אפשר להגדיל את ההון העצמי, להקטין את מחיר הנכס — או לקבל עזרה מיועץ בגיוס הון.
+                </p>
+                <button
+                  type="button"
+                  onClick={onNeedEquityHelp}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-violet-700"
+                >
+                  <HeartHandshake className="h-4 w-4" />
+                  קבלו עזרה מיועצי משכלנתא לגייס הון עצמי
+                </button>
+              </div>
+            ) : equityEntered ? (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Metric label="סכום המשכנתא" value={formatShekel(computedMortgage)} />
+                <Metric
+                  label="אחוז מימון"
+                  value={formatPercent(analysis.ltv)}
+                  note={maxLtv !== null ? `תקרה ${maxLtv}%` : undefined}
+                  tone={analysis.ltvOk ? 'good' : 'bad'}
+                />
+                <Metric label="החזר חודשי משוער" value={formatShekel(analysis.estimatedMonthlyPayment)} />
+              </div>
+            ) : (
+              <p className="text-xs font-medium text-slate-500">
+                הזינו את ההון העצמי הזמין כדי לחשב את אחוז המימון ואת ההחזר המשוער.
+              </p>
+            )}
           </div>
         )}
 
@@ -1268,23 +1266,15 @@ function PropertyPanel({
               years={profile.years}
               onChange={(years) => patch({ years })}
             />
-            <p className="mt-1.5 text-[11px] text-slate-400">
+            <p className="mt-1.5 text-center text-[11px] text-slate-400">
               להערכת ההחזר בלבד — בתמהיל עצמו לכל מסלול תקופה משלו. אפשר לבחור כל מספר חודשים בין 48
               ל-360.
             </p>
           </div>
         )}
 
-        {analysis.equityGap > 0 && (
-          <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            לפי ההון העצמי שהוצהר חסרים {formatShekel(analysis.equityGap)} כדי לעמוד בתקרת המימון.
-            אפשר להגדיל את ההון או להקטין את מחיר הנכס.
-          </p>
-        )}
-
-        {!analysis.ratioOk && propertyValue > 0 && (
-          <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        {!analysis.ratioOk && propertyValue > 0 && equityEntered && (
+          <p className="mx-auto flex max-w-xl items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             יחס ההחזר המשוער חורג מהמקובל בבנקים. אפשר להאריך את התקופה, להקטין את מחיר הנכס או לסגור
             הלוואות קיימות לפני ההגשה.
@@ -1295,63 +1285,71 @@ function PropertyPanel({
   );
 }
 
-/** מי שעדיין בודק היתכנות — יוצא לכלי המתאים וחוזר לכאן עם נכס */
-function FeasibilityPanel({
-  planId,
-  onFoundProperty,
+/**
+ * מצב משולב — אחוז מימון שנקבע ידנית.
+ *
+ * הוא יושב בשורת סוגי העסקה ככרטיס נוסף, ונבחר בדיוק כמוהם. שדה האחוז נפתח
+ * רק בלחיצה ומתחיל ריק: אחוז שמופיע מעצמו הופך לברירת מחדל שקטה, ומי שלא שם
+ * לב אליה מקבל חישוב שלא ביקש.
+ */
+function CombinedLtvOption({
+  active,
+  percent,
+  onChange,
 }: {
-  planId: string;
-  onFoundProperty: () => void;
+  active: boolean;
+  percent: number | null;
+  onChange: (value: number | null) => void;
 }) {
-  return (
-    <Panel
-      title="בדיקת היתכנות לפני שבוחרים נכס"
-      description="התהליך מחכה לכם כאן. ברגע שתדעו לאיזה מחיר נכס אפשר לכוון — חזרו וסמנו שמצאתם נכס."
-    >
-      <div className="rounded-2xl border border-violet-200 bg-gradient-to-l from-violet-50 to-white p-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-lg">
-            <Building2 className="h-5 w-5 text-white" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-black text-slate-900">
-              היעזרו בכלי בדיקת ההיתכנות של משכלנתא
-            </h4>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              הכלי מחשב מההכנסות, ההון העצמי וההלוואות הקיימות שלכם את מחיר הנכס המרבי ואת ההחזר
-              החודשי שתוכלו לעמוד בו. הפרופיל שמילאתם כאן כבר שמור — אחרי שתקבלו החלטה, חזרו לכאן
-              והמשיכו בתהליך לקיחת המשכנתא מהנקודה שבה עצרתם.
-            </p>
+  const [open, setOpen] = useState(false);
+  const showField = active || open;
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href={planToolHref(AFFORDABILITY_TOOL, planId)}
-                target="_blank"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:brightness-110"
-              >
-                לכלי «מה אני יכול להרשות לעצמי»
-                <ArrowUpLeft className="h-4 w-4" />
-              </Link>
-              <button
-                type="button"
-                onClick={onFoundProperty}
-                className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 px-5 py-2.5 text-sm font-black text-slate-700 transition-colors hover:border-slate-900 hover:text-slate-900"
-              >
-                <MapPin className="h-4 w-4" />
-                מצאתי נכס — נמשיך בתהליך
-              </button>
-            </div>
-          </div>
+  return (
+    <div
+      className={`rounded-2xl border-2 px-4 py-3 text-center transition-all ${
+        active
+          ? 'border-blue-500 bg-blue-50 shadow-sm'
+          : 'border-slate-200 bg-white hover:border-blue-300'
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="block w-full"
+        aria-expanded={showField}
+      >
+        <span className={`block text-sm font-black ${active ? 'text-blue-700' : 'text-slate-700'}`}>
+          מצב משולב
+        </span>
+        <span className="mt-0.5 block text-xs font-bold text-slate-500">
+          {active ? `מימון ${percent}%` : showField ? 'הזינו אחוז' : 'לחצו להזנת אחוז'}
+        </span>
+      </button>
+
+      {showField && (
+        <div className="mt-2 flex items-center justify-center gap-1">
+          <NumericInput
+            autoFocus={open && !active}
+            value={percent}
+            onChange={(value) => {
+              onChange(value);
+              if (value === null) setOpen(true);
+            }}
+            max={75}
+            placeholder="—"
+            aria-label="אחוז מימון"
+            title="כל אחוז עד 75, בתוך מגבלות בנק ישראל"
+            className={`w-16 rounded-lg border-2 bg-white px-1.5 py-1 text-center text-base font-black text-slate-900 outline-none transition-all focus:border-blue-500 ${
+              active ? 'border-blue-300' : 'border-slate-200'
+            }`}
+          />
+          <span className="text-sm font-black text-slate-500">%</span>
         </div>
-      </div>
-    </Panel>
+      )}
+    </div>
   );
 }
 
-/**
- * צפי ההכנסות העתידיות אינו נדרש לבנק, אבל הוא זה שמאפשר לבנות תמהיל חכם:
- * סכום חד-פעמי הופך לפירעון מוקדם מתוכנן, והכנסה שגדלה מרחיבה את תקציב ההחזר.
- */
 function FutureIncomePanel({
   profile,
   patch,
@@ -1366,105 +1364,130 @@ function FutureIncomePanel({
       ),
     });
 
+  const addLumpSum = () =>
+    patch({ futureLumpSums: [...profile.futureLumpSums, newLumpSum()] });
+
   return (
     <Panel
+      centered
       title="צפי להכנסות עתידיות"
-      description="כסף שצפוי להיכנס בהמשך — קרן השתלמות, מענק, ירושה או מכירת נכס — נכנס לתכנון התמהיל כפירעון מוקדם, וכך חוסך ריבית במקום לשכב בעו״ש."
-      action={
-        <button
-          type="button"
-          onClick={() => patch({ futureLumpSums: [...profile.futureLumpSums, newLumpSum()] })}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          הוספת הכנסה צפויה
-        </button>
-      }
+      description="כסף שצפוי להיכנס בהמשך, והכנסה שצפויה לגדול, משנים את התמהיל שכדאי לבנות. שניהם נכנסים לתכנון בשלב הבא — ולכן שווה להזין אותם כאן, גם אם המועד עוד לא מדויק."
     >
-      {profile.futureLumpSums.length === 0 ? (
-        <EmptyHint>
-          אין לכם הכנסה חד-פעמית צפויה? אפשר לדלג. אם כן — הוסיפו אותה כאן, גם אם התאריך עוד לא
-          מדויק.
-        </EmptyHint>
-      ) : (
-        <div className="space-y-2.5">
-          <AnimatePresence initial={false}>
-            {profile.futureLumpSums.map((item) => (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-              >
-                <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-                  <TextField
-                    label="מקור ההכנסה"
-                    value={item.label}
-                    onChange={(label) => updateLumpSum(item.id, { label })}
-                    placeholder="קרן השתלמות, מענק, ירושה…"
-                  />
-                  <NumberField
-                    label="סכום"
-                    value={item.amount}
-                    onChange={(amount) => updateLumpSum(item.id, { amount })}
-                    suffix="₪"
-                    placeholder="150,000"
-                  />
-                  <NumberField
-                    label="בעוד"
-                    value={item.inYears}
-                    onChange={(inYears) => updateLumpSum(item.id, { inYears })}
-                    suffix="שנים"
-                    max={30}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      patch({
-                        futureLumpSums: profile.futureLumpSums.filter(
-                          (entry) => entry.id !== item.id
-                        ),
-                      })
-                    }
-                    aria-label="מחיקת ההכנסה הצפויה"
-                    className="mb-1 rounded-lg p-2.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
+      <div className="space-y-5">
+        {/* כסף חד-פעמי — אזור בצבע אחד, כי הוא הופך לפירעון מוקדם */}
+        <section className="rounded-3xl border-2 border-blue-200 bg-blue-50/40 p-5">
+          <header className="mb-4 text-center">
+            <h4 className="flex items-center justify-center gap-2 text-lg font-black text-blue-900">
+              <Banknote className="h-5 w-5" />
+              סכום חד-פעמי שצפוי להיכנס
+            </h4>
+            <p className="mx-auto mt-1 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">
+              קרן השתלמות, מענק, ירושה או תמורה ממכירת נכס. כסף כזה שווה הרבה יותר כפירעון מוקדם
+              של מסלול יקר מאשר בעו״ש.
+            </p>
+          </header>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-emerald-600" />
-          <h4 className="text-sm font-black text-slate-900">צפי להגדלת ההכנסה הפנויה</h4>
-        </div>
-        <p className="mb-4 text-xs leading-relaxed text-slate-500">
-          סיום הלוואה, קידום בעבודה או חזרה של בן/בת הזוג לעבודה מלאה מגדילים את תקציב ההחזר. אם זה
-          צפוי — נתכנן תמהיל שמנצל את זה במקום החזר קבוע ונמוך לאורך כל התקופה.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField
-            label="תוספת חודשית צפויה"
-            value={profile.futureMonthlyIncrease}
-            onChange={(futureMonthlyIncrease) => patch({ futureMonthlyIncrease })}
-            suffix="₪"
-            placeholder="1,500"
-          />
-          <NumberField
-            label="בעוד כמה שנים"
-            value={profile.futureMonthlyIncreaseInYears}
-            onChange={(futureMonthlyIncreaseInYears) => patch({ futureMonthlyIncreaseInYears })}
-            suffix="שנים"
-            max={30}
-          />
-        </div>
+          {profile.futureLumpSums.length === 0 ? (
+            <p className="rounded-2xl border-2 border-dashed border-blue-200 bg-white/70 px-5 py-6 text-center text-sm font-semibold leading-relaxed text-slate-600">
+              אין לכם הכנסה חד-פעמית צפויה? אפשר לדלג. אם כן — הוסיפו אותה כאן.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <AnimatePresence initial={false}>
+                {profile.futureLumpSums.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-2xl border-2 border-blue-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
+                      <TextField
+                        label="מקור ההכנסה"
+                        value={item.label}
+                        onChange={(label) => updateLumpSum(item.id, { label })}
+                        placeholder="קרן השתלמות, מענק, ירושה…"
+                      />
+                      <NumberField
+                        label="סכום"
+                        value={item.amount}
+                        onChange={(amount) => updateLumpSum(item.id, { amount })}
+                        suffix="₪"
+                        placeholder="150,000"
+                      />
+                      <NumberField
+                        label="בעוד"
+                        value={item.inYears}
+                        onChange={(inYears) => updateLumpSum(item.id, { inYears })}
+                        suffix="שנים"
+                        max={30}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          patch({
+                            futureLumpSums: profile.futureLumpSums.filter(
+                              (entry) => entry.id !== item.id
+                            ),
+                          })
+                        }
+                        aria-label="מחיקת ההכנסה הצפויה"
+                        className="mb-1 rounded-lg p-2.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* הכפתור יושב מתחת לשורות, כי הוא מוסיף את הבאה בתור */}
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={addLumpSum}
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-blue-300 bg-white px-5 py-2.5 text-sm font-black text-blue-800 transition-colors hover:bg-blue-50"
+            >
+              <Plus className="h-4 w-4" />
+              הוספת הכנסה צפויה
+            </button>
+          </div>
+        </section>
+
+        {/* גידול בהכנסה החודשית — אזור בצבע אחר, כי הוא משנה תקציב ולא יתרה */}
+        <section className="rounded-3xl border-2 border-emerald-200 bg-emerald-50/40 p-5">
+          <header className="mb-4 text-center">
+            <h4 className="flex items-center justify-center gap-2 text-lg font-black text-emerald-900">
+              <TrendingUp className="h-5 w-5" />
+              צפי להגדלת ההכנסה החודשית
+            </h4>
+            <p className="mx-auto mt-1 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">
+              סיום הלוואה, קידום בעבודה או חזרה של בן/בת הזוג לעבודה מלאה מגדילים את תקציב ההחזר.
+              אם זה צפוי — נתכנן תמהיל שמנצל את זה, במקום החזר נמוך וקבוע לאורך כל התקופה.
+            </p>
+          </header>
+
+          <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-2">
+            <NumberField
+              label="תוספת חודשית צפויה"
+              value={profile.futureMonthlyIncrease}
+              onChange={(futureMonthlyIncrease) => patch({ futureMonthlyIncrease })}
+              suffix="₪"
+              placeholder="1,500"
+            />
+            <NumberField
+              label="בעוד כמה שנים"
+              value={profile.futureMonthlyIncreaseInYears}
+              onChange={(futureMonthlyIncreaseInYears) => patch({ futureMonthlyIncreaseInYears })}
+              suffix="שנים"
+              max={30}
+            />
+          </div>
+        </section>
       </div>
     </Panel>
   );

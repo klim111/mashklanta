@@ -7,16 +7,13 @@ import {
   Banknote,
   CalendarPlus,
   Check,
-  GitCompareArrows,
   Home as HomeIcon,
-  PieChart,
   TrendingUp,
   UserRound,
   Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
 import { PrincipalApproval } from '@/components/principal-approval/PrincipalApproval';
 import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
@@ -33,6 +30,8 @@ import type { ClientDocumentStatus, ClientStage } from '@/lib/client-process';
 import type { ClientDetail } from './clientDetail';
 import { ClientDetailsForm } from './ClientDetailsForm';
 import type { ClientDetailsValues } from './ClientDetailsForm';
+import { AdvisorAuctionPanel } from './AdvisorAuctionPanel';
+import { AdvisorMixPanel } from './AdvisorMixPanel';
 import { ClientDocumentsPanel } from './ClientDocumentsPanel';
 import { MeetingRow } from './MeetingRow';
 import { StageNotes } from './StageNotes';
@@ -287,35 +286,12 @@ function StageTools({
 
   if (stage === 'MIX') {
     return (
-      <div className="space-y-3">
-        <Card className="border-slate-200">
-          <CardContent className="p-4">
-            <p className="flex items-center gap-2 text-sm font-black text-slate-900">
-              <PieChart className="h-4 w-4 text-blue-600" />
-              כלי תכנון המשכנתא
-            </p>
-            <p className="text-[11px] text-slate-500">
-              כל התמהילים השמורים של {client.name} מוצגים בשורת התמהילים שבכלי — אלה שהוא בנה
-              ואלה שבניתם לו, מופרדים ביניהם — ואפשר לפתוח כל אחד מהם לעריכה ולהשוואה. תמהיל
-              שתשמרו כאן נרשם על שמו ומופיע גם באזור האישי שלו.
-            </p>
-          </CardContent>
-        </Card>
-
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <MortgageWorkspace
-            embedded
-            skipPropertySetup
-            clientId={client.id}
-            planId={planId ?? undefined}
-            defaultSetupSeed={{
-              dealType: client.dealType ?? undefined,
-              totalAmount: client.mortgageAmount ?? undefined,
-              propertyValue: client.propertyValue ?? undefined,
-              propertyAddress: client.propertyAddress ?? undefined,
-            }}
-          />
-        </div>
+      <div className="space-y-4">
+        {/*
+          שלב בניית התמהיל אצל היועץ הוא אותו מסך בדיוק שהלקוח רואה, בתוספת
+          אזור השידור: מה שנשמר כאן נשאר אצל היועץ עד שישדר אותו.
+        */}
+        <AdvisorMixPanel clientId={client.id} clientName={client.name} planId={planId} />
       </div>
     );
   }
@@ -323,21 +299,11 @@ function StageTools({
   if (stage === 'AUCTION') {
     return (
       <div className="space-y-4">
-        <Card className="border-slate-200">
-          <CardContent className="space-y-3 p-4">
-            <p className="flex items-center gap-2 text-sm font-black text-slate-900">
-              <GitCompareArrows className="h-4 w-4 text-blue-600" />
-              מכרז הריביות
-            </p>
-            <p className="text-[11px] leading-relaxed text-slate-500">
-              כל הצעה שמתקבלת מבנק נכנסת ככפילות של התמהיל עם הריביות שהוא נקב, וההשוואה ביניהן
-              נעשית בכלי התכנון — שם אפשר לסמן כמה תמהילים ולראות את ההפרש בהחזר ובסך הריבית.
-            </p>
-            <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
-              <Link href={`/mortgage-advisor?client=${client.id}`}>פתחו את ההשוואה בכלי התכנון</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        {/*
+          שלב התמחור אצל היועץ הוא אותו מסך בדיוק שהלקוח רואה — אותם אזורים,
+          אותה תצוגה ואותה התנהגות — בתוספת שידור ההצעה אליו.
+        */}
+        <AdvisorAuctionPanel clientId={client.id} clientName={client.name} planId={planId} />
         {documents}
       </div>
     );

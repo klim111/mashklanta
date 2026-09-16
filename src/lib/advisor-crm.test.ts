@@ -14,7 +14,7 @@ import type { AdvisorRateDefaultView } from './advisor-crm';
 
 describe('שלבי היועץ', () => {
   it('השלבים זהים לחמשת השלבים של כלי תכנון המשכנתא', () => {
-    expect([...PLAN_STAGES]).toEqual(['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING']);
+    expect([...PLAN_STAGES]).toEqual(['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING']);
   });
 
   it('לכל שלב יש תבניות משימה מוכנות', () => {

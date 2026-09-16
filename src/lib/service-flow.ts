@@ -79,36 +79,15 @@ export function serviceNeedsAdvisor(service: ServiceType): boolean {
 
 // ─────────────────────────────── בקשת ליווי ───────────────────────────────
 
-export const GUIDANCE_STATUSES = ['NEW', 'CONTACTED', 'CLOSED'] as const;
-export type GuidanceStatus = (typeof GUIDANCE_STATUSES)[number];
-
-export const GUIDANCE_STATUS_LABELS: Record<GuidanceStatus, string> = {
-  NEW: 'חדשה',
-  CONTACTED: 'יצרנו קשר',
-  CLOSED: 'טופלה',
-};
-
-export function isGuidanceStatus(value: unknown): value is GuidanceStatus {
-  return typeof value === 'string' && (GUIDANCE_STATUSES as readonly string[]).includes(value);
-}
-
-/** בקשת ליווי כפי שהיא מוצגת ליועץ */
-export interface GuidanceRequestView {
-  id: string;
-  /** חשבון הלקוח, כשהבקשה הגיעה ממשתמש רשום */
-  userId: string | null;
-  name: string;
-  email: string;
-  phone: string | null;
-  goal: MortgageGoal;
-  serviceType: ServiceType;
-  note: string | null;
-  status: GuidanceStatus;
-  /** הליווי שנפתח אצל היועץ המחובר עבור הלקוח הזה, אם קיים */
-  clientId: string | null;
-  handledByName: string | null;
-  handledAt: string | null;
-  createdAt: string;
+/**
+ * הבחירה ב"מה תרצו לעשות?" הופכת לנושא פנייה ליועץ (`AdvisorLead.topic`),
+ * כדי שהבקשה תופיע באותו אזור בקשות שהיועץ כבר עובד בו, עם תווית שאומרת
+ * בדיוק מה הלקוח ביקש.
+ */
+export function leadTopicFor(goal: MortgageGoal, service: ServiceType): string {
+  if (goal === 'ADVICE' || service === 'GUIDANCE') return 'ADVICE';
+  const kind = service === 'FULL' ? 'FULL' : 'HYBRID';
+  return goal === 'REFINANCE' ? `REFINANCE_${kind}` : `NEW_MORTGAGE_${kind}`;
 }
 
 // ─────────────────────────────── חוקי התמחור ───────────────────────────────

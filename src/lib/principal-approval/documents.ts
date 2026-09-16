@@ -45,7 +45,7 @@ export function buildDocumentGroups(people: DocumentPerson[]): DocumentGroup[] {
   const groups: DocumentGroup[] = [
     {
       id: 'shared',
-      title: 'מסמכי משק הבית והעסקה',
+      title: 'הנכס והעסקה',
       subtitle: null,
       documents: perPerson
         ? SHARED_PRE_APPROVAL_DOCUMENTS.map((doc) => ({ ...doc, key: documentKey('shared', doc.key) }))

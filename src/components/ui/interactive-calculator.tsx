@@ -267,14 +267,11 @@ export default function InteractiveCalculator() {
   // When user selects a loan track, fetch and apply BOI rate if available
   const handleSelectTrack = async (track: LoanTrack) => {
     setRatesError(null)
-    // If we already have a cached rate for this track, apply immediately
+    // ריבית שנשמרה קודם מוצגת מיד כדי שלא יהיה שדה ריק, אבל תמיד נמשכת ריבית
+    // עדכנית מבנק ישראל מעליה — ריבית שנמשכה לפני חצי שעה כבר לא בהכרח נכונה.
     const cached = boiRateCache[track.id]
-    if (cached) {
-      setSelectedLoanTrack({ ...track, averageRate: cached.rate })
-      return
-    }
+    setSelectedLoanTrack(cached ? { ...track, averageRate: cached.rate } : track)
     setIsFetchingRate(true)
-    setSelectedLoanTrack(track)
     try {
       const res = await fetch('/api/boi/rates', { cache: 'no-store' })
       if (!res.ok) throw new Error('שגיאה בשליפת ריביות')

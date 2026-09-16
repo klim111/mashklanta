@@ -49,16 +49,30 @@ export function AmortizationDialog({
   const [granularity, setGranularity] = useState<Granularity>('monthly');
   const [withInflation, setWithInflation] = useState(true);
 
-  const hasIndexed = useMemo(
-    () => result.mix.tracks.some((track) => isIndexLinked(track.type)),
-    [result.mix.tracks]
-  );
-  const inflationAvailable = hasIndexed && inflationIsApplied(result.mix.assumptions);
+  /**
+   * ההצמדה רלוונטית רק להיקף שמוצג כרגע.
+   *
+   * במסלול לא צמוד — פריים, מק"מ, קל"צ ומל"צ — אין הצמדה למדד בכלל, ולכן
+   * הבחירה בין "עם תחזית אינפלציה" ל"בלי שינוי מדד" חסרת משמעות ואינה מוצגת.
+   * הלוח של מסלול כזה זהה בשני המצבים, כי המנוע מצמיד רק מסלולים צמודים.
+   */
+  const scopeIsIndexed = useMemo(() => {
+    if (trackId === 'all') return result.mix.tracks.some((track) => isIndexLinked(track.type));
+    const track = result.mix.tracks.find((item) => item.id === trackId);
+    return track ? isIndexLinked(track.type) : false;
+  }, [result.mix.tracks, trackId]);
+  const inflationAvailable = scopeIsIndexed && inflationIsApplied(result.mix.assumptions);
 
   const frozenResult = useMemo(
     () => (open && inflationAvailable ? computeMix(withFrozenInflation(result.mix)) : result),
     [open, inflationAvailable, result]
   );
+
+  // מעבר למסלול אחר מחזיר את התצוגה למצב המלא, כדי שלוח של מסלול צמוד לא
+  // ייפתח "קפוא" רק מפני שקודם לכן הוצג מסלול לא צמוד.
+  useEffect(() => {
+    setWithInflation(true);
+  }, [trackId]);
 
   const activeResult = withInflation && inflationAvailable ? result : frozenResult;
 

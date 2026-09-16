@@ -442,7 +442,7 @@ export async function listRateDefaults(advisorId: string): Promise<AdvisorRateDe
   const rows = await prisma.advisorRateDefault.findMany({
     where: { advisorId },
     orderBy: [{ bank: 'asc' }, { amortizationType: 'asc' }, { trackType: 'asc' }],
-    select: { bank: true, amortizationType: true, trackType: true, rate: true },
+    select: { bank: true, amortizationType: true, trackType: true, rate: true, spread: true },
   });
   return rows;
 }
@@ -453,7 +453,13 @@ export async function listRateDefaults(advisorId: string): Promise<AdvisorRateDe
  */
 export async function saveRateDefaults(
   advisorId: string,
-  entries: Array<{ bank: string; amortizationType: string; trackType: string; rate: number | null }>
+  entries: Array<{
+    bank: string;
+    amortizationType: string;
+    trackType: string;
+    rate: number | null;
+    spread?: number | null;
+  }>
 ): Promise<AdvisorRateDefaultView[]> {
   const removals = entries.filter((entry) => entry.rate === null);
   const upserts = entries.filter(
@@ -488,8 +494,9 @@ export async function saveRateDefaults(
           amortizationType: entry.amortizationType,
           trackType: entry.trackType,
           rate: entry.rate,
+          spread: entry.spread ?? null,
         },
-        update: { rate: entry.rate },
+        update: { rate: entry.rate, spread: entry.spread ?? null },
       })
     ),
   ]);
@@ -688,8 +695,6 @@ export interface AdvisorOverview {
   overdueTasks: number;
   /** פגישות שהוצעו וממתינות לאישור הלקוח */
   awaitingConfirmation: number;
-  /** בקשות ליווי חדשות שאף יועץ עדיין לא לקח */
-  newGuidanceRequests: number;
   /** המשימות שהיועץ קבע להיום */
   todayTasks: AdvisorTaskView[];
   /** משימות שעבר מועדן ועדיין פתוחות */
@@ -705,7 +710,7 @@ export async function getAdvisorOverview(advisorId: string): Promise<AdvisorOver
   const endOfToday = new Date(startOfToday);
   endOfToday.setDate(endOfToday.getDate() + 1);
 
-  const [clientRows, tasks, meetings, mixes, newGuidanceRequests] = await Promise.all([
+  const [clientRows, tasks, meetings, mixes] = await Promise.all([
     prisma.client.findMany({
       where: { advisorId },
       select: {
@@ -716,7 +721,6 @@ export async function getAdvisorOverview(advisorId: string): Promise<AdvisorOver
     listAdvisorTasks(advisorId, { includeClosed: false }),
     listAdvisorMeetings(advisorId),
     prisma.mortgageMix.count({ where: { ownerId: advisorId } }),
-    prisma.guidanceRequest.count({ where: { status: 'NEW' } }),
   ]);
 
   const now = new Date();
@@ -739,7 +743,6 @@ export async function getAdvisorOverview(advisorId: string): Promise<AdvisorOver
     awaitingConfirmation: meetings.filter(
       (meeting) => meeting.status === 'PROPOSED' && new Date(meeting.startsAt) >= now
     ).length,
-    newGuidanceRequests,
     todayTasks: tasks.filter(
       (task) =>
         task.dueDate !== null &&

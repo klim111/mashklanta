@@ -54,28 +54,11 @@ model User {
    */
   profileJson   Json?
 
-  // ─────────────────────── מסלול השירות וגישה לפלטפורמה ───────────────────────
-  /**
-   * /**
-   * מתי הלקוח רכש גישה מלאה לפלטפורמה. ריק — עדיין לא רכש, וכלי התכנון נפתח
-   * אצלו במצב סיור בלבד.
-   */
-  platformAccessAt DateTime?
-  /**
-   * התשלומים שהלקוח ביצע על הגישה לפלטפורמה
-   */
-  platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
-  /**
-   * בקשות הליווי שהלקוח שלח ליועצים
-   */
-  guidanceRequests GuidanceRequest[] @relation("GuidanceRequestUser")
-  /**
-   * בקשות הליווי שהיועץ לקח לטיפול
-   */
-  handledGuidance  GuidanceRequest[] @relation("GuidanceRequestHandler")
-
   // ───────────────────────── לוח הבקרה של היועץ (CRM) ─────────────────────────
   /**
+   * /**
+   * /**
+   * /**
    * /**
    * /** המשימות שהיועץ פתח לעצמו, לכל לקוח ולכל שלב
    */
@@ -100,6 +83,9 @@ model User {
   // ─────────────────────── האישור העקרוני (איסוף פרטי הבקשה) ───────────────────────
   /**
    * /**
+   * /**
+   * /**
+   * /**
    * תיקי האישור העקרוני שבהם המשתמש הוא הלווה
    */
   approvalCases    MortgageCase[]   @relation("ApprovalCaseClient")
@@ -111,6 +97,44 @@ model User {
    * הרשאות העריכה שקיבל המשתמש כיועץ על נתונים שהזין הלקוח
    */
   approvalAccess   ApprovalAccess[] @relation("ApprovalAccessAdvisor")
+
+  // ─────────────────────── הזמנת ליווי יועץ לשלבים ───────────────────────
+  /**
+   * /**
+   * /**
+   * /**
+   * /**
+   * הזמנות הליווי שהמשתמש ביצע בתהליכי המשכנתא שלו
+   */
+  advisorOrders       AdvisorServiceOrder[] @relation("AdvisorOrderClient")
+  /**
+   * הזמנות הליווי שהמשתמש מטפל בהן כיועץ
+   */
+  advisorOrdersServed AdvisorServiceOrder[] @relation("AdvisorOrderAdvisor")
+
+  // ─────────────────────── פניות ליווי כלליות ───────────────────────
+  /**
+   * /**
+   * /** פניות שהמשתמש שלח מהאזור האישי (מצאתי נכס / סירוב / גיוס הון וכו')
+   */
+  advisorLeads       AdvisorLead[]  @relation("AdvisorLeadClient")
+  /**
+   * פניות שהופנו למשתמש כיועץ
+   */
+  advisorLeadsServed AdvisorLead[]  @relation("AdvisorLeadAdvisor")
+  /**
+   * מסמכים תומכים שהמשתמש העלה לתהליכי המשכנתא שלו
+   */
+  planDocuments      PlanDocument[] @relation("PlanDocumentOwner")
+
+  // ─────────────────────── גישה בתשלום לפלטפורמה ───────────────────────
+  /**
+   * /**
+   * מתי הלקוח רכש גישה מלאה לפלטפורמה. ריק — עדיין לא רכש, וכלי התכנון נפתח
+   * אצלו במצב סיור בלבד. חודשי הגישה ששולמו מקוזזים מכל הזמנת ליווי.
+   */
+  platformAccessAt DateTime?
+  platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -245,24 +269,27 @@ model Client {
   // ריביות מהבנקים
   bankRates Json?
 
-  mixes        MortgageMix[]
-  rateRequests BankRateRequest[]
-  documents    ClientDocument[]
-  actions      ClientAction[]
-  reminders    Reminder[]
-  plans        MortgagePlan[]
+  mixes         MortgageMix[]
+  rateRequests  BankRateRequest[]
+  documents     ClientDocument[]
+  actions       ClientAction[]
+  reminders     Reminder[]
+  advisorOrders AdvisorServiceOrder[]
+  advisorLeads  AdvisorLead[]
+  plans         MortgagePlan[]
+  planDocuments PlanDocument[]
   /**
    * משימות היועץ עבור הלקוח, לפי שלבי כלי תכנון המשכנתא
    */
-  tasks        AdvisorTask[]
+  tasks         AdvisorTask[]
   /**
    * הערות היועץ בשלבי הלקוח
    */
-  advisorNotes AdvisorNote[]
+  advisorNotes  AdvisorNote[]
   /**
    * הפגישות שנקבעו בין היועץ ללקוח
    */
-  meetings     AdvisorMeeting[]
+  meetings      AdvisorMeeting[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -410,6 +437,14 @@ model MortgageMix {
   locked  Boolean @default(false)
 
   /**
+   * האם התמהיל גלוי ללקוח.
+   * תמהיל שיועץ בונה או מתמחר בתוך תיק של לקוח נשמר תחילה אצלו בלבד, כדי
+   * שיוכל לעבוד עליו בלי שהלקוח יראה טיוטות. "שדר תמהיל ללקוח" הוא מה שהופך
+   * אותו לגלוי. תמהיל שהלקוח שמר בעצמו גלוי לו תמיד.
+   */
+  sharedWithClient Boolean @default(true)
+
+  /**
    * התמהיל המלא כפי שהכלי מכיר אותו
    */
   mixJson     Json
@@ -453,8 +488,10 @@ model MortgagePlan {
 
   completedAt DateTime?
 
-  stages MortgagePlanStage[]
-  mixes  MortgageMix[]
+  stages        MortgagePlanStage[]
+  mixes         MortgageMix[]
+  advisorOrders AdvisorServiceOrder[]
+  documents     PlanDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -484,6 +521,45 @@ model MortgagePlanStage {
 }
 
 /**
+ * מסמך תומך שהלקוח העלה לתהליך.
+ * הקובץ עצמו יושב ב-Vercel Blob כאובייקט פרטי, ורק הנתיב אליו נשמר כאן. הנתיב
+ * אינו נמסר לדפדפן: הצפייה עוברת דרך מסלול מאומת שבודק שהמבקש הוא בעל התהליך
+ * או היועץ שמלווה אותו, ורק אז מזרים את הקובץ. כך אין כתובת שניתן לשתף.
+ */
+model PlanDocument {
+  id       String       @id @default(cuid())
+  planId   String
+  plan     MortgagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  ownerId  String
+  owner    User         @relation("PlanDocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /**
+   * כרטיס הלקוח אצל היועץ, כשקיים — כך המסמך מופיע בתיק המסמכים שלו
+   */
+  clientId String?
+  client   Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * מפתח המסמך מהקטלוג, למשל b1:payslips — מסמך אחד לכל מפתח בתהליך
+   */
+  key  String
+  name String
+
+  fileName    String
+  contentType String
+  size        Int
+  /**
+   * הנתיב ב-Vercel Blob. אינו נחשף לדפדפן לעולם
+   */
+  blobPath    String
+
+  uploadedAt DateTime @default(now())
+
+  @@unique([planId, key])
+  @@index([clientId])
+  @@index([ownerId])
+}
+
+/**
  * חמשת השלבים כפי שהם מוגדרים בעמוד "איך זה עובד"
  */
 enum PlanStage {
@@ -504,6 +580,122 @@ enum PlanStageStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+}
+
+/**
+ * הזמנת ליווי יועץ לשלבים בתהליך.
+ * הלקוח בוחר אילו שלבים יועץ יבצע במקומו — שלב אחד, כמה, או כולם — ומשלם
+ * לפי מודל התמחור של הפלטפורמה. עד שההזמנה שולמה השלב נשאר בידי הלקוח;
+ * מרגע התשלום הוא מוצג כשלב שהיועץ מבצע, והיועץ מקבל עליו משימה באזור שלו.
+ */
+model AdvisorServiceOrder {
+  id      String       @id @default(cuid())
+  planId  String
+  plan    MortgagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User         @relation("AdvisorOrderClient", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /**
+   * היועץ שהבקשה נשלחה אליו — זה שיש לו הרשאות על אותו לקוח. ריק כשעדיין לא
+   * שויך יועץ ללקוח, ואז הבקשה ממתינה לשיוך
+   */
+  advisorId String?
+  advisor   User?   @relation("AdvisorOrderAdvisor", fields: [advisorId], references: [id], onDelete: SetNull)
+  clientId  String?
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * השלבים שהוזמנו, כמערך של PlanStage
+   */
+  stagesJson Json
+  /**
+   * הסכום לתשלום בשקלים, אחרי הנחת החבילה המלאה
+   */
+  amount     Int
+  status     AdvisorOrderStatus @default(PENDING_PAYMENT)
+
+  /**
+   * אישור התנאים והתשלום. פרטי אמצעי התשלום עצמם אינם נשמרים כאן — רק
+   * האסמכתה שמחזיר ספק הסליקה וארבע הספרות האחרונות, לזיהוי החיוב
+   */
+  termsAcceptedAt DateTime?
+  paidAt          DateTime?
+  paymentRef      String?
+  cardLast4       String?
+  payerName       String?
+
+  /**
+   * היועץ סימן שהוא כבר עובד על השלב, אחרי שהתשלום עליו סודר מולו. משלב זה
+   * הלקוח אינו יכול למחוק את התהליך — העבודה כבר שולמה ומתבצעת
+   */
+  workStartedAt DateTime?
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@index([ownerId])
+  @@index([advisorId, status])
+}
+
+enum AdvisorOrderStatus {
+  /**
+   * בקשת ליווי חינמית שהלקוח שלח מתוך שלב — היועץ מטפל, התשלום בהמשך
+   */
+  REQUESTED
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+}
+
+/**
+ * פנייה כללית לליווי מיועץ, שנשלחה מהאזור האישי דרך טופס "אל דאגה — יועצי
+ * משכלנתא כאן כדי לעזור". להבדיל מהזמנת ליווי לשלב, היא אינה קשורה בהכרח
+ * לתהליך פתוח, ומחזיקה את פרטי הקשר ואת נושא הפנייה כדי שהיועץ יחזור ללקוח.
+ */
+model AdvisorLead {
+  id        String  @id @default(cuid())
+  /**
+   * הלקוח ששלח, כשהוא מחובר. פנייה יכולה להישלח גם בלי חשבון
+   */
+  ownerId   String?
+  owner     User?   @relation("AdvisorLeadClient", fields: [ownerId], references: [id], onDelete: SetNull)
+  /**
+   * היועץ שהפנייה שויכה אליו, אם ללקוח כבר יש יועץ
+   */
+  advisorId String?
+  advisor   User?   @relation("AdvisorLeadAdvisor", fields: [advisorId], references: [id], onDelete: SetNull)
+  clientId  String?
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  /**
+   * נושא הפנייה — הכפתור שממנו נפתחה: REJECTED / DONT_KNOW / EQUITY / FEASIBILITY
+   */
+  topic String
+
+  name  String
+  /**
+   * טלפון לחזרה. רשות — לקוח רשום שולח עם פרטי החשבון ויכול להשאיר ריק
+   */
+  phone String?
+  email String
+  notes String?
+
+  status AdvisorLeadStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([advisorId, status])
+  @@index([ownerId])
+}
+
+enum AdvisorLeadStatus {
+  OPEN
+  HANDLED
+  CLOSED
 }
 
 model ClientAction {
@@ -702,9 +894,16 @@ model AdvisorRateDefault {
    */
   trackType        String
   /**
-   * ריבית שנתית באחוזים
+   * ריבית שנתית באחוזים — הריבית הסופית (עוגן + מרווח)
    */
   rate             Float
+  /**
+   * המרווח שהבנק גובה מעל העוגן, בנקודות אחוז.
+   * כשהוא קיים, הריבית הסופית של מסלול חדש נגזרת מהעוגן העדכני של בנק ישראל
+   * ועוד המרווח הזה, ולכן היא מתעדכנת עם השוק. כשהוא ריק נעשה שימוש ב-`rate`
+   * כפי שהוא, לתאימות עם ריביות שנשמרו לפני הפירוק לעוגן ומרווח.
+   */
+  spread           Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -932,69 +1131,6 @@ model BankBranch {
 
   @@unique([bankCode, branchCode])
   @@index([bankCode])
-}
-
-// ─────────────────────── מסלול השירות וגישה לפלטפורמה ───────────────────────
-
-/**
- * מה הלקוח רוצה לעשות — השאלה הראשונה באזור האישי ובעמוד הבית
- */
-enum MortgageGoal {
-  NEW_MORTGAGE
-  REFINANCE
-  ADVICE
-}
-
-/**
- * איך הלקוח רוצה לעשות את זה. `GUIDANCE` הוא ייעוץ והכוונה כללי, בלי מסלול
- */
-enum ServiceType {
-  SELF
-  HYBRID
-  FULL
-  GUIDANCE
-}
-
-enum GuidanceStatus {
-  NEW
-  CONTACTED
-  CLOSED
-}
-
-/**
- * בקשת ליווי שהגיעה ליועצים. נוצרת גם ממשתמש רשום (ואז `userId` מלא והפרטים
- * נלקחים מהחשבון) וגם מאורח בעמוד הבית, שהזין את פרטיו בטופס.
- */
-model GuidanceRequest {
-  id     String  @id @default(cuid())
-  userId String?
-  user   User?   @relation("GuidanceRequestUser", fields: [userId], references: [id], onDelete: SetNull)
-
-  name  String
-  email String
-  phone String?
-
-  goal        MortgageGoal
-  serviceType ServiceType
-  /**
-   * הערה חופשית שהלקוח בחר להוסיף — מוצגת ליועץ לצד הבקשה
-   */
-  note        String?
-
-  status      GuidanceStatus @default(NEW)
-  /**
-   * היועץ שלקח את הבקשה לטיפול
-   */
-  handledById String?
-  handledBy   User?          @relation("GuidanceRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
-  handledAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status, createdAt])
-  @@index([userId])
-  @@index([email])
 }
 
 /**

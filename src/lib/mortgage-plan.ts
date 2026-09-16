@@ -29,16 +29,24 @@ import {
   type MortgagePlanningUserData,
 } from './mortgage-affordability';
 import { parseFormattedNumberInput } from './currency';
+import {
+  ALL_SIGNING_DOCUMENT_KEYS,
+  registryOfScenario,
+  signingDealType,
+  signingRegistry,
+  signingScenario,
+} from './signing-documents';
 
 /**
  * סדר השלבים בתהליך. הבקשה לאישור עקרוני קודמת לבניית התמהיל, כי הריביות
  * שהבנק נוקב באישור העקרוני הן הבסיס שממנו נבנים התמהילים. המכרז מגיע אחרי
  * התמהיל — מתמחרים את מה שנבנה, לא רק את הסלים האחידים.
  *
- * המזהים הם ערכי enum בבסיס הנתונים ולכן נשארו כפי שהם: `APPLICATIONS` הוא
- * שלב האישור העקרוני ו-`AUCTION` הוא מכרז הריביות.
+ * הסדר בפועל: פרופיל, בניית תמהיל, אישור עקרוני, מכרז ריביות, חתימה. המזהים
+ * הם ערכי enum בבסיס הנתונים ולכן נשארו כפי שהם: `APPLICATIONS` הוא שלב האישור
+ * העקרוני ו-`AUCTION` הוא מכרז הריביות. סדר ה-enum אינו קובע את סדר התהליך.
  */
-export const PLAN_STAGES = ['ANALYSIS', 'APPLICATIONS', 'MIX', 'AUCTION', 'SIGNING'] as const;
+export const PLAN_STAGES = ['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING'] as const;
 export type PlanStageId = (typeof PLAN_STAGES)[number];
 
 export type PlanStageStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
@@ -60,6 +68,11 @@ export function isPlanStage(value: unknown): value is PlanStageId {
 export function stageIndex(stage: PlanStageId): number {
   const index = PLAN_STAGES.indexOf(stage);
   return index < 0 ? 0 : index;
+}
+
+/** מספר השלב בתהליך (1–5), לפי הסדר בפועל — לא לפי המספר הקבוע בעמוד "איך זה עובד" */
+export function planStageNumber(stage: PlanStageId): number {
+  return stageIndex(stage) + 1;
 }
 
 /** שלבים קודמים שטרם נסגרו — בלי אלה אי אפשר באמת לעבוד בשלב הנוכחי */
@@ -99,8 +112,29 @@ export interface FutureLumpSum {
  */
 export type ProfileIntent = 'HAS_PROPERTY' | 'FEASIBILITY';
 
-/** המסכים הפנימיים של שלב הפרופיל — אחד בכל פעם, מהשאלה הראשונה עד הנכס */
-export const PROFILE_SCREENS = ['intent', 'borrowers', 'future', 'deal'] as const;
+/**
+ * המסכים הפנימיים של שלב הפרופיל — אחד בכל פעם, מההסבר על השלב ועד הדוח.
+ *
+ * השלב נפתח בהסבר ולא בשאלה: לפני שמזינים נתונים כדאי לדעת מה השלב עושה ומה
+ * יוצא ממנו. השאלה אם כבר נמצא נכס עברה למסך הנכס והעסקה, שם היא נשאלת
+ * במקומה. המסך האחרון הוא התוצר — דוח הפרופיל הפיננסי.
+ */
+/**
+ * הדרך שבה הלקוח מטפל בתיק המסמכים.
+ *
+ * העלאה כאן היא ברירת המחדל, אבל אפשר גם לדלג: מי שמגיש לבנק בעצמו, ומי
+ * שמעדיף להעלות בשלב האישור העקרוני, כשהתיק כבר נדרש בפועל.
+ */
+export const DOCUMENTS_MODES = ['UPLOAD', 'SELF_SUBMIT', 'LATER'] as const;
+export type DocumentsMode = (typeof DOCUMENTS_MODES)[number];
+
+export const DOCUMENTS_MODE_LABELS: Record<DocumentsMode, string> = {
+  UPLOAD: 'מעלים את המסמכים כאן',
+  SELF_SUBMIT: 'הגשה עצמאית לבנק',
+  LATER: 'נעלה בשלב האישור העקרוני',
+};
+
+export const PROFILE_SCREENS = ['overview', 'deal', 'borrowers', 'future', 'report'] as const;
 export type ProfileScreen = (typeof PROFILE_SCREENS)[number];
 
 /** הלוואה צרכנית של לווה אחד, כמו בכלי «מה אני יכול להרשות לעצמי» */
@@ -155,6 +189,11 @@ export interface AnalysisData {
   /** תקופת המשכנתא המבוקשת בשנים — נשמרת ברזולוציית חודשים (48–360) */
   years: number;
   futureLumpSums: FutureLumpSum[];
+  /**
+   * איך הלקוח בחר לטפל בתיק המסמכים: להעלות כאן, להגיש בעצמו לבנק, או לדחות
+   * להעלאה בשלב האישור העקרוני.
+   */
+  documentsMode: DocumentsMode | null;
   /** תוספת חודשית צפויה להכנסה הפנויה, ובעוד כמה שנים */
   futureMonthlyIncrease: number | null;
   futureMonthlyIncreaseInYears: number | null;
@@ -226,7 +265,7 @@ export function analysisFromPlanning(
 
   return {
     intent: carry?.intent ?? (propertyValue ? 'HAS_PROPERTY' : null),
-    profileScreen: carry?.profileScreen ?? 'intent',
+    profileScreen: carry?.profileScreen ?? 'overview',
     household: couple ? 'COUPLE' : 'SINGLE',
     bankAccountMode: couple ? (carry?.bankAccountMode ?? null) : null,
     primaryBank: carry?.primaryBank ?? null,
@@ -238,6 +277,7 @@ export function analysisFromPlanning(
     employmentType: carry?.employmentType ?? null,
     partnerEmploymentType: couple ? carry?.partnerEmploymentType ?? null : null,
     futureLumpSums: carry?.futureLumpSums ?? [],
+    documentsMode: carry?.documentsMode ?? null,
     futureMonthlyIncrease: carry?.futureMonthlyIncrease ?? null,
     futureMonthlyIncreaseInYears: carry?.futureMonthlyIncreaseInYears ?? null,
     expenses: null,
@@ -295,6 +335,25 @@ export interface PreApprovalBasket {
 }
 
 /**
+ * בקשה לאישור עקרוני שהוגשה לבנק מסוים.
+ *
+ * הלקוח שמגיש בעצמו פונה לכמה בנקים במקביל — כל אחד מהם נרשם כאן בנפרד, עם
+ * המסמך שהתקבל ממנו. הבנקים שסומנו כאן הם אלה שנפתחים לתמחור בשלב המכרז.
+ */
+export interface BankPreApproval {
+  bank: string;
+  /** נשלחה בקשה לבנק הזה */
+  submittedAt: string | null;
+  /** האישור העקרוני התקבל מהבנק */
+  approved: boolean;
+  approvedAt: string | null;
+  approvedAmount: number | null;
+  /** שם הקובץ של האישור שהועלה לתיק התהליך */
+  documentName: string | null;
+  note: string;
+}
+
+/**
  * שלב 2 — הבקשה לאישור עקרוני. הבקשה מוגשת לבנק אחד, ובסופה הלקוח מזין את
  * הריביות שהבנק נקב לכל אחד משלושת הסלים האחידים.
  */
@@ -309,6 +368,11 @@ export interface PreApprovalData {
   approvedAmount: number | null;
   validUntil: string | null;
   baskets: PreApprovalBasket[];
+  /**
+   * הבקשות לפי בנק, כשהלקוח מגיש בעצמו. השדות `bank` ו-`approved` שמעל נשארים
+   * הבנק המוביל של התהליך, כדי שכל מה שנשען עליהם ימשיך לעבוד כמו קודם.
+   */
+  bankApprovals: BankPreApproval[];
   note: string;
 }
 
@@ -323,11 +387,51 @@ export interface BankOffer {
   note: string;
 }
 
+/**
+ * ההצעה המתומחרת שנבחרה כתמהיל הסופי לחתימה.
+ *
+ * זה המבנה שנבחר בשלב 3, בריביות שבנק מסוים נתן עליו בשלב 4. משנבחר, הוא
+ * המשכנתא של הלקוח: הוא מופיע באזור האישי כ"המשכנתא שלי", והוא מה שמאומת מול
+ * מסמכי הבנק בשלב החתימה.
+ */
+export interface SignedMixChoice {
+  /** מזהה התמהיל המתומחר */
+  mixKey: string;
+  /** מזהה הרשומה בבסיס הנתונים, אם נשמרה */
+  mixRecordId: string | null;
+  /** הבנק שתמחר אותו */
+  bank: string;
+  name: string;
+  monthlyPayment: number | null;
+  averageRate: number | null;
+  totalInterest: number | null;
+  totalPaid: number | null;
+  months: number | null;
+  /** מתי נבחר (ISO) */
+  chosenAt: string;
+}
+
+/**
+ * איך הלקוח בחר לעבור את שלב התמחור: לבד, או בליווי יועץ.
+ *
+ * עד שנבחר — השלב מציג רק את שתי האפשרויות, ושום דבר אחר. זו החלטה שמשנה את
+ * כל המסך שאחריה, ולכן היא נשאלת ראשונה ולבדה.
+ */
+export type AuctionMode = 'self' | 'advisor';
+
 /** שלב 4 — מכרז הריביות */
 export interface AuctionData {
+  /** null — עדיין לא נבחרה דרך, והשלב מציג את שתי האפשרויות בלבד */
+  mode: AuctionMode | null;
   offers: BankOffer[];
   winnerOfferId: string | null;
+  /** ההצעה המתומחרת שנבחרה כתמהיל הסופי לחתימה */
+  signedMix: SignedMixChoice | null;
 }
+
+/** תת-המסכים של שלב החתימה, לפי הסדר שבו עוברים בהם */
+export const SIGNING_SCREENS = ['overview', 'documents', 'verify'] as const;
+export type SigningScreen = (typeof SIGNING_SCREENS)[number];
 
 /** שלב 5 — החתימה בבנק */
 export interface SigningData {
@@ -338,6 +442,15 @@ export interface SigningData {
   finalAverageRate: number | null;
   /** מפתח בדיקה מרשימת החתימה → האם אומתה */
   checklist: Record<string, boolean>;
+  /** תת-המסך הפתוח: ההסבר על השלב, תיק המסמכים או אימות התנאים */
+  screen: SigningScreen;
+  /** תרחיש הרכישה, שקובע את רשימת המסמכים שהבנק ידרוש */
+  dealTypeId: string | null;
+  /** אופן רישום הזכויות, בעסקאות שבהן הוא מפצל את התרחישים */
+  registryId: string | null;
+  scenarioId: string | null;
+  /** `${scenarioId}:${documentKey}` → האם המסמך נאסף */
+  documents: Record<string, boolean>;
 }
 
 export interface PlanStageDataMap {
@@ -380,7 +493,7 @@ export function clampPlanYears(years: number): number {
 const EMPTY: PlanData = {
   ANALYSIS: {
     intent: null,
-    profileScreen: 'intent',
+    profileScreen: 'overview',
     household: 'SINGLE',
     bankAccountMode: null,
     age: null,
@@ -403,6 +516,7 @@ const EMPTY: PlanData = {
     propertyAddress: '',
     years: DEFAULT_PLAN_YEARS,
     futureLumpSums: [],
+    documentsMode: null,
     futureMonthlyIncrease: null,
     futureMonthlyIncreaseInYears: null,
   },
@@ -430,9 +544,10 @@ const EMPTY: PlanData = {
     approvedAmount: null,
     validUntil: null,
     baskets: [],
+    bankApprovals: [],
     note: '',
   },
-  AUCTION: { offers: [], winnerOfferId: null },
+  AUCTION: { mode: null, offers: [], winnerOfferId: null, signedMix: null },
   SIGNING: {
     bank: null,
     signingDate: null,
@@ -440,6 +555,11 @@ const EMPTY: PlanData = {
     finalMonthlyPayment: null,
     finalAverageRate: null,
     checklist: {},
+    screen: 'overview',
+    dealTypeId: null,
+    registryId: null,
+    scenarioId: null,
+    documents: {},
   },
 };
 
@@ -494,6 +614,40 @@ function rowId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`;
 }
 
+/**
+ * ההצעה שנבחרה לחתימה, כפי שהיא נשמרה. בלי מזהה תמהיל ובלי בנק אין מה לשחזר,
+ * ולכן רשומה חלקית נקראת כאילו עוד לא נבחר דבר.
+ */
+function parseSignedMix(value: unknown): SignedMixChoice | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const mixKey = typeof source.mixKey === 'string' ? source.mixKey.trim() : '';
+  const bank = pickBank(source.bank);
+  if (!mixKey || !bank) return null;
+
+  return {
+    mixKey,
+    mixRecordId: typeof source.mixRecordId === 'string' ? source.mixRecordId : null,
+    bank,
+    name: str(source.name) || 'התמהיל שנבחר לחתימה',
+    monthlyPayment: num(source.monthlyPayment),
+    averageRate: num(source.averageRate),
+    totalInterest: num(source.totalInterest),
+    totalPaid: num(source.totalPaid),
+    months: num(source.months),
+    chosenAt:
+      typeof source.chosenAt === 'string' && source.chosenAt
+        ? source.chosenAt
+        : new Date().toISOString(),
+  };
+}
+
+function pickSigningScreen(value: unknown): SigningScreen | null {
+  return typeof value === 'string' && (SIGNING_SCREENS as readonly string[]).includes(value)
+    ? (value as SigningScreen)
+    : null;
+}
+
 function pickEmployment(value: unknown): EmploymentType | null {
   return EMPLOYMENT_TYPES.includes(value as EmploymentType) ? (value as EmploymentType) : null;
 }
@@ -503,6 +657,8 @@ function pickIntent(value: unknown): ProfileIntent | null {
 }
 
 function pickProfileScreen(value: unknown): ProfileScreen | null {
+  // תהליכים שנפתחו לפני שהשלב נפתח בהסבר נשמרו על מסך השאלה; הוא כבר לא קיים
+  if (value === 'intent') return 'overview';
   return typeof value === 'string' && (PROFILE_SCREENS as readonly string[]).includes(value)
     ? (value as ProfileScreen)
     : null;
@@ -589,6 +745,9 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         employmentType: pickEmployment(source.employmentType),
         partnerEmploymentType: pickEmployment(source.partnerEmploymentType),
         futureLumpSums: parseLumpSums(source.futureLumpSums),
+        documentsMode: DOCUMENTS_MODES.includes(source.documentsMode as DocumentsMode)
+          ? (source.documentsMode as DocumentsMode)
+          : undefined,
         futureMonthlyIncrease: num(source.futureMonthlyIncrease),
         futureMonthlyIncreaseInYears: num(source.futureMonthlyIncreaseInYears),
         borrowerLoans: has('borrowerLoans') ? parseProfileLoans(source.borrowerLoans) : undefined,
@@ -650,12 +809,13 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
       const dealType =
         targetLtvPercent !== null ? dealTypeForCombinedLtv(targetLtvPercent, dealTypeRaw) : dealTypeRaw;
       const equity = has('equity') ? num(source.equity) : seed.equity;
-      const maxPrice = maxPropertyForEquity(equity, dealType);
-      const propertyValueRaw = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
-      const propertyValue =
-        propertyValueRaw && maxPrice !== null && propertyValueRaw > maxPrice
-          ? maxPrice
-          : propertyValueRaw;
+      /*
+        מחיר הנכס נשאר בדיוק כפי שהוזן. פעם הוא הוגבל כאן לפי ההון העצמי, וכך
+        הזנת הון עצמי שינתה את מחיר הנכס למספר שהלקוח מעולם לא הקליד — ואיתו גם
+        את ההון המינימלי הנדרש, שנגזר ממנו. הון עצמי שאינו מספיק אינו שגיאה
+        בנתון אלא פער שצריך להציג, ומסך הנכס מציג אותו.
+      */
+      const propertyValue = has('propertyValue') ? num(source.propertyValue) : seed.propertyValue;
       const computedMortgage = requestedMortgage(propertyValue ?? 0, equity, dealType, targetLtvPercent);
       const mortgageAmount =
         (has('mortgageAmount') ? num(source.mortgageAmount) : seed.mortgageAmount) ??
@@ -693,10 +853,10 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         profileScreen:
           carry.profileScreen ??
           (carry.intent || seed.intent
-            ? seed.profileScreen === 'intent'
+            ? seed.profileScreen === 'overview'
               ? 'borrowers'
               : seed.profileScreen
-            : 'intent'),
+            : 'overview'),
         dealType,
         propertyValue,
         mortgageAmount,
@@ -765,14 +925,44 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         ];
       });
 
+      const approvalRows = Array.isArray(source.bankApprovals) ? source.bankApprovals : [];
+      const bankApprovals: BankPreApproval[] = approvalRows.flatMap((item) => {
+        if (!item || typeof item !== 'object') return [];
+        const row = item as Record<string, unknown>;
+        const bank = pickBank(row.bank);
+        if (!bank) return [];
+        return [
+          {
+            bank,
+            submittedAt: typeof row.submittedAt === 'string' ? row.submittedAt : null,
+            approved: bool(row.approved),
+            approvedAt: typeof row.approvedAt === 'string' ? row.approvedAt : null,
+            approvedAmount: num(row.approvedAmount),
+            documentName: typeof row.documentName === 'string' ? row.documentName : null,
+            note: str(row.note),
+          },
+        ];
+      });
+
+      // הבנק המוביל של התהליך: מה שנשמר, ואחרת הבנק הראשון שאישר בהגשה העצמית
+      const leading =
+        pickBank(source.bank) ??
+        legacy.bank ??
+        bankApprovals.find((row) => row.approved)?.bank ??
+        null;
+
       return {
-        bank: pickBank(source.bank) ?? legacy.bank,
+        bank: leading,
         submittedAt: typeof source.submittedAt === 'string' ? source.submittedAt : null,
         documents: flagMap(source.documents, ALL_PRE_APPROVAL_DOCUMENT_KEYS),
-        approved: source.approved === undefined ? legacy.approved : bool(source.approved),
+        approved:
+          source.approved === undefined
+            ? legacy.approved || bankApprovals.some((row) => row.approved)
+            : bool(source.approved),
         approvedAmount: num(source.approvedAmount),
         validUntil: typeof source.validUntil === 'string' ? source.validUntil : null,
         baskets,
+        bankApprovals,
         note: str(source.note),
       } as PlanStageDataMap[S];
     }
@@ -804,10 +994,27 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           ? source.winnerOfferId
           : null;
 
-      return { offers, winnerOfferId } as PlanStageDataMap[S];
+      const mode: AuctionMode | null =
+        source.mode === 'self' || source.mode === 'advisor' ? source.mode : null;
+
+      return {
+        mode,
+        offers,
+        winnerOfferId,
+        signedMix: parseSignedMix(source.signedMix),
+      } as PlanStageDataMap[S];
     }
 
     case 'SIGNING': {
+      /** בחירה שאינה קיימת בקטלוג נזרקת, כדי שלא תישמר דרך שאי אפשר להציג */
+      const deal = signingDealType(str(source.dealTypeId) || null);
+      const scenario = signingScenario(deal, str(source.scenarioId) || null);
+      const registry = deal
+        ? (scenario
+            ? registryOfScenario(deal, scenario.id)
+            : signingRegistry(deal, str(source.registryId) || null))
+        : null;
+
       return {
         bank: pickBank(source.bank),
         signingDate: typeof source.signingDate === 'string' ? source.signingDate : null,
@@ -818,6 +1025,11 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
           source.checklist,
           SIGNING_CHECKS.map((check) => check.key)
         ),
+        screen: pickSigningScreen(source.screen) ?? 'overview',
+        dealTypeId: deal?.id ?? null,
+        registryId: registry?.id ?? null,
+        scenarioId: scenario?.id ?? null,
+        documents: flagMap(source.documents, ALL_SIGNING_DOCUMENT_KEYS),
       } as PlanStageDataMap[S];
     }
 
@@ -831,29 +1043,44 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
 export const PLAN_BANKS: readonly string[] = MORTGAGE_BANKS;
 
 /**
- * מסמכי חשבון הבנק: תדפיס עובר ושב, אישור ניהול חשבון, ודוח ריכוז יתרות.
- * בחשבון משותף הם בראש תיק משק הבית; בחשבונות נפרדים — לכל לווה בנפרד.
+ * מסמכי חשבון הבנק — תדפיס עובר ושב ואישור ניהול חשבון.
+ *
+ * בחשבון משותף הם נדרשים פעם אחת לשני בני הזוג; בחשבונות נפרדים — מכל לווה
+ * בנפרד, כי אלה שני חשבונות שונים.
  */
 export const BANK_ACCOUNT_DOCUMENTS: StageDocument[] = [
-  { key: 'bank_statements', name: 'תדפיס עובר ושב ל-3 חודשים אחרונים' },
+  { key: 'bank_statements', name: 'תדפיס עובר ושב ל-3 החודשים האחרונים' },
   { key: 'account_management', name: 'אישור ניהול חשבון' },
-  { key: 'loans_report', name: 'דוח ריכוז יתרות והלוואות' },
+];
+
+/** תעודת זהות — מכל לווה בנפרד, שכיר כעצמאי */
+export const IDENTITY_DOCUMENT: StageDocument = {
+  key: 'id_card',
+  name: 'צילום תעודת זהות + ספח',
+};
+
+/** דוח יתרת הלוואה — נדרש רק מלווה שיש לו הלוואות קיימות */
+export const LOAN_BALANCE_DOCUMENT: StageDocument = {
+  key: 'loans_report',
+  name: 'דוח יתרת הלוואה',
+};
+
+/**
+ * מסמכי הנכס והעסקה.
+ *
+ * הם אינם שייכים לאף לווה אלא לעסקה עצמה, ולכן הם רובריקה נפרדת בתיק.
+ */
+export const PROPERTY_DOCUMENTS: StageDocument[] = [
+  { key: 'sale_contract', name: 'חוזה מכר' },
+  { key: 'appraisal', name: 'אישור שמאות' },
 ];
 
 /**
- * המסמכים שהבנק דורש מכל בקשה, ללא תלות באופן ההעסקה של הלווים ובלי מסמכי
- * חשבון הבנק — אלה מצטרפים לפי חשבון משותף או נפרד. הרשימה נגזרת מקטלוג
- * המסמכים של תהליך הליווי, כדי שהלקוח באזור האישי והיועץ בכרטיס הלקוח יעבדו
- * מול אותה רשימה בדיוק. מסמכי הנכס עצמו אינם נדרשים בשלב הזה.
+ * המסמכים שאינם תלויים בלווה מסוים — מסמכי הנכס והעסקה.
+ *
+ * השם נשמר כי גם תהליך האישור העקרוני נשען עליו.
  */
-export const SHARED_PRE_APPROVAL_DOCUMENTS: StageDocument[] = [
-  ...STAGE_DOCUMENTS.INTAKE,
-  ...STAGE_DOCUMENTS.DOCUMENTS.filter(
-    (doc) =>
-      !['payslips', 'self_employed_tax', 'bank_statements', 'loans_report'].includes(doc.key)
-  ),
-  ...STAGE_DOCUMENTS.BANK_SUBMISSION,
-];
+export const SHARED_PRE_APPROVAL_DOCUMENTS: StageDocument[] = PROPERTY_DOCUMENTS;
 
 /** תחילית מפתח המסמך של כל לווה, כדי ששני בני הזוג יסומנו בנפרד */
 const BORROWER_KEYS = ['b1', 'b2'] as const;
@@ -872,12 +1099,16 @@ export function usesSeparateBankAccounts(profile: Pick<AnalysisData, 'household'
  * לפני שינוי אופן ההעסקה לא יימחק בקריאה הבאה מבסיס הנתונים.
  */
 export const ALL_PRE_APPROVAL_DOCUMENT_KEYS: string[] = [
-  ...SHARED_PRE_APPROVAL_DOCUMENTS.map((doc) => doc.key),
+  ...PROPERTY_DOCUMENTS.map((doc) => doc.key),
   ...BANK_ACCOUNT_DOCUMENTS.map((doc) => doc.key),
+  LOAN_BALANCE_DOCUMENT.key,
   ...BORROWER_KEYS.flatMap((borrower) =>
-    [...BANK_ACCOUNT_DOCUMENTS, ...EMPLOYMENT_TYPES.flatMap((type) => EMPLOYMENT_DOCUMENTS[type])].map(
-      (doc) => borrowerDocKey(borrower, doc.key)
-    )
+    [
+      IDENTITY_DOCUMENT,
+      LOAN_BALANCE_DOCUMENT,
+      ...BANK_ACCOUNT_DOCUMENTS,
+      ...EMPLOYMENT_TYPES.flatMap((type) => EMPLOYMENT_DOCUMENTS[type]),
+    ].map((doc) => borrowerDocKey(borrower, doc.key))
   ),
 ];
 
@@ -890,40 +1121,64 @@ export interface DocumentGroup {
 }
 
 /**
- * תיק המסמכים לאישור עקרוני, מחולק לפי לווה.
+ * תיק המסמכים לאישור עקרוני.
  *
- * לכל לווה נדרשים מסמכים אחרים לפי אופן ההעסקה שלו, ולכן זוג שבו אחד שכיר
- * והשני עצמאי מקבל שתי רשימות נפרדות ולא רשימה מאוחדת שאי אפשר לעקוב אחריה.
+ * לכל לווה רשימה משלו: תעודת זהות, המסמך שמוכיח את ההכנסה לפי אופן ההעסקה
+ * שלו — תלושים לשכיר, דוח רווחים לעצמאי — ודוח יתרת הלוואה כשיש לו הלוואות.
+ * מסמכי חשבון הבנק נדרשים פעם אחת בחשבון משותף ומכל לווה בחשבונות נפרדים,
+ * ומסמכי הנכס והעסקה יושבים ברובריקה נפרדת משלהם.
  */
 export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
   const profile = data.ANALYSIS;
   const couple = profile.household === 'COUPLE';
-  const separateAccounts = usesSeparateBankAccounts(profile);
+  const sharedAccount = couple && profile.bankAccountMode !== 'SEPARATE';
 
   const tagged = (borrower: BorrowerKey, docs: StageDocument[]) =>
     docs.map((doc) => ({ ...doc, key: borrowerDocKey(borrower, doc.key) }));
 
-  const personal = (borrower: BorrowerKey, type: EmploymentType | null, title: string) => ({
+  const personal = (
+    borrower: BorrowerKey,
+    type: EmploymentType | null,
+    title: string,
+    loans: ProfileLoan[]
+  ): DocumentGroup => ({
     id: borrower,
     title,
     subtitle: type ? EMPLOYMENT_LABELS[type] : null,
-    documents: [
-      ...(separateAccounts ? tagged(borrower, BANK_ACCOUNT_DOCUMENTS) : []),
-      ...(type ? tagged(borrower, EMPLOYMENT_DOCUMENTS[type]) : []),
-    ],
+    documents: tagged(borrower, [
+      IDENTITY_DOCUMENT,
+      ...(type ? EMPLOYMENT_DOCUMENTS[type] : []),
+      ...(sharedAccount ? [] : BANK_ACCOUNT_DOCUMENTS),
+      ...(sumProfileLoans(loans) > 0 ? [LOAN_BALANCE_DOCUMENT] : []),
+    ]),
   });
 
   return [
+    ...(sharedAccount
+      ? [
+          {
+            id: 'household',
+            title: 'חשבון הבנק המשותף',
+            subtitle: null,
+            documents: BANK_ACCOUNT_DOCUMENTS,
+          },
+        ]
+      : []),
+    personal(
+      'b1',
+      profile.employmentType,
+      couple ? 'מסמכים של לווה 1' : 'המסמכים שלי',
+      profile.borrowerLoans
+    ),
+    ...(couple
+      ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2', profile.partnerLoans)]
+      : []),
     {
-      id: 'shared',
-      title: 'מסמכי משק הבית והעסקה',
+      id: 'property',
+      title: 'הנכס והעסקה',
       subtitle: null,
-      documents: separateAccounts
-        ? SHARED_PRE_APPROVAL_DOCUMENTS
-        : [...BANK_ACCOUNT_DOCUMENTS, ...SHARED_PRE_APPROVAL_DOCUMENTS],
+      documents: PROPERTY_DOCUMENTS,
     },
-    personal('b1', profile.employmentType, couple ? 'מסמכים של לווה 1' : 'מסמכים לפי אופן ההעסקה'),
-    ...(couple ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2')] : []),
   ];
 }
 
@@ -1090,6 +1345,19 @@ export function preApprovalAmount(data: PlanData): number | null {
 /** האם הפרופיל שלם דיו כדי להגיש בקשה לאישור עקרוני */
 export function profileReadyForPreApproval(data: PlanData): boolean {
   return preApprovalRequirements(data).every((item) => item.ok);
+}
+
+/**
+ * הבנקים שנתנו אישור עקרוני. אלה הבנקים שנפתחים לתמחור בשלב המכרז, כי רק מהם
+ * אפשר לבקש ריביות על התמהיל הסופי.
+ */
+export function banksWithPreApproval(data: PlanData): string[] {
+  const banks = data.APPLICATIONS.bankApprovals
+    .filter((row) => row.approved)
+    .map((row) => row.bank);
+  const leading = data.APPLICATIONS.approved ? data.APPLICATIONS.bank : null;
+  if (leading && !banks.includes(leading)) banks.push(leading);
+  return banks;
 }
 
 export const SIGNING_CHECKS: ReadonlyArray<{ key: string; label: string }> = [
@@ -1361,7 +1629,9 @@ export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
       );
     }
     case 'AUCTION':
-      return winningOffer(data.AUCTION) !== null;
+      // מה שסוגר את השלב הוא בחירת התמהיל שהולכים איתו לחתימה. הזנה ידנית של
+      // הצעות היא המסלול הישן, ולכן היא עדיין סוגרת את השלב כשהיא בשימוש.
+      return data.AUCTION.signedMix !== null || winningOffer(data.AUCTION) !== null;
     case 'SIGNING':
       return (
         Boolean(data.SIGNING.bank) &&
@@ -1395,8 +1665,8 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       break;
     }
     case 'AUCTION':
-      if (data.AUCTION.offers.length === 0) missing.push('הצעה אחת לפחות');
-      else missing.push('בחירת ההצעה הזוכה');
+      if (!data.AUCTION.mode) missing.push('בחירה בין תמחור עצמי לליווי יועץ');
+      missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
       break;
     case 'SIGNING': {
       if (!data.SIGNING.bank) missing.push('הבנק שאיתו נחתם');
@@ -1441,6 +1711,7 @@ export function planSnapshot(data: PlanData): PlanSnapshot {
 
   const monthlyPayment =
     data.SIGNING.finalMonthlyPayment ??
+    data.AUCTION.signedMix?.monthlyPayment ??
     winner?.monthlyPayment ??
     data.MIX.monthlyPayment ??
     basket?.monthlyPayment ??

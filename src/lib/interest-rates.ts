@@ -29,11 +29,14 @@
  */
 
 /**
- * אובייקט הריביות המרכזי - מקור האמת היחיד.
- * המפתחות הם סמנטיים (באנגלית) ותואמים לסוגי המסלולים בשאר הפרויקט.
- * כל הערכים נתונים באחוזים שנתיים.
+ * טבלת הבסיס. אלה הערכים שנכתבו בקוד, והם משמשים לשני דברים בלבד:
+ * כרשת ביטחון כשאין נתונים חיים מבנק ישראל, וכבסיס לחילוץ המרווח הבנקאי
+ * הטיפוסי של כל מסלול (ראו `defaultSpreadFor` ב-`rate-anchors.ts`).
+ *
+ * מה שמוצג ומחושב בפלטפורמה הוא `INTEREST_RATES` שמתחתיו — אותם מפתחות, אבל
+ * עם הערכים שנמשכו מבנק ישראל בהרצה הנוכחית.
  */
-export const INTEREST_RATES = {
+export const STATIC_INTEREST_RATES = {
   // ---- ריבית קבועה (Fixed) ----
   /** קל"צ - ריבית קבועה לא צמודה */
   fixed_unlinked: 4.85,
@@ -71,7 +74,57 @@ export const INTEREST_RATES = {
   euro: 2.51,
 } as const;
 
-export type InterestRateKey = keyof typeof INTEREST_RATES;
+export type InterestRateKey = keyof typeof STATIC_INTEREST_RATES;
+
+/**
+ * הערכים החיים שנמשכו מבנק ישראל בהרצה הנוכחית.
+ *
+ * המפה הזו ממולאת על ידי `applyLiveInterestRates` בכל פעם שנתוני בנק ישראל
+ * נמשכים — בשרת בעת בניית התשובה, ובדפדפן בכל טעינה של הדף. כל עוד היא ריקה
+ * (אין רשת, בנק ישראל לא זמין) הפלטפורמה נופלת לטבלת הבסיס.
+ */
+const liveRates: Partial<Record<InterestRateKey, number>> = {};
+const liveTrackRates: Partial<Record<MortgageTrackType, number>> = {};
+
+/**
+ * עדכון הערכים החיים. נקרא ממקום אחד בלבד (`rate-anchors.ts`), כדי שהטבלה
+ * הזו לא תתמלא מחישובים מקומיים אלא רק ממה שבאמת נמשך מבנק ישראל.
+ */
+export function setLiveInterestRates(
+  rates: Partial<Record<InterestRateKey, number>>,
+  trackRates: Partial<Record<MortgageTrackType, number>>
+): void {
+  (Object.keys(rates) as InterestRateKey[]).forEach((key) => {
+    const value = rates[key];
+    if (typeof value === 'number' && Number.isFinite(value)) liveRates[key] = value;
+  });
+  (Object.keys(trackRates) as MortgageTrackType[]).forEach((key) => {
+    const value = trackRates[key];
+    if (typeof value === 'number' && Number.isFinite(value)) liveTrackRates[key] = value;
+  });
+}
+
+/** ניקוי הערכים החיים — לשימוש בטסטים */
+export function clearLiveInterestRates(): void {
+  (Object.keys(liveRates) as InterestRateKey[]).forEach((key) => delete liveRates[key]);
+  (Object.keys(liveTrackRates) as MortgageTrackType[]).forEach((key) => delete liveTrackRates[key]);
+}
+
+/**
+ * אובייקט הריביות המרכזי — מקור האמת היחיד לכל מי שקורא ריבית בפלטפורמה.
+ *
+ * הקריאה עוברת דרך הערכים שנמשכו מבנק ישראל, ורק אם אין כאלה היא נופלת לטבלת
+ * הבסיס. כך כל מקום בקוד שקורא `INTEREST_RATES.prime` מקבל את ריבית הפריים
+ * שבתוקף עכשיו, בלי שצריך לחווט אליו את שכבת הנתונים.
+ */
+export const INTEREST_RATES: typeof STATIC_INTEREST_RATES = new Proxy(STATIC_INTEREST_RATES, {
+  get(target, property: string | symbol) {
+    if (typeof property === 'string' && property in liveRates) {
+      return liveRates[property as InterestRateKey];
+    }
+    return target[property as keyof typeof target];
+  },
+});
 
 /**
  * מטא-דאטה: תאריך עדכון אחרון של הריביות.
@@ -110,21 +163,37 @@ export type MortgageTrackType =
  * למסלולים משתנים נבחרת כברירת מחדל גרסת 5 שנים (כי זו השכיחה ביותר בשוק
  * הישראלי וקיים לה ערך רשמי בטבלה).
  */
-export const DEFAULT_INTEREST_RATES: Record<MortgageTrackType, number> = {
-  fixed_unlinked: INTEREST_RATES.fixed_unlinked,
-  fixed_linked: INTEREST_RATES.fixed_linked,
-  prime: INTEREST_RATES.prime,
-  variable_unlinked: INTEREST_RATES.variable_unlinked_5y,
-  variable_linked: INTEREST_RATES.variable_linked_5y,
-  makam: INTEREST_RATES.makam,
-  dollar: INTEREST_RATES.dollar,
-  euro: INTEREST_RATES.euro,
-  eligibility: INTEREST_RATES.eligibility,
+const STATIC_DEFAULT_INTEREST_RATES: Record<MortgageTrackType, number> = {
+  fixed_unlinked: STATIC_INTEREST_RATES.fixed_unlinked,
+  fixed_linked: STATIC_INTEREST_RATES.fixed_linked,
+  prime: STATIC_INTEREST_RATES.prime,
+  variable_unlinked: STATIC_INTEREST_RATES.variable_unlinked_5y,
+  variable_linked: STATIC_INTEREST_RATES.variable_linked_5y,
+  makam: STATIC_INTEREST_RATES.makam,
+  dollar: STATIC_INTEREST_RATES.dollar,
+  euro: STATIC_INTEREST_RATES.euro,
+  eligibility: STATIC_INTEREST_RATES.eligibility,
   // אין ערך ייחודי בטבלה ל"תוכנית חומש"; משתמש בקבועה לא-צמודה כקירוב סביר.
-  five_year_plan: INTEREST_RATES.fixed_unlinked,
+  five_year_plan: STATIC_INTEREST_RATES.fixed_unlinked,
   // מענק אינו נושא ריבית.
   grant: 0,
 };
+
+/**
+ * ריבית ברירת המחדל לפי סוג מסלול — חיה, באותו עיקרון כמו `INTEREST_RATES`:
+ * מה שנמשך מבנק ישראל, ורק בהיעדרו הערך מטבלת הבסיס.
+ */
+export const DEFAULT_INTEREST_RATES: Record<MortgageTrackType, number> = new Proxy(
+  STATIC_DEFAULT_INTEREST_RATES,
+  {
+    get(target, property: string | symbol) {
+      if (typeof property === 'string' && property in liveTrackRates) {
+        return liveTrackRates[property as MortgageTrackType];
+      }
+      return target[property as keyof typeof target];
+    },
+  }
+);
 
 /**
  * שליפת ריבית לפי סוג מסלול, עם תמיכה אופציונלית בתקופת השינוי
@@ -136,25 +205,51 @@ export const DEFAULT_INTEREST_RATES: Record<MortgageTrackType, number> = {
  *   getInterestRate("variable_unlinked", { variablePeriodYears: 2 }) // 4.61
  *   getInterestRate("variable_linked",   { variablePeriodYears: 2 }) // 3.03
  */
-export function getInterestRate(
+function rateFrom(
+  table: typeof STATIC_INTEREST_RATES,
+  defaults: Record<MortgageTrackType, number>,
   trackType: MortgageTrackType,
-  options?: { variablePeriodYears?: number }
+  period: number | undefined
 ): number {
-  const period = options?.variablePeriodYears;
-
   if (trackType === "variable_unlinked") {
     return period !== undefined && period <= 2
-      ? INTEREST_RATES.variable_unlinked_2y
-      : INTEREST_RATES.variable_unlinked_5y;
+      ? table.variable_unlinked_2y
+      : table.variable_unlinked_5y;
   }
 
   if (trackType === "variable_linked") {
     return period !== undefined && period <= 2
-      ? INTEREST_RATES.variable_linked_2y
-      : INTEREST_RATES.variable_linked_5y;
+      ? table.variable_linked_2y
+      : table.variable_linked_5y;
   }
 
-  return DEFAULT_INTEREST_RATES[trackType];
+  return defaults[trackType];
+}
+
+export function getInterestRate(
+  trackType: MortgageTrackType,
+  options?: { variablePeriodYears?: number }
+): number {
+  return rateFrom(INTEREST_RATES, DEFAULT_INTEREST_RATES, trackType, options?.variablePeriodYears);
+}
+
+/**
+ * הריבית מטבלת הבסיס בלבד, בלי הערכים החיים.
+ *
+ * משמשת לחילוץ המרווח הבנקאי הטיפוסי: המרווח נגזר מהפער בין הציטוט שנכתב
+ * בטבלה לבין העוגן של אותה נקודת זמן, ולכן הוא חייב להיגזר מערך קבוע. שימוש
+ * בערך החי היה גורם למרווח לרדוף אחרי עצמו.
+ */
+export function getStaticInterestRate(
+  trackType: MortgageTrackType,
+  options?: { variablePeriodYears?: number }
+): number {
+  return rateFrom(
+    STATIC_INTEREST_RATES,
+    STATIC_DEFAULT_INTEREST_RATES,
+    trackType,
+    options?.variablePeriodYears
+  );
 }
 
 /**
@@ -177,12 +272,20 @@ export const INTEREST_RATE_DISPLAY_NAMES: Record<InterestRateKey, string> = {
 /**
  * רשימה מסודרת של כל הריביות לצורך הצגה בטבלאות / dropdowns.
  */
-export const INTEREST_RATES_LIST: ReadonlyArray<{
+export const INTEREST_RATE_KEYS = Object.keys(STATIC_INTEREST_RATES) as InterestRateKey[];
+
+/**
+ * רשימת הריביות לתצוגה. נבנית בכל קריאה, כדי שהיא תשקף את הערכים החיים ולא
+ * את מה שהיה בזיכרון בזמן טעינת המודול.
+ */
+export function interestRatesList(): ReadonlyArray<{
   key: InterestRateKey;
   label: string;
   rate: number;
-}> = (Object.keys(INTEREST_RATES) as InterestRateKey[]).map((key) => ({
-  key,
-  label: INTEREST_RATE_DISPLAY_NAMES[key],
-  rate: INTEREST_RATES[key],
-}));
+}> {
+  return INTEREST_RATE_KEYS.map((key) => ({
+    key,
+    label: INTEREST_RATE_DISPLAY_NAMES[key],
+    rate: INTEREST_RATES[key],
+  }));
+}

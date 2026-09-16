@@ -16,6 +16,7 @@ import {
   Percent,
   PiggyBank,
   Wallet,
+  X,
 } from 'lucide-react';
 import { DEAL_TYPES, MAX_LTV_PERCENT } from '../types';
 import type { DealType } from '../types';
@@ -30,6 +31,16 @@ import {
 } from '../propertyContext';
 import { MaxPaymentDialog } from './MaxPaymentDialog';
 import { formatShekel } from './primitives';
+import type { DealField } from '../dealGuard';
+
+/** עריכה של פרטי העסקה — כל השדות יחד, כדי שהבדיקה תיעשה על המצב הסופי */
+export interface DealPatch {
+  propertyValue?: number;
+  totalAmount?: number;
+  maxMonthlyPayment?: number;
+  dealType?: DealType;
+  propertyAddress?: string;
+}
 
 interface PropertyHeaderProps {
   mix: WorkspaceMix;
@@ -39,8 +50,14 @@ interface PropertyHeaderProps {
   mixCount: number;
   /** תקרה שחושבה מהפרופיל — 40% מההכנסה הפנויה של היחיד או של הזוג */
   profileMaxMonthlyPayment?: number;
-  onPatch: (patch: Partial<WorkspaceMix>) => void;
-  onTotalAmountChange: (amount: number) => void;
+  /**
+   * עריכת פרטי העסקה. מחזירה false כשהעריכה נחסמה בגלל מגבלת רגולציה —
+   * ההודעה מגיעה דרך `notice` ומוצגת כאן, מתחת לשדות.
+   */
+  onCommitDeal: (patch: DealPatch, edited: DealField) => boolean;
+  /** הודעת חסימה מהבדיקה הרגולטורית */
+  notice?: string | null;
+  onDismissNotice?: () => void;
 }
 
 /**
@@ -53,8 +70,9 @@ export function PropertyHeader({
   monthlyPayment,
   mixCount,
   profileMaxMonthlyPayment,
-  onPatch,
-  onTotalAmountChange,
+  onCommitDeal,
+  notice,
+  onDismissNotice,
 }: PropertyHeaderProps) {
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [draftEquity, setDraftEquity] = useState(0);
@@ -77,28 +95,31 @@ export function PropertyHeader({
     if (next <= 0) return;
     if (propertyValue <= 0 || next <= maxMortgage + 1) {
       setPendingAmount(null);
-      onTotalAmountChange(next);
+      onCommitDeal({ totalAmount: next }, 'totalAmount');
       return;
     }
     setPendingAmount(next);
     setDraftEquity(Math.round(requiredEquityFor(next, dealType)));
   };
 
+  /** ההון העצמי הוא ההפרש מעלות הנכס, ולכן עריכתו משנה את סכום המשכנתא */
   const commitEquity = (next: number) => {
     if (propertyValue <= 0) return;
-    onTotalAmountChange(Math.max(0, propertyValue - Math.max(0, next)));
+    onCommitDeal({ totalAmount: Math.max(0, propertyValue - Math.max(0, next)) }, 'equity');
   };
 
   const applyPendingWithEquity = () => {
     if (pendingAmount === null || draftEquity < requiredEquity - 1) return;
-    onPatch({ propertyValue: Math.round(pendingAmount + draftEquity) });
-    onTotalAmountChange(pendingAmount);
-    setPendingAmount(null);
+    const accepted = onCommitDeal(
+      { propertyValue: Math.round(pendingAmount + draftEquity), totalAmount: pendingAmount },
+      'totalAmount'
+    );
+    if (accepted) setPendingAmount(null);
   };
 
   const changeDealType = (next: DealType) => {
     setPendingAmount(null);
-    onPatch({ dealType: next });
+    onCommitDeal({ dealType: next }, 'dealType');
   };
 
   return (
@@ -113,7 +134,7 @@ export function PropertyHeader({
             placeholder="הוסיפו כתובת נכס"
             emptyLabel={`משכנתא בסך ${formatShekel(mix.totalAmount)}`}
             onCommit={(propertyAddress) =>
-              onPatch({ propertyAddress: propertyAddress.trim() || undefined })
+              onCommitDeal({ propertyAddress: propertyAddress.trim() }, 'propertyAddress')
             }
           />
           <p className="text-[11px] text-slate-500 flex flex-wrap items-center gap-1.5">
@@ -171,7 +192,12 @@ export function PropertyHeader({
           icon={<Home className="h-3.5 w-3.5 text-violet-600" />}
           label="עלות הנכס"
           value={propertyValue}
-          onCommit={(next) => onPatch({ propertyValue: next > 0 ? next : undefined })}
+          onCommit={(next) => onCommitDeal({ propertyValue: Math.max(0, next) }, 'propertyValue')}
+          hint={
+            propertyValue > 0 && mix.totalAmount > 0
+              ? `הון עצמי ${formatShekel(equity)} · מימון ${ltv.toFixed(1)}%`
+              : undefined
+          }
         />
         <EditableAmount
           icon={<PiggyBank className="h-3.5 w-3.5 text-emerald-600" />}
@@ -188,7 +214,7 @@ export function PropertyHeader({
           icon={<Calculator className="h-3.5 w-3.5 text-amber-600" />}
           label="החזר חודשי מקסימלי"
           value={mix.maxMonthlyPayment ?? 0}
-          onCommit={(next) => onPatch({ maxMonthlyPayment: next > 0 ? next : undefined })}
+          onCommit={(next) => onCommitDeal({ maxMonthlyPayment: Math.max(0, next) }, 'maxMonthlyPayment')}
           action={
             <Button
               size="sm"
@@ -210,6 +236,26 @@ export function PropertyHeader({
           }
         />
       </div>
+
+      {notice && (
+        <div className="flex items-start gap-2 border-t border-red-300 bg-red-50 p-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="text-xs font-bold text-red-900">השינוי חורג ממגבלות בנק ישראל</p>
+            <p className="text-[11px] leading-relaxed text-red-800">{notice}</p>
+          </div>
+          {onDismissNotice && (
+            <button
+              type="button"
+              onClick={onDismissNotice}
+              title="סגירת ההודעה"
+              className="rounded-md p-1 text-red-400 transition-colors hover:bg-red-100 hover:text-red-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {pendingAmount !== null && (
         <div className="border-t border-red-200 bg-red-50 p-3 space-y-2.5">
@@ -273,7 +319,7 @@ export function PropertyHeader({
             size="sm"
             variant="outline"
             className="h-8 text-xs"
-            onClick={() => onTotalAmountChange(Math.floor(maxMortgage))}
+            onClick={() => onCommitDeal({ totalAmount: Math.floor(maxMortgage) }, 'totalAmount')}
           >
             התאם לתקרה
           </Button>
@@ -296,7 +342,7 @@ export function PropertyHeader({
         dealType={dealType}
         equity={equity}
         onClose={() => setShowMaxPayment(false)}
-        onConfirm={(maxMonthlyPayment) => onPatch({ maxMonthlyPayment })}
+        onConfirm={(maxMonthlyPayment) => onCommitDeal({ maxMonthlyPayment }, 'maxMonthlyPayment')}
       />
     </div>
   );

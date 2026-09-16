@@ -289,5 +289,37 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
     [signedIn, recordIdOf, refresh]
   );
 
-  return { saved, ready, error, signedIn, save, remove, rename, assign, refresh };
+  /**
+   * שידור תמהיל ללקוח — מה שהיועץ בנה או תמחר בתיק שלו הופך לגלוי אצלו.
+   *
+   * עד לרגע הזה התמהיל הוא טיוטה של היועץ: הוא מופיע רק במסך שלו, ולא באזור
+   * האישי של הלקוח.
+   */
+  const share = useCallback(
+    async (mixId: string): Promise<boolean> => {
+      const recordId = recordIdOf(mixId);
+      if (!recordId) return false;
+
+      const response = await fetch(`/api/mixes/${recordId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sharedWithClient: true }),
+      });
+      if (!response.ok) {
+        setError('השידור ללקוח לא הושלם. נסו שוב.');
+        return false;
+      }
+
+      setSaved((items) =>
+        items.map((item) =>
+          item.mix.id === mixId ? { ...item, sharedWithClient: true } : item
+        )
+      );
+      await refresh();
+      return true;
+    },
+    [recordIdOf, refresh]
+  );
+
+  return { saved, ready, error, signedIn, save, remove, rename, assign, share, refresh };
 }

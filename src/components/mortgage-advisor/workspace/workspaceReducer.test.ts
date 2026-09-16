@@ -11,6 +11,7 @@ import {
 } from '../engine';
 import type { WorkspaceMix } from '../engine';
 import { DEFAULT_INTEREST_RATES } from '../types';
+import { fallbackMarketRates, type MarketRatesSnapshot } from '@/lib/market-rates';
 
 /** תמהיל שמשבץ את כל סכום המשכנתא, כמו שהאשף מייצר */
 function stateWith(amounts: number[], overrides: Partial<WorkspaceMix> = {}): WorkspaceState {
@@ -349,5 +350,96 @@ describe('ריביות ברירת המחדל של היועץ', () => {
       patch: { amortizationType: 'equal_principal', interestRate: 3.1 },
     });
     expect(state.mix.tracks.at(-1)?.interestRate).toBe(3.1);
+  });
+});
+
+describe('עוגן ומרווח במסלול', () => {
+  /** תצלום שוק עם עקום "עגול", כדי שהבדיקה תקרא כמו חשבון פשוט */
+  const market: MarketRatesSnapshot = {
+    ...fallbackMarketRates(new Date('2026-09-11T00:00:00Z')),
+    source: 'boi',
+    boiRateSource: 'boi',
+    boiRate: 4,
+    primeRate: 5.5,
+    nominalCurve: {
+      spots: [
+        { years: 2, yieldPct: 3.5 },
+        { years: 5, yieldPct: 4 },
+        { years: 10, yieldPct: 4.5 },
+      ],
+      month: '2026-08',
+      asOf: '2026-08-31',
+      source: 'boi',
+    },
+  };
+
+  function stateWithMarket() {
+    const base = stateWith([1_000_000]);
+    return workspaceReducer(base, { type: 'applyMarketRates', snapshot: market });
+  }
+
+  it('פותח מסלול חדש עם העוגן החי ועם המרווח שמעליו', () => {
+    const state = workspaceReducer(stateWithMarket(), { type: 'addTrack', trackType: 'prime' });
+    const track = state.mix.tracks.at(-1)!;
+    expect(track.interestRate).toBeCloseTo(5.5, 2);
+    expect(track.rateSpread).toBeCloseTo(0, 2);
+  });
+
+  it('בחירת סוג מסלול מושכת את העוגן של אותו סוג ריבית', () => {
+    const withTrack = workspaceReducer(stateWithMarket(), {
+      type: 'addTrack',
+      trackType: 'prime',
+    });
+    const id = withTrack.mix.tracks.at(-1)!.id;
+    const state = workspaceReducer(withTrack, {
+      type: 'updateTrack',
+      id,
+      patch: { type: 'variable_unlinked' },
+    });
+    const track = state.mix.tracks.find((item) => item.id === id)!;
+    // עוגן 5 שנים (4%) ועוד המרווח המקובל למל"צ
+    expect(track.interestRate).toBeCloseTo(4 + track.rateSpread!, 2);
+  });
+
+  it('שינוי תחנת היציאה מזיז את העוגן ואיתו את הריבית, והמרווח נשמר', () => {
+    const withTrack = workspaceReducer(stateWithMarket(), {
+      type: 'addTrack',
+      trackType: 'variable_unlinked',
+    });
+    const id = withTrack.mix.tracks.at(-1)!.id;
+    const before = withTrack.mix.tracks.find((item) => item.id === id)!;
+
+    const state = workspaceReducer(withTrack, {
+      type: 'updateTrack',
+      id,
+      patch: { variablePeriod: 2 },
+    });
+    const after = state.mix.tracks.find((item) => item.id === id)!;
+
+    expect(after.rateSpread).toBeCloseTo(before.rateSpread!, 6);
+    // העוגן ירד מ-4% (5 שנים) ל-3.5% (שנתיים)
+    expect(before.interestRate - after.interestRate).toBeCloseTo(0.5, 2);
+  });
+
+  it('עדכון נתוני בנק ישראל מזיז את הריבית של מסלול עם מרווח בלבד', () => {
+    const withTracks = workspaceReducer(stateWithMarket(), {
+      type: 'addTrack',
+      trackType: 'prime',
+    });
+    const spreadTrackId = withTracks.mix.tracks.at(-1)!.id;
+    const manualId = withTracks.mix.tracks[0].id;
+    const manual = workspaceReducer(withTracks, {
+      type: 'updateTrack',
+      id: manualId,
+      patch: { interestRate: 4.85, rateSpread: undefined },
+    });
+
+    const updated = workspaceReducer(manual, {
+      type: 'applyMarketRates',
+      snapshot: { ...market, boiRate: 4.5, primeRate: 6 },
+    });
+
+    expect(updated.mix.tracks.find((t) => t.id === spreadTrackId)!.interestRate).toBeCloseTo(6, 2);
+    expect(updated.mix.tracks.find((t) => t.id === manualId)!.interestRate).toBeCloseTo(4.85, 2);
   });
 });

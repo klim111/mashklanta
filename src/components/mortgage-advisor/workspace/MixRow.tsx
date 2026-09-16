@@ -10,16 +10,18 @@ import {
   ChevronDown,
   Coins,
   Gavel,
+  Info,
   Pencil,
   Percent,
   Wallet,
 } from 'lucide-react';
-import { TRACK_TYPES } from '../types';
 import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
 import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
-import { CompositionBar, formatShekel, trackColor } from './primitives';
-import { CURRENT_RATE_PAYMENT_NOTE, usesForwardPricedRate } from './PrimeForwardChart';
+import { formatShekel } from './primitives';
+import { InfoTip, RATE_EXPLANATIONS } from '@/components/ui/info-tip';
+import { TrackCompositionStrip } from '../analysisDashboard';
+import { CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
 import { describePaymentDrop } from './paymentDrop';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
 import { formatQuoteDate } from '../bankQuote/quote';
@@ -52,6 +54,8 @@ interface MixRowProps {
   onRequestQuote?: () => void;
   /** הזנת הריביות שהתקבלו מבנק על מבנה התמהיל שבשורה */
   onEnterQuote?: () => void;
+  /** בחירת התמהיל כתמהיל הסופי — משם ממשיכים להזנת הריביות מהבנקים בשלב 4 */
+  onSelectAsFinal?: () => void;
   /** מה שנפתח מתחת לשורה כשהיא פתוחה */
   detail?: React.ReactNode;
   hint?: string;
@@ -59,6 +63,12 @@ interface MixRowProps {
   note?: string;
   /** חץ הפתיחה מוצג רק לתמהיל שבאזור העבודה */
   showExpandIcon?: boolean;
+  /**
+   * המסלול שנבחר בפס ההרכב. כשהוא מועבר, כל קטע בפס הופך ללחיץ — לחיצה עליו
+   * מציגה את הנתונים והגרפים של אותו מסלול בלבד.
+   */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
 }
 
 /**
@@ -86,10 +96,13 @@ export function MixRow({
   actions,
   onRequestQuote,
   onEnterQuote,
+  onSelectAsFinal,
   detail,
   hint,
   note,
   showExpandIcon = true,
+  focusTrackId = null,
+  onFocusTrack,
 }: MixRowProps) {
   const [renaming, setRenaming] = useState(startRenaming);
   const [draftName, setDraftName] = useState(startRenaming ? '' : mix.name);
@@ -103,6 +116,22 @@ export function MixRow({
     if (!hasPrepay && !staggered) return undefined;
     return computeMix(mix);
   }, [result, mix]);
+
+  /** תמהילים שנשמרו לפני שהריבית המתואמת נוספה לסיכום — מחושבת מהתמהיל עצמו */
+  const irr = useMemo(
+    () => (typeof summary.irr === 'number' ? summary.irr : (resolvedResult ?? computeMix(mix)).summary.irr),
+    [summary.irr, resolvedResult, mix]
+  );
+
+  /** משך הסילוקין בפועל לכל מסלול, כדי שהכיתוב יראה קיצור אחרי פרעון מוקדם */
+  const trackMonths = useMemo(() => {
+    if (!resolvedResult) return undefined;
+    const map: Record<string, number> = {};
+    resolvedResult.tracks.forEach((entry) => {
+      map[entry.track.id] = entry.months;
+    });
+    return map;
+  }, [resolvedResult]);
 
   useEffect(() => {
     if (!startRenaming) return;
@@ -247,9 +276,10 @@ export function MixRow({
             </p>
           </div>
 
-          {(actions || onRequestQuote || onEnterQuote) && (
+          {(actions || onRequestQuote || onEnterQuote || onSelectAsFinal) && (
             <span onClick={stopRowClick} className="flex w-full flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:justify-end">
               {onRequestQuote && <RequestQuoteButton onClick={onRequestQuote} />}
+              {onSelectAsFinal && <SelectFinalButton onClick={onSelectAsFinal} />}
               {onEnterQuote && <EnterQuoteButton onClick={onEnterQuote} />}
               {actions}
             </span>
@@ -264,8 +294,8 @@ export function MixRow({
           )}
         </div>
 
-        {/* תת-השורה האחידה: ההחזר החודשי, סך הריבית, סך התשלום והריבית הממוצעת */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* תת-השורה האחידה: ההחזר החודשי, סך הריבית, סך התשלום ושני מדדי הריבית */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <RowStat
             icon={<Wallet className="h-3 w-3 text-blue-600" />}
             label="החזר חודשי"
@@ -289,33 +319,45 @@ export function MixRow({
             icon={<Percent className="h-3 w-3 text-amber-600" />}
             label="ריבית ממוצעת"
             value={formatPercentage(summary.averageRate)}
+            info={RATE_EXPLANATIONS.mixAverage}
+          />
+          <RowStat
+            icon={<Percent className="h-3 w-3 text-rose-600" />}
+            label="מתואמת IRR"
+            value={formatPercentage(irr)}
+            info={RATE_EXPLANATIONS.mixIrr}
           />
         </div>
 
         <ForecastDisclaimer mix={mix} compact />
 
-        <div>
-          <CompositionBar tracks={mix.tracks} height={8} />
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-            {mix.tracks.map((track) => (
-              <span key={track.id} className="flex items-center gap-1 text-[10px] text-slate-500">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: trackColor(track.type) }}
-                />
-                {TRACK_TYPES[track.type]} {track.percentage.toFixed(0)}%
-              </span>
-            ))}
-            {unallocated > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700">
-                <AlertTriangle className="h-3 w-3" />
-                {formatShekel(unallocated)} לא שובצו
-              </span>
-            )}
-            {hint && !expanded && (
-              <span className="text-[10px] text-slate-400 mr-auto">{hint}</span>
-            )}
-          </div>
+        {/*
+          פס ההרכב והכיתוב שמתחתיו הם בדיוק אותו רכיב שמופיע בהשוואה הגרפית:
+          רוחב כל קטע הוא חלקו של המסלול בתמהיל, והפרטים יושבים מתחת לקטע שלו
+          ובאותו גודל. קודם הופיעה כאן רשימת נקודות שלא הייתה מיושרת לפס.
+        */}
+        <div onClick={onFocusTrack ? stopRowClick : undefined}>
+          <TrackCompositionStrip
+            tracks={mix.tracks}
+            trackMonths={trackMonths}
+            activeTrackId={focusTrackId}
+            onTrackClick={
+              onFocusTrack && ((trackId) => onFocusTrack(focusTrackId === trackId ? null : trackId))
+            }
+          />
+          {(unallocated > 0 || (hint && !expanded)) && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {unallocated > 0 && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700">
+                  <AlertTriangle className="h-3 w-3" />
+                  {formatShekel(unallocated)} לא שובצו
+                </span>
+              )}
+              {hint && !expanded && (
+                <span className="text-[10px] text-slate-400 mr-auto">{hint}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -348,6 +390,33 @@ export function RequestQuoteButton({
   );
 }
 
+/**
+ * בחירת התמהיל כתמהיל הסופי.
+ *
+ * זו נקודת המעבר לשלב 4: מכאן והלאה מבנה התמהיל נעול, ומולו מזינים את הריביות
+ * שכל בנק נתן. לכן הכפתור הזה מחליף את "ריביות מהבנק" שהיה כאן — הזנת הריביות
+ * אינה פעולה על תמהיל בעבודה אלא על התמהיל שנבחר.
+ */
+export function SelectFinalButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="נעילת התמהיל כתמהיל הסופי והמשך להזנת הריביות מהבנקים"
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
+    >
+      <Gavel className="h-3.5 w-3.5" />
+      בחר כתמהיל סופי
+    </button>
+  );
+}
+
 /** הזנת הריביות שהתקבלו מבנק על מבנה התמהיל שבשורה */
 export function EnterQuoteButton({
   onClick,
@@ -376,39 +445,54 @@ function paymentHint(summary: MixSummary, mix: WorkspaceMix, result?: MixResult)
   if (summary.balloonPayment > 1) {
     parts.push(`בלון ${formatShekel(summary.balloonPayment)} בסוף`);
   }
-  if (mix.tracks.some((track) => usesForwardPricedRate(track.type))) {
+  if (mix.tracks.some((track) => showsRateChangeNote(track.type))) {
     parts.push(CURRENT_RATE_PAYMENT_NOTE);
   }
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
+/**
+ * בלוק מדד בשורת התמהיל.
+ *
+ * הבלוק נמוך ומרוכז במכוון: הוא חוזר על עצמו בכל שורת תמהיל, וכל שורת טקסט
+ * נוספת בו נגרעת מהמקום שנשאר לדאשבורד באותו מסך. ההערות שהיו כאן (ירידת
+ * מדרגה בהחזר, תשלום בלון, הריבית שבתוקף) עברו ל-`title` — הן נשארות זמינות
+ * בריחוף, בלי להאריך את הבלוק.
+ */
 function RowStat({
   icon,
   label,
   value,
   hint,
+  info,
   emphasized = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
+  /** הסבר קצר שנפתח בלחיצה או במעבר עכבר על סימן המידע */
+  info?: string;
   emphasized?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2">
-      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+    <div
+      title={hint}
+      className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50/70 px-2 py-1 text-center"
+    >
+      <p className="flex items-center gap-1 text-[10px] leading-none text-slate-500">
         {icon}
         {label}
+        {hint && !info && <Info className="h-2.5 w-2.5 text-slate-400" />}
+        {info && <InfoTip text={info} label={`הסבר על ${label}`} />}
       </p>
       <p
-        className={`font-bold leading-tight ${
-          emphasized ? 'text-base text-blue-600' : 'text-sm text-slate-900'
+        className={`mt-0.5 font-bold leading-tight ${
+          emphasized ? 'text-[15px] text-blue-600' : 'text-[13px] text-slate-900'
         }`}
       >
         {value}
       </p>
-      {hint && <p className="text-[10px] text-amber-700 leading-tight break-words">{hint}</p>}
     </div>
   );
 }

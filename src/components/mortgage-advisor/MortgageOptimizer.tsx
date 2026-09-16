@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, TrendingUp, Shield, DollarSign, Calendar, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import type { MortgageMix, MortgageTrack } from './types';
 import { DEFAULT_INTEREST_RATES } from './types';
+import { useMarketRates } from '@/hooks/use-market-rates';
 import { calculateMortgageMix, formatCurrency, formatPercentage } from './mortgageCalculations';
 import { MortgageMixCard } from './MortgageMixCard';
 import { ComparisonPanel } from './ComparisonPanel';
@@ -63,10 +64,15 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
 
   const [selectedMixIds, setSelectedMixIds] = useState<string[]>([]);
 
+  // הריביות החיות של בנק ישראל. התמהילים נבנים מהן, ולכן הם נבנים מחדש
+  // ברגע שהמשיכה חוזרת ולא נשארים על ערכי הנפילה.
+  const { snapshot: marketRates } = useMarketRates();
+
   // חישוב תמהילים אופטימליים
   const optimizedMixes = useMemo(() => {
     return generateOptimizedMixes(inputs);
   }, [
+    marketRates,
     inputs.totalAmount,
     inputs.maxMonthlyPayment,
     inputs.currentAge,

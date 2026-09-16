@@ -25,7 +25,8 @@ import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
 import { createEmptyLoan } from './borrower-loans';
-import { analysisFromProfile, parseClientProfile } from './client-profile';
+import { analysisFromProfile, mergeProfiles, parseClientProfile } from './client-profile';
+import { parseStages } from './advisor-orders';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
 /**
@@ -406,7 +407,7 @@ export async function renamePlan(
   return getPlanForUser(userId, planId);
 }
 
-/** מחיקה היא ארכוב: התהליך יורד מהאזור האישי אך ההיסטוריה נשמרת */
+/** ארכוב: התהליך יורד מהאזור האישי אך הרשומה נשמרת */
 export async function archivePlan(userId: string, planId: string): Promise<boolean> {
   const row = await prisma.mortgagePlan.findFirst({
     where: { id: planId, ownerId: userId },
@@ -419,6 +420,61 @@ export async function archivePlan(userId: string, planId: string): Promise<boole
     data: { status: 'ARCHIVED' },
   });
   return true;
+}
+
+export type DeletePlanResult =
+  | { ok: true }
+  | { ok: false; reason: 'not-found' }
+  /** שלבים שהיועץ כבר עובד עליהם בתשלום — אי אפשר למחוק תהליך שעבודה עליו שולמה */
+  | { ok: false; reason: 'locked'; stages: PlanStageId[] };
+
+/**
+ * מחיקת תהליך מבסיס הנתונים.
+ *
+ * לפני המחיקה הפרופיל הפיננסי שהלקוח בנה בשלביו נשמר עליו — הכנסות, גילים,
+ * הון עצמי, הלוואות וצפי הכנסות. כך מחיקת התהליך האחרון אינה מוחקת את מה
+ * שהלקוח הזין, ותהליך חדש ייפתח עם אותם נתונים כברירת מחדל. פרטי הנכס עצמם
+ * אינם חלק מהפרופיל, ולכן הם נמחקים יחד עם התהליך.
+ *
+ * שלב שהיועץ כבר עובד עליו בתשלום חוסם את המחיקה: העבודה שולמה ומתבצעת.
+ */
+export async function deletePlan(userId: string, planId: string): Promise<DeletePlanResult> {
+  const row = await prisma.mortgagePlan.findFirst({
+    where: { id: planId, ownerId: userId },
+    select: {
+      id: true,
+      stages: { where: { stage: 'ANALYSIS' }, select: { dataJson: true } },
+      advisorOrders: {
+        where: { workStartedAt: { not: null } },
+        select: { stagesJson: true },
+      },
+    },
+  });
+  if (!row) return { ok: false, reason: 'not-found' };
+
+  const lockedRaw = new Set(row.advisorOrders.flatMap((order) => parseStages(order.stagesJson)));
+  if (lockedRaw.size > 0) {
+    return { ok: false, reason: 'locked', stages: PLAN_STAGES.filter((stage) => lockedRaw.has(stage)) };
+  }
+
+  const analysis = row.stages[0]?.dataJson;
+  if (analysis) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { profileJson: true },
+    });
+    const merged = mergeProfiles(
+      parseClientProfile(user?.profileJson),
+      parseClientProfile(analysis)
+    );
+    await prisma.user.update({
+      where: { id: userId },
+      data: { profileJson: merged as unknown as Prisma.InputJsonValue },
+    });
+  }
+
+  await prisma.mortgagePlan.delete({ where: { id: planId } });
+  return { ok: true };
 }
 
 export interface PlanDealInput {

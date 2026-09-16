@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { formatNumberInput, parseDecimalInput, sanitizeDecimalInput } from '@/lib/currency';
+import { moveCaretToEnd } from '@/lib/caret';
 
 type NumericInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'max'> & {
   value: number | null;
   onChange: (value: number | null) => void;
   /** בלי נקודה עשרונית — סכומים בשקלים */
   integer?: boolean;
+  /** מתיר ערך שלילי — למרווח מתחת לעוגן, למשל */
+  allowNegative?: boolean;
   max?: number;
 };
 
@@ -35,11 +38,16 @@ function caretAfterDigits(text: string, digits: number): number {
  * בסכומים שלמים (integer) הפסיקים מופיעים כבר תוך כדי ההקלדה, והסמן נשמר
  * במקומו. במצב עשרוני אין קיבוץ אלפים בכוונה: שם הפסיק הוא המפריד העשרוני
  * (ראה sanitizeDecimalInput), ולכן "1,234" היה נקרא כ-1.234.
+ *
+ * בכניסה לשדה הסמן עובר לסוף הערך: הטקסט מיושר לימין בתוך שדה LTR, ולכן
+ * לחיצה על החלק הריק שלו הייתה מציבה את הסמן לפני הספרה הראשונה — ומקש
+ * המחיקה לא עשה כלום עד שהמשתמש הזיז את הסמן ידנית.
  */
 export function NumericInput({
   value,
   onChange,
   integer = false,
+  allowNegative = false,
   max,
   className,
   onFocus,
@@ -86,6 +94,7 @@ export function NumericInput({
           value === null ? '' : integer ? formatNumberInput(String(Math.round(value))) : String(value)
         );
         setFocused(true);
+        moveCaretToEnd(event.currentTarget);
         onFocus?.(event);
       }}
       onBlur={(event) => {
@@ -113,9 +122,9 @@ export function NumericInput({
           return;
         }
 
-        const next = sanitizeDecimalInput(raw);
+        const next = sanitizeDecimalInput(raw, { allowNegative });
         setDraft(next);
-        const parsed = parseDecimalInput(next);
+        const parsed = parseDecimalInput(next, { allowNegative });
         if (parsed === null || !Number.isFinite(parsed)) {
           onChange(null);
           return;

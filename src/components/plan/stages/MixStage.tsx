@@ -1,24 +1,12 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { Sparkles, TrendingUp } from 'lucide-react';
+import { useMemo, useRef } from 'react';
 import { analyzeProfile, requestedMortgage } from '@/lib/mortgage-plan';
-import type { MixData, PlanData } from '@/lib/mortgage-plan';
+import type { AnalysisData, MixData, PlanData } from '@/lib/mortgage-plan';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
-import type { PendingPrepay } from '@/components/mortgage-advisor/MortgageWorkspace';
+import type { DealChange } from '@/components/mortgage-advisor/MortgageWorkspace';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
-import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { PrepaymentEvent } from '@/components/mortgage-advisor/engine';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { formatShekel } from '../ui';
 
 function toMixData(saved: SavedMix, notes: string, asFinal = false): MixData {
   return {
@@ -59,72 +47,31 @@ function plannedPrepayments(data: PlanData): PrepaymentEvent[] {
   });
 }
 
-function FutureLumpAssign({
-  event,
-  mixes,
-  onAssign,
-}: {
-  event: PrepaymentEvent;
-  mixes: SavedMix[];
-  onAssign: (next: PendingPrepay) => void;
-}) {
-  const withTracks = mixes.filter((item) => item.mix.tracks.length > 0);
-
-  const [resetKey, setResetKey] = useState(0);
-
-  return (
-    <div className="mt-2">
-      <Select
-        key={resetKey}
-        onValueChange={(value) => {
-          const separator = value.indexOf('::');
-          if (separator <= 0) return;
-          onAssign({
-            mixId: value.slice(0, separator),
-            trackId: value.slice(separator + 2),
-            amount: event.amount,
-            month: event.month,
-            label: event.label,
-          });
-          setResetKey((current) => current + 1);
-        }}
-      >
-        <SelectTrigger className="h-9 w-full max-w-full bg-white text-xs sm:max-w-lg">
-          <SelectValue placeholder="לאיזה מסלול לייעד את הסכום?" />
-        </SelectTrigger>
-        <SelectContent>
-          {withTracks.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-slate-500">שמרו תמהיל כדי לייעד את הסכום למסלול.</div>
-          ) : (
-            withTracks.map((item) => (
-              <SelectGroup key={item.mix.id}>
-                <SelectLabel className="pr-3 text-right text-[11px] font-black text-slate-700">
-                  {item.mix.name || 'תמהיל ללא שם'}
-                </SelectLabel>
-                {item.mix.tracks.map((track) => (
-                  <SelectItem key={`${item.mix.id}::${track.id}`} value={`${item.mix.id}::${track.id}`}>
-                    {track.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))
-          )}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
 export function MixStage({
   data,
   onChange,
+  onAnalysisChange,
   planId,
   focusMixKey,
+  clientId,
+  onFinalConfirmed,
 }: {
   data: PlanData;
   onChange: (next: MixData) => void;
+  /**
+   * עדכון הפרופיל כשפרטי העסקה נערכו בכלי התמהילים ועברו את הבדיקה
+   * הרגולטורית — כדי שהתהליך ישמור אותם ושאר המסכים ימשכו אותם משם.
+   */
+  onAnalysisChange?: (next: AnalysisData) => void;
   planId: string;
   focusMixKey?: string | null;
+  /** אחרי אישור התמהיל הסופי — סגירת השלב ומעבר לשלב האישור העקרוני */
+  onFinalConfirmed?: () => void;
+  /**
+   * תיק הלקוח, כשהמסך נפתח אצל היועץ. זה ההבדל היחיד בין מה שהיועץ רואה למה
+   * שהלקוח רואה: אותו כלי בדיוק, על התמהילים של אותו לקוח.
+   */
+  clientId?: string;
 }) {
   const analysis = analyzeProfile(data.ANALYSIS);
   const profile = data.ANALYSIS;
@@ -135,16 +82,50 @@ export function MixStage({
   notes.current = data.MIX.notes;
   const mixState = useRef(data.MIX);
   mixState.current = data.MIX;
-
-  const { saved } = useSavedMixes();
-  const [pendingPrepay, setPendingPrepay] = useState<PendingPrepay | null>(null);
-  const clearPendingPrepay = useCallback(() => setPendingPrepay(null), []);
+  const analysisState = useRef(data.ANALYSIS);
+  analysisState.current = data.ANALYSIS;
+  const persistAnalysis = useRef(onAnalysisChange);
+  persistAnalysis.current = onAnalysisChange;
 
   /**
-   * כשהסלים האחידים כבר נשמרו כתמהילים, השלב נפתח ברשימת התמהילים ולא באשף —
-   * כדי שהלקוח יתחיל מהסלים שקיבל בפועל ולא יזין הכול מחדש.
+   * עריכה תקינה של פרטי העסקה בכלי נכתבת לפרופיל (שלב 1) ולסיכום התמהיל
+   * (שלב 2), ומשם נמשכת לכרטיס התהליך, לדוח ולשאר המסכים. ההון העצמי הוא
+   * ההפרש בין עלות הנכס למשכנתא; אחוז המימון שנבחר בפרופיל, אם נבחר, מתעדכן
+   * לאחוז בפועל כדי שלא ידרוס את הסכום שנערך.
    */
-  const basketsSaved = preApproval.baskets.some((basket) => basket.mixKey);
+  const applyDealChange = (deal: DealChange) => {
+    const current = analysisState.current;
+    const propertyValue = deal.propertyValue && deal.propertyValue > 0 ? deal.propertyValue : null;
+    const actualLtv =
+      propertyValue && deal.mortgageAmount > 0
+        ? Math.round((deal.mortgageAmount / propertyValue) * 1000) / 10
+        : null;
+    persistAnalysis.current?.({
+      ...current,
+      propertyValue,
+      mortgageAmount: deal.mortgageAmount > 0 ? deal.mortgageAmount : null,
+      equity: deal.equity ?? current.equity,
+      dealType: deal.dealType ?? current.dealType,
+      propertyAddress: deal.propertyAddress,
+      targetLtvPercent: current.targetLtvPercent !== null ? actualLtv : null,
+    });
+
+    const mixData = mixState.current;
+    if (mixData.mixKey) {
+      persist.current({
+        ...mixData,
+        totalAmount: deal.mortgageAmount,
+        propertyValue,
+        propertyAddress: deal.propertyAddress,
+      });
+    }
+  };
+
+
+  /**
+   * הסלים האחידים שנשמרו באישור העקרוני נפתחים ברשימת התמהילים של השלב, כדי
+   * שהלקוח ימשיך מהסלים שקיבל בפועל ולא יזין אותם מחדש.
+   */
   const preferredMixIds = useMemo(() => {
     const fromBaskets = preApproval.baskets.flatMap((basket) =>
       basket.mixKey ? [basket.mixKey] : []
@@ -155,7 +136,6 @@ export function MixStage({
     return fromBaskets;
   }, [preApproval.baskets, data.MIX.mixKey]);
   const prepayments = plannedPrepayments(data);
-  const hasFutureIncome = prepayments.length > 0 || Boolean(profile.futureMonthlyIncrease);
   /** ברירת מחדל: מחיר הנכס לפי אחוז המימון שהוזן בפרופיל, או פחות ההון העצמי */
   const defaultMortgage =
     requestedMortgage(
@@ -167,51 +147,15 @@ export function MixStage({
 
   return (
     <div className="space-y-4">
-      {hasFutureIncome && (
-        <div className="rounded-3xl border border-violet-200 bg-violet-50/60 p-5">
-          <div className="mb-2 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-600" />
-            <h4 className="text-sm font-black text-slate-900">מה שהצהרתם עליו לעתיד</h4>
-          </div>
-          <ul className="space-y-2.5">
-            {prepayments.map((event) => (
-              <li key={event.id} className="text-xs text-slate-600">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 shrink-0 text-violet-500" />
-                  <span>
-                    <span className="font-bold text-slate-900">
-                      {event.label} · {formatShekel(event.amount)}
-                    </span>{' '}
-                    צפוי בחודש {event.month}. בחרו מסלול כדי לפתוח פירעון מוקדם עם הסכום והמועד האלה.
-                  </span>
-                </div>
-                <FutureLumpAssign event={event} mixes={saved} onAssign={setPendingPrepay} />
-              </li>
-            ))}
-            {profile.futureMonthlyIncrease ? (
-              <li className="flex items-center gap-2 text-xs text-slate-600">
-                <TrendingUp className="h-3.5 w-3.5 shrink-0 text-violet-500" />
-                <span>
-                  תוספת חודשית צפויה של{' '}
-                  <span className="font-bold text-slate-900">
-                    {formatShekel(profile.futureMonthlyIncrease)}
-                  </span>
-                  {profile.futureMonthlyIncreaseInYears
-                    ? ` בעוד ${profile.futureMonthlyIncreaseInYears} שנים`
-                    : ''}{' '}
-                  — שווה לשקול תקופה קצרה יותר במסלול אחד, או פירעון מוקדם שוטף.
-                </span>
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      )}
-
+      {/*
+        הסכומים שהוצהרו לעתיד עוברים לכלי התמהיל עצמו דרך `defaultEvents`, ושם
+        הם הופכים לפירעון מוקדם על מסלול. הרשימה שהייתה כאן רק חזרה על אותו
+        מידע מעל הכלי, ולכן הוסרה.
+      */}
       <MortgageWorkspace
         embedded
-        skipPropertySetup
         planId={planId}
-        startInSetup={!data.MIX.mixKey && !basketsSaved && !focusMixKey}
+        clientId={clientId}
         preferredMixIds={preferredMixIds}
         activeMixKey={focusMixKey || data.MIX.mixKey}
         soloMixKey={focusMixKey || undefined}
@@ -227,14 +171,14 @@ export function MixStage({
           equity: profile.equity ?? undefined,
         }}
         defaultEvents={prepayments}
-        pendingPrepay={pendingPrepay}
-        onPendingPrepayHandled={clearPendingPrepay}
         onActiveMix={(item) => {
           const current = mixState.current;
           if (current.finalLocked && current.mixKey && current.mixKey !== item.mix.id) return;
           persist.current(toMixData(item, notes.current, current.finalLocked && current.mixKey === item.mix.id));
         }}
         onSelectFinal={(item) => persist.current(toMixData(item, notes.current, true))}
+        onFinalConfirmed={onFinalConfirmed}
+        onDealChange={onAnalysisChange ? applyDealChange : undefined}
       />
     </div>
   );
