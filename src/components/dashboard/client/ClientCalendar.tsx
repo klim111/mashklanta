@@ -47,6 +47,9 @@ export function eventTone(event: CalendarEvent): { dot: string; chip: string; ca
   if (event.kind === 'deadline') {
     return { dot: 'bg-rose-500', chip: 'bg-rose-100 text-rose-800', card: 'border-rose-200 bg-rose-50/70' };
   }
+  if (event.kind === 'task') {
+    return { dot: 'bg-blue-500', chip: 'bg-blue-100 text-blue-800', card: 'border-blue-200 bg-blue-50/70' };
+  }
   return event.confirmed
     ? { dot: 'bg-emerald-500', chip: 'bg-emerald-100 text-emerald-800', card: 'border-emerald-200 bg-emerald-50/70' }
     : { dot: 'bg-amber-500', chip: 'bg-amber-100 text-amber-800', card: 'border-amber-200 bg-amber-50/70' };
@@ -359,6 +362,7 @@ export function ClientCalendar({
         <Legend dot="bg-emerald-500" label="פגישה מאושרת" />
         <Legend dot="bg-amber-500" label="ממתינה לאישורכם" />
         <Legend dot="bg-rose-500" label="מועד חשוב" />
+        <Legend dot="bg-blue-500" label="משימה שלי" />
       </div>
     </div>
   );

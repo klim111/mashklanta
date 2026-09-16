@@ -77,14 +77,14 @@ describe('סדר היום של הלקוח', () => {
     expect(continues[0].target).toEqual({ kind: 'href', href: '/dashboard/plans/p1' });
   });
 
-  it('פרטי נכס חסרים הופכים למשימה שמובילה לאזור המשכנתאות', () => {
+  it('פרטי נכס חסרים הופכים למשימה שמובילה לתהליך עצמו', () => {
     const tasks = buildClientTasks(
       { ...EMPTY_AGENDA_INPUT, plans: [plan({ propertyValue: null })] },
       NOW
     );
     expect(tasks.find((task) => task.id === 'deal:p1')?.target).toEqual({
-      kind: 'section',
-      section: 'mortgages',
+      kind: 'href',
+      href: '/dashboard/plans/p1',
     });
   });
 

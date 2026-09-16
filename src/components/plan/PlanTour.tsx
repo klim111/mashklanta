@@ -45,9 +45,18 @@ export interface PlanTourProps {
  * (גם במקלדת). מתחת למסך רואים את הכלי עצמו; "נסו את השלב" פותח אותו לשלושה
  * שינויים, ואז ההסבר חוזר. אחרי השלב החמישי מגיע מסך ההצעה.
  */
+/**
+ * באילו שלבים אפשר לנסות את הכלי בסיור. שלב האישור העקרוני מוצג כמסך סופי
+ * לדוגמה בלבד — עם האישורים מהבנקים — וכל לחיצה בו מחזירה להסבר.
+ */
+export function tourAllowsTry(stage: PlanStageId): boolean {
+  return stage !== 'APPLICATIONS';
+}
+
 export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = false }: PlanTourProps) {
   const isOffer = index >= TOUR_OFFER_INDEX;
   const stage: PlanStageId = PLAN_STAGES[Math.min(index, PLAN_STAGES.length - 1)];
+  const canTry = tourAllowsTry(stage);
   const journey = journeyStageFor(stage);
   const guide = STAGE_GUIDE[stage];
   const tools = stageGuideTools(stage);
@@ -96,6 +105,13 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
               <>
                 <div className={`h-2 w-full bg-gradient-to-l ${journey.gradient}`} />
                 <div className="p-6 md:p-8">
+                  {!canTry && (
+                    <p className="mb-4 flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs font-bold text-sky-900">
+                      <Lock className="h-4 w-4 shrink-0 text-sky-600" />
+                      בשלב הזה מוצג המסך הסופי לדוגמה — האישורים העקרוניים משלושה בנקים על תמהיל לדוגמה.
+                      כל לחיצה על המסך מחזירה להסבר.
+                    </p>
+                  )}
                   {returnedAfterChanges && (
                     <motion.p
                       initial={{ opacity: 0, y: -6 }}
@@ -189,7 +205,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                     >
                       <MousePointerClick className="h-4 w-4" />
-                      נסו את השלב
+                      {canTry ? 'נסו את השלב' : 'הציצו במסך לדוגמה'}
                     </button>
                   </div>
                 </div>

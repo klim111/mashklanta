@@ -3,16 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PLAN_STAGES, emptyPlanData, parseStageData, stageIndex } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus, PlanStatus } from '@/lib/mortgage-plan';
+import { DEMO_ADDRESS, DEMO_MORTGAGE, DEMO_PLAN_ID, DEMO_PROPERTY_VALUE, demoPlanData, isDemoPlan } from '@/lib/demo-plan';
 
-/**
- * מזהה תהליך ההדגמה של הסיור. תהליך כזה חי בדפדפן בלבד — לא נשמר, לא נטען,
- * וכל השלבים בו פתוחים כדי שאפשר יהיה להציץ בכל כלי.
- */
-export const DEMO_PLAN_ID = 'demo';
-
-export function isDemoPlan(planId: string): boolean {
-  return planId === DEMO_PLAN_ID;
-}
+export { DEMO_PLAN_ID, isDemoPlan };
 
 function demoPlan(): PlanView {
   const now = new Date().toISOString();
@@ -22,9 +15,9 @@ function demoPlan(): PlanView {
     status: 'IN_PROGRESS',
     currentStage: 'ANALYSIS',
     progress: 0,
-    propertyValue: null,
-    propertyAddress: null,
-    mortgageAmount: null,
+    propertyValue: DEMO_PROPERTY_VALUE,
+    propertyAddress: DEMO_ADDRESS,
+    mortgageAmount: DEMO_MORTGAGE,
     monthlyPayment: null,
     completedAt: null,
     createdAt: now,
@@ -35,7 +28,7 @@ function demoPlan(): PlanView {
       data: null,
       completedAt: null,
     })),
-    data: emptyPlanData(),
+    data: demoPlanData(),
   };
 }
 

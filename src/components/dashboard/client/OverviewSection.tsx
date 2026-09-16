@@ -64,18 +64,22 @@ export function OverviewSection({
   onDetailPlan: (planId: string | null) => void;
   onNavigate: (section: DashboardSection, day?: string) => void;
 }) {
-  const { plansState, mixesState, tasks, events, requests, advisorStages, ready, firstVisit } = data;
+  const { plansState, mixesState, tasks, events, requests, advisorStages, ready } = data;
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const active = plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS');
+  const completed = plansState.plans.filter((plan) => plan.status === 'COMPLETED');
   const summaries = active.map((plan) => summarizePlan(plan, advisorStages[plan.id]));
   const upcoming = upcomingEvents(events, new Date(), 3);
   const next = upcoming[0] ?? null;
   const urgent = tasks.filter((task) => task.tone === 'urgent').length;
   const lead = summaries[0] ?? null;
+
+  const scrollToPlans = () =>
+    document.getElementById('my-mortgages')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const go = (target: AgendaTarget) => {
     if (target.kind === 'section') onNavigate(target.section);
@@ -117,16 +121,16 @@ export function OverviewSection({
         tone="blue"
         label="משכנתאות בתהליך"
         value={`${active.length}`}
-        hint={active.length === 0 ? 'עוד לא התחלתם תהליך' : 'לכל המשכנתאות'}
-        onClick={() => onNavigate('mortgages')}
+        hint={active.length === 0 ? 'בחרו למטה מה תרצו לעשות' : 'המצב הנוכחי למטה'}
+        onClick={scrollToPlans}
       />
       <KpiTile
         icon={<ListChecks className="h-5 w-5" />}
         tone="violet"
         label="השלב הנוכחי"
         value={lead ? `שלב ${lead.stageNumber}` : '—'}
-        hint={lead ? journeyStageFor(lead.currentStage).shortTitle : 'מתחילים ב״איפה אתם בתהליך״'}
-        onClick={() => (lead ? window.location.assign(lead.href) : onNavigate('mortgages'))}
+        hint={lead ? journeyStageFor(lead.currentStage).shortTitle : 'מתחילים ב״מה תרצו לעשות?״'}
+        onClick={() => (lead ? window.location.assign(lead.href) : scrollToPlans())}
       />
       <KpiTile
         icon={<CalendarDays className="h-5 w-5" />}
@@ -151,7 +155,7 @@ export function OverviewSection({
     <DashCard
       title="לוח השנה שלי"
       icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
-      action={<CardLink onClick={() => onNavigate('agenda')}>ללוח המלא</CardLink>}
+      action={<GoLink onClick={() => onNavigate('agenda')}>ללוח המלא</GoLink>}
     >
       <div className="space-y-3">
         <MiniCalendar events={events} onSelect={(day) => onNavigate('agenda', day)} />
@@ -192,7 +196,7 @@ export function OverviewSection({
     <DashCard
       title="המשימות הבאות שלי"
       icon={<ListChecks className="h-5 w-5 text-blue-600" />}
-      action={<CardLink onClick={() => onNavigate('agenda')}>לכל המשימות</CardLink>}
+      action={<GoLink onClick={() => onNavigate('agenda')}>לכל המשימות</GoLink>}
     >
       {tasks.length === 0 ? (
         <div className="flex items-center justify-center gap-3 py-5 text-center">
@@ -277,22 +281,6 @@ export function OverviewSection({
     />
   );
 
-  if (firstVisit) {
-    // עדיין לא קרה דבר — נקודת ההתחלה היא המסך, ושאר האזורים מתחתיה
-    return (
-      <div className="grid gap-4">
-        <MortgageEntry variant="hero" onStart={startPlan} busy={busy} hasPlans={false} />
-        {kpis}
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          {tasksCard}
-          {calendarCard}
-        </div>
-        {quickActions}
-        <AdvisorCta variant="row" />
-      </div>
-    );
-  }
-
   return (
     <div className="grid gap-4">
       {kpis}
@@ -301,10 +289,15 @@ export function OverviewSection({
         <DashCard
           title="המשכנתאות שלי — מצב נוכחי"
           icon={<Compass className="h-5 w-5 text-blue-600" />}
-          action={<CardLink onClick={() => onNavigate('mortgages')}>לכל המשכנתאות</CardLink>}
+          className="scroll-mt-24"
+          id="my-mortgages"
         >
           {summaries.length === 0 ? (
-            <EmptyPlans onOpen={() => onNavigate('mortgages')} />
+            /*
+              עדיין אין משכנתא או מיחזור פעילים — נקודת ההתחלה יושבת כאן, בתוך
+              הכרטיס עצמו: "מה תרצו לעשות?" עם כל הכפתורים והפעולות שמתחתיו.
+            */
+            <MortgageEntry variant="hero" onStart={startPlan} busy={busy} hasPlans={completed.length > 0} />
           ) : (
             <div className="max-h-[430px] space-y-3 overflow-y-auto pl-1">
               {summaries.map((summary) => (
@@ -318,17 +311,45 @@ export function OverviewSection({
             </div>
           )}
 
-          {/* פתיחת תהליך נוסף — מתחת למשכנתא האחרונה */}
-          <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
-            >
-              <Plus className="h-5 w-5" />
-              הוסף משכנתא חדשה
-            </button>
-          </div>
+          {/* משכנתאות שהסתיימו — רק כשיש כאלה */}
+          {completed.length > 0 && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <p className="mb-2 flex items-center gap-1.5 text-[13px] font-black text-slate-500">
+                <Check className="h-4 w-4 text-emerald-600" />
+                משכנתאות שלקחתי ({completed.length})
+              </p>
+              <div className="space-y-2">
+                {completed.map((plan) => (
+                  <Link
+                    key={plan.id}
+                    href={`/dashboard/plans/${plan.id}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-2.5 text-[15px] transition-colors hover:border-emerald-400"
+                  >
+                    <span className="min-w-0 truncate font-black text-slate-900">
+                      {plan.propertyAddress || plan.name}
+                    </span>
+                    <span className="shrink-0 text-[13px] font-bold text-emerald-800">
+                      {plan.data.SIGNING.bank ? `בנק ${plan.data.SIGNING.bank} · ` : ''}לצפייה
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* פתיחת תהליך נוסף — רק כשכבר יש משכנתא; אחרת הבחירה כבר במסך */}
+          {summaries.length > 0 && (
+            <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+              >
+                <Plus className="h-5 w-5" />
+                משכנתא נוספת — מה תרצו לעשות?
+              </button>
+            </div>
+          )}
         </DashCard>
 
         {calendarCard}
@@ -365,25 +386,16 @@ export function OverviewSection({
   );
 }
 
-function EmptyPlans({ onOpen }: { onOpen: () => void }) {
+function GoLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 py-6 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-        <MapPin className="h-7 w-7" />
-      </span>
-      <p className="text-lg font-black text-slate-900">עוד אין משכנתא בתהליך</p>
-      <p className="max-w-sm text-[15px] leading-relaxed text-slate-500">
-        בחרו ב״מה תרצו לעשות?״ בתפריט הצד — משכנתא חדשה, מיחזור או ייעוץ — ונתחיל מהשלב הראשון.
-      </p>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="mt-1 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-[15px] font-black text-white hover:bg-slate-700"
-      >
-        לאזור המשכנתאות
-        <ArrowLeft className="h-4 w-4" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-black text-blue-600 hover:underline"
+    >
+      {children}
+      <ArrowLeft className="h-3.5 w-3.5" />
+    </button>
   );
 }
 
@@ -425,19 +437,6 @@ function KpiTile({
         <span className="block truncate text-2xl font-black leading-tight text-slate-900">{value}</span>
         <span className="block truncate text-[13px] text-slate-500">{hint}</span>
       </span>
-    </button>
-  );
-}
-
-function CardLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-black text-blue-600 hover:underline"
-    >
-      {children}
-      <ArrowLeft className="h-3.5 w-3.5" />
     </button>
   );
 }

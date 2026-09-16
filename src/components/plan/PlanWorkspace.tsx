@@ -38,11 +38,12 @@ import type {
 import { PLAN_STAGE_ACTIONS, journeyStageFor } from '@/data/platform/planStages';
 import { usePlan } from './usePlan';
 import type { PlanView, SaveState } from './usePlan';
-import { PlanTour, TOUR_FREE_CHANGES } from './PlanTour';
+import { PlanTour, TOUR_FREE_CHANGES, tourAllowsTry } from './PlanTour';
+import { StageTasksPanel } from './tasks/StageTasksPanel';
+import { VaultButton } from './documents/VaultButton';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import { StageRail } from './StageRail';
 import { StageLockedPreview } from './StageLockedPreview';
-import { StageTools } from './StageTools';
 import { formatShekel } from './ui';
 import { AdvisorStageNotes } from './AdvisorStageNotes';
 import { AdvisorStageSummary } from './advisor/AdvisorStageSummary';
@@ -110,12 +111,14 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
     setTourOpen(false);
   }, []);
 
+
   /** בסיור כל ערך שמשתנה בכלי נספר, ואחרי שלושה ערכים מסך ההסבר חוזר */
   const updateStage = useCallback(
     <S extends PlanStageId>(stage: S, next: PlanView['data'][S]) => {
       const previous = planRef.current?.data[stage] as Record<string, unknown> | undefined;
       rawUpdateStage(stage, next);
-      if (!tour || tourOpen) return;
+      // מסך שרק מציצים בו חוזר להסבר בלחיצה, לא לפי ספירת שינויים
+      if (!tour || tourOpen || !tourAllowsTry(stage)) return;
       const incoming = next as unknown as Record<string, unknown>;
       Object.keys(incoming).forEach((key) => {
         // מסכי הניווט הפנימיים אינם ערך שהלקוח הזין
@@ -249,6 +252,8 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
 
   const stage = viewingStage ?? plan.currentStage;
   const unfinished = unfinishedPrerequisites(stage, statuses);
+  /** מסך שרק מציצים בו בסיור (האישור העקרוני): כל לחיצה מחזירה להסבר */
+  const lookOnly = tour && !tourOpen && !tourAllowsTry(stage);
   // בסיור כל שלב פתוח להצצה — אין נעילה לפי שלבים קודמים
   const isPreview = !tour && unfinished.length > 0;
   const journey = journeyStageFor(stage);
@@ -520,10 +525,29 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
           </div>
 
           <StageRail current={stage} statuses={statuses} onSelect={selectStage} />
+
+          {/* תיק המסמכים — זמין מכל שלב, עם ההתקדמות לכל שלב ולכל התהליך */}
+          {!tour && (
+            <div className="mt-4">
+              <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="header" />
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main
+        className={`mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 ${lookOnly ? 'cursor-pointer' : ''}`}
+        onClickCapture={
+          lookOnly
+            ? (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setTourReturned(false);
+                setTourOpen(true);
+              }
+            : undefined
+        }
+      >
         {plan.status === 'COMPLETED' && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -589,6 +613,9 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
 
             {/* מה שהיועץ כתב ללקוח בשלב הזה, מעל תוכן השלב עצמו */}
             {!tour && <AdvisorStageNotes stage={stage} />}
+
+            {/* המשימות המתוכננות של השלב — לכל לקוח עם תהליך פתוח */}
+            {!tour && !isPreview && !advisorSummaryOnly && <StageTasksPanel planId={plan.id} stage={stage} />}
 
             {showAdvisorSummary && (
               <div className="mb-4">
@@ -720,6 +747,13 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* תיק המסמכים — נשאר בהישג יד גם אחרי גלילה */}
+      {!tour && (
+        <div className="fixed bottom-5 right-5 z-40">
+          <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />
+        </div>
+      )}
 
       {/* חזרה לדאשבורד — זמינה תמיד, גם אחרי גלילה לתוך השלב */}
       <Link

@@ -18,10 +18,10 @@ import {
 } from 'lucide-react';
 import { isDashboardSection } from '@/lib/client-agenda';
 import type { DashboardSection } from '@/lib/client-agenda';
-import { PlansOverview, isUnassociatedMix } from '@/components/plan/PlansOverview';
-import { UnassignedMixesSection } from '@/components/plan/UnassignedMixes';
+import { UnassignedMixesSection, isUnassociatedMix } from '@/components/plan/UnassignedMixes';
 import { useStartPlan } from '@/components/plan/StartCard';
 import { MortgageEntry, readEntryQuery } from '@/components/service-flow/MortgageEntry';
+import { VaultButton } from '@/components/plan/documents/VaultButton';
 import type { ServiceType } from '@/lib/service-flow';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
@@ -46,13 +46,6 @@ const SECTIONS: SectionMeta[] = [
     title: 'הסקירה שלי',
     description: 'איפה אתם עומדים, מה קרוב ביומן ומה הפעולה הבאה — הכול במסך אחד.',
     icon: LayoutDashboard,
-  },
-  {
-    id: 'mortgages',
-    label: 'המשכנתאות שלי',
-    title: 'המשכנתאות שלי',
-    description: 'כל המשכנתאות שלכם — הפתוחות ואלה שכבר נלקחו — עם מצב חמשת השלבים בכל אחת.',
-    icon: Compass,
   },
   {
     id: 'agenda',
@@ -84,8 +77,8 @@ const SECTIONS: SectionMeta[] = [
   },
 ];
 
-/** קישורים ישנים כמו `/dashboard#plans` ממשיכים לעבוד */
-const LEGACY_HASH: Record<string, DashboardSection> = { plans: 'mortgages' };
+/** קישורים ישנים כמו `/dashboard#plans` ו-`#mortgages` מובילים לסקירה, שבה המשכנתאות */
+const LEGACY_HASH: Record<string, DashboardSection> = { plans: 'overview', mortgages: 'overview' };
 
 function sectionFromHash(): DashboardSection {
   const hash = window.location.hash.replace('#', '');
@@ -149,12 +142,14 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const activePlans = data.plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS').length;
   const urgent = data.tasks.filter((task) => task.tone === 'urgent').length;
   const badges: Partial<Record<DashboardSection, { value: number; alert: boolean }>> = {
-    mortgages: { value: activePlans, alert: false },
+    overview: { value: activePlans, alert: false },
     agenda: { value: data.tasks.length, alert: urgent > 0 },
     'rate-requests': { value: data.requests.length, alert: false },
   };
 
   const meta = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0];
+  /** תיק המסמכים של המשכנתא הפתוחה — נגיש מכל אזור בדאשבורד */
+  const vaultPlan = data.plansState.plans.find((plan) => plan.status === 'IN_PROGRESS') ?? null;
   const displayName = name || email || 'אורח';
   const firstName = name?.split(' ')[0] || 'ברוכים הבאים';
 
@@ -206,6 +201,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         <nav className="mt-2 space-y-1">{navItems('sidebar')}</nav>
 
         <div className="mt-auto space-y-3 pt-6">
+          {vaultPlan && <VaultButton planId={vaultPlan.id} data={vaultPlan.data} variant="sidebar" />}
           <MortgageEntry
             variant="sidebar"
             onStart={startPlan}
@@ -258,14 +254,9 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8">
           <div className="mx-auto max-w-[1400px]">
             {/* במסך צר אין תפריט צד — שאלת הפתיחה יושבת מעל התוכן */}
-            {!(section === 'overview' && data.firstVisit) && (
+            {vaultPlan && (
               <div className="mb-4 rounded-2xl bg-slate-950 p-3 lg:hidden">
-                <MortgageEntry
-                  variant="sidebar"
-                  onStart={startPlan}
-                  busy={startBusy}
-                  hasPlans={data.plansState.plans.length > 0}
-                />
+                <VaultButton planId={vaultPlan.id} data={vaultPlan.data} variant="sidebar" />
               </div>
             )}
 
@@ -309,18 +300,6 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                   detailPlanId={detailPlanId}
                   onDetailPlan={setDetailPlanId}
                   onNavigate={navigate}
-                />
-              )}
-
-              {section === 'mortgages' && (
-                <PlansOverview
-                  plansState={data.plansState}
-                  mixesState={data.mixesState}
-                  advisorStages={data.advisorStages}
-                  onShowMix={(planId) => {
-                    setDetailPlanId(planId);
-                    navigate('overview');
-                  }}
                 />
               )}
 

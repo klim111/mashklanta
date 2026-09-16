@@ -6,6 +6,7 @@ import { computeMix } from './engine';
 import type { WorkspaceMix } from './engine';
 import { toSavedMix } from './mixRecord';
 import type { SavedMix } from './mixRecord';
+import { demoSavedMix, isDemoPlan } from '@/lib/demo-plan';
 
 export type { SavedMix } from './mixRecord';
 
@@ -38,6 +39,20 @@ function writeLocal(items: SavedMix[]) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(LOCAL_KEY, JSON.stringify(items));
   window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+/**
+ * התמהילים של תהליך ההדגמה (הסיור) — חיים בזיכרון בלבד ומשותפים לכל מופעי
+ * ההוק, כדי שהצעה שנשמרה במכרז תופיע מיד גם ברשימה שמעליו.
+ */
+let demoStore: SavedMix[] | null = null;
+function readDemo(): SavedMix[] {
+  if (!demoStore) demoStore = [demoSavedMix()];
+  return demoStore;
+}
+function writeDemo(items: SavedMix[]) {
+  demoStore = items;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 function snapshot(mix: WorkspaceMix): SavedMix {
@@ -140,12 +155,18 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
   const { clientId, planId } = options;
   const { status } = useSession();
   const signedIn = status === 'authenticated';
+  const demo = isDemoPlan(planId);
 
   const [saved, setSaved] = useState<SavedMix[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (demo) {
+      setSaved(readDemo());
+      setReady(true);
+      return;
+    }
     if (!signedIn) {
       setSaved(readLocal());
       setReady(true);
@@ -159,7 +180,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
     } finally {
       setReady(true);
     }
-  }, [signedIn, clientId]);
+  }, [signedIn, clientId, demo]);
 
   const imported = useRef(false);
   useEffect(() => {
@@ -167,7 +188,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
 
     let cancelled = false;
     const load = async () => {
-      if (signedIn && !imported.current) {
+      if (signedIn && !demo && !imported.current) {
         imported.current = true;
         await importLocalMixes();
       }
@@ -183,13 +204,19 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
       window.removeEventListener(CHANGE_EVENT, onChange);
       window.removeEventListener('storage', onChange);
     };
-  }, [status, signedIn, refresh]);
+  }, [status, signedIn, demo, refresh]);
 
   const save = useCallback(
     async (mix: WorkspaceMix, target?: SaveTarget): Promise<SavedMix> => {
       const optimistic = snapshot(mix);
       // התצוגה מתעדכנת מיד, והשרת מחזיר אחר כך את הרשומה עם המזהה שלה
       setSaved((items) => upsert(items, optimistic));
+
+      if (demo) {
+        const stored = { ...optimistic, recordId: `demo-${mix.id}`, planId };
+        writeDemo(upsert(readDemo(), stored));
+        return stored;
+      }
 
       if (!signedIn) {
         writeLocal(upsert(readLocal(), optimistic));
@@ -210,7 +237,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
         return optimistic;
       }
     },
-    [signedIn, clientId, planId]
+    [signedIn, clientId, planId, demo]
   );
 
   const recordIdOf = useCallback(
@@ -221,6 +248,11 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
   const remove = useCallback(
     async (mixId: string) => {
       setSaved((items) => items.filter((item) => item.mix.id !== mixId));
+
+      if (demo) {
+        writeDemo(readDemo().filter((item) => item.mix.id !== mixId));
+        return;
+      }
 
       if (!signedIn) {
         writeLocal(readLocal().filter((item) => item.mix.id !== mixId));
@@ -236,7 +268,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
       }
       await refresh();
     },
-    [signedIn, recordIdOf, refresh]
+    [signedIn, recordIdOf, refresh, demo]
   );
 
   const rename = useCallback(
@@ -246,6 +278,15 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
           item.mix.id === mixId ? { ...item, mix: { ...item.mix, name } } : item
         )
       );
+
+      if (demo) {
+        writeDemo(
+          readDemo().map((item) =>
+            item.mix.id === mixId ? { ...item, mix: { ...item.mix, name } } : item
+          )
+        );
+        return;
+      }
 
       if (!signedIn) {
         writeLocal(
@@ -270,7 +311,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
         setError('שינוי השם לא נשמר בשרת');
       }
     },
-    [signedIn, recordIdOf]
+    [signedIn, recordIdOf, demo]
   );
 
   /** שיוך תמהיל קיים ללקוח, או ניתוק השיוך */
@@ -297,6 +338,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
    */
   const share = useCallback(
     async (mixId: string): Promise<boolean> => {
+      if (demo) return true;
       const recordId = recordIdOf(mixId);
       if (!recordId) return false;
 
@@ -318,7 +360,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
       await refresh();
       return true;
     },
-    [recordIdOf, refresh]
+    [recordIdOf, refresh, demo]
   );
 
   return { saved, ready, error, signedIn, save, remove, rename, assign, share, refresh };

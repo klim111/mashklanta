@@ -14,6 +14,11 @@ import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
  * הם חיים באזור "תמהילים שמורים" ולא ברשימת המשכנתאות, כי הם עדיין לא
  * משכנתא: שיוך כתובת וסכום הוא מה שהופך תמהיל כזה לתהליך מלא עם חמשת השלבים.
  */
+/** תמהיל שנשמר בלי שיוך לנכס — מוצג בסוף הרשימה עד שמשייכים אותו */
+export function isUnassociatedMix(mix: SavedMix): boolean {
+  return !mix.planId && !(mix.mix.propertyAddress ?? '').trim();
+}
+
 export function UnassignedMixesSection({
   mixes,
   onDelete,

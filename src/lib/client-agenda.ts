@@ -14,11 +14,18 @@ import type { AdvisorMeetingView, AdvisorNoteView } from './advisor-crm';
 import { meetingIsLive } from './advisor-crm';
 import { planStageNumber, preApprovalDocuments, stageIndex } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
+import type { ClientTaskView } from './client-tasks';
+
+/** קידומת המזהה של משימה שהלקוח הוסיף לעצמו — כך הדאשבורד יודע שאפשר לסמן ולמחוק אותה */
+export const CLIENT_TASK_PREFIX = 'client-task:';
+
+export function clientTaskIdOf(id: string): string | null {
+  return id.startsWith(CLIENT_TASK_PREFIX) ? id.slice(CLIENT_TASK_PREFIX.length) : null;
+}
 
 /** אזורי הדאשבורד — הניווט הראשי של האזור האישי */
 export const DASHBOARD_SECTIONS = [
   'overview',
-  'mortgages',
   'agenda',
   'rate-requests',
   'tools',
@@ -94,6 +101,8 @@ export interface AgendaInput {
   notes: AdvisorNoteView[];
   /** השלבים שיועץ מטפל בהם, לכל תהליך */
   advisorStages: Record<string, PlanStageId[]>;
+  /** המשימות המתוכננות שהלקוח הוסיף לעצמו (פתוחות) */
+  clientTasks?: ClientTaskView[];
 }
 
 export const EMPTY_AGENDA_INPUT: AgendaInput = {
@@ -103,7 +112,21 @@ export const EMPTY_AGENDA_INPUT: AgendaInput = {
   unassignedMixes: 0,
   notes: [],
   advisorStages: {},
+  clientTasks: [],
 };
+
+const KIND_HINTS: Record<ClientTaskView['kind'], string> = {
+  TASK: 'משימה שהוספתם לעצמכם',
+  MEETING: 'פגישה שקבעתם',
+  DOCUMENT: 'מסמך להעלאה לתיק — נסגר כשהקובץ עולה',
+};
+
+/** לאן מובילה משימה של הלקוח: לשלב שממנו נוספה, או ללוח השנה */
+function clientTaskTarget(task: ClientTaskView, plans: AgendaPlan[]): AgendaTarget {
+  const plan = task.planId ? plans.find((item) => item.id === task.planId) : null;
+  if (plan) return { kind: 'href', href: planHref(plan, task.stage ?? undefined) };
+  return { kind: 'section', section: 'agenda' };
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -199,7 +222,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
         tone: 'action',
         due: null,
         stage: 'ANALYSIS',
-        target: { kind: 'section', section: 'mortgages' },
+        target: { kind: 'href', href: planHref(plan) },
       });
     }
 
@@ -282,6 +305,22 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
     }
   });
 
+  // המשימות שהלקוח הוסיף לעצמו — מתוך השלבים או מלוח השנה
+  (input.clientTasks ?? [])
+    .filter((task) => task.status === 'OPEN')
+    .forEach((task) => {
+      const overdue = task.dueAt !== null && daysUntil(task.dueAt, now) < 0;
+      tasks.push({
+        id: `${CLIENT_TASK_PREFIX}${task.id}`,
+        title: task.title,
+        hint: [KIND_HINTS[task.kind], task.details ?? ''].filter(Boolean).join(' · '),
+        tone: overdue ? 'urgent' : 'action',
+        due: task.dueAt,
+        stage: task.stage,
+        target: clientTaskTarget(task, input.plans),
+      });
+    });
+
   input.rateRequests
     .filter((request) => request.offers === 0)
     .forEach((request) => {
@@ -325,7 +364,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       stage: latestNote.stage,
       target: plan
         ? { kind: 'href', href: planHref(plan, latestNote.stage) }
-        : { kind: 'section', section: 'mortgages' },
+        : { kind: 'section', section: 'overview' },
     });
   }
 
@@ -393,6 +432,27 @@ export function buildCalendarEvents(input: AgendaInput): CalendarEvent[] {
           target: { kind: 'href', href: planHref(plan, 'SIGNING') },
         });
       }
+    });
+
+  // משימות ופגישות של הלקוח עצמו, כשיש להן מועד
+  (input.clientTasks ?? [])
+    .filter((task) => task.status === 'OPEN' && task.dueAt)
+    .forEach((task) => {
+      events.push({
+        id: `${CLIENT_TASK_PREFIX}${task.id}`,
+        kind: task.kind === 'MEETING' ? 'meeting' : 'task',
+        at: task.dueAt as string,
+        title: task.title,
+        subtitle: [
+          task.kind === 'MEETING' ? 'פגישה שקבעתם' : task.kind === 'DOCUMENT' ? 'מסמך להעלאה' : 'משימה שלי',
+          task.bank ? `בנק ${task.bank}` : '',
+          task.stage ? journeyStageFor(task.stage).shortTitle : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        confirmed: true,
+        target: clientTaskTarget(task, input.plans),
+      });
     });
 
   return events.sort((a, b) => a.at.localeCompare(b.at));

@@ -60,6 +60,7 @@ model User {
    * /**
    * /**
    * /**
+   * /**
    * /** המשימות שהיועץ פתח לעצמו, לכל לקוח ולכל שלב
    */
   advisorTasks    AdvisorTask[]        @relation("AdvisorTasks")
@@ -86,6 +87,7 @@ model User {
    * /**
    * /**
    * /**
+   * /**
    * תיקי האישור העקרוני שבהם המשתמש הוא הלווה
    */
   approvalCases    MortgageCase[]   @relation("ApprovalCaseClient")
@@ -104,6 +106,7 @@ model User {
    * /**
    * /**
    * /**
+   * /**
    * הזמנות הליווי שהמשתמש ביצע בתהליכי המשכנתא שלו
    */
   advisorOrders       AdvisorServiceOrder[] @relation("AdvisorOrderClient")
@@ -114,6 +117,7 @@ model User {
 
   // ─────────────────────── פניות ליווי כלליות ───────────────────────
   /**
+   * /**
    * /**
    * /** פניות שהמשתמש שלח מהאזור האישי (מצאתי נכס / סירוב / גיוס הון וכו')
    */
@@ -130,11 +134,16 @@ model User {
   // ─────────────────────── גישה בתשלום לפלטפורמה ───────────────────────
   /**
    * /**
+   * /**
    * מתי הלקוח רכש גישה מלאה לפלטפורמה. ריק — עדיין לא רכש, וכלי התכנון נפתח
    * אצלו במצב סיור בלבד. חודשי הגישה ששולמו מקוזזים מכל הזמנת ליווי.
    */
   platformAccessAt DateTime?
   platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
+  /**
+   * המשימות המתוכננות שהלקוח הוסיף לעצמו — מתוך השלבים או מלוח השנה
+   */
+  clientTasks      ClientTask[]      @relation("ClientTaskOwner")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -492,6 +501,7 @@ model MortgagePlan {
   mixes         MortgageMix[]
   advisorOrders AdvisorServiceOrder[]
   documents     PlanDocument[]
+  clientTasks   ClientTask[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1155,4 +1165,57 @@ model PlatformPayment {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────
+
+enum ClientTaskKind {
+  TASK
+  MEETING
+  DOCUMENT
+}
+
+enum ClientTaskStatus {
+  OPEN
+  DONE
+}
+
+/**
+ * משימה שהלקוח הוסיף לעצמו: מתבנית של השלב (תדפיסי עו״ש, פגישה עם יועץ בבנק,
+ * פגישה עם עורך דין) או בניסוח חופשי. פגישה ומשימה עם מועד מופיעות בלוח השנה;
+ * משימת מסמך נסגרת כשהמסמך הועלה לתיק.
+ */
+model ClientTask {
+  id      String        @id @default(cuid())
+  ownerId String
+  owner   User          @relation("ClientTaskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /**
+   * התהליך והשלב שמהם נוספה, כשנוספה מתוך שלב. ריקים — משימה כללית מלוח השנה
+   */
+  planId  String?
+  plan    MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  stage   PlanStage?
+
+  kind        ClientTaskKind
+  templateKey String?
+  title       String
+  details     String?
+  /**
+   * הבנק, כשהמשימה היא פגישה עם יועץ בבנק
+   */
+  bank        String?
+  dueAt       DateTime?
+  status      ClientTaskStatus @default(OPEN)
+  /**
+   * המסמך שהועלה לתיק, כשמשימת המסמך בוצעה
+   */
+  documentId  String?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, status])
+  @@index([planId, stage])
+  @@index([ownerId, dueAt])
 }

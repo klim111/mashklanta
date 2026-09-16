@@ -3,6 +3,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { upload } from '@vercel/blob/client';
 import type { PlanDocumentView } from '@/lib/plan-documents';
+import { demoDocuments, isDemoPlan } from '@/lib/demo-plan';
+
+/** תיק המסמכים של תהליך ההדגמה — בזיכרון בלבד, משותף לכל מופעי ההוק */
+let demoStore: PlanDocumentView[] | null = null;
+const DEMO_EVENT = 'mashklanta:demo-documents-changed';
+function readDemo(): PlanDocumentView[] {
+  if (!demoStore) demoStore = demoDocuments();
+  return demoStore;
+}
+function writeDemo(items: PlanDocumentView[]) {
+  demoStore = items;
+  window.dispatchEvent(new Event(DEMO_EVENT));
+}
 
 /**
  * המסמכים שהועלו לתהליך.
@@ -15,8 +28,14 @@ export function usePlanDocuments(planId: string) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const demo = isDemoPlan(planId);
 
   const refresh = useCallback(async () => {
+    if (demo) {
+      setDocuments(readDemo());
+      setReady(true);
+      return;
+    }
     try {
       const response = await fetch(`/api/plans/${planId}/documents`, { cache: 'no-store' });
       const body = await response.json().catch(() => null);
@@ -33,11 +52,15 @@ export function usePlanDocuments(planId: string) {
     } finally {
       setReady(true);
     }
-  }, [planId]);
+  }, [planId, demo]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    if (!demo) return;
+    const onChange = () => void refresh();
+    window.addEventListener(DEMO_EVENT, onChange);
+    return () => window.removeEventListener(DEMO_EVENT, onChange);
+  }, [refresh, demo]);
 
   /**
    * העלאת קובץ.
@@ -50,6 +73,24 @@ export function usePlanDocuments(planId: string) {
     async (key: string, name: string, file: File) => {
       setBusyKey(key);
       setError(null);
+      if (demo) {
+        // בסיור הקובץ אינו עולה לשום מקום — רק הרשומה מופיעה בתיק
+        writeDemo([
+          {
+            id: `demo-doc-${key}`,
+            planId,
+            key,
+            name,
+            fileName: file.name,
+            contentType: file.type,
+            size: file.size,
+            uploadedAt: new Date().toISOString(),
+          },
+          ...readDemo().filter((item) => item.key !== key),
+        ]);
+        setBusyKey(null);
+        return;
+      }
       try {
         const blob = await upload(`plans/${planId}/${key}`, file, {
           access: 'private',
@@ -81,12 +122,17 @@ export function usePlanDocuments(planId: string) {
         setBusyKey(null);
       }
     },
-    [planId, refresh]
+    [planId, refresh, demo]
   );
 
   const remove = useCallback(
     async (documentId: string, key: string) => {
       setBusyKey(key);
+      if (demo) {
+        writeDemo(readDemo().filter((item) => item.id !== documentId));
+        setBusyKey(null);
+        return;
+      }
       try {
         await fetch(`/api/plans/${planId}/documents/${documentId}`, { method: 'DELETE' });
         await refresh();
@@ -94,7 +140,7 @@ export function usePlanDocuments(planId: string) {
         setBusyKey(null);
       }
     },
-    [planId, refresh]
+    [planId, refresh, demo]
   );
 
   return { documents, ready, error, busyKey, upload: uploadDocument, remove, refresh };

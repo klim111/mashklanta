@@ -7,11 +7,13 @@ import {
   ArrowRight,
   CalendarCheck2,
   CalendarDays,
+  CalendarPlus,
   Check,
   Clock,
   ListChecks,
   MapPin,
   MessageSquare,
+  Trash2,
   UserRound,
 } from 'lucide-react';
 import { StageChip } from '@/components/advisor/ui';
@@ -25,8 +27,9 @@ import {
 } from '@/lib/advisor-crm';
 import type { AdvisorMeetingView } from '@/lib/advisor-crm';
 import { planStageNumber } from '@/lib/mortgage-plan';
-import { upcomingEvents } from '@/lib/client-agenda';
+import { clientTaskIdOf, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, CalendarEvent, ClientTask, DashboardSection } from '@/lib/client-agenda';
+import { AddTaskDialog } from '@/components/plan/tasks/AddTaskDialog';
 import { ClientCalendar, DayList, eventTone } from './ClientCalendar';
 import type { CalendarView } from './ClientCalendar';
 import { TaskItem } from './TaskItem';
@@ -54,10 +57,28 @@ export function AgendaSection({
   initialDay?: string;
   onNavigate: (section: DashboardSection) => void;
 }) {
-  const { tasks, events, meetingsState, notes } = data;
+  const { tasks, events, meetingsState, notes, clientTasksState, plansState } = data;
   const [view, setView] = useState<CalendarView>('month');
   const [selected, setSelected] = useState(() => initialDay ?? dayKey(new Date()));
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  /** משימה חדשה מלוח השנה משויכת לתהליך הפתוח, כשיש אחד */
+  const activePlanId = plansState.plans.find((plan) => plan.status === 'IN_PROGRESS')?.id ?? null;
+
+  /** משימה שהלקוח הוסיף לעצמו — אפשר לסמן כבוצעה ולמחוק מכאן */
+  const ownTaskId = (id: string) => clientTaskIdOf(id);
+  const completeOwn = async (id: string) => {
+    const taskId = ownTaskId(id);
+    if (!taskId) return;
+    await clientTasksState.complete(taskId);
+    setDetail(null);
+  };
+  const removeOwn = async (id: string) => {
+    const taskId = ownTaskId(id);
+    if (!taskId) return;
+    await clientTasksState.remove(taskId);
+    setDetail(null);
+  };
 
   const selectedEvents = useMemo(
     () => events.filter((event) => dayKey(event.at) === selected),
@@ -113,6 +134,9 @@ export function AgendaSection({
           <DetailPanel
             detail={detail}
             meeting={detail.kind === 'event' ? meetingOf(detail.event) : null}
+            ownTask={Boolean(ownTaskId(detail.kind === 'event' ? detail.event.id : detail.task.id))}
+            onComplete={() => void completeOwn(detail.kind === 'event' ? detail.event.id : detail.task.id)}
+            onRemove={() => void removeOwn(detail.kind === 'event' ? detail.event.id : detail.task.id)}
             onBack={() => setDetail(null)}
             onGo={go}
             onRespond={(meeting, accepted) => {
@@ -125,6 +149,16 @@ export function AgendaSection({
             <DashCard
               title={relativeDayLabel(new Date(`${selected}T12:00:00`))}
               icon={<Clock className="h-5 w-5 text-blue-600" />}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3 py-1.5 text-[13px] font-black text-white hover:bg-slate-700"
+                >
+                  <CalendarPlus className="h-4 w-4" />
+                  הוסף משימה או פגישה
+                </button>
+              }
             >
               <DayList items={selectedEvents} onOpen={openEvent} empty="אין פגישות או מועדים ביום הזה" />
             </DashCard>
@@ -180,6 +214,15 @@ export function AgendaSection({
         )}
       </div>
 
+      <AddTaskDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        planId={activePlanId}
+        stage={null}
+        defaultDay={selected}
+        onSubmit={clientTasksState.add}
+      />
+
       <div className={`grid gap-4 ${sortedNotes.length > 0 ? 'xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : ''}`}>
         <DashCard
           title="כל המשימות שלי"
@@ -234,16 +277,43 @@ export function AgendaSection({
 function DetailPanel({
   detail,
   meeting,
+  ownTask,
+  onComplete,
+  onRemove,
   onBack,
   onGo,
   onRespond,
 }: {
   detail: Detail;
   meeting: AdvisorMeetingView | null;
+  /** משימה שהלקוח הוסיף בעצמו — אפשר לסמן ולמחוק */
+  ownTask: boolean;
+  onComplete: () => void;
+  onRemove: () => void;
   onBack: () => void;
   onGo: (target: AgendaTarget) => void;
   onRespond: (meeting: AdvisorMeetingView, accepted: boolean) => void;
 }) {
+  const ownActions = ownTask ? (
+    <>
+      <button
+        type="button"
+        onClick={onComplete}
+        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[15px] font-black text-white hover:bg-emerald-700"
+      >
+        <Check className="h-4 w-4" />
+        סמנו כבוצעה
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2.5 text-[15px] font-bold text-slate-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+      >
+        <Trash2 className="h-4 w-4" />
+        מחיקה
+      </button>
+    </>
+  ) : null;
   const backButton = (
     <button
       type="button"
@@ -275,12 +345,13 @@ function DetailPanel({
             )}
           </dl>
           <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
+            {ownActions}
             <button
               type="button"
               onClick={() => onGo(task.target)}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-[15px] font-black text-white hover:bg-slate-700"
             >
-              לביצוע המשימה
+              {ownTask ? 'לשלב בתהליך' : 'לביצוע המשימה'}
               <ArrowLeft className="h-4 w-4" />
             </button>
             {backButton}
@@ -336,6 +407,7 @@ function DetailPanel({
         )}
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
+          {ownActions}
           {meeting && meeting.status === 'PROPOSED' && meetingIsLive(meeting.status) && (
             <>
               <button
