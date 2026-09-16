@@ -33,9 +33,12 @@ import {
   PLATFORM_MONTHLY_PRICE,
   pricingPlans,
 } from '@/data/platform/pricing';
+import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
+import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 
 const sectionNav = [
   { id: 'idea', label: 'הרעיון' },
+  { id: 'start', label: 'איך מתחילים' },
   { id: 'journey', label: 'חמשת השלבים' },
   { id: 'modes', label: 'מסלולי שימוש' },
   { id: 'proof', label: 'ההשוואה' },
@@ -215,7 +218,7 @@ export default function HowItWorksPage() {
             {[
               { value: journeyStages.length, suffix: '', label: 'שלבים לבחירה' },
               { value: platformTools.length, suffix: '', label: 'כלים בפלטפורמה' },
-              { value: PLATFORM_MONTHLY_PRICE, prefix: '₪', label: 'לחודש במסלול עצמאי' },
+              { value: PLATFORM_MONTHLY_PRICE, prefix: '₪', label: 'לחודש — גישה מלאה לפלטפורמה' },
               { value: FULL_SERVICE_PRICE, prefix: '₪', label: 'ליווי מלא מקצה לקצה' },
             ].map((stat, i) => (
               <motion.div
@@ -325,6 +328,45 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
+      {/* ─────────────────────────── How to start ─────────────────────────── */}
+      <section id="start" className="scroll-mt-32 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 py-20 text-white md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-12 max-w-3xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur">
+              <Compass className="h-4 w-4" />
+              איך מתחילים
+            </div>
+            <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+              שתי שאלות, ואתם בדרך
+            </h2>
+            <p className="text-lg leading-relaxed text-slate-100">
+              באזור האישי ובעמוד הבית שואלים אתכם רק מה תרצו לעשות וכמה עזרה תרצו. מכאן הפלטפורמה
+              יודעת אם לפתוח לכם את הכלי, להתחיל בסיור, או להעביר את הבקשה ליועץ.
+            </p>
+          </motion.div>
+
+          <ServiceFlowSteps tone="dark" />
+
+          <div className="mt-10 text-center">
+            <Button
+              asChild
+              size="lg"
+              className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
+            >
+              <Link href="/#start">
+                מה תרצו לעשות?
+                <ArrowUpLeft className="mr-2 h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* ─────────────────────────── Journey ─────────────────────────── */}
       <section
         id="journey"
@@ -368,12 +410,17 @@ export default function HowItWorksPage() {
               מודל התמחור
             </div>
             <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
-              משלמים רק על מה שלקחתם
+              משלמים רק על מה שלקחתם — ותמיד את המחיר הנמוך
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
-              אין חבילה אחת שמתאימה לכולם. בכל שלב מחליטים מחדש — לבד או עם יועץ — ומשלמים רק על מה שלקחתם.
+              אין חבילה אחת שמתאימה לכולם. בכל שלב מחליטים מחדש — לבד, ליווי לשלב, לכמה שלבים או
+              ליווי מלא. מה ששילמתם על הפלטפורמה מקוזז, והגישה אליה כלולה בכל ליווי.
             </p>
           </motion.div>
+
+          <div className="mb-14">
+            <PricingModelStrip />
+          </div>
 
           <div className="mb-16">
             <FlexibilityMixer />
@@ -572,8 +619,8 @@ export default function HowItWorksPage() {
             מוכנים להתחיל?
           </h2>
           <p className="mb-10 text-lg leading-relaxed text-slate-100">
-            פתחו חשבון, בנו את התמהיל הראשון שלכם בחינם, והחליטו בהמשך אילו שלבים להעביר
-            ליועץ. אפשר לשנות את ההרכב בכל רגע.
+            בחרו מה תרצו לעשות, התחילו בסיור בכלי או בקשו ליווי — והחליטו בהמשך אילו שלבים
+            להעביר ליועץ. אפשר לשנות את ההרכב בכל רגע.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button
@@ -581,7 +628,7 @@ export default function HowItWorksPage() {
               size="lg"
               className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
             >
-              <Link href="/auth/register">פתיחת חשבון</Link>
+              <Link href="/#start">מה תרצו לעשות?</Link>
             </Button>
             <Button
               asChild

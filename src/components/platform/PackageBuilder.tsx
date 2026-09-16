@@ -3,15 +3,12 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, PartyPopper, Receipt, Sparkles, Wand2 } from 'lucide-react';
+import { Check, Coins, PartyPopper, Receipt, Scale, Sparkles, Wand2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
-import {
-  BUNDLE_SAVING,
-  FULL_SERVICE_PRICE,
-  PLATFORM_MONTHLY_PRICE,
-} from '@/data/platform/pricing';
+import { PLATFORM_MONTHLY_PRICE } from '@/data/platform/pricing';
+import { quoteAdvisory } from '@/lib/service-flow';
 import AnimatedNumber from './AnimatedNumber';
 
 const presets: { id: string; label: string; stages: string[] }[] = [
@@ -23,28 +20,32 @@ const presets: { id: string; label: string; stages: string[] }[] = [
 export default function PackageBuilder() {
   const [selected, setSelected] = useState<string[]>(['mix', 'auction']);
   const [months, setMonths] = useState(4);
+  /** חודשי גישה לפלטפורמה שכבר שולמו לפני שמזמינים ליווי — מקוזזים מהמחיר */
+  const [paidMonths, setPaidMonths] = useState(0);
 
   const toggle = (id: string) =>
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
 
-  const { advisorCost, platformCost, total, isFullBundle, rawStagesCost } = useMemo(() => {
-    const rawStagesCost = journeyStages
-      .filter((s) => selected.includes(s.id))
-      .reduce((sum, s) => sum + s.advisorPrice, 0);
-    const isFullBundle = selected.length === journeyStages.length;
-    const advisorCost = isFullBundle ? FULL_SERVICE_PRICE : rawStagesCost;
-    // Full-service clients get platform access included
-    const platformCost = isFullBundle ? 0 : months * PLATFORM_MONTHLY_PRICE;
-    return {
-      rawStagesCost,
-      advisorCost,
-      platformCost,
-      total: advisorCost + platformCost,
-      isFullBundle,
-    };
-  }, [selected, months]);
+  const withAdvisor = selected.length > 0;
+
+  const { advisorCost, platformCost, total, isFullBundle, rawStagesCost, credit, bundleApplied } =
+    useMemo(() => {
+      const quote = quoteAdvisory({ stageIds: selected, platformMonthsPaid: paidMonths });
+      const isFullBundle = selected.length === journeyStages.length;
+      // כל הזמנת ליווי כוללת גישה לפלטפורמה; רק במסלול העצמאי משלמים עליה לפי חודשים
+      const platformCost = withAdvisor ? 0 : months * PLATFORM_MONTHLY_PRICE;
+      return {
+        rawStagesCost: quote.stagesPrice,
+        advisorCost: quote.advisoryPrice,
+        platformCost,
+        credit: quote.platformCredit,
+        bundleApplied: quote.bundleApplied,
+        total: withAdvisor ? quote.total : platformCost,
+        isFullBundle,
+      };
+    }, [selected, months, paidMonths, withAdvisor]);
 
   const activePreset = presets.find(
     (p) =>
@@ -142,27 +143,27 @@ export default function PackageBuilder() {
         {/* Months slider */}
         <div
           className={`mt-6 rounded-2xl border-2 p-5 transition-all ${
-            isFullBundle ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'
+            withAdvisor ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'
           }`}
         >
           <div className="mb-3 flex items-baseline justify-between gap-4">
             <div>
-              <div className="font-bold text-gray-900">מנוי לפלטפורמה</div>
+              <div className="font-bold text-gray-900">גישה לפלטפורמה</div>
               <div className="text-sm text-gray-700">
-                ₪{PLATFORM_MONTHLY_PRICE} לחודש, עד קבלת המשכנתא
+                ₪{PLATFORM_MONTHLY_PRICE} לחודש, עד לסיום התהליך
               </div>
             </div>
             <div className="text-left">
-              {isFullBundle ? (
+              {withAdvisor ? (
                 <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-black text-emerald-700">
-                  כלול ללא תשלום
+                  כלול בכל ליווי
                 </span>
               ) : (
                 <span className="text-lg font-black text-gray-900">{months} חודשים</span>
               )}
             </div>
           </div>
-          {!isFullBundle && (
+          {!withAdvisor && (
             <>
               <Slider
                 value={[months]}
@@ -179,6 +180,38 @@ export default function PackageBuilder() {
             </>
           )}
         </div>
+
+        {/* Credit slider */}
+        {withAdvisor && (
+          <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50/50 p-5">
+            <div className="mb-3 flex items-baseline justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-1.5 font-bold text-gray-900">
+                  <Coins className="h-4 w-4 text-blue-600" />
+                  כבר שילמתם על הגישה לפלטפורמה?
+                </div>
+                <div className="text-sm text-gray-700">
+                  התחלתם לבד ועכשיו מזמינים ליווי — כל חודש ששולם מקוזז מהמחיר
+                </div>
+              </div>
+              <span className="text-lg font-black text-gray-900">
+                {paidMonths === 0 ? 'עדיין לא' : `${paidMonths} חודשים`}
+              </span>
+            </div>
+            <Slider
+              value={[paidMonths]}
+              onValueChange={([v]) => setPaidMonths(v)}
+              min={0}
+              max={12}
+              step={1}
+              aria-label="חודשי גישה לפלטפורמה ששולמו"
+            />
+            <div className="mt-2 flex justify-between text-xs text-gray-600">
+              <span>12 חודשים</span>
+              <span>0</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary */}
@@ -215,26 +248,38 @@ export default function PackageBuilder() {
 
             <div className="flex items-baseline justify-between text-sm">
               <span className="text-gray-600">
-                מנוי פלטפורמה{isFullBundle ? '' : ` × ${months} חודשים`}
+                גישה לפלטפורמה{withAdvisor ? '' : ` × ${months} חודשים`}
               </span>
               <span className="font-bold text-gray-900">
-                {isFullBundle ? 'כלול' : `₪${platformCost.toLocaleString('he-IL')}`}
+                {withAdvisor ? 'כלולה' : `₪${platformCost.toLocaleString('he-IL')}`}
               </span>
             </div>
 
-            {isFullBundle && (
+            {credit > 0 && (
+              <div className="flex items-baseline justify-between text-sm">
+                <span className="text-gray-600">קיזוז גישה ששולמה ({paidMonths} חודשים)</span>
+                <span className="font-bold text-emerald-700">−₪{credit.toLocaleString('he-IL')}</span>
+              </div>
+            )}
+
+            {bundleApplied && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-200"
               >
-                <PartyPopper className="mt-0.5 h-4 w-4 shrink-0" />
+                {isFullBundle ? (
+                  <PartyPopper className="mt-0.5 h-4 w-4 shrink-0" />
+                ) : (
+                  <Scale className="mt-0.5 h-4 w-4 shrink-0" />
+                )}
                 <span>
-                  מחיר חבילה — במקום ₪{rawStagesCost.toLocaleString('he-IL')}.
+                  {isFullBundle ? 'מחיר ליווי מלא' : 'ליווי מלא יצא זול יותר, אז זה המחיר'} — במקום
+                  ₪{rawStagesCost.toLocaleString('he-IL')} על השלבים בנפרד.
                   <strong className="mx-1">
-                    חסכתם ₪{BUNDLE_SAVING.toLocaleString('he-IL')}
+                    חסכתם ₪{(rawStagesCost - advisorCost).toLocaleString('he-IL')}
                   </strong>
-                  ומנוי הפלטפורמה כלול.
+                  והגישה לפלטפורמה כלולה.
                 </span>
               </motion.div>
             )}
@@ -257,7 +302,8 @@ export default function PackageBuilder() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-gray-600">
-                המחירים אינם כוללים מע״מ. ניתן לשנות את ההרכב בכל שלב בתהליך.
+                המחירים אינם כוללים מע״מ. ניתן לשנות את ההרכב בכל שלב בתהליך — ותמיד תחויבו
+                במחיר הנמוך מבין כל האופציות.
               </p>
             </div>
 
@@ -266,8 +312,8 @@ export default function PackageBuilder() {
               size="lg"
               className="w-full bg-gradient-to-l from-blue-600 to-violet-600 text-base font-bold text-white shadow-lg hover:from-blue-700 hover:to-violet-700 hover:text-white"
             >
-              <Link href="/auth/register">
-                {selected.length === 0 ? 'התחילו לבד עכשיו' : 'המשיכו עם ההרכב הזה'}
+              <Link href="/#start">
+                {selected.length === 0 ? 'התחילו בסיור בכלי' : 'בקשו ליווי עם ההרכב הזה'}
               </Link>
             </Button>
           </div>

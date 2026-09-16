@@ -45,10 +45,13 @@ function LoginForm() {
         const response = await fetch('/api/auth/session');
         const session = await response.json();
         
+        const callbackUrl = searchParams.get('callbackUrl');
+        const safeCallback =
+          callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') ? callbackUrl : null;
         if (session?.user?.role === 'ADVISOR') {
           router.push('/advisor-dashboard');
         } else {
-          router.push('/dashboard');
+          router.push(safeCallback ?? '/dashboard');
         }
       }
     } catch (error) {

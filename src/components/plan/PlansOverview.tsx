@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -11,23 +12,32 @@ import {
   Building2,
   CalendarCheck,
   Compass,
+  FileText,
   Layers,
   Loader2,
   MapPin,
+  MessageSquareText,
   Plus,
   Sparkles,
   Trash2,
+  X,
 } from 'lucide-react';
-import { PLAN_STAGES, stageIndex } from '@/lib/mortgage-plan';
+import { stageIndex } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
+import { isMortgageGoal, isServiceType } from '@/lib/service-flow';
+import type { MortgageGoal, ServiceType } from '@/lib/service-flow';
 import { usePlans } from './usePlan';
 import type { PlanView } from './usePlan';
 import { formatDate, formatShekel, NumberField } from './ui';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import { ServiceChooser } from '@/components/service-flow/ServiceChooser';
+import { GuidanceRequestDialog } from '@/components/service-flow/GuidanceRequestDialog';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
 type DashTab = 'mortgages' | 'unassigned';
+type FlowGoal = 'NEW_MORTGAGE' | 'REFINANCE';
 
 function planPlaceLabel(plan: PlanView): string {
   if (plan.propertyAddress) return plan.propertyAddress;
@@ -47,12 +57,36 @@ function isUnassociatedMix(mix: SavedMix): boolean {
   return !mix.planId && !(mix.mix.propertyAddress ?? '').trim();
 }
 
+/** `?goal=NEW_MORTGAGE&service=SELF` — המשך הבחירה שנעשתה בעמוד הבית או אחרי התשלום */
+function readFlowQuery(): { goal: FlowGoal | null; service: ServiceType | null } {
+  const params = new URLSearchParams(window.location.search);
+  const goal = params.get('goal');
+  const service = params.get('service');
+  return {
+    goal: goal === 'NEW_MORTGAGE' || goal === 'REFINANCE' ? goal : null,
+    service: isServiceType(service) ? service : null,
+  };
+}
+
+/**
+ * דאשבורד המשכנתאות.
+ *
+ * כל עוד אין ללקוח משכנתא פעילה, המסך הוא "מה תרצו לעשות?" — הבחירה בין
+ * משכנתא חדשה, מיחזור וייעוץ, ואחריה סוג השירות. מרגע שיש תהליך פתוח מוצגות
+ * המשכנתאות עצמן, והבחירה זמינה מכפתור "משכנתא נוספת".
+ */
 export function PlansOverview() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { plans, ready, error, start, remove, patchDeal } = usePlans();
   const { saved, ready: mixesReady, remove: removeMix } = useSavedMixes();
+  const { access, ready: accessReady } = usePlatformAccess();
   const [starting, setStarting] = useState(false);
   const [tab, setTab] = useState<DashTab>('mortgages');
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [initialGoal, setInitialGoal] = useState<FlowGoal | null>(null);
+  const [request, setRequest] = useState<{ goal: MortgageGoal; service: ServiceType } | null>(null);
+  const queryHandled = useRef(false);
 
   const active = plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const completed = plans.filter((plan) => plan.status === 'COMPLETED');
@@ -70,92 +104,309 @@ export function PlansOverview() {
     }
   };
 
+  /** המסלול העצמאי: עם גישה — הכלי המלא; בלעדיה — הסיור שמסתיים בהצעה */
+  const onSelf = (goal: FlowGoal) => {
+    if (goal === 'REFINANCE') {
+      router.push('/mortgage-refinance');
+      return;
+    }
+    if (access.active) void startPlan();
+    else router.push('/dashboard/tour');
+  };
+
+  const onAdvisor = (goal: MortgageGoal, service: ServiceType) => {
+    if (isMortgageGoal(goal)) setRequest({ goal, service });
+  };
+
+  // המשך אוטומטי של בחירה שנעשתה לפני ההתחברות או לפני התשלום
+  useEffect(() => {
+    if (!ready || !accessReady || queryHandled.current) return;
+    queryHandled.current = true;
+    const { goal, service } = readFlowQuery();
+    if (!goal) return;
+    setChooserOpen(true);
+    setInitialGoal(goal);
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    if (service === 'SELF') onSelf(goal);
+    else if (service && service !== 'GUIDANCE') setRequest({ goal, service });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, accessReady]);
+
+  const loading = !ready || !mixesReady || !accessReady;
+  const showChooser = !loading && (active.length === 0 || chooserOpen);
+
   return (
     <div dir="rtl" className="space-y-6">
-      <StartCard onStart={startPlan} busy={starting} hasPlans={plans.length > 0} />
-
-      <div className="flex flex-wrap gap-2">
-        <TabChip
-          active={tab === 'mortgages'}
-          onClick={() => setTab('mortgages')}
-          label="דאשבורד משכנתאות"
-          count={plans.length}
-        />
-        <TabChip
-          active={tab === 'unassigned'}
-          onClick={() => setTab('unassigned')}
-          label="תמהילים שיצרתי ללא שיוך לנכס"
-          count={unassigned.length}
-        />
-      </div>
-
       {error && (
         <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {error}
         </p>
       )}
 
-      {!ready || !mixesReady ? (
-        <div className="flex justify-center py-10">
+      {loading ? (
+        <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
         </div>
-      ) : tab === 'unassigned' ? (
-        <UnassignedMixes mixes={unassigned} onDelete={removeMix} />
+      ) : showChooser ? (
+        <>
+          <ChooserCard
+            hasAccess={access.active}
+            initialGoal={initialGoal}
+            busy={starting}
+            onSelf={onSelf}
+            onAdvisor={onAdvisor}
+            onClose={active.length > 0 ? () => setChooserOpen(false) : undefined}
+          />
+
+          {completed.length > 0 && (
+            <CompletedSection plans={completed} saved={saved} />
+          )}
+
+          {unassigned.length > 0 && (
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+              <SectionTitle
+                icon={<Layers className="h-4 w-4 text-blue-600" />}
+                title="תמהילים שיצרתי ללא שיוך לנכס"
+                count={unassigned.length}
+              />
+              <UnassignedMixes mixes={unassigned} onDelete={removeMix} />
+            </section>
+          )}
+        </>
       ) : (
         <>
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-            <SectionTitle
-              icon={<Compass className="h-4 w-4 text-blue-600" />}
-              title="משכנתאות בתהליך"
-              count={active.length}
-            />
-            {active.length === 0 ? (
-              <p className="text-sm text-slate-500">אין כרגע משכנתא פתוחה. התחילו תהליך חדש למעלה.</p>
-            ) : (
-              <div className="grid gap-4">
-                <AnimatePresence initial={false}>
-                  {active.map((plan) => (
-                    <MortgageCard
-                      key={plan.id}
-                      plan={plan}
-                      mixes={saved.filter((mix) => mixBelongsToPlan(mix, plan))}
-                      onRemove={() => void remove(plan.id)}
-                      onDeal={(deal) => void patchDeal(plan.id, deal)}
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </section>
+          <ActiveBar
+            hasAccess={access.active}
+            onAnother={() => {
+              setInitialGoal(null);
+              setChooserOpen(true);
+            }}
+            onRequest={() => setRequest({ goal: 'NEW_MORTGAGE', service: 'HYBRID' })}
+          />
 
-          <section className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm md:p-6">
-            <SectionTitle
-              icon={<BadgeCheck className="h-4 w-4 text-emerald-600" />}
-              title="משכנתאות שלקחתי"
-              count={completed.length}
-            />
-            {completed.length === 0 ? (
-              <p className="text-sm text-emerald-800/70">
-                כאן יופיעו משכנתאות שחמשת השלבים בהן הסתיימו.
-              </p>
-            ) : (
-              <div className="grid gap-4">
-                <AnimatePresence initial={false}>
-                  {completed.map((plan) => (
-                    <MortgageCard
-                      key={plan.id}
-                      plan={plan}
-                      mixes={saved.filter((mix) => mixBelongsToPlan(mix, plan))}
-                      completed
-                    />
-                  ))}
-                </AnimatePresence>
+          {/* שלב האישור העקרוני — איסוף פרטי הבקשה, נשמר אוטומטית */}
+          <Link
+            href="/principal-approval"
+            className="group flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-l from-indigo-50/80 to-white p-5 transition-all hover:border-indigo-300 hover:shadow-md"
+          >
+            <div className="flex items-center gap-3.5">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200">
+                <FileText className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-[15px] font-bold text-slate-900">אישור עקרוני — פרטי הבקשה</p>
+                <p className="text-[13px] text-slate-500">
+                  פרטי הלווים והערבים, הכנסות, חשבונות בנק ומקורות מימון — עם דוח מסכם להורדה
+                </p>
               </div>
-            )}
-          </section>
+            </div>
+            <span className="text-[13px] font-semibold text-indigo-600 transition-transform group-hover:-translate-x-1">
+              להזנת הפרטים ←
+            </span>
+          </Link>
+
+          <div className="flex flex-wrap gap-2">
+            <TabChip
+              active={tab === 'mortgages'}
+              onClick={() => setTab('mortgages')}
+              label="המשכנתאות שלי"
+              count={plans.length}
+            />
+            <TabChip
+              active={tab === 'unassigned'}
+              onClick={() => setTab('unassigned')}
+              label="תמהילים שיצרתי ללא שיוך לנכס"
+              count={unassigned.length}
+            />
+          </div>
+
+          {tab === 'unassigned' ? (
+            <UnassignedMixes mixes={unassigned} onDelete={removeMix} />
+          ) : (
+            <>
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+                <SectionTitle
+                  icon={<Compass className="h-4 w-4 text-blue-600" />}
+                  title="משכנתאות בתהליך"
+                  count={active.length}
+                />
+                <div className="grid gap-4">
+                  <AnimatePresence initial={false}>
+                    {active.map((plan) => (
+                      <MortgageCard
+                        key={plan.id}
+                        plan={plan}
+                        mixes={saved.filter((mix) => mixBelongsToPlan(mix, plan))}
+                        onRemove={() => void remove(plan.id)}
+                        onDeal={(deal) => void patchDeal(plan.id, deal)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </section>
+
+              <CompletedSection plans={completed} saved={saved} />
+            </>
+          )}
         </>
       )}
+
+      {request && (
+        <GuidanceRequestDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setRequest(null);
+          }}
+          goal={request.goal}
+          serviceType={request.service}
+          mode="member"
+          memberName={session?.user?.name ?? undefined}
+          memberEmail={session?.user?.email ?? undefined}
+        />
+      )}
     </div>
+  );
+}
+
+/** "מה תרצו לעשות?" בתוך כרטיס כהה, כמו ראש הדאשבורד */
+function ChooserCard({
+  hasAccess,
+  initialGoal,
+  busy,
+  onSelf,
+  onAdvisor,
+  onClose,
+}: {
+  hasAccess: boolean;
+  initialGoal: FlowGoal | null;
+  busy: boolean;
+  onSelf: (goal: FlowGoal) => void;
+  onAdvisor: (goal: MortgageGoal, service: ServiceType) => void;
+  onClose?: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 shadow-xl md:p-10"
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/30 blur-3xl" />
+        <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-violet-600/25 blur-3xl" />
+        <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
+      </div>
+
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="חזרה למשכנתאות שלי"
+          className="absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+        >
+          <X className="h-3.5 w-3.5" />
+          למשכנתאות שלי
+        </button>
+      )}
+
+      <div className="relative">
+        {hasAccess && (
+          <div className="mb-6 flex justify-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-black text-emerald-200 ring-1 ring-emerald-300/40">
+              <BadgeCheck className="h-3.5 w-3.5" />
+              הגישה המלאה לפלטפורמה פעילה — כל חמשת השלבים פתוחים
+            </span>
+          </div>
+        )}
+        <ServiceChooser
+          tone="dark"
+          hasAccess={hasAccess}
+          initialGoal={initialGoal}
+          busy={busy}
+          onSelf={onSelf}
+          onAdvisor={onAdvisor}
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+/** כשיש כבר משכנתא בתהליך — שורת פעולות במקום מסך הבחירה */
+function ActiveBar({
+  hasAccess,
+  onAnother,
+  onRequest,
+}: {
+  hasAccess: boolean;
+  onAnother: () => void;
+  onRequest: () => void;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-slate-950 p-5 shadow-xl md:p-6">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-600/30 blur-3xl" />
+        <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-violet-600/25 blur-3xl" />
+      </div>
+      <div className="relative flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/80">
+            <Sparkles className="h-3.5 w-3.5" />
+            {hasAccess ? 'גישה מלאה · חמישה שלבים · הכל נשמר בחשבון' : 'חמישה שלבים · הכל נשמר בחשבון'}
+          </span>
+          <h2 className="mt-2 text-xl font-black text-white md:text-2xl">המשכנתאות שלי</h2>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-white/60">
+            בכל שלב אפשר לבחור מחדש — להמשיך לבד, לבקש ליווי לשלב אחד או ליווי מלא. מה ששולם על
+            הפלטפורמה מקוזז, ותמיד תשלמו את המחיר הנמוך.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onRequest}
+            className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-white/20"
+          >
+            <MessageSquareText className="h-4 w-4" />
+            בקשת ליווי מיועץ
+          </button>
+          <button
+            type="button"
+            onClick={onAnother}
+            className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-5 py-3 text-sm font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
+          >
+            <Plus className="h-4 w-4" />
+            משכנתא נוספת
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompletedSection({ plans, saved }: { plans: PlanView[]; saved: SavedMix[] }) {
+  return (
+    <section className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm md:p-6">
+      <SectionTitle
+        icon={<BadgeCheck className="h-4 w-4 text-emerald-600" />}
+        title="משכנתאות שלקחתי"
+        count={plans.length}
+      />
+      {plans.length === 0 ? (
+        <p className="text-sm text-emerald-800/70">כאן יופיעו משכנתאות שחמשת השלבים בהן הסתיימו.</p>
+      ) : (
+        <div className="grid gap-4">
+          <AnimatePresence initial={false}>
+            {plans.map((plan) => (
+              <MortgageCard
+                key={plan.id}
+                plan={plan}
+                mixes={saved.filter((mix) => mixBelongsToPlan(mix, plan))}
+                completed
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -203,67 +454,6 @@ function SectionTitle({
         {count}
       </span>
     </h2>
-  );
-}
-
-function StartCard({
-  onStart,
-  busy,
-  hasPlans,
-}: {
-  onStart: () => void;
-  busy: boolean;
-  hasPlans: boolean;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 shadow-xl md:p-8">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-600/30 blur-3xl" />
-        <div className="absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-violet-600/25 blur-3xl" />
-      </div>
-
-      <div className="relative flex flex-wrap items-center justify-between gap-6">
-        <div className="max-w-xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/80 backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" />
-            חמישה שלבים · הכל נשמר בחשבון שלכם
-          </span>
-          <h2 className="mt-3 text-2xl font-black leading-tight text-white md:text-3xl">
-            {hasPlans ? 'מתכננים משכנתא נוספת?' : 'התחילו לתכנן את המשכנתא שלכם'}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/60">
-            דשבורד אחד שמלווה אתכם מהניתוח הפיננסי ועד החתימה בבנק. אפשר להזין פרטי נכס כבר כאן —
-            והם יופיעו כברירת מחדל בשלב המתאים.
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {PLAN_STAGES.map((stage, index) => {
-              const journey = journeyStageFor(stage);
-              return (
-                <span
-                  key={stage}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/70"
-                >
-                  <span className="text-white/40">{index + 1}</span>
-                  {journey.shortTitle}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onStart}
-          disabled={busy}
-          className="group inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-4 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70"
-        >
-          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-          התחל תכנון משכנתא חדשה
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-        </button>
-      </div>
-    </div>
   );
 }
 

@@ -54,8 +54,29 @@ model User {
    */
   profileJson   Json?
 
+  // ─────────────────────── מסלול השירות וגישה לפלטפורמה ───────────────────────
+  /**
+   * /**
+   * מתי הלקוח רכש גישה מלאה לפלטפורמה. ריק — עדיין לא רכש, וכלי התכנון נפתח
+   * אצלו במצב סיור בלבד.
+   */
+  platformAccessAt DateTime?
+  /**
+   * התשלומים שהלקוח ביצע על הגישה לפלטפורמה
+   */
+  platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
+  /**
+   * בקשות הליווי שהלקוח שלח ליועצים
+   */
+  guidanceRequests GuidanceRequest[] @relation("GuidanceRequestUser")
+  /**
+   * בקשות הליווי שהיועץ לקח לטיפול
+   */
+  handledGuidance  GuidanceRequest[] @relation("GuidanceRequestHandler")
+
   // ───────────────────────── לוח הבקרה של היועץ (CRM) ─────────────────────────
   /**
+   * /**
    * /** המשימות שהיועץ פתח לעצמו, לכל לקוח ולכל שלב
    */
   advisorTasks    AdvisorTask[]        @relation("AdvisorTasks")
@@ -78,17 +99,18 @@ model User {
 
   // ─────────────────────── האישור העקרוני (איסוף פרטי הבקשה) ───────────────────────
   /**
+   * /**
    * תיקי האישור העקרוני שבהם המשתמש הוא הלווה
    */
-  approvalCases   MortgageCase[]       @relation("ApprovalCaseClient")
+  approvalCases    MortgageCase[]   @relation("ApprovalCaseClient")
   /**
    * תיקי האישור העקרוני שהמשתמש מטפל בהם כיועץ
    */
-  advisedApprovals MortgageCase[]      @relation("ApprovalCaseAdvisor")
+  advisedApprovals MortgageCase[]   @relation("ApprovalCaseAdvisor")
   /**
    * הרשאות העריכה שקיבל המשתמש כיועץ על נתונים שהזין הלקוח
    */
-  approvalAccess  ApprovalAccess[]     @relation("ApprovalAccessAdvisor")
+  approvalAccess   ApprovalAccess[] @relation("ApprovalAccessAdvisor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -544,9 +566,9 @@ model RatesCache {
  * שהמשימות של היועץ ייגזרו מאותו תהליך שהלקוח רואה אצלו — ולא מרצף נפרד.
  */
 model AdvisorTask {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   advisorId String
-  advisor   User   @relation("AdvisorTasks", fields: [advisorId], references: [id], onDelete: Cascade)
+  advisor   User    @relation("AdvisorTasks", fields: [advisorId], references: [id], onDelete: Cascade)
   /**
    * הלקוח שהמשימה שייכת לו. ריק — משימה של היועץ עצמו, בלי שיוך ללקוח
    */
@@ -764,7 +786,6 @@ model BankRateRequest {
   @@index([clientId])
 }
 
-
 // ─────────────────────── האישור העקרוני — איסוף פרטי הבקשה ───────────────────────
 //
 // שלב איסוף הפרטים לקראת אישור עקרוני: פרטי הלווים והערבים, ההכנסות, חשבונות
@@ -822,7 +843,6 @@ model CaseEntity {
 
 /**
  * תשובה בודדת.
- *
  * ערכים רגישים (הכנסות, הון עצמי, מקורות מימון, מספרי חשבון ותעודות זהות)
  * נשמרים מוצפנים ב-valueEnc דרך src/lib/crypto.ts, באותה מדיניות שנוהגת
  * בשדות הכספיים של מודל Client. שאר הערכים נשמרים כטקסט ב-value.
@@ -867,7 +887,7 @@ model FieldConflict {
   encrypted     Boolean      @default(false)
   status        String       @default("open") // open | resolved
   resolvedValue String?
-  resolvedWith  String?      // profile | case
+  resolvedWith  String? // profile | case
   resolvedById  String?
   resolvedAt    DateTime?
   createdAt     DateTime     @default(now())
@@ -912,4 +932,91 @@ model BankBranch {
 
   @@unique([bankCode, branchCode])
   @@index([bankCode])
+}
+
+// ─────────────────────── מסלול השירות וגישה לפלטפורמה ───────────────────────
+
+/**
+ * מה הלקוח רוצה לעשות — השאלה הראשונה באזור האישי ובעמוד הבית
+ */
+enum MortgageGoal {
+  NEW_MORTGAGE
+  REFINANCE
+  ADVICE
+}
+
+/**
+ * איך הלקוח רוצה לעשות את זה. `GUIDANCE` הוא ייעוץ והכוונה כללי, בלי מסלול
+ */
+enum ServiceType {
+  SELF
+  HYBRID
+  FULL
+  GUIDANCE
+}
+
+enum GuidanceStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+/**
+ * בקשת ליווי שהגיעה ליועצים. נוצרת גם ממשתמש רשום (ואז `userId` מלא והפרטים
+ * נלקחים מהחשבון) וגם מאורח בעמוד הבית, שהזין את פרטיו בטופס.
+ */
+model GuidanceRequest {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation("GuidanceRequestUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  name  String
+  email String
+  phone String?
+
+  goal        MortgageGoal
+  serviceType ServiceType
+  /**
+   * הערה חופשית שהלקוח בחר להוסיף — מוצגת ליועץ לצד הבקשה
+   */
+  note        String?
+
+  status      GuidanceStatus @default(NEW)
+  /**
+   * היועץ שלקח את הבקשה לטיפול
+   */
+  handledById String?
+  handledBy   User?          @relation("GuidanceRequestHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  handledAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([email])
+}
+
+/**
+ * תשלום על גישה לפלטפורמה. מספר הכרטיס המלא לעולם אינו נשמר — רק המותג
+ * וארבע הספרות האחרונות, לקבלה.
+ */
+model PlatformPayment {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("PlatformPaymentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /**
+   * הסכום באגורות, כדי שלא יהיו שברי שקל
+   */
+  amountAgorot Int
+  currency     String @default("ILS")
+  holderName   String
+  cardBrand    String
+  cardLast4    String
+  status       String @default("PAID")
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

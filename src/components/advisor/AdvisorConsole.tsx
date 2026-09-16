@@ -12,6 +12,7 @@ import {
   FileText,
   Gavel,
   Home as HomeIcon,
+  Inbox,
   Layers,
   ListChecks,
   LogOut,
@@ -32,15 +33,17 @@ import { MixesPanel } from './MixesPanel';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { AdvisorSettingsPanel } from './AdvisorSettingsPanel';
 import { TasksPanel } from './TasksPanel';
+import { GuidanceRequestsPanel } from './GuidanceRequestsPanel';
 import { StageChip } from './ui';
 import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
 
-type TabId = 'clients' | 'tasks' | 'calendar' | 'mixes' | 'rate-requests' | 'settings';
+type TabId = 'clients' | 'requests' | 'tasks' | 'calendar' | 'mixes' | 'rate-requests' | 'settings';
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'clients', label: 'לקוחות', icon: Users },
+  { id: 'requests', label: 'בקשות ליווי', icon: Inbox },
   { id: 'tasks', label: 'משימות', icon: ListChecks },
   { id: 'calendar', label: 'לוח שנה', icon: CalendarDays },
   { id: 'mixes', label: 'תמהילים שמורים', icon: Layers },
@@ -264,16 +267,18 @@ export function AdvisorConsole() {
               <AgendaCard
                 icon={<AlarmClock className="h-4 w-4" />}
                 label="דורש תשומת לב"
-                value={`${overview.overdueTasks + overview.awaitingConfirmation}`}
+                value={`${overview.overdueTasks + overview.awaitingConfirmation + overview.newGuidanceRequests}`}
                 hint={
-                  overview.overdueTasks > 0
-                    ? `${overview.overdueTasks} משימות באיחור`
-                    : overview.awaitingConfirmation > 0
-                      ? `${overview.awaitingConfirmation} פגישות ממתינות לאישור הלקוח`
-                      : 'הכול מעודכן'
+                  overview.newGuidanceRequests > 0
+                    ? `${overview.newGuidanceRequests} בקשות ליווי חדשות ממתינות`
+                    : overview.overdueTasks > 0
+                      ? `${overview.overdueTasks} משימות באיחור`
+                      : overview.awaitingConfirmation > 0
+                        ? `${overview.awaitingConfirmation} פגישות ממתינות לאישור הלקוח`
+                        : 'הכול מעודכן'
                 }
-                tone={overview.overdueTasks > 0 ? 'alert' : 'default'}
-                onClick={() => setTab('tasks')}
+                tone={overview.overdueTasks > 0 || overview.newGuidanceRequests > 0 ? 'alert' : 'default'}
+                onClick={() => setTab(overview.newGuidanceRequests > 0 ? 'requests' : 'tasks')}
               />
             </div>
 
@@ -295,6 +300,15 @@ export function AdvisorConsole() {
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
+                    {item.id === 'requests' && overview.newGuidanceRequests > 0 && (
+                      <span
+                        className={`rounded-full px-1.5 text-[10px] font-black ${
+                          active ? 'bg-rose-600 text-white' : 'bg-rose-500 text-white'
+                        }`}
+                      >
+                        {overview.newGuidanceRequests}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -360,6 +374,17 @@ export function AdvisorConsole() {
                 onQueryChange={setQuery}
               />
             </div>
+          )}
+
+          {tab === 'requests' && (
+            <GuidanceRequestsPanel
+              onAddClient={async (input) => {
+                const failure = await addClient(input);
+                if (!failure) await refreshOverview();
+                return failure;
+              }}
+              onChanged={refreshOverview}
+            />
           )}
 
           {tab === 'tasks' && (

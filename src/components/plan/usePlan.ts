@@ -1,8 +1,43 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PLAN_STAGES, emptyPlanData, parseStageData } from '@/lib/mortgage-plan';
+import { PLAN_STAGES, emptyPlanData, parseStageData, stageIndex } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus, PlanStatus } from '@/lib/mortgage-plan';
+
+/**
+ * מזהה תהליך ההדגמה של הסיור. תהליך כזה חי בדפדפן בלבד — לא נשמר, לא נטען,
+ * וכל השלבים בו פתוחים כדי שאפשר יהיה להציץ בכל כלי.
+ */
+export const DEMO_PLAN_ID = 'demo';
+
+export function isDemoPlan(planId: string): boolean {
+  return planId === DEMO_PLAN_ID;
+}
+
+function demoPlan(): PlanView {
+  const now = new Date().toISOString();
+  return {
+    id: DEMO_PLAN_ID,
+    name: 'סיור היכרות בכלי',
+    status: 'IN_PROGRESS',
+    currentStage: 'ANALYSIS',
+    progress: 0,
+    propertyValue: null,
+    propertyAddress: null,
+    mortgageAmount: null,
+    monthlyPayment: null,
+    completedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    stages: PLAN_STAGES.map((stage) => ({
+      stage,
+      status: 'IN_PROGRESS' as PlanStageStatus,
+      data: null,
+      completedAt: null,
+    })),
+    data: emptyPlanData(),
+  };
+}
 
 /** תהליך תכנון כפי שהוא מגיע מהשרת */
 export interface PlanView {
@@ -153,9 +188,19 @@ export function usePlan(planId: string) {
 
   const pending = useRef<Map<PlanStageId, unknown>>(new Map());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const demo = isDemoPlan(planId);
 
   useEffect(() => {
     let cancelled = false;
+
+    if (demo) {
+      setPlan(demoPlan());
+      setError(null);
+      setReady(true);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const load = async () => {
       try {
@@ -177,10 +222,28 @@ export function usePlan(planId: string) {
     return () => {
       cancelled = true;
     };
-  }, [planId]);
+  }, [planId, demo]);
 
   const push = useCallback(
     async (stage: PlanStageId, data: unknown, complete: boolean) => {
+      if (demo) {
+        // תהליך ההדגמה: השלב נסגר מקומית והתהליך עובר לשלב הבא, בלי שרת
+        setPlan((current) => {
+          if (!current) return current;
+          const next = PLAN_STAGES[stageIndex(stage) + 1] ?? stage;
+          return {
+            ...current,
+            currentStage: complete ? next : current.currentStage,
+            stages: current.stages.map((item) =>
+              item.stage === stage && complete
+                ? { ...item, status: 'COMPLETED', completedAt: new Date().toISOString() }
+                : item
+            ),
+          };
+        });
+        setSaveState('idle');
+        return;
+      }
       setSaveState('saving');
       try {
         const response = await fetch(`/api/plans/${planId}/stages/${stage}`, {
@@ -208,7 +271,7 @@ export function usePlan(planId: string) {
         setSaveState('error');
       }
     },
-    [planId]
+    [planId, demo]
   );
 
   const flush = useCallback(async () => {
@@ -231,6 +294,8 @@ export function usePlan(planId: string) {
         return { ...current, data: { ...current.data, [stage]: next } };
       });
 
+      if (demo) return;
+
       pending.current.set(stage, next);
       setSaveState('dirty');
 
@@ -239,7 +304,7 @@ export function usePlan(planId: string) {
         void flush();
       }, AUTOSAVE_MS);
     },
-    [flush]
+    [flush, demo]
   );
 
   /** סגירת השלב ומעבר לשלב הבא */
@@ -258,6 +323,10 @@ export function usePlan(planId: string) {
 
   const goToStage = useCallback(
     async (stage: PlanStageId) => {
+      if (demo) {
+        setPlan((current) => (current ? { ...current, currentStage: stage } : current));
+        return;
+      }
       await flush();
       const response = await fetch(`/api/plans/${planId}`, {
         method: 'PATCH',
@@ -269,11 +338,15 @@ export function usePlan(planId: string) {
         setBlocked(null);
       }
     },
-    [flush, planId]
+    [flush, planId, demo]
   );
 
   const rename = useCallback(
     async (name: string) => {
+      if (demo) {
+        setPlan((current) => (current ? { ...current, name } : current));
+        return;
+      }
       const response = await fetch(`/api/plans/${planId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -281,7 +354,7 @@ export function usePlan(planId: string) {
       });
       if (response.ok) setPlan(await readPlan(response));
     },
-    [planId]
+    [planId, demo]
   );
 
   // שמירה של עריכה שעדיין לא נשלחה, כשעוזבים את הדף

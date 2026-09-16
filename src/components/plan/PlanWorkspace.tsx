@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -14,6 +14,8 @@ import {
   Loader2,
   PartyPopper,
   Pencil,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import {
   PLAN_STAGES,
@@ -34,7 +36,8 @@ import type {
 } from '@/lib/mortgage-plan';
 import { PLAN_STAGE_ACTIONS, journeyStageFor } from '@/data/platform/planStages';
 import { usePlan } from './usePlan';
-import type { SaveState } from './usePlan';
+import type { PlanView, SaveState } from './usePlan';
+import { PlanTour, TOUR_FREE_CHANGES } from './PlanTour';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import { StageRail } from './StageRail';
 import { StageLockedPreview } from './StageLockedPreview';
@@ -55,18 +58,73 @@ const saveLabels: Record<SaveState, { label: string; className: string }> = {
   error: { label: 'השמירה נכשלה', className: 'text-rose-300' },
 };
 
-export function PlanWorkspace({ planId }: { planId: string }) {
+/**
+ * שולחן העבודה של התהליך.
+ *
+ * ב-`tour` הוא רץ על תהליך הדגמה: מסכי ההסבר צפים מעל הכלי, "נסו את השלב"
+ * פותח אותו לשלושה שינויים ואז ההסבר חוזר, והסרגל למעלה זז יחד עם הדפים.
+ */
+export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?: boolean }) {
   const {
     plan,
     ready,
     error,
     saveState,
     blocked,
-    updateStage,
+    updateStage: rawUpdateStage,
     completeStage,
     goToStage,
     rename,
   } = usePlan(planId);
+
+  // ─────────────────────────── הסיור ───────────────────────────
+  const [tourOpen, setTourOpen] = useState(tour);
+  const [tourIndex, setTourIndex] = useState(0);
+  const [tourReturned, setTourReturned] = useState(false);
+  /** הערכים ששונו מאז "נסו את השלב" — נספרים לפי שדה, לא לפי הקשה */
+  const changedKeys = useRef<Set<string>>(new Set());
+  const planRef = useRef<PlanView | null>(null);
+  planRef.current = plan;
+
+  /** מעבר בין דפי ההסבר מזיז גם את הסרגל למעלה ואת הכלי שמתחת */
+  const changeTourIndex = useCallback(
+    (index: number) => {
+      setTourIndex(index);
+      setTourReturned(false);
+      const target = PLAN_STAGES[Math.min(index, PLAN_STAGES.length - 1)];
+      void goToStage(target);
+    },
+    [goToStage]
+  );
+
+  const tryStage = useCallback(() => {
+    changedKeys.current = new Set();
+    setTourReturned(false);
+    setTourOpen(false);
+  }, []);
+
+  /** בסיור כל ערך שמשתנה בכלי נספר, ואחרי שלושה ערכים מסך ההסבר חוזר */
+  const updateStage = useCallback(
+    <S extends PlanStageId>(stage: S, next: PlanView['data'][S]) => {
+      const previous = planRef.current?.data[stage] as Record<string, unknown> | undefined;
+      rawUpdateStage(stage, next);
+      if (!tour || tourOpen) return;
+      const incoming = next as unknown as Record<string, unknown>;
+      Object.keys(incoming).forEach((key) => {
+        // מסכי הניווט הפנימיים אינם ערך שהלקוח הזין
+        if (key === 'profileScreen') return;
+        if (JSON.stringify(incoming[key]) !== JSON.stringify(previous?.[key])) {
+          changedKeys.current.add(`${stage}.${key}`);
+        }
+      });
+      if (changedKeys.current.size >= TOUR_FREE_CHANGES) {
+        changedKeys.current = new Set();
+        setTourReturned(true);
+        setTourOpen(true);
+      }
+    },
+    [rawUpdateStage, tour, tourOpen]
+  );
 
   const [completing, setCompleting] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -130,7 +188,8 @@ export function PlanWorkspace({ planId }: { planId: string }) {
 
   const stage = viewingStage ?? plan.currentStage;
   const unfinished = unfinishedPrerequisites(stage, statuses);
-  const isPreview = unfinished.length > 0;
+  // בסיור כל שלב פתוח להצצה — אין נעילה לפי שלבים קודמים
+  const isPreview = !tour && unfinished.length > 0;
   const journey = journeyStageFor(stage);
   const action = PLAN_STAGE_ACTIONS[stage];
   const StageIcon = journey.icon;
@@ -147,9 +206,18 @@ export function PlanWorkspace({ planId }: { planId: string }) {
     stage !== 'ANALYSIS' ||
     (Boolean(plan.data.ANALYSIS.intent) &&
       (plan.data.ANALYSIS.profileScreen || 'borrowers') === 'deal');
-  const showStageFooter = !isPreview && analysisOnLastSubstep && (canComplete || isDone);
+  const showStageFooter = !tour && !isPreview && analysisOnLastSubstep && (canComplete || isDone);
 
   const selectStage = (nextStage: PlanStageId) => {
+    if (tour) {
+      // לחיצה על הסרגל בסיור פותחת את דף ההסבר של אותו שלב
+      setViewingStage(null);
+      setTourIndex(stageIndex(nextStage));
+      setTourReturned(false);
+      setTourOpen(true);
+      void goToStage(nextStage);
+      return;
+    }
     if (unfinishedPrerequisites(nextStage, statuses).length > 0) {
       setViewingStage(nextStage);
       return;
@@ -249,7 +317,30 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 האזור האישי
               </Link>
 
-              {editingName ? (
+              {tour ? (
+                <div className="md:mx-auto">
+                  <h1 className="text-2xl font-black text-white md:text-3xl">{plan.name}</h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 md:justify-center">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-xs font-black text-amber-100 ring-1 ring-amber-300/40">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      סיור היכרות · הנתונים לא נשמרים
+                    </span>
+                    {!tourOpen && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTourReturned(false);
+                          setTourOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-white/25"
+                      >
+                        <BookOpen className="h-3.5 w-3.5" />
+                        חזרה להסבר על השלב
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : editingName ? (
                 <input
                   autoFocus
                   value={draftName}
@@ -277,6 +368,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                 </button>
               )}
 
+              {!tour && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs md:justify-center">
                 {plan.propertyAddress && (
                   <span className="rounded-full bg-white/15 px-3 py-1 font-semibold text-white/80">
@@ -304,6 +396,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
                   {save.label}
                 </span>
               </div>
+              )}
             </div>
 
             <ProgressRing value={plan.progress} />
@@ -377,7 +470,7 @@ export function PlanWorkspace({ planId }: { planId: string }) {
             </div>
 
             {/* מה שהיועץ כתב ללקוח בשלב הזה, מעל תוכן השלב עצמו */}
-            <AdvisorStageNotes stage={stage} />
+            {!tour && <AdvisorStageNotes stage={stage} />}
 
             {isPreview && (
               <StageLockedPreview
@@ -453,6 +546,18 @@ export function PlanWorkspace({ planId }: { planId: string }) {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <AnimatePresence>
+        {tour && tourOpen && (
+          <PlanTour
+            key="tour"
+            index={tourIndex}
+            onIndexChange={changeTourIndex}
+            onTry={tryStage}
+            returnedAfterChanges={tourReturned}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

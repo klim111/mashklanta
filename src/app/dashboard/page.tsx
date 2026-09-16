@@ -25,7 +25,7 @@ import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 type TabType = 'plans' | 'rate-requests' | 'tools' | 'settings';
 
 const tabs: Array<{ id: TabType; label: string; icon: typeof FileText }> = [
-  { id: 'plans', label: 'דאשבורד משכנתאות', icon: FileText },
+  { id: 'plans', label: 'המשכנתאות שלי', icon: FileText },
   { id: 'rate-requests', label: 'תמהילים שהוגשו לבנקים', icon: Gavel },
   { id: 'tools', label: 'כלים ומחשבונים', icon: Calculator },
   { id: 'settings', label: 'הגדרות', icon: Settings },
@@ -115,8 +115,8 @@ export default function DashboardPage() {
                 שלום, {session.user?.name?.split(' ')[0] || 'ברוכים הבאים'}
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/55">
-                מכאן מנהלים את תכנון המשכנתא — חמישה שלבים, מהניתוח הפיננסי ועד החתימה. כל נתון
-                נשמר בחשבון ועובר אוטומטית לשלב הבא.
+                מכאן בוחרים מה לעשות — משכנתא חדשה, מיחזור או ייעוץ — וכמה עזרה לקבל בדרך. חמישה
+                שלבים, מהפרופיל הפיננסי ועד החתימה, וכל נתון נשמר בחשבון.
               </p>
             </motion.div>
 
@@ -156,27 +156,6 @@ export default function DashboardPage() {
             <>
               {/* פגישות שהיועץ הציע — אישור המועד כאן מסמן אותה כמאושרת אצלו */}
               <ClientMeetings />
-
-              {/* שלב האישור העקרוני — איסוף פרטי הבקשה, נשמר אוטומטית */}
-              <Link
-                href="/principal-approval"
-                className="group mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-l from-indigo-50/80 to-white p-5 transition-all hover:border-indigo-300 hover:shadow-md"
-              >
-                <div className="flex items-center gap-3.5">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-200">
-                    <FileText className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-[15px] font-bold text-slate-900">אישור עקרוני — פרטי הבקשה</p>
-                    <p className="text-[13px] text-slate-500">
-                      פרטי הלווים והערבים, הכנסות, חשבונות בנק ומקורות מימון — עם דוח מסכם להורדה
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[13px] font-semibold text-indigo-600 transition-transform group-hover:-translate-x-1">
-                  להזנת הפרטים ←
-                </span>
-              </Link>
 
               <PlansOverview />
             </>

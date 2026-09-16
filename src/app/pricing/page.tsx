@@ -32,6 +32,8 @@ import {
   pricingFaq,
   pricingPlans,
 } from '@/data/platform/pricing';
+import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
+import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
 
 function CellValue({ value }: { value: boolean | string }) {
   if (value === true) {
@@ -77,16 +79,16 @@ export default function PricingPage() {
           </div>
 
           <h1 className="mb-6 text-4xl font-black leading-[1.15] text-white md:text-6xl">
-            משלמים על עבודה,
+            משלמים על מה שלקחתם,
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-fuchsia-200 bg-clip-text text-transparent">
-              לא על חבילה
+              ותמיד את המחיר הנמוך
             </span>
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
-            כל אחד מחמשת שלבי המשכנתא מתומחר בנפרד. עשיתם שלב לבד — לא שילמתם עליו.
-            רוצים שהיועץ ייקח את כולם — מקבלים מחיר חבילה.
+            גישה לפלטפורמה ב-₪{PLATFORM_MONTHLY_PRICE} לחודש. כל שלב עם יועץ מתומחר בנפרד, מה ששילמתם
+            על הפלטפורמה מקוזז מהליווי, והגישה המלאה כלולה בכל הזמנת ליווי.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3">
@@ -202,6 +204,37 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ─────────────────────── Principles ─────────────────────── */}
+      <section className="bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 py-20 text-white md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-12 max-w-3xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur">
+              <BadgeCheck className="h-4 w-4" />
+              חמישה עקרונות
+            </div>
+            <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+              כך עובד התמחור — בכל מקום באותו נוסח
+            </h2>
+            <p className="text-lg leading-relaxed text-slate-100">
+              אותם חמישה עקרונות מלווים אתכם באזור האישי, בסיור בכלי ובכל הזמנת ליווי. אין אותיות
+              קטנות.
+            </p>
+          </motion.div>
+
+          <PricingModelStrip tone="dark" />
+
+          <div className="mt-16">
+            <h3 className="mb-6 text-center text-2xl font-black text-white">ואיך מתחילים</h3>
+            <ServiceFlowSteps tone="dark" />
+          </div>
+        </div>
+      </section>
+
       {/* ─────────────────────── Stage pricing ─────────────────────── */}
       <section
         id="builder"
@@ -222,8 +255,9 @@ export default function PricingPage() {
               סמנו מה היועץ יעשה — ותראו מחיר מיד
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
-              כל שלב שלא סימנתם הוא שלב שאתם מבצעים בעצמכם בפלטפורמה, ללא עלות מעבר למנוי
-              החודשי. בחרתם את כל החמישה? המחיר יורד אוטומטית למחיר החבילה.
+              כל שלב שלא סימנתם הוא שלב שאתם מבצעים בעצמכם בפלטפורמה. סימנתם שלב אחד לפחות?
+              הגישה לפלטפורמה כלולה, מה שכבר שילמתם עליה מקוזז, ואם ליווי מלא יוצא זול יותר —
+              זה המחיר שתשלמו.
             </p>
           </motion.div>
 
@@ -407,8 +441,8 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-6 text-center text-sm text-gray-600">
-            מנוי הפלטפורמה בסך ₪{PLATFORM_MONTHLY_PRICE} לחודש נגבה עד קבלת המשכנתא, וניתן
-            לביטול בכל עת. במסלול הליווי המלא הגישה כלולה במחיר.
+            הגישה לפלטפורמה בסך ₪{PLATFORM_MONTHLY_PRICE} לחודש נגבית עד לסיום התהליך וניתנת להפסקה
+            בכל עת. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה ששולם עליה מקוזז.
           </p>
         </div>
       </section>
@@ -459,11 +493,11 @@ export default function PricingPage() {
         >
           <Sparkles className="mx-auto mb-5 h-10 w-10 text-blue-100" />
           <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
-            החודש הראשון מתחיל בבניית תמהיל
+            מתחילים בסיור — משלמים רק כשמחליטים
           </h2>
           <p className="mb-10 text-lg leading-relaxed text-slate-100">
-            פתחו חשבון, הריצו את הנתונים שלכם בכלים, וראו כמה שווה כל שלב לפני שאתם מחליטים
-            על מי להשאיר אותו.
+            בחרו מה תרצו לעשות, עברו על חמשת השלבים בסיור בכלי, וראו כמה שווה כל שלב לפני שאתם
+            מחליטים על מי להשאיר אותו.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button
@@ -471,9 +505,9 @@ export default function PricingPage() {
               size="lg"
               className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
             >
-              <Link href="/auth/register">
+              <Link href="/#start">
                 <Wallet className="ml-2 h-5 w-5" />
-                פתיחת חשבון
+                מה תרצו לעשות?
               </Link>
             </Button>
             <Button

@@ -8,6 +8,12 @@ import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 
+/** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
+function safeCallbackUrl(value: string | null): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
+  return value;
+}
+
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,11 +107,15 @@ function RegisterForm() {
         setError(data.error || 'אירעה שגיאה בהרשמה');
       } else {
         setSuccess('ההרשמה הושלמה. אפשר להתחבר עכשיו עם שם המשתמש והסיסמה.');
+        // הבחירה שנעשתה בעמוד הבית ("מה תרצו לעשות?") ממשיכה אחרי ההתחברות
+        const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
         setTimeout(() => {
           if (formData.role === 'ADVISOR') {
             router.push('/auth/login?advisor=true');
           } else {
-            router.push('/auth/login');
+            router.push(
+              callbackUrl ? `/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/auth/login'
+            );
           }
         }, 3000);
       }
@@ -329,7 +339,10 @@ function RegisterForm() {
                 </div>
               </div>
               <div className="mb-6">
-                <GoogleAuthButton label="הרשמה עם Google" />
+                <GoogleAuthButton
+                  label="הרשמה עם Google"
+                  callbackUrl={safeCallbackUrl(searchParams.get('callbackUrl')) ?? '/dashboard'}
+                />
               </div>
             </>
           )}

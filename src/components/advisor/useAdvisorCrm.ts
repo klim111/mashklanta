@@ -43,6 +43,7 @@ export interface AdvisorOverviewView {
   openTasks: number;
   overdueTasks: number;
   awaitingConfirmation: number;
+  newGuidanceRequests: number;
   todayTasks: AdvisorTaskView[];
   overdue: AdvisorTaskView[];
   upcomingMeetings: AdvisorMeetingView[];
@@ -56,6 +57,7 @@ const emptyOverview: AdvisorOverviewView = {
   openTasks: 0,
   overdueTasks: 0,
   awaitingConfirmation: 0,
+  newGuidanceRequests: 0,
   todayTasks: [],
   overdue: [],
   upcomingMeetings: [],
