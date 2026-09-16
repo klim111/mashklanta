@@ -15,6 +15,8 @@ export interface NewClientTaskInput {
   bank?: string | null;
   /** ISO */
   dueAt: string | null;
+  /** מסמך שכבר הועלה לתיק — המשימה נפתחת כבוצעה ומקושרת אליו */
+  documentId?: string | null;
 }
 
 /** אירוע ששולח כל מופע של ההוק כשמשהו השתנה, כדי שהשלב ולוח השנה יראו אותו דבר */

@@ -72,6 +72,11 @@ export interface CreateClientTaskInput {
   details: string | null;
   bank: string | null;
   dueAt: Date | null;
+  /**
+   * המסמך שכבר הועלה לתיק בעת יצירת המשימה. משימת מסמך שנפתחת כך היא משימה
+   * שכבר בוצעה — הקובץ נמצא, ואין מה להשאיר פתוח.
+   */
+  documentId?: string | null;
 }
 
 export async function createClientTask(
@@ -86,6 +91,7 @@ export async function createClientTask(
     if (!plan) return null;
   }
 
+  const documentId = input.documentId ?? null;
   const row = await prisma.clientTask.create({
     data: {
       ownerId,
@@ -97,6 +103,8 @@ export async function createClientTask(
       details: input.details,
       bank: input.bank,
       dueAt: input.dueAt,
+      documentId,
+      ...(documentId ? { status: 'DONE' as const, completedAt: new Date() } : {}),
     },
     select: taskSelect,
   });

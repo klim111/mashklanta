@@ -5,16 +5,24 @@ import { upload } from '@vercel/blob/client';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import { demoDocuments, isDemoPlan } from '@/lib/demo-plan';
 
+/**
+ * כל מופעי ההוק מקשיבים לאותו אירוע, כדי שהעלאה מחלון אחד — משימת מסמך,
+ * תיק המסמכים או שלב — תרענן מיד את התיק ואת פסי ההתקדמות בכל שאר המסכים.
+ */
+const CHANGE_EVENT = 'mashklanta:plan-documents-changed';
+function notifyChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
 /** תיק המסמכים של תהליך ההדגמה — בזיכרון בלבד, משותף לכל מופעי ההוק */
 let demoStore: PlanDocumentView[] | null = null;
-const DEMO_EVENT = 'mashklanta:demo-documents-changed';
 function readDemo(): PlanDocumentView[] {
   if (!demoStore) demoStore = demoDocuments();
   return demoStore;
 }
 function writeDemo(items: PlanDocumentView[]) {
   demoStore = items;
-  window.dispatchEvent(new Event(DEMO_EVENT));
+  notifyChanged();
 }
 
 /**
@@ -23,7 +31,7 @@ function writeDemo(items: PlanDocumentView[]) {
  * הקבצים עצמם אינם עוברים כאן — רק הרשומות. הצפייה בקובץ נעשית מול מסלול
  * מאומת, כך שאין בדפדפן שום כתובת שמובילה ישירות לאחסון.
  */
-export function usePlanDocuments(planId: string) {
+export function usePlanDocuments(planId: string | null) {
   const [documents, setDocuments] = useState<PlanDocumentView[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +41,12 @@ export function usePlanDocuments(planId: string) {
   const refresh = useCallback(async () => {
     if (demo) {
       setDocuments(readDemo());
+      setReady(true);
+      return;
+    }
+    // בלי תהליך אין תיק לטעון — למשל משימה כללית שנוספה מלוח השנה
+    if (!planId) {
+      setDocuments([]);
       setReady(true);
       return;
     }
@@ -56,11 +70,10 @@ export function usePlanDocuments(planId: string) {
 
   useEffect(() => {
     void refresh();
-    if (!demo) return;
     const onChange = () => void refresh();
-    window.addEventListener(DEMO_EVENT, onChange);
-    return () => window.removeEventListener(DEMO_EVENT, onChange);
-  }, [refresh, demo]);
+    window.addEventListener(CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(CHANGE_EVENT, onChange);
+  }, [refresh]);
 
   /**
    * העלאת קובץ.
@@ -70,26 +83,28 @@ export function usePlanDocuments(planId: string) {
    * אחרי שההעלאה הסתיימה נרשמת הרשומה שמקשרת את הקובץ למסמך בתיק.
    */
   const uploadDocument = useCallback(
-    async (key: string, name: string, file: File) => {
+    async (key: string, name: string, file: File): Promise<PlanDocumentView | null> => {
+      if (!planId) {
+        setError('אין תהליך לשייך אליו את המסמך');
+        return null;
+      }
       setBusyKey(key);
       setError(null);
       if (demo) {
         // בסיור הקובץ אינו עולה לשום מקום — רק הרשומה מופיעה בתיק
-        writeDemo([
-          {
-            id: `demo-doc-${key}`,
-            planId,
-            key,
-            name,
-            fileName: file.name,
-            contentType: file.type,
-            size: file.size,
-            uploadedAt: new Date().toISOString(),
-          },
-          ...readDemo().filter((item) => item.key !== key),
-        ]);
+        const record: PlanDocumentView = {
+          id: `demo-doc-${key}`,
+          planId,
+          key,
+          name,
+          fileName: file.name,
+          contentType: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+        writeDemo([record, ...readDemo().filter((item) => item.key !== key)]);
         setBusyKey(null);
-        return;
+        return record;
       }
       try {
         const blob = await upload(`plans/${planId}/${key}`, file, {
@@ -110,14 +125,18 @@ export function usePlanDocuments(planId: string) {
             blobPath: blob.pathname,
           }),
         });
+        const body = await response.json().catch(() => null);
         if (!response.ok) {
-          const body = await response.json().catch(() => null);
           setError(body?.error ?? 'ההעלאה נכשלה. נסו שוב.');
-          return;
+          return null;
         }
         await refresh();
+        notifyChanged();
+        // הרשומה שנוצרה חוזרת מהשרת — כך אפשר לקשר אותה מיד למשימה שנפתחה
+        return (body ?? null) as PlanDocumentView | null;
       } catch (failure) {
         setError(failure instanceof Error ? failure.message : 'ההעלאה נכשלה. נסו שוב.');
+        return null;
       } finally {
         setBusyKey(null);
       }
@@ -127,6 +146,7 @@ export function usePlanDocuments(planId: string) {
 
   const remove = useCallback(
     async (documentId: string, key: string) => {
+      if (!planId) return;
       setBusyKey(key);
       if (demo) {
         writeDemo(readDemo().filter((item) => item.id !== documentId));
@@ -136,6 +156,7 @@ export function usePlanDocuments(planId: string) {
       try {
         await fetch(`/api/plans/${planId}/documents/${documentId}`, { method: 'DELETE' });
         await refresh();
+        notifyChanged();
       } finally {
         setBusyKey(null);
       }

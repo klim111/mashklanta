@@ -14,6 +14,7 @@ import {
   MapPin,
   MessageSquare,
   Trash2,
+  Upload,
   UserRound,
 } from 'lucide-react';
 import { StageChip } from '@/components/advisor/ui';
@@ -30,6 +31,8 @@ import { planStageNumber } from '@/lib/mortgage-plan';
 import { clientTaskIdOf, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, CalendarEvent, ClientTask, DashboardSection } from '@/lib/client-agenda';
 import { AddTaskDialog } from '@/components/plan/tasks/AddTaskDialog';
+import { DocumentUploadDialog } from '@/components/plan/documents/DocumentUploadDialog';
+import type { ClientTaskView } from '@/lib/client-tasks';
 import { ClientCalendar, DayList, eventTone } from './ClientCalendar';
 import type { CalendarView } from './ClientCalendar';
 import { TaskItem } from './TaskItem';
@@ -62,11 +65,17 @@ export function AgendaSection({
   const [selected, setSelected] = useState(() => initialDay ?? dayKey(new Date()));
   const [detail, setDetail] = useState<Detail | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  /** משימת מסמך שנפתח עבורה חלון ההעלאה */
+  const [uploadFor, setUploadFor] = useState<ClientTaskView | null>(null);
   /** משימה חדשה מלוח השנה משויכת לתהליך הפתוח, כשיש אחד */
   const activePlanId = plansState.plans.find((plan) => plan.status === 'IN_PROGRESS')?.id ?? null;
 
-  /** משימה שהלקוח הוסיף לעצמו — אפשר לסמן כבוצעה ולמחוק מכאן */
+  /** משימה שהלקוח הוסיף לעצמו — אפשר לסמן כבוצעה, להעלות מסמך ולמחוק מכאן */
   const ownTaskId = (id: string) => clientTaskIdOf(id);
+  const ownTaskOf = (id: string): ClientTaskView | null => {
+    const taskId = ownTaskId(id);
+    return taskId ? (clientTasksState.tasks.find((task) => task.id === taskId) ?? null) : null;
+  };
   const completeOwn = async (id: string) => {
     const taskId = ownTaskId(id);
     if (!taskId) return;
@@ -134,7 +143,8 @@ export function AgendaSection({
           <DetailPanel
             detail={detail}
             meeting={detail.kind === 'event' ? meetingOf(detail.event) : null}
-            ownTask={Boolean(ownTaskId(detail.kind === 'event' ? detail.event.id : detail.task.id))}
+            ownTask={ownTaskOf(detail.kind === 'event' ? detail.event.id : detail.task.id)}
+            onUpload={() => setUploadFor(ownTaskOf(detail.kind === 'event' ? detail.event.id : detail.task.id))}
             onComplete={() => void completeOwn(detail.kind === 'event' ? detail.event.id : detail.task.id)}
             onRemove={() => void removeOwn(detail.kind === 'event' ? detail.event.id : detail.task.id)}
             onBack={() => setDetail(null)}
@@ -214,10 +224,28 @@ export function AgendaSection({
         )}
       </div>
 
+      {/* משימת מסמך מלוח השנה — העלאה אמיתית לתיק של המשכנתא הפתוחה */}
+      {uploadFor && (uploadFor.planId ?? activePlanId) && (
+        <DocumentUploadDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) setUploadFor(null);
+          }}
+          planId={(uploadFor.planId ?? activePlanId) as string}
+          stage={uploadFor.stage}
+          defaultTitle={uploadFor.title}
+          onUploaded={(document) => {
+            void clientTasksState.attachDocument(uploadFor.id, document.id);
+            setDetail(null);
+          }}
+        />
+      )}
+
       <AddTaskDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         planId={activePlanId}
+        documentPlanId={activePlanId}
         stage={null}
         defaultDay={selected}
         onSubmit={clientTasksState.add}
@@ -280,26 +308,42 @@ function DetailPanel({
   ownTask,
   onComplete,
   onRemove,
+  onUpload,
   onBack,
   onGo,
   onRespond,
 }: {
   detail: Detail;
   meeting: AdvisorMeetingView | null;
-  /** משימה שהלקוח הוסיף בעצמו — אפשר לסמן ולמחוק */
-  ownTask: boolean;
+  /** המשימה שהלקוח הוסיף בעצמו — אפשר לסמן, להעלות מסמך ולמחוק */
+  ownTask: ClientTaskView | null;
   onComplete: () => void;
   onRemove: () => void;
+  onUpload: () => void;
   onBack: () => void;
   onGo: (target: AgendaTarget) => void;
   onRespond: (meeting: AdvisorMeetingView, accepted: boolean) => void;
 }) {
   const ownActions = ownTask ? (
     <>
+      {ownTask.kind === 'DOCUMENT' && ownTask.status === 'OPEN' && (
+        <button
+          type="button"
+          onClick={onUpload}
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[15px] font-black text-white hover:bg-emerald-700"
+        >
+          <Upload className="h-4 w-4" />
+          העלאת המסמך לתיק
+        </button>
+      )}
       <button
         type="button"
         onClick={onComplete}
-        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[15px] font-black text-white hover:bg-emerald-700"
+        className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[15px] font-black ${
+          ownTask.kind === 'DOCUMENT'
+            ? 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+        }`}
       >
         <Check className="h-4 w-4" />
         סמנו כבוצעה

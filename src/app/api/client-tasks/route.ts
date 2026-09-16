@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     details: clean(body?.details, 2000) || null,
     bank: clean(body?.bank, 40) || null,
     dueAt,
+    documentId: clean(body?.documentId, 60) || null,
   });
   if (!task) return NextResponse.json({ error: 'התהליך לא נמצא' }, { status: 404 });
   return NextResponse.json(task, { status: 201 });

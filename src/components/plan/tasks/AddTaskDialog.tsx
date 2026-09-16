@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertCircle,
   CalendarClock,
   CalendarPlus,
   Check,
@@ -9,10 +10,15 @@ import {
   Landmark,
   ListChecks,
   Loader2,
+  Lock,
   PenLine,
   Sparkles,
+  Upload,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ALLOWED_DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from '@/lib/plan-documents';
+import { customDocumentKey } from '@/lib/document-progress';
+import { usePlanDocuments } from '../documents/usePlanDocuments';
 import { MORTGAGE_BANKS } from '@/components/mortgage-advisor/types';
 import { journeyStageFor } from '@/data/platform/planStages';
 import {
@@ -32,6 +38,8 @@ const inputClass =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
 
 const KIND_ICONS = { TASK: ListChecks, MEETING: CalendarClock, DOCUMENT: FileUp } as const;
+const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
+const MAX_MB = Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024));
 
 type Picked = { template: ClientTaskTemplate; stage: PlanStageId } | 'free';
 
@@ -44,6 +52,11 @@ export interface AddTaskDialogProps {
   stage: PlanStageId | null;
   /** יום שנבחר בלוח השנה (YYYY-MM-DD) — ממלא את המועד מראש */
   defaultDay?: string | null;
+  /**
+   * התהליך שאליו יעלה מסמך, כשהוא שונה מ-`planId` — למשל משימה כללית מלוח
+   * השנה שהקובץ שלה צריך בכל זאת להיכנס לתיק של המשכנתא הפתוחה.
+   */
+  documentPlanId?: string | null;
   onSubmit: (input: NewClientTaskInput) => Promise<unknown>;
 }
 
@@ -54,15 +67,29 @@ export interface AddTaskDialogProps {
  * ממלאת את הטופס; ומתחת ניסוח חופשי: משימה, פגישה או מסמך, עם מועד ופרטים.
  * תבנית שדורשת בנק פותחת בחירת בנק, והכותרת מקבלת את שמו.
  */
-export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, onSubmit }: AddTaskDialogProps) {
+export function AddTaskDialog({
+  open,
+  onOpenChange,
+  planId,
+  stage,
+  defaultDay,
+  documentPlanId,
+  onSubmit,
+}: AddTaskDialogProps) {
   const [picked, setPicked] = useState<Picked>('free');
   const [kind, setKind] = useState<ClientTaskKind>('TASK');
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [bank, setBank] = useState<string>('');
   const [when, setWhen] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  /** התהליך שהקובץ ייכנס לתיק שלו */
+  const uploadPlanId = documentPlanId ?? planId;
+  const { upload, error: uploadError } = usePlanDocuments(uploadPlanId);
 
   useEffect(() => {
     if (!open) return;
@@ -72,6 +99,7 @@ export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, o
     setDetails('');
     setBank('');
     setWhen(defaultDay ? `${defaultDay}T10:00` : '');
+    setFile(null);
     setBusy(false);
     setError(null);
   }, [open, defaultDay]);
@@ -89,6 +117,7 @@ export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, o
     setKind(entry.template.kind);
     setTitle(entry.template.needsBank ? '' : entry.template.title);
     setBank('');
+    setFile(null);
   };
 
   const chosen = picked === 'free' ? null : picked;
@@ -97,20 +126,38 @@ export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, o
   const canSubmit =
     finalTitle.length >= 2 && (!needsBank || Boolean(bank)) && (kind !== 'MEETING' || Boolean(when));
 
+  const taskStage = picked === 'free' ? stage : picked.stage;
+
+  /**
+   * שמירת המשימה. כשנבחר קובץ, הוא עולה קודם לאחסון הפרטי ונרשם בתיק המסמכים
+   * של הלקוח — ורק אז נפתחת המשימה, כבר מקושרת אליו וסגורה. כך "העלאת מסמך"
+   * אינה תזכורת אלא העלאה אמיתית.
+   */
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
     setError(null);
     try {
+      let documentId: string | null = null;
+      if (file && uploadPlanId) {
+        const record = await upload(customDocumentKey(taskStage, finalTitle), finalTitle, file);
+        if (!record) {
+          setError(uploadError ?? 'העלאת המסמך נכשלה. נסו שוב.');
+          return;
+        }
+        documentId = record.id;
+      }
+
       const result = await onSubmit({
         planId,
-        stage: picked === 'free' ? stage : picked.stage,
+        stage: taskStage,
         kind,
         templateKey: picked === 'free' ? null : picked.template.key,
         title: finalTitle,
         details: details.trim() || undefined,
         bank: bank || null,
         dueAt: when ? fromLocalInputValue(when) : null,
+        documentId,
       });
       if (result === null) {
         setError('המשימה לא נשמרה. נסו שוב.');
@@ -196,6 +243,8 @@ export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, o
                   type="button"
                   onClick={() => {
                     setKind(option);
+                    // קובץ שנבחר שייך למשימת מסמך בלבד
+                    if (option !== 'DOCUMENT') setFile(null);
                     if (chosen && chosen.template.kind !== option) setPicked('free');
                   }}
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition-colors ${
@@ -247,6 +296,57 @@ export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, o
             </label>
           )}
 
+          {/* מסמך — העלאה אמיתית לתיק, כאן ועכשיו */}
+          {kind === 'DOCUMENT' && (
+            <div className="mt-3">
+              {uploadPlanId ? (
+                <>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    accept={ACCEPT}
+                    className="hidden"
+                    onChange={(event) => {
+                      setFile(event.target.files?.[0] ?? null);
+                      event.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInput.current?.click()}
+                    className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+                      file
+                        ? 'border-emerald-300 bg-emerald-50/60'
+                        : 'border-slate-300 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
+                    }`}
+                  >
+                    <Upload className={`h-5 w-5 ${file ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    <span className="text-sm font-black text-slate-800">
+                      {file ? file.name : 'בחרו קובץ להעלאה עכשיו — PDF או תמונה'}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {file
+                        ? 'המסמך יישמר בתיק המסמכים שלכם, והמשימה תיסגר'
+                        : `עד ${MAX_MB}MB · אפשר גם לשמור עכשיו ולהעלות אחר כך`}
+                    </span>
+                  </button>
+                  {file && (
+                    <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+                      <Lock className="h-3.5 w-3.5" />
+                      הקובץ נשמר באחסון פרטי ומוצג רק לכם וליועץ שמלווה אתכם
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] font-bold text-amber-900">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  כדי להעלות מסמך לתיק צריך תהליך משכנתא פתוח. המשימה תישמר, ואפשר להעלות את הקובץ
+                  מתוך השלב.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-xs font-bold text-slate-600">
               מועד {kind === 'MEETING' ? '' : <span className="font-normal text-slate-400">(רשות)</span>}
@@ -288,8 +388,14 @@ export function AddTaskDialog({ open, onOpenChange, planId, stage, defaultDay, o
             onClick={() => void submit()}
             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-md transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {kind === 'MEETING' ? 'קבעו את הפגישה' : 'שמרו את המשימה'}
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : file ? (
+              <Upload className="h-4 w-4" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            {file ? 'העלו את המסמך לתיק' : kind === 'MEETING' ? 'קבעו את הפגישה' : 'שמרו את המשימה'}
           </button>
         </div>
 

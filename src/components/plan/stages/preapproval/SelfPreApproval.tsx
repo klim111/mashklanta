@@ -241,7 +241,7 @@ function BankCard({
   approval: BankPreApproval | null;
   uploaded: PlanDocumentView | null;
   busy: boolean;
-  onUpload: (file: File) => void | Promise<void>;
+  onUpload: (file: File) => unknown;
   onRemove: (documentId: string) => void | Promise<void>;
   onView: (document: PlanDocumentView) => void;
   onMarkSubmitted: () => void;

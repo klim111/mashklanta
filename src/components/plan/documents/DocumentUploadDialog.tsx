@@ -39,7 +39,7 @@ export function DocumentUploadDialog({
   defaultTitle = '',
   onUploaded,
 }: DocumentUploadDialogProps) {
-  const { documents, error, upload, busyKey } = usePlanDocuments(planId);
+  const { error, upload, busyKey } = usePlanDocuments(planId);
   const [title, setTitle] = useState(defaultTitle);
   const [file, setFile] = useState<File | null>(null);
   const [done, setDone] = useState<PlanDocumentView | null>(null);
@@ -61,19 +61,9 @@ export function DocumentUploadDialog({
     if (!file || !canUpload) return;
     setBusy(true);
     try {
-      await upload(key, title.trim(), file);
-      // הרשומה שנוצרה — נמצאת ברשימה המעודכנת לפי המפתח
-      const stored = documents.find((item) => item.key === key) ?? null;
-      const record: PlanDocumentView = stored ?? {
-        id: `pending-${key}`,
-        planId,
-        key,
-        name: title.trim(),
-        fileName: file.name,
-        contentType: file.type,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
-      };
+      // הקובץ עולה לאחסון הפרטי, והרשומה שחוזרת היא המסמך בתיק הלקוח
+      const record = await upload(key, title.trim(), file);
+      if (!record) return;
       setDone(record);
       onUploaded?.(record);
     } finally {
