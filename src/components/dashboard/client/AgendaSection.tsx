@@ -36,6 +36,7 @@ import type { ClientTaskView } from '@/lib/client-tasks';
 import { ClientCalendar, DayList, eventTone } from './ClientCalendar';
 import type { CalendarView } from './ClientCalendar';
 import { TaskItem } from './TaskItem';
+import { TaskGroupsList } from './TaskGroups';
 import { DashCard } from './ui';
 import type { ClientDashboardData } from './useClientDashboard';
 
@@ -60,7 +61,7 @@ export function AgendaSection({
   initialDay?: string;
   onNavigate: (section: DashboardSection) => void;
 }) {
-  const { tasks, events, meetingsState, notes, clientTasksState, plansState } = data;
+  const { tasks, events, meetingsState, notes, clientTasksState, plansState, scheduleTask } = data;
   const [view, setView] = useState<CalendarView>('month');
   const [selected, setSelected] = useState(() => initialDay ?? dayKey(new Date()));
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -253,7 +254,7 @@ export function AgendaSection({
 
       <div className={`grid gap-4 ${sortedNotes.length > 0 ? 'xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : ''}`}>
         <DashCard
-          title="כל המשימות שלי"
+          title="המשימות שלי"
           icon={<ListChecks className="h-5 w-5 text-blue-600" />}
           action={
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-black text-slate-700">
@@ -261,21 +262,12 @@ export function AgendaSection({
             </span>
           }
         >
-          {tasks.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                <Check className="h-6 w-6" />
-              </span>
-              <p className="text-base font-black text-slate-800">אין משימות פתוחות</p>
-              <p className="text-sm text-slate-500">כשיהיה משהו לעשות — הוא יופיע כאן וגם בסקירה.</p>
-            </div>
-          ) : (
-            <div className="grid gap-2 md:grid-cols-2">
-              {tasks.map((task) => (
-                <TaskItem key={task.id} task={task} onOpen={() => setDetail({ kind: 'task', task })} />
-              ))}
-            </div>
-          )}
+          <TaskGroupsList
+            tasks={tasks}
+            columns={2}
+            onOpen={(task) => setDetail({ kind: 'task', task })}
+            onSchedule={scheduleTask}
+          />
         </DashCard>
 
         {sortedNotes.length > 0 && (

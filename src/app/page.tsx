@@ -80,23 +80,6 @@ export default function Home() {
               </Button>
             </motion.div>
 
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-full md:w-auto"
-            >
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="w-full justify-center px-6 py-4 text-base font-semibold bg-white/90 border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8 md:text-lg"
-              >
-                <Link href="/pricing">
-                  <Tag className="w-5 h-5 ml-2" />
-                  תמחור
-                </Link>
-              </Button>
-            </motion.div>
             
             <motion.div
               whileHover={{ scale: 1.05 }}

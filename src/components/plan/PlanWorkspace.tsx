@@ -692,6 +692,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     onRequestAdvisor={() => void requestFreeHandoff('ANALYSIS')}
                     advisorBusy={handoffBusy === 'ANALYSIS'}
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
+                    onChangeSigning={(next: SigningData) => updateStage('SIGNING', next)}
                   />
                 )}
                 {/*

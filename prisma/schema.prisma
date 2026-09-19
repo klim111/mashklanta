@@ -130,6 +130,10 @@ model User {
    * מסמכים תומכים שהמשתמש העלה לתהליכי המשכנתא שלו
    */
   planDocuments      PlanDocument[] @relation("PlanDocumentOwner")
+  /**
+   * המועדים והסימונים שהלקוח קבע למשימות ולהמלצות באזור האישי
+   */
+  taskStates         ClientTaskState[] @relation("ClientTaskStateOwner")
 
   // ─────────────────────── גישה בתשלום לפלטפורמה ───────────────────────
   /**
@@ -567,6 +571,31 @@ model PlanDocument {
   @@unique([planId, key])
   @@index([clientId])
   @@index([ownerId])
+}
+
+/**
+ * מועד וסימון "בוצע" למשימה או להמלצה באזור האישי של הלקוח.
+ *
+ * המשימות עצמן נגזרות מהנתונים (`buildClientTasks`) ואינן נשמרות; מה שנשמר
+ * כאן הוא רק מה שהלקוח קבע בעצמו — מתי לבצע, והאם סימן שביצע. המפתח הוא
+ * מזהה המשימה כפי שנגזר, כך שהמועד נשאר צמוד למשימה גם בטעינה הבאה.
+ */
+model ClientTaskState {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("ClientTaskStateOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  key   String
+  dueAt DateTime?
+  /**
+   * סומן כבוצע — משמש בעיקר להמלצות שהלקוח מסמן בעצמו
+   */
+  doneAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 /**

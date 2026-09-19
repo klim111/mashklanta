@@ -48,6 +48,7 @@ import type {
   ProfileIntent,
   ProfileLoan,
   ProfileScreen,
+  SigningData,
 } from '@/lib/mortgage-plan';
 import {
   Metric,
@@ -63,6 +64,7 @@ import { pickProfileFromAnalysis } from '@/lib/client-profile';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 import { StageOverview } from './analysis/StageOverview';
 import { ProfileReportPanel } from './analysis/ProfileReportPanel';
+import { PropertyOwnershipPanel } from './analysis/PropertyOwnershipPanel';
 import { IncomeCalculatorDialog } from './analysis/IncomeCalculatorDialog';
 import { DocumentsScreen } from './analysis/DocumentsScreen';
 import { RecommendationCallouts } from './analysis/RecommendationCallouts';
@@ -134,10 +136,13 @@ export function AnalysisStage({
   planName,
   onRequestAdvisor,
   advisorBusy = false,
+  onChangeSigning,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
   planId: string;
+  /** הגדרת בעלות הנכס נשמרת על שלב החתימה, שהוא מקור האמת שלה */
+  onChangeSigning?: (next: SigningData) => void;
   /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
   planName?: string;
   /** בקשת ליווי חינמית לשלב הפרופיל — מכפתור "תן ליועץ" שבמסך "על השלב" */
@@ -568,6 +573,10 @@ export function AnalysisStage({
           <motion.div key="deal" {...reveal} className="space-y-5">
             <PropertyPanel profile={profile} patch={patch} onNeedEquityHelp={onEquityHelp} />
             <RecommendationCallouts profile={profile} screen="deal" patch={patch} />
+
+            {onChangeSigning && (
+              <PropertyOwnershipPanel signing={data.SIGNING} onChange={onChangeSigning} />
+            )}
 
             <ScreenFooter
               backLabel="על השלב"
@@ -1285,8 +1294,9 @@ function PropertyPanel({
               </span>
             </div>
 
-            <div className="mx-auto w-56">
+            <div className="mx-auto w-64">
               <NumberField
+                emphasis
                 label="הון עצמי זמין"
                 value={profile.equity}
                 onChange={applyEquity}

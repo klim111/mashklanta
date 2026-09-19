@@ -214,10 +214,18 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               <UserRound className="h-4 w-4 text-white" />
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">{displayName}</span>
+            {/* יציאה מהאזור האישי חוזרת לעמוד הראשי; היציאה מהחשבון נשארת לצדה */}
+            <Link
+              href="/"
+              title="לעמוד הראשי"
+              className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <HomeIcon className="h-4 w-4" />
+            </Link>
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: '/' })}
-              title="יציאה"
+              title="יציאה מהחשבון"
               className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
             >
               <LogOut className="h-4 w-4" />
@@ -238,10 +246,17 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             </Link>
             <div className="flex items-center gap-1">
               <span className="max-w-[9rem] truncate text-sm font-semibold text-white/80">{displayName}</span>
+              <Link
+                href="/"
+                title="לעמוד הראשי"
+                className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                <HomeIcon className="h-4 w-4" />
+              </Link>
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: '/' })}
-                title="יציאה"
+                title="יציאה מהחשבון"
                 className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <LogOut className="h-4 w-4" />

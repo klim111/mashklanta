@@ -33,6 +33,7 @@ import {
   ALL_SIGNING_DOCUMENT_KEYS,
   registryOfScenario,
   signingDealType,
+  signingDocumentKey,
   signingRegistry,
   signingScenario,
 } from './signing-documents';
@@ -1385,6 +1386,23 @@ export function banksWithPreApproval(data: PlanData): string[] {
   const leading = data.APPLICATIONS.approved ? data.APPLICATIONS.bank : null;
   if (leading && !banks.includes(leading)) banks.push(leading);
   return banks;
+}
+
+/** התקדמות איסוף המסמכים של תרחיש הבעלות שנבחר. null — עדיין לא נבחר תרחיש */
+export interface SigningDocumentsProgress {
+  total: number;
+  collected: number;
+  open: number;
+}
+
+export function signingDocumentsProgress(signing: SigningData): SigningDocumentsProgress | null {
+  const deal = signingDealType(signing.dealTypeId);
+  const scenario = signingScenario(deal, signing.scenarioId);
+  if (!scenario) return null;
+  const collected = scenario.documents.filter(
+    (document) => signing.documents[signingDocumentKey(scenario.id, document.key)]
+  ).length;
+  return { total: scenario.documents.length, collected, open: scenario.documents.length - collected };
 }
 
 export const SIGNING_CHECKS: ReadonlyArray<{ key: string; label: string }> = [

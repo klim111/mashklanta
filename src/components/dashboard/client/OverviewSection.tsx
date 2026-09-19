@@ -34,7 +34,8 @@ import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
 import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
-import { TaskItem } from './TaskItem';
+import { TaskGroupsList } from './TaskGroups';
+import { PlanRecommendations } from './PlanRecommendations';
 import { DashCard } from './ui';
 import type { ClientDashboardData } from './useClientDashboard';
 
@@ -64,7 +65,8 @@ export function OverviewSection({
   onDetailPlan: (planId: string | null) => void;
   onNavigate: (section: DashboardSection, day?: string) => void;
 }) {
-  const { plansState, mixesState, tasks, events, requests, advisorStages, ready } = data;
+  const { plansState, mixesState, tasks, events, requests, advisorStages, ready, taskStates, scheduleTask } =
+    data;
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
@@ -194,24 +196,16 @@ export function OverviewSection({
 
   const tasksCard = (
     <DashCard
-      title="המשימות הבאות שלי"
+      title="המשימות שלי"
       icon={<ListChecks className="h-5 w-5 text-blue-600" />}
       action={<GoLink onClick={() => onNavigate('agenda')}>לכל המשימות</GoLink>}
     >
-      {tasks.length === 0 ? (
-        <div className="flex items-center justify-center gap-3 py-5 text-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            <Check className="h-5 w-5" />
-          </span>
-          <p className="text-[15px] font-bold text-slate-700">אין משימות פתוחות</p>
-        </div>
-      ) : (
-        <div className="grid gap-2 md:grid-cols-2">
-          {tasks.slice(0, 4).map((task) => (
-            <TaskItem key={task.id} task={task} compact onOpen={go} />
-          ))}
-        </div>
-      )}
+      <TaskGroupsList
+        tasks={tasks}
+        compact
+        onOpen={(task) => go(task.target)}
+        onSchedule={scheduleTask}
+      />
     </DashCard>
   );
 
@@ -287,7 +281,7 @@ export function OverviewSection({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DashCard
-          title="המשכנתאות שלי — מצב נוכחי"
+          title="המשכנתא שלי"
           icon={<Compass className="h-5 w-5 text-blue-600" />}
           className="scroll-mt-24"
           id="my-mortgages"
@@ -337,8 +331,12 @@ export function OverviewSection({
             </div>
           )}
 
-          {/* פתיחת תהליך נוסף — רק כשכבר יש משכנתא; אחרת הבחירה כבר במסך */}
-          {summaries.length > 0 && (
+          {/*
+            ללקוח שכבר פתח משכנתא, מה שחשוב מתחת לשורה שלה הוא מה כדאי לעשות
+            עכשיו — ולא כפתור לפתיחת משכנתא נוספת. פתיחת תהליך נוסף נשארת
+            זמינה משאלת הפתיחה שבתפריט הצד ומאזור המשכנתאות.
+          */}
+          {summaries.length === 0 ? (
             <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
               <button
                 type="button"
@@ -349,6 +347,12 @@ export function OverviewSection({
                 משכנתא נוספת — מה תרצו לעשות?
               </button>
             </div>
+          ) : (
+            <PlanRecommendations
+              plans={active}
+              states={taskStates.states}
+              onDone={(key, done) => taskStates.setDone(key, done)}
+            />
           )}
         </DashCard>
 
@@ -357,9 +361,13 @@ export function OverviewSection({
 
       {detailRow}
 
+      {/*
+        העמודה הרחבה היא עמודת המשכנתא — ומתחתיה הפעולות המהירות; העמודה
+        הצרה היא לוח השנה — ומתחתיו המשימות, שהמועד שלהן נקבע בלוח.
+      */}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        {tasksCard}
         {quickActions}
+        {tasksCard}
       </div>
 
       <AdvisorCta variant="row" />

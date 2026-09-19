@@ -121,5 +121,5 @@ export function useClientTasks(options: { planId?: string | null; includeDone?: 
     [refresh]
   );
 
-  return { tasks, ready, error, refresh, add, complete, attachDocument, remove };
+  return { tasks, ready, error, refresh, add, patch, complete, attachDocument, remove };
 }
