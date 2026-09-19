@@ -34,6 +34,7 @@ export function clientTaskIdOf(id: string): string | null {
 export const DASHBOARD_SECTIONS = [
   'overview',
   'agenda',
+  'documents',
   'rate-requests',
   'tools',
   'settings',

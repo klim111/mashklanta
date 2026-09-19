@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { PlanDocumentView } from '@/lib/plan-documents';
-import { documentContentUrl } from './usePlanDocuments';
+import { documentContentUrl, documentDownloadUrl } from './usePlanDocuments';
 
 /**
  * צפייה במסמך שהועלה, בחלון צף.
@@ -28,6 +28,7 @@ export function DocumentViewerDialog({
 }) {
   if (!document) return null;
   const src = documentContentUrl(planId, document.id);
+  const downloadHref = documentDownloadUrl(planId, document.id);
   const isImage = document.contentType.startsWith('image/');
 
   return (
@@ -50,22 +51,44 @@ export function DocumentViewerDialog({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={src} alt={document.name} className="mx-auto max-h-[65vh] w-auto" />
           ) : (
-            <iframe
-              src={src}
-              title={document.name}
-              className="h-[65vh] w-full"
-              sandbox="allow-same-origin"
-            />
+            /*
+              מציג ה-PDF המובנה של הדפדפן הוא תוסף, והוא נחסם בתוך iframe עם
+              sandbox — שם נראה עמוד ריק. `object` טוען אותו כרגיל, ומי שהתוסף
+              שלו כבוי מקבל את קישור ההורדה שבתוכו.
+            */
+            <object data={src} type={document.contentType} className="h-[65vh] w-full">
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <p className="text-[15px] font-bold text-slate-700">
+                  הדפדפן חוסם תצוגה מקדימה של הקובץ הזה.
+                </p>
+                <a
+                  href={downloadHref}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+                >
+                  <Download className="h-4 w-4" />
+                  הורדת המסמך
+                </a>
+              </div>
+            </object>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="mx-auto rounded-2xl bg-slate-900 px-8 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
-        >
-          סגירה וחזרה לשלב
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={downloadHref}
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 text-[15px] font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          >
+            <Download className="h-4 w-4" />
+            הורדת המסמך
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-2xl bg-slate-900 px-8 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+          >
+            סגירה וחזרה לשלב
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

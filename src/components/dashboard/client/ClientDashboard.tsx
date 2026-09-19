@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Calculator,
   Compass,
+  FolderOpen,
   Gavel,
   Home as HomeIcon,
   LayoutDashboard,
@@ -28,6 +29,7 @@ import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
+import { ClientDocumentsSection } from './ClientDocumentsSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 
@@ -53,6 +55,14 @@ const SECTIONS: SectionMeta[] = [
     title: 'משימות ולוח שנה',
     description: 'כל מה שממתין לכם, הפגישות עם היועץ והמועדים החשובים בתהליך.',
     icon: CalendarDays,
+  },
+  {
+    id: 'documents',
+    label: 'תיק המסמכים',
+    title: 'תיק המסמכים שלי',
+    description:
+      'כל המסמכים שהבנק ידרוש, לפי הפרופיל ובעלות הנכס — מה כבר הוגש, מה חסר, והעלאה במקום אחד.',
+    icon: FolderOpen,
   },
   {
     id: 'rate-requests',
@@ -321,6 +331,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               {section === 'agenda' && (
                 <AgendaSection data={data} initialDay={agendaDay} onNavigate={navigate} />
               )}
+
+              {section === 'documents' && <ClientDocumentsSection data={data} />}
 
               {section === 'rate-requests' && (
                 <div className="space-y-5">

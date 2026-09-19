@@ -11,6 +11,7 @@ import {
   Compass,
   Eye,
   FileText,
+  FolderOpen,
   Gavel,
   Layers,
   ListChecks,
@@ -228,6 +229,11 @@ export function OverviewSection({
           href="/mortgage-planning?flow=affordability"
           icon={<Search className="h-4 w-4" />}
           label="בדיקת היתכנות"
+        />
+        <QuickAction
+          onClick={() => onNavigate('documents')}
+          icon={<FolderOpen className="h-4 w-4" />}
+          label="תיק המסמכים שלי"
         />
         <QuickAction href="/mortgage-refinance" icon={<RefreshCw className="h-4 w-4" />} label="מיחזור משכנתא" />
         <QuickAction
