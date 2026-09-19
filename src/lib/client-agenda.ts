@@ -9,17 +9,17 @@
  * הקובץ טהור — בלי React ובלי Prisma — כדי שאפשר יהיה לבדוק אותו ישירות.
  */
 
-import { journeyStageFor } from '@/data/platform/planStages';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import type { AdvisorMeetingView, AdvisorNoteView } from './advisor-crm';
 import { meetingIsLive } from './advisor-crm';
 import {
-  PLAN_STAGES,
   REPAYMENT_RATIO_COMFORT,
   analyzeProfile,
+  flowStages,
+  planFlowOf,
   planStageNumber,
   preApprovalDocuments,
   signingDocumentsProgress,
-  stageIndex,
 } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import type { ClientTaskView } from './client-tasks';
@@ -201,13 +201,15 @@ function planLabel(plan: AgendaPlan): string {
  * משמש רק כשעדיין אין אף אחד מהם.
  */
 export function planHeadline(
-  plan: Pick<AgendaPlan, 'name' | 'propertyAddress' | 'mortgageAmount'>
+  plan: Pick<AgendaPlan, 'name' | 'propertyAddress' | 'mortgageAmount'> & { kind?: 'NEW' | 'REFINANCE' }
 ): string {
   const place = plan.propertyAddress?.trim();
   const amount =
     plan.mortgageAmount && plan.mortgageAmount > 0
       ? `משכנתא ₪${Math.round(plan.mortgageAmount).toLocaleString('he-IL')}`
       : null;
+  // תהליך מיחזור אינו קשור לנכס חדש — שמו ("מיחזור משכנתא · בנק") הוא הכותרת
+  if (plan.kind === 'REFINANCE') return amount ? `${plan.name} · ${amount}` : plan.name;
   if (place && amount) return `${place} · ${amount}`;
   return place || amount || plan.name;
 }
@@ -262,9 +264,13 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
     const label = planLabel(plan);
     const advisorOwned = new Set(input.advisorStages[plan.id] ?? []);
     const stage = plan.currentStage;
-    const journey = journeyStageFor(stage);
-    const stageNumber = planStageNumber(stage);
-    const missingDeal = !plan.propertyAddress || !plan.propertyValue || !plan.mortgageAmount;
+    const flow = planFlowOf(plan.data);
+    const journey = planStageMeta(stage, flow);
+    const stageNumber = planStageNumber(stage, flow);
+    // במיחזור אין נכס חדש להשלים — הנכס והמשכנתא כבר קיימים
+    const missingDeal =
+      flow.kind !== 'REFINANCE' &&
+      (!plan.propertyAddress || !plan.propertyValue || !plan.mortgageAmount);
 
     if (missingDeal) {
       tasks.push({
@@ -368,7 +374,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       tasks.push({
         id: `continue:${plan.id}`,
         title: `המשיכו בשלב ${stageNumber} · ${journey.shortTitle} — ${label}`,
-        hint: journey.tagline,
+        hint: flow.kind === 'REFINANCE' ? journey.hint : journeyStageFor(stage).tagline,
         tone: 'action',
         due: null,
         scheduled: false,
@@ -630,8 +636,13 @@ export interface PlanStatusSummary {
   createdAt: string;
   currentStage: PlanStageId;
   stageNumber: number;
-  /** מצב כל אחד מחמשת השלבים לפי הסדר */
+  /** מצב כל אחד מהשלבים לפי הסדר של סוג התהליך */
   stages: PlanStageStatus[];
+  /** השלבים של התהליך, עם הכותרת הקצרה של כל אחד — לפס השלבים בכרטיס */
+  stageIds: PlanStageId[];
+  stageTitles: string[];
+  /** משכנתא חדשה או מיחזור */
+  kind: 'NEW' | 'REFINANCE';
   completedStages: number;
   advisorStage: boolean;
   href: string;
@@ -639,17 +650,19 @@ export interface PlanStatusSummary {
 
 export function summarizePlan(plan: AgendaPlan, advisorStages: PlanStageId[] = []): PlanStatusSummary {
   const byStage = new Map(plan.stages.map((row) => [row.stage, row.status]));
-  const order = (['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING'] as PlanStageId[]).sort(
-    (a, b) => stageIndex(a) - stageIndex(b)
-  );
+  const flow = planFlowOf(plan.data);
+  const order = [...flowStages(flow)];
   const stages = order.map((stage) => byStage.get(stage) ?? 'PENDING');
   return {
     id: plan.id,
-    label: planHeadline(plan),
+    label: planHeadline({ ...plan, kind: flow.kind }),
     createdAt: plan.createdAt,
     currentStage: plan.currentStage,
-    stageNumber: planStageNumber(plan.currentStage),
+    stageNumber: planStageNumber(plan.currentStage, flow),
     stages,
+    stageIds: order,
+    stageTitles: order.map((stage) => planStageMeta(stage, flow).shortTitle),
+    kind: flow.kind,
     completedStages: stages.filter((status) => status === 'COMPLETED').length,
     advisorStage: advisorStages.includes(plan.currentStage),
     href: planHref(plan),
@@ -691,20 +704,21 @@ export function advisorStageNotices(input: AgendaInput): AdvisorStageNotice[] {
     if (owned.length === 0) return;
     const label = planLabel(plan);
     const current = plan.currentStage;
-    const currentJourney = journeyStageFor(current);
+    const flow = planFlowOf(plan.data);
+    const currentJourney = planStageMeta(current, flow);
 
-    PLAN_STAGES.filter((stage) => owned.includes(stage)).forEach((stage) => {
-      const journey = journeyStageFor(stage);
+    flowStages(flow).filter((stage) => owned.includes(stage)).forEach((stage) => {
+      const journey = planStageMeta(stage, flow);
       notices.push({
         id: `advisor-stage:${plan.id}:${stage}`,
         planId: plan.id,
         planLabel: label,
         stage,
-        stageNumber: planStageNumber(stage),
+        stageNumber: planStageNumber(stage, flow),
         stageTitle: journey.shortTitle,
         done: plan.stages.some((row) => row.stage === stage && row.status === 'COMPLETED'),
         currentStage: current,
-        currentStageNumber: planStageNumber(current),
+        currentStageNumber: planStageNumber(current, flow),
         currentStageTitle: currentJourney.shortTitle,
         href: planHref(plan, stage),
       });

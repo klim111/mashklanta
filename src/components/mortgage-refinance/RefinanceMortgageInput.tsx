@@ -26,6 +26,11 @@ import {
   trackRemainingMonths,
 } from '@/lib/refinance';
 import type { MarketRates } from '@/lib/refinance';
+import type {
+  RefinanceDraftState,
+  RefinanceSaveOutcome,
+  RefinanceSavePayload,
+} from '@/components/mortgage-refinance/refinancePlan';
 import { cn } from '@/lib/utils';
 
 interface RefinanceMortgageInputProps {
@@ -43,6 +48,14 @@ interface RefinanceMortgageInputProps {
   isGuest?: boolean;
   /** ריביות ממוצעות בשוק לפי בנק ישראל */
   market?: MarketRates | null;
+  /** פתיחה ישר בניתוח (הסיכום גלוי) — כשחוזרים לתמהיל שכבר נשמר */
+  initialSummaryRevealed?: boolean;
+  /** תמהיל למיחזור שנשמר — הפאנל נפתח עם הערכים שלו */
+  refinanceInitial?: RefinanceDraftState | null;
+  /** שמירת התמהיל למיחזור לתהליך באזור האישי */
+  onSaveRefinance?: (payload: RefinanceSavePayload) => Promise<RefinanceSaveOutcome>;
+  saveContext?: 'tool' | 'plan';
+  onRefinanceSaveDone?: () => void;
 }
 
 export function RefinanceMortgageInput({
@@ -56,10 +69,15 @@ export function RefinanceMortgageInput({
   onProceedToRefinanceOptions,
   isGuest = false,
   market = null,
+  initialSummaryRevealed = false,
+  refinanceInitial = null,
+  onSaveRefinance,
+  saveContext = 'tool',
+  onRefinanceSaveDone,
 }: RefinanceMortgageInputProps) {
   const { tracks, totalAmount, bank } = mix;
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
-  const [mixSummaryRevealed, setMixSummaryRevealed] = useState(false);
+  const [mixSummaryRevealed, setMixSummaryRevealed] = useState(initialSummaryRevealed);
 
   const hideMixSummary = () => {
     setMixSummaryRevealed(false);
@@ -353,6 +371,10 @@ export function RefinanceMortgageInput({
             onEdit={hideMixSummary}
             isGuest={isGuest}
             market={market}
+            initial={refinanceInitial}
+            onSave={onSaveRefinance}
+            saveContext={saveContext}
+            onSaveDone={onRefinanceSaveDone}
           />
         </motion.div>
       ) : (

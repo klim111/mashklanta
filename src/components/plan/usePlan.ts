@@ -1,8 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PLAN_STAGES, emptyPlanData, parseStageData, stageIndex } from '@/lib/mortgage-plan';
-import type { PlanData, PlanStageId, PlanStageStatus, PlanStatus } from '@/lib/mortgage-plan';
+import { PLAN_STAGES, emptyPlanData, nextPlanStage, parseStageData, planFlowOf } from '@/lib/mortgage-plan';
+import type {
+  PlanData,
+  PlanKind,
+  PlanStageId,
+  PlanStageStatus,
+  PlanStatus,
+  RefinanceMode,
+} from '@/lib/mortgage-plan';
 import { DEMO_ADDRESS, DEMO_MORTGAGE, DEMO_PLAN_ID, DEMO_PROPERTY_VALUE, demoPlanData, isDemoPlan } from '@/lib/demo-plan';
 
 export { DEMO_PLAN_ID, isDemoPlan };
@@ -13,6 +20,8 @@ function demoPlan(): PlanView {
     id: DEMO_PLAN_ID,
     name: 'סיור היכרות בכלי',
     status: 'IN_PROGRESS',
+    kind: 'NEW',
+    refinanceMode: null,
     currentStage: 'ANALYSIS',
     progress: 0,
     propertyValue: DEMO_PROPERTY_VALUE,
@@ -37,6 +46,10 @@ export interface PlanView {
   id: string;
   name: string;
   status: PlanStatus;
+  /** משכנתא חדשה או מיחזור — נגזר מנתוני שלב התמהיל */
+  kind: PlanKind;
+  /** במיחזור: פנימי, חיצוני, או null כל עוד לא נבחר */
+  refinanceMode: RefinanceMode | null;
   currentStage: PlanStageId;
   progress: number;
   propertyValue: number | null;
@@ -67,7 +80,8 @@ function normalize(raw: unknown): PlanView | null {
     (data as Record<PlanStageId, unknown>)[stage] = parseStageData(stage, incoming[stage]);
   });
 
-  return { ...(source as unknown as PlanView), data };
+  const flow = planFlowOf(data);
+  return { ...(source as unknown as PlanView), kind: flow.kind, refinanceMode: flow.refinanceMode, data };
 }
 
 async function readPlan(response: Response): Promise<PlanView> {
@@ -85,6 +99,17 @@ export async function fetchPlans(): Promise<PlanView[]> {
     const plan = normalize(item);
     return plan ? [plan] : [];
   });
+}
+
+/** פתיחת תהליך מיחזור מכלי המיחזור, עם התמהיל שנבנה בו */
+export async function createRefinancePlan(refinance: unknown, mix: unknown): Promise<PlanView> {
+  const response = await fetch('/api/plans', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refinance, mix }),
+  });
+  if (!response.ok) throw new Error(`failed to create refinance plan: ${response.status}`);
+  return readPlan(response);
 }
 
 export async function createPlan(name?: string): Promise<PlanView> {
@@ -235,7 +260,7 @@ export function usePlan(planId: string) {
         // תהליך ההדגמה: השלב נסגר מקומית והתהליך עובר לשלב הבא, בלי שרת
         setPlan((current) => {
           if (!current) return current;
-          const next = PLAN_STAGES[stageIndex(stage) + 1] ?? stage;
+          const next = nextPlanStage(stage, planFlowOf(current.data)) ?? stage;
           return {
             ...current,
             currentStage: complete ? next : current.currentStage,

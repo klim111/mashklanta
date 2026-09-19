@@ -14,20 +14,44 @@ import { ArrowUpLeft, CheckCircle2, Headset, Loader2, X } from 'lucide-react';
 export function AdvisorHelpButton({
   onRequestAdvisor,
   busy = false,
+  stageLabel = 'שלב 1 · הפרופיל הפיננסי',
+  title = 'היעזרו ביועץ משכנתא להשלמת השלב',
+  description = 'יועץ משכלנתא ייפגש איתכם אונליין, יבחן את התלושים, דפי הבנק וההתחייבויות, ויפיק את דוח הפרופיל במקומכם. כל מה שכבר הזנתם כאן עובר אליו. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.',
+  opensDialog = false,
+  raised = false,
 }: {
   onRequestAdvisor?: () => void;
   busy?: boolean;
+  /** השורה הקטנה מעל הכותרת — באיזה שלב אנחנו */
+  stageLabel?: string;
+  title?: string;
+  description?: string;
+  /**
+   * הלחיצה פותחת טופס פנייה (ולא שולחת בקשה מיד) — ואז הכפתור לא מסמן
+   * "הבקשה נשלחה" בעצמו
+   */
+  opensDialog?: boolean;
+  /** מוגבה מעל כפתור "חזרה לדאשבורד", כששניהם יושבים באותה פינה */
+  raised?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
 
   const request = () => {
     onRequestAdvisor?.();
+    if (opensDialog) {
+      setOpen(false);
+      return;
+    }
     setSent(true);
   };
 
   return (
-    <div className="pointer-events-none fixed bottom-5 left-4 z-40 flex flex-col items-start gap-3 print:hidden sm:left-6">
+    <div
+      className={`pointer-events-none fixed left-4 z-40 flex flex-col items-start gap-3 print:hidden sm:left-6 ${
+        raised ? 'bottom-[4.75rem]' : 'bottom-5'
+      }`}
+    >
       <AnimatePresence>
         {open && (
           <motion.div
@@ -41,10 +65,8 @@ export function AdvisorHelpButton({
           >
             <div className="flex items-start justify-between gap-3 bg-gradient-to-l from-violet-600 to-purple-600 px-5 py-4 text-white">
               <div>
-                <p className="text-[11px] font-bold text-white/80">שלב 1 · הפרופיל הפיננסי</p>
-                <h4 className="mt-0.5 text-base font-black leading-snug">
-                  היעזרו ביועץ משכנתא להשלמת השלב
-                </h4>
+                <p className="text-[11px] font-bold text-white/80">{stageLabel}</p>
+                <h4 className="mt-0.5 text-base font-black leading-snug">{title}</h4>
               </div>
               <button
                 type="button"
@@ -56,11 +78,7 @@ export function AdvisorHelpButton({
               </button>
             </div>
             <div className="space-y-3 p-5">
-              <p className="text-sm leading-relaxed text-slate-600">
-                יועץ משכלנתא ייפגש איתכם אונליין, יבחן את התלושים, דפי הבנק וההתחייבויות, ויפיק
-                את דוח הפרופיל במקומכם. כל מה שכבר הזנתם כאן עובר אליו. הבקשה חינמית — התשלום
-                מסודר מולו בהמשך, רק אם תחליטו להמשיך.
-              </p>
+              <p className="text-sm leading-relaxed text-slate-600">{description}</p>
               {onRequestAdvisor && (
                 <button
                   type="button"

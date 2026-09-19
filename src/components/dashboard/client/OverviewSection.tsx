@@ -25,7 +25,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { journeyStageFor, PLAN_JOURNEY_STAGES } from '@/data/platform/planStages';
+import { journeyStageFor } from '@/data/platform/planStages';
 import { formatDate, formatTime, relativeDayLabel } from '@/lib/advisor-crm';
 import { planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
@@ -536,12 +536,16 @@ function PlanStatusRow({
       </div>
       <p className="mt-0.5 text-[13px] text-slate-500">{planCreatedLabel(summary.createdAt)}</p>
 
-      <ol className="mt-4 grid grid-cols-5 gap-1">
-        {PLAN_JOURNEY_STAGES.map((stage, index) => {
+      <ol
+        className="mt-4 grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${summary.stageIds.length}, minmax(0, 1fr))` }}
+      >
+        {summary.stageIds.map((stageId, index) => {
+          const stage = journeyStageFor(stageId);
           const status = summary.stages[index];
           const current = index + 1 === summary.stageNumber;
           return (
-            <li key={stage.id} className="flex flex-col items-center gap-1.5 text-center">
+            <li key={stageId} className="flex flex-col items-center gap-1.5 text-center">
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-black ${
                   status === 'COMPLETED'
@@ -554,7 +558,7 @@ function PlanStatusRow({
                 {status === 'COMPLETED' ? <Check className="h-4 w-4" /> : index + 1}
               </span>
               <span className={`text-[13px] font-bold leading-tight ${current ? 'text-slate-900' : 'text-slate-500'}`}>
-                {stage.shortTitle}
+                {summary.stageTitles[index]}
               </span>
             </li>
           );

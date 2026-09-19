@@ -20,8 +20,12 @@ import {
 } from 'lucide-react';
 import {
   PLAN_STAGES,
+  flowStages,
   isPlanStage,
   missingForStage,
+  nextPlanStage,
+  planFlowOf,
+  previousPlanStage,
   stageIndex,
   stageIsComplete,
   unfinishedPrerequisites,
@@ -33,9 +37,10 @@ import type {
   PlanStageId,
   PlanStageStatus,
   PreApprovalData,
+  RefinanceMode,
   SigningData,
 } from '@/lib/mortgage-plan';
-import { PLAN_STAGE_ACTIONS, journeyStageFor } from '@/data/platform/planStages';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import { usePlan } from './usePlan';
 import type { PlanView, SaveState } from './usePlan';
 import { PlanTour, TOUR_FREE_CHANGES, tourAllowsTry } from './PlanTour';
@@ -57,6 +62,9 @@ import { PreApprovalStage } from './stages/PreApprovalStage';
 import { AuctionStage } from './stages/AuctionStage';
 import { SigningStage } from './stages/SigningStage';
 import { StageOverview as SigningStageOverview } from './stages/signing/StageOverview';
+import { RefinanceMixStage } from './stages/refinance/RefinanceMixStage';
+import { RefinanceModeChoice } from './stages/refinance/RefinanceModeChoice';
+import { useMarketRates } from '@/hooks/useMarketRates';
 
 const saveLabels: Record<SaveState, { label: string; className: string }> = {
   idle: { label: 'הכל שמור', className: 'text-white/80' },
@@ -153,8 +161,12 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
   const [enteredStages, setEnteredStages] = useState<PlanStageId[]>([]);
   /** השלב שעבורו נשלחת כעת בקשת ליווי חינמית */
   const [handoffBusy, setHandoffBusy] = useState<PlanStageId | null>(null);
+  /** סוג המיחזור שנבחר כרגע ונשמר — עד שהשרת פותח את השלב הבא */
+  const [choosingMode, setChoosingMode] = useState<RefinanceMode | null>(null);
   const orders = useAdvisorOrders(planId);
   const { meetings } = useClientMeetings();
+  /** הריביות הממוצעות בשוק — לכלי המיחזור בתוך התהליך */
+  const { market } = useMarketRates();
 
   const enteredKey = `mashklanta:stage-diy:${planId}`;
   useEffect(() => {
@@ -215,7 +227,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
       PLAN_STAGES.forEach((stageId) => {
         map[stageId] = plan.stages.find((item) => item.stage === stageId)?.status ?? 'PENDING';
       });
-      if (unfinishedPrerequisites(requested, map).length > 0) {
+      if (unfinishedPrerequisites(requested, map, planFlowOf(plan.data)).length > 0) {
         setViewingStage(requested);
       } else {
         void goToStage(requested);
@@ -250,21 +262,33 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
     );
   }
 
+  /**
+   * סוג התהליך: משכנתא חדשה, או מיחזור — פנימי או חיצוני. הוא קובע את סדר
+   * השלבים, את הכותרות שלהם ואת הכלי שנפתח בשלב התמהיל.
+   */
+  const flow = planFlowOf(plan.data);
+  const stages = flowStages(flow);
+  const refinance = plan.data.MIX.refinance;
+  const isRefinance = flow.kind === 'REFINANCE';
+  const internalRefinance = isRefinance && flow.refinanceMode === 'INTERNAL';
+  /** מיחזור שעדיין לא נבחר בו בין פנימי לחיצוני — קודם המסך שמסביר את ההבדל */
+  const modePending = isRefinance && flow.refinanceMode === null;
+
   const stage = viewingStage ?? plan.currentStage;
-  const unfinished = unfinishedPrerequisites(stage, statuses);
+  const unfinished = unfinishedPrerequisites(stage, statuses, flow);
   /** מסך שרק מציצים בו בסיור (האישור העקרוני): כל לחיצה מחזירה להסבר */
   const lookOnly = tour && !tourOpen && !tourAllowsTry(stage);
   // בסיור כל שלב פתוח להצצה — אין נעילה לפי שלבים קודמים
   const isPreview = !tour && unfinished.length > 0;
   const journey = journeyStageFor(stage);
-  const action = PLAN_STAGE_ACTIONS[stage];
+  const meta = planStageMeta(stage, flow);
   const StageIcon = journey.icon;
-  const index = stageIndex(stage);
+  const index = stageIndex(stage, flow);
   const canComplete = !isPreview && stageIsComplete(stage, plan.data);
   const missing = missingForStage(stage, plan.data);
   const isDone = statuses[stage] === 'COMPLETED';
-  const previous = index > 0 ? PLAN_STAGES[index - 1] : null;
-  const next = PLAN_STAGES[index + 1] ?? null;
+  const previous = previousPlanStage(stage, flow);
+  const next = nextPlanStage(stage, flow);
   const save = saveLabels[saveState];
   /** כלי בניית התמהיל רחב מדי לפריסה עם סרגל צדדי; שלב הפרופיל מקבל את כל הרוחב כדי שהשאלה הראשונה תישב במרכז */
   const usesExistingTool = stage === 'MIX' || stage === 'ANALYSIS';
@@ -319,6 +343,8 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
     !isDone &&
     stage !== 'ANALYSIS' &&
     stage !== 'SIGNING' &&
+    // שלב התמהיל במיחזור נפתח ישר על התמהיל שאושר — אין מה לבחור לפניו
+    !(isRefinance && stage === 'MIX') &&
     !enteredStages.includes(stage);
 
   const toggleStageDetails = () =>
@@ -351,12 +377,28 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
       void goToStage(nextStage);
       return;
     }
-    if (unfinishedPrerequisites(nextStage, statuses).length > 0) {
+    if (unfinishedPrerequisites(nextStage, statuses, flow).length > 0) {
       setViewingStage(nextStage);
       return;
     }
     setViewingStage(null);
     void goToStage(nextStage);
+  };
+
+  /**
+   * הבחירה בין מיחזור פנימי לחיצוני. היא נשמרת בנתוני שלב התמהיל וסוגרת
+   * אותו — ומכאן השרת פותח את השלב הבא לפי סוג המיחזור שנבחר.
+   */
+  const chooseRefinanceMode = async (mode: RefinanceMode) => {
+    if (!refinance) return;
+    setChoosingMode(mode);
+    try {
+      rawUpdateStage('MIX', { ...plan.data.MIX, refinance: { ...refinance, mode } });
+      await completeStage('MIX');
+      setViewingStage(null);
+    } finally {
+      setChoosingMode(null);
+    }
   };
 
   const stageFooter = (
@@ -518,6 +560,15 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     {plan.propertyAddress}
                   </span>
                 )}
+                {isRefinance && refinance && (
+                  <span className="rounded-full bg-emerald-400/20 px-3 py-1 font-bold text-emerald-100 ring-1 ring-emerald-300/40">
+                    {flow.refinanceMode === 'INTERNAL'
+                      ? `מיחזור פנימי · ${refinance.bank}`
+                      : flow.refinanceMode === 'EXTERNAL'
+                        ? `מיחזור חיצוני · מ${refinance.bank}`
+                        : `מיחזור · ${refinance.bank}`}
+                  </span>
+                )}
                 {plan.mortgageAmount ? (
                   <span className="rounded-full bg-white/15 px-3 py-1 font-semibold text-white/80">
                     משכנתא {formatShekel(plan.mortgageAmount)}
@@ -545,7 +596,10 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
             <ProgressRing value={plan.progress} />
           </div>
 
-          <StageRail current={stage} statuses={statuses} onSelect={selectStage} />
+          {/* עד שנבחר סוג המיחזור לא ידוע אילו שלבים יהיו — הסרגל מחכה לבחירה */}
+          {!modePending && (
+            <StageRail current={stage} statuses={statuses} onSelect={selectStage} flow={flow} />
+          )}
 
           {/* תיק המסמכים — זמין מכל שלב, עם ההתקדמות לכל שלב ולכל התהליך */}
           {!tour && (
@@ -577,9 +631,13 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
           >
             <PartyPopper className="h-6 w-6 shrink-0 text-emerald-600" />
             <div className="flex-1">
-              <div className="text-sm font-black text-emerald-900">התהליך הושלם</div>
+              <div className="text-sm font-black text-emerald-900">
+                {isRefinance ? 'המיחזור הושלם' : 'התהליך הושלם'}
+              </div>
               <div className="text-xs text-emerald-800">
-                חמשת השלבים נסגרו. המשכנתא מופיעה עכשיו באזור האישי כמשכנתא שתוכננה.
+                {isRefinance
+                  ? `כל ${stages.length} השלבים נסגרו. המשכנתא לאחר המיחזור מופיעה עכשיו באזור האישי.`
+                  : 'חמשת השלבים נסגרו. המשכנתא מופיעה עכשיו באזור האישי כמשכנתא שתוכננה.'}
               </div>
             </div>
             <Link
@@ -591,7 +649,13 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
           </motion.div>
         )}
 
+        {/* מיחזור שטרם נבחר בו סוג: קודם ההסבר על ההבדל בין פנימי לחיצוני */}
+        {modePending && refinance && (
+          <RefinanceModeChoice refinance={refinance} onChoose={(mode) => void chooseRefinanceMode(mode)} busy={choosingMode} />
+        )}
+
         {/* כותרת השלב הפעיל */}
+        {!modePending && (
         <AnimatePresence mode="wait">
           <motion.div
             key={stage}
@@ -611,7 +675,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-black text-slate-400">
-                      שלב {index + 1} מתוך {PLAN_STAGES.length}
+                      שלב {index + 1} מתוך {stages.length}
                     </span>
                     {isDone && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">
@@ -625,8 +689,8 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                       </span>
                     )}
                   </div>
-                  <h2 className="text-lg font-black text-slate-900 md:text-xl">{journey.title}</h2>
-                  <p className="text-sm text-slate-500">{action.hint}</p>
+                  <h2 className="text-lg font-black text-slate-900 md:text-xl">{meta.title}</h2>
+                  <p className="text-sm text-slate-500">{meta.hint}</p>
                 </div>
 
               </div>
@@ -645,6 +709,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                 stage={stage}
                 unfinished={unfinished}
                 onSelectStage={selectStage}
+                flow={flow}
               />
             )}
 
@@ -669,6 +734,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                 onSelfService={() => enterStage(stage)}
                 onAdvisor={() => void requestFreeHandoff(stage)}
                 busy={handoffBusy === stage}
+                flow={flow}
               />
             )}
 
@@ -710,7 +776,18 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                   שלב התמהיל מוצג בלי שורת "כלים נוספים": כלי בניית התמהיל הוא
                   מסך עבודה מלא, וקישורים לכלים אחרים מעליו רק מושכים החוצה ממנו.
                 */}
-                {stage === 'MIX' && (
+                {/* במיחזור שלב התמהיל הוא כלי המיחזור, על התמהיל שכבר אושר */}
+                {stage === 'MIX' && isRefinance && (
+                  <RefinanceMixStage
+                    data={plan.data}
+                    planId={plan.id}
+                    market={market}
+                    onChange={(next: MixData) => updateStage('MIX', next)}
+                    onRequestAdvisor={() => void requestFreeHandoff('MIX')}
+                    advisorBusy={handoffBusy === 'MIX'}
+                  />
+                )}
+                {stage === 'MIX' && !isRefinance && (
                   <MixStage
                     data={plan.data}
                     planId={plan.id}
@@ -730,6 +807,29 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     planId={plan.id}
                     onChange={(next: PreApprovalData) => updateStage('APPLICATIONS', next)}
                     onGoToProfile={() => selectStage('ANALYSIS')}
+                    /* במיחזור פנימי מגישים לבנק שבו המשכנתא מנוהלת בלבד */
+                    banks={internalRefinance && refinance ? [refinance.bank] : undefined}
+                    copy={
+                      internalRefinance
+                        ? {
+                            mixTitle: 'התמהיל למיחזור',
+                            mixDescription:
+                              'זה התמהיל שאושר בשלב הקודם, ועליו מוגשת בקשת המיחזור לבנק. לשינוי, חזרו לשלב התמהיל ופתחו אותו לעריכה.',
+                            banksTitle: 'הגשת בקשת המיחזור לבנק',
+                            banksDescription:
+                              'הקישור פותח את אזור המשכנתאות הדיגיטלי של הבנק שבו המשכנתא מנוהלת. רוב הנתונים כבר אצלו, ולכן נדרשים פחות מסמכים וזמן. את האישור שתקבלו העלו כאן — ואז ממשיכים לאימות ההצעה.',
+                          }
+                        : isRefinance
+                          ? {
+                              mixTitle: 'התמהיל למיחזור',
+                              mixDescription:
+                                'זה התמהיל שנבחר למיחזור, ועליו מוגשת הבקשה לאישור עקרוני. לשינוי, חזרו לשלב התמהיל ופתחו אותו לעריכה.',
+                              banksTitle: 'הגשת בקשת אישור עקרוני למיחזור',
+                              banksDescription:
+                                'בנק חדש בוחן את הפרופיל הפיננסי ואת הנכס מחדש, בדיוק כמו במשכנתא חדשה. פנו לכל בנק שתרצו להתמחר מולו, והעלו כאן את האישור העקרוני שהתקבל.',
+                            }
+                          : undefined
+                    }
                   />
                 )}
                 {stage === 'AUCTION' && (
@@ -738,6 +838,8 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
                     advisorRun={advisorRun}
+                    banks={internalRefinance && refinance ? [refinance.bank] : undefined}
+                    refinance={refinance}
                   />
                 )}
                 {stage === 'SIGNING' && (
@@ -758,6 +860,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
             )}
           </motion.div>
         </AnimatePresence>
+        )}
       </main>
 
       {/*

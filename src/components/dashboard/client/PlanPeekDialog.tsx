@@ -8,8 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PLAN_JOURNEY_STAGES, journeyStageFor } from '@/data/platform/planStages';
-import { PLAN_STAGES, planStageNumber } from '@/lib/mortgage-plan';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
+import { flowStages, planFlowOf, planStageNumber } from '@/lib/mortgage-plan';
 import type { PlanStageStatus } from '@/lib/mortgage-plan';
 import { planCreatedLabel, planHeadline } from '@/lib/client-agenda';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
@@ -46,6 +46,8 @@ export function PlanPeekDialog({
 }) {
   const byStage = new Map(plan.stages.map((row) => [row.stage, row.status]));
   const mix = planMixOf(plan, mixes);
+  const flow = planFlowOf(plan.data);
+  const stages = flowStages(flow);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,20 +60,21 @@ export function PlanPeekDialog({
             </span>
           </DialogTitle>
           <DialogDescription className="text-center text-[15px]">
-            {planCreatedLabel(plan.createdAt)} · שלב {planStageNumber(plan.currentStage)} ·{' '}
-            {journeyStageFor(plan.currentStage).shortTitle}
+            {planCreatedLabel(plan.createdAt)} · שלב {planStageNumber(plan.currentStage, flow)} ·{' '}
+            {planStageMeta(plan.currentStage, flow).shortTitle}
           </DialogDescription>
         </DialogHeader>
 
         <section>
           <h3 className="mb-2 flex items-center justify-center gap-2 text-[15px] font-black text-slate-800">
             <ListChecks className="h-4 w-4 text-blue-600" />
-            חמשת השלבים
+            {flow.kind === 'REFINANCE' ? 'שלבי המיחזור' : 'חמשת השלבים'}
           </h3>
           <ol className="space-y-1.5">
-            {PLAN_STAGES.map((stage, index) => {
+            {stages.map((stage, index) => {
               const status = byStage.get(stage) ?? 'PENDING';
-              const journey = PLAN_JOURNEY_STAGES[index];
+              const journey = journeyStageFor(stage);
+              const meta = planStageMeta(stage, flow);
               const advisor = advisorStages.includes(stage);
               return (
                 <li
@@ -96,7 +99,7 @@ export function PlanPeekDialog({
                     {status === 'COMPLETED' ? <Check className="h-4 w-4" /> : index + 1}
                   </span>
                   <span className="min-w-0 flex-1 text-[15px] font-black text-slate-900">
-                    {journey.shortTitle}
+                    {meta.shortTitle}
                   </span>
                   {advisor && (
                     <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[13px] font-black text-violet-700">

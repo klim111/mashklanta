@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { ArrowLeft, ListChecks, Loader2, Sparkles, Wrench } from 'lucide-react';
-import type { PlanStageId } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { NEW_PLAN_FLOW } from '@/lib/mortgage-plan';
+import type { PlanFlow, PlanStageId } from '@/lib/mortgage-plan';
+import { planStageMeta } from '@/data/platform/planStages';
 
 /**
  * שער השלב — הבחירה שנפתחת בכל אחד מחמשת השלבים באותו הגיון.
@@ -17,24 +18,27 @@ export function StageGate({
   onSelfService,
   onAdvisor,
   busy = false,
+  flow = NEW_PLAN_FLOW,
 }: {
   stage: PlanStageId;
   onSelfService: () => void;
   onAdvisor: () => void;
   busy?: boolean;
+  /** סוג התהליך — במיחזור הכותרות והתיאורים של השלב שונים */
+  flow?: PlanFlow;
 }) {
-  const journey = journeyStageFor(stage);
-  const steps = journey.selfServiceSteps?.slice(0, 4) ?? [];
+  const meta = planStageMeta(stage, flow);
+  const steps = meta.steps.slice(0, 4);
 
   return (
     <section className="rounded-3xl border-2 border-slate-200 bg-white p-6 shadow-sm md:p-8">
       <header className="mb-5 text-center">
-        <p className="text-xs font-black tracking-wide text-blue-600">{journey.shortTitle}</p>
+        <p className="text-xs font-black tracking-wide text-blue-600">{meta.shortTitle}</p>
         <h3 className="mt-1 text-xl font-black text-slate-900 md:text-2xl">
           איך תרצו לעבור את השלב הזה?
         </h3>
         <p className="mx-auto mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">
-          {journey.selfServiceSummary || journey.valueDescription}
+          {meta.summary}
         </p>
       </header>
 

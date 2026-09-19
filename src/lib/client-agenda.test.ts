@@ -204,3 +204,11 @@ describe('סדר היום של הלקוח', () => {
     expect(summary.advisorStage).toBe(true);
   });
 });
+
+describe('תהליך מיחזור בדאשבורד', () => {
+  it('הכותרת של תהליך מיחזור היא שמו, ולא כתובת נכס', () => {
+    expect(
+      planHeadline({ name: 'מיחזור משכנתא · לאומי', propertyAddress: null, mortgageAmount: 900_000, kind: 'REFINANCE' })
+    ).toBe('מיחזור משכנתא · לאומי · משכנתא ₪900,000');
+  });
+});

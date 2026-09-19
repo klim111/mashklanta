@@ -27,16 +27,22 @@ import {
 } from '@/lib/principal-approval/plan-bridge';
 import type { PlanData, PreApprovalData } from '@/lib/mortgage-plan';
 import { SelfPreApproval } from './preapproval/SelfPreApproval';
+import type { SelfPreApprovalCopy } from './preapproval/SelfPreApproval';
 
 export function PreApprovalStage({
   data,
   planId,
   onChange,
+  banks,
+  copy,
 }: {
   data: PlanData;
   planId: string;
   onChange: (next: PreApprovalData) => void;
   onGoToProfile: () => void;
+  /** הגבלת ההגשה לבנקים מסוימים — במיחזור פנימי, הבנק שבו המשכנתא מנוהלת */
+  banks?: readonly string[];
+  copy?: SelfPreApprovalCopy;
 }) {
   const { data: session } = useSession();
   const isAdvisor = session?.user?.role === 'ADVISOR';
@@ -60,5 +66,5 @@ export function PreApprovalStage({
 
   if (isAdvisor) return <PrincipalApproval embedded onApprovals={handleApprovals} />;
 
-  return <SelfPreApproval data={data} planId={planId} onChange={onChange} />;
+  return <SelfPreApproval data={data} planId={planId} onChange={onChange} banks={banks} copy={copy} />;
 }
