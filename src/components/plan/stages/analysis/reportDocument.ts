@@ -1,7 +1,7 @@
 /**
  * דוח הפרופיל הפיננסי כמסמך אחד.
  *
- * אותו HTML משמש גם לתצוגה על המסך וגם להדפסה ל-PDF, כדי שמה שהלקוח רואה
+ * אותו HTML משמש גם לתצוגה על המסך וגם להדפסה לקובץ, כדי שמה שהלקוח רואה
  * יהיה בדיוק מה שיישמר אצלו כקובץ — בדיוק כמו מכתב בקשת הריביות לבנקים.
  * כל כללי העיצוב תחומים תחת ‎.pr-doc‎ כדי שלא ישפיעו על שאר המסך.
  */
@@ -26,6 +26,8 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+const RATING_TEXT: Record<1 | 2 | 3, string> = { 1: 'נמוך', 2: 'בינוני', 3: 'גבוה' };
 
 const STATUS_LABEL: Record<CheckStatus, string> = {
   pass: 'עומד בדרישה',
@@ -139,6 +141,7 @@ export const PROFILE_REPORT_CSS = `
 .pr-doc .pr-status.fail { color: var(--pr-fail); }
 .pr-doc .pr-status.unknown { color: var(--pr-muted); }
 .pr-doc .pr-note { color: var(--pr-muted); font-size: 11.5px; }
+.pr-doc table.pr-table tr.pr-emph td { background: var(--pr-near-bg); }
 
 .pr-doc .pr-figures { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .pr-doc .pr-figure {
@@ -279,16 +282,6 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
     )
     .join('');
 
-  const figures = report.figures
-    .map(
-      (figure) => `
-      <div class="pr-figure">
-        <span class="k">${escapeHtml(figure.label)}</span>
-        <span class="v">${escapeHtml(figure.value)}</span>
-      </div>`
-    )
-    .join('');
-
   const documents = report.documents
     .map(
       (group) => `
@@ -304,17 +297,20 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       ? '—'
       : `₪${Math.round(value).toLocaleString('he-IL')}`;
   const pct = (value: number | null) => (value === null ? '—' : `${value.toFixed(1)}%`);
-  const { summary } = report;
+  const gapText = (value: number | null, limit: number) => {
+    if (value === null || !Number.isFinite(value)) return 'חסרים נתונים';
+    const gap = limit - value;
+    return gap < 0 ? `חריגה של ${Math.abs(gap).toFixed(1)}%` : `נותרו ${gap.toFixed(1)}% עד המגבלה`;
+  };
+  const { summary, cashFlow } = report;
 
   const tiles = [
     { k: 'סכום המשכנתא', v: summary.ready ? money(summary.mortgageAmount) : '—', n: summary.propertyValue ? `מתוך נכס בשווי ${money(summary.propertyValue)}` : '' },
-    { k: 'שיעור מימון', v: pct(summary.ltv), n: `תקרה ${summary.maxLtv}%` },
-    { k: 'יחס החזר', v: pct(summary.repaymentRatio), n: `מגבלה ${summary.ratioLimit}%` },
-    { k: 'החזר חודשי משוער', v: summary.ready ? money(summary.estimatedMonthlyPayment) : '—', n: `${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% להערכה` },
-    { k: 'הכנסה פנויה אחרי המשכנתא', v: summary.ready ? money(summary.disposableAfterMortgage) : '—', n: 'הכנסה נטו פחות הלוואות ופחות ההחזר' },
-    { k: 'סך הריביות לאורך התקופה', v: summary.ready ? money(summary.totalInterest) : '—', n: summary.interestShare !== null ? `${summary.interestShare.toFixed(0)}% מהקרן · סך תשלומים ${money(summary.totalPaid)}` : '' },
-    { k: 'החזר חודשי מרבי לפי הבנקים', v: money(summary.maxMonthlyPayment), n: `${summary.ratioLimit}% מההכנסה הפנויה` },
-    { k: 'הון עצמי בעסקה', v: summary.ready ? money(summary.equityInDeal) : money(summary.equity), n: summary.equityGap > 0 ? `חסרים ${money(summary.equityGap)}` : '' },
+    { k: 'שיעור מימון', v: pct(summary.ltv), n: `תקרה ${summary.maxLtv}% · ${gapText(summary.ltv, summary.maxLtv)}` },
+    { k: 'יחס החזר', v: pct(summary.repaymentRatio), n: `מגבלה ${summary.ratioLimit}% · נוח עד ${summary.ratioComfort}% · ${gapText(summary.repaymentRatio, summary.ratioLimit)}` },
+    { k: 'הון עצמי בעסקה', v: summary.ready ? money(summary.equityInDeal) : money(summary.equity), n: summary.equityGap > 0 ? `חסרים ${money(summary.equityGap)}` : 'מכסה את המינימום לסוג העסקה' },
+    { k: 'הכנסה פנויה לפני המשכנתא', v: money(cashFlow.disposable), n: 'הכנסה נטו פחות הוצאות שוטפות ופחות הלוואות' },
+    { k: 'נשאר אחרי המשכנתא', v: summary.ready ? money(cashFlow.remaining) : '—', n: cashFlow.remainingShare !== null ? `${cashFlow.remainingShare.toFixed(0)}% מסך ההכנסה · לפי ההחזר המשוער` : '' },
   ]
     .map(
       (tile) => `
@@ -323,6 +319,70 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
         <span class="v">${escapeHtml(tile.v)}</span>
         ${tile.n ? `<span class="n">${escapeHtml(tile.n)}</span>` : ''}
       </div>`
+    )
+    .join('');
+
+  const estimateTiles = [
+    { k: 'החזר חודשי משוער', v: summary.ready ? money(summary.estimatedMonthlyPayment) : '—', n: `${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% להערכה` },
+    { k: 'סך הריביות לאורך התקופה', v: summary.ready ? money(summary.totalInterest) : '—', n: summary.interestShare !== null ? `${summary.interestShare.toFixed(0)}% מהקרן` : '' },
+    { k: 'סך התשלומים', v: summary.ready ? money(summary.totalPaid) : '—', n: 'קרן ועוד ריבית, לאורך כל התקופה' },
+  ]
+    .map(
+      (tile) => `
+      <div class="pr-tile">
+        <span class="k">${escapeHtml(tile.k)}</span>
+        <span class="v">${escapeHtml(tile.v)}</span>
+        ${tile.n ? `<span class="n">${escapeHtml(tile.n)}</span>` : ''}
+      </div>`
+    )
+    .join('');
+
+  const cashFlowRows = cashFlow.steps
+    .map(
+      (step) => `
+      <tr>
+        <td><b>${escapeHtml(step.label)}</b></td>
+        <td>${escapeHtml(money(step.amount))}</td>
+      </tr>`
+    )
+    .join('');
+
+  const timelineRows = report.timeline
+    .map(
+      (item) => `
+      <tr${item.emphasized ? ' class="pr-emph"' : ''}>
+        <td><b>${escapeHtml(item.label)}</b></td>
+        <td>${item.startWeek === 0 ? 'מיד' : `משבוע ${item.startWeek}`} עד שבוע ${item.endWeek}</td>
+        <td>${escapeHtml(item.duration)}</td>
+        <td class="pr-note">${escapeHtml(item.note)}</td>
+      </tr>`
+    )
+    .join('');
+
+  const mixRows = report.mixSketch
+    .map(
+      (item) => `
+      <tr>
+        <td><b>${escapeHtml(item.label)}</b></td>
+        <td>כ-${item.share}%</td>
+        <td>${RATING_TEXT[item.risk]}</td>
+        <td>${RATING_TEXT[item.flexibility]}</td>
+        <td>${RATING_TEXT[item.cost]}</td>
+        <td class="pr-note">${escapeHtml(item.role)}</td>
+      </tr>`
+    )
+    .join('');
+
+  const costRows = report.costByYear
+    .filter((point, index, all) => index === 0 || point.year % 5 === 0 || index === all.length - 1)
+    .map(
+      (point) => `
+      <tr>
+        <td>${point.year === 0 ? 'היום' : `שנה ${point.year}`}</td>
+        <td>${money(point.paidPrincipal)}</td>
+        <td>${money(point.paidInterest)}</td>
+        <td>${money(point.balance)}</td>
+      </tr>`
     )
     .join('');
 
@@ -347,8 +407,9 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       )
     ),
     row('הכנסה חודשית מוכרת', money(summary.totalIncome)),
+    row('הוצאות שוטפות', money(cashFlow.expenses)),
     row('החזר על הלוואות קיימות', money(summary.existingLoans)),
-    row('הכנסה פנויה לחישוב ההחזר', money(summary.disposableIncome)),
+    row('הכנסה פנויה לפני המשכנתא', money(cashFlow.disposable)),
   ].join('');
 
   const risks = report.risks
@@ -395,7 +456,8 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
   return `<div class="pr-doc">
     <div class="pr-head">
       <div class="pr-brand">משכלנתא · דוח פרופיל פיננסי</div>
-      <h1>${escapeHtml(planName || 'דוח פרופיל פיננסי')}</h1>
+      <h1>דוח פרופיל פיננסי</h1>
+      ${planName ? `<p class="pr-sub"><b>${escapeHtml(planName)}</b></p>` : ''}
       <p class="pr-sub">${escapeHtml(report.headline)} · הופק ב-${date}</p>
     </div>
 
@@ -425,8 +487,12 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       <tbody>${checks}</tbody>
     </table>
 
-    <h3>התמונה הפיננסית</h3>
-    <div class="pr-figures">${figures}</div>
+    <h3>ההכנסה הפנויה והכסף שיישאר אחרי המשכנתא</h3>
+    <table class="pr-table">
+      <thead><tr><th>התזרים החודשי</th><th>סכום</th></tr></thead>
+      <tbody>${cashFlowRows}</tbody>
+    </table>
+    <p class="pr-note">ההחזר בטבלה הוא הערכה לפי ריבית קבועה — ראו את ההסתייגות בסוף הדוח.</p>
 
     ${risks ? `<h3>סיכונים</h3>${risks}` : ''}
 
@@ -451,9 +517,39 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
         : ''
     }
 
+    <h3>לוח הזמנים של התהליך</h3>
+    <table class="pr-table">
+      <thead><tr><th>שלב / אבן דרך</th><th>מתי</th><th>משך אופייני</th><th>מה חשוב</th></tr></thead>
+      <tbody>${timelineRows}</tbody>
+    </table>
+    <p class="pr-note">קצב אופייני של תהליך בלי עיכובים. מועדי התשלום בחוזה, תוקף האישור העקרוני וזמן הביצוע בבנק קובעים בפועל.</p>
+
+    <h3>הרכב מסלולי המשכנתא — תיאור סכמטי</h3>
+    <p class="pr-note">קו מנחה, לא תמהיל סופי: איזון בין יציבות מול סיכון, גמישות לשינויים ועלות המימון.</p>
+    <table class="pr-table">
+      <thead><tr><th>מסלול</th><th>חלק</th><th>סיכון</th><th>גמישות</th><th>עלות</th><th>התפקיד בתמהיל</th></tr></thead>
+      <tbody>${mixRows}</tbody>
+    </table>
+
     <h3>קווים מנחים לבניית התמהיל</h3>
     <p class="pr-note">איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל הפיננסי שלכם.</p>
     ${guidelines}
+
+    <h3>הערכת ההחזר והריביות — השערה בלבד</h3>
+    <div class="pr-warn">
+      <b>חשוב לדעת:</b>
+      המספרים בחלק הזה הם הערכה גסה בלבד לפי ריבית קבועה לא צמודה של ${summary.estimateRate}% על כל הסכום,
+      שנועדה לתת סדר גודל. החישוב המדויק ייעשה אחרי בניית התמהיל ואישור הריביות מול הגוף המממן.
+    </div>
+    <div class="pr-tiles">${estimateTiles}</div>
+    ${
+      costRows
+        ? `<table class="pr-table">
+      <thead><tr><th>מועד</th><th>קרן ששולמה</th><th>ריבית ששולמה</th><th>יתרת הקרן</th></tr></thead>
+      <tbody>${costRows}</tbody>
+    </table>`
+        : ''
+    }
 
     <div class="pr-foot">
       הדוח מסכם את הנתונים שהוזנו בשלב הפרופיל הפיננסי ואת בדיקתם מול מגבלות בנק ישראל
@@ -465,7 +561,7 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
 }
 
 /**
- * הדפסת הדוח, ומשם שמירה כ-PDF מתיבת ההדפסה של הדפדפן.
+ * הדפסת הדוח, ומשם שמירה כקובץ מתיבת ההדפסה של הדפדפן.
  *
  * המסמך נשתל בעמוד עצמו וכללי ההדפסה מורידים ממנו כל מה שאינו הוא, כך שמה
  * שיוצא לקובץ זהה למה שמוצג על המסך — גם בדפדפנים שמדפיסים תמיד את המסמך

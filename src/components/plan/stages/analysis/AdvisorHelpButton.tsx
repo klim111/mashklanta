@@ -8,9 +8,8 @@ import { ArrowUpLeft, CheckCircle2, Headset, Loader2, X } from 'lucide-react';
 /**
  * הכפתור הצף שמלווה את כל מסכי שלב הפרופיל.
  *
- * מי שכבר עובד בפלטפורמה לא צריך כפתור «בצעו לבד» — הוא כבר שם. מה שהוא
- * צריך בכל רגע הוא את הדרך להביא יועץ שישלים את השלב: בקשת הליווי החינמית
- * של השלב, אותה בקשה שנשלחת ממסך «על השלב».
+ * מי שבחר לבצע את השלב לבד לא צריך לבחור שוב — מה שהוא צריך בכל רגע הוא
+ * את הדרך להביא יועץ שיעזור לו בשלב: בקשת הליווי החינמית של השלב.
  */
 export function AdvisorHelpButton({
   onRequestAdvisor,
@@ -102,7 +101,7 @@ export function AdvisorHelpButton({
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
           <Headset className="h-4 w-4" />
         </span>
-        היעזרו ביועץ משכנתא
+        פנו ליועץ לעזרה בשלב זה
       </motion.button>
     </div>
   );

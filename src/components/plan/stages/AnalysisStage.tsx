@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -61,7 +62,6 @@ import {
 } from '../ui';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { pickProfileFromAnalysis } from '@/lib/client-profile';
-import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 import { StageOverview } from './analysis/StageOverview';
 import { ProfileReportPanel } from './analysis/ProfileReportPanel';
 import { PropertyOwnershipPanel } from './analysis/PropertyOwnershipPanel';
@@ -127,7 +127,10 @@ const reveal = {
  *
  * ההסבר על השלב, ואחריו המסכים אחד אחרי השני: הנכס והעסקה, מי לוקח, הכנסות
  * עתידיות, תיק המסמכים והדוח הסופי. הכל נשמר תוך כדי הקלדה, וההמלצות צפות
- * במסך שבו הנתון הרלוונטי מוזן. כפתור צף להיעזר ביועץ מלווה את כל המסכים.
+ * במסך שבו הנתון הרלוונטי מוזן. סרגל התת-שלבים מלווה את כל המסכים, כולל ההסבר.
+ *
+ * מי שבחר לבצע לבד מקבל כפתור צף לפנות ליועץ לעזרה בשלב; כשיועץ מטפל בשלב
+ * (`advisorSummary`), ההסבר מוצג ומיד אחריו מסך «היועץ מטפל בשלב זה».
  */
 export function AnalysisStage({
   data,
@@ -137,6 +140,8 @@ export function AnalysisStage({
   onRequestAdvisor,
   advisorBusy = false,
   onChangeSigning,
+  advisorSummary,
+  onShowDetails,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
@@ -145,9 +150,13 @@ export function AnalysisStage({
   onChangeSigning?: (next: SigningData) => void;
   /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
   planName?: string;
-  /** בקשת ליווי חינמית לשלב הפרופיל — מכפתור "תן ליועץ" שבמסך "על השלב" */
+  /** בקשת ליווי חינמית לשלב הפרופיל — מהכפתור הצף */
   onRequestAdvisor?: () => void;
   advisorBusy?: boolean;
+  /** יועץ מטפל בשלב: המסך שלו מוצג בסוף ההסבר, והשלב עצמו נפתח רק ב"פרטים נוספים" */
+  advisorSummary?: ReactNode;
+  /** מעבר לתת-שלב מהסרגל כשיועץ מטפל בשלב — פותח את הפירוט המלא */
+  onShowDetails?: () => void;
 }) {
   const profile = data.ANALYSIS;
   const profileSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,10 +198,9 @@ export function AnalysisStage({
     .filter((item) => PERSONAL_KEYS.includes(item.key))
     .every((item) => item.ok);
 
-  const screen: ProfileScreen = profile.profileScreen || 'overview';
-
-  /* מי שכבר רכש את המסלול העצמאי אינו צריך לבחור שוב "לבד או עם יועץ" */
-  const { access } = usePlatformAccess();
+  /* כשיועץ מטפל בשלב מוצג ההסבר, ואחריו המסך שלו — עד שהלקוח מבקש את הפירוט המלא */
+  const advisorMode = Boolean(advisorSummary);
+  const screen: ProfileScreen = advisorMode ? 'overview' : profile.profileScreen || 'overview';
 
   /* טופס פנייה ליועץ — נפתח מכפתור גיוס ההון העצמי כשההון חסר */
   const [equityHelpOpen, setEquityHelpOpen] = useState(false);
@@ -210,26 +218,22 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
-      <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />
+      {!advisorMode && <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />}
 
-      {screen !== 'overview' && (
-        <ScreenRail
-          current={screen}
-          intent={profile.intent}
-          personalDone={personalDone}
-          onSelect={go}
-        />
-      )}
+      <ScreenRail
+        current={screen}
+        intent={profile.intent}
+        personalDone={personalDone}
+        onSelect={(target) => {
+          if (advisorMode && target !== 'overview') onShowDetails?.();
+          go(target);
+        }}
+      />
 
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' && (
           <motion.div key="overview" {...reveal}>
-            <StageOverview
-              onStart={() => go('deal')}
-              onAdvisor={onRequestAdvisor}
-              advisorBusy={advisorBusy}
-              selfServicePaid={access.active}
-            />
+            <StageOverview onStart={() => go('deal')} advisorSummary={advisorSummary} />
           </motion.div>
         )}
 

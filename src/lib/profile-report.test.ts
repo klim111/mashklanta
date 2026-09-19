@@ -306,3 +306,98 @@ describe('מספרי הדשבורד, הסיכונים והקווים המנחי�
     expect(report.risks[0].id).toBe('no-property');
   });
 });
+
+describe('התזרים, לוח הזמנים, התמהיל הסכמטי והסימולציה', () => {
+  it('המפל החודשי מסתכם: הכנסה פחות הוצאות והלוואות, פחות ההחזר, שווה מה שנשאר', () => {
+    const report = buildProfileReport(profile());
+    const { cashFlow } = report;
+    expect(cashFlow.income).toBe(34_000);
+    expect(cashFlow.expenses).toBe(4_000);
+    expect(cashFlow.existingLoans).toBe(1_500);
+    expect(cashFlow.disposable).toBe(28_500);
+    expect(cashFlow.mortgagePayment).toBeCloseTo(report.summary.estimatedMonthlyPayment, 6);
+    expect(cashFlow.remaining).toBeCloseTo(28_500 - report.summary.estimatedMonthlyPayment, 6);
+    expect(cashFlow.steps.map((step) => step.key)).toEqual([
+      'income',
+      'expenses',
+      'loans',
+      'disposable',
+      'mortgage',
+      'remaining',
+    ]);
+  });
+
+  it('ציר הזמן משחרר הלוואה שמסתיימת ומכניס הכנסה שצפויה לגדול במועדה', () => {
+    const report = buildProfileReport(
+      profile({
+        years: 10,
+        borrowerLoans: [{ id: 'car', monthlyPayment: 1_500, remainingMonths: 24 }],
+        futureMonthlyIncrease: 2_000,
+        futureMonthlyIncreaseInYears: 3,
+      })
+    );
+    const { timeline } = report.cashFlow;
+    expect(timeline).toHaveLength(11);
+    expect(timeline[0].loans).toBe(1_500);
+    expect(timeline[2].loans).toBe(0);
+    expect(timeline[2].events).toHaveLength(1);
+    expect(timeline[2].events[0]).toMatch(/^סיום הלוואה \(.*1,500.*לחודש\)$/);
+    expect(timeline[3].income).toBe(36_000);
+    expect(timeline[3].events).toHaveLength(1);
+    expect(timeline[3].events[0]).toMatch(/^עלייה בהכנסה \(.*2,000.*לחודש\)$/);
+    expect(timeline[4].events).toEqual([]);
+    expect(timeline[3].remaining).toBeGreaterThan(timeline[0].remaining);
+    expect(timeline[0].ratio).toBeCloseTo(report.summary.repaymentRatio ?? 0, 6);
+  });
+
+  it('בלי נתונים אין החזר בתזרים והסימולציה ריקה', () => {
+    const report = buildProfileReport(emptyPlanData());
+    expect(report.cashFlow.mortgagePayment).toBe(0);
+    expect(report.cashFlow.remainingShare).toBeNull();
+    expect(report.costByYear).toEqual([]);
+  });
+
+  it('לוח הזמנים כולל את חמשת השלבים בסדרם, ואת השמאות המוקדמת ועורך הדין אחרי הפרופיל', () => {
+    const items = buildProfileReport(profile({ equity: 1_000_000 })).timeline;
+    expect(items.map((item) => item.id)).toEqual([
+      'ANALYSIS',
+      'appraisal',
+      'lawyer',
+      'MIX',
+      'APPLICATIONS',
+      'AUCTION',
+      'SIGNING',
+    ]);
+    items.forEach((item, index) => {
+      expect(item.endWeek).toBeGreaterThan(item.startWeek);
+      if (index > 0) expect(item.startWeek).toBe(items[index - 1].endWeek);
+    });
+    expect(items.find((item) => item.id === 'appraisal')?.emphasized).toBe(false);
+  });
+
+  it('שמאות מוקדמת מודגשת בלוח הזמנים כשהמימון קרוב לתקרה', () => {
+    const near = buildProfileReport(profile({ equity: 620_000 })).timeline;
+    expect(near.find((item) => item.id === 'appraisal')?.emphasized).toBe(true);
+  });
+
+  it('התמהיל הסכמטי מסתכם למאה אחוז ומגדיל את החלק הקבוע כשההחזר צמוד למגבלה', () => {
+    const comfortable = buildProfileReport(profile()).mixSketch;
+    expect(comfortable.reduce((sum, item) => sum + item.share, 0)).toBe(100);
+    const tight = buildProfileReport(profile({ income: 12_000, partnerIncome: 0, household: 'SINGLE' })).mixSketch;
+    expect(tight.reduce((sum, item) => sum + item.share, 0)).toBe(100);
+    const fixedOf = (items: typeof tight) => items.find((item) => item.id === 'fixed_unlinked')?.share ?? 0;
+    expect(fixedOf(tight)).toBeGreaterThan(fixedOf(comfortable));
+    expect(fixedOf(comfortable)).toBeGreaterThanOrEqual(33);
+  });
+
+  it('הסימולציה מסיימת ביתרה אפס, והריבית המצטברת שווה לסך הריביות בדוח', () => {
+    const report = buildProfileReport(profile({ years: 20 }));
+    const points = report.costByYear;
+    expect(points[0]).toEqual({ year: 0, balance: report.summary.mortgageAmount, paidPrincipal: 0, paidInterest: 0 });
+    expect(points).toHaveLength(21);
+    const last = points[points.length - 1];
+    expect(last.balance).toBeCloseTo(0, 0);
+    expect(last.paidPrincipal).toBeCloseTo(report.summary.mortgageAmount, 0);
+    expect(last.paidInterest).toBeCloseTo(report.summary.totalInterest, -1);
+  });
+});

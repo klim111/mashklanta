@@ -273,7 +273,6 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
     stage !== 'ANALYSIS' ||
     (Boolean(plan.data.ANALYSIS.intent) &&
       (plan.data.ANALYSIS.profileScreen || 'overview') === 'report');
-  const showStageFooter = !tour && !isPreview && analysisOnLastSubstep && (canComplete || isDone);
   /**
    * מסך "על השלב" של החתימה נפתח גם למי שקפץ לשלב לפני שסגר את קודמיו: הוא
    * רק מסביר מה השלב עושה, ולכן הוא נשאר פעיל מעל התוכן הנעול.
@@ -291,8 +290,15 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
   */
   const advisorRun = isAdvisorStage(orders.orders, stage);
   const showingDetails = detailStages.includes(stage);
-  const showAdvisorSummary = advisorRun;
-  const advisorSummaryOnly = showAdvisorSummary && !showingDetails;
+  /*
+    בשלב הפרופיל ההסבר על השלב מוצג גם כשיועץ מטפל בו, ומסך "היועץ מטפל בשלב
+    זה" בא מיד אחריו — בתוך ההסבר, ולא מעליו. "פרטים נוספים" פותח את השלב המלא.
+  */
+  const analysisAdvisorIntro = stage === 'ANALYSIS' && advisorRun && !showingDetails;
+  const showAdvisorSummary = advisorRun && !analysisAdvisorIntro;
+  const advisorSummaryOnly = advisorRun && !showingDetails && !analysisAdvisorIntro;
+  const showStageFooter =
+    !tour && !isPreview && analysisOnLastSubstep && !analysisAdvisorIntro && (canComplete || isDone);
   const advisorName =
     orders.orders.find(
       (order) =>
@@ -319,6 +325,21 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
     setDetailStages((current) =>
       current.includes(stage) ? current.filter((item) => item !== stage) : [...current, stage]
     );
+  const openStageDetails = () =>
+    setDetailStages((current) => (current.includes(stage) ? current : [...current, stage]));
+
+  /** מסך "היועץ מטפל בשלב זה" — מעל השלב, או בסוף ההסבר בשלב הפרופיל */
+  const advisorSummaryCard = advisorRun ? (
+    <AdvisorStageSummary
+      stage={stage}
+      data={plan.data}
+      status={statuses[stage]}
+      advisorName={advisorName}
+      meeting={stageMeeting}
+      detailsOpen={showingDetails}
+      onToggleDetails={toggleStageDetails}
+    />
+  ) : null;
 
   const selectStage = (nextStage: PlanStageId) => {
     if (tour) {
@@ -617,19 +638,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
             {/* המשימות המתוכננות של השלב — לכל לקוח עם תהליך פתוח */}
             {!tour && !isPreview && !advisorSummaryOnly && <StageTasksPanel planId={plan.id} stage={stage} />}
 
-            {showAdvisorSummary && (
-              <div className="mb-4">
-                <AdvisorStageSummary
-                  stage={stage}
-                  data={plan.data}
-                  status={statuses[stage]}
-                  advisorName={advisorName}
-                  meeting={stageMeeting}
-                  detailsOpen={showingDetails}
-                  onToggleDetails={toggleStageDetails}
-                />
-              </div>
-            )}
+            {showAdvisorSummary && <div className="mb-4">{advisorSummaryCard}</div>}
 
             {isPreview && (
               <StageLockedPreview
@@ -691,6 +700,8 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     planName={plan.propertyAddress || plan.name}
                     onRequestAdvisor={() => void requestFreeHandoff('ANALYSIS')}
                     advisorBusy={handoffBusy === 'ANALYSIS'}
+                    advisorSummary={analysisAdvisorIntro ? advisorSummaryCard : undefined}
+                    onShowDetails={openStageDetails}
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                     onChangeSigning={(next: SigningData) => updateStage('SIGNING', next)}
                   />

@@ -13,6 +13,7 @@
 import {
   DEFAULT_PLAN_YEARS,
   EMPLOYMENT_LABELS,
+  PLAN_STAGES,
   PLAN_TERM_MONTHS_MAX,
   REPAYMENT_RATIO_COMFORT,
   REPAYMENT_RATIO_LIMIT,
@@ -26,9 +27,10 @@ import {
   sumProfileLoans,
   yearsToMonths,
 } from './mortgage-plan';
-import type { AnalysisData, PlanData, ProfileScreen } from './mortgage-plan';
+import type { AnalysisData, PlanData, PlanStageId, ProfileScreen } from './mortgage-plan';
 import { INTEREST_RATES } from './interest-rates';
 import { DEAL_TYPES, MIN_FIXED_PERCENT } from '@/components/mortgage-advisor/types';
+import { journeyStageFor } from '@/data/platform/planStages';
 
 /** תוצאת בדיקה בודדת מול מגבלה */
 export type CheckStatus = 'pass' | 'near' | 'fail' | 'unknown';
@@ -112,6 +114,82 @@ export interface ReportBorrower {
   loanPayment: number;
 }
 
+/** שלב בתזרים החודשי: מה נכנס, מה יורד, ומה נשאר */
+export interface CashFlowStep {
+  key: 'income' | 'expenses' | 'loans' | 'disposable' | 'mortgage' | 'remaining';
+  label: string;
+  amount: number;
+  kind: 'income' | 'deduction' | 'subtotal' | 'result';
+}
+
+/** נקודה בציר הזמן של הכסף הפנוי — שנה מתחילת המשכנתא */
+export interface CashFlowPoint {
+  year: number;
+  income: number;
+  loans: number;
+  /** הכנסה פנויה לפני המשכנתא: הכנסה פחות הוצאות שוטפות פחות הלוואות */
+  disposable: number;
+  /** מה שנשאר אחרי ההחזר החודשי המשוער */
+  remaining: number;
+  /** יחס ההחזר באותה שנה, מול המגבלה */
+  ratio: number | null;
+  /** מה קרה בשנה הזו — הלוואה שהסתיימה, הכנסה שגדלה */
+  events: string[];
+}
+
+export interface ReportCashFlow {
+  income: number;
+  expenses: number;
+  existingLoans: number;
+  disposable: number;
+  mortgagePayment: number;
+  remaining: number;
+  /** הנשאר אחרי המשכנתא כאחוז מסך ההכנסה */
+  remainingShare: number | null;
+  steps: CashFlowStep[];
+  timeline: CashFlowPoint[];
+}
+
+/** פריט בלוח הזמנים של התהליך — שלב או אבן דרך שבין השלבים */
+export interface TimelineItem {
+  id: string;
+  label: string;
+  /** שבוע התחלה וסיום מתחילת התהליך */
+  startWeek: number;
+  endWeek: number;
+  kind: 'stage' | 'milestone';
+  stage: PlanStageId | null;
+  duration: string;
+  note: string;
+  /** אבן דרך שהפרופיל הופך לחשובה במיוחד (למשל שמאות מוקדמת כשהמימון קרוב לתקרה) */
+  emphasized: boolean;
+}
+
+export type MixSketchTrack = 'fixed_unlinked' | 'prime' | 'variable_unlinked';
+
+/** מסלול בתמהיל הסכמטי — הרכב עקרוני, לא המלצה סופית */
+export interface MixSketchItem {
+  id: MixSketchTrack;
+  label: string;
+  short: string;
+  /** חלק מהמשכנתא באחוזים */
+  share: number;
+  rate: number;
+  /** דירוג 1–3: כמה סיכון, כמה גמישות, כמה עלות */
+  risk: 1 | 2 | 3;
+  flexibility: 1 | 2 | 3;
+  cost: 1 | 2 | 3;
+  role: string;
+}
+
+/** נקודה שנתית בסימולציית העלות — כמה מהקרן וכמה מהריבית כבר שולמו */
+export interface CostPoint {
+  year: number;
+  balance: number;
+  paidPrincipal: number;
+  paidInterest: number;
+}
+
 /** מספרי המפתח של הדשבורד — כמספרים, כדי שהתצוגה תעצב אותם */
 export interface ReportSummary {
   mortgageAmount: number;
@@ -168,6 +246,14 @@ export interface ProfileReport {
   risks: ReportRisk[];
   /** קווים מנחים לבניית התמהיל — איזון בין עלות, גמישות, סיכון ויציבות */
   guidelines: ReportGuideline[];
+  /** התזרים החודשי: מהכנסה ועד מה שנשאר אחרי המשכנתא, וכיצד הוא משתנה עם השנים */
+  cashFlow: ReportCashFlow;
+  /** לוח הזמנים של חמשת השלבים ואבני הדרך שביניהם */
+  timeline: TimelineItem[];
+  /** הרכב סכמטי של מסלולי המשכנתא, לפי הפרופיל */
+  mixSketch: MixSketchItem[];
+  /** הסימולציה: קרן מול ריבית לאורך השנים — הערכה גסה בלבד */
+  costByYear: CostPoint[];
 }
 
 const shekel = new Intl.NumberFormat('he-IL', {
@@ -447,6 +533,10 @@ export function buildProfileReport(data: PlanData, now: Date = new Date()): Prof
     alerts: profileRecommendations(profile).filter((item) => item.id !== 'early-appraisal'),
     risks: reportRisks(profile, summary),
     guidelines: mixGuidelines(profile, summary),
+    cashFlow: reportCashFlow(profile, summary),
+    timeline: processTimeline(profile),
+    mixSketch: mixSketch(profile, summary),
+    costByYear: costByYear(summary),
   };
 }
 
@@ -829,4 +919,242 @@ function mixGuidelines(profile: AnalysisData, summary: ReportSummary): ReportGui
   }
 
   return guidelines;
+}
+
+// ───────────────────────── התזרים, לוח הזמנים, התמהיל הסכמטי והסימולציה ─────────────────────────
+
+/**
+ * התזרים החודשי כמפל: ההכנסה, מה שיורד ממנה (הוצאות שוטפות, הלוואות), מה
+ * שנשאר לפני המשכנתא, ההחזר המשוער, ומה שנשאר אחריו.
+ *
+ * ציר הזמן מראה איך אותו תזרים משתנה: הלוואה שמסתיימת משחררת החזר, והכנסה
+ * שצפויה לגדול נכנסת במועדה. ההחזר עצמו נשאר קבוע, כי זו הערכה לפי ריבית
+ * קבועה — התמהיל בשלב הבא יקבע את הצורה האמיתית שלו.
+ */
+export function reportCashFlow(profile: AnalysisData, summary: ReportSummary): ReportCashFlow {
+  const income = summary.totalIncome;
+  const expenses = profile.expenses ?? 0;
+  const existingLoans = summary.existingLoans;
+  const disposable = income - expenses - existingLoans;
+  const payment = summary.ready ? summary.estimatedMonthlyPayment : 0;
+  const remaining = disposable - payment;
+
+  const steps: CashFlowStep[] = [
+    { key: 'income', label: 'הכנסה נטו של משק הבית', amount: income, kind: 'income' },
+    { key: 'expenses', label: 'הוצאות שוטפות', amount: -expenses, kind: 'deduction' },
+    { key: 'loans', label: 'החזר הלוואות קיימות', amount: -existingLoans, kind: 'deduction' },
+    { key: 'disposable', label: 'הכנסה פנויה לפני המשכנתא', amount: disposable, kind: 'subtotal' },
+    { key: 'mortgage', label: 'החזר משכנתא משוער', amount: -payment, kind: 'deduction' },
+    { key: 'remaining', label: 'נשאר אחרי המשכנתא', amount: remaining, kind: 'result' },
+  ];
+
+  const loans = countedLoans(profile);
+  const known = sumProfileLoans(loans);
+  /* מה שהוזן כסכום כולל ולא פורט להלוואות — נשאר לאורך כל התקופה */
+  const unlisted = Math.max(0, existingLoans - known);
+  const increase = profile.futureMonthlyIncrease ?? 0;
+  const increaseYears = profile.futureMonthlyIncreaseInYears ?? 0;
+  const years = Math.max(1, Math.round(summary.years));
+
+  const timeline: CashFlowPoint[] = [];
+  for (let year = 0; year <= years; year += 1) {
+    const month = year * 12;
+    const activeLoans =
+      unlisted +
+      loans.reduce((sum, loan) => {
+        const left = loan.remainingMonths;
+        const active = left === null || left === undefined || left > month;
+        return active ? sum + (loan.monthlyPayment ?? 0) : sum;
+      }, 0);
+    const yearIncome = income + (increase > 0 && increaseYears > 0 && year >= increaseYears ? increase : 0);
+    const yearDisposable = yearIncome - expenses - activeLoans;
+    const base = yearIncome - activeLoans;
+    const events: string[] = [];
+    if (year > 0) {
+      loans.forEach((loan) => {
+        const left = loan.remainingMonths ?? null;
+        if (left !== null && left > month - 12 && left <= month) {
+          events.push(`סיום הלוואה (${money(loan.monthlyPayment ?? 0)} לחודש)`);
+        }
+      });
+      if (increase > 0 && increaseYears > 0 && year >= increaseYears && year - 1 < increaseYears) {
+        events.push(`עלייה בהכנסה (${money(increase)} לחודש)`);
+      }
+    }
+    timeline.push({
+      year,
+      income: yearIncome,
+      loans: activeLoans,
+      disposable: yearDisposable,
+      remaining: yearDisposable - payment,
+      ratio: payment > 0 && base > 0 ? (payment / base) * 100 : null,
+      events,
+    });
+  }
+
+  return {
+    income,
+    expenses,
+    existingLoans,
+    disposable,
+    mortgagePayment: payment,
+    remaining,
+    remainingShare: income > 0 && summary.ready ? (remaining / income) * 100 : null,
+    steps,
+    timeline,
+  };
+}
+
+/** משך אופייני של כל שלב בשבועות — לפי טווח הזמנים שבעמוד "איך זה עובד" */
+const STAGE_WEEKS: Record<PlanStageId, number> = {
+  ANALYSIS: 1,
+  MIX: 2,
+  APPLICATIONS: 2,
+  AUCTION: 3,
+  SIGNING: 1,
+};
+
+/**
+ * לוח הזמנים של התהליך: חמשת השלבים בסדר שבו עוברים אותם, ובין הפרופיל
+ * לתמהיל שתי אבני הדרך שאינן שלב בפלטפורמה אבל קובעות את הקצב — שמאות
+ * מוקדמת (לפני חתימת החוזה) והפנייה לעורך הדין לחוזה המכר.
+ */
+export function processTimeline(profile: AnalysisData): TimelineItem[] {
+  const appraisal = appraisalRecommendation(profile) !== null;
+  const items: TimelineItem[] = [];
+  let week = 0;
+
+  const pushStage = (stage: PlanStageId) => {
+    const journey = journeyStageFor(stage);
+    const weeks = STAGE_WEEKS[stage];
+    items.push({
+      id: stage,
+      label: journey.title,
+      startWeek: week,
+      endWeek: week + weeks,
+      kind: 'stage',
+      stage,
+      duration: journey.duration,
+      note: journey.tagline,
+      emphasized: false,
+    });
+    week += weeks;
+  };
+
+  PLAN_STAGES.forEach((stage) => {
+    pushStage(stage);
+    if (stage === 'ANALYSIS') {
+      items.push({
+        id: 'appraisal',
+        label: 'שמאות מוקדמת לנכס',
+        startWeek: week,
+        endWeek: week + 1,
+        kind: 'milestone',
+        stage: null,
+        duration: 'כשבוע',
+        note: appraisal
+          ? 'המימון קרוב לתקרה — שמאות לפני החתימה מונעת חוזה שאי אפשר לממן.'
+          : 'אופציונלי: מומלץ כשהמימון קרוב לתקרה או כשיש ספק לגבי שווי הנכס.',
+        emphasized: appraisal,
+      });
+      week += 1;
+      items.push({
+        id: 'lawyer',
+        label: 'פנייה לעורך דין וחתימת חוזה המכר',
+        startWeek: week,
+        endWeek: week + 1,
+        kind: 'milestone',
+        stage: null,
+        duration: 'כשבוע',
+        note: 'לוח התשלומים בחוזה נקבע מול תוקף האישור העקרוני וזמן הביצוע בבנק.',
+        emphasized: false,
+      });
+      week += 1;
+    }
+  });
+
+  return items;
+}
+
+/**
+ * הרכב סכמטי של התמהיל: שלושה מסלולים שמייצגים את שלוש הזוויות — קבוע
+ * ליציבות, פריים לגמישות, משתנה לעלות. החלוקה זזה לפי המרווח ביחס ההחזר:
+ * כשההחזר צמוד למגבלה, החלק הקבוע גדל. זהו קו מנחה, לא תמהיל.
+ */
+export function mixSketch(profile: AnalysisData, summary: ReportSummary): MixSketchItem[] {
+  const tight = summary.ratioStatus === 'near' || summary.ratioStatus === 'fail';
+  const lumpTotal = profile.futureLumpSums.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const fixedShare = tight ? 50 : Math.max(MIN_FIXED_PERCENT, 35);
+  const primeShare = tight ? 30 : 40;
+  const variableShare = 100 - fixedShare - primeShare;
+
+  return [
+    {
+      id: 'fixed_unlinked',
+      label: 'ריבית קבועה לא צמודה (קל"צ)',
+      short: 'קבועה',
+      share: fixedShare,
+      rate: INTEREST_RATES.fixed_unlinked,
+      risk: 1,
+      flexibility: 1,
+      cost: 3,
+      role: tight
+        ? 'הבסיס היציב: ההחזר ידוע מראש. כשההחזר קרוב למגבלה, זה החלק שמונע הפתעות.'
+        : `לפחות ${MIN_FIXED_PERCENT}% לפי הרגולציה. ההחזר ידוע מראש, אבל פירעון מוקדם עשוי לעלות בעמלת היוון.`,
+    },
+    {
+      id: 'prime',
+      label: 'פריים',
+      short: 'פריים',
+      share: primeShare,
+      rate: INTEREST_RATES.prime,
+      risk: 2,
+      flexibility: 3,
+      cost: 2,
+      role:
+        lumpTotal > 0
+          ? `השסתום לפירעון מוקדם בלי עמלת היוון — כאן ייכנסו ${money(lumpTotal)} שצפויים.`
+          : 'השסתום הגמיש: פירעון מוקדם ומיחזור בלי עמלת היוון, אבל ההחזר זז עם ריבית בנק ישראל.',
+    },
+    {
+      id: 'variable_unlinked',
+      label: 'משתנה לא צמודה כל 5 שנים',
+      short: 'משתנה',
+      share: variableShare,
+      rate: INTEREST_RATES.variable_unlinked_5y,
+      risk: 2,
+      flexibility: 2,
+      cost: 1,
+      role: 'ריבית התחלתית נמוכה עם יציבות לחמש שנים, ונקודת יציאה בלי קנס בכל עדכון.',
+    },
+  ];
+}
+
+/** הקרן והריבית שהצטברו בסוף כל שנה — לפי ההחזר המשוער ולוח שפיצר */
+export function costByYear(summary: ReportSummary): CostPoint[] {
+  const principal = summary.mortgageAmount;
+  const months = Math.max(0, Math.round(summary.months));
+  if (!summary.ready || principal <= 0 || months <= 0) return [];
+
+  const payment = summary.estimatedMonthlyPayment;
+  const monthlyRate = summary.estimateRate / 100 / 12;
+  const points: CostPoint[] = [{ year: 0, balance: principal, paidPrincipal: 0, paidInterest: 0 }];
+  let balance = principal;
+  let paidInterest = 0;
+
+  for (let month = 1; month <= months; month += 1) {
+    const interest = balance * monthlyRate;
+    const towardPrincipal = Math.min(balance, payment - interest);
+    balance = Math.max(0, balance - towardPrincipal);
+    paidInterest += interest;
+    if (month % 12 === 0 || month === months) {
+      points.push({
+        year: Math.ceil(month / 12),
+        balance,
+        paidPrincipal: principal - balance,
+        paidInterest,
+      });
+    }
+  }
+  return points;
 }

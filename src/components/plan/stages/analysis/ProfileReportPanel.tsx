@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   BadgeCheck,
   Building2,
+  Calculator,
+  CalendarClock,
   CheckCircle2,
   Compass,
   Download,
@@ -13,9 +15,11 @@ import {
   HelpCircle,
   Home,
   Info,
+  Layers,
   Lightbulb,
   ShieldAlert,
   Users,
+  Wallet,
   XCircle,
 } from 'lucide-react';
 import type { PlanData } from '@/lib/mortgage-plan';
@@ -29,17 +33,25 @@ import type { CheckStatus, RecommendationTone } from '@/lib/profile-report';
 import { formatPercent, formatShekel } from '../../ui';
 import { RecommendationCard } from './RecommendationCallouts';
 import { printProfileReport } from './reportDocument';
+import {
+  BorrowedVersusPaid,
+  CashFlowTimeline,
+  CashFlowWaterfall,
+  CostOverTime,
+  LimitGauge,
+  MixComposition,
+  ProcessGantt,
+  distanceToLimit,
+} from './ReportCharts';
 
 const STATUS_STYLE: Record<
   CheckStatus,
-  { box: string; text: string; chip: string; fill: string; track: string; label: string; icon: React.ReactNode }
+  { box: string; text: string; chip: string; label: string; icon: React.ReactNode }
 > = {
   pass: {
     box: 'border-emerald-300 bg-emerald-50/70',
     text: 'text-emerald-700',
     chip: 'bg-emerald-100 text-emerald-800',
-    fill: 'bg-emerald-500',
-    track: 'bg-emerald-100',
     label: 'עומד בדרישה',
     icon: <CheckCircle2 className="h-5 w-5" />,
   },
@@ -47,8 +59,6 @@ const STATUS_STYLE: Record<
     box: 'border-amber-300 bg-amber-50/70',
     text: 'text-amber-700',
     chip: 'bg-amber-100 text-amber-800',
-    fill: 'bg-amber-500',
-    track: 'bg-amber-100',
     label: 'קרוב למגבלה',
     icon: <AlertTriangle className="h-5 w-5" />,
   },
@@ -56,8 +66,6 @@ const STATUS_STYLE: Record<
     box: 'border-rose-300 bg-rose-50/70',
     text: 'text-rose-700',
     chip: 'bg-rose-100 text-rose-800',
-    fill: 'bg-rose-600',
-    track: 'bg-rose-100',
     label: 'אינו עומד בדרישה',
     icon: <XCircle className="h-5 w-5" />,
   },
@@ -65,8 +73,6 @@ const STATUS_STYLE: Record<
     box: 'border-slate-300 bg-slate-50',
     text: 'text-slate-600',
     chip: 'bg-slate-100 text-slate-600',
-    fill: 'bg-slate-400',
-    track: 'bg-slate-100',
     label: 'חסרים נתונים',
     icon: <HelpCircle className="h-5 w-5" />,
   },
@@ -84,34 +90,6 @@ function StatusChip({ status }: { status: CheckStatus }) {
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${tone.chip}`}>
       {tone.label}
     </span>
-  );
-}
-
-/** מד דק: המילוי צבוע לפי החומרה, המסילה בגוון בהיר של אותו צבע, וסימון לגבול */
-function LimitMeter({
-  value,
-  limit,
-  status,
-  scaleMax,
-}: {
-  value: number | null;
-  limit: number;
-  status: CheckStatus;
-  scaleMax: number;
-}) {
-  const tone = STATUS_STYLE[status];
-  const pct = value === null ? 0 : Math.min(100, (value / scaleMax) * 100);
-  const limitPct = Math.min(100, (limit / scaleMax) * 100);
-  return (
-    <div className="relative mt-3 h-2 w-full rounded-full">
-      <div className={`absolute inset-0 rounded-full ${tone.track}`} />
-      <div className={`absolute inset-y-0 right-0 rounded-full ${tone.fill}`} style={{ width: `${pct}%` }} />
-      <div
-        className="absolute -top-1 h-4 w-0.5 rounded-full bg-slate-900"
-        style={{ right: `calc(${limitPct}% - 1px)` }}
-        aria-hidden
-      />
-    </div>
   );
 }
 
@@ -151,25 +129,30 @@ function Block({
   title,
   subtitle,
   accent,
+  badge,
+  tone = 'border-slate-200 bg-white',
   children,
 }: {
   icon: typeof Home;
   title: string;
   subtitle?: string;
   accent: string;
+  badge?: React.ReactNode;
+  tone?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white text-right shadow-sm">
+    <section className={`overflow-hidden rounded-3xl border-2 text-right shadow-sm ${tone}`}>
       <div className={`h-1 w-full bg-gradient-to-l ${accent}`} />
-      <div className="flex items-center gap-3 px-5 pt-4">
+      <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accent} shadow-md`}>
           <Icon className="h-4 w-4 text-white" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h4 className="text-sm font-black text-slate-900">{title}</h4>
           {subtitle && <p className="text-[11px] text-slate-500">{subtitle}</p>}
         </div>
+        {badge}
       </div>
       <div className="p-5 pt-4">{children}</div>
     </section>
@@ -185,12 +168,34 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
   );
 }
 
+/** כותרת משנה בתוך בלוק — מפרידה בין גרף לגרף */
+function SubTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="mb-2">
+      <h5 className="text-[13px] font-black text-slate-800">{children}</h5>
+      {hint && <p className="text-[11px] leading-snug text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
+/** תג "השערה בלבד" — לכל מספר שנגזר מריבית שעדיין לא נקבעה */
+function EstimateBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-800">
+      <Calculator className="h-3 w-3" />
+      השערה בלבד
+    </span>
+  );
+}
+
 /**
- * התוצר של השלב הראשון, על המסך — דשבורד של בלוקים.
+ * התוצר של השלב הראשון — דוח פרופיל פיננסי כלוח בקרה.
  *
- * מספרי המפתח למעלה, ואחריהם נתוני העסקה, פרופיל הלקוח, העמידה בדרישות,
- * הסיכונים וההמלצות, הקווים המנחים לתמהיל ותיק המסמכים. אותו תוכן יוצא
- * לקובץ בהורדה. `sample` מציג דוח דמה במסך «על השלב» — בלי כפתור הורדה.
+ * למעלה מספרי המפתח והמצב מול הרגולציה, ואז המדים של יחס המימון ויחס ההחזר,
+ * התזרים החודשי ולאורך השנים, נתוני העסקה והלווים, הבדיקות, הסיכונים
+ * וההמלצות, לוח הזמנים של התהליך, הרכב המסלולים והקווים המנחים, תיק המסמכים
+ * — ובסוף, בנפרד ומסומן כהשערה, כל מה שתלוי בריבית: ההחזר, הריביות והסימולציה.
+ * אותו תוכן יוצא לקובץ בהורדה. `sample` מציג דוח דמה במסך «על השלב».
  */
 export function ProfileReportPanel({
   data,
@@ -203,18 +208,32 @@ export function ProfileReportPanel({
 }) {
   const report = useMemo(() => buildProfileReport(data), [data]);
   const verdict = STATUS_STYLE[report.overall];
-  const { summary } = report;
+  const { summary, cashFlow } = report;
   const date = useMemo(
     () => new Intl.DateTimeFormat('he-IL', { dateStyle: 'long' }).format(new Date(report.generatedAt)),
     [report.generatedAt]
   );
   const afterStatus: CheckStatus = !summary.ready
     ? 'unknown'
-    : summary.disposableAfterMortgage < 0
+    : cashFlow.remaining < 0
       ? 'fail'
-      : summary.disposableAfterMortgage < summary.totalIncome * 0.25
+      : cashFlow.remaining < summary.totalIncome * 0.25
         ? 'near'
         : 'pass';
+  const equityStatus: CheckStatus = summary.equityGap > 0 ? 'fail' : summary.ready ? 'pass' : 'unknown';
+  const ltvComfort = Math.max(0, summary.maxLtv - 2);
+  const stageCount = report.timeline.filter((item) => item.kind === 'stage').length;
+  const totalWeeks = Math.max(...report.timeline.map((item) => item.endWeek));
+  const download = !sample ? (
+    <button
+      type="button"
+      onClick={() => printProfileReport(report, planName)}
+      className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-lg transition-all hover:bg-blue-50"
+    >
+      <Download className="h-4 w-4" />
+      הורדת הדוח
+    </button>
+  ) : null;
 
   return (
     <section className="space-y-4">
@@ -230,29 +249,19 @@ export function ProfileReportPanel({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-black">
                   <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
-                  התוצר של השלב · דוח פרופיל פיננסי
+                  התוצר של השלב
                 </span>
                 {sample && (
                   <span className="rounded-full bg-amber-400 px-3 py-1 text-[11px] font-black text-slate-900">דוגמה</span>
                 )}
               </div>
-              <h3 className="mt-3 text-2xl font-black leading-tight md:text-3xl">
-                {planName || 'הפרופיל הפיננסי שלכם'}
-              </h3>
-              <p className="mt-1 text-sm text-white/70">
+              <h3 className="mt-3 text-2xl font-black leading-tight md:text-3xl">דוח פרופיל פיננסי</h3>
+              <p className="mt-1 text-sm text-white/80">{planName || 'הפרופיל הפיננסי שלכם'}</p>
+              <p className="mt-0.5 text-sm text-white/60">
                 {report.headline} · הופק {date}
               </p>
             </div>
-            {!sample && (
-              <button
-                type="button"
-                onClick={() => printProfileReport(report, planName)}
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-lg transition-all hover:bg-blue-50"
-              >
-                <Download className="h-4 w-4" />
-                הורדת הדוח כ-PDF
-              </button>
-            )}
+            {download}
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -266,21 +275,22 @@ export function ProfileReportPanel({
               dark
               label="שיעור מימון"
               value={formatPercent(summary.ltv)}
-              note={`תקרה ${summary.maxLtv}% לסוג העסקה`}
+              note={`תקרה ${summary.maxLtv}% לסוג העסקה · ${distanceToLimit(summary.ltv, summary.maxLtv)}`}
               status={summary.ltvStatus}
             />
             <Tile
               dark
               label="יחס החזר"
               value={formatPercent(summary.repaymentRatio)}
-              note={`מגבלה ${summary.ratioLimit}% · נוח עד ${summary.ratioComfort}%`}
+              note={`מגבלה ${summary.ratioLimit}% · נוח עד ${summary.ratioComfort}% · ${distanceToLimit(summary.repaymentRatio, summary.ratioLimit)}`}
               status={summary.ratioStatus}
             />
             <Tile
               dark
-              label="החזר חודשי משוער"
-              value={summary.ready ? formatShekel(summary.estimatedMonthlyPayment) : '—'}
-              note={`${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% קל"צ להערכה`}
+              label="הון עצמי בעסקה"
+              value={summary.ready ? formatShekel(summary.equityInDeal) : formatShekel(summary.equity)}
+              note={summary.equityGap > 0 ? `חסרים ${formatShekel(summary.equityGap)} לתקרת המימון` : 'מכסה את המינימום לסוג העסקה'}
+              status={equityStatus}
             />
           </div>
         </div>
@@ -293,35 +303,125 @@ export function ProfileReportPanel({
         </span>
       </div>
 
-      {/* שורת התוצאות הכספיות */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile
-          label="הכנסה פנויה אחרי המשכנתא"
-          value={summary.ready ? formatShekel(summary.disposableAfterMortgage) : '—'}
-          note="הכנסה נטו פחות הלוואות קיימות ופחות ההחזר המשוער"
-          status={afterStatus}
-        />
-        <Tile
-          label="סך הריביות לאורך התקופה"
-          value={summary.ready ? formatShekel(summary.totalInterest) : '—'}
-          note={
-            summary.interestShare !== null
-              ? `${summary.interestShare.toFixed(0)}% מהקרן · סך תשלומים ${formatShekel(summary.totalPaid)}`
-              : undefined
-          }
-        />
-        <Tile
-          label="החזר חודשי מרבי לפי הבנקים"
-          value={formatShekel(summary.maxMonthlyPayment)}
-          note={`${summary.ratioLimit}% מההכנסה הפנויה`}
-        />
-        <Tile
-          label="הון עצמי בעסקה"
-          value={summary.ready ? formatShekel(summary.equityInDeal) : formatShekel(summary.equity)}
-          note={summary.equityGap > 0 ? `חסרים ${formatShekel(summary.equityGap)} לתקרת המימון` : 'מכסה את המינימום לסוג העסקה'}
-          status={summary.equityGap > 0 ? 'fail' : summary.ready ? 'pass' : 'unknown'}
-        />
+      {/* המדים: יחס המימון ויחס ההחזר מול המגבלות */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Block
+          icon={Home}
+          title="יחס המימון מול תקרת בנק ישראל"
+          subtitle={`${summary.dealTypeLabel ?? 'לסוג העסקה'} · תקרה ${summary.maxLtv}% משווי הנכס`}
+          accent="from-blue-600 to-cyan-500"
+          badge={<StatusChip status={summary.ltvStatus} />}
+        >
+          <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+            <LimitGauge
+              value={summary.ltv}
+              limit={summary.maxLtv}
+              comfort={ltvComfort}
+              status={summary.ltvStatus}
+              label="שיעור המימון"
+            />
+            <div className="space-y-2 text-[12px] leading-relaxed text-slate-600">
+              <p className="text-sm font-black text-slate-900">{distanceToLimit(summary.ltv, summary.maxLtv)}</p>
+              <p>
+                הבנק מממן אחוז מהנמוך מבין מחיר הרכישה לשווי השמאות. הקשת כולה היא הטווח המותר,
+                והחלק הכתום שלפני הקצה הוא המרווח שבו ירידה קטנה בשמאות כבר מוציאה את העסקה
+                מהמגבלה.
+              </p>
+              <Row label="מחיר הנכס" value={formatShekel(summary.propertyValue)} />
+              <Row label="משכנתא מבוקשת" value={summary.ready ? formatShekel(summary.mortgageAmount) : '—'} />
+              <Row
+                label="המשכנתא המרבית לפי התקרה"
+                value={summary.propertyValue ? formatShekel((summary.propertyValue * summary.maxLtv) / 100) : '—'}
+              />
+            </div>
+          </div>
+        </Block>
+
+        <Block
+          icon={Wallet}
+          title="יחס ההחזר מול המגבלה"
+          subtitle={`ההחזר החודשי מתוך ההכנסה נטו אחרי הלוואות · מגבלה ${summary.ratioLimit}%, נוח עד ${summary.ratioComfort}%`}
+          accent="from-violet-600 to-fuchsia-500"
+          badge={<StatusChip status={summary.ratioStatus} />}
+        >
+          <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+            <LimitGauge
+              value={summary.repaymentRatio}
+              limit={summary.ratioLimit}
+              comfort={summary.ratioComfort}
+              status={summary.ratioStatus}
+              label="יחס ההחזר"
+            />
+            <div className="space-y-2 text-[12px] leading-relaxed text-slate-600">
+              <p className="text-sm font-black text-slate-900">{distanceToLimit(summary.repaymentRatio, summary.ratioLimit)}</p>
+              <p>
+                מעל {summary.ratioLimit}% הבקשה כמעט תמיד נדחית, ובין {summary.ratioComfort}% ל-{summary.ratioLimit}% החיתום
+                מחמיר. היחס כאן מחושב לפי החזר משוער — הערכה שמפורטת בסוף הדוח.
+              </p>
+              <Row label="הכנסה נטו של משק הבית" value={formatShekel(summary.totalIncome)} />
+              <Row label="החזר על הלוואות קיימות" value={formatShekel(summary.existingLoans)} />
+              <Row
+                label="ההחזר החודשי שיביא למגבלה"
+                value={formatShekel(Math.max(0, summary.totalIncome - summary.existingLoans) * (summary.ratioLimit / 100))}
+              />
+            </div>
+          </div>
+        </Block>
       </div>
+
+      {/* התזרים: המפל החודשי, ולאורך השנים */}
+      <Block
+        icon={Wallet}
+        title="ההכנסה הפנויה והכסף שיישאר אחרי המשכנתא"
+        subtitle="הכנסה, הוצאות שוטפות, הלוואות קיימות וההחזר המשוער — היום ולאורך חיי המשכנתא"
+        accent="from-teal-600 to-emerald-500"
+        badge={<StatusChip status={afterStatus} />}
+      >
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <Tile label="הכנסה פנויה לפני המשכנתא" value={formatShekel(cashFlow.disposable)} note="הכנסה נטו פחות הוצאות שוטפות ופחות הלוואות" />
+          <Tile
+            label="נשאר אחרי המשכנתא"
+            value={summary.ready ? formatShekel(cashFlow.remaining) : '—'}
+            note={
+              cashFlow.remainingShare !== null
+                ? `${cashFlow.remainingShare.toFixed(0)}% מסך ההכנסה · לפי ההחזר המשוער`
+                : 'יחושב כשיוזנו הנכס וההכנסות'
+            }
+            status={afterStatus}
+          />
+          <Tile
+            label="יחס ההחזר מול המגבלה"
+            value={formatPercent(summary.repaymentRatio)}
+            note={`${distanceToLimit(summary.repaymentRatio, summary.ratioLimit)} · נוח עד ${summary.ratioComfort}%`}
+            status={summary.ratioStatus}
+          />
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div>
+            <SubTitle hint="מההכנסה נטו יורדות ההוצאות וההלוואות, ואז ההחזר המשוער — מה שנשאר הוא הכסף הפנוי החודשי.">
+              התזרים החודשי היום
+            </SubTitle>
+            <CashFlowWaterfall steps={cashFlow.steps} />
+          </div>
+          <div>
+            <SubTitle hint={`הלוואה שמסתיימת והכנסה שגדלה מסומנות כנקודות. הקו המקווקו הוא הרצפה שנגזרת ממגבלת ${summary.ratioLimit}% — מתחתיו הבנק לא היה מאשר.`}>
+              לאורך חיי המשכנתא
+            </SubTitle>
+            <CashFlowTimeline points={cashFlow.timeline} ratioLimit={summary.ratioLimit} ratioComfort={summary.ratioComfort} />
+          </div>
+        </div>
+        {cashFlow.timeline.some((point) => point.events.length > 0) && (
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {cashFlow.timeline
+              .filter((point) => point.events.length > 0)
+              .map((point) => (
+                <li key={point.year} className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-900 ring-1 ring-teal-200">
+                  שנה {point.year}: {point.events.join(' · ')} → נשאר {formatShekel(point.remaining)}
+                </li>
+              ))}
+          </ul>
+        )}
+      </Block>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Block icon={Home} title="נתוני העסקה" subtitle="הנכס, המימון והבטוחה" accent="from-blue-600 to-cyan-500">
@@ -337,19 +437,10 @@ export function ProfileReportPanel({
               value={describeMonths(Math.min(30, summary.maxYearsByAge) * 12)}
             />
           )}
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-600">שיעור מימון מול התקרה</span>
-              <span className="font-black tabular-nums text-slate-900">
-                {formatPercent(summary.ltv)} / {summary.maxLtv}%
-              </span>
-            </div>
-            <LimitMeter value={summary.ltv} limit={summary.maxLtv} status={summary.ltvStatus} scaleMax={100} />
-            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-              הבטוחה למשכנתא היא הנכס עצמו. הבנק מחשב את המימון לפי הנמוך מבין מחיר הרכישה
-              לשווי השמאות, ולכן הפער מהתקרה הוא מרווח הביטחון שלכם מול שמאות נמוכה.
-            </p>
-          </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            הבטוחה למשכנתא היא הנכס עצמו. הפער מהתקרה הוא מרווח הביטחון שלכם מול שמאות נמוכה
+            ממחיר הרכישה.
+          </p>
         </Block>
 
         <Block icon={Users} title="פרופיל הלקוח" subtitle="הלווים, ההכנסות והתחייבויות" accent="from-violet-600 to-fuchsia-500">
@@ -367,17 +458,9 @@ export function ProfileReportPanel({
           </div>
           <div className="mt-3">
             <Row label="הכנסה חודשית מוכרת" value={formatShekel(summary.totalIncome)} strong />
+            <Row label="הוצאות שוטפות" value={formatShekel(cashFlow.expenses)} />
             <Row label="החזר על הלוואות קיימות" value={formatShekel(summary.existingLoans)} />
-            <Row label="הכנסה פנויה לחישוב ההחזר" value={formatShekel(summary.disposableIncome)} />
-          </div>
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-600">יחס החזר מול המגבלה</span>
-              <span className="font-black tabular-nums text-slate-900">
-                {formatPercent(summary.repaymentRatio)} / {summary.ratioLimit}%
-              </span>
-            </div>
-            <LimitMeter value={summary.repaymentRatio} limit={summary.ratioLimit} status={summary.ratioStatus} scaleMax={60} />
+            <Row label="הכנסה פנויה לפני המשכנתא" value={formatShekel(cashFlow.disposable)} />
           </div>
           {(data.ANALYSIS.futureLumpSums.some((item) => (item.amount ?? 0) > 0) ||
             (data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0) && (
@@ -482,6 +565,72 @@ export function ProfileReportPanel({
         </Block>
       </div>
 
+      {/* לוח הזמנים של התהליך */}
+      <Block
+        icon={CalendarClock}
+        title="לוח הזמנים של התהליך"
+        subtitle={`${stageCount} שלבים ושתי אבני דרך ביניהם — כ-${totalWeeks} שבועות בקצב אופייני, מהפרופיל ועד החתימה`}
+        accent="from-amber-500 to-orange-600"
+      >
+        <ProcessGantt items={report.timeline} />
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-right text-xs">
+            <thead>
+              <tr className="text-[11px] font-black text-slate-500">
+                <th className="pb-2 pl-3 font-black">שלב / אבן דרך</th>
+                <th className="pb-2 pl-3 font-black">מתי</th>
+                <th className="pb-2 pl-3 font-black">משך אופייני</th>
+                <th className="pb-2 font-black">מה חשוב</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {report.timeline.map((item) => (
+                <tr key={item.id} className={item.emphasized ? 'bg-amber-50/60' : undefined}>
+                  <td className="py-2 pl-3 font-black text-slate-900">{item.label}</td>
+                  <td className="py-2 pl-3 tabular-nums text-slate-700">
+                    {item.startWeek === 0 ? 'מיד' : `משבוע ${item.startWeek}`} עד שבוע {item.endWeek}
+                  </td>
+                  <td className="py-2 pl-3 text-slate-700">{item.duration}</td>
+                  <td className="py-2 leading-snug text-slate-600">{item.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+          הזמנים הם קצב אופייני של תהליך שמתקדם בלי עיכובים. מועדי התשלום בחוזה המכר, תוקף האישור
+          העקרוני וזמן הביצוע בבנק הם מה שקובע בפועל — ולכן כדאי לתאם אותם מראש.
+        </p>
+      </Block>
+
+      {/* הרכב המסלולים והקווים המנחים */}
+      <Block
+        icon={Layers}
+        title="הרכב מסלולי המשכנתא — תיאור סכמטי"
+        subtitle="שלוש זוויות שכל תמהיל מאזן ביניהן: יציבות מול סיכון, גמישות לשינויים, ועלות המימון"
+        accent="from-emerald-600 to-teal-500"
+        badge={<span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-600">קו מנחה, לא תמהיל סופי</span>}
+      >
+        <MixComposition items={report.mixSketch} mortgageAmount={summary.ready ? summary.mortgageAmount : 0} />
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
+            <div className="mb-1 text-[13px] font-black text-slate-900">סיכון ↔ יציבות</div>
+            ריבית קבועה נועלת את ההחזר ומבטלת הפתעות; פריים ומשתנה זולים יותר בהתחלה אבל ההחזר זז עם
+            השוק. ככל שיחס ההחזר קרוב למגבלה, כך צריך יותר יציבות.
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
+            <div className="mb-1 text-[13px] font-black text-slate-900">גמישות ↔ עמלת היוון</div>
+            במסלולי פריים ומשתנה אפשר לפרוע מוקדם ולמחזר בלי קנס; בקבועה ייתכן קנס כשהריביות יורדות.
+            כסף שצפוי להיכנס מכוון למסלול הגמיש.
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
+            <div className="mb-1 text-[13px] font-black text-slate-900">עלות ↔ ביטחון</div>
+            הריבית הקבועה היא המחיר של הביטוח. סך הריביות נקבע גם מהתקופה של כל מסלול — מקצרים את
+            היקרים, מאריכים את הזולים, ומתכננים פירעון מוקדם שמקצר את הכל.
+          </div>
+        </div>
+      </Block>
+
       <Block
         icon={Compass}
         title="קווים מנחים לבניית התמהיל"
@@ -539,6 +688,57 @@ export function ProfileReportPanel({
         </div>
       </Block>
 
+      {/* בסוף, בנפרד: כל מה שתלוי בריבית — השערה בלבד */}
+      <Block
+        icon={Calculator}
+        title="הערכת ההחזר והריביות — השערה בלבד"
+        subtitle={`חישוב גס לפי ריבית קבועה לא צמודה של ${summary.estimateRate}% על כל הסכום ל-${describeMonths(summary.months)}`}
+        accent="from-amber-500 to-orange-500"
+        tone="border-amber-200 bg-amber-50/30"
+        badge={<EstimateBadge />}
+      >
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-white p-3.5 text-[12px] leading-relaxed text-slate-700">
+          <span className="font-black text-amber-900">חשוב לדעת: </span>
+          המספרים בחלק הזה הם הערכה גסה בלבד, שנועדה לתת סדר גודל. החישוב המדויק של ההחזר החודשי,
+          סך הריביות וההרכב ייעשה אחרי בניית התמהיל ואישור הריביות מול הגוף המממן — ושם המספרים
+          יכולים להשתנות משמעותית, לשני הכיוונים.
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Tile
+            label="החזר חודשי משוער"
+            value={summary.ready ? formatShekel(summary.estimatedMonthlyPayment) : '—'}
+            note={`${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% להערכה`}
+          />
+          <Tile
+            label="סך הריביות לאורך התקופה"
+            value={summary.ready ? formatShekel(summary.totalInterest) : '—'}
+            note={summary.interestShare !== null ? `${summary.interestShare.toFixed(0)}% מהקרן` : undefined}
+          />
+          <Tile
+            label="סך התשלומים"
+            value={summary.ready ? formatShekel(summary.totalPaid) : '—'}
+            note="קרן ועוד ריבית, לאורך כל התקופה"
+          />
+          <Tile
+            label="מכל שקל שישולם — לריבית"
+            value={summary.ready && summary.totalPaid > 0 ? `${((summary.totalInterest / summary.totalPaid) * 100).toFixed(0)} אג׳` : '—'}
+            note="המספר שהתמהיל בשלב הבא ינסה להוריד"
+          />
+        </div>
+        {summary.ready && report.costByYear.length > 0 && (
+          <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+            <div>
+              <SubTitle hint="הסכום שנלקח מול הסכום שישולם בסוף התקופה — ההפרש הוא הריבית.">מה נלקח ומה ישולם</SubTitle>
+              <BorrowedVersusPaid principal={summary.mortgageAmount} interest={summary.totalInterest} />
+            </div>
+            <div>
+              <SubTitle hint="בשנים הראשונות רוב ההחזר הולך לריבית; הקרן יורדת מהר יותר ככל שמתקדמים.">קרן מול ריבית לאורך השנים</SubTitle>
+              <CostOverTime points={report.costByYear} />
+            </div>
+          </div>
+        )}
+      </Block>
+
       {!sample && (
         <div className="flex justify-center">
           <button
@@ -547,7 +747,7 @@ export function ProfileReportPanel({
             className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-base font-black text-white shadow-lg transition-colors hover:bg-slate-700"
           >
             <Download className="h-5 w-5" />
-            הורדת הדוח כ-PDF
+            הורדת הדוח
           </button>
         </div>
       )}
