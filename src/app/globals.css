@@ -165,35 +165,57 @@
 }
 
 /* Financial Graphics Carousel */
+/* פס ההתקדמות של נגן ההדגמה — סצנה אחת, מקצה לקצה */
+@keyframes demo-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/*
+ * קרוסלת הראש: שלושה סליידים של מסר (3.4 שניות כל אחד) ואחריהם הסלייד של
+ * המסכים האמיתיים, שמקבל את רוב המחזור — שם מתחלפים האזור האישי ומסכי
+ * השלבים, ולכן הוא צריך זמן מסך אמיתי.
+ */
 @keyframes carousel-slide {
-  0%, 22% { 
-    opacity: 1; 
-    transform: scale(1); 
+  0%, 14% {
+    opacity: 1;
+    transform: scale(1);
   }
-  25%, 97% { 
-    opacity: 0; 
-    transform: scale(0.98); 
+  17%, 100% {
+    opacity: 0;
+    transform: scale(0.98);
   }
-  100% { 
-    opacity: 1; 
-    transform: scale(1); 
+}
+
+@keyframes carousel-screens {
+  0%, 50% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  53%, 97% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.985);
   }
 }
 
 .animate-carousel-slide-1 {
-  animation: carousel-slide 16s ease-in-out infinite;
+  animation: carousel-slide 22s ease-in-out infinite;
 }
 
 .animate-carousel-slide-2 {
-  animation: carousel-slide 16s ease-in-out infinite 4s;
+  animation: carousel-slide 22s ease-in-out infinite 3.6s;
 }
 
 .animate-carousel-slide-3 {
-  animation: carousel-slide 16s ease-in-out infinite 8s;
+  animation: carousel-slide 22s ease-in-out infinite 7.2s;
 }
 
 .animate-carousel-slide-4 {
-  animation: carousel-slide 16s ease-in-out infinite 12s;
+  animation: carousel-screens 22s ease-in-out infinite;
 }
 
 /* Financial Elements Animation */
