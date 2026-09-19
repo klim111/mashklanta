@@ -21,6 +21,7 @@ import {
   Search,
   Trash2,
   UserRound,
+  Wallet,
   X,
 } from 'lucide-react';
 import { journeyStageFor, PLAN_JOURNEY_STAGES } from '@/data/platform/planStages';
@@ -32,6 +33,7 @@ import { MortgageEntry } from '@/components/service-flow/MortgageEntry';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
+import { EquityOverviewCard } from './EquityOverviewCard';
 import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
 import { TaskItem } from './TaskItem';
@@ -64,7 +66,7 @@ export function OverviewSection({
   onDetailPlan: (planId: string | null) => void;
   onNavigate: (section: DashboardSection, day?: string) => void;
 }) {
-  const { plansState, mixesState, tasks, events, requests, advisorStages, ready } = data;
+  const { plansState, mixesState, tasks, events, requests, advisorStages, equityState, ready } = data;
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
@@ -237,6 +239,11 @@ export function OverviewSection({
         />
         <QuickAction href="/mortgage-refinance" icon={<RefreshCw className="h-4 w-4" />} label="מיחזור משכנתא" />
         <QuickAction
+          onClick={() => onNavigate('expenses')}
+          icon={<Wallet className="h-4 w-4" />}
+          label="תכנון הוצאות והון עצמי"
+        />
+        <QuickAction
           onClick={() => onNavigate('settings')}
           icon={<UserRound className="h-4 w-4" />}
           label="פרטי הלווים והחשבון"
@@ -361,6 +368,9 @@ export function OverviewSection({
         {tasksCard}
         {quickActions}
       </div>
+
+      {/* תוצרי כלי תכנון ההוצאות — זמינים כאן ברגע שהתכנון נשמר בחשבון */}
+      <EquityOverviewCard plan={equityState.plan} onOpen={() => onNavigate('expenses')} />
 
       <AdvisorCta variant="row" />
       <MortgageEntry

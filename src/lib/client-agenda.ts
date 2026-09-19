@@ -15,6 +15,7 @@ import { meetingIsLive } from './advisor-crm';
 import { planStageNumber, preApprovalDocuments, stageIndex } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import type { ClientTaskView } from './client-tasks';
+import type { EquityCalendarExpense } from './equity-planning';
 
 /** קידומת המזהה של משימה שהלקוח הוסיף לעצמו — כך הדאשבורד יודע שאפשר לסמן ולמחוק אותה */
 export const CLIENT_TASK_PREFIX = 'client-task:';
@@ -27,6 +28,7 @@ export function clientTaskIdOf(id: string): string | null {
 export const DASHBOARD_SECTIONS = [
   'overview',
   'agenda',
+  'expenses',
   'rate-requests',
   'tools',
   'settings',
@@ -55,7 +57,7 @@ export interface ClientTask {
   target: AgendaTarget;
 }
 
-export type CalendarEventKind = 'meeting' | 'deadline' | 'task';
+export type CalendarEventKind = 'meeting' | 'deadline' | 'task' | 'expense';
 
 export interface CalendarEvent {
   id: string;
@@ -103,6 +105,8 @@ export interface AgendaInput {
   advisorStages: Record<string, PlanStageId[]>;
   /** המשימות המתוכננות שהלקוח הוסיף לעצמו (פתוחות) */
   clientTasks?: ClientTaskView[];
+  /** ההוצאות מכלי תכנון ההוצאות — מועד וסכום לכל תשלום מתוכנן */
+  equityExpenses?: EquityCalendarExpense[];
 }
 
 export const EMPTY_AGENDA_INPUT: AgendaInput = {
@@ -113,6 +117,7 @@ export const EMPTY_AGENDA_INPUT: AgendaInput = {
   notes: [],
   advisorStages: {},
   clientTasks: [],
+  equityExpenses: [],
 };
 
 const KIND_HINTS: Record<ClientTaskView['kind'], string> = {
@@ -454,6 +459,25 @@ export function buildCalendarEvents(input: AgendaInput): CalendarEvent[] {
         target: clientTaskTarget(task, input.plans),
       });
     });
+
+  // ההוצאות המתוכננות מכלי תכנון ההוצאות — מועד תשלום הוא מועד שצריך להיערך אליו
+  (input.equityExpenses ?? []).forEach((expense) => {
+    events.push({
+      id: `equity-expense:${expense.id}`,
+      kind: 'expense',
+      at: `${expense.date}T09:00:00`,
+      title: expense.title,
+      subtitle: [
+        expense.categoryName,
+        `₪${Math.round(expense.amount).toLocaleString('he-IL')}`,
+        expense.status === 'paid' ? 'שולם' : 'תשלום מתוכנן',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      confirmed: expense.status === 'paid',
+      target: { kind: 'section', section: 'expenses' },
+    });
+  });
 
   return events.sort((a, b) => a.at.localeCompare(b.at));
 }

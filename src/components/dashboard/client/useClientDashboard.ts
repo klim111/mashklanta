@@ -6,6 +6,7 @@ import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import { useRateRequests } from '@/components/mortgage-advisor/rateRequest/useRateRequests';
 import { useAdvisorNotes, useMeetings } from '@/components/advisor/useAdvisorCrm';
 import { useClientTasks } from '@/components/plan/tasks/useClientTasks';
+import { useEquityPlanSummary } from '@/components/equity-planning/useEquityPlanSummary';
 import { advisorStages as stagesOf } from '@/lib/advisor-orders';
 import type { AdvisorOrder } from '@/lib/advisor-orders';
 import { buildCalendarEvents, buildClientTasks } from '@/lib/client-agenda';
@@ -32,6 +33,8 @@ export function useClientDashboard() {
   const { notes } = useAdvisorNotes();
   /** המשימות שהלקוח הוסיף לעצמו — לרשימת המשימות וללוח השנה */
   const clientTasksState = useClientTasks({});
+  /** תכנון ההוצאות — התמונה בסקירה, והתשלומים שנכנסים ללוח השנה */
+  const equityState = useEquityPlanSummary();
 
   const activeIds = plansState.plans
     .filter((plan) => plan.status === 'IN_PROGRESS')
@@ -110,8 +113,18 @@ export function useClientDashboard() {
       notes,
       advisorStages,
       clientTasks: clientTasksState.tasks,
+      equityExpenses: equityState.expenses,
     }),
-    [plansState.plans, meetingsState.meetings, rateRequests, unassignedMixes, notes, advisorStages, clientTasksState.tasks]
+    [
+      plansState.plans,
+      meetingsState.meetings,
+      rateRequests,
+      unassignedMixes,
+      notes,
+      advisorStages,
+      clientTasksState.tasks,
+      equityState.expenses,
+    ]
   );
 
   const tasks = useMemo(() => buildClientTasks(input), [input]);
@@ -133,6 +146,7 @@ export function useClientDashboard() {
     mixesState,
     meetingsState,
     clientTasksState,
+    equityState,
     requests,
     notes,
     advisorStages,

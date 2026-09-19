@@ -409,7 +409,13 @@ function DetailPanel({
   const tone = eventTone(event);
   return (
     <DashCard
-      title={event.kind === 'meeting' ? 'פרטי הפגישה' : 'מועד חשוב'}
+      title={
+        event.kind === 'meeting'
+          ? 'פרטי הפגישה'
+          : event.kind === 'expense'
+            ? 'תשלום מתוכנן'
+            : 'מועד חשוב'
+      }
       icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
       action={backButton}
     >

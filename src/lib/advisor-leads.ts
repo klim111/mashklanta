@@ -19,6 +19,7 @@ export type LeadTopic =
   | 'REFINANCE_HYBRID'
   | 'REFINANCE_FULL'
   | 'ADVICE'
+  | 'FAMILY_ECONOMY'
   | 'OTHER';
 
 const LEAD_TOPICS: readonly LeadTopic[] = [
@@ -32,6 +33,7 @@ const LEAD_TOPICS: readonly LeadTopic[] = [
   'REFINANCE_HYBRID',
   'REFINANCE_FULL',
   'ADVICE',
+  'FAMILY_ECONOMY',
   'OTHER',
 ];
 
@@ -47,6 +49,8 @@ export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
   REFINANCE_HYBRID: 'מיחזור משכנתא · ליווי משולב',
   REFINANCE_FULL: 'מיחזור משכנתא · ליווי מלא',
   ADVICE: 'ייעוץ והכוונה בנושא משכנתא',
+  // פנייה מכלי תכנון ההוצאות — ההון העצמי וההוצאות הנלוות לרכישה
+  FAMILY_ECONOMY: 'ייעוץ כלכלת המשפחה — תכנון הון עצמי והוצאות',
   OTHER: 'פנייה כללית',
 };
 

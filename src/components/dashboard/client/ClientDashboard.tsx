@@ -15,6 +15,7 @@ import {
   LogOut,
   Settings,
   UserRound,
+  Wallet,
 } from 'lucide-react';
 import { isDashboardSection } from '@/lib/client-agenda';
 import type { DashboardSection } from '@/lib/client-agenda';
@@ -28,6 +29,7 @@ import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
+import { ExpensesSection } from './ExpensesSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 
@@ -53,6 +55,14 @@ const SECTIONS: SectionMeta[] = [
     title: 'משימות ולוח שנה',
     description: 'כל מה שממתין לכם, הפגישות עם היועץ והמועדים החשובים בתהליך.',
     icon: CalendarDays,
+  },
+  {
+    id: 'expenses',
+    label: 'תכנון הוצאות',
+    title: 'תכנון הוצאות',
+    description:
+      'ההון העצמי וכל ההוצאות הנלוות עד קבלת המפתח, על ציר זמן אחד. מועדי התשלום נכנסים ללוח השנה שלכם.',
+    icon: Wallet,
   },
   {
     id: 'rate-requests',
@@ -306,6 +316,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               {section === 'agenda' && (
                 <AgendaSection data={data} initialDay={agendaDay} onNavigate={navigate} />
               )}
+
+              {section === 'expenses' && <ExpensesSection />}
 
               {section === 'rate-requests' && (
                 <div className="space-y-5">
