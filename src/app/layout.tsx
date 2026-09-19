@@ -2,7 +2,7 @@ import './globals.css';
 import { Providers } from '@/components/providers';
 
 export const metadata = {
-  title: 'Nadlanium - מחשבון משכנתא חכם',
+  title: 'משכלנתא - מחשבון משכנתא חכם',
   description: 'מחשבון משכנתא מתקדם עם ניהול מסמכים וניתוח נתונים',
 };
 

@@ -4,7 +4,16 @@ export interface MortgageTrack {
   type: 'fixed_unlinked' | 'fixed_linked' | 'prime' | 'variable_unlinked' | 'variable_linked' | 'makam' | 'dollar' | 'euro' | 'eligibility' | 'five_year_plan' | 'grant';
   amount: number; // סכום במסלול בש"ח
   percentage: number; // אחוז מסך המשכנתא
-  interestRate: number; // ריבית שנתית באחוזים
+  interestRate: number; // ריבית שנתית באחוזים — הריבית הסופית, עוגן + מרווח
+  /**
+   * המרווח שהבנק גובה מעל העוגן, בנקודות אחוז.
+   *
+   * כשהוא קיים, הריבית הסופית נגזרת מחדש בכל הרצה כ"עוגן חי + מרווח", כך
+   * שעדכון של בנק ישראל מתגלגל לכל התשלומים. מסלול שהריבית בו הוזנה ידנית
+   * בלי פירוק (או שנשמר לפני שהפירוק היה קיים) נשאר בלי מרווח, והריבית שלו
+   * לא זזה מעצמה.
+   */
+  rateSpread?: number;
   years: number; // תקופה בשנים
   monthlyPayment?: number; // תשלום חודשי מחושב
   totalInterest?: number; // סך הריבית
@@ -18,11 +27,65 @@ export interface MortgageTrack {
   currency?: 'USD' | 'EUR'; // סוג מטבע
   // לוח סילוקין
   amortizationType?: 'spitzer' | 'equal_principal' | 'partial_grace' | 'full_grace' | 'ability_based' | 'secured';
+  // ─── מועדי התשלומים (משמש במיחזור, שבו התקופה היא הזמן שנותר בפועל) ───
+  /** תאריך התשלום האחרון של המסלול (ISO / YYYY-MM-DD) */
+  endDate?: string;
+  /** יום החיוב בחודש (1-28) */
+  paymentDay?: number;
 }
+
+/** סוג העסקה — קובע את תקרת המימון של בנק ישראל */
+export type DealType = 'first_home' | 'replacement_home' | 'second_home' | 'any_purpose';
+
+export const DEAL_TYPES = {
+  first_home: 'דירה ראשונה',
+  replacement_home: 'דירה חליפית',
+  second_home: 'דירה שנייה',
+  any_purpose: 'משכנתא לכל מטרה',
+} as const;
+
+/** תקרת המימון (LTV) של בנק ישראל לכל סוג עסקה, באחוזים משווי הנכס */
+export const MAX_LTV_PERCENT: Record<DealType, number> = {
+  first_home: 75,
+  replacement_home: 70,
+  second_home: 50,
+  any_purpose: 50,
+};
+
+/**
+ * בנק ישראל מחייב לקחת לפחות שליש מהמשכנתא בריבית קבועה.
+ *
+ * הדרישה היא על הריבית הקבועה כולה — צמודה ולא צמודה יחד — ולא על מסלול בודד.
+ * לכן כל חלוקה בין שני המסלולים תקינה כל עוד סכומם מגיע לשליש: אפשר שליש קל"צ,
+ * אפשר שליש ק"צ, ואפשר כל שילוב ביניהם.
+ */
+export const MIN_FIXED_PERCENT = 33;
+
+/** המסלולים שנחשבים לריבית קבועה לצורך דרישת השליש */
+export const FIXED_TRACK_TYPES = ['fixed_unlinked', 'fixed_linked'] as const;
+
+export type FixedTrackType = (typeof FIXED_TRACK_TYPES)[number];
+
+export function isFixedTrackType(type: MortgageTrack['type']): boolean {
+  return (FIXED_TRACK_TYPES as readonly string[]).includes(type);
+}
+
+export const MORTGAGE_BANKS = [
+  'לאומי',
+  'הפועלים',
+  'מזרחי',
+  'דיסקונט',
+  'מרכנטיל',
+  'הבינלאומי',
+  'ירושלים',
+] as const;
+
+export type MortgageBank = (typeof MORTGAGE_BANKS)[number];
 
 export interface MortgageMix {
   id: string;
   name: string;
+  bank?: MortgageBank;
   totalAmount: number; // סך המשכנתא
   tracks: MortgageTrack[];
   createdAt: Date;
@@ -55,10 +118,14 @@ export interface TrackCalculation {
 
 export interface AmortRow {
   month: number;
+  /** יתרת החוב בתחילת החודש, כולל ריבית שנצברה ועוד לא שולמה */
   balanceStart: number;
   payment: number;
+  /** הריבית שנצברה באותו חודש */
   interest: number;
   principal: number;
+  /** ריבית מחודשים קודמים שנצברה בגרייס מלא ומשולמת עכשיו */
+  deferredInterest?: number;
   balanceEnd: number;
 }
 
@@ -94,19 +161,9 @@ export const TRACK_TYPES = {
   grant: 'מענק'
 } as const;
 
-export const DEFAULT_INTEREST_RATES = {
-  fixed_unlinked: 4.5,
-  fixed_linked: 3.2,
-  prime: 5.2,
-  variable_unlinked: 3.8,
-  variable_linked: 2.8,
-  makam: 4.0,
-  dollar: 3.5,
-  euro: 3.3,
-  eligibility: 2.5,
-  five_year_plan: 3.0,
-  grant: 1.5
-} as const;
+// ריביות ברירת המחדל נטענות מקובץ הריביות המרכזי (src/lib/interest-rates.ts).
+// לעדכון ערכים יש לערוך את הקובץ הזה בלבד.
+export { DEFAULT_INTEREST_RATES } from '@/lib/interest-rates';
 
 export const AMORTIZATION_TYPES = {
   spitzer: 'שפיצר',
@@ -116,6 +173,15 @@ export const AMORTIZATION_TYPES = {
   ability_based: 'כפי יכולתך',
   secured: 'משכנתא בטוחה'
 } as const;
+
+/** סוג ריבית + לוח סילוקין בסוגריים, לתצוגה ברשימת מסלולים בתמהיל */
+export function formatTrackTypeWithAmortization(
+  track: Pick<MortgageTrack, 'type' | 'amortizationType'>
+): string {
+  const typeLabel = TRACK_TYPES[track.type];
+  const amortLabel = AMORTIZATION_TYPES[track.amortizationType || 'spitzer'];
+  return `${typeLabel} (${amortLabel})`;
+}
 
 export const VARIABLE_PERIODS = {
   1: '1 שנה',

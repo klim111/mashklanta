@@ -1,9 +1,17 @@
+/**
+ * סוג ההלוואה. משמש לצביעה ולקיבוץ בלוח הבקרה, ולהסברים שמתאימים לסוג —
+ * למשל שהלוואת כרטיס אשראי היא בדרך כלל היקרה בתיק. רשות, כדי ששמירות
+ * מקומיות קיימות ימשיכו להיטען.
+ */
+export type LoanCategory = 'bank' | 'credit' | 'car' | 'family' | 'other';
+
 export interface Loan {
   id: string;
   name: string;
   principal: number; // קרן ההלוואה בש"ח
   apr: number; // ריבית שנתית נומינלית באחוזים
   months: number; // תקופה בחודשים
+  category?: LoanCategory;
 }
 
 export interface AmortRow {
@@ -63,4 +71,9 @@ export interface LoanPlannerState {
   loans: Loan[];
   selectedForComparison: string[];
   optimizationInput: Partial<OptimizationInput>;
+  /**
+   * ההכנסה החודשית הפנויה של משק הבית. רשות — כשהיא מוזנת הכלי מציג את יחס
+   * ההחזר, אותו יחס שהבנק בוחן כשהוא שוקל משכנתא.
+   */
+  monthlyIncome?: number;
 }

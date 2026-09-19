@@ -1,669 +1,262 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  ArrowRight,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  DollarSign,
-  FileText,
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Plus,
-  Edit,
-  Trash2,
-  Download,
-  Upload,
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  PieChart,
-  Activity,
-  Home as HomeIcon,
-  LogOut,
-  ChevronLeft,
-  Video
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { AlertTriangle, ArrowRight, Mail, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
+import { StageRail } from '@/components/plan/StageRail';
+import { PLAN_STAGES } from '@/lib/mortgage-plan';
+import type { PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
+import { ClientContextRow } from '@/components/advisor/ClientContextRow';
+import { ClientStageWorkspace } from '@/components/advisor/ClientStageWorkspace';
+import { MeetingDialog } from '@/components/advisor/MeetingDialog';
+import { QuickActions } from '@/components/advisor/QuickActions';
+import { TaskDialog } from '@/components/advisor/TaskDialog';
+import { useClientDetail } from '@/components/advisor/useClientDetail';
+import {
+  useAdvisorNotes,
+  useAdvisorTasks,
+  useClientProcess,
+  useMeetings,
+} from '@/components/advisor/useAdvisorCrm';
 
-type ClientStatus = 'POTENTIAL' | 'ACTIVE' | 'IN_PROCESS';
-type ActionType = 'CALL' | 'EMAIL' | 'MEETING' | 'DOCUMENT_REVIEW' | 'RATE_NEGOTIATION' | 'APPLICATION_SUBMISSION' | 'FOLLOW_UP';
-type ActionStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  status: ClientStatus;
-  progress: number;
-  income?: number;
-  expenses?: number;
-  creditScore?: number;
-  downPayment?: number;
-  propertyValue?: number;
-  mortgageMixes?: any;
-  bankRates?: any;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ClientAction {
-  id: string;
-  type: ActionType;
-  description: string;
-  status: ActionStatus;
-  dueDate?: string;
-  completedAt?: string;
-  createdAt: string;
-}
-
-interface Reminder {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate: string;
-  isCompleted: boolean;
-  createdAt: string;
-}
-
-export default function ClientProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { data: session, status } = useSession();
+/**
+ * דף הלקוח באזור היועץ.
+ *
+ * המבנה זהה לזה שהלקוח רואה בתהליך שלו: חמשת השלבים כסרגל ניווט בראש העמוד,
+ * ומתחתיו מסך ראשי שמתחלף לפי השלב שנבחר ופותח את השדות והכלים שלו. השורה
+ * שמתחת למסך הראשי — תיק המסמכים, הפגישות והמשימות של הלקוח — נשארת קבועה.
+ */
+export default function AdvisorClientPage() {
+  const params = useParams<{ id: string }>();
+  const clientId = typeof params?.id === 'string' ? params.id : '';
   const router = useRouter();
-  const [client, setClient] = useState<Client | null>(null);
-  const [actions, setActions] = useState<ClientAction[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'actions' | 'documents' | 'mortgage-mixes' | 'bank-rates'>('overview');
-  const [videoCallModal, setVideoCallModal] = useState<{isOpen: boolean, client: Client | null}>({
-    isOpen: false,
-    client: null
-  });
-  const [clientId, setClientId] = useState<string>('');
+  const { data: session, status } = useSession();
 
-  // Get client ID from params
-  useEffect(() => {
-    const getClientId = async () => {
-      const resolvedParams = await params;
-      setClientId(resolvedParams.id);
-    };
-    getClientId();
-  }, [params]);
+  const [callOpen, setCallOpen] = useState(false);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [meetingStage, setMeetingStage] = useState<PlanStageId | null>(null);
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<PlanStageId | null>(null);
+
+  const { client, loading, error, patch, setDocumentStatus } = useClientDetail(clientId);
+  const { process, refresh: refreshProcess } = useClientProcess(clientId);
+  const tasks = useAdvisorTasks({ clientId, includeClosed: true }, Boolean(clientId));
+  const notes = useAdvisorNotes({ clientId, enabled: Boolean(clientId) });
+  const meetings = useMeetings({ clientId, enabled: Boolean(clientId) });
 
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session) {
-      router.push('/auth/login');
-    } else if (session.user?.role !== 'ADVISOR') {
-      router.push('/dashboard');
-    }
+    if (!session) router.push('/auth/login');
+    else if (session.user?.role !== 'ADVISOR') router.push('/dashboard');
   }, [session, status, router]);
 
-  // Mock data - replace with real API calls
-  useEffect(() => {
-    if (!clientId) return;
-    
-    // Mock client data
-    setClient({
-      id: clientId,
-      name: 'דוד כהן',
-      email: 'david@example.com',
-      phone: '050-1234567',
-      address: 'רחוב הרצל 123, תל אביב',
-      status: 'ACTIVE',
-      progress: 75,
-      income: 25000,
-      expenses: 15000,
-      creditScore: 750,
-      downPayment: 400000,
-      propertyValue: 2000000,
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-15'
+  const statuses = useMemo(() => {
+    const map = {} as Record<PlanStageId, PlanStageStatus>;
+    PLAN_STAGES.forEach((stage) => {
+      map[stage] = process?.stages.find((item) => item.stage === stage)?.status ?? 'PENDING';
     });
+    return map;
+  }, [process]);
 
-    // Mock actions
-    setActions([
-      {
-        id: '1',
-        type: 'CALL',
-        description: 'שיחה עם הלקוח לגבי מסמכים חסרים',
-        status: 'COMPLETED',
-        dueDate: '2024-01-10',
-        completedAt: '2024-01-10',
-        createdAt: '2024-01-08'
-      },
-      {
-        id: '2',
-        type: 'DOCUMENT_REVIEW',
-        description: 'בדיקת מסמכי הכנסה ותעסוקה',
-        status: 'IN_PROGRESS',
-        dueDate: '2024-01-20',
-        createdAt: '2024-01-12'
-      },
-      {
-        id: '3',
-        type: 'RATE_NEGOTIATION',
-        description: 'משא ומתן על ריביות עם הבנקים',
-        status: 'PENDING',
-        dueDate: '2024-01-25',
-        createdAt: '2024-01-15'
-      }
-    ]);
+  const stage = selectedStage ?? process?.currentStage ?? 'ANALYSIS';
 
-    // Mock reminders
-    setReminders([
-      {
-        id: '1',
-        title: 'הגשת מסמכים לבנק',
-        description: 'להעביר את כל המסמכים הנדרשים לבנק לאומי',
-        dueDate: '2024-01-22',
-        isCompleted: false,
-        createdAt: '2024-01-15'
-      },
-      {
-        id: '2',
-        title: 'פגישה עם הלקוח',
-        description: 'פגישת המשך לדיון על התנאים הסופיים',
-        dueDate: '2024-01-28',
-        isCompleted: false,
-        createdAt: '2024-01-16'
-      }
-    ]);
-  }, [clientId]);
-
-  if (status === 'loading') {
+  if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
       </div>
     );
   }
 
-  if (!session || session.user?.role !== 'ADVISOR') {
-    return null;
+  if (!session || session.user?.role !== 'ADVISOR') return null;
+
+  if (error || !client) {
+    return (
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="space-y-3 py-10 text-center">
+            <AlertTriangle className="mx-auto h-10 w-10 text-amber-500" />
+            <p className="text-sm text-slate-700">{error ?? 'הלקוח לא נמצא'}</p>
+            <Button variant="outline" asChild>
+              <Link href="/advisor-dashboard">חזרה לרשימת הלקוחות</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  const getStatusColor = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-800';
-      case 'POTENTIAL': return 'bg-yellow-100 text-yellow-800';
-      case 'IN_PROCESS': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const openMeeting = (forStage: PlanStageId | null) => {
+    setMeetingStage(forStage);
+    setMeetingOpen(true);
   };
-
-  const getStatusIcon = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return <CheckCircle className="w-4 h-4" />;
-      case 'POTENTIAL': return <AlertCircle className="w-4 h-4" />;
-      case 'IN_PROCESS': return <Clock className="w-4 h-4" />;
-      default: return <XCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getStatusText = (status: ClientStatus) => {
-    switch (status) {
-      case 'ACTIVE': return 'אקטיבי';
-      case 'POTENTIAL': return 'פוטנציאלי';
-      case 'IN_PROCESS': return 'בתהליך';
-      default: return 'לא ידוע';
-    }
-  };
-
-  const getActionTypeText = (type: ActionType) => {
-    switch (type) {
-      case 'CALL': return 'שיחה';
-      case 'EMAIL': return 'מייל';
-      case 'MEETING': return 'פגישה';
-      case 'DOCUMENT_REVIEW': return 'בדיקת מסמכים';
-      case 'RATE_NEGOTIATION': return 'משא ומתן ריביות';
-      case 'APPLICATION_SUBMISSION': return 'הגשת בקשה';
-      case 'FOLLOW_UP': return 'מעקב';
-      default: return 'פעולה';
-    }
-  };
-
-  const getActionStatusColor = (status: ActionStatus) => {
-    switch (status) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'CANCELLED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const startVideoCall = () => {
-    if (client) {
-      setVideoCallModal({
-        isOpen: true,
-        client: client
-      });
-    }
-  };
-
-  const closeVideoCall = () => {
-    setVideoCallModal({
-      isOpen: false,
-      client: null
-    });
-  };
-
-  const tabs = [
-    { id: 'overview', label: 'סקירה כללית', icon: User },
-    { id: 'actions', label: 'פעולות', icon: Activity },
-    { id: 'documents', label: 'מסמכים', icon: FileText },
-    { id: 'mortgage-mixes', label: 'תמהילים', icon: PieChart },
-    { id: 'bank-rates', label: 'ריביות בנקים', icon: TrendingUp },
-  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/advisor-dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-                <ChevronLeft className="w-5 h-5" />
-                חזרה לדשבורד
-              </Link>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <HomeIcon className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-bold text-xl">משכנתא - יועצים</span>
-              </Link>
+    <div dir="rtl" className="min-h-screen bg-slate-50">
+      {/* ראש העמוד: זהות הלקוח, הגישה המהירה וסרגל חמשת השלבים */}
+      <header className="relative overflow-hidden bg-slate-950">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/25 blur-3xl" />
+          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/advisor-dashboard"
+              className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+              הלקוחות שלי
+            </Link>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-xl font-black text-white md:text-2xl">{client.name}</h1>
+              <p className="flex flex-wrap items-center gap-x-3 text-[11px] text-white/50">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  {client.email}
+                </span>
+                {client.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {client.phone}
+                  </span>
+                )}
+              </p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <span className="text-sm font-medium">{session.user?.name || session.user?.email}</span>
-              </div>
-              <button
-                onClick={() => signOut({ callbackUrl: '/' })}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                יציאה
-              </button>
-            </div>
+            <QuickActions
+              tone="dark"
+              clientId={client.id}
+              clientName={client.name}
+              clients={[{ id: client.id, name: client.name }]}
+              onCreateTask={async (input) => {
+                const failure = await tasks.create(input);
+                if (!failure) await refreshProcess();
+                return failure;
+              }}
+              onProposeMeeting={async (input) => {
+                const failure = await meetings.propose(input);
+                if (!failure) await refreshProcess();
+                return failure;
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setCallOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
+            >
+              <Video className="h-4 w-4" />
+              שיחת וידאו
+            </button>
+          </div>
+
+          <div className="mt-4">
+            <StageRail current={stage} statuses={statuses} onSelect={setSelectedStage} />
+            {!process?.planId && (
+              <p className="mt-2 text-center text-[11px] text-white/50">
+                הלקוח עדיין לא פתח תהליך משלו. אפשר לעבוד בכל שלב — מה שתמלאו יחכה לו.
+              </p>
+            )}
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {client && (
-          <>
-            {/* Client Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
-            >
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-xl">
-                        {client.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900">{client.name}</h1>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(client.status)}`}>
-                          {getStatusIcon(client.status)}
-                          {getStatusText(client.status)}
-                        </span>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <span>התקדמות:</span>
-                          <div className="w-32 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full transition-all"
-                              style={{ width: `${client.progress}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium">{client.progress}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={startVideoCall}
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                    >
-                      <Video className="w-4 h-4" />
-                      שיחת וידאו
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <Edit className="w-4 h-4" />
-                      ערוך
-                    </Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      פעולה חדשה
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+        <ClientStageWorkspace
+          client={client}
+          stage={stage}
+          stageView={process?.stages.find((item) => item.stage === stage)}
+          planId={process?.planId ?? null}
+          tasks={tasks.tasks}
+          notes={notes.notes}
+          meetings={meetings.meetings}
+          onPatchClient={patch}
+          onDocumentStatus={(documentId, next) => void setDocumentStatus(documentId, next)}
+          onClientStage={(next) => void patch({ stage: next })}
+          onCreateTask={async (input) => {
+            const failure = await tasks.create(input);
+            if (!failure) await refreshProcess();
+            return failure;
+          }}
+          onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
+          onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
+          onTaskDelete={(taskId) => void tasks.remove(taskId)}
+          onCreateNote={(body, visibility) => notes.create({ stage, body, visibility })}
+          onNoteVisibility={(noteId, visibility) => void notes.setVisibility(noteId, visibility)}
+          onNoteDelete={(noteId) => void notes.remove(noteId)}
+          onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+          onScheduleMeeting={() => openMeeting(stage)}
+        />
 
-            {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm border mb-6">
-              <div className="flex border-b overflow-x-auto">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
-                      className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
-                        activeTab === tab.id
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+        <ClientContextRow
+          clientId={client.id}
+          clientName={client.name}
+          documents={client.documents}
+          meetings={meetings.meetings}
+          tasks={tasks.tasks}
+          onScheduleMeeting={() => openMeeting(null)}
+          onAddTask={() => setTaskOpen(true)}
+          onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+          onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
+          onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
+          onTaskDelete={(taskId) => void tasks.remove(taskId)}
+        />
+      </main>
 
-            {/* Tab Content */}
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Overview Tab */}
-              {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Client Info */}
-                  <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פרטי לקוח</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center gap-3">
-                            <Mail className="w-5 h-5 text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-600">מייל</p>
-                              <p className="font-medium">{client.email}</p>
-                            </div>
-                          </div>
-                          {client.phone && (
-                            <div className="flex items-center gap-3">
-                              <Phone className="w-5 h-5 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-600">טלפון</p>
-                                <p className="font-medium">{client.phone}</p>
-                              </div>
-                            </div>
-                          )}
-                          {client.address && (
-                            <div className="flex items-center gap-3 md:col-span-2">
-                              <MapPin className="w-5 h-5 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-600">כתובת</p>
-                                <p className="font-medium">{client.address}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+      <MeetingDialog
+        open={meetingOpen}
+        onOpenChange={setMeetingOpen}
+        clientId={client.id}
+        clientName={client.name}
+        stage={meetingStage}
+        onSubmit={async (input) => {
+          const failure = await meetings.propose(input);
+          if (!failure) await refreshProcess();
+          return failure;
+        }}
+      />
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פרטים פיננסיים</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {client.income && (
-                            <div className="text-center p-4 bg-green-50 rounded-lg">
-                              <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">הכנסה חודשית</p>
-                              <p className="text-xl font-bold text-green-600">₪{client.income.toLocaleString()}</p>
-                            </div>
-                          )}
-                          {client.expenses && (
-                            <div className="text-center p-4 bg-red-50 rounded-lg">
-                              <TrendingDown className="w-8 h-8 text-red-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">הוצאות חודשיות</p>
-                              <p className="text-xl font-bold text-red-600">₪{client.expenses.toLocaleString()}</p>
-                            </div>
-                          )}
-                          {client.creditScore && (
-                            <div className="text-center p-4 bg-blue-50 rounded-lg">
-                              <BarChart3 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">ציון אשראי</p>
-                              <p className="text-xl font-bold text-blue-600">{client.creditScore}</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+      <TaskDialog
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
+        clientId={client.id}
+        clientName={client.name}
+        stage={stage}
+        onCreate={async (input) => {
+          const failure = await tasks.create(input);
+          if (!failure) await refreshProcess();
+          return failure;
+        }}
+      />
 
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פרטי הנכס</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {client.propertyValue && (
-                            <div className="text-center p-4 bg-purple-50 rounded-lg">
-                              <HomeIcon className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">ערך הנכס</p>
-                              <p className="text-xl font-bold text-purple-600">₪{client.propertyValue.toLocaleString()}</p>
-                            </div>
-                          )}
-                          {client.downPayment && (
-                            <div className="text-center p-4 bg-orange-50 rounded-lg">
-                              <DollarSign className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                              <p className="text-sm text-gray-600">מקדמה</p>
-                              <p className="text-xl font-bold text-orange-600">₪{client.downPayment.toLocaleString()}</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Sidebar */}
-                  <div className="space-y-6">
-                    {/* Recent Actions */}
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">פעולות אחרונות</h3>
-                        <div className="space-y-3">
-                          {actions.slice(0, 3).map((action) => (
-                            <div key={action.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <div>
-                                <p className="font-medium text-sm">{getActionTypeText(action.type)}</p>
-                                <p className="text-xs text-gray-600">{action.description}</p>
-                              </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionStatusColor(action.status)}`}>
-                                {action.status === 'COMPLETED' ? 'הושלם' : 
-                                 action.status === 'IN_PROGRESS' ? 'בתהליך' : 
-                                 action.status === 'PENDING' ? 'ממתין' : 'בוטל'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <Button variant="outline" className="w-full mt-4" onClick={() => setActiveTab('actions')}>
-                          צפה בכל הפעולות
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    {/* Upcoming Reminders */}
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">תזכורות קרובות</h3>
-                        <div className="space-y-3">
-                          {reminders.filter(r => !r.isCompleted).slice(0, 3).map((reminder) => (
-                            <div key={reminder.id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                              <p className="font-medium text-sm">{reminder.title}</p>
-                              <p className="text-xs text-gray-600 mb-2">{reminder.description}</p>
-                              <p className="text-xs text-yellow-600">
-                                {new Date(reminder.dueDate).toLocaleDateString('he-IL')}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              )}
-
-              {/* Actions Tab */}
-              {activeTab === 'actions' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">פעולות</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
-                        פעולה חדשה
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {actions.map((action) => (
-                        <div key={action.id} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Activity className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <h3 className="font-semibold">{getActionTypeText(action.type)}</h3>
-                                <p className="text-gray-600 text-sm">{action.description}</p>
-                                <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                                  <span>נוצר: {new Date(action.createdAt).toLocaleDateString('he-IL')}</span>
-                                  {action.dueDate && (
-                                    <span>תאריך יעד: {new Date(action.dueDate).toLocaleDateString('he-IL')}</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getActionStatusColor(action.status)}`}>
-                                {action.status === 'COMPLETED' ? 'הושלם' : 
-                                 action.status === 'IN_PROGRESS' ? 'בתהליך' : 
-                                 action.status === 'PENDING' ? 'ממתין' : 'בוטל'}
-                              </span>
-                              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                                <Edit className="w-4 h-4 text-gray-400" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Documents Tab */}
-              {activeTab === 'documents' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">מסמכים</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Upload className="w-4 h-4 mr-2" />
-                        העלה מסמך
-                      </Button>
-                    </div>
-                    
-                    <div className="text-center py-16 text-gray-500">
-                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p>אין מסמכים עדיין</p>
-                      <p className="text-sm">העלה מסמכים כדי להתחיל</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Mortgage Mixes Tab */}
-              {activeTab === 'mortgage-mixes' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">תמהילי משכנתא</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
-                        צור תמהיל חדש
-                      </Button>
-                    </div>
-                    
-                    <div className="text-center py-16 text-gray-500">
-                      <PieChart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p>אין תמהילים עדיין</p>
-                      <p className="text-sm">צור תמהיל משכנתא מותאם ללקוח</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Bank Rates Tab */}
-              {activeTab === 'bank-rates' && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold">ריביות בנקים</h2>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="w-4 h-4 mr-2" />
-                        הוסף ריבית
-                      </Button>
-                    </div>
-                    
-                    <div className="text-center py-16 text-gray-500">
-                      <TrendingUp className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p>אין ריביות עדיין</p>
-                      <p className="text-sm">הוסף ריביות שהתקבלו מהבנקים</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
-          </>
-        )}
-
-        {/* Video Call Modal */}
-        {videoCallModal.client && (
-          <VideoCallModal
-            isOpen={videoCallModal.isOpen}
-            onClose={closeVideoCall}
-            client={videoCallModal.client}
-            advisor={{
-              name: session.user?.name || 'יועץ',
-              email: session.user?.email || ''
-            }}
-          />
-        )}
-      </div>
+      <VideoCallModal
+        isOpen={callOpen}
+        onClose={() => setCallOpen(false)}
+        client={{
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone ?? undefined,
+          status: 'ACTIVE',
+          progress: client.progress,
+          propertyValue: client.propertyValue ?? undefined,
+          downPayment: client.downPayment ?? undefined,
+          income: client.income ?? undefined,
+          creditScore: client.creditScore ?? undefined,
+        }}
+        advisor={{
+          name: session.user?.name || 'יועץ',
+          email: session.user?.email || '',
+        }}
+      />
     </div>
   );
 }
-

@@ -1,50 +1,62 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Download, X } from 'lucide-react';
-import type { Loan, AmortRow } from './types';
+import { CalendarClock, Download, Percent, Table2, Wallet } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
+import { Slider } from '@/components/ui/slider';
+import { formatILS } from '@/lib/currency';
+import type { Loan } from './types';
 import { buildAmortSchedule } from './loanMath';
-import { formatILS, formatNumber } from '@/lib/currency';
+import { AmortChart } from './AmortChart';
 
-interface AmortTableProps {
-  loan: Loan;
-  onClose: () => void;
-}
+/**
+ * לוח הסילוקין של הלוואה בודדת — הצלילה לפרטים מתוך הכלי.
+ *
+ * מציג את הגרף והטבלה זה ליד זה, עם אפשרות להוסיף פירעון מוקדם בחודש מסוים
+ * ולראות מיד מה הוא עושה לריבית, לתשלום ולתקופה. הטבלה מיוצאת ל-CSV.
+ */
+export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void }) {
+  const [prepayAmount, setPrepayAmount] = useState(0);
+  const [prepayMonth, setPrepayMonth] = useState(1);
+  const [prepayEnabled, setPrepayEnabled] = useState(false);
 
-export function AmortTable({ loan, onClose }: AmortTableProps) {
-  const [prepayAmount, setPrepayAmount] = useState('');
-  const [prepayMonth, setPrepayMonth] = useState('1');
-  const [showPrepayment, setShowPrepayment] = useState(false);
+  const active = prepayEnabled && prepayAmount > 0;
 
-  // חישוב טבלת הסילוקין
-  const schedule = buildAmortSchedule({
+  const baseline = buildAmortSchedule({
     principal: loan.principal,
     apr: loan.apr,
     months: loan.months,
-    prepayAmount: showPrepayment ? parseFloat(prepayAmount) || 0 : 0,
-    prepayMonth: showPrepayment ? parseInt(prepayMonth) || 1 : 0,
-    mode: 'reduce',
   });
+
+  const schedule = active
+    ? buildAmortSchedule({
+        principal: loan.principal,
+        apr: loan.apr,
+        months: loan.months,
+        prepayAmount,
+        prepayMonth,
+        mode: 'reduce',
+      })
+    : baseline;
 
   const exportToCSV = () => {
     const headers = ['חודש', 'יתרה תחילת חודש', 'תשלום', 'ריבית', 'קרן', 'יתרה סוף חודש'];
     const csvContent = [
       headers.join(','),
-      ...schedule.rows.map(row => [
-        row.m,
-        row.balStart.toFixed(2),
-        row.pay.toFixed(2),
-        row.interest.toFixed(2),
-        row.principal.toFixed(2),
-        row.balEnd.toFixed(2),
-      ].join(','))
+      ...schedule.rows.map((row) =>
+        [
+          row.m,
+          row.balStart.toFixed(2),
+          row.pay.toFixed(2),
+          row.interest.toFixed(2),
+          row.principal.toFixed(2),
+          row.balEnd.toFixed(2),
+        ].join(',')
+      ),
     ].join('\n');
 
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([`﻿${csvContent}`], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `טבלת_סילוקין_${loan.name.replace(/\s+/g, '_')}.csv`;
@@ -52,138 +64,207 @@ export function AmortTable({ loan, onClose }: AmortTableProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" dir="rtl">
-      <Card className="max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden">
-        <div className="p-6">
-          {/* כותרת */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">טבלת סילוקין - {loan.name}</h2>
-            <Button variant="outline" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+    <Dialog open onOpenChange={(next) => !next && onClose()}>
+      <DialogContent
+        dir="rtl"
+        className="w-[calc(100vw-1.5rem)] max-w-5xl overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl sm:w-full"
+      >
+        <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-3.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <Table2 className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <DialogTitle className="text-base font-black text-slate-900">
+              לוח סילוקין · {loan.name}
+            </DialogTitle>
+            <DialogDescription className="text-[12px] text-slate-500">
+              {formatILS(loan.principal)} · {loan.apr.toFixed(2)}% · {loan.months} חודשים
+            </DialogDescription>
+          </div>
+        </div>
+
+        <div className="max-h-[75vh] space-y-2.5 overflow-y-auto px-5 py-4">
+          {/* מצב ההלוואה */}
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 sm:grid-cols-4">
+            <Figure
+              icon={Wallet}
+              label="תשלום חודשי"
+              value={formatILS(schedule.paymentInitial)}
+              emphasized
+            />
+            <Figure
+              icon={Percent}
+              label="סך ריבית"
+              value={formatILS(schedule.totalInterest)}
+              delta={active ? schedule.totalInterest - baseline.totalInterest : undefined}
+            />
+            <Figure
+              icon={Wallet}
+              label="סך תשלום"
+              value={formatILS(schedule.totalPaid)}
+              delta={active ? schedule.totalPaid - baseline.totalPaid : undefined}
+            />
+            <Figure
+              icon={CalendarClock}
+              label="חודשים בפועל"
+              value={`${schedule.monthsActual}`}
+            />
           </div>
 
-          {/* פרטי ההלוואה */}
-          <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <div className="text-sm text-gray-600">קרן</div>
-              <div className="font-semibold">{formatILS(loan.principal)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">ריבית שנתית</div>
-              <div className="font-semibold">{loan.apr}%</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">תקופה</div>
-              <div className="font-semibold">{loan.months} חודשים</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">תשלום חודשי</div>
-              <div className="font-semibold text-blue-600">{formatILS(schedule.paymentInitial)}</div>
-            </div>
-          </div>
-
-          {/* אזור פרעון מוקדם */}
-          <div className="mb-6">
-            <div className="flex items-center gap-4 mb-4">
+          {/* פירעון מוקדם */}
+          <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+            <label className="flex items-center gap-2 text-[12px] font-bold text-slate-700">
               <input
                 type="checkbox"
-                id="prepayment"
-                checked={showPrepayment}
-                onChange={(e) => setShowPrepayment(e.target.checked)}
-                className="rounded"
+                checked={prepayEnabled}
+                onChange={(event) => setPrepayEnabled(event.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300"
               />
-              <Label htmlFor="prepayment" className="font-medium">
-                הוספת פרעון מוקדם
-              </Label>
-            </div>
-            
-            {showPrepayment && (
-              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg">
+              בדיקת פירעון מוקדם
+              <span className="font-normal text-slate-400">
+                (הקרן קטנה, התקופה נשמרת והתשלום החודשי יורד)
+              </span>
+            </label>
+
+            {prepayEnabled && (
+              <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="prepay-amount">סכום פרעון (₪)</Label>
-                  <Input
-                    id="prepay-amount"
-                    type="number"
-                    value={prepayAmount}
-                    onChange={(e) => setPrepayAmount(e.target.value)}
+                  <p className="mb-1 text-[11px] font-bold text-slate-600">סכום הפירעון</p>
+                  <FormattedNumberValueInput
+                    value={prepayAmount || ''}
+                    onValueChange={setPrepayAmount}
                     placeholder="0"
+                    aria-label="סכום הפירעון המוקדם"
+                    className="h-8 w-32 text-[12px]"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="prepay-month">חודש הפרעון</Label>
-                  <Input
-                    id="prepay-month"
-                    type="number"
-                    min="1"
-                    max={loan.months}
-                    value={prepayMonth}
-                    onChange={(e) => setPrepayMonth(e.target.value)}
-                    placeholder="1"
-                  />
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600">חודש הפירעון</span>
+                    <span className="mr-auto text-[12px] font-black text-slate-900">
+                      חודש {prepayMonth}
+                    </span>
+                  </div>
+                  <div dir="ltr">
+                    <Slider
+                      dir="ltr"
+                      value={[Math.min(prepayMonth, loan.months)]}
+                      onValueChange={([value]) => setPrepayMonth(Math.round(value))}
+                      min={1}
+                      max={Math.max(1, loan.months)}
+                      step={1}
+                    />
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* סיכום תוצאות */}
-          <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-blue-50 rounded-lg">
-            <div>
-              <div className="text-sm text-gray-600">סך ריבית</div>
-              <div className="font-bold text-red-600">{formatILS(schedule.totalInterest)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">סך תשלומים</div>
-              <div className="font-bold">{formatILS(schedule.totalPaid)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">חודשים בפועל</div>
-              <div className="font-bold">{schedule.monthsActual}</div>
-            </div>
+          {/* הגרף */}
+          <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+            <p className="mb-1 text-[12px] font-bold text-slate-800">ירידת הקרן והריבית המצטברת</p>
+            <AmortChart
+              loan={loan}
+              prepay={active ? { amount: prepayAmount, month: prepayMonth } : undefined}
+              height={200}
+            />
           </div>
 
-          {/* כפתור ייצוא */}
-          <div className="flex justify-end mb-4">
-            <Button onClick={exportToCSV} variant="outline">
-              <Download className="h-4 w-4 ml-2" />
-              ייצוא ל-CSV
-            </Button>
-          </div>
-
-          {/* טבלת הסילוקין */}
-          <div className="overflow-auto max-h-96 border rounded-lg">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-100 sticky top-0">
-                <tr>
-                  <th className="p-3 text-right">חודש</th>
-                  <th className="p-3 text-right">יתרה תחילת חודש</th>
-                  <th className="p-3 text-right">תשלום</th>
-                  <th className="p-3 text-right">ריבית</th>
-                  <th className="p-3 text-right">קרן</th>
-                  <th className="p-3 text-right">יתרה סוף חודש</th>
-                </tr>
-              </thead>
-              <tbody>
-                {schedule.rows.map((row) => (
-                  <tr 
-                    key={row.m} 
-                    className={`border-b hover:bg-gray-50 ${
-                      row.m === parseInt(prepayMonth) && showPrepayment ? 'bg-yellow-50' : ''
-                    }`}
-                  >
-                    <td className="p-3 font-medium">{row.m}</td>
-                    <td className="p-3">{formatILS(row.balStart)}</td>
-                    <td className="p-3 font-semibold">{formatILS(row.pay)}</td>
-                    <td className="p-3 text-red-600">{formatILS(row.interest)}</td>
-                    <td className="p-3 text-green-600">{formatILS(row.principal)}</td>
-                    <td className="p-3">{formatILS(row.balEnd)}</td>
+          {/* הטבלה */}
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-2.5 py-2">
+              <p className="text-[12px] font-bold text-slate-800">טבלת התשלומים</p>
+              <button
+                type="button"
+                onClick={exportToCSV}
+                className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900"
+              >
+                <Download className="h-3.5 w-3.5" />
+                ייצוא ל-CSV
+              </button>
+            </div>
+            <div className="max-h-72 overflow-auto">
+              <table className="w-full text-[11.5px]">
+                <thead className="sticky top-0 bg-white text-[10px] font-bold text-slate-500 shadow-sm">
+                  <tr>
+                    <th className="p-2 text-right">חודש</th>
+                    <th className="p-2 text-right">יתרה בתחילת חודש</th>
+                    <th className="p-2 text-right">תשלום</th>
+                    <th className="p-2 text-right">ריבית</th>
+                    <th className="p-2 text-right">קרן</th>
+                    <th className="p-2 text-right">יתרה בסוף חודש</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {schedule.rows.map((row) => (
+                    <tr
+                      key={row.m}
+                      className={`border-t border-slate-100 ${
+                        active && row.m === prepayMonth ? 'bg-amber-50' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <td className="p-2 font-bold text-slate-700">{row.m}</td>
+                      <td className="p-2 text-slate-600">{formatILS(row.balStart)}</td>
+                      <td className="p-2 font-bold text-slate-900">{formatILS(row.pay)}</td>
+                      <td className="p-2 text-rose-600">{formatILS(row.interest)}</td>
+                      <td className="p-2 text-emerald-600">{formatILS(row.principal)}</td>
+                      <td className="p-2 text-slate-600">{formatILS(row.balEnd)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </Card>
+
+        <div className="flex justify-end border-t border-slate-100 bg-slate-50/70 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl bg-slate-900 px-5 py-2 text-[13px] font-black text-white transition-colors hover:bg-slate-700"
+          >
+            סגירה
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Figure({
+  icon: Icon,
+  label,
+  value,
+  delta,
+  emphasized = false,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  delta?: number;
+  emphasized?: boolean;
+}) {
+  const hasDelta = typeof delta === 'number' && Math.abs(delta) > 1;
+  const improved = (delta ?? 0) < 0;
+  return (
+    <div className="min-w-0">
+      <p className="flex items-center gap-1 text-[10px] text-slate-500">
+        <Icon className="h-3 w-3 text-slate-400" />
+        {label}
+      </p>
+      <p
+        className={`truncate font-bold leading-tight ${
+          emphasized ? 'text-[15px] text-blue-700' : 'text-[13px] text-slate-900'
+        }`}
+      >
+        {value}
+      </p>
+      {hasDelta && (
+        <p className={`text-[10px] font-bold ${improved ? 'text-emerald-600' : 'text-rose-600'}`}>
+          {improved ? '−' : '+'}
+          {formatILS(Math.abs(delta as number))}
+        </p>
+      )}
     </div>
   );
 }
