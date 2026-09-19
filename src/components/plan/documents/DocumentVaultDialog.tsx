@@ -2,7 +2,21 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Eye, FileText, FolderOpen, Loader2, Lock, Trash2, Upload } from 'lucide-react';
+import {
+  ArrowLeft,
+  CircleDashed,
+  Download,
+  Eye,
+  FileText,
+  FolderDown,
+  FolderOpen,
+  ListChecks,
+  Loader2,
+  Lock,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { formatDate } from '@/lib/advisor-crm';
 import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
@@ -12,9 +26,10 @@ import type { DocumentProgress } from '@/lib/document-progress';
 import { isDemoPlan } from '@/lib/demo-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { useClientTasks } from '../tasks/useClientTasks';
+import { planDocumentRequirements } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
-import { usePlanDocuments } from './usePlanDocuments';
+import { documentDownloadUrl, documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
 
 /** ההתקדמות של התהליך — נקראת פעם אחת ומשמשת גם את הכפתור וגם את החלון */
 export function useDocumentProgress(planId: string, data: PlanData): {
@@ -79,8 +94,24 @@ export function DocumentVaultDialog({
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadKey, setUploadKey] = useState<string | null>(null);
+  /** הרשימה המלאה של מה שהבנק ידרוש — סגורה עד שמבקשים אותה */
+  const [showList, setShowList] = useState(false);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
   const demo = isDemoPlan(planId);
+
+  const requirements = useMemo(() => planDocumentRequirements(data), [data]);
+  const byKey = useMemo(
+    () => new Map(documents.map((document) => [document.key, document])),
+    [documents]
+  );
+  const pending = requirements.filter((requirement) => !byKey.has(requirement.key));
+  const submitted = requirements.filter((requirement) => byKey.has(requirement.key));
+
+  const openUpload = (key: string | null) => {
+    setUploadKey(key);
+    setUploadOpen(true);
+  };
 
   const sorted = useMemo(
     () => [...documents].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)),
@@ -137,16 +168,79 @@ export function DocumentVaultDialog({
         </div>
 
         <div className="p-6 md:p-8">
+          {/* הרשימה המלאה של מה שנדרש — במרכז, מעל כותרת מה שכבר הועלה */}
+          {requirements.length > 0 && (
+            <div className="mb-4 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowList((current) => !current)}
+                className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+              >
+                <ListChecks className="h-4 w-4 text-blue-600" />
+                רשימת המסמכים המלאה
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                  {submitted.length}/{requirements.length}
+                </span>
+              </button>
+            </div>
+          )}
+
+          <AnimatePresence initial={false}>
+            {showList && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="mb-4 space-y-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 p-4">
+                  <RequirementList
+                    title="עדיין לא הוגשו"
+                    icon={<CircleDashed className="h-4 w-4 text-slate-400" />}
+                    rows={pending.map((requirement) => ({
+                      key: requirement.key,
+                      name: requirement.name,
+                      note: requirement.group,
+                    }))}
+                    onPick={openUpload}
+                  />
+                  <RequirementList
+                    title="כבר הוגשו"
+                    icon={<FileText className="h-4 w-4 text-emerald-600" />}
+                    rows={submitted.map((requirement) => ({
+                      key: requirement.key,
+                      name: requirement.name,
+                      note: byKey.get(requirement.key)?.fileName ?? requirement.group,
+                    }))}
+                    onPick={openUpload}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-black text-slate-900">כל המסמכים שהעליתם ({documents.length})</h3>
-            <button
-              type="button"
-              onClick={() => setUploadOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-700"
-            >
-              <Upload className="h-4 w-4" />
-              העלאת מסמך בכותרת חופשית
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {!demo && documents.length > 0 && (
+                <a
+                  href={documentsArchiveUrl(planId)}
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+                >
+                  <FolderDown className="h-4 w-4" />
+                  הורדת תיק המסמכים
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => openUpload(null)}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-700"
+              >
+                <Upload className="h-4 w-4" />
+                העלאת מסמך
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -184,14 +278,23 @@ export function DocumentVaultDialog({
                     </p>
                   </div>
                   {!demo && (
-                    <button
-                      type="button"
-                      onClick={() => setViewing(document)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-black text-white hover:bg-slate-700"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      צפייה
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setViewing(document)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-black text-white hover:bg-slate-700"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        צפייה
+                      </button>
+                      <a
+                        href={documentDownloadUrl(planId, document.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        הורדה
+                      </a>
+                    </>
                   )}
                   <button
                     type="button"
@@ -224,9 +327,55 @@ export function DocumentVaultDialog({
           </div>
         </div>
 
-        <DocumentUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} planId={planId} stage={stage ?? null} />
+        <DocumentUploadDialog
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          planId={planId}
+          data={data}
+          stage={stage ?? null}
+          defaultKey={uploadKey}
+        />
         <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** קטע ברשימה המלאה: מה שטרם הוגש, ומה שכבר הוגש */
+function RequirementList({
+  title,
+  icon,
+  rows,
+  onPick,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  rows: Array<{ key: string; name: string; note: string }>;
+  onPick: (key: string) => void;
+}) {
+  if (rows.length === 0) return null;
+
+  return (
+    <section>
+      <p className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-black text-slate-600">
+        {icon}
+        {title}
+        <span className="rounded-full bg-white px-2 text-[11px] text-slate-500">{rows.length}</span>
+      </p>
+      <ul className="space-y-1.5">
+        {rows.map((row) => (
+          <li key={row.key}>
+            <button
+              type="button"
+              onClick={() => onPick(row.key)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+            >
+              <span className="block text-[13px] font-black text-slate-900">{row.name}</span>
+              <span className="block text-[11px] font-medium text-slate-500">{row.note}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

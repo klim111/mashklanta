@@ -142,7 +142,10 @@ export function DocumentUploadDialog({
               <div>
                 <DialogTitle className="text-xl font-black text-slate-900">העלאת מסמך לתיק</DialogTitle>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  {stage ? `שלב ${journeyStageFor(stage).shortTitle} · ` : ''}הכותרת היא המפתח שבו המסמך יישמר
+                  {stage ? `שלב ${journeyStageFor(stage).shortTitle} · ` : ''}
+                  {requirements.length > 0
+                    ? 'בחרו את סוג המסמך מתוך מה שנדרש בתהליך שלכם'
+                    : 'הכותרת היא המפתח שבו המסמך יישמר'}
                 </p>
               </div>
             </div>
