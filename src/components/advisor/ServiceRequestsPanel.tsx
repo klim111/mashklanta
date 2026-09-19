@@ -153,7 +153,7 @@ export function ServiceRequestsPanel({
           <EmptyState
             icon={<Sparkles className="h-5 w-5" />}
             title="אין בקשות או פניות חדשות"
-            hint="בקשת ליווי מ״מה תרצו לעשות?״ באזור האישי או בעמוד הבית, פנייה מטופס ׳אל דאגה׳, או בקשת ׳תנו ליועץ׳ מתוך שלב — יופיעו כאן עם כל הפרטים וההערה של הלקוח."
+            hint="בקשת ליווי מ״מה תרצו לעשות?״ באזור האישי או בעמוד הבית, פנייה מטופס ׳אל דאגה׳, פנייה ליועץ כלכלת המשפחה מכלי ההלוואות הצרכניות, או בקשת ׳תנו ליועץ׳ מתוך שלב — יופיעו כאן עם כל הפרטים וההערה של הלקוח."
           />
         )}
       </div>
@@ -194,10 +194,12 @@ function LeadRow({
             {lead.phone}
           </a>
         )}
-        <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1 hover:text-violet-700" dir="ltr">
-          <Mail className="h-3.5 w-3.5" />
-          {lead.email}
-        </a>
+        {lead.email && (
+          <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1 hover:text-violet-700" dir="ltr">
+            <Mail className="h-3.5 w-3.5" />
+            {lead.email}
+          </a>
+        )}
         {lead.clientId && onOpenClient && (
           <button
             type="button"

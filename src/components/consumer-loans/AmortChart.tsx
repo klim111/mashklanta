@@ -18,6 +18,8 @@ import { formatILS } from '@/lib/currency';
 
 interface AmortChartProps {
   loan: Loan;
+  /** פירעון מוקדם שנבדק — הגרף מצייר את הלוח שאחריו */
+  prepay?: { amount: number; month: number };
   height?: number;
   showLegend?: boolean;
   colors?: {
@@ -75,6 +77,7 @@ function AmortTooltip({ active, payload, label }: AmortTooltipProps) {
 
 export function AmortChart({
   loan,
+  prepay,
   height = 300,
   showLegend = true,
   colors = {
@@ -87,6 +90,9 @@ export function AmortChart({
     principal: loan.principal,
     apr: loan.apr,
     months: loan.months,
+    prepayAmount: prepay?.amount ?? 0,
+    prepayMonth: prepay?.month ?? 0,
+    mode: 'reduce',
   });
 
   // נתוני הגרף:

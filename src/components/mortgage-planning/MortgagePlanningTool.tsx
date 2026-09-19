@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Home as HomeIcon, RefreshCw, Target, TrendingUp, Calculator, Banknote, FileText, Upload, Pencil, RotateCcw, X as XIcon, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,10 @@ import {
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import { LoanManagementOffer } from '@/components/mortgage-planning/LoanManagementOffer';
 import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoansSection';
+import { HomeFloatingButton } from '@/components/guest/HomeFloatingButton';
+import { GuestRegistrationDialog } from '@/components/guest/GuestRegistrationDialog';
+import { RegisterTeaserCarousel } from '@/components/guest/RegisterTeaserCarousel';
+import { useSliderEngagement } from '@/hooks/use-slider-engagement';
 
 type UserData = MortgagePlanningUserData;
 
@@ -160,6 +165,56 @@ export function MortgagePlanningContent({
   const [rateEditorError, setRateEditorError] = useState<string>('');
   // Ref used to close the popover when the user clicks outside it.
   const rateEditorRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * המשך התהליך מתוך הכלי הפתוח.
+   *
+   * לקוח רשום עובר ישר לדאשבורד של האזור האישי; לקוח שאינו רשום מקבל את מסך
+   * ההרשמה, ומיד עם יצירת החשבון הוא נכנס לאותו דאשבורד. מסך הסלים האחידים
+   * אינו חלק מהמסלול הזה יותר.
+   */
+  const { data: session, status: sessionStatus } = useSession();
+  const isGuest = !embedded && sessionStatus !== 'loading' && !session;
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [teaserOpen, setTeaserOpen] = useState(false);
+
+  /** לקוח שהזיז מכוון שלוש פעמים מקבל את הקרוסלה שמציגה מה יש מעבר להרשמה */
+  const registerSliderMove = useSliderEngagement({
+    enabled: isGuest,
+    onReached: () => setTeaserOpen(true),
+  });
+
+  type PlanningSelection = {
+    propertyPrice: number;
+    loanAmount: number;
+    loanPeriod: number;
+    ownCapital: number;
+    interestRate: number;
+  };
+
+  const continueToMortgagePlanning = (selection?: PlanningSelection) => {
+    if (selection) {
+      // הבחירה שנעשתה במכוונים נשמרת, כדי שהתכנון בהמשך ייבנה על מה שהלקוח בחר
+      try {
+        localStorage.setItem(
+          'mortgagePlanningSelection',
+          JSON.stringify({
+            source: 'affordability-slider',
+            ...selection,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (error) {
+        console.error('Could not persist mortgage planning selection:', error);
+      }
+    }
+
+    if (session) {
+      router.push('/dashboard');
+      return;
+    }
+    setRegistrationOpen(true);
+  };
 
   const persistRef = useRef(onPersist);
   persistRef.current = onPersist;
@@ -1340,14 +1395,13 @@ export function MortgagePlanningContent({
                 חזור
               </Button>
               {!embedded && (
-              <Link href="/uniform-mixes">
                 <Button
+                  onClick={() => continueToMortgagePlanning()}
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <Target className="w-5 h-5 ml-2" />
-                  בוא המשך לתכנון המשכנתא
+                  המשך לתכנון ולקיחת המשכנתא
                 </Button>
-              </Link>
               )}
               <Button
                 onClick={() => {
@@ -1776,7 +1830,10 @@ export function MortgagePlanningContent({
                       <Slider
                         dir="ltr"
                         value={[ltvSliderValue]}
-                        onValueChange={([v]) => handleLTVSliderChange(v)}
+                        onValueChange={([v]) => {
+                          registerSliderMove('ltv');
+                          handleLTVSliderChange(v);
+                        }}
                         min={0}
                         max={ltvSliderMax}
                         step={0.5}
@@ -1852,7 +1909,10 @@ export function MortgagePlanningContent({
                       <Slider
                         dir="ltr"
                         value={[loanSliderValue]}
-                        onValueChange={([v]) => handleLoanAmountSliderChange(v)}
+                        onValueChange={([v]) => {
+                          registerSliderMove('loan-amount');
+                          handleLoanAmountSliderChange(v);
+                        }}
                         min={0}
                         max={loanSliderMax}
                         step={loanSliderStep}
@@ -1974,7 +2034,10 @@ export function MortgagePlanningContent({
                       <Slider
                         dir="ltr"
                         value={[paymentSliderValue]}
-                        onValueChange={([v]) => handleMonthlyPaymentSliderChange(v)}
+                        onValueChange={([v]) => {
+                          registerSliderMove('monthly-payment');
+                          handleMonthlyPaymentSliderChange(v);
+                        }}
                         min={0}
                         max={paymentSliderMax}
                         step={paymentSliderStep}
@@ -2082,7 +2145,10 @@ export function MortgagePlanningContent({
                       <Slider
                         dir="ltr"
                         value={[termMonths]}
-                        onValueChange={([v]) => setSelectedLoanPeriod(monthsToYears(v))}
+                        onValueChange={([v]) => {
+                          registerSliderMove('term');
+                          setSelectedLoanPeriod(monthsToYears(v));
+                        }}
                         min={PLAN_TERM_MONTHS_MIN}
                         max={PLAN_TERM_MONTHS_MAX}
                         step={1}
@@ -2302,38 +2368,24 @@ export function MortgagePlanningContent({
                 חזור לעריכה
               </Button>
               {!embedded && (
-              <Link
-                href="/uniform-mixes"
-                onClick={() => {
-                  // Persist the slider-driven selection so the uniform-mixes screen can
-                  // generate the mixes against the property price the user actually chose
-                  // here (rather than recomputing the calculated maximum from scratch).
-                  try {
-                    localStorage.setItem(
-                      'mortgagePlanningSelection',
-                      JSON.stringify({
-                        source: 'affordability-slider',
-                        propertyPrice: effectivePropertyPrice,
-                        loanAmount: effectiveLoanAmount,
-                        loanPeriod: effectiveLoanPeriod,
-                        ownCapital: aggregated.ownCapital,
-                        interestRate: results.interestRate,
-                        timestamp: Date.now(),
-                      })
-                    );
-                  } catch (error) {
-                    console.error('Could not persist mortgage planning selection:', error);
-                  }
-                }}
-              >
                 <Button
                   size="sm"
+                  onClick={() =>
+                    // הבחירה שנעשתה במכוונים ממשיכה לתכנון עצמו — מחיר הנכס, סכום
+                    // ההלוואה והתקופה שהלקוח בחר כאן, ולא המקסימום המחושב.
+                    continueToMortgagePlanning({
+                      propertyPrice: effectivePropertyPrice,
+                      loanAmount: effectiveLoanAmount,
+                      loanPeriod: effectiveLoanPeriod,
+                      ownCapital: aggregated.ownCapital,
+                      interestRate: results.interestRate,
+                    })
+                  }
                   className="px-5 py-2 h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm"
                 >
-                  בוא המשך לתכנון המשכנתא
+                  המשך לתכנון ולקיחת המשכנתא
                   <ArrowLeft className="w-4 h-4 ml-2" />
                 </Button>
-              </Link>
               )}
             </div>
           </div>
@@ -2415,15 +2467,14 @@ export function MortgagePlanningContent({
                 חזור לעריכה
               </Button>
               {!embedded && (
-              <Link href="/uniform-mixes">
                 <Button
                   size="lg"
+                  onClick={() => continueToMortgagePlanning()}
                   className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg"
                 >
-                  בוא המשך לתכנון המשכנתא
+                  המשך לתכנון ולקיחת המשכנתא
                   <ArrowLeft className="w-5 h-5 ml-2" />
                 </Button>
-              </Link>
               )}
             </div>
           </div>
@@ -2564,6 +2615,25 @@ export function MortgagePlanningContent({
         {currentStep === 'results' && renderResults()}
         {currentStep === 'profile-complete' && renderProfileComplete()}
       </div>
+
+      {/* חזרה לעמוד הבית — זמינה בכל מסך של הכלי, גם אחרי גלילה */}
+      {!embedded && <HomeFloatingButton />}
+
+      {/* ההרשמה שממשיכה לאזור האישי, והקרוסלה שמציגה מה מחכה שם */}
+      {!embedded && (
+        <>
+          <GuestRegistrationDialog
+            open={registrationOpen}
+            onOpenChange={setRegistrationOpen}
+            redirectTo="/dashboard"
+          />
+          <RegisterTeaserCarousel
+            open={teaserOpen}
+            onOpenChange={setTeaserOpen}
+            onRegister={() => setRegistrationOpen(true)}
+          />
+        </>
+      )}
 
       {/* Equity Calculator Modal */}
       {showEquityCalculator && (
