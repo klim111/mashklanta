@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Upload, Target, Banknote, Clock } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Upload, Target, Banknote, Clock } from 'lucide-react';
 import type { MortgageMix } from '@/components/mortgage-advisor/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,9 @@ import { RefinanceMortgageInput } from '@/components/mortgage-refinance/Refinanc
 import { calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
 import { useMarketRates } from '@/hooks/useMarketRates';
 import { mixWithRemainingTerms } from '@/lib/refinance';
+import { AdvisorHelpButton } from '@/components/plan/stages/analysis/AdvisorHelpButton';
+import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
+import { saveRefinanceAsNewPlan } from '@/components/mortgage-refinance/refinancePlan';
 
 type RefinanceStep = 'tracks' | 'goal';
 
@@ -39,6 +42,10 @@ export default function MortgageRefinancePage() {
   const [perTrackRefinanceEnabled, setPerTrackRefinanceEnabled] = useState(false);
   const [mixSummaryRevealed, setMixSummaryRevealed] = useState(false);
   const [readyForGoal, setReadyForGoal] = useState(false);
+  /** טופס הפנייה ליועץ — נפתח מהכפתור הצף */
+  const [leadOpen, setLeadOpen] = useState(false);
+  /** משתמש רשום מגיע מהאזור האישי, וחוזר אליו */
+  const signedIn = status === 'authenticated';
 
   const totalTracksAmount = currentMix.tracks.reduce((sum, track) => sum + track.amount, 0);
   const isMixValid =
@@ -212,15 +219,20 @@ export default function MortgageRefinancePage() {
         onAnalyzeScenarios={setShowScenarioAnalysis}
         isGuest={isGuest}
         market={market}
+        onSaveRefinance={saveRefinanceAsNewPlan}
+        saveContext="tool"
       />
 
       <div className="flex gap-4 justify-center mt-8">
-        <Link href="/">
-          <Button variant="outline" className="px-6 py-3">
-            <ArrowLeft className="w-5 h-5 ml-2" />
-            חזור לעמוד הבית
-          </Button>
-        </Link>
+        {/* למחובר יש את הכפתור הצף «חזרה לדאשבורד», ולכן אין כאן כפתור חזרה נוסף */}
+        {!signedIn && (
+          <Link href="/">
+            <Button variant="outline" className="px-6 py-3">
+              <ArrowLeft className="w-5 h-5 ml-2" />
+              חזור לעמוד הבית
+            </Button>
+          </Link>
+        )}
         {/* בזרימה הרגילה בחירת מטרת המיחזור מתבצעת בתוך תיבת המצב הנוכחי. הכפתור נשאר לזרימת מיחזור לכל מסלול. */}
         {perTrackRefinanceEnabled && (
           <Button
@@ -256,6 +268,26 @@ export default function MortgageRefinancePage() {
 
       {showScenarioAnalysis && (
         <ScenarioAnalysis baseMix={showScenarioAnalysis} onClose={() => setShowScenarioAnalysis(null)} />
+      )}
+
+      {/* הכפתורים הצפים — אותם כפתורים שמלווים את שלבי המשכנתא החדשה */}
+      <AdvisorHelpButton
+        stageLabel="כלי המיחזור"
+        title="היעזרו ביועץ משכנתא במיחזור"
+        description="יועץ משכלנתא יבחן איתכם את המשכנתא הנוכחית, יבנה את התמהיל למיחזור וינהל את המשא ומתן מול הבנק. הפנייה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך."
+        onRequestAdvisor={() => setLeadOpen(true)}
+        opensDialog
+      />
+      <AdvisorLeadDialog open={leadOpen} onOpenChange={setLeadOpen} topic="REFINANCE_HYBRID" />
+
+      {signedIn && (
+        <Link
+          href="/dashboard"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+        >
+          <LayoutDashboard className="h-5 w-5" />
+          חזרה לדאשבורד
+        </Link>
       )}
     </div>
   );

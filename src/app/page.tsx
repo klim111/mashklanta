@@ -10,6 +10,8 @@ import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
 import { GuestStart } from '@/components/service-flow/GuestStart';
+import { HeroScreenShowcase } from '@/components/home/HeroScreenShowcase';
+import { PlatformDemoSection } from '@/components/home/PlatformDemoSection';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
@@ -80,23 +82,6 @@ export default function Home() {
               </Button>
             </motion.div>
 
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-full md:w-auto"
-            >
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="w-full justify-center px-6 py-4 text-base font-semibold bg-white/90 border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8 md:text-lg"
-              >
-                <Link href="/pricing">
-                  <Tag className="w-5 h-5 ml-2" />
-                  תמחור
-                </Link>
-              </Button>
-            </motion.div>
             
             <motion.div
               whileHover={{ scale: 1.05 }}
@@ -211,34 +196,15 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Slide 4: Cost Savings */}
-          <div className="absolute inset-0 opacity-0 animate-carousel-slide-4 flex items-center justify-center">
-            <div className="max-w-4xl w-full px-8">
-              <svg viewBox="0 0 800 400" className="w-full h-auto">
-                {/* Cost / remaining-debt graph — descends over time */}
-                <path d="M100 70 Q200 110 300 160 Q400 220 500 260 Q600 290 700 315"
-                      stroke="rgba(34, 197, 94, 0.8)" strokeWidth="6" fill="none" className="animate-draw-line" />
-
-                <text x="150" y="60" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="24" className="animate-pulse-glow">₪</text>
-                <text x="300" y="145" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="28" className="animate-pulse-glow" style={{animationDelay: '1s'}}>₪</text>
-                <text x="500" y="245" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="32" className="animate-pulse-glow" style={{animationDelay: '2s'}}>₪</text>
-                <text x="700" y="300" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" fontSize="36" className="animate-pulse-glow" style={{animationDelay: '3s'}}>₪</text>
-
-                <text x="150" y="95" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪500K</text>
-                <text x="300" y="185" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪300K</text>
-                <text x="500" y="285" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪150K</text>
-                <text x="700" y="345" textAnchor="middle" fill="rgba(75, 85, 99, 0.7)" fontSize="14">₪50K</text>
-                
-                {/* Title */}
-                <text x="400" y="350" textAnchor="middle" fill="rgba(34, 197, 94, 0.9)" 
-                      fontSize="32" fontWeight="bold">חיסכון עצום בעלויות</text>
-                <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                      fontSize="18">עד חצי מיליון שקל חיסכון</text>
-              </svg>
-            </div>
+          {/* Slide 4: המסכים האמיתיים — האזור האישי ושלבי התהליך */}
+          <div className="absolute inset-0 opacity-0 animate-carousel-slide-4 flex items-end justify-center pb-[12%]">
+            <HeroScreenShowcase />
           </div>
         </div>
       </motion.section>
+
+      {/* ראו את הפלטפורמה מבפנים — המסכים האמיתיים, לפי מה שמתאים לצופה */}
+      <PlatformDemoSection />
 
       {/* Action Cards Section */}
         <motion.section

@@ -9,8 +9,14 @@ import {
   clampPlanYears,
   dealMaxMortgage,
   emptyPlanData,
+  flowStages,
   missingForStage,
   monthsToYears,
+  nextPlanStage,
+  parseRefinanceMixData,
+  planFlowOf,
+  planStageNumber,
+  profileRequirements,
   mortgageFromLtvPercent,
   mortgageFromProperty,
   maxPropertyForEquity,
@@ -686,5 +692,122 @@ describe('שדות הפרופיל להמלצות ולתת-שלב המסמכים'
     data.partnerPrimaryBank = 'הפועלים';
     expect(accountBanks(data)).toEqual(['לאומי', 'הפועלים']);
     expect(accountBanks({ ...data, household: 'SINGLE' })).toEqual(['לאומי']);
+  });
+});
+
+describe('תהליך מיחזור', () => {
+  const refinance = {
+    bank: 'לאומי',
+    goal: 'reduce_payment',
+    scope: 'whole',
+    selectedTrackId: null,
+    currentMix: {
+      id: 'current',
+      name: 'המשכנתא הנוכחית',
+      bank: 'לאומי',
+      totalAmount: 900_000,
+      tracks: [
+        { id: 't1', name: 'קבועה', type: 'fixed_unlinked', amount: 900_000, interestRate: 5.2, years: 18, endDate: '2044-03-01', paymentDay: 10 },
+      ],
+    },
+    refinancedMix: {
+      id: 'refi',
+      name: 'התמהיל למיחזור',
+      bank: 'לאומי',
+      totalAmount: 900_000,
+      tracks: [{ id: 't1', name: 'קבועה', type: 'fixed_unlinked', amount: 900_000, interestRate: 4.1, years: 18 }],
+    },
+    current: { monthlyPayment: 6_300, totalInterest: 460_000, totalPaid: 1_360_000, averageRate: 5.2, months: 216 },
+    refinanced: { monthlyPayment: 5_800, totalInterest: 350_000, totalPaid: 1_250_000, averageRate: 4.1, months: 216 },
+    mode: null,
+    savedAt: '2026-09-19T00:00:00.000Z',
+  };
+
+  it('נתוני המיחזור נקראים בחזרה מהשלב, ומסלול בלי סכום נזרק', () => {
+    const parsed = parseStageData('MIX', {
+      mixKey: 'refi',
+      refinance: {
+        ...refinance,
+        refinancedMix: { ...refinance.refinancedMix, tracks: [...refinance.refinancedMix.tracks, { id: 'bad', type: 'prime' }] },
+      },
+    });
+    expect(parsed.refinance?.bank).toBe('לאומי');
+    expect(parsed.refinance?.currentMix.tracks[0].endDate).toBe('2044-03-01');
+    expect(parsed.refinance?.refinancedMix.tracks).toHaveLength(1);
+    expect(parsed.refinance?.mode).toBeNull();
+    expect(planFlowOf({ MIX: parsed })).toEqual({ kind: 'REFINANCE', refinanceMode: null });
+  });
+
+  it('בלי בנק או בלי תמהיל למיחזור התהליך הוא משכנתא חדשה', () => {
+    expect(parseStageData('MIX', { refinance: { ...refinance, bank: '' } }).refinance).toBeNull();
+    expect(parseStageData('MIX', { refinance: { ...refinance, refinancedMix: null } }).refinance).toBeNull();
+    expect(planFlowOf(emptyPlanData())).toEqual({ kind: 'NEW', refinanceMode: null });
+  });
+
+  it('סדר השלבים נקבע לפי סוג המיחזור', () => {
+    const data = emptyPlanData();
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+
+    expect(flowStages(planFlowOf(data))).toEqual(['MIX', 'ANALYSIS', 'APPLICATIONS', 'AUCTION', 'SIGNING']);
+
+    data.MIX.refinance!.mode = 'INTERNAL';
+    const internal = planFlowOf(data);
+    expect(flowStages(internal)).toEqual(['MIX', 'APPLICATIONS', 'AUCTION']);
+    expect(nextPlanStage('MIX', internal)).toBe('APPLICATIONS');
+    expect(nextPlanStage('AUCTION', internal)).toBeNull();
+    expect(planStageNumber('AUCTION', internal)).toBe(3);
+
+    data.MIX.refinance!.mode = 'EXTERNAL';
+    const external = planFlowOf(data);
+    expect(nextPlanStage('MIX', external)).toBe('ANALYSIS');
+    expect(unfinishedPrerequisites('APPLICATIONS', {
+      MIX: 'COMPLETED', ANALYSIS: 'IN_PROGRESS', APPLICATIONS: 'PENDING', AUCTION: 'PENDING', SIGNING: 'PENDING',
+    }, external)).toEqual(['ANALYSIS']);
+  });
+
+  it('שלב התמהיל במיחזור נסגר רק אחרי הבחירה בין פנימי לחיצוני', () => {
+    const data = emptyPlanData();
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+    expect(stageIsComplete('MIX', data)).toBe(false);
+    expect(missingForStage('MIX', data)).toContain('בחירה בין מיחזור פנימי למיחזור חיצוני');
+
+    data.MIX.refinance!.mode = 'INTERNAL';
+    expect(stageIsComplete('MIX', data)).toBe(true);
+  });
+
+  it('שלב ההגשה לבנק במיחזור נסגר בלי מסמך ובלי פרופיל מלא', () => {
+    const data = emptyPlanData();
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: { ...parseRefinanceMixData(refinance)!, mode: 'INTERNAL' } };
+
+    // ההגשה מתבצעת מול הבנק ישירות, ולכן ההמשך פתוח מיד — בשני סוגי המיחזור
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+    expect(missingForStage('APPLICATIONS', data)).toEqual([]);
+
+    data.MIX.refinance!.mode = 'EXTERNAL';
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+
+    // במשכנתא חדשה התנאים נשארו כשהיו
+    const fresh = profile();
+    expect(stageIsComplete('APPLICATIONS', fresh)).toBe(false);
+  });
+
+  it('במיחזור לא נדרש הון עצמי, והפרופיל נסגר בלעדיו', () => {
+    const data = profile();
+    data.ANALYSIS = { ...data.ANALYSIS, equity: null };
+    expect(stageIsComplete('ANALYSIS', data)).toBe(false);
+    expect(missingForStage('ANALYSIS', data)).toContain('ההון העצמי לעסקה');
+
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+    expect(profileRequirements(data.ANALYSIS, { requireEquity: false }).some((item) => item.key === 'equity')).toBe(false);
+    expect(stageIsComplete('ANALYSIS', data)).toBe(true);
+    expect(missingForStage('ANALYSIS', data)).toEqual([]);
+  });
+
+  it('ההתקדמות במיחזור פנימי נמדדת מתוך שלושה שלבים', () => {
+    const statuses = {
+      MIX: 'COMPLETED', ANALYSIS: 'PENDING', APPLICATIONS: 'PENDING', AUCTION: 'PENDING', SIGNING: 'PENDING',
+    } as const;
+    expect(planProgress(statuses, { kind: 'REFINANCE', refinanceMode: 'INTERNAL' })).toBe(33);
+    expect(planProgress(statuses)).toBe(20);
   });
 });

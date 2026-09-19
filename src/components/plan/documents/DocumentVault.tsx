@@ -1,28 +1,27 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   CheckCircle2,
   CircleDashed,
+  Download,
   Eye,
   FileUp,
+  FolderDown,
   Loader2,
   Lock,
   Trash2,
   Upload,
 } from 'lucide-react';
-import {
-  ALLOWED_DOCUMENT_TYPES,
-  MAX_DOCUMENT_BYTES,
-} from '@/lib/plan-documents';
+
 import type { PlanDocumentView } from '@/lib/plan-documents';
-import { DOCUMENTS_MODE_LABELS, preApprovalDocumentGroups } from '@/lib/mortgage-plan';
+import { DOCUMENTS_MODE_LABELS } from '@/lib/mortgage-plan';
 import type { DocumentsMode, PlanData } from '@/lib/mortgage-plan';
 import type { StageDocument } from '@/lib/client-process';
+import { planDocumentRequirements, vaultCounts } from '@/lib/plan-document-catalog';
+import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
-import { usePlanDocuments } from './usePlanDocuments';
-
-const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
+import { documentDownloadUrl, documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
 
 /**
  * תיק המסמכים של התהליך.
@@ -45,20 +44,55 @@ export function DocumentVault({
   data: PlanData;
   mode: DocumentsMode | null;
   onModeChange: (mode: DocumentsMode) => void;
-  /** תת-שלב המסמכים כבר בחר את הדרך — כפתורי הבחירה מיותרים בתוכו */
+  /**
+   * כפתורי בחירת הדרך מיותרים במקומות שבהם היא כבר נבחרה — תת-שלב המסמכים,
+   * ותיק המסמכים באזור האישי.
+   */
   hideModes?: boolean;
 }) {
-  const groups = preApprovalDocumentGroups(data);
   const { documents, ready, error, busyKey, upload, remove } = usePlanDocuments(planId);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
+  /** החלון הצף של ההעלאה, ועליו סוג המסמך שממנו נפתח */
+  const [uploadKey, setUploadKey] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const requirements = planDocumentRequirements(data);
+
+  const openUpload = (key: string | null) => {
+    setUploadKey(key);
+    setUploadOpen(true);
+  };
 
   const byKey = new Map(documents.map((document) => [document.key, document]));
-  const total = groups.reduce((sum, group) => sum + group.documents.length, 0);
-  const uploaded = groups.reduce(
-    (sum, group) => sum + group.documents.filter((doc) => byKey.has(doc.key)).length,
-    0
-  );
+  const { uploaded, total } = vaultCounts(requirements, documents);
   const skipped = mode === 'SELF_SUBMIT' || mode === 'LATER';
+
+  /*
+    הרשימה היא אחת: מה שהקטלוג יודע לפי הפרופיל ובעלות הנכס, ולצדו מסמכים
+    שהועלו ממקום אחר באזור האישי — למשל אישור עקרוני שנשמר בשלב ההגשה — כדי
+    שכל מה שבתיק יופיע במקום אחד ובאותו מצב.
+  */
+  const groups: Array<{ id: string; title: string; documents: StageDocument[] }> = [];
+  requirements.forEach((requirement) => {
+    const group = groups.find((item) => item.id === requirement.group);
+    const entry: StageDocument = {
+      key: requirement.key,
+      name: requirement.name,
+      required: requirement.optional ? false : undefined,
+    };
+    if (group) group.documents.push(entry);
+    else groups.push({ id: requirement.group, title: requirement.group, documents: [entry] });
+  });
+
+  const extras = documents.filter(
+    (document) => !requirements.some((requirement) => requirement.key === document.key)
+  );
+  if (extras.length > 0) {
+    groups.push({
+      id: 'extras',
+      title: 'מסמכים נוספים שהעליתם',
+      documents: extras.map((document) => ({ key: document.key, name: document.name })),
+    });
+  }
 
   return (
     <section className="rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm md:p-6">
@@ -66,7 +100,8 @@ export function DocumentVault({
         <h4 className="text-xl font-black text-slate-900">תיק המסמכים</h4>
         <p className="mx-auto mt-1.5 max-w-3xl text-[15px] font-medium leading-relaxed text-slate-600">
           הבנק אינו מסתמך על מה שהוצהר אלא מאמת אותו מול מסמכים. אלה המסמכים שיידרשו לפי הרכב
-          הלווים ואופן ההעסקה שהוזנו — שלושה חודשים אחורה בכל מסמך שוטף.
+          הלווים ואופן ההעסקה שהוזנו — שלושה חודשים אחורה בכל מסמך שוטף — ואם הגדרתם את בעלות
+          הנכס, גם מסמכי החתימה של אותו תרחיש.
         </p>
         <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[13px] font-black text-slate-600">
           <Lock className="h-3.5 w-3.5" />
@@ -113,13 +148,30 @@ export function DocumentVault({
         {uploaded} מתוך {total} מסמכים הועלו
       </p>
 
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => openUpload(null)}
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-[15px] font-black text-white transition-colors hover:bg-blue-700"
+        >
+          <Upload className="h-4 w-4" />
+          העלאת מסמך
+        </button>
+        {documents.length > 0 && (
+          <a
+            href={documentsArchiveUrl(planId)}
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-[15px] font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          >
+            <FolderDown className="h-4 w-4" />
+            הורדת תיק המסמכים
+          </a>
+        )}
+      </div>
+
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {groups.map((group) => (
           <div key={group.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4">
             <h5 className="text-center text-base font-black text-slate-900">{group.title}</h5>
-            {group.subtitle && (
-              <p className="text-center text-[13px] font-bold text-slate-500">{group.subtitle}</p>
-            )}
             <ul className="mt-3 space-y-2">
               {group.documents.map((doc) => (
                 <DocumentRow
@@ -127,7 +179,7 @@ export function DocumentVault({
                   doc={doc}
                   uploaded={byKey.get(doc.key) ?? null}
                   busy={busyKey === doc.key || !ready}
-                  onUpload={(file) => void upload(doc.key, doc.name, file)}
+                  onUpload={() => openUpload(doc.key)}
                   onRemove={(id) => void remove(id, doc.key)}
                   onView={setViewing}
                 />
@@ -137,6 +189,14 @@ export function DocumentVault({
         ))}
       </div>
 
+      <DocumentUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        planId={planId}
+        data={data}
+        stage={null}
+        defaultKey={uploadKey}
+      />
       <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
     </section>
   );
@@ -154,11 +214,10 @@ function DocumentRow({
   doc: StageDocument;
   uploaded: PlanDocumentView | null;
   busy: boolean;
-  onUpload: (file: File) => void;
+  onUpload: () => void;
   onRemove: (documentId: string) => void;
   onView: (document: PlanDocumentView) => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
 
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-3">
@@ -177,21 +236,10 @@ function DocumentRow({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-        <input
-          ref={input}
-          type="file"
-          accept={ACCEPT}
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) onUpload(file);
-            event.target.value = '';
-          }}
-        />
         <button
           type="button"
           disabled={busy}
-          onClick={() => input.current?.click()}
+          onClick={onUpload}
           className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
         >
           {busy ? (
@@ -214,6 +262,13 @@ function DocumentRow({
               <Eye className="h-3.5 w-3.5" />
               צפה במסמך
             </button>
+            <a
+              href={documentDownloadUrl(uploaded.planId, uploaded.id)}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50"
+            >
+              <Download className="h-3.5 w-3.5" />
+              הורדה
+            </a>
             <button
               type="button"
               disabled={busy}
@@ -229,6 +284,3 @@ function DocumentRow({
     </li>
   );
 }
-
-/** מגבלת הגודל, לתצוגה בטקסט עזרה */
-export const MAX_DOCUMENT_MB = Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024));

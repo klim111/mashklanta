@@ -6,27 +6,21 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   BadgeCheck,
   BarChart3,
   CalendarClock,
-  CheckCircle2,
   Compass,
-  Download,
   Eye,
   EyeOff,
   FileCheck2,
   Landmark,
   Layers,
-  Loader2,
   PiggyBank,
   Play,
   ShieldCheck,
   Sparkles,
   Users,
-  Video,
   Wallet,
-  Wrench,
 } from 'lucide-react';
 import { ProfileReportPanel } from './ProfileReportPanel';
 import { SAMPLE_PLAN_NAME, sampleProfileData } from './sampleProfile';
@@ -34,7 +28,7 @@ import { SAMPLE_PLAN_NAME, sampleProfileData } from './sampleProfile';
 /** אחרי 40 שניות המסך עובר הלאה מעצמו — מי שקורא מהר לוחץ "המשך" */
 const AUTO_ADVANCE_MS = 40_000;
 
-const SLIDES = ['intro', 'process', 'output', 'all'] as const;
+const SLIDES = ['intro', 'output', 'all'] as const;
 type Slide = (typeof SLIDES)[number];
 
 const reveal = {
@@ -44,7 +38,7 @@ const reveal = {
   transition: { duration: 0.4 },
 };
 
-/** חמש העבודות של השלב — מה עושים בו */
+/** חמש העבודות של השלב — מה עושים בו, בסדר הזה */
 const STAGE_ACTIONS: Array<{ icon: ReactNode; gradient: string; title: string; body: string }> = [
   {
     icon: <Users className="h-6 w-6 text-white" />,
@@ -78,7 +72,7 @@ const STAGE_ACTIONS: Array<{ icon: ReactNode; gradient: string; title: string; b
   },
 ];
 
-/** מה הדוח נותן — הבלוקים שעולים מעל הדוח לדוגמה, אחד אחרי השני */
+/** מה הדוח נותן — התוצרים של השלב, והבלוקים שעולים מעל הדוח לדוגמה */
 const REPORT_OUTPUTS: Array<{ icon: ReactNode; title: string; body: string; accent: string }> = [
   {
     icon: <BarChart3 className="h-4 w-4 text-white" />,
@@ -122,28 +116,22 @@ const REPORT_OUTPUTS: Array<{ icon: ReactNode; title: string; body: string; acce
  * מסך «על השלב» — הפתיח של שלב הפרופיל הפיננסי.
  *
  * לפני שמזינים נתון ראשון כדאי לדעת למה מזינים אותו, ולכן ההסבר בא ברצף:
- * מה השלב ולמה הוא קריטי, חמש העבודות שעושים בו, והתוצר — דוח לדוגמה שהבלוקים
- * המסבירים אותו עולים מעליו אחד אחרי השני. בסוף כפתור «התחל שלב».
+ * מה השלב ולמה הוא קריטי, מה עושים בו ומה יוצא ממנו — ואז התוצר, דוח לדוגמה
+ * שהבלוקים המסבירים אותו עולים מעליו אחד אחרי השני.
  *
- * מי שכבר רכש את המסלול העצמאי אינו צריך לבחור שוב «לבד או עם יועץ» — הוא
- * מקבל את כפתור ההתחלה בלבד, והיועץ זמין לו מהכפתור הצף בכל מסך.
+ * מה שבא בסוף ההסבר נקבע לפי מה שהלקוח בחר בתחילת הדרך, ולא נשאל כאן שוב:
+ * מי שבחר לבצע לבד מקבל את כפתור ההתחלה (והיועץ זמין לו מהכפתור הצף), ומי
+ * שבחר ליווי יועץ רואה מיד אחרי ההסבר את מסך «היועץ מטפל בשלב זה».
  */
 export function StageOverview({
   onStart,
-  onAdvisor,
-  advisorBusy = false,
-  selfServicePaid = false,
+  advisorSummary,
 }: {
   onStart: () => void;
-  /** בקשת ליווי חינמית ליועץ — התשלום בהמשך */
-  onAdvisor?: () => void;
-  advisorBusy?: boolean;
-  /** הלקוח שילם על המסלול העצמאי — אין צורך בכפתור «בצעו לבד» */
-  selfServicePaid?: boolean;
+  /** יועץ מטפל בשלב — המסך שלו מוצג בסוף ההסבר במקום כפתור ההתחלה */
+  advisorSummary?: ReactNode;
 }) {
   const [slide, setSlide] = useState<Slide>('intro');
-  /** מסך ההסבר על הליווי, שנפתח מהכפתור "תנו ליועץ" */
-  const [advisorIntent, setAdvisorIntent] = useState(false);
 
   const next = () => {
     const index = SLIDES.indexOf(slide);
@@ -152,34 +140,17 @@ export function StageOverview({
 
   useEffect(() => {
     // מסך הדוח לדוגמה אינו מתקדם מעצמו — הבלוקים שלו עולים בקצב שלהם
-    if (slide === 'all' || slide === 'output' || advisorIntent) return;
+    if (slide !== 'intro') return;
     const timer = setTimeout(next, AUTO_ADVANCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slide, advisorIntent]);
-
-  if (advisorIntent && onAdvisor) {
-    return (
-      <AdvisorIntro
-        busy={advisorBusy}
-        onConfirm={onAdvisor}
-        onBack={() => setAdvisorIntent(false)}
-      />
-    );
-  }
+  }, [slide]);
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       {slide === 'intro' && (
         <motion.section key="intro" {...reveal}>
           <IntroSlide />
-          <SlideFooter slide={slide} onNext={next} />
-        </motion.section>
-      )}
-
-      {slide === 'process' && (
-        <motion.section key="process" {...reveal}>
-          <ProcessSlide />
           <SlideFooter slide={slide} onNext={next} />
         </motion.section>
       )}
@@ -194,10 +165,9 @@ export function StageOverview({
       {slide === 'all' && (
         <motion.section key="all" {...reveal} className="space-y-4">
           <IntroSlide compact />
-          <ProcessSlide compact />
           <OutputSlide compact />
 
-          {/* שורת ההתחלה — נכנסת אחרונה, ונעה פעם אחת כדי למשוך אליה את העין */}
+          {/* מה שבא אחרי ההסבר — נכנס אחרון, ונע פעם אחת כדי למשוך אליו את העין */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0, x: [0, -16, 0] }}
@@ -206,54 +176,8 @@ export function StageOverview({
               y: { duration: 0.45, delay: 0.25 },
               x: { delay: 1.1, duration: 0.85, times: [0, 0.5, 1], ease: 'easeInOut' },
             }}
-            className={`grid gap-3 ${selfServicePaid || !onAdvisor ? '' : 'md:grid-cols-2'}`}
           >
-            {selfServicePaid || !onAdvisor ? (
-              <StartStageCard onStart={onStart} />
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onStart}
-                  className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-300 bg-blue-50/50 p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
-                    <Wrench className="h-7 w-7 text-white" />
-                  </span>
-                  <span className="text-lg font-black text-slate-900">
-                    בצעו את השלב לבד באמצעות משכלנתא
-                  </span>
-                  <span className="text-[15px] font-medium leading-snug text-slate-600">
-                    בונים את הפרופיל בעצמכם, צעד אחר צעד, עם כל החישובים והבדיקות
-                  </span>
-                  <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-blue-700">
-                    <Play className="h-4 w-4" />
-                    התחל שלב
-                    <ArrowLeft className="h-4 w-4" />
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAdvisorIntent(true)}
-                  className="flex flex-col items-center gap-2 rounded-3xl border-2 border-violet-300 bg-violet-50/50 p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
-                    <Sparkles className="h-7 w-7 text-white" />
-                  </span>
-                  <span className="text-lg font-black text-slate-900">
-                    תנו ליועץ משכלנתא לעשות לכם את העבודה
-                  </span>
-                  <span className="text-[15px] font-medium leading-snug text-slate-600">
-                    פגישת ייעוץ אונליין שבסופה הדוח מוכן — בקשה חינמית, התשלום בהמשך
-                  </span>
-                  <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-violet-700">
-                    איך זה עובד?
-                    <ArrowLeft className="h-4 w-4" />
-                  </span>
-                </button>
-              </>
-            )}
+            {advisorSummary ?? <StartStageCard onStart={onStart} />}
           </motion.div>
         </motion.section>
       )}
@@ -261,7 +185,7 @@ export function StageOverview({
   );
 }
 
-/** כפתור ההתחלה היחיד — למי שכבר במסלול העצמאי, או כשאין דרך לבקש יועץ מכאן */
+/** כפתור ההתחלה — למי שבחר לבצע את השלב לבד; היועץ זמין מהכפתור הצף */
 function StartStageCard({ onStart }: { onStart: () => void }) {
   return (
     <section className="flex flex-col items-center gap-3 rounded-3xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 via-white to-cyan-50 p-6 text-center shadow-sm md:p-8">
@@ -282,7 +206,7 @@ function StartStageCard({ onStart }: { onStart: () => void }) {
         <ArrowLeft className="h-5 w-5" />
       </motion.button>
       <p className="text-[12px] text-slate-500">
-        בכל רגע אפשר להיעזר ביועץ משכנתא להשלמת השלב — הכפתור הצף מלווה את כל המסכים.
+        בכל רגע אפשר לפנות ליועץ לעזרה בשלב זה — הכפתור הצף מלווה את כל המסכים.
       </p>
     </section>
   );
@@ -301,7 +225,7 @@ function SlideFooter({
   return (
     <div className="mt-5 flex flex-col items-center gap-3">
       <div className="flex items-center gap-2">
-        {SLIDES.slice(0, 3).map((item) => (
+        {SLIDES.slice(0, 2).map((item) => (
           <span
             key={item}
             className={`h-2.5 rounded-full transition-all ${
@@ -358,27 +282,74 @@ function Badge({ icon, text, tone }: { icon: ReactNode; text: string; tone: stri
   );
 }
 
-/** מסך 1 — מה השלב הזה, ולמה הוא קריטי */
-function IntroSlide({ compact = false }: { compact?: boolean }) {
-  const points = [
-    {
-      icon: <Wallet className="h-5 w-5" />,
-      text: 'אוספים את התמונה הפיננסית המלאה: הכנסות, הוצאות, הון עצמי והתחייבויות קיימות — ואת פרטי העסקה שעל השולחן',
-    },
-    {
-      icon: <ShieldCheck className="h-5 w-5" />,
-      text: 'מזהים מראש את מה שהבנק יבדוק, לפני שהוא בודק — ולפני שנרשם סירוב בתיק',
-    },
-    {
-      icon: <FileCheck2 className="h-5 w-5" />,
-      text: 'מגדירים את תיק המסמכים ומוודאים שכל מסמך שיוגש יהיה תקין ומלא — מסמך חסר או חלקי הוא הסיבה הנפוצה ביותר לעיכוב',
-    },
-    {
-      icon: <Layers className="h-5 w-5" />,
-      text: 'יוצאים עם דוח פרופיל וקווים מנחים לתמהיל, שעליהם ייבנו השלבים הבאים — כך שיתאימו לכם ולא למישהו אחר',
-    },
-  ];
+/** כותרת של חלק בתוך מסך ההסבר — "מה עושים בשלב הזה", "התוצרים של השלב" */
+function SectionTitle({ icon, children, hint }: { icon: ReactNode; children: ReactNode; hint?: string }) {
+  return (
+    <div className="mb-3 text-center">
+      <h4 className="inline-flex items-center gap-2 text-lg font-black text-slate-900 md:text-xl">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 text-white">{icon}</span>
+        {children}
+      </h4>
+      {hint && <p className="mx-auto mt-1 max-w-2xl text-[14px] font-medium leading-relaxed text-slate-600">{hint}</p>}
+    </div>
+  );
+}
 
+/** חמש העבודות — אותו כרטיס בכל מקום שבו הן מופיעות */
+function ActionsList({ compact = false }: { compact?: boolean }) {
+  return (
+    <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {STAGE_ACTIONS.map((step, index) => (
+        <motion.li
+          key={step.title}
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ delay: index * 0.08, duration: 0.35 }}
+          className="flex gap-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-4"
+        >
+          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${step.gradient} shadow-lg`}>
+            {step.icon}
+          </span>
+          <div>
+            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">
+              {index + 1}
+            </span>
+            <h4 className="mt-1 text-[15px] font-black leading-snug text-slate-900">{step.title}</h4>
+            {!compact && (
+              <p className="mt-1 text-[13px] font-medium leading-relaxed text-slate-600">{step.body}</p>
+            )}
+          </div>
+        </motion.li>
+      ))}
+    </ol>
+  );
+}
+
+/** התוצרים — הרשימה הקצרה, כפי שהיא מופיעה גם במסך המסכם */
+function OutputsList() {
+  return (
+    <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {REPORT_OUTPUTS.map((item) => (
+        <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-3.5">
+          <p className="flex items-center gap-2 text-[14px] font-black text-slate-900">
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}>
+              {item.icon}
+            </span>
+            {item.title}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * מסך 1 — מה השלב הזה ולמה הוא קריטי, מה עושים בו (חמש העבודות, בסדר הזה)
+ * ומה יוצא ממנו. במסך המסכם (`compact`) נשארות רק העבודות — התוצרים מוצגים
+ * שם בכרטיס התוצר.
+ */
+function IntroSlide({ compact = false }: { compact?: boolean }) {
   return (
     <SlideCard
       tone="border-blue-200"
@@ -392,70 +363,33 @@ function IntroSlide({ compact = false }: { compact?: boolean }) {
         </p>
       }
     >
-      <ul className={`mx-auto grid max-w-3xl gap-3 ${compact ? 'md:grid-cols-2' : ''}`}>
-        {points.map((point) => (
-          <li
-            key={point.text}
-            className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-              {point.icon}
-            </span>
-            <span className="text-[15px] font-semibold leading-relaxed text-slate-700">{point.text}</span>
-          </li>
-        ))}
-      </ul>
-    </SlideCard>
-  );
-}
+      <SectionTitle
+        icon={<Layers className="h-4 w-4" />}
+        hint={compact ? undefined : 'כל עבודה נשענת על זו שלפניה, וכולן יחד מרכיבות את הדוח שיוצא בסוף השלב.'}
+      >
+        מה עושים בשלב הזה
+      </SectionTitle>
+      <ActionsList compact={compact} />
 
-/** מסך 2 — חמש העבודות של השלב */
-function ProcessSlide({ compact = false }: { compact?: boolean }) {
-  return (
-    <SlideCard
-      tone="border-slate-200"
-      badge={<Badge icon={<Layers className="h-4 w-4" />} text="מה עושים בשלב" tone="bg-slate-900" />}
-      title="חמש עבודות, בסדר הזה"
-      lead={
-        !compact ? (
-          <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
-            כל עבודה נשענת על זו שלפניה, וכולן יחד מרכיבות את הדוח שיוצא בסוף השלב.
-          </p>
-        ) : undefined
-      }
-    >
-      <ol className={`grid gap-3 ${compact ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2 xl:grid-cols-3'}`}>
-        {STAGE_ACTIONS.map((step, index) => (
-          <motion.li
-            key={step.title}
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ delay: index * 0.08, duration: 0.35 }}
-            className="flex gap-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-4"
+      {!compact && (
+        <div className="mt-8">
+          <SectionTitle
+            icon={<BadgeCheck className="h-4 w-4" />}
+            hint="דוח פרופיל פיננסי אחד, שאוסף את כל מה שנבנה בשלב — ומלווה אתכם לכל השלבים הבאים."
           >
-            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${step.gradient} shadow-lg`}>
-              {step.icon}
-            </span>
-            <div>
-              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">
-                {index + 1}
-              </span>
-              <h4 className="mt-1 text-[15px] font-black leading-snug text-slate-900">{step.title}</h4>
-              {!compact && (
-                <p className="mt-1 text-[13px] font-medium leading-relaxed text-slate-600">{step.body}</p>
-              )}
-            </div>
-          </motion.li>
-        ))}
-      </ol>
+            התוצרים של השלב
+          </SectionTitle>
+          <OutputsList />
+        </div>
+      )}
     </SlideCard>
   );
 }
 
 /**
- * מסך 3 — התוצר. ברקע דוח לדוגמה, ומעליו הבלוקים שמסבירים מה כל חלק בו נותן,
- * עולים אחד אחרי השני. אפשר גם לפתוח את הדוח לדוגמה במלואו.
+ * מסך 2 — התוצר. ברקע דוח לדוגמה, ומעליו הבלוקים שמסבירים מה כל חלק בו נותן,
+ * עולים אחד אחרי השני על רקע כהה כדי שלא ייבלעו בדוח. אפשר גם לפתוח את
+ * הדוח לדוגמה במלואו.
  */
 function OutputSlide({ compact = false }: { compact?: boolean }) {
   const sample = useMemo(() => sampleProfileData(), []);
@@ -466,20 +400,9 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
       <SlideCard
         tone="border-emerald-300"
         badge={<Badge icon={<BadgeCheck className="h-4 w-4" />} text="התוצר של השלב" tone="bg-emerald-600" />}
-        title="דוח פרופיל פיננסי — מודרני, ברור, להורדה כ-PDF"
+        title="דוח פרופיל פיננסי"
       >
-        <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {REPORT_OUTPUTS.map((item) => (
-            <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-3.5">
-              <p className="flex items-center gap-2 text-[14px] font-black text-slate-900">
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}>
-                  {item.icon}
-                </span>
-                {item.title}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <OutputsList />
         <CriticalNote />
       </SlideCard>
     );
@@ -492,9 +415,9 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
       title="דוח פרופיל פיננסי"
       lead={
         <p className="mx-auto mt-3 max-w-3xl text-[15px] font-medium leading-relaxed text-slate-600">
-          דוח אחד להורדה, שאוסף את כל מה שנבנה בשלב — דשבורד של בלוקים עם המידע העיקרי
-          והקריטי: נתוני העסקה, פרופיל הלקוח, סיכונים והמלצות, וקווים מנחים לבניית התמהיל.
-          ברקע דוח לדוגמה, ומעליו מה שכל חלק בו נותן לכם.
+          לוח בקרה אחד שאוסף את כל מה שנבנה בשלב: נתוני העסקה, פרופיל הלקוח, המדים מול מגבלות
+          הרגולציה, התזרים, לוח הזמנים של התהליך, הרכב המסלולים, הסיכונים וההמלצות. ברקע דוח
+          לדוגמה, ומעליו מה שכל חלק בו נותן לכם.
         </p>
       }
     >
@@ -532,25 +455,25 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
                     initial={{ opacity: 0, y: 28, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: 0.3 + index * 0.4, duration: 0.45, ease: 'easeOut' }}
-                    className="rounded-2xl border border-white/60 bg-white/92 p-4 text-right shadow-[0_18px_40px_rgba(15,23,42,0.18)] backdrop-blur"
+                    className="rounded-2xl border border-white/10 bg-slate-900 p-4 text-right text-white shadow-[0_18px_40px_rgba(15,23,42,0.45)] ring-1 ring-white/10"
                   >
                     <span className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent} shadow-md`}>
                       {item.icon}
                     </span>
-                    <h4 className="text-sm font-black leading-snug text-slate-900">{item.title}</h4>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.body}</p>
+                    <h4 className="text-sm font-black leading-snug text-white">{item.title}</h4>
+                    <p className="mt-1 text-xs leading-relaxed text-white/75">{item.body}</p>
                   </motion.div>
                 ))}
                 <motion.div
                   initial={{ opacity: 0, y: 28 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + REPORT_OUTPUTS.length * 0.4, duration: 0.45 }}
-                  className="flex items-center gap-3 rounded-2xl bg-slate-900 p-4 text-right text-white shadow-xl sm:col-span-2 lg:col-span-3"
+                  className="flex items-center gap-3 rounded-2xl bg-gradient-to-l from-blue-700 to-cyan-600 p-4 text-right text-white shadow-xl ring-1 ring-white/20 sm:col-span-2 lg:col-span-3"
                 >
-                  <Download className="h-5 w-5 shrink-0 text-cyan-300" />
+                  <BadgeCheck className="h-5 w-5 shrink-0 text-cyan-100" />
                   <p className="text-sm leading-relaxed">
-                    <span className="font-black">דוח סופי מרשים, מודרני וקריא</span> — ניתן להורדה כ-PDF,
-                    עם ההמלצות שצפו במהלך המילוי: אם יחס ההחזר קרוב לגבול, אם המימון קרוב לתקרה,
+                    <span className="font-black">הדוח נשמר בתהליך ומלווה אתכם לשלבים הבאים</span> — עם
+                    ההמלצות שצפו במהלך המילוי: אם יחס ההחזר קרוב לגבול, אם המימון קרוב לתקרה,
                     ואיזה בנק לכלול בהגשה.
                   </p>
                 </motion.div>
@@ -573,93 +496,5 @@ function CriticalNote() {
       תקינים ומלאים — ולהבנה מלאה של איך ייראה המצב הכלכלי של משק הבית שלכם אחרי לקיחת
       המשכנתא.
     </p>
-  );
-}
-
-/**
- * מה קורה כשיועץ מבצע את השלב.
- *
- * הלקוח מבקש ליווי לפני שהוא יודע מה הוא מקבל, ולכן ההסבר בא לפני הבקשה:
- * פגישת אונליין אחת, שבסופה הדוח בידיו — ומשם הוא ממשיך לבד או עם היועץ.
- */
-function AdvisorIntro({
-  busy,
-  onConfirm,
-  onBack,
-}: {
-  busy: boolean;
-  onConfirm: () => void;
-  onBack: () => void;
-}) {
-  const points = [
-    {
-      icon: <Video className="h-5 w-5" />,
-      title: 'פגישת ייעוץ אונליין',
-      body: 'יועץ משכלנתא ייפגש איתכם אונליין, יקבל מכם את כל הפרטים ויסביר את התהליך מקצה לקצה.',
-    },
-    {
-      icon: <ShieldCheck className="h-5 w-5" />,
-      title: 'כיוון והמלצות',
-      body: 'היועץ יכוון אתכם, יצביע על מה שכדאי לתקן לפני הפנייה לבנק, וימליץ על הדרך המתאימה לכם.',
-    },
-    {
-      icon: <FileCheck2 className="h-5 w-5" />,
-      title: 'הדוח של השלב',
-      body: 'בסוף הפגישה היועץ יפיק את דוח הפרופיל הפיננסי — אותו תוצר בדיוק שמתקבל בביצוע עצמי.',
-    },
-    {
-      icon: <ArrowLeft className="h-5 w-5" />,
-      title: 'ממשיכים לבחירתכם',
-      body: 'עם הדוח אפשר להמשיך לבניית התמהיל או להגשת האישור העקרוני — לבד בפלטפורמה, או בסיוע היועץ.',
-    },
-  ];
-
-  return (
-    <motion.section {...reveal} className="rounded-3xl border-2 border-violet-300 bg-white p-6 shadow-sm md:p-8">
-      <header className="mb-6 text-center">
-        <Badge icon={<Sparkles className="h-4 w-4" />} text="ליווי יועץ משכלנתא" tone="bg-violet-600" />
-        <h3 className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">
-          איך היועץ מטפל בשלב הזה
-        </h3>
-        <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
-          זו בקשה חינמית. היועץ יחזור אליכם לתיאום פגישה, והתשלום מסודר מולו בהמשך — רק אם
-          תחליטו להמשיך.
-        </p>
-      </header>
-
-      <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2">
-        {points.map((point) => (
-          <li key={point.title} className="rounded-2xl border-2 border-violet-200 bg-violet-50/40 p-4">
-            <p className="flex items-center gap-2 text-[15px] font-black text-slate-900">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
-                {point.icon}
-              </span>
-              {point.title}
-            </p>
-            <p className="mt-2 text-[15px] font-medium leading-relaxed text-slate-600">{point.body}</p>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onConfirm}
-          className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-8 py-3.5 text-base font-black text-white shadow-lg shadow-violet-600/25 transition-transform hover:-translate-y-0.5 hover:bg-violet-700 disabled:opacity-60"
-        >
-          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-          העבירו פנייה ליועץ
-        </button>
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3.5 text-base font-black text-slate-700 transition-colors hover:bg-slate-50"
-        >
-          <ArrowRight className="h-4 w-4" />
-          חזרה
-        </button>
-      </div>
-    </motion.section>
   );
 }

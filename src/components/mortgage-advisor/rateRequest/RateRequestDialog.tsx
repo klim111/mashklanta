@@ -25,7 +25,7 @@ import {
 import { MORTGAGE_BANKS } from '../types';
 import type { MixSummary, WorkspaceMix } from '../engine';
 import { buildRateRequestDocument } from './document';
-import type { RateRequestDetails } from './document';
+import type { RateRequestDetails, RateRequestPurpose } from './document';
 import { printRateRequest } from './letter';
 import { downloadRateRequestXlsx } from './excel';
 import { RateRequestLetter } from './RateRequestLetter';
@@ -54,6 +54,15 @@ interface RateRequestDialogProps {
     details: RateRequestDetails;
   };
   onSaved?: () => void;
+  /** מטרת הבקשה — משנה את ניסוח המכתב. ברירת המחדל היא משכנתא חדשה */
+  purpose?: RateRequestPurpose;
+  /** הבנק שבו מנוהלת המשכנתא הקיימת — במיחזור */
+  currentBank?: string;
+  /**
+   * הבנק שאליו הבקשה מופנית, כשהוא ידוע מראש. אז שורת בחירת הבנק אינה מוצגת
+   * כלל: במיחזור הבנק כבר נבחר במסך הראשון של הכלי, ואין טעם להציע את האחרים.
+   */
+  fixedBank?: string;
 }
 
 const fieldClass =
@@ -73,6 +82,9 @@ export function RateRequestDialog({
   disposableIncome,
   existing,
   onSaved,
+  purpose = 'new',
+  currentBank,
+  fixedBank,
 }: RateRequestDialogProps) {
   const { data: session } = useSession();
   const { save, signedIn } = useRateRequests();
@@ -95,6 +107,26 @@ export function RateRequestDialog({
       }
     );
   }, [open, existing, session?.user?.name, session?.user?.email]);
+
+  /*
+    מטרת הבקשה והבנקים שבה אינם נתונים שהמשתמש ממלא כאן — הם מגיעים מהמסך
+    שפתח את החלון. הם נכנסים לפרטים בכל פתיחה, כדי שהמכתב ייבנה נכון גם
+    בבקשה שמורה שנפתחת שוב.
+  */
+  useEffect(() => {
+    if (!open) return;
+    setDetails((current) => {
+      const next: RateRequestDetails = { ...current };
+      if (purpose === 'refinance') next.purpose = 'refinance';
+      if (currentBank?.trim()) next.currentBank = currentBank.trim();
+      if (fixedBank?.trim()) next.bankName = fixedBank.trim();
+      const changed =
+        next.purpose !== current.purpose ||
+        next.currentBank !== current.currentBank ||
+        next.bankName !== current.bankName;
+      return changed ? next : current;
+    });
+  }, [open, purpose, currentBank, fixedBank]);
 
   // ההכנסה הפנויה נטענת אחרי הפתיחה, ולכן היא נכנסת לפרטים ברגע שהיא מגיעה.
   // בבקשה שמורה נשמר הערך שהיה בזמן ההפקה, ולכן הוא לא נדרס.
@@ -150,15 +182,33 @@ export function RateRequestDialog({
         <DialogHeader className="shrink-0 pr-7">
           <DialogTitle className="flex items-center gap-2">
             <Gavel className="h-5 w-5 text-blue-600" />
-            הצעת התמהיל למיקוח מול הבנקים
+            {purpose === 'refinance'
+              ? 'בקשת הצעת ריביות למיחזור המשכנתא'
+              : 'הצעת התמהיל למיקוח מול הבנקים'}
           </DialogTitle>
           <DialogDescription>
-            המכתב מציג את התמהיל במלואו — לוח סילוקין, סוג ריבית, תקופה, סכום ואחוז מכלל התמהיל —
-            כשעמודת הריביות ריקה לתמחור הבנק. אפשר לשמור אותו כ-PDF, כאקסל ובאזור האישי.
+            {purpose === 'refinance'
+              ? 'המכתב מבקש מהבנק לתמחר את התמהיל שבניתם למיחזור המשכנתא הקיימת — לוח סילוקין, סוג ריבית, תקופה וסכום לכל מסלול — כשעמודת הריביות ריקה לתמחור הבנק. אפשר לשמור אותו כ-PDF, כאקסל ובאזור האישי.'
+              : 'המכתב מציג את התמהיל במלואו — לוח סילוקין, סוג ריבית, תקופה, סכום ואחוז מכלל התמהיל — כשעמודת הריביות ריקה לתמחור הבנק. אפשר לשמור אותו כ-PDF, כאקסל ובאזור האישי.'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="shrink-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          {/*
+            כשהבנק ידוע מראש (מיחזור — הבנק שנבחר במסך הראשון של הכלי) המכתב
+            מופנה אליו, ואין שורה של בחירה בין הבנקים.
+          */}
+          {fixedBank ? (
+            <div className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
+                <Building2 className="h-3.5 w-3.5" />
+                לכבוד
+              </span>
+              <span className="rounded-full border border-blue-500 bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                בנק {fixedBank}
+              </span>
+            </div>
+          ) : (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
               <Building2 className="h-3.5 w-3.5" />
@@ -190,6 +240,7 @@ export function RateRequestDialog({
               </button>
             ))}
           </div>
+          )}
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <label className="space-y-1">

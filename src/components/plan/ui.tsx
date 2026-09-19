@@ -31,15 +31,24 @@ export function Field({
   hint,
   children,
   htmlFor,
+  emphasis = false,
 }: {
   label: string;
   hint?: string;
   children: ReactNode;
   htmlFor?: string;
+  /** כותרת ממורכזת ובפונט גדול — לשדה שהוא עצמו לב האזור */
+  emphasis?: boolean;
 }) {
   return (
     <label className="block" htmlFor={htmlFor}>
-      <span className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+      <span
+        className={`mb-1.5 flex items-center gap-1.5 ${
+          emphasis
+            ? 'justify-center text-base font-black text-slate-800 md:text-lg'
+            : 'text-xs font-bold text-slate-600'
+        }`}
+      >
         {label}
         {hint && (
           <span className="group/hint relative inline-flex">
@@ -68,6 +77,7 @@ export function NumberField({
   placeholder,
   max,
   integer = true,
+  emphasis = false,
 }: {
   label: string;
   hint?: string;
@@ -78,11 +88,13 @@ export function NumberField({
   max?: number;
   /** ברירת מחדל: סכום שלם. ריבית ואחוזים צריכים נקודה עשרונית */
   integer?: boolean;
+  /** כותרת ממורכזת ובפונט גדול */
+  emphasis?: boolean;
 }) {
   const id = useId();
 
   return (
-    <Field label={label} hint={hint} htmlFor={id}>
+    <Field label={label} hint={hint} htmlFor={id} emphasis={emphasis}>
       <div className="relative">
         <NumericInput
           id={id}

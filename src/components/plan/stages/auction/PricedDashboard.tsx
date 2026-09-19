@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Building2, Crown, Gavel } from 'lucide-react';
+import { BadgePercent, Building2, Crown, Gavel } from 'lucide-react';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { MixResult } from '@/components/mortgage-advisor/engine';
 import { MixRow } from '@/components/mortgage-advisor/workspace/MixRow';
@@ -24,6 +24,8 @@ export function PricedDashboard({
   signedMixKey,
   onSelectForSigning,
   emptyHint,
+  offerBadge,
+  signLabel,
 }: {
   featured: PricedMix | null;
   /** התמהיל כפי שתוכנן — הבסיס שמולו נמדדת ההצעה בגרפים */
@@ -34,6 +36,13 @@ export function PricedDashboard({
   onSelectForSigning?: (mixId: string) => void;
   /** מה נאמר כשעדיין אין הצעה להציג */
   emptyHint: string;
+  /**
+   * התווית שעל ההצעה. ברירת המחדל היא "ההצעה הזולה ביותר" על ההצעה הזוכה;
+   * במיחזור, שבו מתמחר בנק אחד, התווית מתארת את ההצעה עצמה ומוצגת על כל הצעה.
+   */
+  offerBadge?: { label: string; everyOffer?: boolean };
+  /** הכיתוב על כפתור בחירת ההצעה ועל התווית שלה אחרי הבחירה */
+  signLabel?: { badge: string; button: string; confirm: string };
 }) {
   const [focusTrackId, setFocusTrackId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
@@ -59,15 +68,19 @@ export function PricedDashboard({
             <Building2 className="h-4 w-4" />
             בנק {featured.bank}
           </span>
-          {featured.mix.id === winnerId && (
+          {(offerBadge?.everyOffer || featured.mix.id === winnerId) && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-sm font-black text-white">
-              <Crown className="h-4 w-4" />
-              ההצעה הזולה ביותר
+              {offerBadge?.everyOffer ? (
+                <BadgePercent className="h-4 w-4" />
+              ) : (
+                <Crown className="h-4 w-4" />
+              )}
+              {offerBadge?.label ?? 'ההצעה הזולה ביותר'}
             </span>
           )}
           {featured.mix.id === signedMixKey && (
             <span className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-black text-white">
-              נבחר לחתימה
+              {signLabel?.badge ?? 'נבחר לחתימה'}
             </span>
           )}
         </div>
@@ -110,7 +123,8 @@ export function PricedDashboard({
               onClick={() => {
                 if (
                   window.confirm(
-                    'לבחור את ההצעה הזו כתמהיל הסופי לחתימה? היא תופיע באזור האישי כ׳המשכנתא שלי׳, ומולה יאומתו מסמכי הבנק בשלב החתימה.'
+                    signLabel?.confirm ??
+                      'לבחור את ההצעה הזו כתמהיל הסופי לחתימה? היא תופיע באזור האישי כ׳המשכנתא שלי׳, ומולה יאומתו מסמכי הבנק בשלב החתימה.'
                   )
                 ) {
                   onSelectForSigning(featured.mix.id);
@@ -119,7 +133,7 @@ export function PricedDashboard({
               className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-black text-white transition-colors hover:bg-slate-700"
             >
               <Gavel className="h-4 w-4" />
-              בחר תמהיל זה כתמהיל סופי לחתימה
+              {signLabel?.button ?? 'בחר תמהיל זה כתמהיל סופי לחתימה'}
             </button>
           </div>
         )}

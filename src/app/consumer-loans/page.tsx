@@ -1,12 +1,21 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import { LoanPlanner } from '@/components/consumer-loans/LoanPlanner';
+import { LoanWorkspace } from '@/components/consumer-loans/LoanWorkspace';
 import NavBar from '@/components/ui/navbar';
 
 export const metadata: Metadata = {
-  title: 'מתכנן הלוואות צרכניות | משכלנתא',
-  description: 'כלי מתקדם לתכנון, השוואה ואופטימיזציה של הלוואות צרכניות עם חישובי אנונה מדויקים',
-  keywords: ['הלוואות צרכניות', 'מחשבון הלוואה', 'השוואת הלוואות', 'אופטימיזציה פיננסית', 'אנונה'],
+  title: 'ניתוח הלוואות צרכניות וכלכלת המשפחה | משכלנתא',
+  description:
+    'פאנל שליטה ודאשבורד חי לכל ההלוואות שלכם: החזר חודשי, ריבית עד הסוף, יחס החזר מההכנסה, תרחישי איחוד ופירעון מוקדם — וליווי של יועץ כלכלת המשפחה של משכלנתא',
+  keywords: [
+    'הלוואות צרכניות',
+    'מחשבון הלוואה',
+    'השוואת הלוואות',
+    'איחוד הלוואות',
+    'פירעון מוקדם',
+    'יחס החזר',
+    'כלכלת המשפחה',
+  ],
 };
 
 export default function ConsumerLoansPage() {
@@ -22,7 +31,7 @@ export default function ConsumerLoansPage() {
           </div>
         }
       >
-        <LoanPlanner />
+        <LoanWorkspace />
       </Suspense>
     </>
   );

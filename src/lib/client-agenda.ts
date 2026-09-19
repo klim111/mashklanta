@@ -9,10 +9,18 @@
  * הקובץ טהור — בלי React ובלי Prisma — כדי שאפשר יהיה לבדוק אותו ישירות.
  */
 
-import { journeyStageFor } from '@/data/platform/planStages';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import type { AdvisorMeetingView, AdvisorNoteView } from './advisor-crm';
 import { meetingIsLive } from './advisor-crm';
-import { planStageNumber, preApprovalDocuments, stageIndex } from './mortgage-plan';
+import {
+  REPAYMENT_RATIO_COMFORT,
+  analyzeProfile,
+  flowStages,
+  planFlowOf,
+  planStageNumber,
+  preApprovalDocuments,
+  signingDocumentsProgress,
+} from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import type { ClientTaskView } from './client-tasks';
 import type { EquityCalendarExpense } from './equity-planning';
@@ -29,6 +37,7 @@ export const DASHBOARD_SECTIONS = [
   'overview',
   'agenda',
   'expenses',
+  'documents',
   'rate-requests',
   'tools',
   'settings',
@@ -53,8 +62,47 @@ export interface ClientTask {
   tone: AgendaTone;
   /** מועד, כשיש — ISO */
   due: string | null;
+  /** המועד נקבע על ידי הלקוח, ולכן אפשר לשנות או לבטל אותו */
+  scheduled: boolean;
   stage: PlanStageId | null;
   target: AgendaTarget;
+}
+
+/** מה שהלקוח קבע בעצמו למשימה: מועד ביצוע וסימון "בוצע" */
+export interface ClientTaskState {
+  due: string | null;
+  done: boolean;
+}
+
+/** שלוש הקבוצות שהמשימות מוצגות בהן */
+export type TaskBucket = 'overdue' | 'scheduled' | 'undated';
+
+export interface TaskGroups {
+  overdue: ClientTask[];
+  scheduled: ClientTask[];
+  undated: ClientTask[];
+}
+
+/**
+ * חלוקת המשימות לקבוצות: מה שהמועד שלו עבר ולא בוצע, מה שנקבע לו מועד עתידי,
+ * ומה שעדיין בלי תאריך. זה הסדר שבו הן מוצגות.
+ */
+export function groupTasks(tasks: ClientTask[], now = new Date()): TaskGroups {
+  const groups: TaskGroups = { overdue: [], scheduled: [], undated: [] };
+  tasks.forEach((task) => {
+    if (!task.due) {
+      groups.undated.push(task);
+      return;
+    }
+    const at = new Date(task.due).getTime();
+    if (Number.isNaN(at)) groups.undated.push(task);
+    else if (at < now.getTime()) groups.overdue.push(task);
+    else groups.scheduled.push(task);
+  });
+  const byDue = (a: ClientTask, b: ClientTask) => (a.due ?? '').localeCompare(b.due ?? '');
+  groups.overdue.sort(byDue);
+  groups.scheduled.sort(byDue);
+  return groups;
 }
 
 export type CalendarEventKind = 'meeting' | 'deadline' | 'task' | 'expense';
@@ -107,6 +155,8 @@ export interface AgendaInput {
   clientTasks?: ClientTaskView[];
   /** ההוצאות מכלי תכנון ההוצאות — מועד וסכום לכל תשלום מתוכנן */
   equityExpenses?: EquityCalendarExpense[];
+  /** מועדים וסימונים שהלקוח קבע למשימות הנגזרות, לפי מזהה המשימה */
+  taskStates: Record<string, ClientTaskState>;
 }
 
 export const EMPTY_AGENDA_INPUT: AgendaInput = {
@@ -118,6 +168,7 @@ export const EMPTY_AGENDA_INPUT: AgendaInput = {
   advisorStages: {},
   clientTasks: [],
   equityExpenses: [],
+  taskStates: {},
 };
 
 const KIND_HINTS: Record<ClientTaskView['kind'], string> = {
@@ -155,13 +206,15 @@ function planLabel(plan: AgendaPlan): string {
  * משמש רק כשעדיין אין אף אחד מהם.
  */
 export function planHeadline(
-  plan: Pick<AgendaPlan, 'name' | 'propertyAddress' | 'mortgageAmount'>
+  plan: Pick<AgendaPlan, 'name' | 'propertyAddress' | 'mortgageAmount'> & { kind?: 'NEW' | 'REFINANCE' }
 ): string {
   const place = plan.propertyAddress?.trim();
   const amount =
     plan.mortgageAmount && plan.mortgageAmount > 0
       ? `משכנתא ₪${Math.round(plan.mortgageAmount).toLocaleString('he-IL')}`
       : null;
+  // תהליך מיחזור אינו קשור לנכס חדש — שמו ("מיחזור משכנתא · בנק") הוא הכותרת
+  if (plan.kind === 'REFINANCE') return amount ? `${plan.name} · ${amount}` : plan.name;
   if (place && amount) return `${place} · ${amount}`;
   return place || amount || plan.name;
 }
@@ -206,6 +259,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
         hint: `${meeting.advisorName} הציע/ה מועד. אישור כאן מכניס את הפגישה ליומן של שניכם.`,
         tone: 'urgent',
         due: meeting.startsAt,
+        scheduled: false,
         stage: meeting.stage,
         target: { kind: 'section', section: 'agenda' },
       });
@@ -215,9 +269,13 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
     const label = planLabel(plan);
     const advisorOwned = new Set(input.advisorStages[plan.id] ?? []);
     const stage = plan.currentStage;
-    const journey = journeyStageFor(stage);
-    const stageNumber = planStageNumber(stage);
-    const missingDeal = !plan.propertyAddress || !plan.propertyValue || !plan.mortgageAmount;
+    const flow = planFlowOf(plan.data);
+    const journey = planStageMeta(stage, flow);
+    const stageNumber = planStageNumber(stage, flow);
+    // במיחזור אין נכס חדש להשלים — הנכס והמשכנתא כבר קיימים
+    const missingDeal =
+      flow.kind !== 'REFINANCE' &&
+      (!plan.propertyAddress || !plan.propertyValue || !plan.mortgageAmount);
 
     if (missingDeal) {
       tasks.push({
@@ -226,6 +284,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
         hint: 'כתובת, מחיר הנכס וגובה המשכנתא. בלעדיהם התהליך לא יכול להתקדם לבנק.',
         tone: 'action',
         due: null,
+        scheduled: false,
         stage: 'ANALYSIS',
         target: { kind: 'href', href: planHref(plan) },
       });
@@ -242,6 +301,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
           hint: 'צריך להגיש בקשה מחודשת לבנק לפני שממשיכים למכרז או לחתימה.',
           tone: 'urgent',
           due: validUntil,
+          scheduled: false,
           stage: 'APPLICATIONS',
           target: { kind: 'href', href: planHref(plan, 'APPLICATIONS') },
         });
@@ -252,22 +312,38 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
           hint: 'סגרו את המכרז והחתימה לפני שהאישור פג — או בקשו הארכה מהבנק.',
           tone: 'urgent',
           due: validUntil,
+          scheduled: false,
           stage: 'APPLICATIONS',
           target: { kind: 'href', href: planHref(plan, 'AUCTION') },
         });
       }
     }
 
-    if (advisorOwned.has(stage)) {
+    /*
+      הגדיר את בעלות הנכס כבר בפרופיל — מרגע זה רשימת המסמכים של החתימה ידועה,
+      והמשימה לאסוף אותם נפתחת בלי תאריך: איסוף מוקדם מקצר את מועד החתימה.
+    */
+    const signingDocs = signingDocumentsProgress(plan.data.SIGNING);
+    if (signingDocs && signingDocs.open > 0) {
       tasks.push({
-        id: `advisor:${plan.id}:${stage}`,
-        title: `היועץ מטפל בשלב ${stageNumber} · ${journey.shortTitle} — ${label}`,
-        hint: 'אין מה לעשות מצדכם עכשיו. כשהיועץ יסיים או יקבע פגישה, זה יופיע כאן.',
-        tone: 'info',
+        id: `signing-documents:${plan.id}`,
+        title: `השלימו את המסמכים לטובת החתימה הסופית בבנק — ${label}`,
+        hint: `${signingDocs.open} מתוך ${signingDocs.total} מסמכים בתרחיש הבעלות שהגדרתם עדיין חסרים. איסוף מוקדם מקצר את הזמנים בחתימה.`,
+        tone: 'action',
         due: null,
-        stage,
-        target: { kind: 'href', href: planHref(plan, stage) },
+        scheduled: false,
+        stage: 'SIGNING',
+        target: { kind: 'href', href: planHref(plan, 'SIGNING') },
       });
+    }
+
+    /*
+      שלב שהיועץ מטפל בו אינו משימה של הלקוח — אין מה לעשות מצדו — ולכן הוא
+      אינו נכנס לרשימת המשימות אלא מוצג כהודעה בכרטיס «המשכנתא שלי».
+      ראו advisorStageNotices.
+    */
+    if (advisorOwned.has(stage)) {
+      // אין משימות ללקוח בשלב הזה
     } else {
       if (stage === 'APPLICATIONS') {
         const open = preApprovalDocuments(plan.data).filter(
@@ -280,6 +356,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
             hint: 'הבנק לא פותח בקשה בלי התיק המלא. סמנו כל מסמך שאספתם בשלב 3.',
             tone: 'action',
             due: null,
+            scheduled: false,
             stage: 'APPLICATIONS',
             target: { kind: 'href', href: planHref(plan, 'APPLICATIONS') },
           });
@@ -293,6 +370,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
           hint: `יש ${plan.data.AUCTION.offers.length} הצעות. עם פחות משלוש קשה להתמחר באמת.`,
           tone: 'action',
           due: null,
+          scheduled: false,
           stage: 'AUCTION',
           target: { kind: 'href', href: planHref(plan, 'AUCTION') },
         });
@@ -301,9 +379,10 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       tasks.push({
         id: `continue:${plan.id}`,
         title: `המשיכו בשלב ${stageNumber} · ${journey.shortTitle} — ${label}`,
-        hint: journey.tagline,
+        hint: flow.kind === 'REFINANCE' ? journey.hint : journeyStageFor(stage).tagline,
         tone: 'action',
         due: null,
+        scheduled: false,
         stage,
         target: { kind: 'href', href: planHref(plan) },
       });
@@ -321,6 +400,8 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
         hint: [KIND_HINTS[task.kind], task.details ?? ''].filter(Boolean).join(' · '),
         tone: overdue ? 'urgent' : 'action',
         due: task.dueAt,
+        /* משימה שהלקוח הוסיף נושאת את המועד שהוא קבע לה מלכתחילה */
+        scheduled: Boolean(task.dueAt),
         stage: task.stage,
         target: clientTaskTarget(task, input.plans),
       });
@@ -337,6 +418,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
           : 'כשהבנק מחזיר הצעה, מזינים אותה כאן ומשווים מול שאר ההצעות.',
         tone: 'action',
         due: null,
+        scheduled: false,
         stage: 'AUCTION',
         target: { kind: 'section', section: 'rate-requests' },
       });
@@ -352,6 +434,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       hint: 'תמהיל שמשויך לנכס הופך למשכנתא בתהליך, עם כל חמשת השלבים.',
       tone: 'info',
       due: null,
+      scheduled: false,
       stage: 'MIX',
       target: { kind: 'section', section: 'rate-requests' },
     });
@@ -366,6 +449,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       hint: latestNote.body.length > 90 ? `${latestNote.body.slice(0, 90)}…` : latestNote.body,
       tone: 'info',
       due: latestNote.createdAt,
+      scheduled: false,
       stage: latestNote.stage,
       target: plan
         ? { kind: 'href', href: planHref(plan, latestNote.stage) }
@@ -373,8 +457,19 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
     });
   }
 
+  /*
+    מועד שהלקוח קבע גובר על המועד הנגזר, ומשימה שהוא סימן כבוצעה יורדת
+    מהרשימה — גם אם הנתונים שממנה היא נגזרה עדיין פתוחים.
+  */
+  const scheduled = tasks.flatMap((task) => {
+    const state = input.taskStates[task.id];
+    if (state?.done) return [];
+    if (!state || state.due === undefined || state.due === null) return [task];
+    return [{ ...task, due: state.due, scheduled: true }];
+  });
+
   const rank: Record<AgendaTone, number> = { urgent: 0, action: 1, info: 2 };
-  return tasks.sort((a, b) => {
+  return scheduled.sort((a, b) => {
     if (rank[a.tone] !== rank[b.tone]) return rank[a.tone] - rank[b.tone];
     if (a.due && b.due) return a.due.localeCompare(b.due);
     if (a.due) return -1;
@@ -383,9 +478,79 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
   });
 }
 
-/** כל מה שיש לו מועד: פגישות, תוקף אישור עקרוני, מועד חתימה */
-export function buildCalendarEvents(input: AgendaInput): CalendarEvent[] {
+/** המלצה אחת שמוצגת מתחת לשורת המשכנתא */
+export interface PlanRecommendation {
+  /** מפתח יציב לשמירת הסימון "בוצע" */
+  key: string;
+  title: string;
+  hint: string;
+  tone: 'info' | 'warning';
+}
+
+/** קרוב לתקרה — בטווח של חמש נקודות אחוז ממנה, או מעליה */
+const NEAR_LIMIT_POINTS = 5;
+
+/**
+ * ההערות שמוצגות ללקוח מתחת למשכנתא שלו.
+ *
+ * הראשונה קבועה — ליווי עורך דין מקרקעין נדרש בכל עסקה. השאר נגזרות
+ * מהפרופיל: קרוב לתקרת המימון כדאי שמאות מוקדמת, וקרוב ליחס ההחזר המרבי כדאי
+ * לבדוק הגדלת ההכנסה הפנויה לפני שפונים לבנק.
+ */
+export function planRecommendations(plan: AgendaPlan): PlanRecommendation[] {
+  const recommendations: PlanRecommendation[] = [
+    {
+      key: `${plan.id}:lawyer`,
+      title: 'פנו לעורך דין מקרקעין לליווי העסקה',
+      hint: 'עורך הדין בודק את הזכויות בנכס, מנסח את החוזה ומלווה את הרישום מול הבנק.',
+      tone: 'info',
+    },
+  ];
+
+  const analysis = analyzeProfile(plan.data.ANALYSIS);
+
+  if (analysis.ltv !== null && analysis.ltv >= analysis.maxLtv - NEAR_LIMIT_POINTS) {
+    recommendations.push({
+      key: `${plan.id}:appraisal`,
+      title: 'קבעו שמאות מוקדמת לנכס',
+      hint: `אחוז המימון שלכם (${Math.round(analysis.ltv)}%) קרוב לתקרה של ${analysis.maxLtv}%. שמאות נמוכה מהמחיר תקטין את המשכנתא — עדיף לדעת מראש.`,
+      tone: 'warning',
+    });
+  }
+
+  if (analysis.repaymentRatio !== null && analysis.repaymentRatio >= REPAYMENT_RATIO_COMFORT) {
+    recommendations.push({
+      key: `${plan.id}:free-income`,
+      title: 'בדקו אפשרות להגדלת ההכנסה הפנויה לפני הפנייה לבנק',
+      hint: `יחס ההחזר שלכם (${Math.round(analysis.repaymentRatio)}%) קרוב לתקרה. סגירת הלוואה קיימת או הוספת מקור הכנסה משפרות את התיק בעיני החיתום.`,
+      tone: 'warning',
+    });
+  }
+
+  return recommendations;
+}
+
+/**
+ * כל מה שיש לו מועד: פגישות, תוקף אישור עקרוני, מועד חתימה — ובנוסף כל משימה
+ * שהלקוח קבע לה מועד בעצמו, כדי שהיא תשובץ בלוח השנה לצד הפגישות.
+ */
+export function buildCalendarEvents(input: AgendaInput, tasks: ClientTask[] = []): CalendarEvent[] {
   const events: CalendarEvent[] = [];
+
+  /* משימות שהלקוח הוסיף כבר נכנסות ללוח מ-`input.clientTasks`, ולכן מדולגות */
+  tasks
+    .filter((task) => task.scheduled && task.due && !clientTaskIdOf(task.id))
+    .forEach((task) => {
+      events.push({
+        id: `task:${task.id}`,
+        kind: 'task',
+        at: task.due as string,
+        title: task.title,
+        subtitle: 'משימה שקבעתם',
+        confirmed: true,
+        target: task.target,
+      });
+    });
 
   input.meetings
     .filter((meeting) => meetingIsLive(meeting.status))
@@ -495,8 +660,13 @@ export interface PlanStatusSummary {
   createdAt: string;
   currentStage: PlanStageId;
   stageNumber: number;
-  /** מצב כל אחד מחמשת השלבים לפי הסדר */
+  /** מצב כל אחד מהשלבים לפי הסדר של סוג התהליך */
   stages: PlanStageStatus[];
+  /** השלבים של התהליך, עם הכותרת הקצרה של כל אחד — לפס השלבים בכרטיס */
+  stageIds: PlanStageId[];
+  stageTitles: string[];
+  /** משכנתא חדשה או מיחזור */
+  kind: 'NEW' | 'REFINANCE';
   completedStages: number;
   advisorStage: boolean;
   href: string;
@@ -504,19 +674,80 @@ export interface PlanStatusSummary {
 
 export function summarizePlan(plan: AgendaPlan, advisorStages: PlanStageId[] = []): PlanStatusSummary {
   const byStage = new Map(plan.stages.map((row) => [row.stage, row.status]));
-  const order = (['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING'] as PlanStageId[]).sort(
-    (a, b) => stageIndex(a) - stageIndex(b)
-  );
+  const flow = planFlowOf(plan.data);
+  const order = [...flowStages(flow)];
   const stages = order.map((stage) => byStage.get(stage) ?? 'PENDING');
   return {
     id: plan.id,
-    label: planHeadline(plan),
+    label: planHeadline({ ...plan, kind: flow.kind }),
     createdAt: plan.createdAt,
     currentStage: plan.currentStage,
-    stageNumber: planStageNumber(plan.currentStage),
+    stageNumber: planStageNumber(plan.currentStage, flow),
     stages,
+    stageIds: order,
+    stageTitles: order.map((stage) => planStageMeta(stage, flow).shortTitle),
+    kind: flow.kind,
     completedStages: stages.filter((status) => status === 'COMPLETED').length,
     advisorStage: advisorStages.includes(plan.currentStage),
     href: planHref(plan),
   };
+}
+
+
+// ───────────────────────── מה שהיועץ מטפל בו ─────────────────────────
+
+/**
+ * הודעה על שלב שהיועץ מטפל בו — לכרטיס «המשכנתא שלי».
+ *
+ * זו אינה משימה של הלקוח, ולכן היא אינה יושבת ברשימת המשימות: אין מה לעשות
+ * מצדו. כשהשלב נסגר ההודעה נשארת, בנוסח «היועץ סיים לטפל», ומצביעה על השלב
+ * שהלקוח עומד בו עכשיו.
+ */
+export interface AdvisorStageNotice {
+  id: string;
+  planId: string;
+  /** שם התהליך, כשיש יותר ממשכנתא אחת */
+  planLabel: string;
+  stage: PlanStageId;
+  stageNumber: number;
+  stageTitle: string;
+  /** היועץ כבר סיים את השלב */
+  done: boolean;
+  /** השלב שהלקוח נמצא בו עכשיו */
+  currentStage: PlanStageId;
+  currentStageNumber: number;
+  currentStageTitle: string;
+  href: string;
+}
+
+export function advisorStageNotices(input: AgendaInput): AdvisorStageNotice[] {
+  const notices: AdvisorStageNotice[] = [];
+
+  activePlans(input.plans).forEach((plan) => {
+    const owned = input.advisorStages[plan.id] ?? [];
+    if (owned.length === 0) return;
+    const label = planLabel(plan);
+    const current = plan.currentStage;
+    const flow = planFlowOf(plan.data);
+    const currentJourney = planStageMeta(current, flow);
+
+    flowStages(flow).filter((stage) => owned.includes(stage)).forEach((stage) => {
+      const journey = planStageMeta(stage, flow);
+      notices.push({
+        id: `advisor-stage:${plan.id}:${stage}`,
+        planId: plan.id,
+        planLabel: label,
+        stage,
+        stageNumber: planStageNumber(stage, flow),
+        stageTitle: journey.shortTitle,
+        done: plan.stages.some((row) => row.stage === stage && row.status === 'COMPLETED'),
+        currentStage: current,
+        currentStageNumber: planStageNumber(current, flow),
+        currentStageTitle: currentJourney.shortTitle,
+        href: planHref(plan, stage),
+      });
+    });
+  });
+
+  return notices;
 }

@@ -1,21 +1,23 @@
 'use client';
 
 import { Lock } from 'lucide-react';
-import { PLAN_STAGES, stageIndex } from '@/lib/mortgage-plan';
-import type { PlanStageId } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { NEW_PLAN_FLOW, flowStages, stageIndex } from '@/lib/mortgage-plan';
+import type { PlanFlow, PlanStageId } from '@/lib/mortgage-plan';
+import { planStageMeta } from '@/data/platform/planStages';
 
 export function StageLockedPreview({
   stage,
   unfinished,
   onSelectStage,
+  flow = NEW_PLAN_FLOW,
 }: {
   stage: PlanStageId;
   unfinished: PlanStageId[];
   onSelectStage: (stage: PlanStageId) => void;
+  flow?: PlanFlow;
 }) {
-  const journey = journeyStageFor(stage);
-  const firstUnfinished = unfinished[0] ?? PLAN_STAGES[0];
+  const journey = planStageMeta(stage, flow);
+  const firstUnfinished = unfinished[0] ?? flowStages(flow)[0];
 
   return (
     <div className="mb-5 overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white shadow-sm">
@@ -31,9 +33,9 @@ export function StageLockedPreview({
           </p>
           <div className="mt-3 rounded-2xl border border-amber-100 bg-white/80 p-3">
             <div className="text-[11px] font-black text-slate-500">מה הכלי בשלב הזה יודע לעשות</div>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">{journey.selfServiceSummary}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">{journey.summary}</p>
             <ul className="mt-2 space-y-1">
-              {journey.selfServiceSteps.map((step) => (
+              {journey.steps.map((step) => (
                 <li key={step} className="text-xs leading-relaxed text-slate-500">
                   • {step}
                 </li>
@@ -42,7 +44,7 @@ export function StageLockedPreview({
           </div>
           <ul className="mt-3 space-y-2">
             {unfinished.map((item) => {
-              const info = journeyStageFor(item);
+              const info = planStageMeta(item, flow);
               return (
                 <li key={item}>
                   <button
@@ -51,7 +53,7 @@ export function StageLockedPreview({
                     className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-950 transition-colors hover:border-amber-400 hover:bg-amber-50"
                   >
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-black">
-                      {stageIndex(item) + 1}
+                      {stageIndex(item, flow) + 1}
                     </span>
                     {info.shortTitle} — טרם הושלם
                   </button>

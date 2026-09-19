@@ -8,7 +8,13 @@ import {
   profileToJson,
 } from '@/lib/client-profile';
 import type { ClientProfile } from '@/lib/client-profile';
-import { EMPLOYMENT_LABELS, EMPLOYMENT_TYPES, sumProfileLoans } from '@/lib/mortgage-plan';
+import {
+  EMPLOYMENT_LABELS,
+  EMPLOYMENT_TYPES,
+  borrowerLabels,
+  emptyStageData,
+  sumProfileLoans,
+} from '@/lib/mortgage-plan';
 import type { EmploymentType, ProfileLoan } from '@/lib/mortgage-plan';
 import { NumberField, SegmentedField, TextField } from '@/components/plan/ui';
 
@@ -59,6 +65,8 @@ export function SettingsPanel() {
   }
 
   const couple = profile.household === 'COUPLE';
+  /* השמות שהוזנו מחליפים את «לווה 1» ו«לווה 2» גם כאן */
+  const names = borrowerLabels({ ...emptyStageData('ANALYSIS'), ...profile });
   const patch = (next: Partial<ClientProfile>) => {
     setProfile((current) => {
       if (!current) return current;
@@ -169,12 +177,16 @@ export function SettingsPanel() {
 
           <div className={`grid gap-4 ${couple ? 'lg:grid-cols-2' : ''}`}>
             <BorrowerBlock
-              title={couple ? 'לווה 1' : 'הפרטים שלי'}
+              title={couple ? names.first : names.hasFirst ? names.first : 'הפרטים שלי'}
+              firstName={profile.firstName}
+              lastName={profile.lastName}
               age={profile.age}
               income={profile.income}
               bank={profile.primaryBank}
               employment={profile.employmentType}
               loans={profile.borrowerLoans}
+              onFirstName={(firstName) => patch({ firstName })}
+              onLastName={(lastName) => patch({ lastName })}
               onAge={(age) => patch({ age })}
               onIncome={(income) => patch({ income })}
               onBank={(primaryBank) => patch({ primaryBank })}
@@ -183,12 +195,16 @@ export function SettingsPanel() {
             />
             {couple && (
               <BorrowerBlock
-                title="לווה 2"
+                title={names.second}
+                firstName={profile.partnerFirstName}
+                lastName={profile.partnerLastName}
                 age={profile.partnerAge}
                 income={profile.partnerIncome}
                 bank={profile.partnerPrimaryBank}
                 employment={profile.partnerEmploymentType}
                 loans={profile.partnerLoans}
+                onFirstName={(partnerFirstName) => patch({ partnerFirstName })}
+                onLastName={(partnerLastName) => patch({ partnerLastName })}
                 onAge={(partnerAge) => patch({ partnerAge })}
                 onIncome={(partnerIncome) => patch({ partnerIncome })}
                 onBank={(partnerPrimaryBank) => patch({ partnerPrimaryBank })}
@@ -247,11 +263,15 @@ export function SettingsPanel() {
 
 function BorrowerBlock({
   title,
+  firstName,
+  lastName,
   age,
   income,
   bank,
   employment,
   loans,
+  onFirstName,
+  onLastName,
   onAge,
   onIncome,
   onBank,
@@ -259,11 +279,15 @@ function BorrowerBlock({
   onLoans,
 }: {
   title: string;
+  firstName: string;
+  lastName: string;
   age: number | null;
   income: number | null;
   bank: string | null;
   employment: EmploymentType | null;
   loans: ProfileLoan[];
+  onFirstName: (value: string) => void;
+  onLastName: (value: string) => void;
   onAge: (value: number | null) => void;
   onIncome: (value: number | null) => void;
   onBank: (value: string | null) => void;
@@ -274,6 +298,10 @@ function BorrowerBlock({
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
       <h4 className="mb-4 text-sm font-black text-slate-900">{title}</h4>
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <TextField label="שם פרטי" value={firstName} onChange={onFirstName} />
+        <TextField label="שם משפחה" value={lastName} onChange={onLastName} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <NumberField label="הכנסה חודשית נטו" value={income} onChange={onIncome} suffix="₪" />
         <NumberField label="גיל" value={age} onChange={onAge} max={90} />

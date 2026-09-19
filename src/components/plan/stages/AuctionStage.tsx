@@ -3,12 +3,13 @@
 import { useEffect, useMemo } from 'react';
 import { AlertCircle, BadgePercent, Loader2 } from 'lucide-react';
 import { banksWithPreApproval } from '@/lib/mortgage-plan';
-import type { AuctionData, PlanData, SignedMixChoice } from '@/lib/mortgage-plan';
+import type { AuctionData, PlanData, RefinanceMixData, SignedMixChoice } from '@/lib/mortgage-plan';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { AuctionWorkspace } from './auction/AuctionWorkspace';
-import { bankTone, pricedMixesFor } from './auction/pricedMixes';
+import { bankTone, pricedMixesFor, winningPricedMix } from './auction/pricedMixes';
 import { PanelBadge, StagePanel, StageStat } from './auction/ui';
+import { RefinanceOfferComparison } from './refinance/RefinanceOfferComparison';
 import { formatPercent, formatShekel } from '../ui';
 
 /**
@@ -24,13 +25,45 @@ export function AuctionStage({
   onChange,
   planId,
   advisorRun = false,
+  banks,
+  refinance = null,
 }: {
   data: PlanData;
   onChange: (next: AuctionData) => void;
   planId: string;
   /** השלב מטופל על ידי יועץ (בקשת ליווי) — אז מוצג מסך הליווי במקום העצמי */
   advisorRun?: boolean;
+  /**
+   * הבנקים שנפתחים לתמחור, במקום אלה שנתנו אישור עקרוני. במיחזור פנימי זה
+   * הבנק שבו המשכנתא מנוהלת.
+   */
+  banks?: readonly string[];
+  /** בתהליך מיחזור — ההצעה מושווית גם מול המשכנתא המקורית */
+  refinance?: RefinanceMixData | null;
 }) {
+  /*
+    מיחזור פנימי מתנהל מול בנק אחד: אין מכרז, אין "הצעה זולה ביותר" ואין בנקים
+    נוספים לפתוח. מה שיש הוא הצעה אחת, והשאלה היחידה היא איך היא נראית מול
+    המשכנתא הקיימת — ולכן זה גם מה שהכותרות אומרות.
+  */
+  const internal = refinance?.mode === 'INTERNAL';
+  const auctionCopy = internal
+    ? {
+        pricingTitle: 'הזנת ריביות שהתקבלו מהבנק',
+        pricingDescription:
+          'לחצו על הבנק והזינו את הריבית שהוא נקב לכל מסלול בתמהיל למיחזור. אחרי השמירה ההשוואה מול המשכנתא הנוכחית מתעדכנת מיד.',
+        featuredTitle: 'השוואה בין ההצעה של הבנק לבין המשכנתא הנוכחית',
+        featuredDescription:
+          'התמהיל, המספרים והגרפים של ההצעה שהתקבלה מהבנק על התמהיל שבניתם למיחזור.',
+        offerBadge: { label: 'הצעת המיחזור של הבנק', everyOffer: true },
+        signLabel: {
+          badge: 'ההצעה שאושרה למיחזור',
+          button: 'אשרו את ההצעה הזו כמיחזור',
+          confirm:
+            'לאשר את ההצעה הזו כמיחזור שייחתם? היא תופיע באזור האישי כמשכנתא שלכם לאחר המיחזור.',
+        },
+      }
+    : undefined;
   const value = data.AUCTION;
   const finalMixKey = data.MIX.mixKey;
   const { saved, ready, save, remove, refresh } = useSavedMixes({ planId });
@@ -91,7 +124,12 @@ export function AuctionStage({
   const role: 'advised' | 'self' = advisorRun ? 'advised' : 'self';
 
   /* הבנקים שנתנו אישור עקרוני בשלב הקודם — רק מהם אפשר לבקש תמחור בפועל */
-  const approvedBanks = banksWithPreApproval(data);
+  const approvedBanks = banks && banks.length > 0 ? banks : banksWithPreApproval(data);
+
+  /* במיחזור: ההצעה שנבחרה, ואם עוד לא נבחרה — הזולה ביותר, מול המשכנתא המקורית */
+  const priced = pricedMixesFor(saved, finalMixKey);
+  const comparedOffer =
+    (signed ? priced.find((item) => item.mix.id === signed.mixKey) : null) ?? winningPricedMix(priced) ?? null;
 
   if (!ready) {
     return (
@@ -130,15 +168,29 @@ export function AuctionStage({
         onSavePriced={onSavePriced}
         onRemovePriced={role === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
         approvedBanks={approvedBanks}
+        lockBanks={internal}
+        copy={auctionCopy}
         allowSelfEntry
       />
+
+      {refinance && (
+        <RefinanceOfferComparison
+          refinance={refinance}
+          offer={comparedOffer}
+          offerBank={comparedOffer?.bank ?? null}
+        />
+      )}
 
       {signed && (
         <StagePanel
           tone="accent"
-          badge={<PanelBadge tone="emerald">נבחר לחתימה</PanelBadge>}
-          title="המשכנתא שלי"
-          description="זו ההצעה שנבחרה לחתימה. היא מופיעה גם באזור האישי, ומולה מאומתים מסמכי הבנק בשלב החתימה."
+          badge={<PanelBadge tone="emerald">{refinance ? 'ההצעה שאושרה' : 'נבחר לחתימה'}</PanelBadge>}
+          title={refinance ? 'המיחזור שאושר' : 'המשכנתא שלי'}
+          description={
+            refinance
+              ? 'זו ההצעה שאישרתם למיחזור. היא מופיעה גם באזור האישי כמשכנתא שלכם לאחר המיחזור.'
+              : 'זו ההצעה שנבחרה לחתימה. היא מופיעה גם באזור האישי, ומולה מאומתים מסמכי הבנק בשלב החתימה.'
+          }
         >
           <div className={`rounded-2xl border-2 p-4 text-center ${signedTone.border} ${signedTone.surface}`}>
             <div className="mb-3 flex flex-wrap items-center justify-center gap-2">

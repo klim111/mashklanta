@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Calculator, CreditCard, Layers, PiggyBank, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, CreditCard, PiggyBank, RefreshCw, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const FREE_TOOLS: Array<{
@@ -98,14 +98,8 @@ export function FreeToolsSection() {
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
-        <Link
-          href="/mortgage-advisor"
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
-        >
-          <Layers className="h-4 w-4" />
-          בניית תמהיל
-        </Link>
+      {/* מרכז הלמידה לבדו, במרכז — בניית התמהיל אינה חלק מהתכנון המקדים */}
+      <div className="mt-4 flex justify-center">
         <Link
           href="/learn"
           className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"

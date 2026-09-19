@@ -24,6 +24,7 @@ function toMixData(saved: SavedMix, notes: string, asFinal = false): MixData {
     notes,
     isFinal: asFinal || Boolean(saved.isFinal),
     finalLocked: asFinal || Boolean(saved.locked),
+    refinance: null,
   };
 }
 

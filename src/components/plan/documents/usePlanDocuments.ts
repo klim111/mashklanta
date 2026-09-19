@@ -83,7 +83,13 @@ export function usePlanDocuments(planId: string | null) {
    * אחרי שההעלאה הסתיימה נרשמת הרשומה שמקשרת את הקובץ למסמך בתיק.
    */
   const uploadDocument = useCallback(
-    async (key: string, name: string, file: File): Promise<PlanDocumentView | null> => {
+    async (
+      key: string,
+      name: string,
+      file: File,
+      /** השם שבו יישמר הקובץ — ברירת המחדל היא השם שבו הועלה */
+      savedFileName?: string
+    ): Promise<PlanDocumentView | null> => {
       if (!planId) {
         setError('אין תהליך לשייך אליו את המסמך');
         return null;
@@ -97,7 +103,7 @@ export function usePlanDocuments(planId: string | null) {
           planId,
           key,
           name,
-          fileName: file.name,
+          fileName: savedFileName?.trim() || file.name,
           contentType: file.type,
           size: file.size,
           uploadedAt: new Date().toISOString(),
@@ -119,7 +125,8 @@ export function usePlanDocuments(planId: string | null) {
           body: JSON.stringify({
             key,
             name,
-            fileName: file.name,
+            /* הקובץ נשמר בשם שבו הועלה, אלא אם הלקוח שינה אותו לפני השמירה */
+            fileName: savedFileName?.trim() || file.name,
             contentType: file.type,
             size: file.size,
             blobPath: blob.pathname,
@@ -170,4 +177,14 @@ export function usePlanDocuments(planId: string | null) {
 /** הכתובת המאומתת שממנה נצפה מסמך — תקפה רק למשתמש המחובר */
 export function documentContentUrl(planId: string, documentId: string): string {
   return `/api/plans/${planId}/documents/${documentId}/content`;
+}
+
+/** אותה כתובת, אבל כהורדה ולא כצפייה */
+export function documentDownloadUrl(planId: string, documentId: string): string {
+  return `${documentContentUrl(planId, documentId)}?download=1`;
+}
+
+/** הורדת תיק המסמכים כולו כקובץ אחד */
+export function documentsArchiveUrl(planId: string): string {
+  return `/api/plans/${planId}/documents/archive`;
 }

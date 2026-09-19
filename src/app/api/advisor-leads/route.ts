@@ -12,8 +12,8 @@ function clean(value: unknown, max = 200): string {
  * פתיחת פנייה חדשה לליווי.
  *
  * משתמש רשום: השם והמייל נלקחים מהחשבון, והלקוח יכול להוסיף טלפון והערה.
- * אורח מעמוד הבית: חייב להזין שם ומייל, ומוגבל בקצב לפי כתובת — כי הנתיב
- * פתוח לכולם.
+ * אורח: חייב להזין שם ודרך קשר אחת — טלפון או מייל — ומוגבל בקצב לפי כתובת,
+ * כי הנתיב פתוח לכולם.
  */
 export async function POST(req: NextRequest) {
   const session = await getServerAuth();
@@ -53,7 +53,12 @@ export async function POST(req: NextRequest) {
     email,
     notes: clean(body?.notes, 2000) || undefined,
   });
-  if (!lead) return NextResponse.json({ error: 'נדרשים שם וכתובת מייל תקינה' }, { status: 400 });
+  if (!lead) {
+    return NextResponse.json(
+      { error: 'נדרשים שם ודרך קשר אחת — טלפון או כתובת מייל תקינה' },
+      { status: 400 }
+    );
+  }
 
   return NextResponse.json(lead, { status: 201 });
 }

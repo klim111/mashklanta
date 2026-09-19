@@ -16,8 +16,15 @@ import {
   STAGE_DOCUMENTS,
 } from './client-process';
 import type { EmploymentType, StageDocument } from './client-process';
-import { DEAL_TYPES, MAX_LTV_PERCENT, MORTGAGE_BANKS } from '@/components/mortgage-advisor/types';
-import type { DealType } from '@/components/mortgage-advisor/types';
+import {
+  AMORTIZATION_TYPES,
+  DEAL_TYPES,
+  MAX_LTV_PERCENT,
+  MORTGAGE_BANKS,
+  TRACK_TYPES,
+} from '@/components/mortgage-advisor/types';
+import type { DealType, MortgageTrack } from '@/components/mortgage-advisor/types';
+import type { RefinanceGoal } from './refinance';
 import {
   clampCombinedLtv,
   dealTypeForCombinedLtv,
@@ -33,6 +40,7 @@ import {
   ALL_SIGNING_DOCUMENT_KEYS,
   registryOfScenario,
   signingDealType,
+  signingDocumentKey,
   signingRegistry,
   signingScenario,
 } from './signing-documents';
@@ -65,23 +73,86 @@ export function isPlanStage(value: unknown): value is PlanStageId {
   return typeof value === 'string' && (PLAN_STAGES as readonly string[]).includes(value);
 }
 
-export function stageIndex(stage: PlanStageId): number {
-  const index = PLAN_STAGES.indexOf(stage);
+export function stageIndex(stage: PlanStageId, flow: PlanFlow = NEW_PLAN_FLOW): number {
+  const index = flowStages(flow).indexOf(stage);
   return index < 0 ? 0 : index;
 }
 
 /** מספר השלב בתהליך (1–5), לפי הסדר בפועל — לא לפי המספר הקבוע בעמוד "איך זה עובד" */
-export function planStageNumber(stage: PlanStageId): number {
-  return stageIndex(stage) + 1;
+export function planStageNumber(stage: PlanStageId, flow: PlanFlow = NEW_PLAN_FLOW): number {
+  return stageIndex(stage, flow) + 1;
 }
 
 /** שלבים קודמים שטרם נסגרו — בלי אלה אי אפשר באמת לעבוד בשלב הנוכחי */
 export function unfinishedPrerequisites(
   stage: PlanStageId,
-  statuses: Record<PlanStageId, PlanStageStatus>
+  statuses: Record<PlanStageId, PlanStageStatus>,
+  flow: PlanFlow = NEW_PLAN_FLOW
 ): PlanStageId[] {
-  const idx = stageIndex(stage);
-  return PLAN_STAGES.slice(0, idx).filter((prior) => statuses[prior] !== 'COMPLETED');
+  const stages = flowStages(flow);
+  const idx = stageIndex(stage, flow);
+  return stages.slice(0, idx).filter((prior) => statuses[prior] !== 'COMPLETED');
+}
+
+// ───────────────────────────── סוג התהליך ─────────────────────────────
+
+/**
+ * סוג התהליך: משכנתא חדשה, או מיחזור של משכנתא קיימת.
+ *
+ * במיחזור סדר השלבים שונה: בניית התמהיל (כלי המיחזור) היא הראשונה, ואחריה —
+ * לפי סוג המיחזור — או שלושה שלבים קצרים מול הבנק שבו מנוהלת המשכנתא
+ * (פנימי), או אותם חמישה שלבים של משכנתא חדשה (חיצוני). הסוג נגזר מנתוני שלב
+ * התמהיל, ולכן אינו דורש עמודה נפרדת בבסיס הנתונים.
+ */
+export type PlanKind = 'NEW' | 'REFINANCE';
+
+/** פנימי — באותו בנק שבו המשכנתא מנוהלת; חיצוני — בבנק אחר */
+export type RefinanceMode = 'INTERNAL' | 'EXTERNAL';
+export const REFINANCE_MODES = ['INTERNAL', 'EXTERNAL'] as const;
+
+export function isRefinanceMode(value: unknown): value is RefinanceMode {
+  return typeof value === 'string' && (REFINANCE_MODES as readonly string[]).includes(value);
+}
+
+export interface PlanFlow {
+  kind: PlanKind;
+  /** null — מיחזור שטרם נבחר בו בין פנימי לחיצוני */
+  refinanceMode: RefinanceMode | null;
+}
+
+export const NEW_PLAN_FLOW: PlanFlow = { kind: 'NEW', refinanceMode: null };
+
+/** מיחזור פנימי: התמהיל, הגשה לבנק הנוכחי ואימות ההצעה שלו */
+export const REFINANCE_INTERNAL_STAGES = ['MIX', 'APPLICATIONS', 'AUCTION'] as const;
+/** מיחזור חיצוני: כמו משכנתא חדשה, אבל התמהיל קודם לפרופיל */
+export const REFINANCE_EXTERNAL_STAGES = ['MIX', 'ANALYSIS', 'APPLICATIONS', 'AUCTION', 'SIGNING'] as const;
+
+/** סדר השלבים בפועל של תהליך, לפי סוגו */
+export function flowStages(flow: PlanFlow = NEW_PLAN_FLOW): readonly PlanStageId[] {
+  if (flow.kind !== 'REFINANCE') return PLAN_STAGES;
+  return flow.refinanceMode === 'INTERNAL' ? REFINANCE_INTERNAL_STAGES : REFINANCE_EXTERNAL_STAGES;
+}
+
+/** סוג התהליך כפי שהוא נגזר מנתוני השלבים */
+export function planFlowOf(data: Pick<PlanData, 'MIX'>): PlanFlow {
+  const refinance = data.MIX.refinance;
+  if (!refinance) return NEW_PLAN_FLOW;
+  return { kind: 'REFINANCE', refinanceMode: refinance.mode };
+}
+
+/** השלב שבא אחרי שלב נתון בתהליך — null בשלב האחרון */
+export function nextPlanStage(stage: PlanStageId, flow: PlanFlow = NEW_PLAN_FLOW): PlanStageId | null {
+  const stages = flowStages(flow);
+  const idx = stages.indexOf(stage);
+  if (idx < 0) return null;
+  return stages[idx + 1] ?? null;
+}
+
+/** השלב שלפני שלב נתון — null בשלב הראשון */
+export function previousPlanStage(stage: PlanStageId, flow: PlanFlow = NEW_PLAN_FLOW): PlanStageId | null {
+  const stages = flowStages(flow);
+  const idx = stages.indexOf(stage);
+  return idx > 0 ? stages[idx - 1] : null;
 }
 
 // ───────────────────────────── נתוני השלבים ─────────────────────────────
@@ -169,6 +240,12 @@ export interface AnalysisData {
   household: Household;
   /** איך הזוג מנהל חשבון בנק — רלוונטי רק כשהלווים הם זוג */
   bankAccountMode: BankAccountMode | null;
+  /** שם הלווה — מחליף את «לווה 1» בכל מקום שבו הוא מוצג */
+  firstName: string;
+  lastName: string;
+  /** שם בן/בת הזוג — מחליף את «לווה 2» */
+  partnerFirstName: string;
+  partnerLastName: string;
   age: number | null;
   partnerAge: number | null;
   income: number | null;
@@ -285,6 +362,10 @@ export function analysisFromPlanning(
     profileScreen: carry?.profileScreen ?? 'overview',
     household: couple ? 'COUPLE' : 'SINGLE',
     bankAccountMode: couple ? (carry?.bankAccountMode ?? null) : null,
+    firstName: carry?.firstName ?? '',
+    lastName: carry?.lastName ?? '',
+    partnerFirstName: couple ? carry?.partnerFirstName ?? '' : '',
+    partnerLastName: couple ? carry?.partnerLastName ?? '' : '',
     primaryBank: carry?.primaryBank ?? null,
     partnerPrimaryBank: couple ? carry?.partnerPrimaryBank ?? null : null,
     age: parseInt(ageRaw, 10) || null,
@@ -335,6 +416,58 @@ export interface MixData {
   /** התמהיל שננעל כסופי למכרז מול הבנקים */
   isFinal: boolean;
   finalLocked: boolean;
+  /**
+   * נתוני המיחזור, כשהתהליך הוא מיחזור משכנתא קיימת. null — משכנתא חדשה.
+   * זה מה שהופך תהליך לתהליך מיחזור: המשכנתא הנוכחית, התמהיל שנבנה למיחזור,
+   * והבחירה בין מיחזור פנימי לחיצוני.
+   */
+  refinance: RefinanceMixData | null;
+}
+
+// ───────────────────────────── מיחזור ─────────────────────────────
+
+/** מה ממחזרים: את כל המשכנתא, או מסלול אחד בלבד */
+export type RefinanceScope = 'whole' | 'single';
+
+/** תמהיל כפי שהוא נשמר בתהליך המיחזור — בדיוק מה שכלי המיחזור צריך כדי לשחזר אותו */
+export interface RefinanceMixSnapshot {
+  id: string;
+  name: string;
+  bank: string | null;
+  totalAmount: number;
+  tracks: MortgageTrack[];
+}
+
+/** המספרים של תמהיל, לכרטיסים ולסיכומים בלי לחשב לוח סילוקין מחדש */
+export interface RefinanceFigures {
+  monthlyPayment: number;
+  totalInterest: number;
+  totalPaid: number;
+  averageRate: number;
+  months: number;
+}
+
+export interface RefinanceMixData {
+  /** הבנק שבו מנוהלת המשכנתא הנוכחית */
+  bank: string;
+  goal: RefinanceGoal;
+  scope: RefinanceScope;
+  /** המסלול שנבחר למיחזור, במיחזור מסלול בודד */
+  selectedTrackId: string | null;
+  /** המשכנתא הנוכחית כפי שהוזנה במסך הראשון של כלי המיחזור */
+  currentMix: RefinanceMixSnapshot;
+  /** התמהיל שנבנה למיחזור — מה שמוגש לבנק */
+  refinancedMix: RefinanceMixSnapshot;
+  current: RefinanceFigures;
+  refinanced: RefinanceFigures;
+  /** פנימי או חיצוני. null — טרם נבחר, והתהליך מציג את מסך הבחירה */
+  mode: RefinanceMode | null;
+  savedAt: string;
+}
+
+/** התמהיל למיחזור מקטין את ההחזר החודשי — המקרה שבו ההסבר על סוגי המיחזור מדגיש את החיסכון */
+export function refinanceReducesPayment(refinance: RefinanceMixData): boolean {
+  return refinance.refinanced.monthlyPayment < refinance.current.monthlyPayment - 1;
 }
 
 /**
@@ -514,6 +647,10 @@ const EMPTY: PlanData = {
     profileScreen: 'overview',
     household: 'SINGLE',
     bankAccountMode: null,
+    firstName: '',
+    lastName: '',
+    partnerFirstName: '',
+    partnerLastName: '',
     age: null,
     partnerAge: null,
     income: null,
@@ -554,6 +691,7 @@ const EMPTY: PlanData = {
     notes: '',
     isFinal: false,
     finalLocked: false,
+    refinance: null,
   },
   APPLICATIONS: {
     bank: null,
@@ -631,6 +769,94 @@ let idCounter = 0;
 function rowId(prefix: string): string {
   idCounter += 1;
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`;
+}
+
+function parseRefinanceTrack(value: unknown, index: number): MortgageTrack | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const type = typeof source.type === 'string' && source.type in TRACK_TYPES
+    ? (source.type as MortgageTrack['type'])
+    : 'fixed_unlinked';
+  const amount = num(source.amount);
+  if (amount === null || amount <= 0) return null;
+  const amortization =
+    typeof source.amortizationType === 'string' && source.amortizationType in AMORTIZATION_TYPES
+      ? (source.amortizationType as MortgageTrack['amortizationType'])
+      : 'spitzer';
+  const paymentDay = num(source.paymentDay);
+  const track: MortgageTrack = {
+    id: typeof source.id === 'string' && source.id ? source.id : `refi-track-${index + 1}`,
+    name: str(source.name) || `מסלול ${index + 1}`,
+    type,
+    amount,
+    percentage: num(source.percentage) ?? 0,
+    interestRate: num(source.interestRate) ?? DEFAULT_INTEREST_RATES[type] ?? 0,
+    years: Math.max(1 / 12, num(source.years) ?? 0),
+    amortizationType: amortization,
+  };
+  const spread = num(source.rateSpread);
+  if (spread !== null) track.rateSpread = spread;
+  const variablePeriod = num(source.variablePeriod);
+  if (variablePeriod !== null) track.variablePeriod = variablePeriod;
+  if (typeof source.endDate === 'string' && source.endDate.trim()) track.endDate = source.endDate.trim();
+  if (paymentDay !== null) track.paymentDay = Math.min(28, Math.max(1, Math.round(paymentDay)));
+  return track;
+}
+
+function parseRefinanceSnapshot(value: unknown, fallbackId: string): RefinanceMixSnapshot | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const rows = Array.isArray(source.tracks) ? source.tracks : [];
+  const tracks = rows.flatMap((row, index) => {
+    const track = parseRefinanceTrack(row, index);
+    return track ? [track] : [];
+  });
+  if (tracks.length === 0) return null;
+  const fromTracks = tracks.reduce((sum, track) => sum + track.amount, 0);
+  return {
+    id: typeof source.id === 'string' && source.id ? source.id : fallbackId,
+    name: str(source.name),
+    bank: pickBank(source.bank),
+    totalAmount: num(source.totalAmount) ?? fromTracks,
+    tracks,
+  };
+}
+
+function parseRefinanceFigures(value: unknown): RefinanceFigures {
+  const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  return {
+    monthlyPayment: num(source.monthlyPayment) ?? 0,
+    totalInterest: num(source.totalInterest) ?? 0,
+    totalPaid: num(source.totalPaid) ?? 0,
+    averageRate: num(source.averageRate) ?? 0,
+    months: num(source.months) ?? 0,
+  };
+}
+
+/**
+ * נתוני המיחזור כפי שנשמרו. בלי בנק, בלי משכנתא נוכחית או בלי תמהיל למיחזור
+ * אין מה לשחזר, ואז התהליך נקרא כתהליך של משכנתא חדשה.
+ */
+export function parseRefinanceMixData(value: unknown): RefinanceMixData | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const bank = pickBank(source.bank);
+  const currentMix = parseRefinanceSnapshot(source.currentMix, 'refinance-current');
+  const refinancedMix = parseRefinanceSnapshot(source.refinancedMix, 'refinance-mix');
+  if (!bank || !currentMix || !refinancedMix) return null;
+
+  return {
+    bank,
+    goal: source.goal === 'reduce_interest' ? 'reduce_interest' : 'reduce_payment',
+    scope: source.scope === 'single' ? 'single' : 'whole',
+    selectedTrackId: typeof source.selectedTrackId === 'string' ? source.selectedTrackId : null,
+    currentMix,
+    refinancedMix,
+    current: parseRefinanceFigures(source.current),
+    refinanced: parseRefinanceFigures(source.refinanced),
+    mode: isRefinanceMode(source.mode) ? source.mode : null,
+    savedAt: typeof source.savedAt === 'string' ? source.savedAt : new Date().toISOString(),
+  };
 }
 
 /**
@@ -868,6 +1094,18 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         household,
         bankAccountMode,
         partnerEmploymentType: couple ? carry.partnerEmploymentType ?? null : null,
+        firstName: has('firstName') ? str(source.firstName).trim() : seed.firstName,
+        lastName: has('lastName') ? str(source.lastName).trim() : seed.lastName,
+        partnerFirstName: couple
+          ? has('partnerFirstName')
+            ? str(source.partnerFirstName).trim()
+            : seed.partnerFirstName
+          : '',
+        partnerLastName: couple
+          ? has('partnerLastName')
+            ? str(source.partnerLastName).trim()
+            : seed.partnerLastName
+          : '',
         age: has('age') ? num(source.age) : seed.age,
         partnerAge: has('partnerAge') ? num(source.partnerAge) : seed.partnerAge,
         income: has('income') ? num(source.income) : seed.income,
@@ -918,6 +1156,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         notes: str(source.notes),
         isFinal: bool(source.isFinal),
         finalLocked: bool(source.finalLocked) || bool(source.isFinal),
+        refinance: parseRefinanceMixData(source.refinance),
       } as PlanStageDataMap[S];
     }
 
@@ -1155,6 +1394,39 @@ export interface DocumentGroup {
  * מסמכי חשבון הבנק נדרשים פעם אחת בחשבון משותף ומכל לווה בחשבונות נפרדים,
  * ומסמכי הנכס והעסקה יושבים ברובריקה נפרדת משלהם.
  */
+/**
+ * איך קוראים ללווים.
+ *
+ * ברגע שהוזן שם, הוא מחליף את «לווה 1» ו«לווה 2» בכל מקום — בתיק המסמכים,
+ * בדוח הפרופיל ובמסכי השלב — כדי שהלקוח יראה את עצמו ולא תווית גנרית. עד
+ * שהוזן שם נשארת התווית הגנרית, וללווה יחיד היא «הלווה».
+ */
+export function borrowerFullName(first: string, last: string): string {
+  return [first, last].map((part) => part.trim()).filter(Boolean).join(' ');
+}
+
+export interface BorrowerLabels {
+  /** השם של הלווה הראשון, או תווית גנרית כשאין שם */
+  first: string;
+  /** השם של בן/בת הזוג, או תווית גנרית */
+  second: string;
+  /** האם הוזן שם ללווה הראשון */
+  hasFirst: boolean;
+  hasSecond: boolean;
+}
+
+export function borrowerLabels(profile: AnalysisData): BorrowerLabels {
+  const couple = profile.household === 'COUPLE';
+  const first = borrowerFullName(profile.firstName, profile.lastName);
+  const second = borrowerFullName(profile.partnerFirstName, profile.partnerLastName);
+  return {
+    first: first || (couple ? 'לווה 1' : 'הלווה'),
+    second: second || 'לווה 2',
+    hasFirst: Boolean(first),
+    hasSecond: Boolean(second),
+  };
+}
+
 export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
   const profile = data.ANALYSIS;
   const couple = profile.household === 'COUPLE';
@@ -1180,6 +1452,8 @@ export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
     ]),
   });
 
+  const names = borrowerLabels(profile);
+
   return [
     ...(sharedAccount
       ? [
@@ -1194,11 +1468,18 @@ export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
     personal(
       'b1',
       profile.employmentType,
-      couple ? 'מסמכים של לווה 1' : 'המסמכים שלי',
+      couple ? `מסמכים של ${names.first}` : names.hasFirst ? `מסמכים של ${names.first}` : 'המסמכים שלי',
       profile.borrowerLoans
     ),
     ...(couple
-      ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2', profile.partnerLoans)]
+      ? [
+          personal(
+            'b2',
+            profile.partnerEmploymentType,
+            `מסמכים של ${names.second}`,
+            profile.partnerLoans
+          ),
+        ]
       : []),
     {
       id: 'property',
@@ -1316,17 +1597,39 @@ export interface ProfileRequirement {
  * לבנק עם תיק חלקי.
  */
 export function preApprovalRequirements(data: PlanData): ProfileRequirement[] {
-  return profileRequirements(data.ANALYSIS);
+  return profileRequirements(data.ANALYSIS, { requireEquity: requiresEquityInProfile(data) });
+}
+
+/**
+ * האם הפרופיל צריך לכלול הון עצמי.
+ *
+ * במיחזור אין הון עצמי לעסקה: הנכס כבר בבעלות הלקוח והמשכנתא כבר קיימת —
+ * הבנק בוחן את ההחזר ואת יתרת ההלוואה, לא כסף שצריך להביא לעסקה. לכן במיחזור
+ * לא שואלים על הון עצמי, והיעדרו אינו חוסם את המשך התהליך.
+ */
+export function requiresEquityInProfile(data: Pick<PlanData, 'MIX'>): boolean {
+  return planFlowOf(data).kind !== 'REFINANCE';
+}
+
+export interface ProfileRequirementOptions {
+  /** false — מיחזור: ההון העצמי אינו נדרש ואינו נבדק */
+  requireEquity?: boolean;
 }
 
 /** הפרטים שהפרופיל הפיננסי חייב להכיל, ומה מהם כבר הוזן */
-export function profileRequirements(profile: AnalysisData): ProfileRequirement[] {
+export function profileRequirements(
+  profile: AnalysisData,
+  options: ProfileRequirementOptions = {}
+): ProfileRequirement[] {
   const couple = profile.household === 'COUPLE';
+  const requireEquity = options.requireEquity !== false;
 
   const items: ProfileRequirement[] = [
     { key: 'dealType', label: 'סוג העסקה', ok: profile.dealType !== null },
     { key: 'propertyValue', label: 'מחיר הנכס', ok: (profile.propertyValue ?? 0) > 0 },
-    { key: 'equity', label: 'ההון העצמי לעסקה', ok: (profile.equity ?? 0) > 0 },
+    ...(requireEquity
+      ? [{ key: 'equity', label: 'ההון העצמי לעסקה', ok: (profile.equity ?? 0) > 0 }]
+      : []),
     {
       key: 'income',
       label: couple ? 'הכנסה חודשית של לווה 1' : 'הכנסה חודשית נטו',
@@ -1385,6 +1688,23 @@ export function banksWithPreApproval(data: PlanData): string[] {
   const leading = data.APPLICATIONS.approved ? data.APPLICATIONS.bank : null;
   if (leading && !banks.includes(leading)) banks.push(leading);
   return banks;
+}
+
+/** התקדמות איסוף המסמכים של תרחיש הבעלות שנבחר. null — עדיין לא נבחר תרחיש */
+export interface SigningDocumentsProgress {
+  total: number;
+  collected: number;
+  open: number;
+}
+
+export function signingDocumentsProgress(signing: SigningData): SigningDocumentsProgress | null {
+  const deal = signingDealType(signing.dealTypeId);
+  const scenario = signingScenario(deal, signing.scenarioId);
+  if (!scenario) return null;
+  const collected = scenario.documents.filter(
+    (document) => signing.documents[signingDocumentKey(scenario.id, document.key)]
+  ).length;
+  return { total: scenario.documents.length, collected, open: scenario.documents.length - collected };
 }
 
 export const SIGNING_CHECKS: ReadonlyArray<{ key: string; label: string }> = [
@@ -1628,12 +1948,15 @@ export function isPlanningProfileDone(step?: string): boolean {
  * מה חסר בפרופיל הפיננסי. מי שעדיין בבדיקת היתכנות אינו יכול לסגור את השלב:
  * בלי נכס קונקרטי אין על מה להגיש בקשה לאישור עקרוני.
  */
-export function analysisMissing(profile: AnalysisData): string[] {
+export function analysisMissing(
+  profile: AnalysisData,
+  options: ProfileRequirementOptions = {}
+): string[] {
   if (!profile.intent) return ['בחירת נקודת הפתיחה'];
   if (profile.intent === 'FEASIBILITY') {
     return ['בדיקת ההיתכנות, וחזרה לכאן אחרי שנמצא נכס'];
   }
-  return profileRequirements(profile)
+  return profileRequirements(profile, options)
     .filter((item) => !item.ok)
     .map((item) => item.label);
 }
@@ -1645,14 +1968,26 @@ export function analysisMissing(profile: AnalysisData): string[] {
 export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
   switch (stage) {
     case 'ANALYSIS':
-      return analysisMissing(data.ANALYSIS).length === 0;
+      return (
+        analysisMissing(data.ANALYSIS, { requireEquity: requiresEquityInProfile(data) }).length === 0
+      );
     case 'MIX':
+      // במיחזור, מה שסוגר את שלב התמהיל הוא הבחירה בין מיחזור פנימי לחיצוני
+      if (data.MIX.refinance && !data.MIX.refinance.mode) return false;
       return Boolean(data.MIX.mixRecordId || data.MIX.mixKey);
     /** שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו */
     case 'APPLICATIONS': {
+      /*
+        במיחזור ההגשה מתבצעת מול הבנק ישירות, והאישור חוזר אליו בערוץ שלו.
+        המסמך שאפשר להעלות כאן הוא תיעוד בלבד, ולכן הוא אינו תנאי להמשך:
+        הלקוח ממשיך לאימות ההצעה ברגע שהגיש.
+      */
+      if (planFlowOf(data).kind === 'REFINANCE') return true;
       const preApproval = data.APPLICATIONS;
       return (
-        profileReadyForPreApproval(data) && preApproval.bank !== null && preApproval.approved
+        (!requiresProfileForPreApproval(data) || profileReadyForPreApproval(data)) &&
+        preApproval.bank !== null &&
+        preApproval.approved
       );
     }
     case 'AUCTION':
@@ -1675,13 +2010,24 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
 
   switch (stage) {
     case 'ANALYSIS':
-      missing.push(...analysisMissing(data.ANALYSIS));
+      missing.push(
+        ...analysisMissing(data.ANALYSIS, { requireEquity: requiresEquityInProfile(data) })
+      );
       break;
     case 'MIX':
-      if (!data.MIX.mixRecordId && !data.MIX.mixKey) missing.push('שמירת תמהיל בכלי התכנון');
+      if (!data.MIX.mixRecordId && !data.MIX.mixKey) {
+        missing.push(data.MIX.refinance ? 'שמירת התמהיל למיחזור' : 'שמירת תמהיל בכלי התכנון');
+      }
+      if (data.MIX.refinance && !data.MIX.refinance.mode) {
+        missing.push('בחירה בין מיחזור פנימי למיחזור חיצוני');
+      }
       break;
     case 'APPLICATIONS': {
-      const openProfile = preApprovalRequirements(data).filter((item) => !item.ok);
+      // במיחזור אין תנאי לסגירת השלב — ראו stageIsComplete
+      if (planFlowOf(data).kind === 'REFINANCE') break;
+      const openProfile = requiresProfileForPreApproval(data)
+        ? preApprovalRequirements(data).filter((item) => !item.ok)
+        : [];
       if (openProfile.length > 0) {
         missing.push(
           `פרטים מהפרופיל הפיננסי: ${openProfile.map((item) => item.label).join(', ')}`
@@ -1706,10 +2052,23 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
   return missing;
 }
 
-/** אחוז ההתקדמות בתהליך לפי מספר השלבים שנסגרו */
-export function planProgress(statuses: Record<PlanStageId, PlanStageStatus>): number {
-  const done = PLAN_STAGES.filter((stage) => statuses[stage] === 'COMPLETED').length;
-  return Math.round((done / PLAN_STAGES.length) * 100);
+/**
+ * במיחזור פנימי הבנק כבר מכיר את הלקוח, ולכן הבקשה אינה נשענת על הפרופיל
+ * הפיננסי שנבנה בפלטפורמה. בכל תהליך אחר הפרופיל הוא תנאי להגשה.
+ */
+export function requiresProfileForPreApproval(data: Pick<PlanData, 'MIX'>): boolean {
+  const flow = planFlowOf(data);
+  return !(flow.kind === 'REFINANCE' && flow.refinanceMode === 'INTERNAL');
+}
+
+/** אחוז ההתקדמות בתהליך לפי מספר השלבים שנסגרו, מתוך השלבים של אותו סוג תהליך */
+export function planProgress(
+  statuses: Record<PlanStageId, PlanStageStatus>,
+  flow: PlanFlow = NEW_PLAN_FLOW
+): number {
+  const stages = flowStages(flow);
+  const done = stages.filter((stage) => statuses[stage] === 'COMPLETED').length;
+  return Math.round((done / stages.length) * 100);
 }
 
 export interface PlanSnapshot {

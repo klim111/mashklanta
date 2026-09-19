@@ -26,6 +26,11 @@ import {
   trackRemainingMonths,
 } from '@/lib/refinance';
 import type { MarketRates } from '@/lib/refinance';
+import type {
+  RefinanceDraftState,
+  RefinanceSaveOutcome,
+  RefinanceSavePayload,
+} from '@/components/mortgage-refinance/refinancePlan';
 import { cn } from '@/lib/utils';
 
 interface RefinanceMortgageInputProps {
@@ -43,6 +48,14 @@ interface RefinanceMortgageInputProps {
   isGuest?: boolean;
   /** ריביות ממוצעות בשוק לפי בנק ישראל */
   market?: MarketRates | null;
+  /** פתיחה ישר בניתוח (הסיכום גלוי) — כשחוזרים לתמהיל שכבר נשמר */
+  initialSummaryRevealed?: boolean;
+  /** תמהיל למיחזור שנשמר — הפאנל נפתח עם הערכים שלו */
+  refinanceInitial?: RefinanceDraftState | null;
+  /** שמירת התמהיל למיחזור לתהליך באזור האישי */
+  onSaveRefinance?: (payload: RefinanceSavePayload) => Promise<RefinanceSaveOutcome>;
+  saveContext?: 'tool' | 'plan';
+  onRefinanceSaveDone?: () => void;
 }
 
 export function RefinanceMortgageInput({
@@ -56,10 +69,15 @@ export function RefinanceMortgageInput({
   onProceedToRefinanceOptions,
   isGuest = false,
   market = null,
+  initialSummaryRevealed = false,
+  refinanceInitial = null,
+  onSaveRefinance,
+  saveContext = 'tool',
+  onRefinanceSaveDone,
 }: RefinanceMortgageInputProps) {
   const { tracks, totalAmount, bank } = mix;
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
-  const [mixSummaryRevealed, setMixSummaryRevealed] = useState(false);
+  const [mixSummaryRevealed, setMixSummaryRevealed] = useState(initialSummaryRevealed);
 
   const hideMixSummary = () => {
     setMixSummaryRevealed(false);
@@ -155,10 +173,14 @@ export function RefinanceMortgageInput({
 
   const totalTracksAmount = sumTrackAmounts(tracks);
   const effectiveTotal = perTrackRefinanceEnabled ? totalTracksAmount : totalAmount;
+  /*
+    סיכום המשכנתא נפתח רק כשכל הסכום שהוזן למעלה חולק בין המסלולים. כל עוד
+    נותרה יתרה — ולו קטנה — התמהיל אינו המשכנתא המלאה, וכל מה שיחושב עליו
+    יהיה חלקי. לכן הכפתור מוצג כבוי עם הסכום שנותר לשבץ, במקום להיעלם.
+  */
   const isAmountBalanced =
-    totalAmount > 0 && tracks.length > 0 && Math.abs(totalTracksAmount - totalAmount) < 1000;
-  const showSummarizeButton =
-    !perTrackRefinanceEnabled && !mixSummaryRevealed && isAmountBalanced;
+    totalAmount > 0 && tracks.length > 0 && Math.abs(totalTracksAmount - totalAmount) < 1;
+  const showSummarizeButton = !perTrackRefinanceEnabled && !mixSummaryRevealed && tracks.length > 0;
   const showPerTrackRefinanceButton =
     perTrackRefinanceEnabled &&
     tracks.length > 0 &&
@@ -168,9 +190,9 @@ export function RefinanceMortgageInput({
   const remainingToComplete = Math.max(0, Math.round(amountDifference));
   const excessToReduce = Math.max(0, Math.round(-amountDifference));
   const showCompletionCta =
-    !perTrackRefinanceEnabled && totalAmount > 0 && !isAmountBalanced && remainingToComplete > 0;
+    !perTrackRefinanceEnabled && totalAmount > 0 && remainingToComplete >= 1000;
   const showReductionCta =
-    !perTrackRefinanceEnabled && totalAmount > 0 && !isAmountBalanced && excessToReduce > 0;
+    !perTrackRefinanceEnabled && totalAmount > 0 && excessToReduce >= 1000;
   const canAddFirstTrack = !!bank && (perTrackRefinanceEnabled || totalAmount > 0);
 
   useEffect(() => {
@@ -353,6 +375,10 @@ export function RefinanceMortgageInput({
             onEdit={hideMixSummary}
             isGuest={isGuest}
             market={market}
+            initial={refinanceInitial}
+            onSave={onSaveRefinance}
+            saveContext={saveContext}
+            onSaveDone={onRefinanceSaveDone}
           />
         </motion.div>
       ) : (
@@ -441,15 +467,23 @@ export function RefinanceMortgageInput({
           </div>
 
           {showSummarizeButton && (
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-2">
               <Button
                 type="button"
                 onClick={revealMixSummary}
-                className="px-8 py-6 text-lg h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!isAmountBalanced}
+                className="px-8 py-6 text-lg h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400"
               >
                 <PieChart className="h-8 w-8" />
                 <span className="font-bold">סכם משכנתא נוכחית</span>
               </Button>
+              {!isAmountBalanced && (
+                <p className="text-center text-xs font-semibold text-slate-500">
+                  {remainingToComplete > 0
+                    ? `כדי לסכם, שבצו את יתרת הסכום במסלולים — נותרו ${formatCurrency(remainingToComplete)}`
+                    : `סכום המסלולים חורג מגובה המשכנתא ב-${formatCurrency(excessToReduce)}`}
+                </p>
+              )}
             </div>
           )}
 

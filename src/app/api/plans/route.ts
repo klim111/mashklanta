@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { createPlan, createPlanFromMix, listPlansForUser } from '@/lib/mortgage-plans';
+import { createPlan, createPlanFromMix, createRefinancePlan, listPlansForUser } from '@/lib/mortgage-plans';
 import { assignMixDeal, getMixForUser } from '@/lib/mixes';
+import { sanitizeMix } from '@/components/mortgage-advisor/engine';
 import { rateLimit } from '@/lib/rate-limit';
 
 /** תהליכי תכנון המשכנתא של המשתמש — הפעילים והמושלמים */
@@ -28,6 +29,15 @@ export async function POST(req: NextRequest) {
       { error: 'Too many plans' },
       { status: 429, headers: { 'Retry-After': String(limited.resetInSeconds) } }
     );
+  }
+
+  // תהליך מיחזור — נפתח מכלי המיחזור עם התמהיל שנבנה בו
+  if (body?.refinance && typeof body.refinance === 'object') {
+    const mix = sanitizeMix(body.mix);
+    if (!mix) return NextResponse.json({ error: 'Invalid mix' }, { status: 400 });
+    const plan = await createRefinancePlan(userId, { refinance: body.refinance, mix });
+    if (!plan) return NextResponse.json({ error: 'Invalid refinance data' }, { status: 400 });
+    return NextResponse.json(plan, { status: 201 });
   }
 
   if (typeof body?.fromMixId === 'string') {

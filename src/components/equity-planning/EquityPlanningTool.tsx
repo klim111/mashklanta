@@ -43,9 +43,22 @@ import type {
   FinancingProfileId,
 } from '@/lib/equity-planning';
 import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
+import {
+  FamilyEconomyFloatingCta,
+  FamilyEconomyLeadDialog,
+  FamilyEconomyValueCard,
+} from '@/components/advisor/FamilyEconomyAdvisor';
+import type { AdvisorLeadContext } from '@/components/advisor/FamilyEconomyAdvisor';
 import { AllocationDonut } from './AllocationDonut';
 import { ExpensesTable } from './ExpensesTable';
-import { FamilyEconomyCta } from './FamilyEconomyCta';
+import {
+  EQUITY_ADVISOR_CARD_TITLE,
+  EQUITY_ADVISOR_CONFIRMATION,
+  EQUITY_ADVISOR_INTRO,
+  EQUITY_ADVISOR_ORIGIN,
+  EQUITY_ADVISOR_POINTS,
+  FamilyEconomyHeaderButton,
+} from './FamilyEconomyCta';
 import { MonthCalendar } from './MonthCalendar';
 import type { DayMarker } from './MonthCalendar';
 import { EquityGuestDialog, GuestSaveNotice, useEquityGuestGate } from './EquityGuestGate';
@@ -85,6 +98,8 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [targetMonth, setTargetMonth] = useState<Date>(() => new Date());
+  /** טופס הפנייה ליועץ כלכלת המשפחה — נפתח מכל נקודות הפנייה בכלי */
+  const [leadOpen, setLeadOpen] = useState(false);
   const [paymentsMonth, setPaymentsMonth] = useState<Date | null>(null);
   /** הנכס כפי שהיה לפני השינוי האחרון — כדי לעדכן שורות שעדיין בערך המוצע */
   const previous = useRef({ price: 0, profile: 'first-home' as FinancingProfileId, targetDate: '' });
@@ -383,6 +398,28 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [expenses]);
 
+  /** תמונת המצב שנשלחת ליועץ, כדי שהשיחה תתחיל מהמספרים של הלקוח ולא מאפס */
+  const leadContext = useMemo<AdvisorLeadContext>(
+    () => ({
+      origin: EQUITY_ADVISOR_ORIGIN,
+      points: EQUITY_ADVISOR_POINTS,
+      intro: EQUITY_ADVISOR_INTRO,
+      confirmation: EQUITY_ADVISOR_CONFIRMATION,
+      summary: [
+        propertyData.price > 0 ? `מחיר נכס ${shekel(propertyData.price)}` : null,
+        `פרופיל מימון: ${FINANCING_PROFILES[propertyData.financingProfile].name}`,
+        propertyData.targetDate ? `מועד יעד ${propertyData.targetDate}` : null,
+        `הון עצמי מינימלי נדרש ${shekel(required)}`,
+        `הון עצמי שהוזן ${shekel(totals.equityAmount)}`,
+        `הוצאות נלוות ${shekel(totals.sideExpenses)}`,
+        `סה״כ בטבלה ${shekel(totals.totalExpenses)}`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    }),
+    [propertyData, required, totals.equityAmount, totals.sideExpenses, totals.totalExpenses]
+  );
+
   const toggleCategory = useCallback((categoryId: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -529,7 +566,11 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
           </ul>
         </Panel>
 
-        <FamilyEconomyCta variant="card" />
+        <FamilyEconomyValueCard
+          headline={EQUITY_ADVISOR_CARD_TITLE}
+          points={EQUITY_ADVISOR_POINTS}
+          onContact={() => setLeadOpen(true)}
+        />
       </div>
 
       <div className="lg:col-span-3">
@@ -644,7 +685,11 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
         </div>
       </div>
 
-      <FamilyEconomyCta variant="row" />
+      <FamilyEconomyValueCard
+        headline={EQUITY_ADVISOR_CARD_TITLE}
+        points={EQUITY_ADVISOR_POINTS}
+        onContact={() => setLeadOpen(true)}
+      />
 
       <StepNav
         onBack={() => goToStep(0)}
@@ -797,7 +842,11 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
               )}
             </Panel>
           </div>
-          <FamilyEconomyCta variant="card" />
+          <FamilyEconomyValueCard
+            headline="רוצים לעבור על התזרים עם מומחה?"
+            points={EQUITY_ADVISOR_POINTS}
+            onContact={() => setLeadOpen(true)}
+          />
         </div>
 
         <StepNav onBack={() => goToStep(1)} backLabel="חזרה לטבלת ההוצאות" />
@@ -837,7 +886,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
             )}
           </div>
           <div className="flex flex-col items-end gap-2">
-            <FamilyEconomyCta variant="header" />
+            <FamilyEconomyHeaderButton onContact={() => setLeadOpen(true)} />
             <SaveBadge signedIn={signedIn} state={saveState} savedAt={savedAt} />
           </div>
         </div>
@@ -908,6 +957,8 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
       {header}
       {body}
       <EquityGuestDialog open={gate.promptOpen} onClose={gate.closePrompt} />
+      <FamilyEconomyLeadDialog open={leadOpen} onOpenChange={setLeadOpen} context={leadContext} />
+      <FamilyEconomyFloatingCta context={leadContext} />
     </div>
   );
 }

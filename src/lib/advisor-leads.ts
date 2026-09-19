@@ -49,8 +49,8 @@ export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
   REFINANCE_HYBRID: 'מיחזור משכנתא · ליווי משולב',
   REFINANCE_FULL: 'מיחזור משכנתא · ליווי מלא',
   ADVICE: 'ייעוץ והכוונה בנושא משכנתא',
-  // פנייה מכלי תכנון ההוצאות — ההון העצמי וההוצאות הנלוות לרכישה
-  FAMILY_ECONOMY: 'ייעוץ כלכלת המשפחה — תכנון הון עצמי והוצאות',
+  // פנייה ליועץ כלכלת המשפחה — מכלי ההלוואות הצרכניות ומכלי תכנון ההוצאות
+  FAMILY_ECONOMY: 'ליווי כלכלת המשפחה · הלוואות, הון עצמי והוצאות',
   OTHER: 'פנייה כללית',
 };
 
@@ -65,7 +65,8 @@ export interface AdvisorLeadView {
   name: string;
   /** ריק כשלקוח רשום שלח בלי טלפון — פונים אליו במייל */
   phone: string | null;
-  email: string;
+  /** ריק כשהפנייה נשלחה עם טלפון בלבד — מכלי שבו המייל אינו חובה */
+  email: string | null;
   notes: string | null;
   status: 'OPEN' | 'HANDLED' | 'CLOSED';
   clientId: string | null;
@@ -94,7 +95,7 @@ function toView(row: LeadRow): AdvisorLeadView {
     topicLabel: LEAD_TOPIC_LABELS[topic],
     name: row.name,
     phone: row.phone,
-    email: row.email,
+    email: row.email || null,
     notes: row.notes,
     status: row.status as AdvisorLeadView['status'],
     clientId: row.clientId,
@@ -107,12 +108,23 @@ export interface CreateLeadInput {
   name: string;
   /** רשות — לקוח רשום שולח עם פרטי החשבון, ואורח מעמוד הבית מזין מה שיש לו */
   phone?: string;
-  email: string;
+  /**
+   * רשות. בכלים שבהם הטלפון הוא דרך הקשר העיקרית (למשל פנייה ליועץ כלכלת
+   * המשפחה מכלי ההלוואות) המייל אינו נדרש, ודי בטלפון.
+   */
+  email?: string;
   notes?: string;
 }
 
+/** טלפון ישראלי סביר — לפחות תשע ספרות, בלי תווי הפרדה */
+function hasUsablePhone(phone: string): boolean {
+  return phone.replace(/\D/g, '').length >= 9;
+}
+
 /**
- * פתיחת פנייה חדשה. אם למשתמש כבר יש כרטיס ליווי אצל יועץ, הפנייה משויכת
+ * פתיחת פנייה חדשה. נדרשים שם ודרך קשר אחת — מייל תקין או טלפון.
+ *
+ * אם למשתמש כבר יש כרטיס ליווי אצל יועץ, הפנייה משויכת
  * ליועץ ולכרטיס — כך היא מגיעה ישירות למי שמלווה אותו. אחרת היא נשארת ללא
  * שיוך, וכל יועץ יכול לראות אותה כפנייה חדשה שממתינה לטיפול.
  *
@@ -124,8 +136,10 @@ export async function createLead(
 ): Promise<AdvisorLeadView | null> {
   const name = input.name.trim();
   const phone = (input.phone ?? '').trim();
-  const email = input.email.trim().toLowerCase();
-  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  const email = (input.email ?? '').trim().toLowerCase();
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (!name) return null;
+  if (!emailValid && !hasUsablePhone(phone)) return null;
 
   const client = userId
     ? await prisma.client.findFirst({
@@ -142,7 +156,7 @@ export async function createLead(
       topic: input.topic,
       name,
       phone: phone || null,
-      email,
+      email: emailValid ? email : '',
       notes: input.notes?.trim() || null,
     },
     select: leadSelect,
