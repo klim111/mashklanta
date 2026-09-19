@@ -322,21 +322,6 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
     )
     .join('');
 
-  const estimateTiles = [
-    { k: 'החזר חודשי משוער', v: summary.ready ? money(summary.estimatedMonthlyPayment) : '—', n: `${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% להערכה` },
-    { k: 'סך הריביות לאורך התקופה', v: summary.ready ? money(summary.totalInterest) : '—', n: summary.interestShare !== null ? `${summary.interestShare.toFixed(0)}% מהקרן` : '' },
-    { k: 'סך התשלומים', v: summary.ready ? money(summary.totalPaid) : '—', n: 'קרן ועוד ריבית, לאורך כל התקופה' },
-  ]
-    .map(
-      (tile) => `
-      <div class="pr-tile">
-        <span class="k">${escapeHtml(tile.k)}</span>
-        <span class="v">${escapeHtml(tile.v)}</span>
-        ${tile.n ? `<span class="n">${escapeHtml(tile.n)}</span>` : ''}
-      </div>`
-    )
-    .join('');
-
   const cashFlowRows = cashFlow.steps
     .map(
       (step) => `
@@ -352,36 +337,22 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       (item) => `
       <tr${item.emphasized ? ' class="pr-emph"' : ''}>
         <td><b>${escapeHtml(item.label)}</b></td>
-        <td>${item.startWeek === 0 ? 'מיד' : `משבוע ${item.startWeek}`} עד שבוע ${item.endWeek}</td>
+        <td>${escapeHtml(item.when)}</td>
         <td>${escapeHtml(item.duration)}</td>
         <td class="pr-note">${escapeHtml(item.note)}</td>
       </tr>`
     )
     .join('');
 
-  const mixRows = report.mixSketch
+  const mixRows = report.mixTracks
     .map(
-      (item) => `
+      (track) => `
       <tr>
-        <td><b>${escapeHtml(item.label)}</b></td>
-        <td>כ-${item.share}%</td>
-        <td>${RATING_TEXT[item.risk]}</td>
-        <td>${RATING_TEXT[item.flexibility]}</td>
-        <td>${RATING_TEXT[item.cost]}</td>
-        <td class="pr-note">${escapeHtml(item.role)}</td>
-      </tr>`
-    )
-    .join('');
-
-  const costRows = report.costByYear
-    .filter((point, index, all) => index === 0 || point.year % 5 === 0 || index === all.length - 1)
-    .map(
-      (point) => `
-      <tr>
-        <td>${point.year === 0 ? 'היום' : `שנה ${point.year}`}</td>
-        <td>${money(point.paidPrincipal)}</td>
-        <td>${money(point.paidInterest)}</td>
-        <td>${money(point.balance)}</td>
+        <td><b>${escapeHtml(track.label)}</b>${track.linked ? '<br><span class="pr-note">צמוד מדד — הקרן משתנה עם האינפלציה</span>' : ''}</td>
+        <td>${RATING_TEXT[track.risk]}</td>
+        <td>${RATING_TEXT[track.flexibility]}</td>
+        <td>${RATING_TEXT[track.cost]}</td>
+        <td class="pr-note">${escapeHtml(track.role)}</td>
       </tr>`
     )
     .join('');
@@ -473,6 +444,17 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       <div class="pr-col"><h4>פרופיל הלקוח</h4>${householdRows}</div>
     </div>
 
+    <h3>ההכנסה הפנויה והערכת הכסף שיישאר אחרי תשלום המשכנתא</h3>
+    <div class="pr-warn">
+      <b>שימו לב:</b>
+      ההחזר החודשי המשוער כאן הוא הערכה גסה בלבד, שנועדה לתת סדר גודל. ההחזר המדויק ייחושב לאחר
+      בניית התמהיל והשגת הריביות הטובות ביותר שאפשר מהגוף המממן שייבחר לעסקה.
+    </div>
+    <table class="pr-table">
+      <thead><tr><th>התזרים החודשי</th><th>סכום</th></tr></thead>
+      <tbody>${cashFlowRows}</tbody>
+    </table>
+
     <h3>עמידה בדרישות הבנקים ובמגבלות הרגולציה</h3>
     <table class="pr-table">
       <thead>
@@ -487,16 +469,16 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       <tbody>${checks}</tbody>
     </table>
 
-    <h3>ההכנסה הפנויה והכסף שיישאר אחרי המשכנתא</h3>
-    <table class="pr-table">
-      <thead><tr><th>התזרים החודשי</th><th>סכום</th></tr></thead>
-      <tbody>${cashFlowRows}</tbody>
-    </table>
-    <p class="pr-note">ההחזר בטבלה הוא הערכה לפי ריבית קבועה — ראו את ההסתייגות בסוף הדוח.</p>
-
     ${risks ? `<h3>סיכונים</h3>${risks}` : ''}
 
     ${alerts ? `<h3>המלצות שצפו בזמן מילוי הפרטים</h3>${alerts}` : ''}
+
+    <h3>לוח הזמנים של התהליך</h3>
+    <table class="pr-table">
+      <thead><tr><th>שלב / אבן דרך</th><th>מתי</th><th>משך אופייני</th><th>מה חשוב</th></tr></thead>
+      <tbody>${timelineRows}</tbody>
+    </table>
+    <p class="pr-note">קצב אופייני של תהליך בלי עיכובים. מועדי התשלום בחוזה, תוקף האישור העקרוני וזמן הביצוע בבנק קובעים בפועל.</p>
 
     <h3>המסמכים שיידרשו לאימות הנתונים</h3>
     <p class="pr-note">
@@ -511,45 +493,22 @@ export function profileReportBodyHtml(report: ProfileReport, planName?: string):
       ${escapeHtml(DOCUMENT_CONSISTENCY_WARNING)}
     </div>
 
+    <h3>קווים מנחים לבניית התמהיל</h3>
+    <p class="pr-note">איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל הפיננסי שלכם.</p>
+    ${guidelines}
+
     ${
       recommendations
         ? `<h3>המלצות לתכנון התמהיל</h3>${recommendations}`
         : ''
     }
 
-    <h3>לוח הזמנים של התהליך</h3>
-    <table class="pr-table">
-      <thead><tr><th>שלב / אבן דרך</th><th>מתי</th><th>משך אופייני</th><th>מה חשוב</th></tr></thead>
-      <tbody>${timelineRows}</tbody>
-    </table>
-    <p class="pr-note">קצב אופייני של תהליך בלי עיכובים. מועדי התשלום בחוזה, תוקף האישור העקרוני וזמן הביצוע בבנק קובעים בפועל.</p>
-
     <h3>הרכב מסלולי המשכנתא — תיאור סכמטי</h3>
-    <p class="pr-note">קו מנחה, לא תמהיל סופי: איזון בין יציבות מול סיכון, גמישות לשינויים ועלות המימון.</p>
+    <p class="pr-note">תיאור עקרוני, לא תמהיל סופי: הסכומים והאחוזים ייקבעו בשלב התמהיל. כאן מה שכל מסלול מביא לתמהיל — האיזון בין סיכון, גמישות ועלות.</p>
     <table class="pr-table">
-      <thead><tr><th>מסלול</th><th>חלק</th><th>סיכון</th><th>גמישות</th><th>עלות</th><th>התפקיד בתמהיל</th></tr></thead>
+      <thead><tr><th>מסלול</th><th>סיכון</th><th>גמישות</th><th>עלות</th><th>התפקיד בתמהיל</th></tr></thead>
       <tbody>${mixRows}</tbody>
     </table>
-
-    <h3>קווים מנחים לבניית התמהיל</h3>
-    <p class="pr-note">איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל הפיננסי שלכם.</p>
-    ${guidelines}
-
-    <h3>הערכת ההחזר והריביות — השערה בלבד</h3>
-    <div class="pr-warn">
-      <b>חשוב לדעת:</b>
-      המספרים בחלק הזה הם הערכה גסה בלבד לפי ריבית קבועה לא צמודה של ${summary.estimateRate}% על כל הסכום,
-      שנועדה לתת סדר גודל. החישוב המדויק ייעשה אחרי בניית התמהיל ואישור הריביות מול הגוף המממן.
-    </div>
-    <div class="pr-tiles">${estimateTiles}</div>
-    ${
-      costRows
-        ? `<table class="pr-table">
-      <thead><tr><th>מועד</th><th>קרן ששולמה</th><th>ריבית ששולמה</th><th>יתרת הקרן</th></tr></thead>
-      <tbody>${costRows}</tbody>
-    </table>`
-        : ''
-    }
 
     <div class="pr-foot">
       הדוח מסכם את הנתונים שהוזנו בשלב הפרופיל הפיננסי ואת בדיקתם מול מגבלות בנק ישראל

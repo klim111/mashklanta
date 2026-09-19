@@ -2,12 +2,9 @@
 
 import React, { useMemo } from 'react';
 import {
-  Area,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  ComposedChart,
   LabelList,
   Legend,
   Line,
@@ -18,13 +15,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { AlertTriangle, Scale, Shield, Sparkles } from 'lucide-react';
+import { AlertTriangle, Scale, Shield, Sparkles, TrendingUp } from 'lucide-react';
 import type {
   CashFlowPoint,
   CashFlowStep,
   CheckStatus,
-  CostPoint,
-  MixSketchItem,
+  MixTrackGuide,
   TimelineItem,
 } from '@/lib/profile-report';
 import { formatShekel } from '../../ui';
@@ -33,10 +29,10 @@ import { formatShekel } from '../../ui';
  * הגרפים של דוח הפרופיל.
  *
  * צבעי הסדרות קבועים לפי מה שהם מייצגים, ולא לפי הסדר: כחול הוא תמיד הכסף
- * שנכנס או הקרן, ענבר תמיד מה שיורד או הריבית, ירוק-כחלחל תמיד מה שנשאר,
- * וסגול תמיד אבן דרך בתהליך. צבעי הסטטוס (ירוק / ענבר / אדום) שמורים למצב מול
- * המגבלה בלבד. הפלטה נבדקה לעיוורון צבעים, ולכל גרף יש גם טבלה או כיתוב שנותן
- * את אותו מידע בלי צבע.
+ * שנכנס, ענבר תמיד מה שיורד ממנו, ירוק-כחלחל תמיד מה שנשאר, וסגול תמיד אבן
+ * דרך בתהליך. צבעי הסטטוס (ירוק / ענבר / אדום) שמורים למצב מול המגבלה בלבד.
+ * הפלטה נבדקה לעיוורון צבעים, ולכל גרף יש גם טבלה או כיתוב שנותן את אותו
+ * מידע בלי צבע.
  */
 export const SERIES = {
   income: '#2563eb',
@@ -51,13 +47,6 @@ const STATUS_COLOR: Record<CheckStatus, string> = {
   near: '#d97706',
   fail: '#e11d48',
   unknown: '#94a3b8',
-};
-
-const STATUS_SOFT: Record<CheckStatus, string> = {
-  pass: '#d1fae5',
-  near: '#fef3c7',
-  fail: '#ffe4e6',
-  unknown: '#e2e8f0',
 };
 
 /** ‎₪1.2M / ‎₪85K — לצירים ולתוויות קצרות */
@@ -135,11 +124,15 @@ export function LimitGauge({
     const angle = Math.PI * (1 - fraction);
     return { x: cx + r * Math.cos(angle), y: cy - r * Math.sin(angle) };
   };
+  /*
+    כל הקשתות כאן נמתחות על חצי מעגל לכל היותר, ולכן large-arc-flag הוא תמיד
+    0. ערך 1 היה מצייר את הקשת המשלימה — על מעגל אחר — והיא נראית כקו מעוקם
+    שאינו יושב על הטבעת.
+  */
   const arc = (from: number, to: number) => {
     const a = point(from);
     const b = point(to);
-    const large = to - from > 0.5 ? 1 : 0;
-    return `M ${a.x} ${a.y} A ${radius} ${radius} 0 ${large} 1 ${b.x} ${b.y}`;
+    return `M ${a.x} ${a.y} A ${radius} ${radius} 0 0 1 ${b.x} ${b.y}`;
   };
 
   const comfortFraction = Math.min(1, comfort / limit);
@@ -148,7 +141,10 @@ export function LimitGauge({
   const color = STATUS_COLOR[status];
 
   return (
-    <figure className="m-0 flex flex-col items-center" aria-label={`${label}: ${value === null ? 'חסרים נתונים' : `${value.toFixed(1)}${unit}`} מתוך מגבלה של ${limit}${unit}`}>
+    <figure
+      className="m-0 flex flex-col items-center"
+      aria-label={`${label}: ${value === null ? 'חסרים נתונים' : `${value.toFixed(1)}${unit}`} מתוך מגבלה של ${limit}${unit}`}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-[330px]" role="img">
         {/* המסילה: האזור הנוח ואחריו האזור שבו החיתום מחמיר */}
         <path d={arc(0, comfortFraction)} stroke="#d1fae5" strokeWidth={stroke} fill="none" strokeLinecap="butt" />
@@ -193,7 +189,14 @@ export function LimitGauge({
           {`${limit}${unit}`}
         </text>
         {comfortFraction < 0.9 && (
-          <text x={point(comfortFraction, radius + 30).x} y={point(comfortFraction, radius + 30).y} textAnchor="middle" fontSize={10} fontWeight={700} fill="#b45309">
+          <text
+            x={point(comfortFraction, radius + 30).x}
+            y={point(comfortFraction, radius + 30).y}
+            textAnchor="middle"
+            fontSize={10}
+            fontWeight={700}
+            fill="#b45309"
+          >
             {`${comfort}${unit}`}
           </text>
         )}
@@ -201,7 +204,8 @@ export function LimitGauge({
       {exceeds && (
         <figcaption className="-mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-black text-rose-700">
           <AlertTriangle className="h-3 w-3" />
-          חורג מהמגבלה ב-{(value - limit).toFixed(1)}{unit}
+          חורג מהמגבלה ב-{(value - limit).toFixed(1)}
+          {unit}
         </figcaption>
       )}
     </figure>
@@ -216,48 +220,18 @@ export function distanceToLimit(value: number | null, limit: number, unit = '%')
   return `נותרו ${gap.toFixed(1)}${unit} עד המגבלה`;
 }
 
-// ───────────────────────── המפל החודשי ─────────────────────────
+// ───────────────────────── התזרים החודשי ─────────────────────────
 
-interface WaterfallRow {
+interface FlowRow {
   key: CashFlowStep['key'];
   name: string;
-  base: number;
-  size: number;
+  short: string;
+  /** חיובי — הכנסה, סכום ביניים ומה שנשאר; שלילי — מה שיורד מההכנסה */
   amount: number;
   kind: CashFlowStep['kind'];
-  negative: boolean;
 }
 
-function waterfallRows(steps: CashFlowStep[]): WaterfallRow[] {
-  let running = 0;
-  return steps.map((step) => {
-    if (step.kind === 'subtotal' || step.kind === 'result') {
-      running = step.amount;
-      return {
-        key: step.key,
-        name: step.label,
-        base: Math.min(0, step.amount),
-        size: Math.abs(step.amount),
-        amount: step.amount,
-        kind: step.kind,
-        negative: step.amount < 0,
-      };
-    }
-    const start = running;
-    running += step.amount;
-    return {
-      key: step.key,
-      name: step.label,
-      base: Math.min(start, running),
-      size: Math.abs(step.amount),
-      amount: step.amount,
-      kind: step.kind,
-      negative: false,
-    };
-  });
-}
-
-const WATERFALL_SHORT: Record<CashFlowStep['key'], string> = {
+const FLOW_SHORT: Record<CashFlowStep['key'], string> = {
   income: 'הכנסה נטו',
   expenses: 'הוצאות',
   loans: 'הלוואות',
@@ -266,57 +240,174 @@ const WATERFALL_SHORT: Record<CashFlowStep['key'], string> = {
   remaining: 'נשאר',
 };
 
-function waterfallColor(row: WaterfallRow): string {
-  if (row.kind === 'result') return row.negative ? STATUS_COLOR.fail : SERIES.remaining;
+function flowColor(row: FlowRow): string {
   if (row.kind === 'deduction') return SERIES.deduction;
+  if (row.kind === 'result') return row.amount < 0 ? STATUS_COLOR.fail : SERIES.remaining;
   return SERIES.income;
 }
 
 /**
- * מפל התזרים: ההכנסה, מה שיורד ממנה, מה שנשאר לפני המשכנתא, ההחזר המשוער
- * ומה שנשאר אחריו. כל עמודה מסומנת בסכומה — כאן המספרים הם העניין.
+ * סולם עגול לציר הערכים.
+ *
+ * מרווח מעל העמודה הגבוהה ומתחת לנמוכה, כדי שתווית לא תיפול על הציר, ואז
+ * עיגול לצעד נוח (1 / 2 / 2.5 / 5 / 10 כפול חזקה של עשר) כדי שהסימונים יהיו
+ * מספרים שאפשר לקרוא.
+ */
+function niceScale(min: number, max: number): { domain: [number, number]; ticks: number[] } {
+  const top0 = Math.max(0, max) * 1.06;
+  const bottom0 = Math.min(0, min) * 1.4;
+  const span = top0 - bottom0;
+  if (!Number.isFinite(span) || span < 1) return { domain: [0, 1000], ticks: [0, 500, 1000] };
+
+  const magnitude = Math.pow(10, Math.floor(Math.log10(span / 5)));
+  const step =
+    [1, 2, 2.5, 5, 10].map((factor) => factor * magnitude).find((candidate) => span / candidate <= 6) ??
+    10 * magnitude;
+  const top = Math.ceil(top0 / step) * step;
+  const bottom = Math.floor(bottom0 / step) * step;
+
+  const ticks: number[] = [];
+  for (let value = bottom; value <= top + step / 2; value += step) ticks.push(Math.round(value));
+  return { domain: [bottom, top], ticks };
+}
+
+/** מלבן עם עיגול בשני קודקודים בלבד — הקצה שבו נגמר הערך */
+function roundedBar(x: number, y: number, width: number, height: number, roundTop: boolean): string {
+  const r = Math.max(0, Math.min(4, width / 2, height));
+  if (roundTop) {
+    return `M${x},${y + r} Q${x},${y} ${x + r},${y} H${x + width - r} Q${x + width},${y} ${x + width},${y + r} V${y + height} H${x} Z`;
+  }
+  return `M${x},${y} H${x + width} V${y + height - r} Q${x + width},${y + height} ${x + width - r},${y + height} H${x + r} Q${x},${y + height} ${x},${y + height - r} Z`;
+}
+
+/**
+ * עמודה אחת בתזרים: עולה מעל קו האפס כשהיא מוסיפה, ויורדת מתחתיו כשהיא
+ * מורידה. הקצה שבו נגמר הערך מעוגל, והקצה שיושב על קו האפס נשאר ישר.
+ */
+function FlowBar(props: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  payload?: FlowRow;
+}) {
+  const { x = 0, y = 0, width = 0, height = 0, payload } = props;
+  if (!payload || width <= 0) return null;
+  // בערך שלילי ‎recharts‎ מחזיר גובה שלילי מנקודת הערך; מנרמלים לקצה העליון
+  const top = Math.min(y, y + height);
+  return (
+    <path d={roundedBar(x, top, width, Math.abs(height), payload.amount >= 0)} fill={flowColor(payload)} />
+  );
+}
+
+/**
+ * תווית הערך של עמודה, ממוקמת מהמלבן עצמו.
+ *
+ * ‎recharts‎ מודד את המיקומים המובנים מקצה המלבן העליון, ולכן עמודה שיורדת
+ * מתחת לקו האפס הייתה מקבלת את התווית שלה דווקא על הקו. כאן היא נגזרת מגובה
+ * המלבן: מעליו לעמודה שעולה, מתחתיו לעמודה שיורדת.
+ */
+function FlowValueLabel(props: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  value?: number | string;
+}) {
+  const { x, y, width, height, value } = props;
+  if (x === undefined || y === undefined || width === undefined || height === undefined) return null;
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount === 0) return null;
+  const up = amount >= 0;
+  const top = Math.min(y, y + height);
+  return (
+    <text
+      x={x + width / 2}
+      y={up ? top - 7 : top + Math.abs(height) + 14}
+      textAnchor="middle"
+      fontSize={11}
+      fontWeight={800}
+      fill={up ? '#0f172a' : '#b45309'}
+    >
+      {compactShekel(amount)}
+    </text>
+  );
+}
+
+/**
+ * התזרים החודשי: מה נכנס מעל הקו, מה יורד מתחתיו.
+ *
+ * ההכנסה, ההכנסה הפנויה ומה שנשאר מוצגים כעמודות חיוביות; ההוצאות, ההלוואות
+ * והחזר המשכנתא יורדים מתחת לציר, כי הם מקטינים את אותו סכום. שורה שערכה
+ * אפס אינה מצוירת — עמודה בגובה אפס רק מבלבלת.
  */
 export function CashFlowWaterfall({ steps }: { steps: CashFlowStep[] }) {
-  const rows = useMemo(() => waterfallRows(steps), [steps]);
+  const rows = useMemo<FlowRow[]>(
+    () =>
+      steps
+        .filter((step) => step.kind !== 'deduction' || step.amount !== 0)
+        .map((step) => ({
+          key: step.key,
+          name: step.label,
+          short: FLOW_SHORT[step.key],
+          amount: step.amount,
+          kind: step.kind,
+        })),
+    [steps]
+  );
+
+  const scale = useMemo(
+    () =>
+      niceScale(
+        Math.min(0, ...rows.map((row) => row.amount)),
+        Math.max(0, ...rows.map((row) => row.amount))
+      ),
+    [rows]
+  );
 
   return (
     <div dir="ltr" className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} margin={{ top: 22, right: 8, left: 8, bottom: 0 }} barCategoryGap="28%">
+        <BarChart data={rows} margin={{ top: 22, right: 8, left: 8, bottom: 16 }} barCategoryGap="28%">
           <CartesianGrid vertical={false} stroke={GRID_STROKE} />
           <XAxis
-            dataKey="key"
-            tickFormatter={(key: CashFlowStep['key']) => WATERFALL_SHORT[key]}
+            dataKey="short"
             tick={AXIS_TICK}
             axisLine={{ stroke: GRID_STROKE }}
             tickLine={false}
             interval={0}
           />
-          <YAxis tickFormatter={compactShekel} tick={AXIS_TICK} axisLine={false} tickLine={false} width={56} />
+          <YAxis
+            tickFormatter={compactShekel}
+            tick={AXIS_TICK}
+            axisLine={false}
+            tickLine={false}
+            width={56}
+            domain={scale.domain}
+            ticks={scale.ticks}
+          />
+          <ReferenceLine y={0} stroke="#0f172a" strokeWidth={1.5} />
           <Tooltip
             cursor={{ fill: '#f1f5f9' }}
             content={({ active, payload }) => {
-              const row = payload?.[0]?.payload as WaterfallRow | undefined;
+              const row = payload?.[0]?.payload as FlowRow | undefined;
               if (!active || !row) return null;
               return (
                 <TooltipCard
                   title={row.name}
-                  rows={[{ label: row.kind === 'deduction' ? 'יורד' : 'סכום', value: formatShekel(row.amount), color: waterfallColor(row) }]}
+                  rows={[
+                    {
+                      label: row.kind === 'deduction' ? 'יורד מההכנסה' : 'סכום',
+                      value: formatShekel(Math.abs(row.amount)),
+                      color: flowColor(row),
+                    },
+                  ]}
                 />
               );
             }}
           />
-          <Bar dataKey="base" stackId="flow" fill="transparent" isAnimationActive={false} />
-          <Bar dataKey="size" stackId="flow" radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false}>
-            {rows.map((row) => (
-              <Cell key={row.key} fill={waterfallColor(row)} />
-            ))}
-            <LabelList
-              dataKey="amount"
-              position="top"
-              formatter={(value: React.ReactNode) => compactShekel(Math.abs(Number(value)))}
-              style={{ fontSize: 11, fontWeight: 800, fill: '#0f172a' }}
-            />
+          <Bar dataKey="amount" maxBarSize={44} shape={<FlowBar />} isAnimationActive={false}>
+            <LabelList dataKey="amount" content={<FlowValueLabel />} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -453,14 +544,17 @@ export function CashFlowTimeline({
 /**
  * לוח גאנט של התהליך, מימין לשמאל כמו הטקסט: כל שורה היא שלב או אבן דרך,
  * והפס מראה מתי היא מתרחשת ביחס לתחילת התהליך. השלבים בכחול, אבני הדרך
- * שבין השלבים בסגול, ואבן דרך שהפרופיל מדגיש (שמאות מוקדמת) מקבלת מסגרת.
+ * שמלוות אותם בסגול, ואבן דרך שהפרופיל מדגיש (שמאות מוקדמת) מקבלת מסגרת.
  */
 export function ProcessGantt({ items }: { items: TimelineItem[] }) {
   const totalWeeks = Math.max(1, ...items.map((item) => item.endWeek));
-  // סימון כל שבועיים, והסוף — בלי שני סימונים צמודים כשמספר השבועות אי-זוגי
-  const ticks = Array.from({ length: totalWeeks + 1 }, (_, week) => week).filter(
-    (week) => week === totalWeeks || (week % 2 === 0 && totalWeeks - week >= 2)
+  const lastTick = Math.ceil(totalWeeks);
+  // סימון כל שבועיים, והסוף — בלי שני סימונים צמודים כשהמספר אי-זוגי
+  const ticks = Array.from({ length: lastTick + 1 }, (_, week) => week).filter(
+    (week) => week === lastTick || (week % 2 === 0 && lastTick - week >= 2)
   );
+
+  let stageNumber = 0;
 
   return (
     <div className="w-full text-right">
@@ -474,7 +568,7 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
               style={
                 week === 0
                   ? { right: 0 }
-                  : week === totalWeeks
+                  : week === lastTick
                     ? { left: 0 }
                     : { right: `${(week / totalWeeks) * 100}%`, transform: 'translateX(50%)' }
               }
@@ -485,11 +579,12 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
         </div>
       </div>
       <ol className="divide-y divide-slate-100">
-        {items.map((item, index) => {
-          const right = (item.startWeek / totalWeeks) * 100;
-          const width = ((item.endWeek - item.startWeek) / totalWeeks) * 100;
+        {items.map((item) => {
           const isStage = item.kind === 'stage';
-          const stageNumber = isStage ? items.filter((it, i) => it.kind === 'stage' && i <= index).length : null;
+          if (isStage) stageNumber += 1;
+          const right = (item.startWeek / totalWeeks) * 100;
+          // פריט של ימים בודדים עדיין צריך להיראות על הלוח
+          const width = Math.max(((item.endWeek - item.startWeek) / totalWeeks) * 100, 2.5);
           return (
             <li
               key={item.id}
@@ -500,7 +595,7 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
                   className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
                   style={{ background: isStage ? SERIES.income : SERIES.milestone }}
                 >
-                  {stageNumber ?? '•'}
+                  {isStage ? stageNumber : '•'}
                 </span>
                 <span className="truncate">{item.label}</span>
                 {item.emphasized && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />}
@@ -521,7 +616,7 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
                     background: isStage ? SERIES.income : SERIES.milestone,
                     opacity: isStage ? 1 : 0.85,
                   }}
-                  title={`${item.label}: ${item.duration}`}
+                  title={`${item.label}: ${item.when}`}
                 />
               </div>
             </li>
@@ -529,217 +624,96 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
         })}
       </ol>
       <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES.income }} />שלב בפלטפורמה</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES.milestone }} />אבן דרך מחוץ לפלטפורמה</span>
-        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 text-amber-600" />מודגש לפי הפרופיל שלכם</span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES.income }} />
+          שלב בפלטפורמה
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES.milestone }} />
+          אבן דרך מחוץ לפלטפורמה
+        </span>
+        <span className="flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+          מודגש לפי הפרופיל שלכם
+        </span>
       </div>
     </div>
   );
 }
 
-// ───────────────────────── הרכב מסלולי המשכנתא ─────────────────────────
+// ───────────────────────── מסלולי המשכנתא ─────────────────────────
 
-const TRACK_COLOR: Record<MixSketchItem['id'], string> = {
-  fixed_unlinked: SERIES.income,
-  prime: SERIES.milestone,
-  variable_unlinked: SERIES.remaining,
-};
+const RATING_TEXT: Record<1 | 2 | 3, string> = { 1: 'נמוך', 2: 'בינוני', 3: 'גבוה' };
 
-function RatingDots({ level, color }: { level: 1 | 2 | 3; color: string }) {
+function RatingDots({ level }: { level: 1 | 2 | 3 }) {
   return (
     <span className="flex items-center gap-1" aria-hidden>
       {[1, 2, 3].map((step) => (
         <span
           key={step}
           className="h-2.5 w-2.5 rounded-full"
-          style={{ background: step <= level ? color : '#e2e8f0' }}
+          style={{ background: step <= level ? SERIES.remaining : '#e2e8f0' }}
         />
       ))}
     </span>
   );
 }
 
-const RATING_TEXT: Record<1 | 2 | 3, string> = { 1: 'נמוך', 2: 'בינוני', 3: 'גבוה' };
-
 /**
- * ההרכב הסכמטי: פס אחד שמראה את החלוקה, ולכל מסלול כרטיס עם שלושת המדדים —
- * סיכון, גמישות ועלות — כדי שהאיזון ביניהם ייקרא במבט, לא רק בטקסט.
+ * מסלולי המשכנתא, כתיאור סכמטי.
+ *
+ * בלי סכומים ובלי אחוזים — הם ייקבעו בשלב התמהיל. לכל מסלול שלושת המדדים
+ * שמאזנים זה את זה (סיכון, גמישות, עלות) והסבר מתי האיזון הזה מצדיק לכלול
+ * אותו. מסלול צמוד מדד מסומן בנפרד, כי הסיכון שלו אינו בהחזר אלא בקרן.
  */
-export function MixComposition({ items, mortgageAmount }: { items: MixSketchItem[]; mortgageAmount: number }) {
+export function MixTracks({ tracks }: { tracks: MixTrackGuide[] }) {
   return (
-    <div className="space-y-4">
-      <div className="flex h-9 w-full gap-0.5 overflow-hidden rounded-xl" role="img" aria-label={items.map((item) => `${item.short} ${item.share}%`).join(', ')}>
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center justify-center text-[12px] font-black text-white"
-            style={{ width: `${item.share}%`, background: TRACK_COLOR[item.id] }}
-          >
-            {item.share >= 18 ? `${item.short} ${item.share}%` : `${item.share}%`}
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {tracks.map((track) => (
+        <article key={track.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h5 className="text-[13px] font-black leading-snug text-slate-900">{track.label}</h5>
+            {track.linked && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+                <TrendingUp className="h-3 w-3" />
+                צמוד מדד
+              </span>
+            )}
           </div>
-        ))}
-      </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        {items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="flex items-start gap-2">
-              <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: TRACK_COLOR[item.id] }} />
-              <div className="min-w-0">
-                <div className="text-[13px] font-black leading-snug text-slate-900">{item.label}</div>
-                <div className="text-[11px] font-bold text-slate-500">
-                  כ-{item.share}% · {mortgageAmount > 0 ? formatShekel((mortgageAmount * item.share) / 100) : '—'} · ריבית להערכה {item.rate.toFixed(2)}%
-                </div>
+          <dl className="mt-3 space-y-1.5 text-[12px]">
+            {(
+              [
+                ['סיכון', track.risk, Shield],
+                ['גמישות', track.flexibility, Sparkles],
+                ['עלות', track.cost, Scale],
+              ] as const
+            ).map(([name, level, Icon]) => (
+              <div key={name} className="flex items-center justify-between gap-2">
+                <dt className="flex items-center gap-1.5 font-bold text-slate-600">
+                  <Icon className="h-3.5 w-3.5 text-slate-400" />
+                  {name}
+                </dt>
+                <dd className="flex items-center gap-2 font-bold text-slate-700">
+                  <span className="text-[11px] text-slate-500">{RATING_TEXT[level]}</span>
+                  <RatingDots level={level} />
+                </dd>
               </div>
-            </div>
-            <dl className="mt-3 space-y-1.5 text-[12px]">
-              {(
-                [
-                  ['סיכון', item.risk, Shield],
-                  ['גמישות', item.flexibility, Sparkles],
-                  ['עלות', item.cost, Scale],
-                ] as const
-              ).map(([name, level, Icon]) => (
-                <div key={name} className="flex items-center justify-between gap-2">
-                  <dt className="flex items-center gap-1.5 font-bold text-slate-600">
-                    <Icon className="h-3.5 w-3.5 text-slate-400" />
-                    {name}
-                  </dt>
-                  <dd className="flex items-center gap-2 font-bold text-slate-700">
-                    <span className="text-[11px] text-slate-500">{RATING_TEXT[level]}</span>
-                    <RatingDots level={level} color={TRACK_COLOR[item.id]} />
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-3 text-[12px] leading-relaxed text-slate-600">{item.role}</p>
-          </div>
-        ))}
-      </div>
+            ))}
+          </dl>
+
+          <p className="mb-3 mt-3 text-[12px] leading-relaxed text-slate-600">{track.role}</p>
+
+          {track.linked && (
+            <p className="mt-auto rounded-xl bg-amber-50 px-3 py-2 pt-2 text-[11px] font-bold leading-relaxed text-amber-900">
+              סיכון מיוחד למסלול צמוד: הקרן עצמה משתנה יחד עם האינפלציה במשק, ולא רק ההחזר החודשי —
+              היתרה לתשלום יכולה לגדול גם אחרי שנים של תשלומים.
+            </p>
+          )}
+        </article>
+      ))}
     </div>
   );
 }
 
-// ───────────────────────── הסימולציה: קרן מול ריבית ─────────────────────────
-
-/**
- * מה נלקח מול מה ישולם: שתי עמודות אופקיות — הקרן לבדה, ולצידה סך התשלומים
- * מפוצל לקרן ולריבית. הריבית היא ההפרש ביניהן, וזה המספר שהתמהיל ינסה להקטין.
- */
-export function BorrowedVersusPaid({
-  principal,
-  interest,
-}: {
-  principal: number;
-  interest: number;
-}) {
-  const rows = [
-    { name: 'הסכום שנלקח', principal, interest: 0 },
-    { name: 'הסכום שישולם', principal, interest },
-  ];
-  return (
-    <div>
-      <div className="mb-1 flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: SERIES.income }} />קרן — {formatShekel(principal)}</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: SERIES.deduction }} />ריבית — {formatShekel(interest)}</span>
-      </div>
-    <div dir="ltr" className="h-32 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }} barCategoryGap="30%">
-          <XAxis type="number" hide domain={[0, 'dataMax']} />
-          <YAxis type="category" dataKey="name" tick={{ ...AXIS_TICK, fontWeight: 700 }} axisLine={false} tickLine={false} width={96} orientation="right" />
-          <Tooltip
-            cursor={{ fill: '#f1f5f9' }}
-            content={({ active, payload }) => {
-              const row = payload?.[0]?.payload as (typeof rows)[number] | undefined;
-              if (!active || !row) return null;
-              return (
-                <TooltipCard
-                  title={row.name}
-                  rows={[
-                    { label: 'קרן', value: formatShekel(row.principal), color: SERIES.income },
-                    ...(row.interest > 0 ? [{ label: 'ריבית', value: formatShekel(row.interest), color: SERIES.deduction }] : []),
-                    { label: 'סך הכול', value: formatShekel(row.principal + row.interest) },
-                  ]}
-                />
-              );
-            }}
-          />
-          <Bar dataKey="principal" name="קרן" stackId="paid" fill={SERIES.income} maxBarSize={26} isAnimationActive={false} />
-          <Bar dataKey="interest" name="ריבית" stackId="paid" fill={SERIES.deduction} radius={[0, 4, 4, 0]} maxBarSize={26} isAnimationActive={false} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-    </div>
-  );
-}
-
-/** הקרן והריבית שהצטברו לאורך השנים — כמה מכל שקל ששולם הלך לאן */
-export function CostOverTime({ points }: { points: CostPoint[] }) {
-  return (
-    <div dir="ltr" className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={points} margin={{ top: 12, right: 12, left: 8, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke={GRID_STROKE} />
-          <XAxis
-            dataKey="year"
-            tick={AXIS_TICK}
-            axisLine={{ stroke: GRID_STROKE }}
-            tickLine={false}
-            tickFormatter={(year: number) => (year === 0 ? 'היום' : `שנה ${year}`)}
-            minTickGap={24}
-          />
-          <YAxis tickFormatter={compactShekel} tick={AXIS_TICK} axisLine={false} tickLine={false} width={56} />
-          <Tooltip
-            cursor={{ stroke: '#cbd5e1' }}
-            content={({ active, payload }) => {
-              const row = payload?.[0]?.payload as CostPoint | undefined;
-              if (!active || !row) return null;
-              return (
-                <TooltipCard
-                  title={row.year === 0 ? 'היום' : `אחרי ${row.year} שנים`}
-                  rows={[
-                    { label: 'קרן ששולמה', value: formatShekel(row.paidPrincipal), color: SERIES.income },
-                    { label: 'ריבית ששולמה', value: formatShekel(row.paidInterest), color: SERIES.deduction },
-                    { label: 'יתרת הקרן', value: formatShekel(row.balance), color: SERIES.neutral },
-                  ]}
-                />
-              );
-            }}
-          />
-          <Legend
-            verticalAlign="top"
-            align="right"
-            iconType="circle"
-            wrapperStyle={{ fontSize: 11, fontWeight: 700, color: '#475569', paddingBottom: 6 }}
-          />
-          <Area
-            type="monotone"
-            dataKey="paidPrincipal"
-            name="קרן ששולמה"
-            stackId="paid"
-            stroke={SERIES.income}
-            fill={SERIES.income}
-            fillOpacity={0.14}
-            strokeWidth={2}
-            isAnimationActive={false}
-          />
-          <Area
-            type="monotone"
-            dataKey="paidInterest"
-            name="ריבית ששולמה"
-            stackId="paid"
-            stroke={SERIES.deduction}
-            fill={SERIES.deduction}
-            fillOpacity={0.16}
-            strokeWidth={2}
-            isAnimationActive={false}
-          />
-          <Line type="monotone" dataKey="balance" name="יתרת הקרן" stroke={SERIES.neutral} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-export { STATUS_COLOR, STATUS_SOFT };
+export { STATUS_COLOR };

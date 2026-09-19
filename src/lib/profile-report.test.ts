@@ -10,6 +10,7 @@ import {
   reportRecommendations,
   shouldAskIncomeIncrease,
   DOCUMENT_CONSISTENCY_WARNING,
+  MIX_TRACKS,
 } from './profile-report';
 
 function profile(overrides: Partial<PlanData['ANALYSIS']> = {}): PlanData {
@@ -350,14 +351,13 @@ describe('התזרים, לוח הזמנים, התמהיל הסכמטי והסי�
     expect(timeline[0].ratio).toBeCloseTo(report.summary.repaymentRatio ?? 0, 6);
   });
 
-  it('בלי נתונים אין החזר בתזרים והסימולציה ריקה', () => {
+  it('בלי נתונים אין החזר בתזרים', () => {
     const report = buildProfileReport(emptyPlanData());
     expect(report.cashFlow.mortgagePayment).toBe(0);
     expect(report.cashFlow.remainingShare).toBeNull();
-    expect(report.costByYear).toEqual([]);
   });
 
-  it('לוח הזמנים כולל את חמשת השלבים בסדרם, ואת השמאות המוקדמת ועורך הדין אחרי הפרופיל', () => {
+  it('לוח הזמנים: חמשת השלבים, שמאות מוקדמת, ועבודה מול עורך הדין לאורך כל התהליך', () => {
     const items = buildProfileReport(profile({ equity: 1_000_000 })).timeline;
     expect(items.map((item) => item.id)).toEqual([
       'ANALYSIS',
@@ -368,10 +368,26 @@ describe('התזרים, לוח הזמנים, התמהיל הסכמטי והסי�
       'AUCTION',
       'SIGNING',
     ]);
-    items.forEach((item, index) => {
+    items.forEach((item) => {
       expect(item.endWeek).toBeGreaterThan(item.startWeek);
-      if (index > 0) expect(item.startWeek).toBe(items[index - 1].endWeek);
+      expect(item.when.length).toBeGreaterThan(0);
     });
+
+    const end = Math.max(...items.map((item) => item.endWeek));
+    const lawyer = items.find((item) => item.id === 'lawyer');
+    expect(lawyer?.startWeek).toBe(1);
+    expect(lawyer?.endWeek).toBe(end);
+    expect(lawyer?.note).toContain('לוח התשלומים');
+
+    const mix = items.find((item) => item.id === 'MIX');
+    expect(mix?.startWeek).toBe(2);
+    expect((mix!.endWeek - mix!.startWeek) * 7).toBeCloseTo(3, 6);
+
+    const signing = items.find((item) => item.id === 'SIGNING');
+    expect(signing?.startWeek).toBe(10);
+    expect(signing?.endWeek).toBe(14);
+    expect(signing?.duration).toContain('מוכנות המסמכים');
+
     expect(items.find((item) => item.id === 'appraisal')?.emphasized).toBe(false);
   });
 
@@ -380,24 +396,33 @@ describe('התזרים, לוח הזמנים, התמהיל הסכמטי והסי�
     expect(near.find((item) => item.id === 'appraisal')?.emphasized).toBe(true);
   });
 
-  it('התמהיל הסכמטי מסתכם למאה אחוז ומגדיל את החלק הקבוע כשההחזר צמוד למגבלה', () => {
-    const comfortable = buildProfileReport(profile()).mixSketch;
-    expect(comfortable.reduce((sum, item) => sum + item.share, 0)).toBe(100);
-    const tight = buildProfileReport(profile({ income: 12_000, partnerIncome: 0, household: 'SINGLE' })).mixSketch;
-    expect(tight.reduce((sum, item) => sum + item.share, 0)).toBe(100);
-    const fixedOf = (items: typeof tight) => items.find((item) => item.id === 'fixed_unlinked')?.share ?? 0;
-    expect(fixedOf(tight)).toBeGreaterThan(fixedOf(comfortable));
-    expect(fixedOf(comfortable)).toBeGreaterThanOrEqual(33);
+  it('תיאור המסלולים אינו נגזר מהפרופיל, ומדרג לכל מסלול סיכון, גמישות ועלות', () => {
+    const report = buildProfileReport(profile());
+    expect(report.mixTracks).toBe(MIX_TRACKS);
+    expect(report.mixTracks.map((track) => track.id)).toEqual([
+      'fixed_unlinked',
+      'fixed_linked',
+      'prime',
+      'variable_unlinked',
+      'variable_linked',
+      'makam',
+      'eligibility',
+    ]);
+    report.mixTracks.forEach((track) => {
+      [track.risk, track.flexibility, track.cost].forEach((level) => {
+        expect(level).toBeGreaterThanOrEqual(1);
+        expect(level).toBeLessThanOrEqual(3);
+      });
+      expect(track.role.length).toBeGreaterThan(40);
+    });
   });
 
-  it('הסימולציה מסיימת ביתרה אפס, והריבית המצטברת שווה לסך הריביות בדוח', () => {
-    const report = buildProfileReport(profile({ years: 20 }));
-    const points = report.costByYear;
-    expect(points[0]).toEqual({ year: 0, balance: report.summary.mortgageAmount, paidPrincipal: 0, paidInterest: 0 });
-    expect(points).toHaveLength(21);
-    const last = points[points.length - 1];
-    expect(last.balance).toBeCloseTo(0, 0);
-    expect(last.paidPrincipal).toBeCloseTo(report.summary.mortgageAmount, 0);
-    expect(last.paidInterest).toBeCloseTo(report.summary.totalInterest, -1);
+  it('המסלולים הצמודים מסומנים, והסבריהם מזכירים את הצמדת הקרן למדד', () => {
+    const linked = MIX_TRACKS.filter((track) => track.linked).map((track) => track.id);
+    expect(linked).toEqual(['fixed_linked', 'variable_linked', 'eligibility']);
+    MIX_TRACKS.filter((track) => track.linked).forEach((track) => {
+      expect(track.role).toContain('מדד');
+    });
+    expect(MIX_TRACKS.find((track) => track.id === 'fixed_unlinked')?.linked).toBe(false);
   });
 });

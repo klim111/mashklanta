@@ -150,44 +150,51 @@ export interface ReportCashFlow {
   timeline: CashFlowPoint[];
 }
 
-/** פריט בלוח הזמנים של התהליך — שלב או אבן דרך שבין השלבים */
+/** פריט בלוח הזמנים של התהליך — שלב או אבן דרך שמלווה אותם */
 export interface TimelineItem {
   id: string;
   label: string;
-  /** שבוע התחלה וסיום מתחילת התהליך */
+  /** שבוע התחלה וסיום מתחילת התהליך; אפשר גם שבר, לפריט שנמשך ימים בודדים */
   startWeek: number;
   endWeek: number;
   kind: 'stage' | 'milestone';
   stage: PlanStageId | null;
+  /** מתי זה קורה, בשפה של הלקוח */
+  when: string;
   duration: string;
   note: string;
   /** אבן דרך שהפרופיל הופך לחשובה במיוחד (למשל שמאות מוקדמת כשהמימון קרוב לתקרה) */
   emphasized: boolean;
 }
 
-export type MixSketchTrack = 'fixed_unlinked' | 'prime' | 'variable_unlinked';
+export type MixTrackId =
+  | 'fixed_unlinked'
+  | 'fixed_linked'
+  | 'prime'
+  | 'variable_unlinked'
+  | 'variable_linked'
+  | 'makam'
+  | 'eligibility';
 
-/** מסלול בתמהיל הסכמטי — הרכב עקרוני, לא המלצה סופית */
-export interface MixSketchItem {
-  id: MixSketchTrack;
+/**
+ * מסלול משכנתא בתיאור הסכמטי.
+ *
+ * בלי סכומים ובלי אחוזים: בשלב הזה עוד אין תמהיל, ויש רק להבין מה כל מסלול
+ * מביא לתמהיל — כמה סיכון, כמה גמישות וכמה הוא עולה — כדי לדעת מתי שווה
+ * לכלול אותו.
+ */
+export interface MixTrackGuide {
+  id: MixTrackId;
   label: string;
   short: string;
-  /** חלק מהמשכנתא באחוזים */
-  share: number;
-  rate: number;
   /** דירוג 1–3: כמה סיכון, כמה גמישות, כמה עלות */
   risk: 1 | 2 | 3;
   flexibility: 1 | 2 | 3;
   cost: 1 | 2 | 3;
+  /** מסלול צמוד מדד — הקרן עצמה משתנה עם האינפלציה */
+  linked: boolean;
+  /** האיזון שהמסלול מביא, ומתי שווה לכלול אותו */
   role: string;
-}
-
-/** נקודה שנתית בסימולציית העלות — כמה מהקרן וכמה מהריבית כבר שולמו */
-export interface CostPoint {
-  year: number;
-  balance: number;
-  paidPrincipal: number;
-  paidInterest: number;
 }
 
 /** מספרי המפתח של הדשבורד — כמספרים, כדי שהתצוגה תעצב אותם */
@@ -250,10 +257,8 @@ export interface ProfileReport {
   cashFlow: ReportCashFlow;
   /** לוח הזמנים של חמשת השלבים ואבני הדרך שביניהם */
   timeline: TimelineItem[];
-  /** הרכב סכמטי של מסלולי המשכנתא, לפי הפרופיל */
-  mixSketch: MixSketchItem[];
-  /** הסימולציה: קרן מול ריבית לאורך השנים — הערכה גסה בלבד */
-  costByYear: CostPoint[];
+  /** תיאור סכמטי של מסלולי המשכנתא — מה כל מסלול מביא לתמהיל */
+  mixTracks: MixTrackGuide[];
 }
 
 const shekel = new Intl.NumberFormat('he-IL', {
@@ -535,8 +540,7 @@ export function buildProfileReport(data: PlanData, now: Date = new Date()): Prof
     guidelines: mixGuidelines(profile, summary),
     cashFlow: reportCashFlow(profile, summary),
     timeline: processTimeline(profile),
-    mixSketch: mixSketch(profile, summary),
-    costByYear: costByYear(summary),
+    mixTracks: MIX_TRACKS,
   };
 }
 
@@ -1005,156 +1009,162 @@ export function reportCashFlow(profile: AnalysisData, summary: ReportSummary): R
   };
 }
 
-/** משך אופייני של כל שלב בשבועות — לפי טווח הזמנים שבעמוד "איך זה עובד" */
-const STAGE_WEEKS: Record<PlanStageId, number> = {
-  ANALYSIS: 1,
-  MIX: 2,
-  APPLICATIONS: 2,
-  AUCTION: 3,
-  SIGNING: 1,
-};
-
 /**
- * לוח הזמנים של התהליך: חמשת השלבים בסדר שבו עוברים אותם, ובין הפרופיל
- * לתמהיל שתי אבני הדרך שאינן שלב בפלטפורמה אבל קובעות את הקצב — שמאות
- * מוקדמת (לפני חתימת החוזה) והפנייה לעורך הדין לחוזה המכר.
+ * לוח הזמנים של התהליך.
+ *
+ * חמשת השלבים בסדר שבו עוברים אותם, ולצידם שתי אבני הדרך שאינן שלב
+ * בפלטפורמה אבל קובעות את הקצב: השמאות המוקדמת, שנעשית לפני חתימת חוזה
+ * המכר, והעבודה מול עורך הדין — שמתחילה בשבוע הראשון ונמשכת עד החתימה
+ * בבנק, כי לוח התשלומים בחוזה הוא שקובע את פעימות העברת כספי המשכנתא.
+ *
+ * השבועות הם קצב אופייני של תהליך שמתקדם בלי עיכובים, ולא התחייבות.
  */
 export function processTimeline(profile: AnalysisData): TimelineItem[] {
   const appraisal = appraisalRecommendation(profile) !== null;
-  const items: TimelineItem[] = [];
-  let week = 0;
+  const END_WEEK = 14;
 
-  const pushStage = (stage: PlanStageId) => {
-    const journey = journeyStageFor(stage);
-    const weeks = STAGE_WEEKS[stage];
-    items.push({
-      id: stage,
+  const stage = (
+    id: PlanStageId,
+    startWeek: number,
+    endWeek: number,
+    when: string,
+    duration?: string,
+    note?: string
+  ): TimelineItem => {
+    const journey = journeyStageFor(id);
+    return {
+      id,
       label: journey.title,
-      startWeek: week,
-      endWeek: week + weeks,
+      startWeek,
+      endWeek,
       kind: 'stage',
-      stage,
-      duration: journey.duration,
-      note: journey.tagline,
+      stage: id,
+      when,
+      duration: duration ?? journey.duration,
+      note: note ?? journey.tagline,
       emphasized: false,
-    });
-    week += weeks;
+    };
   };
 
-  PLAN_STAGES.forEach((stage) => {
-    pushStage(stage);
-    if (stage === 'ANALYSIS') {
-      items.push({
-        id: 'appraisal',
-        label: 'שמאות מוקדמת לנכס',
-        startWeek: week,
-        endWeek: week + 1,
-        kind: 'milestone',
-        stage: null,
-        duration: 'כשבוע',
-        note: appraisal
-          ? 'המימון קרוב לתקרה — שמאות לפני החתימה מונעת חוזה שאי אפשר לממן.'
-          : 'אופציונלי: מומלץ כשהמימון קרוב לתקרה או כשיש ספק לגבי שווי הנכס.',
-        emphasized: appraisal,
-      });
-      week += 1;
-      items.push({
-        id: 'lawyer',
-        label: 'פנייה לעורך דין וחתימת חוזה המכר',
-        startWeek: week,
-        endWeek: week + 1,
-        kind: 'milestone',
-        stage: null,
-        duration: 'כשבוע',
-        note: 'לוח התשלומים בחוזה נקבע מול תוקף האישור העקרוני וזמן הביצוע בבנק.',
-        emphasized: false,
-      });
-      week += 1;
-    }
-  });
-
-  return items;
-}
-
-/**
- * הרכב סכמטי של התמהיל: שלושה מסלולים שמייצגים את שלוש הזוויות — קבוע
- * ליציבות, פריים לגמישות, משתנה לעלות. החלוקה זזה לפי המרווח ביחס ההחזר:
- * כשההחזר צמוד למגבלה, החלק הקבוע גדל. זהו קו מנחה, לא תמהיל.
- */
-export function mixSketch(profile: AnalysisData, summary: ReportSummary): MixSketchItem[] {
-  const tight = summary.ratioStatus === 'near' || summary.ratioStatus === 'fail';
-  const lumpTotal = profile.futureLumpSums.reduce((sum, item) => sum + (item.amount ?? 0), 0);
-  const fixedShare = tight ? 50 : Math.max(MIN_FIXED_PERCENT, 35);
-  const primeShare = tight ? 30 : 40;
-  const variableShare = 100 - fixedShare - primeShare;
-
   return [
+    stage('ANALYSIS', 0, 1, 'מיד · השבוע הראשון'),
     {
-      id: 'fixed_unlinked',
-      label: 'ריבית קבועה לא צמודה (קל"צ)',
-      short: 'קבועה',
-      share: fixedShare,
-      rate: INTEREST_RATES.fixed_unlinked,
-      risk: 1,
-      flexibility: 1,
-      cost: 3,
-      role: tight
-        ? 'הבסיס היציב: ההחזר ידוע מראש. כשההחזר קרוב למגבלה, זה החלק שמונע הפתעות.'
-        : `לפחות ${MIN_FIXED_PERCENT}% לפי הרגולציה. ההחזר ידוע מראש, אבל פירעון מוקדם עשוי לעלות בעמלת היוון.`,
+      id: 'appraisal',
+      label: 'שמאות מוקדמת לנכס',
+      startWeek: 1,
+      endWeek: 2,
+      kind: 'milestone',
+      stage: null,
+      when: 'שבוע 1 עד שבוע 2',
+      duration: 'כשבוע',
+      note: appraisal
+        ? 'המימון קרוב לתקרה — שמאות לפני החתימה מונעת חוזה שאי אפשר לממן.'
+        : 'אופציונלי: מומלץ כשהמימון קרוב לתקרה או כשיש ספק לגבי שווי הנכס.',
+      emphasized: appraisal,
     },
     {
-      id: 'prime',
-      label: 'פריים',
-      short: 'פריים',
-      share: primeShare,
-      rate: INTEREST_RATES.prime,
-      risk: 2,
-      flexibility: 3,
-      cost: 2,
-      role:
-        lumpTotal > 0
-          ? `השסתום לפירעון מוקדם בלי עמלת היוון — כאן ייכנסו ${money(lumpTotal)} שצפויים.`
-          : 'השסתום הגמיש: פירעון מוקדם ומיחזור בלי עמלת היוון, אבל ההחזר זז עם ריבית בנק ישראל.',
+      id: 'lawyer',
+      label: 'עבודה מול עורך הדין',
+      startWeek: 1,
+      endWeek: END_WEEK,
+      kind: 'milestone',
+      stage: null,
+      when: 'משבוע 1 ועד החתימה בבנק',
+      duration: 'לאורך כל התהליך',
+      note: 'פעימות העברת כספי המשכנתא ייקבעו בהתאם ללוח התשלומים שייקבע במסגרת חוזה המכירה של הנכס.',
+      emphasized: false,
     },
-    {
-      id: 'variable_unlinked',
-      label: 'משתנה לא צמודה כל 5 שנים',
-      short: 'משתנה',
-      share: variableShare,
-      rate: INTEREST_RATES.variable_unlinked_5y,
-      risk: 2,
-      flexibility: 2,
-      cost: 1,
-      role: 'ריבית התחלתית נמוכה עם יציבות לחמש שנים, ונקודת יציאה בלי קנס בכל עדכון.',
-    },
+    stage('MIX', 2, 2 + 3 / 7, 'שבוע 2 · שלושה ימים', 'כשלושה ימים'),
+    stage('APPLICATIONS', 3, 5, 'שבוע 3 עד שבוע 5'),
+    stage('AUCTION', 5, 8, 'שבוע 5 עד שבוע 8'),
+    stage(
+      'SIGNING',
+      10,
+      END_WEEK,
+      `שבוע 10 עד שבוע ${END_WEEK}`,
+      'תלוי במוכנות המסמכים שיש להכין עם עורך הדין',
+      'יש לוודא שהתנאים שחותמים עליהם הם אלה שנסגרו מול הבנק בשלבים המוקדמים — כל סטייה קלה עולה ביוקר.'
+    ),
   ];
 }
 
-/** הקרן והריבית שהצטברו בסוף כל שנה — לפי ההחזר המשוער ולוח שפיצר */
-export function costByYear(summary: ReportSummary): CostPoint[] {
-  const principal = summary.mortgageAmount;
-  const months = Math.max(0, Math.round(summary.months));
-  if (!summary.ready || principal <= 0 || months <= 0) return [];
-
-  const payment = summary.estimatedMonthlyPayment;
-  const monthlyRate = summary.estimateRate / 100 / 12;
-  const points: CostPoint[] = [{ year: 0, balance: principal, paidPrincipal: 0, paidInterest: 0 }];
-  let balance = principal;
-  let paidInterest = 0;
-
-  for (let month = 1; month <= months; month += 1) {
-    const interest = balance * monthlyRate;
-    const towardPrincipal = Math.min(balance, payment - interest);
-    balance = Math.max(0, balance - towardPrincipal);
-    paidInterest += interest;
-    if (month % 12 === 0 || month === months) {
-      points.push({
-        year: Math.ceil(month / 12),
-        balance,
-        paidPrincipal: principal - balance,
-        paidInterest,
-      });
-    }
-  }
-  return points;
-}
+/**
+ * מסלולי המשכנתא, כתיאור סכמטי.
+ *
+ * בשלב הזה עוד אין תמהיל, ולכן אין כאן סכומים ואין אחוזים: מה שצריך לצאת
+ * מכאן הוא ההבנה מה כל מסלול מביא — כמה סיכון, כמה גמישות וכמה הוא עולה —
+ * ומתי האיזון הזה מצדיק לכלול אותו. במסלולים הצמודים מצוין הסיכון המיוחד
+ * שלהם: הקרן עצמה משתנה יחד עם האינפלציה במשק.
+ */
+export const MIX_TRACKS: MixTrackGuide[] = [
+  {
+    id: 'fixed_unlinked',
+    label: 'ריבית קבועה לא צמודה (קל"צ)',
+    short: 'קל"צ',
+    risk: 1,
+    flexibility: 1,
+    cost: 3,
+    linked: false,
+    role: `הוודאות המלאה: ההחזר והקרן ידועים מראש לכל התקופה, ושום דבר במשק לא משנה אותם. זה גם המסלול היקר ביותר, ופירעון מוקדם עלול לעלות בעמלת היוון כשהריביות בשוק יורדות. שווה להגדיל אותו כשיחס ההחזר קרוב למגבלה, כשההכנסה קבועה ואין כרית לזעזועים, או כשרוצים לישון בשקט. הרגולציה מחייבת לפחות ${MIN_FIXED_PERCENT}% מהתמהיל בריבית קבועה.`,
+  },
+  {
+    id: 'fixed_linked',
+    label: 'ריבית קבועה צמודה למדד (ק"צ)',
+    short: 'ק"צ',
+    risk: 2,
+    flexibility: 1,
+    cost: 2,
+    linked: true,
+    role: 'הריבית נמוכה מהקל"צ וההחזר ההתחלתי נוח יותר, אבל הקרן צמודה למדד: היא גדלה עם האינפלציה, ולאורך שנים היתרה עלולה לעלות במקום לרדת — גם אחרי שכבר שילמתם. מתאים לחלק קטן מהתמהיל, לתקופה קצרה או לכסף שמתוכנן להיפרע מוקדם, ופחות למי שההחזר שלו צמוד למגבלה.',
+  },
+  {
+    id: 'prime',
+    label: 'פריים',
+    short: 'פריים',
+    risk: 2,
+    flexibility: 3,
+    cost: 2,
+    linked: false,
+    role: `השסתום הגמיש של התמהיל: פירעון מוקדם ומיחזור בלי עמלת היוון, ולכן לכאן מכוונים כסף שצפוי להיכנס — קרן השתלמות, בונוס או ירושה — וכאן שומרים את האפשרות לשנות כיוון. בתמורה ההחזר זז עם ריבית בנק ישראל, למעלה ולמטה. הרגולציה מגבילה אותו לכ-${Math.round(PRIME_MAX_SHARE_PERCENT)}% מהתמהיל.`,
+  },
+  {
+    id: 'variable_unlinked',
+    label: 'ריבית משתנה לא צמודה (מל"צ)',
+    short: 'מל"צ',
+    risk: 2,
+    flexibility: 2,
+    cost: 1,
+    linked: false,
+    role: 'ריבית התחלתית נמוכה, יציבות מלאה עד נקודת העדכון (בדרך כלל כל שנתיים או חמש שנים), ובכל נקודת עדכון אפשר לפרוע או למחזר בלי קנס. הסיכון מרוכז בנקודות העדכון — שם ההחזר יכול לקפוץ — ולכן שווה לכלול אותו כשיש מרווח ביחס ההחזר שסופג קפיצה כזו. הרגולציה מגבילה מסלולים שמתעדכנים מתחת לחמש שנים לשליש מהתמהיל.',
+  },
+  {
+    id: 'variable_linked',
+    label: 'ריבית משתנה צמודה למדד (מ"צ)',
+    short: 'מ"צ',
+    risk: 3,
+    flexibility: 2,
+    cost: 1,
+    linked: true,
+    role: 'הריבית הנקובה הנמוכה ביותר, אבל שני סיכונים נושאים אותה יחד: הקרן צמודה למדד ומשתנה עם האינפלציה במשק, והריבית עצמה מתעדכנת כל כמה שנים. זהו המסלול התנודתי ביותר, ולכן הוא מתאים רק לחלק קטן, לתקופה קצרה, ולמי שיש לו מרווח נשימה אמיתי בהחזר.',
+  },
+  {
+    id: 'makam',
+    label: 'מק"מ (משתנה כל שנה)',
+    short: 'מק"מ',
+    risk: 2,
+    flexibility: 3,
+    cost: 1,
+    linked: false,
+    role: 'נצמד לתשואת המק"מ ומתעדכן פעם בשנה, ולכן הוא זול וגמיש — אפשר לפרוע אותו בלי עמלת היוון — אבל ההחזר שלו משתנה תכופות. מתאים כחלק קטן, לצד מסלול קבוע גדול שמייצב את התמהיל.',
+  },
+  {
+    id: 'eligibility',
+    label: 'הלוואת זכאות',
+    short: 'זכאות',
+    risk: 1,
+    flexibility: 2,
+    cost: 1,
+    linked: true,
+    role: 'למי שזכאי לפי משרד הבינוי והשיכון: ריבית מסובסדת ונמוכה במיוחד, בסכום מוגבל שנקבע לפי תעודת הזכאות. הקרן צמודה למדד, ולכן היא גדלה עם האינפלציה — אבל הריבית הנמוכה בדרך כלל מצדיקה זאת. כמעט תמיד שווה לנצל את מלוא הסכום.',
+  },
+];

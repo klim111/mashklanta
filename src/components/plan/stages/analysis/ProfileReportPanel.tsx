@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   BadgeCheck,
   Building2,
-  Calculator,
   CalendarClock,
   CheckCircle2,
   Compass,
@@ -34,12 +33,10 @@ import { formatPercent, formatShekel } from '../../ui';
 import { RecommendationCard } from './RecommendationCallouts';
 import { printProfileReport } from './reportDocument';
 import {
-  BorrowedVersusPaid,
   CashFlowTimeline,
   CashFlowWaterfall,
-  CostOverTime,
   LimitGauge,
-  MixComposition,
+  MixTracks,
   ProcessGantt,
   distanceToLimit,
 } from './ReportCharts';
@@ -178,24 +175,14 @@ function SubTitle({ children, hint }: { children: React.ReactNode; hint?: string
   );
 }
 
-/** תג "השערה בלבד" — לכל מספר שנגזר מריבית שעדיין לא נקבעה */
-function EstimateBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-800">
-      <Calculator className="h-3 w-3" />
-      השערה בלבד
-    </span>
-  );
-}
-
 /**
  * התוצר של השלב הראשון — דוח פרופיל פיננסי כלוח בקרה.
  *
- * למעלה מספרי המפתח והמצב מול הרגולציה, ואז המדים של יחס המימון ויחס ההחזר,
- * התזרים החודשי ולאורך השנים, נתוני העסקה והלווים, הבדיקות, הסיכונים
- * וההמלצות, לוח הזמנים של התהליך, הרכב המסלולים והקווים המנחים, תיק המסמכים
- * — ובסוף, בנפרד ומסומן כהשערה, כל מה שתלוי בריבית: ההחזר, הריביות והסימולציה.
- * אותו תוכן יוצא לקובץ בהורדה. `sample` מציג דוח דמה במסך «על השלב».
+ * למעלה מספרי המפתח והמצב מול הרגולציה, ואז מי לוקח ומה העסקה, המדים של יחס
+ * המימון ויחס ההחזר מול מגבלות הרגולציה, התזרים החודשי ולאורך השנים, הבדיקות,
+ * הסיכונים וההמלצות, לוח הזמנים של התהליך, תיק המסמכים, הקווים המנחים לתמהיל
+ * ותיאור מסלולי המשכנתא. אותו תוכן יוצא לקובץ בהורדה. `sample` מציג דוח דמה
+ * במסך «על השלב».
  */
 export function ProfileReportPanel({
   data,
@@ -303,6 +290,72 @@ export function ProfileReportPanel({
         </span>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Block icon={Home} title="נתוני העסקה" subtitle="הנכס, המימון והבטוחה" accent="from-blue-600 to-cyan-500">
+          <Row label="סוג העסקה" value={summary.dealTypeLabel ?? '—'} />
+          <Row label="כתובת הנכס" value={summary.propertyAddress ?? '—'} />
+          <Row label="מחיר הנכס" value={formatShekel(summary.propertyValue)} />
+          <Row label="הון עצמי מוצהר" value={formatShekel(summary.equity)} />
+          <Row label="סכום המשכנתא המבוקש" value={summary.ready ? formatShekel(summary.mortgageAmount) : '—'} strong />
+          <Row label="תקופה מבוקשת" value={describeMonths(summary.months)} />
+          {summary.maxYearsByAge !== null && (
+            <Row
+              label="תקופה מרבית לפי גיל (מדיניות מקובלת)"
+              value={describeMonths(Math.min(30, summary.maxYearsByAge) * 12)}
+            />
+          )}
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            הבטוחה למשכנתא היא הנכס עצמו. הפער מהתקרה הוא מרווח הביטחון שלכם מול שמאות נמוכה
+            ממחיר הרכישה.
+          </p>
+        </Block>
+
+        <Block icon={Users} title="פרופיל הלקוח" subtitle="הלווים, ההכנסות והתחייבויות" accent="from-violet-600 to-fuchsia-500">
+          <div className={`grid gap-3 ${summary.couple ? 'sm:grid-cols-2' : ''}`}>
+            {summary.borrowers.map((borrower) => (
+              <div key={borrower.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                <div className="mb-1.5 text-[11px] font-black text-slate-500">{borrower.label}</div>
+                <Row label="הכנסה נטו" value={formatShekel(borrower.income)} strong />
+                <Row label="גיל" value={borrower.age !== null ? String(borrower.age) : '—'} />
+                <Row label="אופן העסקה" value={borrower.employment ?? '—'} />
+                <Row label="הבנק של החשבון" value={borrower.bank ?? '—'} />
+                {borrower.loanPayment > 0 && <Row label="החזר הלוואות" value={formatShekel(borrower.loanPayment)} />}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3">
+            <Row label="הכנסה חודשית מוכרת" value={formatShekel(summary.totalIncome)} strong />
+            <Row label="הוצאות שוטפות" value={formatShekel(cashFlow.expenses)} />
+            <Row label="החזר על הלוואות קיימות" value={formatShekel(summary.existingLoans)} />
+            <Row label="הכנסה פנויה לפני המשכנתא" value={formatShekel(cashFlow.disposable)} />
+          </div>
+          {(data.ANALYSIS.futureLumpSums.some((item) => (item.amount ?? 0) > 0) ||
+            (data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0) && (
+            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
+              <div className="mb-1 text-[11px] font-black text-emerald-800">צפי הכנסות עתידיות</div>
+              <ul className="space-y-0.5 text-xs text-emerald-900">
+                {data.ANALYSIS.futureLumpSums
+                  .filter((item) => (item.amount ?? 0) > 0)
+                  .map((item) => (
+                    <li key={item.id}>
+                      {item.label || 'הכנסה חד-פעמית'} · {formatShekel(item.amount)}
+                      {item.inYears ? ` בעוד ${describeMonths(item.inYears * 12)}` : ''}
+                    </li>
+                  ))}
+                {(data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0 && (
+                  <li>
+                    תוספת של {formatShekel(data.ANALYSIS.futureMonthlyIncrease)} לחודש
+                    {data.ANALYSIS.futureMonthlyIncreaseInYears
+                      ? ` בעוד ${describeMonths(data.ANALYSIS.futureMonthlyIncreaseInYears * 12)}`
+                      : ''}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+        </Block>
+      </div>
+
       {/* המדים: יחס המימון ויחס ההחזר מול המגבלות */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Block
@@ -372,11 +425,22 @@ export function ProfileReportPanel({
       {/* התזרים: המפל החודשי, ולאורך השנים */}
       <Block
         icon={Wallet}
-        title="ההכנסה הפנויה והכסף שיישאר אחרי המשכנתא"
+        title="ההכנסה הפנויה והערכת הכסף שיישאר אחרי תשלום המשכנתא"
         subtitle="הכנסה, הוצאות שוטפות, הלוואות קיימות וההחזר המשוער — היום ולאורך חיי המשכנתא"
         accent="from-teal-600 to-emerald-500"
         badge={<StatusChip status={afterStatus} />}
       >
+        <div className="mb-4 flex items-start gap-2.5 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-3.5">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <p className="text-[12px] font-bold leading-relaxed text-amber-900">
+            ההחזר החודשי המשוער כאן הוא הערכה גסה בלבד, שנועדה לתת סדר גודל.
+            <span className="font-black">
+              {' '}
+              ההחזר המדויק ייחושב לאחר בניית התמהיל והשגת הריביות הטובות ביותר שאפשר מהגוף המממן
+              שייבחר לעסקה.
+            </span>
+          </p>
+        </div>
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
           <Tile label="הכנסה פנויה לפני המשכנתא" value={formatShekel(cashFlow.disposable)} note="הכנסה נטו פחות הוצאות שוטפות ופחות הלוואות" />
           <Tile
@@ -422,72 +486,6 @@ export function ProfileReportPanel({
           </ul>
         )}
       </Block>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Block icon={Home} title="נתוני העסקה" subtitle="הנכס, המימון והבטוחה" accent="from-blue-600 to-cyan-500">
-          <Row label="סוג העסקה" value={summary.dealTypeLabel ?? '—'} />
-          <Row label="כתובת הנכס" value={summary.propertyAddress ?? '—'} />
-          <Row label="מחיר הנכס" value={formatShekel(summary.propertyValue)} />
-          <Row label="הון עצמי מוצהר" value={formatShekel(summary.equity)} />
-          <Row label="סכום המשכנתא המבוקש" value={summary.ready ? formatShekel(summary.mortgageAmount) : '—'} strong />
-          <Row label="תקופה מבוקשת" value={describeMonths(summary.months)} />
-          {summary.maxYearsByAge !== null && (
-            <Row
-              label="תקופה מרבית לפי גיל (מדיניות מקובלת)"
-              value={describeMonths(Math.min(30, summary.maxYearsByAge) * 12)}
-            />
-          )}
-          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-            הבטוחה למשכנתא היא הנכס עצמו. הפער מהתקרה הוא מרווח הביטחון שלכם מול שמאות נמוכה
-            ממחיר הרכישה.
-          </p>
-        </Block>
-
-        <Block icon={Users} title="פרופיל הלקוח" subtitle="הלווים, ההכנסות והתחייבויות" accent="from-violet-600 to-fuchsia-500">
-          <div className={`grid gap-3 ${summary.couple ? 'sm:grid-cols-2' : ''}`}>
-            {summary.borrowers.map((borrower) => (
-              <div key={borrower.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                <div className="mb-1.5 text-[11px] font-black text-slate-500">{borrower.label}</div>
-                <Row label="הכנסה נטו" value={formatShekel(borrower.income)} strong />
-                <Row label="גיל" value={borrower.age !== null ? String(borrower.age) : '—'} />
-                <Row label="אופן העסקה" value={borrower.employment ?? '—'} />
-                <Row label="הבנק של החשבון" value={borrower.bank ?? '—'} />
-                {borrower.loanPayment > 0 && <Row label="החזר הלוואות" value={formatShekel(borrower.loanPayment)} />}
-              </div>
-            ))}
-          </div>
-          <div className="mt-3">
-            <Row label="הכנסה חודשית מוכרת" value={formatShekel(summary.totalIncome)} strong />
-            <Row label="הוצאות שוטפות" value={formatShekel(cashFlow.expenses)} />
-            <Row label="החזר על הלוואות קיימות" value={formatShekel(summary.existingLoans)} />
-            <Row label="הכנסה פנויה לפני המשכנתא" value={formatShekel(cashFlow.disposable)} />
-          </div>
-          {(data.ANALYSIS.futureLumpSums.some((item) => (item.amount ?? 0) > 0) ||
-            (data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0) && (
-            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
-              <div className="mb-1 text-[11px] font-black text-emerald-800">צפי הכנסות עתידיות</div>
-              <ul className="space-y-0.5 text-xs text-emerald-900">
-                {data.ANALYSIS.futureLumpSums
-                  .filter((item) => (item.amount ?? 0) > 0)
-                  .map((item) => (
-                    <li key={item.id}>
-                      {item.label || 'הכנסה חד-פעמית'} · {formatShekel(item.amount)}
-                      {item.inYears ? ` בעוד ${describeMonths(item.inYears * 12)}` : ''}
-                    </li>
-                  ))}
-                {(data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0 && (
-                  <li>
-                    תוספת של {formatShekel(data.ANALYSIS.futureMonthlyIncrease)} לחודש
-                    {data.ANALYSIS.futureMonthlyIncreaseInYears
-                      ? ` בעוד ${describeMonths(data.ANALYSIS.futureMonthlyIncreaseInYears * 12)}`
-                      : ''}
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-        </Block>
-      </div>
 
       <Block
         icon={ShieldAlert}
@@ -569,7 +567,7 @@ export function ProfileReportPanel({
       <Block
         icon={CalendarClock}
         title="לוח הזמנים של התהליך"
-        subtitle={`${stageCount} שלבים ושתי אבני דרך ביניהם — כ-${totalWeeks} שבועות בקצב אופייני, מהפרופיל ועד החתימה`}
+        subtitle={`${stageCount} שלבים ושתי אבני דרך שמלוות אותם — כ-${totalWeeks} שבועות בקצב אופייני, מהפרופיל ועד החתימה`}
         accent="from-amber-500 to-orange-600"
       >
         <ProcessGantt items={report.timeline} />
@@ -587,9 +585,7 @@ export function ProfileReportPanel({
               {report.timeline.map((item) => (
                 <tr key={item.id} className={item.emphasized ? 'bg-amber-50/60' : undefined}>
                   <td className="py-2 pl-3 font-black text-slate-900">{item.label}</td>
-                  <td className="py-2 pl-3 tabular-nums text-slate-700">
-                    {item.startWeek === 0 ? 'מיד' : `משבוע ${item.startWeek}`} עד שבוע {item.endWeek}
-                  </td>
+                  <td className="py-2 pl-3 text-slate-700">{item.when}</td>
                   <td className="py-2 pl-3 text-slate-700">{item.duration}</td>
                   <td className="py-2 leading-snug text-slate-600">{item.note}</td>
                 </tr>
@@ -601,55 +597,6 @@ export function ProfileReportPanel({
           הזמנים הם קצב אופייני של תהליך שמתקדם בלי עיכובים. מועדי התשלום בחוזה המכר, תוקף האישור
           העקרוני וזמן הביצוע בבנק הם מה שקובע בפועל — ולכן כדאי לתאם אותם מראש.
         </p>
-      </Block>
-
-      {/* הרכב המסלולים והקווים המנחים */}
-      <Block
-        icon={Layers}
-        title="הרכב מסלולי המשכנתא — תיאור סכמטי"
-        subtitle="שלוש זוויות שכל תמהיל מאזן ביניהן: יציבות מול סיכון, גמישות לשינויים, ועלות המימון"
-        accent="from-emerald-600 to-teal-500"
-        badge={<span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-600">קו מנחה, לא תמהיל סופי</span>}
-      >
-        <MixComposition items={report.mixSketch} mortgageAmount={summary.ready ? summary.mortgageAmount : 0} />
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
-            <div className="mb-1 text-[13px] font-black text-slate-900">סיכון ↔ יציבות</div>
-            ריבית קבועה נועלת את ההחזר ומבטלת הפתעות; פריים ומשתנה זולים יותר בהתחלה אבל ההחזר זז עם
-            השוק. ככל שיחס ההחזר קרוב למגבלה, כך צריך יותר יציבות.
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
-            <div className="mb-1 text-[13px] font-black text-slate-900">גמישות ↔ עמלת היוון</div>
-            במסלולי פריים ומשתנה אפשר לפרוע מוקדם ולמחזר בלי קנס; בקבועה ייתכן קנס כשהריביות יורדות.
-            כסף שצפוי להיכנס מכוון למסלול הגמיש.
-          </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
-            <div className="mb-1 text-[13px] font-black text-slate-900">עלות ↔ ביטחון</div>
-            הריבית הקבועה היא המחיר של הביטוח. סך הריביות נקבע גם מהתקופה של כל מסלול — מקצרים את
-            היקרים, מאריכים את הזולים, ומתכננים פירעון מוקדם שמקצר את הכל.
-          </div>
-        </div>
-      </Block>
-
-      <Block
-        icon={Compass}
-        title="קווים מנחים לבניית התמהיל"
-        subtitle="איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל שלכם"
-        accent="from-emerald-600 to-teal-500"
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          {report.guidelines.map((item, index) => (
-            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-black text-white">
-                  {index + 1}
-                </span>
-                <h5 className="text-sm font-black text-slate-900">{item.title}</h5>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.body}</p>
-            </div>
-          ))}
-        </div>
       </Block>
 
       <Block
@@ -688,55 +635,58 @@ export function ProfileReportPanel({
         </div>
       </Block>
 
-      {/* בסוף, בנפרד: כל מה שתלוי בריבית — השערה בלבד */}
       <Block
-        icon={Calculator}
-        title="הערכת ההחזר והריביות — השערה בלבד"
-        subtitle={`חישוב גס לפי ריבית קבועה לא צמודה של ${summary.estimateRate}% על כל הסכום ל-${describeMonths(summary.months)}`}
-        accent="from-amber-500 to-orange-500"
-        tone="border-amber-200 bg-amber-50/30"
-        badge={<EstimateBadge />}
+        icon={Compass}
+        title="קווים מנחים לבניית התמהיל"
+        subtitle="איזון בין עלות המימון, גמישות לשינויים ולפירעונות מוקדמים, סיכון ויציבות — לפי הפרופיל שלכם"
+        accent="from-emerald-600 to-teal-500"
       >
-        <div className="mb-4 rounded-2xl border border-amber-200 bg-white p-3.5 text-[12px] leading-relaxed text-slate-700">
-          <span className="font-black text-amber-900">חשוב לדעת: </span>
-          המספרים בחלק הזה הם הערכה גסה בלבד, שנועדה לתת סדר גודל. החישוב המדויק של ההחזר החודשי,
-          סך הריביות וההרכב ייעשה אחרי בניית התמהיל ואישור הריביות מול הגוף המממן — ושם המספרים
-          יכולים להשתנות משמעותית, לשני הכיוונים.
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Tile
-            label="החזר חודשי משוער"
-            value={summary.ready ? formatShekel(summary.estimatedMonthlyPayment) : '—'}
-            note={`${describeMonths(summary.months)} · ריבית ${summary.estimateRate}% להערכה`}
-          />
-          <Tile
-            label="סך הריביות לאורך התקופה"
-            value={summary.ready ? formatShekel(summary.totalInterest) : '—'}
-            note={summary.interestShare !== null ? `${summary.interestShare.toFixed(0)}% מהקרן` : undefined}
-          />
-          <Tile
-            label="סך התשלומים"
-            value={summary.ready ? formatShekel(summary.totalPaid) : '—'}
-            note="קרן ועוד ריבית, לאורך כל התקופה"
-          />
-          <Tile
-            label="מכל שקל שישולם — לריבית"
-            value={summary.ready && summary.totalPaid > 0 ? `${((summary.totalInterest / summary.totalPaid) * 100).toFixed(0)} אג׳` : '—'}
-            note="המספר שהתמהיל בשלב הבא ינסה להוריד"
-          />
-        </div>
-        {summary.ready && report.costByYear.length > 0 && (
-          <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-            <div>
-              <SubTitle hint="הסכום שנלקח מול הסכום שישולם בסוף התקופה — ההפרש הוא הריבית.">מה נלקח ומה ישולם</SubTitle>
-              <BorrowedVersusPaid principal={summary.mortgageAmount} interest={summary.totalInterest} />
+        <div className="grid gap-3 md:grid-cols-2">
+          {report.guidelines.map((item, index) => (
+            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-black text-white">
+                  {index + 1}
+                </span>
+                <h5 className="text-sm font-black text-slate-900">{item.title}</h5>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.body}</p>
             </div>
-            <div>
-              <SubTitle hint="בשנים הראשונות רוב ההחזר הולך לריבית; הקרן יורדת מהר יותר ככל שמתקדמים.">קרן מול ריבית לאורך השנים</SubTitle>
-              <CostOverTime points={report.costByYear} />
-            </div>
+          ))}
+        </div>
+      </Block>
+
+      {/* מסלולי המשכנתא — מה כל אחד מביא לתמהיל */}
+      <Block
+        icon={Layers}
+        title="הרכב מסלולי המשכנתא — תיאור סכמטי"
+        subtitle="שלוש זוויות שכל תמהיל מאזן ביניהן: יציבות מול סיכון, גמישות לשינויים, ועלות המימון"
+        accent="from-emerald-600 to-teal-500"
+        badge={
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-600">
+            תיאור עקרוני · הסכומים ייקבעו בשלב התמהיל
+          </span>
+        }
+      >
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
+            <div className="mb-1 text-[13px] font-black text-slate-900">סיכון ↔ יציבות</div>
+            ריבית קבועה נועלת את ההחזר ומבטלת הפתעות; פריים ומשתנה זולים יותר בהתחלה אבל ההחזר זז עם
+            השוק. ככל שיחס ההחזר קרוב למגבלה, כך צריך יותר יציבות.
           </div>
-        )}
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
+            <div className="mb-1 text-[13px] font-black text-slate-900">גמישות ↔ עמלת היוון</div>
+            במסלולי פריים ומשתנה אפשר לפרוע מוקדם ולמחזר בלי קנס; בקבועה ייתכן קנס כשהריביות יורדות.
+            כסף שצפוי להיכנס מכוון למסלול הגמיש.
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
+            <div className="mb-1 text-[13px] font-black text-slate-900">עלות ↔ ביטחון</div>
+            הריבית הקבועה היא המחיר של הביטוח. סך הריביות נקבע גם מהתקופה של כל מסלול — מקצרים את
+            היקרים, מאריכים את הזולים, ומתכננים פירעון מוקדם שמקצר את הכל.
+          </div>
+        </div>
+
+        <MixTracks tracks={report.mixTracks} />
       </Block>
 
       {!sample && (
@@ -753,9 +703,10 @@ export function ProfileReportPanel({
       )}
 
       <p className="px-2 text-center text-[11px] font-medium leading-relaxed text-slate-500">
-        ההחזר החודשי, יחס ההחזר וסך הריביות הם הערכה לפי ריבית קבועה לא צמודה של {summary.estimateRate}% על
-        כל הסכום, לצורך סדר גודל בלבד. הדוח אינו אישור עקרוני ואינו מחייב בנק כלשהו — ההחלטה על אישור
-        המשכנתא, גובהה והריביות נתונה לחיתום הבנק בלבד.
+        ההחזר החודשי ויחס ההחזר שבדוח הם הערכה גסה לפי ריבית קבועה לא צמודה של {summary.estimateRate}% על
+        כל הסכום, לצורך סדר גודל בלבד; ההחזר המדויק ייחושב לאחר בניית התמהיל והשגת הריביות מול הגוף
+        המממן. הדוח אינו אישור עקרוני ואינו מחייב בנק כלשהו — ההחלטה על אישור המשכנתא, גובהה
+        והריביות נתונה לחיתום הבנק בלבד.
       </p>
     </section>
   );
