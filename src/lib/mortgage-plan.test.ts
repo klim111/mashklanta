@@ -16,6 +16,7 @@ import {
   parseRefinanceMixData,
   planFlowOf,
   planStageNumber,
+  profileRequirements,
   mortgageFromLtvPercent,
   mortgageFromProperty,
   maxPropertyForEquity,
@@ -774,14 +775,32 @@ describe('תהליך מיחזור', () => {
     expect(stageIsComplete('MIX', data)).toBe(true);
   });
 
-  it('במיחזור פנימי ההגשה לבנק אינה נשענת על הפרופיל הפיננסי', () => {
+  it('שלב ההגשה לבנק במיחזור נסגר בלי מסמך ובלי פרופיל מלא', () => {
     const data = emptyPlanData();
     data.MIX = { ...data.MIX, mixKey: 'refi', refinance: { ...parseRefinanceMixData(refinance)!, mode: 'INTERNAL' } };
-    data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי', approved: true };
+
+    // ההגשה מתבצעת מול הבנק ישירות, ולכן ההמשך פתוח מיד — בשני סוגי המיחזור
     expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+    expect(missingForStage('APPLICATIONS', data)).toEqual([]);
 
     data.MIX.refinance!.mode = 'EXTERNAL';
-    expect(stageIsComplete('APPLICATIONS', data)).toBe(false);
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+
+    // במשכנתא חדשה התנאים נשארו כשהיו
+    const fresh = profile();
+    expect(stageIsComplete('APPLICATIONS', fresh)).toBe(false);
+  });
+
+  it('במיחזור לא נדרש הון עצמי, והפרופיל נסגר בלעדיו', () => {
+    const data = profile();
+    data.ANALYSIS = { ...data.ANALYSIS, equity: null };
+    expect(stageIsComplete('ANALYSIS', data)).toBe(false);
+    expect(missingForStage('ANALYSIS', data)).toContain('ההון העצמי לעסקה');
+
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+    expect(profileRequirements(data.ANALYSIS, { requireEquity: false }).some((item) => item.key === 'equity')).toBe(false);
+    expect(stageIsComplete('ANALYSIS', data)).toBe(true);
+    expect(missingForStage('ANALYSIS', data)).toEqual([]);
   });
 
   it('ההתקדמות במיחזור פנימי נמדדת מתוך שלושה שלבים', () => {

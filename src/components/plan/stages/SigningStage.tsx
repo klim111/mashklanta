@@ -44,6 +44,7 @@ export function SigningStage({
   onChange,
   onRequestAdvisor,
   advisorBusy = false,
+  skipOverview = false,
 }: {
   data: PlanData;
   planId: string;
@@ -51,6 +52,11 @@ export function SigningStage({
   /** בקשת ליווי חינמית ליועץ, מתוך מסך ההסבר */
   onRequestAdvisor?: () => void;
   advisorBusy?: boolean;
+  /**
+   * פתיחה ישירה של השלב, בלי מסך ההסבר שמציע לבחור בין ביצוע עצמי לליווי.
+   * כך במיחזור: הבחירה כבר נעשתה, והפנייה ליועץ זמינה מהכפתור הצף בכל מסך.
+   */
+  skipOverview?: boolean;
 }) {
   const value = data.SIGNING;
   const signed = data.AUCTION.signedMix;
@@ -141,9 +147,9 @@ export function SigningStage({
 
   const done = SIGNING_CHECKS.filter((check) => value.checklist[check.key]).length;
 
-  const screen = value.screen || 'overview';
+  const screen = value.screen || (skipOverview ? 'documents' : 'overview');
 
-  if (screen === 'overview') {
+  if (screen === 'overview' && !skipOverview) {
     return (
       <StageOverview
         onStart={() => go('documents')}

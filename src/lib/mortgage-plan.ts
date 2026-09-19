@@ -1597,17 +1597,39 @@ export interface ProfileRequirement {
  * לבנק עם תיק חלקי.
  */
 export function preApprovalRequirements(data: PlanData): ProfileRequirement[] {
-  return profileRequirements(data.ANALYSIS);
+  return profileRequirements(data.ANALYSIS, { requireEquity: requiresEquityInProfile(data) });
+}
+
+/**
+ * האם הפרופיל צריך לכלול הון עצמי.
+ *
+ * במיחזור אין הון עצמי לעסקה: הנכס כבר בבעלות הלקוח והמשכנתא כבר קיימת —
+ * הבנק בוחן את ההחזר ואת יתרת ההלוואה, לא כסף שצריך להביא לעסקה. לכן במיחזור
+ * לא שואלים על הון עצמי, והיעדרו אינו חוסם את המשך התהליך.
+ */
+export function requiresEquityInProfile(data: Pick<PlanData, 'MIX'>): boolean {
+  return planFlowOf(data).kind !== 'REFINANCE';
+}
+
+export interface ProfileRequirementOptions {
+  /** false — מיחזור: ההון העצמי אינו נדרש ואינו נבדק */
+  requireEquity?: boolean;
 }
 
 /** הפרטים שהפרופיל הפיננסי חייב להכיל, ומה מהם כבר הוזן */
-export function profileRequirements(profile: AnalysisData): ProfileRequirement[] {
+export function profileRequirements(
+  profile: AnalysisData,
+  options: ProfileRequirementOptions = {}
+): ProfileRequirement[] {
   const couple = profile.household === 'COUPLE';
+  const requireEquity = options.requireEquity !== false;
 
   const items: ProfileRequirement[] = [
     { key: 'dealType', label: 'סוג העסקה', ok: profile.dealType !== null },
     { key: 'propertyValue', label: 'מחיר הנכס', ok: (profile.propertyValue ?? 0) > 0 },
-    { key: 'equity', label: 'ההון העצמי לעסקה', ok: (profile.equity ?? 0) > 0 },
+    ...(requireEquity
+      ? [{ key: 'equity', label: 'ההון העצמי לעסקה', ok: (profile.equity ?? 0) > 0 }]
+      : []),
     {
       key: 'income',
       label: couple ? 'הכנסה חודשית של לווה 1' : 'הכנסה חודשית נטו',
@@ -1926,12 +1948,15 @@ export function isPlanningProfileDone(step?: string): boolean {
  * מה חסר בפרופיל הפיננסי. מי שעדיין בבדיקת היתכנות אינו יכול לסגור את השלב:
  * בלי נכס קונקרטי אין על מה להגיש בקשה לאישור עקרוני.
  */
-export function analysisMissing(profile: AnalysisData): string[] {
+export function analysisMissing(
+  profile: AnalysisData,
+  options: ProfileRequirementOptions = {}
+): string[] {
   if (!profile.intent) return ['בחירת נקודת הפתיחה'];
   if (profile.intent === 'FEASIBILITY') {
     return ['בדיקת ההיתכנות, וחזרה לכאן אחרי שנמצא נכס'];
   }
-  return profileRequirements(profile)
+  return profileRequirements(profile, options)
     .filter((item) => !item.ok)
     .map((item) => item.label);
 }
@@ -1943,13 +1968,21 @@ export function analysisMissing(profile: AnalysisData): string[] {
 export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
   switch (stage) {
     case 'ANALYSIS':
-      return analysisMissing(data.ANALYSIS).length === 0;
+      return (
+        analysisMissing(data.ANALYSIS, { requireEquity: requiresEquityInProfile(data) }).length === 0
+      );
     case 'MIX':
       // במיחזור, מה שסוגר את שלב התמהיל הוא הבחירה בין מיחזור פנימי לחיצוני
       if (data.MIX.refinance && !data.MIX.refinance.mode) return false;
       return Boolean(data.MIX.mixRecordId || data.MIX.mixKey);
     /** שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו */
     case 'APPLICATIONS': {
+      /*
+        במיחזור ההגשה מתבצעת מול הבנק ישירות, והאישור חוזר אליו בערוץ שלו.
+        המסמך שאפשר להעלות כאן הוא תיעוד בלבד, ולכן הוא אינו תנאי להמשך:
+        הלקוח ממשיך לאימות ההצעה ברגע שהגיש.
+      */
+      if (planFlowOf(data).kind === 'REFINANCE') return true;
       const preApproval = data.APPLICATIONS;
       return (
         (!requiresProfileForPreApproval(data) || profileReadyForPreApproval(data)) &&
@@ -1977,7 +2010,9 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
 
   switch (stage) {
     case 'ANALYSIS':
-      missing.push(...analysisMissing(data.ANALYSIS));
+      missing.push(
+        ...analysisMissing(data.ANALYSIS, { requireEquity: requiresEquityInProfile(data) })
+      );
       break;
     case 'MIX':
       if (!data.MIX.mixRecordId && !data.MIX.mixKey) {
@@ -1988,6 +2023,8 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       }
       break;
     case 'APPLICATIONS': {
+      // במיחזור אין תנאי לסגירת השלב — ראו stageIsComplete
+      if (planFlowOf(data).kind === 'REFINANCE') break;
       const openProfile = requiresProfileForPreApproval(data)
         ? preApprovalRequirements(data).filter((item) => !item.ok)
         : [];

@@ -24,7 +24,6 @@ import {
   refinanceWorkspaceMix,
 } from '@/components/mortgage-refinance/refinancePlan';
 import type { RefinanceSaveOutcome, RefinanceSavePayload } from '@/components/mortgage-refinance/refinancePlan';
-import { AdvisorHelpButton } from '../analysis/AdvisorHelpButton';
 import { PanelBadge, StagePanel } from '../auction/ui';
 
 const MODE_LABELS = { INTERNAL: 'מיחזור פנימי', EXTERNAL: 'מיחזור חיצוני' } as const;
@@ -42,15 +41,11 @@ export function RefinanceMixStage({
   planId,
   onChange,
   market = null,
-  onRequestAdvisor,
-  advisorBusy = false,
 }: {
   data: PlanData;
   planId: string;
   onChange: (next: MixData) => void;
   market?: MarketRates | null;
-  onRequestAdvisor?: () => void;
-  advisorBusy?: boolean;
 }) {
   const refinance = data.MIX.refinance;
   const { saved, save } = useSavedMixes({ planId });
@@ -104,21 +99,9 @@ export function RefinanceMixStage({
   const monthsOf = (calc: typeof calcs.base) =>
     Object.fromEntries(calc.trackCalculations.map((tc) => [tc.track.id, tc.amortSchedule.length]));
 
-  const helpButton = (
-    <AdvisorHelpButton
-      raised
-      stageLabel={`${refinance.mode ? MODE_LABELS[refinance.mode] : 'מיחזור'} · התמהיל למיחזור`}
-      title="היעזרו ביועץ משכנתא בבניית התמהיל למיחזור"
-      description="יועץ משכלנתא יבחן את המשכנתא הנוכחית והתמהיל שבניתם, ישפר אותו מול הריביות בשוק וילווה את ההגשה לבנק. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך."
-      onRequestAdvisor={onRequestAdvisor}
-      busy={advisorBusy}
-    />
-  );
-
   if (editing && currentMix) {
     return (
       <div className="space-y-4">
-        {helpButton}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm font-bold text-slate-700">
             עורכים את התמהיל למיחזור. שינויים נשמרים לתהליך רק בלחיצה על "שמור את התמהיל למיחזור".
@@ -150,8 +133,6 @@ export function RefinanceMixStage({
 
   return (
     <div className="space-y-5">
-      {helpButton}
-
       <StagePanel
         tone="accent"
         badge={
@@ -223,7 +204,19 @@ export function RefinanceMixStage({
         </div>
       </StagePanel>
 
-      <RateRequestDialog open={quoteOpen} onOpenChange={setQuoteOpen} mix={quoteMix} />
+      {/*
+        מיחזור פנימי מוגש לבנק שבו המשכנתא מנוהלת, ולכן המכתב מופנה אליו ואין
+        שורת בחירת בנק. במיחזור חיצוני הלקוח פונה לבנקים אחרים, ולכן הבחירה
+        נשארת פתוחה — והניסוח מציין את הבנק שבו המשכנתא מנוהלת היום.
+      */}
+      <RateRequestDialog
+        open={quoteOpen}
+        onOpenChange={setQuoteOpen}
+        mix={quoteMix}
+        purpose="refinance"
+        currentBank={refinance.bank}
+        fixedBank={refinance.mode === 'EXTERNAL' ? undefined : refinance.bank}
+      />
     </div>
   );
 }

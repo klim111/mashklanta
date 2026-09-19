@@ -12,10 +12,22 @@ import { computeMix, formatDuration } from '../engine';
 import type { MixSummary, WorkspaceMix } from '../engine';
 import { isIndexLinked, isRateVariable } from '../scenarioCalculations';
 
+/**
+ * מה מבקשים: ריביות למשכנתא חדשה, או ריביות למיחזור משכנתא קיימת.
+ *
+ * ההבדל אינו בטבלה — היא זהה — אלא בניסוח הבקשה: במיחזור הלקוח מבקש למחזר
+ * מסלולים שכבר רשומים על שמו, ולא לממן רכישה.
+ */
+export type RateRequestPurpose = 'new' | 'refinance';
+
 /** הפרטים שהמשתמש ממלא לפני ההפקה — כולם רשות */
 export interface RateRequestDetails {
   /** הבנק שאליו מופנית הבקשה. ריק — מכתב אחיד לכל הבנקים */
   bankName?: string;
+  /** מטרת הבקשה. ברירת המחדל היא משכנתא חדשה */
+  purpose?: RateRequestPurpose;
+  /** הבנק שבו מנוהלת המשכנתא הקיימת — במיחזור בלבד */
+  currentBank?: string;
   /** שם הפונה כפי שיופיע בפתיח ובחתימה */
   applicantName?: string;
   contactPhone?: string;
@@ -150,6 +162,30 @@ function introParagraphs(
     : '';
   const who = details.applicantName?.trim() ? `${details.applicantName.trim()}, ` : '';
 
+  /*
+    מיחזור: הבקשה אינה למימון רכישה אלא למיחזור מסלולים שכבר רשומים על שם
+    הלקוח. כשהמכתב מופנה לבנק שבו המשכנתא מנוהלת — "אצלכם"; כשהוא מופנה לבנק
+    אחר, שם הבנק המנהל נאמר במפורש, כדי שהנמען יידע מה בדיוק ממוחזר.
+  */
+  if (details.purpose === 'refinance') {
+    const current = details.currentBank?.trim();
+    const addressed = details.bankName?.trim();
+    const atBank = !current
+      ? 'שברשותי'
+      : addressed && addressed === current
+        ? 'אצלכם'
+        : `בבנק ${current}`;
+
+    return [
+      `${who}מבקש/ת למחזר את מסלולי המשכנתא הרשומים על שמי ${atBank}, בסך ${amount} ש"ח, ` +
+        `לפי התמהיל המוצג להלן — ולקבל מכם הצעת ריביות עבורו.`,
+      `התמהיל המבוקש למיחזור מורכב מ-${lineCount} מסלולים, ולכל מסלול נקבעו מראש לוח סילוקין, ` +
+        `סוג ריבית, תקופה וסכום. נבקשכם לתמחר את המסלולים במבנה זה.`,
+      'בטבלה שלהלן, עמודת "ריבית שנתית מוצעת" ועמודת "החזר חודשי" הושארו ריקות בכוונה, והן מיועדות למילוי על ידכם. ' +
+        'תמחור המבנה המבוקש הוא מה שמאפשר להשוות את ההצעה למשכנתא הקיימת, ולכן חשוב שהמבנה יישמר.',
+    ];
+  }
+
   return [
     `${who}מבקש/ת לקבל מכם הצעת ריביות עבור תמהיל משכנתא בסך ${amount} ש"ח${where}. ` +
       `התמהיל נבנה מראש בהתאם ליכולת ההחזר ולצורכי משק הבית.`,
@@ -209,7 +245,10 @@ export function buildRateRequestDocument(
     createdAt,
     mixId: mix.id,
     mixName: mix.name?.trim() || 'תמהיל ללא שם',
-    title: 'בקשה לקבלת הצעת ריביות לתמהיל משכנתא',
+    title:
+      details.purpose === 'refinance'
+        ? 'בקשה לקבלת הצעת ריביות למיחזור משכנתא'
+        : 'בקשה לקבלת הצעת ריביות לתמהיל משכנתא',
     details,
     totalAmount: Math.round(mix.totalAmount),
     propertyAddress: mix.propertyAddress?.trim() || undefined,

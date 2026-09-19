@@ -224,12 +224,15 @@ export default function MortgageRefinancePage() {
       />
 
       <div className="flex gap-4 justify-center mt-8">
-        <Link href={signedIn ? '/dashboard' : '/'}>
-          <Button variant="outline" className="px-6 py-3">
-            <ArrowLeft className="w-5 h-5 ml-2" />
-            {signedIn ? 'חזרה לאזור האישי' : 'חזור לעמוד הבית'}
-          </Button>
-        </Link>
+        {/* למחובר יש את הכפתור הצף «חזרה לדאשבורד», ולכן אין כאן כפתור חזרה נוסף */}
+        {!signedIn && (
+          <Link href="/">
+            <Button variant="outline" className="px-6 py-3">
+              <ArrowLeft className="w-5 h-5 ml-2" />
+              חזור לעמוד הבית
+            </Button>
+          </Link>
+        )}
         {/* בזרימה הרגילה בחירת מטרת המיחזור מתבצעת בתוך תיבת המצב הנוכחי. הכפתור נשאר לזרימת מיחזור לכל מסלול. */}
         {perTrackRefinanceEnabled && (
           <Button
@@ -274,14 +277,13 @@ export default function MortgageRefinancePage() {
         description="יועץ משכלנתא יבחן איתכם את המשכנתא הנוכחית, יבנה את התמהיל למיחזור וינהל את המשא ומתן מול הבנק. הפנייה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך."
         onRequestAdvisor={() => setLeadOpen(true)}
         opensDialog
-        raised={signedIn}
       />
       <AdvisorLeadDialog open={leadOpen} onOpenChange={setLeadOpen} topic="REFINANCE_HYBRID" />
 
       {signedIn && (
         <Link
           href="/dashboard"
-          className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
         >
           <LayoutDashboard className="h-5 w-5" />
           חזרה לדאשבורד

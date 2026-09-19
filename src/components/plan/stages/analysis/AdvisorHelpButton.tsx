@@ -18,7 +18,6 @@ export function AdvisorHelpButton({
   title = 'היעזרו ביועץ משכנתא להשלמת השלב',
   description = 'יועץ משכלנתא ייפגש איתכם אונליין, יבחן את התלושים, דפי הבנק וההתחייבויות, ויפיק את דוח הפרופיל במקומכם. כל מה שכבר הזנתם כאן עובר אליו. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.',
   opensDialog = false,
-  raised = false,
 }: {
   onRequestAdvisor?: () => void;
   busy?: boolean;
@@ -31,8 +30,6 @@ export function AdvisorHelpButton({
    * "הבקשה נשלחה" בעצמו
    */
   opensDialog?: boolean;
-  /** מוגבה מעל כפתור "חזרה לדאשבורד", כששניהם יושבים באותה פינה */
-  raised?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
@@ -47,11 +44,7 @@ export function AdvisorHelpButton({
   };
 
   return (
-    <div
-      className={`pointer-events-none fixed left-4 z-40 flex flex-col items-start gap-3 print:hidden sm:left-6 ${
-        raised ? 'bottom-[4.75rem]' : 'bottom-5'
-      }`}
-    >
+    <div className="pointer-events-none fixed bottom-5 left-4 z-40 flex flex-col items-start gap-3 print:hidden sm:left-6">
       <AnimatePresence>
         {open && (
           <motion.div

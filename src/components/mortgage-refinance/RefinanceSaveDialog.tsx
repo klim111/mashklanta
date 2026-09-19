@@ -218,6 +218,9 @@ export function RefinanceSaveDialog({
             open={quoteOpen}
             onOpenChange={setQuoteOpen}
             mix={outcome.mix}
+            purpose="refinance"
+            currentBank={currentMix.bank ?? undefined}
+            fixedBank={currentMix.bank ?? undefined}
           />
         )}
       </DialogContent>

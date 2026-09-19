@@ -64,6 +64,7 @@ import { SigningStage } from './stages/SigningStage';
 import { StageOverview as SigningStageOverview } from './stages/signing/StageOverview';
 import { RefinanceMixStage } from './stages/refinance/RefinanceMixStage';
 import { RefinanceModeChoice } from './stages/refinance/RefinanceModeChoice';
+import { AdvisorHelpButton } from './stages/analysis/AdvisorHelpButton';
 import { useMarketRates } from '@/hooks/useMarketRates';
 
 const saveLabels: Record<SaveState, { label: string; className: string }> = {
@@ -302,7 +303,10 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
    * רק מסביר מה השלב עושה, ולכן הוא נשאר פעיל מעל התוכן הנעול.
    */
   const signingOverviewOpen =
-    stage === 'SIGNING' && (plan.data.SIGNING.screen || 'overview') === 'overview';
+    stage === 'SIGNING' &&
+    // במיחזור אין מסך "איך תרצו לעבור את השלב" — השלב נפתח ישר
+    !isRefinance &&
+    (plan.data.SIGNING.screen || 'overview') === 'overview';
 
   /*
     שלב שהלקוח הזמין ליווי עליו ושילם עובר לתצוגת סיכום: דאשבורד אחד קצר
@@ -336,15 +340,19 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
     "על השלב" משלהם) מציע לבחור בין ניתוח עצמי לבין ליווי יועץ. השער מוצג רק
     כשעדיין לא נבחרה דרך, השלב אינו מטופל על ידי יועץ, וטרם נסגר.
   */
+  /*
+    במיחזור אין שער שלב: הלקוח שכבר בנה תמהיל למיחזור ובחר את אופן הביצוע לא
+    נשאל בכל שלב מחדש אם לעשות אותו לבד או עם יועץ. השלב נפתח ישר, והפנייה
+    ליועץ זמינה בכל מסך דרך הכפתור הצף.
+  */
   const needsGate =
     !tour &&
     !isPreview &&
     !advisorRun &&
     !isDone &&
+    !isRefinance &&
     stage !== 'ANALYSIS' &&
     stage !== 'SIGNING' &&
-    // שלב התמהיל במיחזור נפתח ישר על התמהיל שאושר — אין מה לבחור לפניו
-    !(isRefinance && stage === 'MIX') &&
     !enteredStages.includes(stage);
 
   const toggleStageDetails = () =>
@@ -770,6 +778,8 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     onShowDetails={openStageDetails}
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                     onChangeSigning={(next: SigningData) => updateStage('SIGNING', next)}
+                    refinance={isRefinance}
+                    hideAdvisorButton={isRefinance}
                   />
                 )}
                 {/*
@@ -783,8 +793,6 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     planId={plan.id}
                     market={market}
                     onChange={(next: MixData) => updateStage('MIX', next)}
-                    onRequestAdvisor={() => void requestFreeHandoff('MIX')}
-                    advisorBusy={handoffBusy === 'MIX'}
                   />
                 )}
                 {stage === 'MIX' && !isRefinance && (
@@ -849,6 +857,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
                     onChange={(next: SigningData) => updateStage('SIGNING', next)}
                     onRequestAdvisor={() => void requestFreeHandoff('SIGNING')}
                     advisorBusy={handoffBusy === 'SIGNING'}
+                    skipOverview={isRefinance}
                   />
                 )}
 
@@ -868,6 +877,20 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
         מתחתיו, בעמודה אחת. הפינה השמאלית שמורה לכפתור «פנו ליועץ» של השלב,
         וכך השניים אינם עולים זה על זה.
       */}
+      {/*
+        פנייה ליועץ — בכל מסך, בכל שלב ובכל סוג מיחזור. בשאר התהליכים הכפתור
+        מוצג בתוך השלב עצמו (שלב הפרופיל), ולכן הוא לא מוכפל כאן.
+      */}
+      {isRefinance && !tour && !advisorRun && (
+        <AdvisorHelpButton
+          stageLabel={`שלב ${index + 1} מתוך ${stages.length} · ${meta.shortTitle}`}
+          title="היעזרו ביועץ משכנתא בשלב הזה"
+          description={`יועץ משכלנתא ייקח על עצמו את ${meta.title} במיחזור שלכם: יבחן את מה שכבר הזנתם, ישלים את מה שחסר וילווה אתכם מול הבנק. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.`}
+          onRequestAdvisor={() => void requestFreeHandoff(stage)}
+          busy={handoffBusy === stage}
+        />
+      )}
+
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5">
         {!tour && <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />}
         <Link

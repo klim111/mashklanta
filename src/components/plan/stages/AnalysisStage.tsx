@@ -143,10 +143,19 @@ export function AnalysisStage({
   onChangeSigning,
   advisorSummary,
   onShowDetails,
+  refinance = false,
+  hideAdvisorButton = false,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
   planId: string;
+  /**
+   * תהליך מיחזור. הנכס כבר בבעלות הלקוח והמשכנתא כבר קיימת, ולכן אין שאלה על
+   * הון עצמי — והיעדרו אינו חוסם את המעבר לתת-השלב הבא.
+   */
+  refinance?: boolean;
+  /** הכפתור הצף של הפנייה ליועץ מוצג על ידי שולחן העבודה, ולא כאן */
+  hideAdvisorButton?: boolean;
   /** הגדרת בעלות הנכס נשמרת על שלב החתימה, שהוא מקור האמת שלה */
   onChangeSigning?: (next: SigningData) => void;
   /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
@@ -196,7 +205,7 @@ export function AnalysisStage({
   /* השמות שהוזנו — מחליפים את «לווה 1» ו«לווה 2» בכל מסכי השלב */
   const names = borrowerLabels(profile);
   const analysis = analyzeProfile(profile);
-  const requirements = profileRequirements(profile);
+  const requirements = profileRequirements(profile, { requireEquity: !refinance });
   const personalDone = requirements
     .filter((item) => PERSONAL_KEYS.includes(item.key))
     .every((item) => item.ok);
@@ -221,7 +230,9 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
-      {!advisorMode && <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />}
+      {!advisorMode && !hideAdvisorButton && (
+        <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />
+      )}
 
       <ScreenRail
         current={screen}
@@ -586,7 +597,12 @@ export function AnalysisStage({
 
         {screen === 'deal' && (
           <motion.div key="deal" {...reveal} className="space-y-5">
-            <PropertyPanel profile={profile} patch={patch} onNeedEquityHelp={onEquityHelp} />
+            <PropertyPanel
+              profile={profile}
+              patch={patch}
+              onNeedEquityHelp={onEquityHelp}
+              refinance={refinance}
+            />
             <RecommendationCallouts profile={profile} screen="deal" patch={patch} />
 
             {onChangeSigning && (
@@ -1150,11 +1166,14 @@ function PropertyPanel({
   profile,
   patch,
   onNeedEquityHelp,
+  refinance = false,
 }: {
   profile: AnalysisData;
   patch: (next: Partial<AnalysisData>) => void;
   /** נפתח כשההון העצמי הזמין נמוך מהנדרש — טופס פנייה לגיוס הון */
   onNeedEquityHelp: () => void;
+  /** במיחזור אין הון עצמי לעסקה, ולכן אזור ההון העצמי אינו מוצג */
+  refinance?: boolean;
 }) {
   const analysis = analyzeProfile(profile);
   const dealType = profile.dealType;
@@ -1308,8 +1327,22 @@ function PropertyPanel({
           </div>
         )}
 
+        {/*
+          במיחזור אין הון עצמי לעסקה: הסכום הממוחזר הוא יתרת המשכנתא הקיימת,
+          והוא נקבע בכלי המיחזור. במקום אזור ההון העצמי מוצג מה שהבנק כן בוחן.
+        */}
+        {refinance && propertyValue > 0 && (
+          <div className="mx-auto max-w-xl space-y-1 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
+            <p className="text-sm font-black text-slate-800">במיחזור אין צורך בהון עצמי</p>
+            <p className="text-xs font-medium leading-relaxed text-slate-600">
+              הנכס כבר בבעלותכם, והסכום שממוחזר הוא יתרת המשכנתא הקיימת כפי שהזנתם בכלי המיחזור.
+              מה שהבנק בוחן כאן הוא ההכנסות, ההתחייבויות ושווי הנכס מול יתרת ההלוואה.
+            </p>
+          </div>
+        )}
+
         {/* ההון העצמי — נדרש מול זמין, אחרי שנקבע מחיר הנכס */}
-        {dealType && propertyValue > 0 && (
+        {!refinance && dealType && propertyValue > 0 && (
           <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
             <div>
               <span className="block text-sm font-bold text-slate-600">הון עצמי מינימלי נדרש</span>
@@ -1385,7 +1418,7 @@ function PropertyPanel({
           </div>
         )}
 
-        {!analysis.ratioOk && propertyValue > 0 && equityEntered && (
+        {!refinance && !analysis.ratioOk && propertyValue > 0 && equityEntered && (
           <p className="mx-auto flex max-w-xl items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             יחס ההחזר המשוער חורג מהמקובל בבנקים. אפשר להאריך את התקופה, להקטין את מחיר הנכס או לסגור

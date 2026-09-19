@@ -41,6 +41,29 @@ export function AuctionStage({
   /** בתהליך מיחזור — ההצעה מושווית גם מול המשכנתא המקורית */
   refinance?: RefinanceMixData | null;
 }) {
+  /*
+    מיחזור פנימי מתנהל מול בנק אחד: אין מכרז, אין "הצעה זולה ביותר" ואין בנקים
+    נוספים לפתוח. מה שיש הוא הצעה אחת, והשאלה היחידה היא איך היא נראית מול
+    המשכנתא הקיימת — ולכן זה גם מה שהכותרות אומרות.
+  */
+  const internal = refinance?.mode === 'INTERNAL';
+  const auctionCopy = internal
+    ? {
+        pricingTitle: 'הזנת ריביות שהתקבלו מהבנק',
+        pricingDescription:
+          'לחצו על הבנק והזינו את הריבית שהוא נקב לכל מסלול בתמהיל למיחזור. אחרי השמירה ההשוואה מול המשכנתא הנוכחית מתעדכנת מיד.',
+        featuredTitle: 'השוואה בין ההצעה של הבנק לבין המשכנתא הנוכחית',
+        featuredDescription:
+          'התמהיל, המספרים והגרפים של ההצעה שהתקבלה מהבנק על התמהיל שבניתם למיחזור.',
+        offerBadge: { label: 'הצעת המיחזור של הבנק', everyOffer: true },
+        signLabel: {
+          badge: 'ההצעה שאושרה למיחזור',
+          button: 'אשרו את ההצעה הזו כמיחזור',
+          confirm:
+            'לאשר את ההצעה הזו כמיחזור שייחתם? היא תופיע באזור האישי כמשכנתא שלכם לאחר המיחזור.',
+        },
+      }
+    : undefined;
   const value = data.AUCTION;
   const finalMixKey = data.MIX.mixKey;
   const { saved, ready, save, remove, refresh } = useSavedMixes({ planId });
@@ -145,6 +168,8 @@ export function AuctionStage({
         onSavePriced={onSavePriced}
         onRemovePriced={role === 'self' ? (mixId) => void onRemovePriced(mixId) : undefined}
         approvedBanks={approvedBanks}
+        lockBanks={internal}
+        copy={auctionCopy}
         allowSelfEntry
       />
 

@@ -36,6 +36,9 @@ export function sanitizeRateRequestDetails(raw: unknown): RateRequestDetails {
   const details: RateRequestDetails = {};
   const bankName = text(source.bankName);
   if (bankName) details.bankName = bankName;
+  if (source.purpose === 'refinance') details.purpose = 'refinance';
+  const currentBank = text(source.currentBank);
+  if (currentBank) details.currentBank = currentBank;
   const applicantName = text(source.applicantName);
   if (applicantName) details.applicantName = applicantName;
   const contactPhone = text(source.contactPhone);
