@@ -19,6 +19,7 @@ import {
   REPAYMENT_RATIO_LIMIT,
   accountBanks,
   analyzeProfile,
+  borrowerLabels,
   countedLoans,
   dealMaxLtv,
   describeMonths,
@@ -738,9 +739,10 @@ function reportSummary(profile: AnalysisData, mortgageAmount: number, checks: Re
   const statusOf = (key: string): CheckStatus =>
     checks.find((check) => check.key === key)?.status ?? 'unknown';
 
+  const names = borrowerLabels(profile);
   const borrowers: ReportBorrower[] = [
     {
-      label: couple ? 'לווה 1' : 'הלווה',
+      label: names.first,
       age: profile.age,
       income: profile.income,
       employment: profile.employmentType ? EMPLOYMENT_LABELS[profile.employmentType] : null,
@@ -750,7 +752,7 @@ function reportSummary(profile: AnalysisData, mortgageAmount: number, checks: Re
   ];
   if (couple) {
     borrowers.push({
-      label: 'לווה 2',
+      label: names.second,
       age: profile.partnerAge,
       income: profile.partnerIncome,
       employment: profile.partnerEmploymentType ? EMPLOYMENT_LABELS[profile.partnerEmploymentType] : null,

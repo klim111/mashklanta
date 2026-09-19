@@ -35,6 +35,7 @@ import {
   EMPLOYMENT_LABELS,
   EMPLOYMENT_TYPES,
   analyzeProfile,
+  borrowerLabels,
   dealMaxLtv,
   dealMaxMortgage,
   profileRequirements,
@@ -192,6 +193,8 @@ export function AnalysisStage({
   const go = (profileScreen: ProfileScreen) => patch({ profileScreen });
 
   const couple = profile.household === 'COUPLE';
+  /* השמות שהוזנו — מחליפים את «לווה 1» ו«לווה 2» בכל מסכי השלב */
+  const names = borrowerLabels(profile);
   const analysis = analyzeProfile(profile);
   const requirements = profileRequirements(profile);
   const personalDone = requirements
@@ -274,10 +277,14 @@ export function AnalysisStage({
 
               <div className={`mt-5 grid gap-4 ${couple ? 'lg:grid-cols-2' : ''}`}>
                 <BorrowerBasicsCard
-                  title={couple ? 'לווה 1' : 'הפרטים שלי'}
+                  title={couple ? names.first : names.hasFirst ? names.first : 'הפרטים שלי'}
+                  firstName={profile.firstName}
+                  lastName={profile.lastName}
                   age={profile.age}
                   income={profile.income}
                   bank={profile.primaryBank}
+                  onFirstName={(firstName) => patch({ firstName })}
+                  onLastName={(lastName) => patch({ lastName })}
                   onAge={(age) => patch({ age })}
                   onIncome={(income) => patch({ income })}
                   onBank={(primaryBank) => patch({ primaryBank })}
@@ -285,10 +292,14 @@ export function AnalysisStage({
                 />
                 {couple && (
                   <BorrowerBasicsCard
-                    title="לווה 2"
+                    title={names.second}
+                    firstName={profile.partnerFirstName}
+                    lastName={profile.partnerLastName}
                     age={profile.partnerAge}
                     income={profile.partnerIncome}
                     bank={profile.partnerPrimaryBank}
+                    onFirstName={(partnerFirstName) => patch({ partnerFirstName })}
+                    onLastName={(partnerLastName) => patch({ partnerLastName })}
                     onAge={(partnerAge) => patch({ partnerAge })}
                     onIncome={(partnerIncome) => patch({ partnerIncome })}
                     onBank={(partnerPrimaryBank) => patch({ partnerPrimaryBank })}
@@ -360,7 +371,7 @@ export function AnalysisStage({
 
               <div className={`mt-5 grid gap-4 ${couple ? 'lg:grid-cols-2' : ''}`}>
                 <BorrowerWorkCard
-                  title={couple ? 'לווה 1' : undefined}
+                  title={couple ? names.first : undefined}
                   employment={profile.employmentType}
                   loans={
                     couple ? profile.borrowerLoans.filter((loan) => !loan.shared) : profile.borrowerLoans
@@ -393,7 +404,7 @@ export function AnalysisStage({
                 />
                 {couple && (
                   <BorrowerWorkCard
-                    title="לווה 2"
+                    title={names.second}
                     employment={profile.partnerEmploymentType}
                     loans={profile.partnerLoans.filter((loan) => !loan.shared)}
                     hasLoans={profile.partnerLoans.length > 0}
@@ -712,18 +723,26 @@ function ScreenFooter({
 /** השאלה הראשונה — גדולה במרכז המסך עד שנבחרת תשובה */
 function BorrowerBasicsCard({
   title,
+  firstName,
+  lastName,
   age,
   income,
   bank,
+  onFirstName,
+  onLastName,
   onAge,
   onIncome,
   onBank,
   showBank = true,
 }: {
   title: string;
+  firstName: string;
+  lastName: string;
   age: number | null;
   income: number | null;
   bank: string | null;
+  onFirstName: (value: string) => void;
+  onLastName: (value: string) => void;
   onAge: (value: number | null) => void;
   onIncome: (value: number | null) => void;
   onBank: (value: string | null) => void;
@@ -739,6 +758,12 @@ function BorrowerBasicsCard({
           <User className="h-4 w-4 text-white" />
         </span>
         <h4 className="text-base font-black text-slate-900">{title}</h4>
+      </div>
+
+      {/* השם מחליף את «לווה 1» בכל מקום שבו הלווה מוצג — לכן הוא נשאל ראשון */}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <TextField label="שם פרטי" value={firstName} onChange={onFirstName} placeholder="ישראל" />
+        <TextField label="שם משפחה" value={lastName} onChange={onLastName} placeholder="ישראלי" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -22,6 +22,10 @@ import type {
 export const PROFILE_FIELD_LABELS: Record<string, string> = {
   household: 'הרכב הלווים',
   bankAccountMode: 'אופן ניהול החשבון',
+  firstName: 'שם פרטי',
+  lastName: 'שם משפחה',
+  partnerFirstName: 'שם פרטי של בן/בת הזוג',
+  partnerLastName: 'שם משפחה של בן/בת הזוג',
   age: 'גיל',
   partnerAge: 'גיל בן/בת הזוג',
   income: 'הכנסה חודשית',
@@ -47,6 +51,10 @@ export const PROFILE_FIELD_LABELS: Record<string, string> = {
 export const PROFILE_ANALYSIS_KEYS = [
   'household',
   'bankAccountMode',
+  'firstName',
+  'lastName',
+  'partnerFirstName',
+  'partnerLastName',
   'age',
   'partnerAge',
   'income',
@@ -71,6 +79,11 @@ export type ProfileAnalysisKey = (typeof PROFILE_ANALYSIS_KEYS)[number];
 export interface ClientProfileFinancials {
   household: Household;
   bankAccountMode: BankAccountMode | null;
+  /** שמות הלווים — נשמרים על הפרופיל ונמשכים מכאן לכל מסך */
+  firstName: string;
+  lastName: string;
+  partnerFirstName: string;
+  partnerLastName: string;
   age: number | null;
   partnerAge: number | null;
   income: number | null;
@@ -101,6 +114,10 @@ export function emptyClientProfile(): ClientProfileFinancials {
   return {
     household: base.household,
     bankAccountMode: base.bankAccountMode,
+    firstName: base.firstName,
+    lastName: base.lastName,
+    partnerFirstName: base.partnerFirstName,
+    partnerLastName: base.partnerLastName,
     age: base.age,
     partnerAge: base.partnerAge,
     income: base.income,
@@ -128,6 +145,10 @@ export function parseClientProfile(raw: unknown): ClientProfileFinancials {
   return {
     household: parsed.household,
     bankAccountMode: couple ? parsed.bankAccountMode : null,
+    firstName: parsed.firstName,
+    lastName: parsed.lastName,
+    partnerFirstName: couple ? parsed.partnerFirstName : '',
+    partnerLastName: couple ? parsed.partnerLastName : '',
     age: parsed.age,
     partnerAge: couple ? parsed.partnerAge : null,
     income: parsed.income,
@@ -160,6 +181,10 @@ export function profileToJson(profile: ClientProfileFinancials): ClientProfileFi
   return {
     household: profile.household === 'COUPLE' ? 'COUPLE' : 'SINGLE',
     bankAccountMode: couple ? profile.bankAccountMode : null,
+    firstName: (profile.firstName ?? '').trim(),
+    lastName: (profile.lastName ?? '').trim(),
+    partnerFirstName: couple ? (profile.partnerFirstName ?? '').trim() : '',
+    partnerLastName: couple ? (profile.partnerLastName ?? '').trim() : '',
     age: profile.age,
     partnerAge: couple ? profile.partnerAge : null,
     income: profile.income,
@@ -204,6 +229,8 @@ export function pickProfileFromAnalysis(analysis: AnalysisData): ClientProfileFi
 function hasValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;
   if (Array.isArray(value)) return value.length > 0;
+  // שם שלא הוזן בתהליך לא ימחק את השם ששמור על הלקוח
+  if (typeof value === 'string') return value.trim() !== '';
   return true;
 }
 

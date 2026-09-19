@@ -426,3 +426,34 @@ describe('התזרים, לוח הזמנים, התמהיל הסכמטי והסי�
     expect(MIX_TRACKS.find((track) => track.id === 'fixed_unlinked')?.linked).toBe(false);
   });
 });
+
+describe('שמות הלווים', () => {
+  it('בלי שם נשארת התווית הגנרית, ועם שם הוא מחליף אותה בדוח ובתיק המסמכים', () => {
+    const generic = buildProfileReport(profile());
+    expect(generic.summary.borrowers.map((borrower) => borrower.label)).toEqual(['לווה 1', 'לווה 2']);
+    expect(generic.documents.some((group) => group.title.includes('לווה 1'))).toBe(true);
+
+    const named = buildProfileReport(
+      profile({
+        firstName: 'דנה',
+        lastName: 'כהן',
+        partnerFirstName: 'יואב',
+        partnerLastName: 'כהן',
+      })
+    );
+    expect(named.summary.borrowers.map((borrower) => borrower.label)).toEqual(['דנה כהן', 'יואב כהן']);
+    expect(named.documents.some((group) => group.title === 'מסמכים של דנה כהן')).toBe(true);
+    expect(named.documents.some((group) => group.title === 'מסמכים של יואב כהן')).toBe(true);
+    expect(named.documents.some((group) => group.title.includes('לווה'))).toBe(false);
+  });
+
+  it('לווה יחיד עם שם מוצג בשמו, ובלי שם כ«הלווה»', () => {
+    const single = buildProfileReport(profile({ household: 'SINGLE' }));
+    expect(single.summary.borrowers[0].label).toBe('הלווה');
+
+    const named = buildProfileReport(
+      profile({ household: 'SINGLE', firstName: 'אבי', lastName: 'לוי' })
+    );
+    expect(named.summary.borrowers[0].label).toBe('אבי לוי');
+  });
+});

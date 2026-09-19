@@ -39,7 +39,13 @@ export function TaskGroupsList({
     );
   }
 
-  const grid = columns === 2 ? 'grid gap-2 md:grid-cols-2' : 'grid gap-2';
+  /*
+    הכרטיסים מתמרכזים כמו הכותרת שמעליהם: בפריסה של שתי עמודות, כרטיס בודד
+    בשורה האחרונה יושב במרכז ולא נצמד לצד. `grid` היה מצמיד אותו לעמודה
+    הראשונה, ולכן כאן נעשה שימוש בעטיפה גמישה עם רוחב קבוע לכל כרטיס.
+  */
+  const grid = 'flex flex-wrap justify-center gap-2';
+  const cell = columns === 2 ? 'w-full md:w-[calc(50%-0.25rem)]' : 'w-full';
 
   return (
     <div className="space-y-5">
@@ -50,6 +56,7 @@ export function TaskGroupsList({
         tone="rose"
         tasks={groups.overdue}
         grid={grid}
+        cell={cell}
         compact={compact}
         overdue
         onOpen={onOpen}
@@ -62,6 +69,7 @@ export function TaskGroupsList({
         tone="blue"
         tasks={groups.scheduled}
         grid={grid}
+        cell={cell}
         compact={compact}
         onOpen={onOpen}
         onSchedule={onSchedule}
@@ -73,6 +81,7 @@ export function TaskGroupsList({
         tone="slate"
         tasks={groups.undated}
         grid={grid}
+        cell={cell}
         compact={compact}
         onOpen={onOpen}
         onSchedule={onSchedule}
@@ -94,6 +103,7 @@ function Bucket({
   tone,
   tasks,
   grid,
+  cell,
   compact,
   overdue = false,
   onOpen,
@@ -105,6 +115,8 @@ function Bucket({
   tone: keyof typeof TONES;
   tasks: ClientTask[];
   grid: string;
+  /** רוחב כרטיס בודד בתוך העטיפה הגמישה */
+  cell: string;
   compact: boolean;
   overdue?: boolean;
   onOpen: (task: ClientTask) => void;
@@ -124,14 +136,15 @@ function Bucket({
       </header>
       <div className={grid}>
         {tasks.map((task) => (
-          <TaskItem
-            key={task.id}
-            task={task}
-            compact={compact}
-            overdue={overdue}
-            onOpen={() => onOpen(task)}
-            onSchedule={onSchedule ? (due) => onSchedule(task.id, due) : undefined}
-          />
+          <div key={task.id} className={cell}>
+            <TaskItem
+              task={task}
+              compact={compact}
+              overdue={overdue}
+              onOpen={() => onOpen(task)}
+              onSchedule={onSchedule ? (due) => onSchedule(task.id, due) : undefined}
+            />
+          </div>
         ))}
       </div>
     </section>

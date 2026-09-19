@@ -8,7 +8,12 @@ import { useAdvisorNotes, useMeetings } from '@/components/advisor/useAdvisorCrm
 import { useClientTasks } from '@/components/plan/tasks/useClientTasks';
 import { advisorStages as stagesOf } from '@/lib/advisor-orders';
 import type { AdvisorOrder } from '@/lib/advisor-orders';
-import { buildCalendarEvents, buildClientTasks, clientTaskIdOf } from '@/lib/client-agenda';
+import {
+  advisorStageNotices,
+  buildCalendarEvents,
+  buildClientTasks,
+  clientTaskIdOf,
+} from '@/lib/client-agenda';
 import type { AgendaInput, AgendaRateRequest, ClientTaskState } from '@/lib/client-agenda';
 import { useClientTaskStates } from './useClientTaskStates';
 import type { PlanStageId } from '@/lib/mortgage-plan';
@@ -128,6 +133,8 @@ export function useClientDashboard() {
   );
 
   const tasks = useMemo(() => buildClientTasks(input), [input]);
+  /* השלבים שהיועץ מטפל בהם — מוצגים בכרטיס «המשכנתא שלי», לא ברשימת המשימות */
+  const advisorNotices = useMemo(() => advisorStageNotices(input), [input]);
 
   /**
    * קביעת מועד למשימה, מאיפה שלא באה.
@@ -168,6 +175,7 @@ export function useClientDashboard() {
     requests,
     notes,
     advisorStages,
+    advisorNotices,
     tasks,
     events,
     taskStates: taskStatesState,

@@ -70,6 +70,25 @@ export function planDocumentRequirements(data: PlanData): DocumentRequirement[] 
   return requirements;
 }
 
+/**
+ * מה נאסף בתיק מול מה שנדרש.
+ *
+ * הספירה היא של כל מה שהועלה בפועל, ולא רק של מסמכים שהקטלוג מכיר: אישור
+ * עקרוני שנשמר משלב ההגשה, מסמך בכותרת חופשית, ומסמך שהמפתח שלו כבר אינו
+ * ברשימה (למשל אחרי שינוי בפרופיל ששינה את רשימת המסמכים) — כולם נספרים.
+ * בלי זה התיק היה מציג «0 מתוך N» גם כשיש בו קבצים.
+ */
+export function vaultCounts(
+  requirements: readonly DocumentRequirement[],
+  documents: readonly { key: string }[]
+): { uploaded: number; total: number; extras: number } {
+  const required = new Set(requirements.map((requirement) => requirement.key));
+  const uploadedKeys = new Set(documents.map((document) => document.key));
+  const filled = requirements.filter((requirement) => uploadedKeys.has(requirement.key)).length;
+  const extras = [...uploadedKeys].filter((key) => !required.has(key)).length;
+  return { uploaded: filled + extras, total: requirements.length + extras, extras };
+}
+
 /** האם המפתח שייך למסמכי החתימה של תרחיש כלשהו */
 export function isSigningUploadKey(key: string): boolean {
   return key.startsWith('signing:');

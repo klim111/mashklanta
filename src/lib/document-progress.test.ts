@@ -3,6 +3,7 @@ import { emptyPlanData } from './mortgage-plan';
 import type { PlanDocumentView } from './plan-documents';
 import type { ClientTaskView } from './client-tasks';
 import { customDocumentKey, customDocumentStage, documentProgress } from './document-progress';
+import { vaultCounts } from './plan-document-catalog';
 import { demoDocuments, demoPlanData } from './demo-plan';
 
 function doc(key: string): PlanDocumentView {
@@ -75,5 +76,37 @@ describe('documentProgress', () => {
     const auctionWithTask = withTask.stages.find((row) => row.stage === 'AUCTION');
     expect(auctionWithTask?.total).toBe(2);
     expect(auctionWithTask?.percent).toBe(50);
+  });
+});
+
+describe('ספירת תיק המסמכים', () => {
+  const file = (key: string) => ({ key });
+
+  it('סופרת מסמך שממלא דרישה', () => {
+    const requirements = [
+      { key: 'b1:identity', name: 'ת"ז', group: 'ל1', stage: 'APPLICATIONS' as const },
+      { key: 'b1:payslips', name: 'תלושים', group: 'ל1', stage: 'APPLICATIONS' as const },
+    ];
+    expect(vaultCounts(requirements, [file('b1:identity')])).toEqual({
+      uploaded: 1,
+      total: 2,
+      extras: 0,
+    });
+  });
+
+  it('מסמך שהועלה ואינו ברשימה נספר גם הוא, ולא נעלם מהמניין', () => {
+    const requirements = [
+      { key: 'b1:identity', name: 'ת"ז', group: 'ל1', stage: 'APPLICATIONS' as const },
+    ];
+    // אישור עקרוני מהבנק, מסמך בכותרת חופשית, ומפתח שכבר אינו ברשימה
+    const documents = [file('pre-approval:leumi'), file('custom:ANALYSIS:x'), file('b1:old-key')];
+    expect(vaultCounts(requirements, documents)).toEqual({ uploaded: 3, total: 4, extras: 3 });
+  });
+
+  it('תיק ריק הוא אפס מתוך מה שנדרש', () => {
+    const requirements = [
+      { key: 'b1:identity', name: 'ת"ז', group: 'ל1', stage: 'APPLICATIONS' as const },
+    ];
+    expect(vaultCounts(requirements, [])).toEqual({ uploaded: 0, total: 1, extras: 0 });
   });
 });

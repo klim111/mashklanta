@@ -160,16 +160,6 @@ export function AgendaSection({
             <DashCard
               title={relativeDayLabel(new Date(`${selected}T12:00:00`))}
               icon={<Clock className="h-5 w-5 text-blue-600" />}
-              action={
-                <button
-                  type="button"
-                  onClick={() => setAddOpen(true)}
-                  className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3 py-1.5 text-[13px] font-black text-white hover:bg-slate-700"
-                >
-                  <CalendarPlus className="h-4 w-4" />
-                  הוסף משימה או פגישה
-                </button>
-              }
             >
               <DayList items={selectedEvents} onOpen={openEvent} empty="אין פגישות או מועדים ביום הזה" />
             </DashCard>
@@ -221,6 +211,16 @@ export function AgendaSection({
                 </div>
               </div>
             </DashCard>
+
+            {/* הוספת משימה — מתחת לכל הבלוק, אחרי «הקרוב ביומן» */}
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              הוסף משימה או פגישה
+            </button>
           </div>
         )}
       </div>

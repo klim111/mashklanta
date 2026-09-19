@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_AGENDA_INPUT,
+  advisorStageNotices,
   buildCalendarEvents,
   buildClientTasks,
   daysUntil,
@@ -11,6 +12,7 @@ import {
 } from './client-agenda';
 import type { AgendaPlan } from './client-agenda';
 import { PLAN_STAGES, emptyPlanData } from './mortgage-plan';
+import type { PlanStageId } from './mortgage-plan';
 import type { AdvisorMeetingView } from './advisor-crm';
 
 const NOW = new Date('2026-09-14T09:00:00');
@@ -88,13 +90,48 @@ describe('סדר היום של הלקוח', () => {
     });
   });
 
-  it('כשהיועץ מטפל בשלב — אין משימת "המשיכו", יש רק עדכון', () => {
-    const tasks = buildClientTasks(
-      { ...EMPTY_AGENDA_INPUT, plans: [plan({ currentStage: 'AUCTION' })], advisorStages: { p1: ['AUCTION'] } },
-      NOW
-    );
+  it('כשהיועץ מטפל בשלב — אין משימות ללקוח, וההודעה עוברת לכרטיס המשכנתא', () => {
+    const input = {
+      ...EMPTY_AGENDA_INPUT,
+      plans: [plan({ currentStage: 'AUCTION' })],
+      advisorStages: { p1: ['AUCTION'] as PlanStageId[] },
+    };
+    const tasks = buildClientTasks(input, NOW);
     expect(tasks.some((task) => task.id.startsWith('continue:'))).toBe(false);
-    expect(tasks.find((task) => task.id === 'advisor:p1:AUCTION')?.tone).toBe('info');
+    // ההודעה אינה משימה: אין מה לעשות מצד הלקוח
+    expect(tasks.some((task) => task.id.startsWith('advisor:'))).toBe(false);
+
+    const notices = advisorStageNotices(input);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({
+      planId: 'p1',
+      stage: 'AUCTION',
+      stageNumber: 4,
+      done: false,
+      currentStage: 'AUCTION',
+    });
+  });
+
+  it('שלב שהיועץ סיים מסומן כהושלם, ומצביע על השלב הנוכחי', () => {
+    const input = {
+      ...EMPTY_AGENDA_INPUT,
+      plans: [
+        plan({
+          currentStage: 'AUCTION',
+          stages: [
+            { stage: 'ANALYSIS', status: 'COMPLETED' },
+            { stage: 'AUCTION', status: 'IN_PROGRESS' },
+          ],
+        }),
+      ],
+      advisorStages: { p1: ['ANALYSIS'] as PlanStageId[] },
+    };
+    const notices = advisorStageNotices(input);
+    expect(notices).toHaveLength(1);
+    expect(notices[0].done).toBe(true);
+    expect(notices[0].stageNumber).toBe(1);
+    expect(notices[0].currentStageNumber).toBe(4);
+    expect(notices[0].currentStageTitle.length).toBeGreaterThan(0);
   });
 
   it('אישור עקרוני שפג בקרוב הוא דחוף, ומופיע גם בלוח השנה', () => {

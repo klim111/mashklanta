@@ -170,6 +170,12 @@ export interface AnalysisData {
   household: Household;
   /** איך הזוג מנהל חשבון בנק — רלוונטי רק כשהלווים הם זוג */
   bankAccountMode: BankAccountMode | null;
+  /** שם הלווה — מחליף את «לווה 1» בכל מקום שבו הוא מוצג */
+  firstName: string;
+  lastName: string;
+  /** שם בן/בת הזוג — מחליף את «לווה 2» */
+  partnerFirstName: string;
+  partnerLastName: string;
   age: number | null;
   partnerAge: number | null;
   income: number | null;
@@ -286,6 +292,10 @@ export function analysisFromPlanning(
     profileScreen: carry?.profileScreen ?? 'overview',
     household: couple ? 'COUPLE' : 'SINGLE',
     bankAccountMode: couple ? (carry?.bankAccountMode ?? null) : null,
+    firstName: carry?.firstName ?? '',
+    lastName: carry?.lastName ?? '',
+    partnerFirstName: couple ? carry?.partnerFirstName ?? '' : '',
+    partnerLastName: couple ? carry?.partnerLastName ?? '' : '',
     primaryBank: carry?.primaryBank ?? null,
     partnerPrimaryBank: couple ? carry?.partnerPrimaryBank ?? null : null,
     age: parseInt(ageRaw, 10) || null,
@@ -515,6 +525,10 @@ const EMPTY: PlanData = {
     profileScreen: 'overview',
     household: 'SINGLE',
     bankAccountMode: null,
+    firstName: '',
+    lastName: '',
+    partnerFirstName: '',
+    partnerLastName: '',
     age: null,
     partnerAge: null,
     income: null,
@@ -869,6 +883,18 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         household,
         bankAccountMode,
         partnerEmploymentType: couple ? carry.partnerEmploymentType ?? null : null,
+        firstName: has('firstName') ? str(source.firstName).trim() : seed.firstName,
+        lastName: has('lastName') ? str(source.lastName).trim() : seed.lastName,
+        partnerFirstName: couple
+          ? has('partnerFirstName')
+            ? str(source.partnerFirstName).trim()
+            : seed.partnerFirstName
+          : '',
+        partnerLastName: couple
+          ? has('partnerLastName')
+            ? str(source.partnerLastName).trim()
+            : seed.partnerLastName
+          : '',
         age: has('age') ? num(source.age) : seed.age,
         partnerAge: has('partnerAge') ? num(source.partnerAge) : seed.partnerAge,
         income: has('income') ? num(source.income) : seed.income,
@@ -1156,6 +1182,39 @@ export interface DocumentGroup {
  * מסמכי חשבון הבנק נדרשים פעם אחת בחשבון משותף ומכל לווה בחשבונות נפרדים,
  * ומסמכי הנכס והעסקה יושבים ברובריקה נפרדת משלהם.
  */
+/**
+ * איך קוראים ללווים.
+ *
+ * ברגע שהוזן שם, הוא מחליף את «לווה 1» ו«לווה 2» בכל מקום — בתיק המסמכים,
+ * בדוח הפרופיל ובמסכי השלב — כדי שהלקוח יראה את עצמו ולא תווית גנרית. עד
+ * שהוזן שם נשארת התווית הגנרית, וללווה יחיד היא «הלווה».
+ */
+export function borrowerFullName(first: string, last: string): string {
+  return [first, last].map((part) => part.trim()).filter(Boolean).join(' ');
+}
+
+export interface BorrowerLabels {
+  /** השם של הלווה הראשון, או תווית גנרית כשאין שם */
+  first: string;
+  /** השם של בן/בת הזוג, או תווית גנרית */
+  second: string;
+  /** האם הוזן שם ללווה הראשון */
+  hasFirst: boolean;
+  hasSecond: boolean;
+}
+
+export function borrowerLabels(profile: AnalysisData): BorrowerLabels {
+  const couple = profile.household === 'COUPLE';
+  const first = borrowerFullName(profile.firstName, profile.lastName);
+  const second = borrowerFullName(profile.partnerFirstName, profile.partnerLastName);
+  return {
+    first: first || (couple ? 'לווה 1' : 'הלווה'),
+    second: second || 'לווה 2',
+    hasFirst: Boolean(first),
+    hasSecond: Boolean(second),
+  };
+}
+
 export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
   const profile = data.ANALYSIS;
   const couple = profile.household === 'COUPLE';
@@ -1181,6 +1240,8 @@ export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
     ]),
   });
 
+  const names = borrowerLabels(profile);
+
   return [
     ...(sharedAccount
       ? [
@@ -1195,11 +1256,18 @@ export function preApprovalDocumentGroups(data: PlanData): DocumentGroup[] {
     personal(
       'b1',
       profile.employmentType,
-      couple ? 'מסמכים של לווה 1' : 'המסמכים שלי',
+      couple ? `מסמכים של ${names.first}` : names.hasFirst ? `מסמכים של ${names.first}` : 'המסמכים שלי',
       profile.borrowerLoans
     ),
     ...(couple
-      ? [personal('b2', profile.partnerEmploymentType, 'מסמכים של לווה 2', profile.partnerLoans)]
+      ? [
+          personal(
+            'b2',
+            profile.partnerEmploymentType,
+            `מסמכים של ${names.second}`,
+            profile.partnerLoans
+          ),
+        ]
       : []),
     {
       id: 'property',

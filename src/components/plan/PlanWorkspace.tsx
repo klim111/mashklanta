@@ -760,21 +760,21 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
         </AnimatePresence>
       </main>
 
-      {/* תיק המסמכים — נשאר בהישג יד גם אחרי גלילה */}
-      {!tour && (
-        <div className="fixed bottom-5 right-5 z-40">
-          <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />
-        </div>
-      )}
-
-      {/* חזרה לדאשבורד — זמינה תמיד, גם אחרי גלילה לתוך השלב */}
-      <Link
-        href="/dashboard"
-        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
-      >
-        <LayoutDashboard className="h-5 w-5" />
-        חזרה לדאשבורד
-      </Link>
+      {/*
+        הכפתורים הצפים של הפינה הימנית — תיק המסמכים למעלה והחזרה לדאשבורד
+        מתחתיו, בעמודה אחת. הפינה השמאלית שמורה לכפתור «פנו ליועץ» של השלב,
+        וכך השניים אינם עולים זה על זה.
+      */}
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5">
+        {!tour && <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />}
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+        >
+          <LayoutDashboard className="h-5 w-5" />
+          חזרה לדאשבורד
+        </Link>
+      </div>
 
       <AnimatePresence>
         {tour && tourOpen && (

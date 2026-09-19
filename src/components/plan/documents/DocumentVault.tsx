@@ -18,7 +18,7 @@ import type { PlanDocumentView } from '@/lib/plan-documents';
 import { DOCUMENTS_MODE_LABELS } from '@/lib/mortgage-plan';
 import type { DocumentsMode, PlanData } from '@/lib/mortgage-plan';
 import type { StageDocument } from '@/lib/client-process';
-import { planDocumentRequirements } from '@/lib/plan-document-catalog';
+import { planDocumentRequirements, vaultCounts } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { documentDownloadUrl, documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
@@ -63,8 +63,7 @@ export function DocumentVault({
   };
 
   const byKey = new Map(documents.map((document) => [document.key, document]));
-  const total = requirements.length;
-  const uploaded = requirements.filter((requirement) => byKey.has(requirement.key)).length;
+  const { uploaded, total } = vaultCounts(requirements, documents);
   const skipped = mode === 'SELF_SUBMIT' || mode === 'LATER';
 
   /*

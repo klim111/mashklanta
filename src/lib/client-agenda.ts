@@ -13,6 +13,7 @@ import { journeyStageFor } from '@/data/platform/planStages';
 import type { AdvisorMeetingView, AdvisorNoteView } from './advisor-crm';
 import { meetingIsLive } from './advisor-crm';
 import {
+  PLAN_STAGES,
   REPAYMENT_RATIO_COMFORT,
   analyzeProfile,
   planStageNumber,
@@ -325,17 +326,13 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       });
     }
 
+    /*
+      שלב שהיועץ מטפל בו אינו משימה של הלקוח — אין מה לעשות מצדו — ולכן הוא
+      אינו נכנס לרשימת המשימות אלא מוצג כהודעה בכרטיס «המשכנתא שלי».
+      ראו advisorStageNotices.
+    */
     if (advisorOwned.has(stage)) {
-      tasks.push({
-        id: `advisor:${plan.id}:${stage}`,
-        title: `היועץ מטפל בשלב ${stageNumber} · ${journey.shortTitle} — ${label}`,
-        hint: 'אין מה לעשות מצדכם עכשיו. כשהיועץ יסיים או יקבע פגישה, זה יופיע כאן.',
-        tone: 'info',
-        due: null,
-        scheduled: false,
-        stage,
-        target: { kind: 'href', href: planHref(plan, stage) },
-      });
+      // אין משימות ללקוח בשלב הזה
     } else {
       if (stage === 'APPLICATIONS') {
         const open = preApprovalDocuments(plan.data).filter(
@@ -657,4 +654,62 @@ export function summarizePlan(plan: AgendaPlan, advisorStages: PlanStageId[] = [
     advisorStage: advisorStages.includes(plan.currentStage),
     href: planHref(plan),
   };
+}
+
+
+// ───────────────────────── מה שהיועץ מטפל בו ─────────────────────────
+
+/**
+ * הודעה על שלב שהיועץ מטפל בו — לכרטיס «המשכנתא שלי».
+ *
+ * זו אינה משימה של הלקוח, ולכן היא אינה יושבת ברשימת המשימות: אין מה לעשות
+ * מצדו. כשהשלב נסגר ההודעה נשארת, בנוסח «היועץ סיים לטפל», ומצביעה על השלב
+ * שהלקוח עומד בו עכשיו.
+ */
+export interface AdvisorStageNotice {
+  id: string;
+  planId: string;
+  /** שם התהליך, כשיש יותר ממשכנתא אחת */
+  planLabel: string;
+  stage: PlanStageId;
+  stageNumber: number;
+  stageTitle: string;
+  /** היועץ כבר סיים את השלב */
+  done: boolean;
+  /** השלב שהלקוח נמצא בו עכשיו */
+  currentStage: PlanStageId;
+  currentStageNumber: number;
+  currentStageTitle: string;
+  href: string;
+}
+
+export function advisorStageNotices(input: AgendaInput): AdvisorStageNotice[] {
+  const notices: AdvisorStageNotice[] = [];
+
+  activePlans(input.plans).forEach((plan) => {
+    const owned = input.advisorStages[plan.id] ?? [];
+    if (owned.length === 0) return;
+    const label = planLabel(plan);
+    const current = plan.currentStage;
+    const currentJourney = journeyStageFor(current);
+
+    PLAN_STAGES.filter((stage) => owned.includes(stage)).forEach((stage) => {
+      const journey = journeyStageFor(stage);
+      notices.push({
+        id: `advisor-stage:${plan.id}:${stage}`,
+        planId: plan.id,
+        planLabel: label,
+        stage,
+        stageNumber: planStageNumber(stage),
+        stageTitle: journey.shortTitle,
+        done: plan.stages.some((row) => row.stage === stage && row.status === 'COMPLETED'),
+        currentStage: current,
+        currentStageNumber: planStageNumber(current),
+        currentStageTitle: currentJourney.shortTitle,
+        href: planHref(plan, stage),
+      });
+    });
+  });
+
+  return notices;
 }

@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Calculator,
   Check,
+  UserCheck,
   Compass,
   Eye,
   FileText,
@@ -66,7 +67,18 @@ export function OverviewSection({
   onDetailPlan: (planId: string | null) => void;
   onNavigate: (section: DashboardSection, day?: string) => void;
 }) {
-  const { plansState, mixesState, tasks, events, requests, advisorStages, ready, taskStates, scheduleTask } =
+  const {
+    plansState,
+    mixesState,
+    tasks,
+    events,
+    requests,
+    advisorStages,
+    advisorNotices,
+    ready,
+    taskStates,
+    scheduleTask,
+  } =
     data;
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
@@ -292,6 +304,49 @@ export function OverviewSection({
           className="scroll-mt-24"
           id="my-mortgages"
         >
+          {/*
+            מה שהיועץ מטפל בו — מעל כל השאר בכרטיס, כי זה מה שקורה עכשיו בלי
+            שהלקוח צריך לעשות דבר. שלב שנסגר נשאר כאן בנוסח «סיים לטפל», עם
+            השלב שהלקוח עומד בו כעת.
+          */}
+          {advisorNotices.length > 0 && (
+            <ul className="mb-3 space-y-2">
+              {advisorNotices.map((notice) => (
+                <li key={notice.id}>
+                  <Link
+                    href={notice.href}
+                    className={`flex flex-wrap items-center gap-2 rounded-2xl border-2 px-4 py-3 text-right transition-colors ${
+                      notice.done
+                        ? 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-400'
+                        : 'border-violet-200 bg-violet-50/70 hover:border-violet-400'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white ${
+                        notice.done ? 'bg-emerald-600' : 'bg-violet-600'
+                      }`}
+                    >
+                      {notice.done ? <Check className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-black text-slate-900">
+                        {notice.done
+                          ? `היועץ סיים לטפל בשלב ${notice.stageNumber} · ${notice.stageTitle}`
+                          : `היועץ מטפל בשלב ${notice.stageNumber} · ${notice.stageTitle}`}
+                      </span>
+                      <span className="block text-[13px] font-medium text-slate-600">
+                        {notice.done
+                          ? `אתם עכשיו בשלב ${notice.currentStageNumber} · ${notice.currentStageTitle}`
+                          : 'אין מה לעשות מצדכם עכשיו. כשהיועץ יסיים או יקבע פגישה, זה יופיע כאן.'}
+                        {summaries.length > 1 ? ` · ${notice.planLabel}` : ''}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {summaries.length === 0 ? (
             /*
               עדיין אין משכנתא או מיחזור פעילים — נקודת ההתחלה יושבת כאן, בתוך
