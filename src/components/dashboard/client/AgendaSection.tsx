@@ -38,6 +38,7 @@ import type { CalendarView } from './ClientCalendar';
 import { TaskItem } from './TaskItem';
 import { DashCard } from './ui';
 import type { ClientDashboardData } from './useClientDashboard';
+import { demoId } from '@/demo/demo-attr';
 
 /** הפריט שנפתח לפרטים בפאנל הצד */
 type Detail = { kind: 'event'; event: CalendarEvent } | { kind: 'task'; task: ClientTask };
@@ -155,8 +156,9 @@ export function AgendaSection({
             }}
           />
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4" {...demoId('agenda-day-panel')}>
             <DashCard
+              demoId="agenda-day-card"
               title={relativeDayLabel(new Date(`${selected}T12:00:00`))}
               icon={<Clock className="h-5 w-5 text-blue-600" />}
               action={
@@ -164,6 +166,7 @@ export function AgendaSection({
                   type="button"
                   onClick={() => setAddOpen(true)}
                   className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-3 py-1.5 text-[13px] font-black text-white hover:bg-slate-700"
+                  {...demoId('agenda-add')}
                 >
                   <CalendarPlus className="h-4 w-4" />
                   הוסף משימה או פגישה

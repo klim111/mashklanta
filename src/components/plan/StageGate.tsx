@@ -4,6 +4,7 @@ import React from 'react';
 import { ArrowLeft, ListChecks, Loader2, Sparkles, Wrench } from 'lucide-react';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * שער השלב — הבחירה שנפתחת בכל אחד מחמשת השלבים באותו הגיון.
@@ -58,6 +59,7 @@ export function StageGate({
       <div className="grid gap-3 md:grid-cols-2">
         <button
           type="button"
+          {...demoId('plan-stage-gate-self')}
           onClick={onSelfService}
           className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-200 bg-blue-50/40 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg"
         >

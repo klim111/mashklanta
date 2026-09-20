@@ -34,6 +34,7 @@ import { guidanceFor, trackGuidance } from '@/lib/refinance-guidance';
 import type { GuidedParam, ParamGuidance, TrackDraft } from '@/lib/refinance-guidance';
 import { RISK_META, trackRiskProfile } from '@/components/mortgage-refinance/riskAnalysis';
 import { trackColor } from '@/components/mortgage-advisor/workspace/primitives';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * פאנל השליטה של המיחזור — כל הפרמטרים של כל מסלול במסך אחד.
@@ -148,9 +149,10 @@ export function RefinanceControlPanel({
             awaitingSelection ? 'pointer-events-none select-none blur-[3px] opacity-70' : ''
           }`}
         >
-          {(awaitingSelection ? tracks : visibleTracks).map((track) => (
+          {(awaitingSelection ? tracks : visibleTracks).map((track, index) => (
             <TrackControlCard
               key={track.id}
+              index={index}
               track={track}
               draft={drafts[track.id]}
               onChange={(patch) => onDraftChange(track.id, patch)}
@@ -254,6 +256,7 @@ function TrackBriefCard({
 
 /** כרטיס שליטה קומפקטי למסלול אחד */
 function TrackControlCard({
+  index,
   track,
   draft,
   onChange,
@@ -266,6 +269,8 @@ function TrackControlCard({
   track: MortgageTrack;
   draft?: TrackDraft;
   onChange: (patch: Partial<TrackDraft>) => void;
+  /** מיקום המסלול בפאנל — לעוגני ההדגמה */
+  index: number;
   goal: RefinanceGoal;
   market?: MarketRates | null;
   /** במיחזור של כל המשכנתא אפשר להזיז סכומים בין המסלולים */
@@ -301,6 +306,7 @@ function TrackControlCard({
 
   return (
     <div
+      {...demoId(`refi-track-panel-${index}`)}
       className={`rounded-xl border bg-white p-2.5 shadow-sm transition-colors ${
         touched ? 'border-emerald-300 ring-1 ring-emerald-100' : 'border-slate-200'
       }`}
@@ -390,6 +396,7 @@ function TrackControlCard({
       <Field icon={Percent} label="ריבית שנתית" guidance={guidanceFor(guidance, 'rate')}>
         <div className="flex items-center gap-2">
           <Slider
+            {...demoId(`refi-rate-${index}`)}
             dir="ltr"
             className="flex-1"
             value={[sliderRate]}
@@ -430,6 +437,7 @@ function TrackControlCard({
         <Field icon={Coins} label="סכום המסלול">
           <div className="flex items-center gap-2">
             <Slider
+            {...demoId(`refi-amount-${index}`)}
               dir="ltr"
               className="flex-1"
               value={[Math.min(maxAmount, Math.max(MIN_TRACK_AMOUNT, Math.round(current.amount)))]}
@@ -459,6 +467,7 @@ function TrackControlCard({
       <Field icon={Calendar} label="תקופה שנותרה" guidance={guidanceFor(guidance, 'term')}>
         <div className="flex items-center gap-2">
           <Slider
+            {...demoId(`refi-term-${index}`)}
             dir="ltr"
             className="flex-1"
             value={[sliderMonths]}

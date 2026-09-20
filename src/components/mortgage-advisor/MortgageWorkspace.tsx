@@ -68,6 +68,7 @@ import { consumeLegacyAdvisorMixes } from './workspace/legacy';
 import { clearDraft, consumeStagedMix, readDraft, writeDraft } from './workspace/draft';
 import type { ComparisonEntry } from './MixComparison';
 import { useMarketRates } from '@/hooks/use-market-rates';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * הכלי נפתח ישר על תמהיל: 'loading' הוא רק הרגע שבו מתברר איזה תמהיל לפתוח —
@@ -1089,6 +1090,7 @@ export function MortgageWorkspace({
               className="h-9"
               onClick={() => setSaveDialogOpen(true)}
               title="שמירת התמהיל ללקוח או לקטגוריה"
+              {...demoId('ws-save')}
             >
               <Save className="h-4 w-4 ml-1" />
               <span className="hidden sm:inline">שמור תמהיל</span>
@@ -1148,6 +1150,7 @@ export function MortgageWorkspace({
         )}
 
         {/* כל התמהילים של הנכס באותה תצוגה; זה שבניתוח בראש הרשימה */}
+        <div {...demoId('ws-mix-list')}>
         <MixList
           activeResult={result}
           others={propertyMixes}
@@ -1185,6 +1188,7 @@ export function MortgageWorkspace({
                 variant="outline"
                 className="h-10 px-3 text-xs sm:h-8 sm:px-3"
                 onClick={() => setPrepayTarget({})}
+                {...demoId('ws-prepay')}
               >
                 <Banknote className="h-3.5 w-3.5 ml-1" />
                 פרעון מוקדם
@@ -1210,6 +1214,7 @@ export function MortgageWorkspace({
                 variant="outline"
                 className="h-10 px-3 text-xs sm:h-8 sm:px-3"
                 onClick={() => setAmortizationTarget({})}
+                {...demoId('ws-amortization')}
               >
                 <Table2 className="h-3.5 w-3.5 ml-1" />
                 לוח החזרים
@@ -1279,6 +1284,7 @@ export function MortgageWorkspace({
                     variant="outline"
                     className="h-8 text-xs"
                     onClick={() => setSavedPickerOpen(true)}
+                    {...demoId('ws-load-saved')}
                   >
                     <BookmarkCheck className="h-3.5 w-3.5 ml-1" />
                     טענו תמהיל שמור
@@ -1297,6 +1303,7 @@ export function MortgageWorkspace({
             </div>
           }
         />
+        </div>
 
         {isAdvisor && (
         <SaveMixDialog
@@ -1371,6 +1378,7 @@ export function MortgageWorkspace({
         </div>
 
         {/* הניתוח הגרפי וההשוואה באותו אזור */}
+        <div {...demoId('ws-analysis')}>
         <AnalysisTabs
           result={result}
           baseResult={baseResult}
@@ -1396,6 +1404,7 @@ export function MortgageWorkspace({
             ) : null
           }
         />
+        </div>
       </div>
 
       <Dialog open={eventsOpen} onOpenChange={setEventsOpen}>

@@ -27,6 +27,7 @@ import {
 } from '@/lib/refinance';
 import type { MarketRates } from '@/lib/refinance';
 import { cn } from '@/lib/utils';
+import { demoId } from '@/demo/demo-attr';
 
 interface RefinanceMortgageInputProps {
   mix: MortgageMix;
@@ -271,6 +272,7 @@ export function RefinanceMortgageInput({
               >
                 <SelectTrigger
                   id="bank"
+                  {...demoId('refi-bank')}
                   dir="rtl"
                   className="[&>span:first-of-type]:flex-1 [&>span:first-of-type]:text-right"
                 >
@@ -294,6 +296,7 @@ export function RefinanceMortgageInput({
               <div className="flex items-center gap-2">
                 <FormattedNumberValueInput
                   id="totalAmount"
+                  {...demoId('refi-total')}
                   value={perTrackRefinanceEnabled ? effectiveTotal : totalAmount}
                   onValueChange={(value) => updateMix({ totalAmount: value }, true)}
                   placeholder="סך המשכנתא"
@@ -308,6 +311,7 @@ export function RefinanceMortgageInput({
                     perTrackRefinanceEnabled && 'bg-purple-600 hover:bg-purple-700'
                   )}
                   onClick={handlePerTrackModeToggle}
+                  {...demoId('refi-per-track')}
                 >
                   <RefreshCw className="h-4 w-4 ml-1.5 shrink-0" />
                   <span className="hidden sm:inline">בדוק מיחזור לכל מסלול</span>
@@ -329,7 +333,7 @@ export function RefinanceMortgageInput({
             <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">אין מסלולים</h3>
             <p className="text-gray-500 mb-6">התחל בהוספת המסלול הראשון של המשכנתא הנוכחית</p>
-            <Button onClick={() => addTrack()} className="px-6 py-3" disabled={!canAddFirstTrack}>
+            <Button onClick={() => addTrack()} className="px-6 py-3" disabled={!canAddFirstTrack} {...demoId('refi-add-track')}>
               <Plus className="h-5 w-5 ml-2" />
               הוסף מסלול ראשון
             </Button>
@@ -399,15 +403,17 @@ export function RefinanceMortgageInput({
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {tracks.map((track, index) => (
               <React.Fragment key={track.id}>
-                <MortgageTrackCard
-                  track={track}
-                  totalMortgageAmount={effectiveTotal || totalAmount || 1}
-                  onUpdate={updateTrack}
-                  onDelete={deleteTrack}
-                  isEditing={editingTrackId === track.id}
-                  onStartEditing={() => setEditingTrackId(track.id)}
-                  termMode="end-date"
-                />
+                <div {...demoId(`refi-track-${index}`)}>
+                  <MortgageTrackCard
+                    track={track}
+                    totalMortgageAmount={effectiveTotal || totalAmount || 1}
+                    onUpdate={updateTrack}
+                    onDelete={deleteTrack}
+                    isEditing={editingTrackId === track.id}
+                    onStartEditing={() => setEditingTrackId(track.id)}
+                    termMode="end-date"
+                  />
+                </div>
 
                 {showCompletionCta && index === tracks.length - 1 && (
                   <Card className="border-2 border-dashed border-blue-300 bg-blue-50/80">
@@ -444,6 +450,7 @@ export function RefinanceMortgageInput({
             <div className="flex justify-center">
               <Button
                 type="button"
+                {...demoId('refi-summarize')}
                 onClick={revealMixSummary}
                 className="px-8 py-6 text-lg h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -457,6 +464,7 @@ export function RefinanceMortgageInput({
             <div className="flex justify-center">
               <Button
                 type="button"
+                {...demoId('refi-check-options')}
                 onClick={handlePerTrackRefinanceCheck}
                 className="px-8 py-6 text-lg h-auto flex-col gap-2 bg-purple-600 hover:bg-purple-700 text-white"
               >

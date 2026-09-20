@@ -42,6 +42,7 @@ import {
   formatShekel,
   trackColor,
 } from './primitives';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * פאנל השליטה של התמהיל.
@@ -124,9 +125,10 @@ export function MixControlPanel({
       </div>
 
       <div className="space-y-1.5">
-        {result.tracks.map((trackResult) => (
+        {result.tracks.map((trackResult, index) => (
           <TrackControlCard
             key={trackResult.track.id}
+            index={index}
             result={trackResult}
             totalAmount={mix.totalAmount}
             maxAmount={trackResult.track.amount + remaining}
@@ -181,6 +183,7 @@ export function MixControlPanel({
 
 /** כרטיס שליטה למסלול אחד — כל הפרמטרים פתוחים */
 function TrackControlCard({
+  index,
   result,
   totalAmount,
   maxAmount,
@@ -197,6 +200,8 @@ function TrackControlCard({
   allowRefinance,
   onAmortization,
 }: {
+  /** מיקום המסלול ברשימה — לעוגני ההדגמה */
+  index: number;
   result: TrackResult;
   totalAmount: number;
   maxAmount: number;
@@ -258,6 +263,7 @@ function TrackControlCard({
       className={`rounded-lg border bg-white transition-colors ${
         focused ? 'border-violet-400 ring-1 ring-violet-200' : 'border-slate-200'
       }`}
+      {...demoId(`ws-track-${index}`)}
     >
       <fieldset disabled={locked} className="disabled:opacity-70">
         <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5 p-1.5">
@@ -383,6 +389,7 @@ function TrackControlCard({
           <RowField label="תקופה" className="w-[124px]">
             <div className="flex items-center gap-1">
               <Slider
+                {...demoId(`ws-track-${index}-term`)}
                 dir="ltr"
                 className="min-w-0 flex-1"
                 value={[months]}
@@ -405,6 +412,7 @@ function TrackControlCard({
           <RowField label="סכום במסלול" className="w-[168px]">
             <div className="flex items-center gap-1">
               <Slider
+                {...demoId(`ws-track-${index}-amount`)}
                 dir="ltr"
                 className="min-w-0 flex-1"
                 value={[Math.min(maxAmount, Math.max(0, Math.round(track.amount)))]}

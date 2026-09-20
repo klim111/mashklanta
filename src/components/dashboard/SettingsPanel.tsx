@@ -11,6 +11,7 @@ import type { ClientProfile } from '@/lib/client-profile';
 import { EMPLOYMENT_LABELS, EMPLOYMENT_TYPES, sumProfileLoans } from '@/lib/mortgage-plan';
 import type { EmploymentType, ProfileLoan } from '@/lib/mortgage-plan';
 import { NumberField, SegmentedField, TextField } from '@/components/plan/ui';
+import { demoId } from '@/demo/demo-attr';
 
 function newLoan(): ProfileLoan {
   return {
@@ -202,18 +203,22 @@ export function SettingsPanel() {
         <section className="mt-8 space-y-4 border-t border-slate-100 pt-8">
           <h3 className="font-black text-slate-900">הון עצמי ותקופה</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <NumberField
-              label="הון עצמי זמין לעסקה"
-              value={profile.equity}
-              onChange={(equity) => patch({ equity })}
-              suffix="₪"
-            />
-            <NumberField
-              label="הוצאות חודשיות"
-              value={profile.expenses}
-              onChange={(expenses) => patch({ expenses })}
-              suffix="₪"
-            />
+            <div {...demoId('settings-equity')}>
+              <NumberField
+                label="הון עצמי זמין לעסקה"
+                value={profile.equity}
+                onChange={(equity) => patch({ equity })}
+                suffix="₪"
+              />
+            </div>
+            <div {...demoId('settings-expenses')}>
+              <NumberField
+                label="הוצאות חודשיות"
+                value={profile.expenses}
+                onChange={(expenses) => patch({ expenses })}
+                suffix="₪"
+              />
+            </div>
             <NumberField
               label="תקופת משכנתא מבוקשת (שנים)"
               value={profile.years}
@@ -225,6 +230,7 @@ export function SettingsPanel() {
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <button
             type="button"
+            {...demoId('settings-save')}
             onClick={() => void save()}
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-70"

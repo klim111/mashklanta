@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { dayKey, formatTime } from '@/lib/advisor-crm';
 import type { CalendarEvent } from '@/lib/client-agenda';
+import { demoId } from '@/demo/demo-attr';
 
 const WEEKDAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 const WEEKDAYS_LONG = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -200,14 +201,15 @@ export function ClientCalendar({
         : `${dayKey(anchor) === todayKey ? 'היום · ' : ''}${WEEKDAYS_LONG[anchor.getDay()]}, ${LONG_DATE.format(anchor)}`;
 
   return (
-    <div>
+    <div {...demoId('client-calendar')}>
       {/* סרגל הניווט: תצוגה, היום, וקדימה/אחורה */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex rounded-xl bg-slate-100 p-1">
+        <div className="flex rounded-xl bg-slate-100 p-1" {...demoId('calendar-views')}>
           {(['day', 'week', 'month'] as CalendarView[]).map((option) => (
             <button
               key={option}
               type="button"
+              {...demoId(`calendar-view-${option}`)}
               onClick={() => changeView(option)}
               className={`rounded-lg px-4 py-1.5 text-sm font-black transition-colors ${
                 view === option ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'

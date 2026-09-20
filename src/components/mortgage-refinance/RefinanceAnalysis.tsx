@@ -85,6 +85,7 @@ import {
   volatilityBand,
   RISK_META,
 } from '@/components/mortgage-refinance/riskAnalysis';
+import { demoId } from '@/demo/demo-attr';
 
 interface RefinanceAnalysisProps {
   currentMix: MortgageMix;
@@ -238,7 +239,7 @@ function CurrentStateAnalysis({
     <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Activity className="h-5 w-5 text-blue-600" />
-        <h3 className="text-base font-bold text-slate-900">ניתוח המצב הנוכחי — סיכון מול חיסכון</h3>
+        <h3 className="text-base font-bold text-slate-900" {...demoId('refi-risk-title')}>ניתוח המצב הנוכחי — סיכון מול חיסכון</h3>
       </div>
 
       {/* summary */}
@@ -585,7 +586,7 @@ export function RefinanceAnalysis({
   return (
     <div className="space-y-3" dir="rtl">
       {/* ===== פאנל השליטה: כותרת, מטרה והיקף, ואז המסלולים ===== */}
-      <Card className="border-0 shadow-md">
+      <Card className="border-0 shadow-md" {...demoId('refi-panel')}>
         <CardContent className="space-y-2.5 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
@@ -609,6 +610,7 @@ export function RefinanceAnalysis({
               <p className="text-[11px] font-bold text-slate-500">מה המטרה שלכם במיחזור?</p>
               <div className="grid grid-cols-2 gap-2">
                 <ChoiceButton
+                  demoKey="refi-goal-reduce_payment"
                   active={goal === 'reduce_payment'}
                   onClick={() => changeGoal('reduce_payment')}
                   icon={Wallet}
@@ -616,6 +618,7 @@ export function RefinanceAnalysis({
                   hint="אפשר גם להאריך תקופה"
                 />
                 <ChoiceButton
+                  demoKey="refi-goal-reduce_interest"
                   active={goal === 'reduce_interest'}
                   onClick={() => changeGoal('reduce_interest')}
                   icon={Banknote}
@@ -629,6 +632,7 @@ export function RefinanceAnalysis({
               <p className="text-[11px] font-bold text-slate-500">מה ממחזרים?</p>
               <div className="grid grid-cols-2 gap-2">
                 <ChoiceButton
+                  demoKey="refi-scope-whole"
                   active={!singleMode}
                   onClick={() => changeScope('whole')}
                   icon={Layers}
@@ -636,6 +640,7 @@ export function RefinanceAnalysis({
                   hint="כל המסלולים, כולל הסכומים"
                 />
                 <ChoiceButton
+                  demoKey="refi-scope-single"
                   active={singleMode}
                   onClick={() => changeScope('single')}
                   icon={RefreshCcw}
@@ -675,7 +680,7 @@ export function RefinanceAnalysis({
       </Card>
 
       {/* ===== דאשבורד התוצאות ===== */}
-      <Card className="border-0 shadow-md">
+      <Card className="border-0 shadow-md" {...demoId('refi-results')}>
         <CardContent className="space-y-2.5 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
@@ -843,16 +848,20 @@ function ChoiceButton({
   icon: Icon,
   title,
   hint,
+  demoKey,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ElementType;
   title: string;
   hint: string;
+  /** עוגן להדגמה */
+  demoKey?: string;
 }) {
   return (
     <button
       type="button"
+      data-demo-id={demoKey}
       onClick={onClick}
       className={`flex items-center gap-2 rounded-xl border p-2 text-right transition-all ${
         active

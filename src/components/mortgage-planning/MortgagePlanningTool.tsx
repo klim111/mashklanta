@@ -48,6 +48,7 @@ import {
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import { LoanManagementOffer } from '@/components/mortgage-planning/LoanManagementOffer';
 import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoansSection';
+import { demoId } from '@/demo/demo-attr';
 
 type UserData = MortgagePlanningUserData;
 
@@ -431,6 +432,7 @@ export function MortgagePlanningContent({
             whileTap={{ scale: 0.98 }}
             className="group cursor-pointer"
             onClick={() => handlePropertyTypeSelect(item.type)}
+            {...demoId(`mp-property-${index}`)}
           >
             <Card className="h-full border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[280px]">
               <CardContent className="p-6 text-center h-full flex flex-col justify-between">
@@ -749,6 +751,7 @@ export function MortgagePlanningContent({
           </Label>
           <FormattedNumberInput
             id="ownCapital"
+            {...demoId('mp-own-capital')}
             placeholder="₪"
             value={userData.ownCapital}
             onValueChange={(value) => setUserData({ ...userData, ownCapital: value })}
@@ -765,6 +768,7 @@ export function MortgagePlanningContent({
           </Label>
           <Input
             id="age"
+            {...demoId('mp-age')}
             type="number"
             placeholder="גיל"
             value={userData.age}
@@ -782,6 +786,7 @@ export function MortgagePlanningContent({
           </Label>
           <FormattedNumberInput
             id="monthlyIncome"
+            {...demoId('mp-income')}
             placeholder="₪"
             value={userData.monthlyIncome}
             onValueChange={(value) => setUserData({ ...userData, monthlyIncome: value })}
@@ -798,6 +803,7 @@ export function MortgagePlanningContent({
           </Label>
           <div className="flex gap-4 justify-center">
             <Button
+              {...demoId('mp-loans-yes')}
               variant={userData.loans.length > 0 ? "default" : "outline"}
               onClick={() =>
                 setUserData({ ...userData, hasLoans: true, loans: [createEmptyLoan()] })
@@ -807,6 +813,7 @@ export function MortgagePlanningContent({
               כן
             </Button>
             <Button
+              {...demoId('mp-loans-no')}
               variant={userData.loans.length === 0 ? "default" : "outline"}
               onClick={() =>
                 setUserData({
@@ -858,6 +865,7 @@ export function MortgagePlanningContent({
             חזור
           </Button>
           <FormSubmitButton
+            demoId="mp-submit"
             label={embedded ? 'שמירת הפרופיל' : 'הצג אפשרויות משכנתא'}
             errors={getIndividualFormErrors(userData)}
             onInvalidAttempt={() =>
@@ -1716,11 +1724,12 @@ export function MortgagePlanningContent({
             </span>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 lg:grid-flow-row-dense gap-3 mb-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 lg:grid-flow-row-dense gap-3 mb-4" {...demoId('mp-results')}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
+              {...demoId('mp-max-property')}
             >
               <Card className="p-4 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between">
                 <div>
@@ -1775,6 +1784,7 @@ export function MortgagePlanningContent({
                     <div dir="ltr">
                       <Slider
                         dir="ltr"
+                        {...demoId('mp-ltv-slider')}
                         value={[ltvSliderValue]}
                         onValueChange={([v]) => handleLTVSliderChange(v)}
                         min={0}
@@ -1851,6 +1861,7 @@ export function MortgagePlanningContent({
                     <div dir="ltr">
                       <Slider
                         dir="ltr"
+                        {...demoId('mp-loan-slider')}
                         value={[loanSliderValue]}
                         onValueChange={([v]) => handleLoanAmountSliderChange(v)}
                         min={0}
@@ -1973,6 +1984,7 @@ export function MortgagePlanningContent({
                     <div dir="ltr">
                       <Slider
                         dir="ltr"
+                        {...demoId('mp-payment-slider')}
                         value={[paymentSliderValue]}
                         onValueChange={([v]) => handleMonthlyPaymentSliderChange(v)}
                         min={0}
@@ -2068,6 +2080,7 @@ export function MortgagePlanningContent({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
               className="md:col-span-2 lg:col-span-3"
+              {...demoId('mp-term-card')}
             >
               <Card className="p-3 hover:shadow-lg transition-shadow duration-300">
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
@@ -2081,6 +2094,7 @@ export function MortgagePlanningContent({
                     <div dir="ltr">
                       <Slider
                         dir="ltr"
+                        {...demoId('mp-term-slider')}
                         value={[termMonths]}
                         onValueChange={([v]) => setSelectedLoanPeriod(monthsToYears(v))}
                         min={PLAN_TERM_MONTHS_MIN}

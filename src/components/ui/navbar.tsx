@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import AdvisorLoginModal from "@/components/ui/AdvisorLoginModal";
 import Mashkalanta from "@/components/ui/mashkalanta";
+import { demoId } from '@/demo/demo-attr';
 
 const NAV_LINKS = [
   { href: "/how-it-works", label: "איך זה עובד" },
@@ -26,14 +27,14 @@ export default function NavBar() {
   const [showAdvisorModal, setShowAdvisorModal] = useState(false);
 
   return (
-    <header className="bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100 px-4 md:px-6 py-2 flex justify-between items-center gap-3">
+    <header className="bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100 px-4 md:px-6 py-2 flex justify-between items-center gap-3" {...demoId('nav-root')}>
       <Link href="/" className="shrink-0" aria-label="משכלתנא — עמוד הבית">
         <Mashkalanta variant="nav" autoPlay />
       </Link>
 
-      <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
+      <nav className="hidden lg:flex items-center gap-5 xl:gap-7" {...demoId('nav-links')}>
         {NAV_LINKS.map((item) => (
-          <Link key={item.href} href={item.href} className={linkClass}>
+          <Link key={item.href} href={item.href} className={linkClass} {...demoId(`nav-link-${item.href}`)}>
             {item.label}
           </Link>
         ))}

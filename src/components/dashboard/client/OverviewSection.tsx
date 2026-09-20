@@ -153,6 +153,7 @@ export function OverviewSection({
 
   const calendarCard = (
     <DashCard
+      demoId="dash-calendar-card"
       title="לוח השנה שלי"
       icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
       action={<GoLink onClick={() => onNavigate('agenda')}>ללוח המלא</GoLink>}
@@ -194,6 +195,7 @@ export function OverviewSection({
 
   const tasksCard = (
     <DashCard
+      demoId="dash-tasks-card"
       title="המשימות הבאות שלי"
       icon={<ListChecks className="h-5 w-5 text-blue-600" />}
       action={<GoLink onClick={() => onNavigate('agenda')}>לכל המשימות</GoLink>}
@@ -216,7 +218,7 @@ export function OverviewSection({
   );
 
   const quickActions = (
-    <DashCard title="פעולות מהירות" icon={<Calculator className="h-5 w-5 text-blue-600" />}>
+    <DashCard demoId="dash-quick-actions" title="פעולות מהירות" icon={<Calculator className="h-5 w-5 text-blue-600" />}>
       <div className="grid grid-cols-2 gap-2">
         <QuickAction
           href="/principal-approval"
@@ -248,6 +250,7 @@ export function OverviewSection({
   /** שורת הפירוט: התמהיל של התהליך שנבחר, דוחפת את שאר השורות מטה */
   const detailRow = detailPlan && detailMix && (
     <DashCard
+      demoId="dash-mix-card"
       title="התמהיל של המשכנתא שנבחרה"
       icon={<Layers className="h-5 w-5 text-blue-600" />}
       action={
@@ -287,6 +290,7 @@ export function OverviewSection({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DashCard
+          demoId="dash-mortgages-card"
           title="המשכנתאות שלי — מצב נוכחי"
           icon={<Compass className="h-5 w-5 text-blue-600" />}
           className="scroll-mt-24"

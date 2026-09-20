@@ -34,6 +34,7 @@ import { stageMixForWorkspace } from '@/components/mortgage-advisor/workspace/dr
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * התמהילים שהוגשו לבנקים למיקוח במכרז הריביות.
@@ -68,7 +69,7 @@ export function BankRateRequests() {
       );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" {...demoId('rate-requests')}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-xl font-black text-slate-900">

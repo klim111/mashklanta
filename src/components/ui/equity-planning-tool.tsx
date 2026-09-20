@@ -46,6 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
+import { demoId } from '@/demo/demo-attr';
 
 // Types
 interface ExpenseItem {
@@ -599,6 +600,7 @@ export default function EquityPlanningTool() {
                 <Label htmlFor="propertyPrice" className="text-lg font-medium">מחיר הנכס</Label>
                 <FormattedNumberInput
                   id="propertyPrice"
+                  {...demoId('eq-price')}
                   placeholder="₪"
                   value={data.propertyData.price ? formatNumberInput(String(data.propertyData.price)) : ''}
                   onValueChange={(value) => setData(prev => ({
@@ -615,6 +617,7 @@ export default function EquityPlanningTool() {
                   {Object.entries(FINANCING_PROFILES).map(([key, profile]) => (
                     <Button
                       key={key}
+                      {...demoId(`eq-profile-${key}`)}
                       variant={data.propertyData.financingProfile === key ? "default" : "outline"}
                       onClick={() => setData(prev => ({
                         ...prev,
@@ -635,6 +638,7 @@ export default function EquityPlanningTool() {
 
               <div className="flex justify-center pt-6">
                 <Button
+                  {...demoId('eq-continue-expenses')}
                   onClick={() => setData(prev => ({ ...prev, currentStep: 1 }))}
                   disabled={!data.propertyData.price || !data.propertyData.targetDate}
                   size="lg"
@@ -650,7 +654,7 @@ export default function EquityPlanningTool() {
             <div className="space-y-4">
               {/* Equity Display */}
               {data.propertyData.price > 0 && (
-                <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
+                <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200" {...demoId('eq-min-equity')}>
                   <CardHeader className="pb-3 pt-4 px-4">
                     <CardTitle className="flex items-center gap-2 text-emerald-900 text-base font-semibold">
                       <Banknote className="w-5 h-5" />
@@ -674,7 +678,7 @@ export default function EquityPlanningTool() {
               )}
 
               {/* Date Calendar */}
-              <Card>
+              <Card {...demoId('eq-calendar')}>
                 <CardHeader className="pb-2 pt-3 px-3">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                     <Calendar className="w-4 h-4" />
@@ -724,6 +728,7 @@ export default function EquityPlanningTool() {
                             size="sm"
                             variant="ghost"
                             onClick={goToPreviousMonth}
+                            {...demoId('eq-calendar-prev')}
                             className="h-5 w-5 p-0"
                           >
                             <ArrowRight className="w-2.5 h-2.5" />
@@ -735,6 +740,7 @@ export default function EquityPlanningTool() {
                             size="sm"
                             variant="ghost"
                             onClick={goToNextMonth}
+                            {...demoId('eq-calendar-next')}
                             className="h-5 w-5 p-0"
                           >
                             <ArrowLeft className="w-2.5 h-2.5" />
@@ -764,6 +770,7 @@ export default function EquityPlanningTool() {
                             return (
                               <button
                                 key={day}
+                                {...demoId(`eq-calendar-day-${day}`)}
                                 onClick={() => setData(prev => ({
                                   ...prev,
                                   propertyData: { ...prev.propertyData, targetDate: dateStr }
@@ -965,7 +972,7 @@ export default function EquityPlanningTool() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main collapsible table - 2/3 width */}
           <div className="lg:col-span-2">
-            <Card className="overflow-hidden shadow-xl border-gray-200">
+            <Card className="overflow-hidden shadow-xl border-gray-200" {...demoId('eq-expenses-table')}>
               {/* Table Header */}
               <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
                 <div className="flex items-center justify-between text-white">
@@ -1515,7 +1522,7 @@ export default function EquityPlanningTool() {
             </Card>
 
             {/* Pie Chart */}
-            <Card className="flex-shrink-0">
+            <Card className="flex-shrink-0" {...demoId('eq-pie-chart')}>
               <CardHeader className="pb-2 pt-3 px-4">
                 <CardTitle className="flex items-center gap-2 text-base font-semibold">
                   <PieChart className="w-5 h-5" />
@@ -1655,6 +1662,7 @@ export default function EquityPlanningTool() {
           חזור
         </Button>
         <Button
+          {...demoId('eq-continue-summary')}
           onClick={() => setData(prev => ({ ...prev, currentStep: 2 }))}
           size="lg"
           className="px-8"
@@ -1741,8 +1749,8 @@ export default function EquityPlanningTool() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid md:grid-cols-4 gap-6">
-          <Card>
+        <div className="grid md:grid-cols-4 gap-6" {...demoId('eq-summary-cards')}>
+          <Card {...demoId('eq-summary-expenses')}>
             <CardHeader>
               <CardTitle className="text-lg">סה״כ הוצאות נלוות</CardTitle>
             </CardHeader>
@@ -1770,7 +1778,7 @@ export default function EquityPlanningTool() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card {...demoId('eq-summary-min-equity')}>
             <CardHeader>
               <CardTitle className="text-lg">הון עצמי מינימלי</CardTitle>
             </CardHeader>
@@ -1784,7 +1792,7 @@ export default function EquityPlanningTool() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card {...demoId('eq-summary-total')}>
             <CardHeader>
               <CardTitle className="text-lg">סה״כ הון עצמי נדרש</CardTitle>
             </CardHeader>
@@ -1798,7 +1806,7 @@ export default function EquityPlanningTool() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card {...demoId('eq-summary-cashflow')}>
             <CardHeader>
               <CardTitle className="text-lg">תזרים חודשי</CardTitle>
             </CardHeader>
@@ -1828,7 +1836,7 @@ export default function EquityPlanningTool() {
         </div>
 
         {/* Category Breakdown */}
-        <Card>
+        <Card {...demoId('eq-category-breakdown')}>
           <CardHeader>
             <CardTitle>פירוט לפי קטגוריות</CardTitle>
           </CardHeader>
@@ -1853,7 +1861,7 @@ export default function EquityPlanningTool() {
 
         {/* Timeline Visualization */}
         {timelineData.length > 0 && (
-          <Card>
+          <Card {...demoId('eq-timeline')}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
@@ -2001,11 +2009,11 @@ export default function EquityPlanningTool() {
             <ArrowRight className="w-5 h-5 ml-2" />
             חזור
           </Button>
-          <Button onClick={exportToCSV} variant="outline">
+          <Button onClick={exportToCSV} variant="outline" {...demoId('eq-export-csv')}>
             <Download className="w-4 h-4 ml-2" />
             ייצא CSV
           </Button>
-          <Button onClick={exportToPDF} variant="outline">
+          <Button onClick={exportToPDF} variant="outline" {...demoId('eq-export-pdf')}>
             <FileText className="w-4 h-4 ml-2" />
             ייצא PDF
           </Button>
@@ -2244,7 +2252,7 @@ export default function EquityPlanningTool() {
         </div>
 
         {/* Stepper */}
-        <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6">
+        <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6" {...demoId('eq-stepper')}>
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-0 sm:space-x-8 sm:space-x-reverse">
             {[
               { step: 0, title: 'הגדרות בסיס', description: 'נתוני נכס ומימון' },

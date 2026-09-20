@@ -17,6 +17,8 @@ interface FormSubmitButtonProps {
   onValidClick: () => void;
   onInvalidAttempt?: () => void;
   className?: string;
+  /** עוגן להדגמה — data-demo-id על הכפתור */
+  demoId?: string;
 }
 
 export function FormSubmitButton({
@@ -25,6 +27,7 @@ export function FormSubmitButton({
   onValidClick,
   onInvalidAttempt,
   className,
+  demoId,
 }: FormSubmitButtonProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const isValid = errors.length === 0;
@@ -45,6 +48,7 @@ export function FormSubmitButton({
         <TooltipTrigger asChild>
           <Button
             type="button"
+            data-demo-id={demoId}
             onClick={handleClick}
             className={cn(className, !isValid && 'opacity-95')}
           >

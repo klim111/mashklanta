@@ -33,6 +33,7 @@ import { PLAN_STAGES } from '@/lib/mortgage-plan';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { fromLocalInputValue } from '@/components/advisor/ui';
 import type { NewClientTaskInput } from './useClientTasks';
+import { demoId } from '@/demo/demo-attr';
 
 const inputClass =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
@@ -241,6 +242,7 @@ export function AddTaskDialog({
                 <button
                   key={option}
                   type="button"
+                  {...demoId(`task-kind-${option}`)}
                   onClick={() => {
                     setKind(option);
                     // קובץ שנבחר שייך למשימת מסמך בלבד
@@ -282,6 +284,7 @@ export function AddTaskDialog({
             <label className="block text-xs font-bold text-slate-600">
               כותרת
               <input
+                {...demoId('task-title')}
                 value={title}
                 onChange={(event) => {
                   setTitle(event.target.value);
@@ -351,6 +354,7 @@ export function AddTaskDialog({
             <label className="text-xs font-bold text-slate-600">
               מועד {kind === 'MEETING' ? '' : <span className="font-normal text-slate-400">(רשות)</span>}
               <input
+                {...demoId('task-when')}
                 type="datetime-local"
                 value={when}
                 onChange={(event) => setWhen(event.target.value)}
@@ -384,6 +388,7 @@ export function AddTaskDialog({
           </button>
           <button
             type="button"
+            {...demoId('task-submit')}
             disabled={!canSubmit || busy}
             onClick={() => void submit()}
             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-md transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"

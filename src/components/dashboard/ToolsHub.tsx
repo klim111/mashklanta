@@ -12,6 +12,7 @@ import {
   Search,
   Sparkles,
 } from 'lucide-react';
+import { demoId } from '@/demo/demo-attr';
 
 const tools = [
   {
@@ -141,6 +142,7 @@ export function ToolsHub() {
               <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-l ${tool.gradient}`} />
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <Link
+                  {...demoId(`dash-tool-${tool.id}`)}
                   href={tool.href}
                   className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l ${tool.gradient} px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-transform group-hover:scale-[1.02] sm:w-auto sm:min-w-[11.5rem]`}
                 >

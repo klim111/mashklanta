@@ -11,6 +11,7 @@ import {
 import type { SavedMix } from '../savedMixes';
 import { MixRow } from './MixRow';
 import { formatShekel } from './primitives';
+import { demoId } from '@/demo/demo-attr';
 
 interface SavedMixPickerProps {
   open: boolean;
@@ -64,9 +65,9 @@ export function SavedMixPicker({
               <Home className="h-3.5 w-3.5 text-slate-400" />
               {items.length} תמהילים
             </p>
-            {items.map((item) => (
+            {items.map((item, index) => (
+              <div key={item.mix.id} {...demoId(`ws-picker-mix-${index}`)}>
               <MixRow
-                key={item.mix.id}
                 mix={item.mix}
                 summary={item.summary}
                 active={item.mix.id === activeId}
@@ -79,6 +80,7 @@ export function SavedMixPicker({
                   onOpenChange(false);
                 }}
               />
+              </div>
             ))}
           </div>
         )}

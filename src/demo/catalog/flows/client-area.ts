@@ -1,0 +1,93 @@
+import type { DemoFlow } from '../../types';
+
+/** הדגמת אזור הלקוח: הסקירה, התמהילים והבקשות לבנקים, הכלים, תיק המסמכים וההגדרות */
+const flow: DemoFlow = {
+  id: 'client-area',
+  title: 'אזור הלקוח',
+  description: 'מה יש ללקוח בחשבון',
+  route: '/demo/dashboard',
+  exitRoute: '/',
+  nextDemos: ['client-dashboard', 'documents', 'plan-stages'],
+  steps: [
+    {
+      id: 'intro',
+      title: 'האזור האישי',
+      caption: 'האזור האישי הוא הבית של הלקוח: התהליך, המסמכים, התמהילים, הבקשות לבנקים והכלים — במקום אחד, מכל מכשיר.',
+      target: 'dash-main',
+      spotlight: { side: 'over' },
+    },
+    {
+      id: 'nav',
+      title: 'הניווט',
+      caption: 'התפריט (בצד במחשב, למעלה בטלפון) מחלק את האזור לחמישה חלקים. הכתובת נשמרת, כך שקישור מהיועץ פותח ישר את האזור הנכון.',
+      target: 'dash-nav-overview',
+      spotlight: { side: 'left' },
+    },
+    {
+      id: 'mortgages',
+      title: 'המשכנתאות',
+      caption: 'הסקירה מתחילה מהתהליכים הפתוחים: השלב הנוכחי, הנכס, המשכנתא וההחזר — ולחיצה עוברת לשולחן העבודה של חמשת השלבים.',
+      actions: [{ type: 'scroll', target: 'dash-mortgages-card' }],
+      target: 'dash-mortgages-card',
+      spotlight: { side: 'top' },
+    },
+    {
+      id: 'quick',
+      title: 'פעולות מהירות',
+      caption: 'קיצורי דרך לכלים הנפוצים: היתכנות, הון עצמי, מיחזור, בניית תמהיל — בלי לחפש בתפריטים.',
+      target: 'dash-quick-actions',
+      spotlight: { side: 'top' },
+    },
+    {
+      id: 'rate-requests',
+      title: 'תמהילים שמורים ובקשות לבנקים',
+      caption: 'כאן שמורים כל התמהילים שבניתם, מכתבי הבקשה ששלחתם לבנקים וההצעות שחזרו עליהם — להשוואה זו מול זו.',
+      actions: [{ type: 'click', target: 'dash-nav-rate-requests' }],
+      target: 'dash-rate-requests',
+      spotlight: { side: 'over' },
+      duration: 6000,
+    },
+    {
+      id: 'tools',
+      title: 'מרכז הכלים',
+      caption: 'כל הכלים של הפלטפורמה במסך אחד — כל כלי נפתח בעמוד משלו, והנתונים שלכם כבר טעונים בו.',
+      actions: [{ type: 'click', target: 'dash-nav-tools' }],
+      target: 'dash-tools',
+      spotlight: { side: 'over' },
+      allowTryIt: true,
+      tryItHint: 'עברו בין האזורים, פתחו תמהיל, הציצו בכלים — הכול על נתוני ההדגמה.',
+    },
+    {
+      id: 'vault',
+      title: 'תיק המסמכים',
+      caption: 'תיק המסמכים נגיש מכל אזור: מה נאסף, מה חסר, ומה היועץ כבר ראה. נפתח אותו.',
+      actions: [{ type: 'click', target: 'vault-button' }],
+      target: 'vault-dialog',
+      spotlight: { side: 'over' },
+      duration: 6000,
+    },
+    {
+      id: 'vault-close',
+      title: 'הגדרות',
+      caption: 'ובהגדרות — פרטי הלווים, ההון העצמי וההוצאות שנטענים לכל משכנתא חדשה, ופרטי החשבון.',
+      actions: [
+        { type: 'key', key: 'Escape' },
+        { type: 'wait', ms: 400 },
+        { type: 'click', target: 'dash-nav-settings' },
+      ],
+      target: 'dash-settings',
+      spotlight: { side: 'over' },
+    },
+    {
+      id: 'end',
+      title: 'הכול במקום אחד',
+      caption: 'זה אזור הלקוח. רוצים לראות איך מנהלים משימות ולוח שנה? הדגמת הדאשבורד ממשיכה בדיוק מכאן.',
+      actions: [{ type: 'click', target: 'dash-nav-overview' }],
+      target: 'dash-heading',
+      spotlight: { side: 'bottom' },
+      duration: 5000,
+    },
+  ],
+};
+
+export default flow;

@@ -15,6 +15,7 @@ import { useClientTasks } from '../tasks/useClientTasks';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { usePlanDocuments } from './usePlanDocuments';
+import { demoId } from '@/demo/demo-attr';
 
 /** ההתקדמות של התהליך — נקראת פעם אחת ומשמשת גם את הכפתור וגם את החלון */
 export function useDocumentProgress(planId: string, data: PlanData): {
@@ -89,7 +90,7 @@ export function DocumentVaultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90vh] max-w-3xl overflow-y-auto rounded-3xl bg-white p-0">
+      <DialogContent dir="rtl" className="max-h-[90vh] max-w-3xl overflow-y-auto rounded-3xl bg-white p-0" {...demoId('vault-dialog')}>
         <div className="relative overflow-hidden bg-slate-950 px-6 py-6 text-white md:px-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-600/30 blur-3xl" />
@@ -136,12 +137,13 @@ export function DocumentVaultDialog({
           </div>
         </div>
 
-        <div className="p-6 md:p-8">
+        <div className="p-6 md:p-8" {...demoId('vault-list')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-black text-slate-900">כל המסמכים שהעליתם ({documents.length})</h3>
             <button
               type="button"
               onClick={() => setUploadOpen(true)}
+              {...demoId('vault-upload-free')}
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-700"
             >
               <Upload className="h-4 w-4" />

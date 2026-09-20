@@ -24,6 +24,7 @@ import {
 } from '@/lib/refinance';
 import { useCPI } from '@/hooks/useCPI';
 import { useCurrencyRates } from '@/hooks/useCurrencyRates';
+import { demoId } from '@/demo/demo-attr';
 
 interface MortgageTrackCardProps {
   track: MortgageTrack;
@@ -238,7 +239,7 @@ export function MortgageTrackCard({
               )}
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+              <Button size="sm" onClick={handleSave} className="bg-green-600 hover:bg-green-700" {...demoId('track-save')}>
                 <Check className="h-4 w-4" />
               </Button>
               <Button size="sm" variant="outline" onClick={handleCancel}>
@@ -286,6 +287,7 @@ export function MortgageTrackCard({
             <div>
               <Label>ריבית שנתית (%)</Label>
               <Input
+                {...demoId('track-rate')}
                 type="number"
                 step="0.1"
                 value={editData.interestRate}

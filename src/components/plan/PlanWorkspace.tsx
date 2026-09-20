@@ -57,6 +57,7 @@ import { PreApprovalStage } from './stages/PreApprovalStage';
 import { AuctionStage } from './stages/AuctionStage';
 import { SigningStage } from './stages/SigningStage';
 import { StageOverview as SigningStageOverview } from './stages/signing/StageOverview';
+import { demoId } from '@/demo/demo-attr';
 
 const saveLabels: Record<SaveState, { label: string; className: string }> = {
   idle: { label: 'הכל שמור', className: 'text-white/80' },
@@ -72,7 +73,16 @@ const saveLabels: Record<SaveState, { label: string; className: string }> = {
  * ב-`tour` הוא רץ על תהליך הדגמה: מסכי ההסבר צפים מעל הכלי, "נסו את השלב"
  * פותח אותו לשלושה ערכים ואז ההסבר חוזר, והסרגל למעלה זז יחד עם הדפים.
  */
-export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?: boolean }) {
+export function PlanWorkspace({
+  planId,
+  tour = false,
+  peek = false,
+}: {
+  planId: string;
+  tour?: boolean;
+  /** כל שלב פתוח להצצה בלי נעילה לפי שלבים קודמים — למסכי ההדגמה */
+  peek?: boolean;
+}) {
   const {
     plan,
     ready,
@@ -255,7 +265,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
   /** מסך שרק מציצים בו בסיור (האישור העקרוני): כל לחיצה מחזירה להסבר */
   const lookOnly = tour && !tourOpen && !tourAllowsTry(stage);
   // בסיור כל שלב פתוח להצצה — אין נעילה לפי שלבים קודמים
-  const isPreview = !tour && unfinished.length > 0;
+  const isPreview = !tour && !peek && unfinished.length > 0;
   const journey = journeyStageFor(stage);
   const action = PLAN_STAGE_ACTIONS[stage];
   const StageIcon = journey.icon;
@@ -420,7 +430,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
       {/* כותרת התהליך ופס השלבים */}
-      <header className="relative overflow-hidden bg-slate-950">
+      <header className="relative overflow-hidden bg-slate-950" {...demoId('plan-header')}>
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/25 blur-3xl" />
           <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
@@ -574,6 +584,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
         <AnimatePresence mode="wait">
           <motion.div
             key={stage}
+            {...demoId('plan-stage-title')}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -615,7 +626,11 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
             {!tour && <AdvisorStageNotes stage={stage} />}
 
             {/* המשימות המתוכננות של השלב — לכל לקוח עם תהליך פתוח */}
-            {!tour && !isPreview && !advisorSummaryOnly && <StageTasksPanel planId={plan.id} stage={stage} />}
+            {!tour && !isPreview && !advisorSummaryOnly && (
+              <div {...demoId('plan-stage-tasks')}>
+                <StageTasksPanel planId={plan.id} stage={stage} />
+              </div>
+            )}
 
             {showAdvisorSummary && (
               <div className="mb-4">
@@ -668,7 +683,7 @@ export function PlanWorkspace({ planId, tour = false }: { planId: string; tour?:
               השלב המלא — אותם כלים, אותם מסכים, בלי שום הסתרה.
             */}
             {!advisorSummaryOnly && !needsGate && !(isPreview && signingOverviewOpen) && (
-            <div className={isPreview ? 'relative' : undefined}>
+            <div className={isPreview ? 'relative' : undefined} {...demoId('plan-stage-content')}>
               {isPreview && (
                 <div
                   aria-hidden

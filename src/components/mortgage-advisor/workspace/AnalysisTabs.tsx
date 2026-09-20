@@ -8,6 +8,7 @@ import { MixComparison } from '../MixComparison';
 import type { ComparisonEntry } from '../MixComparison';
 import { WorkspaceCharts } from './WorkspaceCharts';
 import type { MixResult } from '../engine';
+import { demoId } from '@/demo/demo-attr';
 
 type AnalysisTab = 'charts' | 'comparison';
 
@@ -84,11 +85,11 @@ export function AnalysisTabs({
       dir="rtl"
     >
       <TabsList className="h-11 w-full justify-start overflow-x-auto sm:w-auto sm:justify-center">
-        <TabsTrigger value="charts" className="text-xs sm:text-sm">
+        <TabsTrigger value="charts" className="text-xs sm:text-sm" {...demoId('ws-tab-charts')}>
           <BarChart3 className="h-4 w-4 ml-1.5" />
           ניתוח גרפי
         </TabsTrigger>
-        <TabsTrigger value="comparison" className="text-xs sm:text-sm">
+        <TabsTrigger value="comparison" className="text-xs sm:text-sm" {...demoId('ws-tab-comparison')}>
           <GitCompareArrows className="h-4 w-4 ml-1.5" />
           השוואה
           {comparedCount > 0 && (

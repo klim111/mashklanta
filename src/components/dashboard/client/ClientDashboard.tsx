@@ -30,6 +30,7 @@ import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
+import { demoId } from '@/demo/demo-attr';
 
 interface SectionMeta {
   id: DashboardSection;
@@ -166,7 +167,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         ? 'bg-white text-slate-900 shadow-lg'
         : 'text-white/70 hover:bg-white/10 hover:text-white';
       return (
-        <button key={item.id} type="button" onClick={() => navigate(item.id)} className={`${base} ${state}`}>
+        <button key={item.id} type="button" onClick={() => navigate(item.id)} className={`${base} ${state}`} {...demoId(`dash-nav-${item.id}`)}>
           <Icon className="h-5 w-5 shrink-0" />
           <span className="min-w-0 flex-1 truncate text-right">{item.label}</span>
           {badge && badge.value > 0 && (
@@ -198,7 +199,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         </Link>
 
         <p className="mt-6 px-3 text-xs font-bold tracking-wide text-white/40">האזור האישי</p>
-        <nav className="mt-2 space-y-1">{navItems('sidebar')}</nav>
+        <nav className="mt-2 space-y-1" {...demoId('dash-sidebar-nav')}>{navItems('sidebar')}</nav>
 
         <div className="mt-auto space-y-3 pt-6">
           {vaultPlan && <VaultButton planId={vaultPlan.id} data={vaultPlan.data} variant="sidebar" />}
@@ -251,7 +252,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           <nav className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">{navItems('bar')}</nav>
         </header>
 
-        <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8">
+        <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8" {...demoId('dash-main')}>
           <div className="mx-auto max-w-[1400px]">
             {/* במסך צר אין תפריט צד — שאלת הפתיחה יושבת מעל התוכן */}
             {vaultPlan && (
@@ -261,7 +262,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             )}
 
             {/* כותרת האזור — ממורכזת, עם השם והתאריך */}
-            <div className="mb-5 text-center">
+            <div className="mb-5 text-center" {...demoId('dash-heading')}>
               {section === 'overview' ? (
                 <>
                   <p className="text-sm font-bold text-slate-500">{DATE_FORMAT.format(new Date())}</p>
@@ -308,7 +309,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               )}
 
               {section === 'rate-requests' && (
-                <div className="space-y-5">
+                <div className="space-y-5" {...demoId('dash-rate-requests')}>
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
                     <BankRateRequests />
                   </div>
@@ -319,9 +320,17 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                 </div>
               )}
 
-              {section === 'tools' && <ToolsHub />}
+              {section === 'tools' && (
+                <div {...demoId('dash-tools')}>
+                  <ToolsHub />
+                </div>
+              )}
 
-              {section === 'settings' && <SettingsPanel />}
+              {section === 'settings' && (
+                <div {...demoId('dash-settings')}>
+                  <SettingsPanel />
+                </div>
+              )}
             </motion.div>
           </div>
         </main>

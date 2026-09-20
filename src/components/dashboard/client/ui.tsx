@@ -13,6 +13,7 @@ export function DashCard({
   children,
   className = '',
   id,
+  demoId,
 }: {
   title: string;
   icon?: ReactNode;
@@ -20,9 +21,11 @@ export function DashCard({
   children: ReactNode;
   className?: string;
   id?: string;
+  /** עוגן להדגמה */
+  demoId?: string;
 }) {
   return (
-    <section id={id} className={`flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}>
+    <section id={id} data-demo-id={demoId} className={`flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}>
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-slate-100 px-4 py-3">
         <span />
         <h2 className="flex items-center justify-center gap-2 text-center text-lg font-black text-slate-900">

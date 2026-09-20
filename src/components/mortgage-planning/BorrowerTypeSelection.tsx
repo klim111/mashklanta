@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { demoId } from '@/demo/demo-attr';
 
 
 
@@ -60,6 +61,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
             className="group cursor-pointer"
 
             onClick={() => onSelect('individual')}
+            {...demoId('mp-borrower-individual')}
 
           >
 
@@ -110,6 +112,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
             className="group cursor-pointer"
 
             onClick={() => onSelect('couple')}
+            {...demoId('mp-borrower-couple')}
 
           >
 

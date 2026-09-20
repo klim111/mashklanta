@@ -9,6 +9,7 @@ import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { customDocumentKey } from '@/lib/document-progress';
 import { usePlanDocuments } from './usePlanDocuments';
+import { demoId } from '@/demo/demo-attr';
 
 const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
 const inputClass =
@@ -108,6 +109,7 @@ export function DocumentUploadDialog({
             <label className="block text-xs font-bold text-slate-600">
               כותרת המסמך
               <input
+                {...demoId('upload-title')}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 className={`mt-1 ${inputClass}`}
@@ -128,6 +130,7 @@ export function DocumentUploadDialog({
               }}
             />
             <button
+              {...demoId('upload-file')}
               type="button"
               onClick={() => input.current?.click()}
               className={`mt-3 flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
@@ -163,6 +166,7 @@ export function DocumentUploadDialog({
                 ביטול
               </button>
               <button
+                {...demoId('upload-submit')}
                 type="button"
                 disabled={!canUpload || busyKey === key}
                 onClick={() => void submit()}

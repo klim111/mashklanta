@@ -5,6 +5,7 @@ import { FolderOpen } from 'lucide-react';
 import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { DocumentVaultDialog, ProgressBar, useDocumentProgress } from './DocumentVaultDialog';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * הכפתור לתיק המסמכים — זמין בכל מסך ובכל שלב — עם פס ההתקדמות מתחתיו:
@@ -38,6 +39,7 @@ export function VaultButton({
         <button
           type="button"
           onClick={() => setOpen(true)}
+          {...demoId('vault-button')}
           className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-black text-slate-900 shadow-lg ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
         >
           <FolderOpen className="h-4 w-4 text-emerald-600" />
@@ -54,6 +56,7 @@ export function VaultButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+          {...demoId('vault-button')}
         className={`group w-full rounded-2xl p-3 text-right transition-colors ${
           variant === 'sidebar'
             ? 'bg-white/5 hover:bg-white/10'

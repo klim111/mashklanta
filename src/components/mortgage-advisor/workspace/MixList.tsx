@@ -23,6 +23,7 @@ import type { MixAuthor, MixOrigin } from './MixStripCard';
 import { formatShekel } from './primitives';
 import { RateRequestDialog } from '../rateRequest/RateRequestDialog';
 import { BankQuoteDialog } from '../bankQuote/BankQuoteDialog';
+import { demoId } from '@/demo/demo-attr';
 
 interface MixListProps {
   /** התמהיל שבניתוח, מהמצב החי שלו */
@@ -192,6 +193,7 @@ export function MixList({
                   saveFeedback?.nudge ? 'load-nudge' : ''
                 }`}
                 onClick={() => setOthersOpen((open) => !open)}
+                {...demoId('ws-others-toggle')}
               >
                 <Layers className="h-3.5 w-3.5 ml-1" />
                 {othersOpen
@@ -284,6 +286,7 @@ export function MixList({
                 </Button>
               )}
             </div>
+            <div {...demoId('ws-active-mix')}>
             <MixRow
               key={activeResult.mix.id}
               mix={activeResult.mix}
@@ -332,6 +335,7 @@ export function MixList({
                 </>
               }
             />
+            </div>
             {expanded ? (
               <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
                 {editor}
@@ -441,7 +445,8 @@ export function MixSliderSection({
               </p>
             )}
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:snap-x sm:snap-mandatory sm:justify-start sm:overflow-x-auto sm:pb-1 sm:[scrollbar-width:thin]">
-              {group.items.map((item) => (
+              {group.items.map((item, index) => (
+                <div key={item.mix.id} {...demoId(`ws-saved-mix-${index}`)}>
                 <MixStripCard
                   key={item.mix.id}
                   mix={item.mix}
@@ -454,6 +459,7 @@ export function MixSliderSection({
                   onRequestQuote={() => onRequestQuote(item)}
                   onEnterQuote={onEnterQuote && (() => onEnterQuote(item))}
                 />
+                </div>
               ))}
             </div>
           </div>

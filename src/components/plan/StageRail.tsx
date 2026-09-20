@@ -5,6 +5,7 @@ import { Check, Lock } from 'lucide-react';
 import { PLAN_STAGES } from '@/lib/mortgage-plan';
 import type { PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
+import { demoId } from '@/demo/demo-attr';
 
 /**
  * פס ההתקדמות בין חמשת השלבים.
@@ -34,7 +35,7 @@ export function StageRail({
         transition={{ type: 'spring', stiffness: 110, damping: 22 }}
       />
 
-      <ol className="relative flex snap-x gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:gap-0 md:overflow-visible">
+      <ol className="relative flex snap-x gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:gap-0 md:overflow-visible" {...demoId('plan-stage-rail')}>
         {PLAN_STAGES.map((stage, index) => {
           const journey = journeyStageFor(stage);
           const status = statuses[stage];
@@ -48,6 +49,7 @@ export function StageRail({
               <button
                 type="button"
                 onClick={() => onSelect(stage)}
+                {...demoId(`plan-stage-${stage}`)}
                 aria-current={isCurrent ? 'step' : undefined}
                 className="group flex w-full cursor-pointer flex-col items-center text-center focus:outline-none"
               >

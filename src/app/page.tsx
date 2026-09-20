@@ -13,6 +13,9 @@ import { GuestStart } from '@/components/service-flow/GuestStart';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
+import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
+import { demoId } from '@/demo/demo-attr';
 
 export default function Home() {
   const { scrollY } = useScroll();
@@ -36,6 +39,7 @@ export default function Home() {
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
         className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 md:min-h-[100svh] lg:h-screen"
+        {...demoId('home-hero')}
       >
         {/* Logo Section - Top */}
         <div className="relative z-10 flex items-center justify-center px-5 pt-8 md:h-1/5 md:px-0 md:pt-2">
@@ -50,6 +54,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
             className="mx-auto max-w-md text-base leading-relaxed text-gray-600 md:max-w-4xl md:text-xl"
+            {...demoId('home-hero-title')}
           >
             פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
             <br />
@@ -60,6 +65,11 @@ export default function Home() {
         {/* Animation Section - Middle (desktop overlay lives below; keep spacer on md+) */}
         <div className="relative hidden h-1/5 items-center justify-center md:flex">
           {/* Animation content will be handled by the carousel below */}
+        </div>
+
+        {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — לחיצה מחליפה את האנימציה בהדגמה חיה */}
+        <div className="relative z-10 flex items-center justify-center px-5 pt-4 md:pt-0">
+          <HeroDemoButton className="w-full md:w-auto" />
         </div>
 
         {/* Buttons Section - Bottom */}
@@ -251,8 +261,13 @@ export default function Home() {
       >
         <div className="max-w-6xl mx-auto">
           {/* הכלים החינמיים — תכנון וניתוח מקדים, לפני שבוחרים איך להתקדם */}
-          <div className="rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10">
+          <div className="rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-free-tools')}>
             <FreeToolsSection />
+          </div>
+
+          {/* הכירו את הכלים — הדגמה חיה לכל כלי, מתוך קטלוג ההדגמות */}
+          <div className="mt-8 rounded-3xl border border-indigo-100 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10">
+            <DemoCatalogSection />
           </div>
 
           {/* הגשר בין הכלים לבחירה */}
@@ -265,7 +280,7 @@ export default function Home() {
           </div>
 
           {/* מה תרצו לעשות? — נקודת הכניסה, גם למי שעדיין לא נרשם */}
-          <div id="start" className="scroll-mt-24 rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10">
+          <div id="start" className="scroll-mt-24 rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
             <GuestStart />
           </div>
         </div>
@@ -278,6 +293,7 @@ export default function Home() {
         transition={{ duration: 0.8 }}
         viewport={{ once: true, margin: "-80px" }}
         className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-4 py-12 text-white md:px-6 md:py-20"
+        {...demoId('home-pricing')}
       >
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-16 right-[12%] h-72 w-72 rounded-full bg-violet-500/20 blur-3xl animate-blob" />

@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Calculator, CreditCard, Layers, PiggyBank, RefreshCw, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { demoId } from '@/demo/demo-attr';
 
 const FREE_TOOLS: Array<{
+  id: string;
   href: string;
   title: string;
   description: string;
@@ -14,6 +16,7 @@ const FREE_TOOLS: Array<{
   hover: string;
 }> = [
   {
+    id: 'affordability',
     href: '/mortgage-planning?flow=affordability',
     title: 'מה אני יכול להרשות לעצמי',
     description: 'שווי הנכס המקסימלי לפי ההכנסות, ההון העצמי וההתחייבויות — עם מגבלות בנק ישראל',
@@ -22,6 +25,7 @@ const FREE_TOOLS: Array<{
     hover: 'hover:border-blue-300',
   },
   {
+    id: 'refinance',
     href: '/mortgage-refinance',
     title: 'בדיקת מיחזור',
     description: 'מזינים את המשכנתא הקיימת ובודקים אם אפשר לשפר החזר, ריבית או תקופה',
@@ -30,6 +34,7 @@ const FREE_TOOLS: Array<{
     hover: 'hover:border-violet-300',
   },
   {
+    id: 'equity',
     href: '/equity-planning',
     title: 'כלי תכנון הון עצמי',
     description: 'מקדמה, מס רכישה, עו״ד ושיפוץ — כל הכסף שצריך להביא עד המפתח, על ציר זמן',
@@ -38,6 +43,7 @@ const FREE_TOOLS: Array<{
     hover: 'hover:border-emerald-300',
   },
   {
+    id: 'consumer-loans',
     href: '/consumer-loans',
     title: 'כלי ניתוח הלוואות צרכניות',
     description: 'ממפים את ההלוואות הקיימות ורואים איך הן משפיעות על יחס ההחזר ועל המשכנתא שיאשרו',
@@ -80,6 +86,7 @@ export function FreeToolsSection() {
               <Link
                 href={tool.href}
                 className={`group flex h-full flex-col items-center rounded-3xl border-2 border-slate-200 bg-white p-6 text-center shadow-md transition-all hover:-translate-y-1 hover:shadow-xl ${tool.hover}`}
+                {...demoId(`home-free-tool-${tool.id}`)}
               >
                 <span
                   className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${tool.gradient} shadow-lg transition-transform group-hover:scale-110`}
