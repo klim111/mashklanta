@@ -12,6 +12,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { activateSessionGuard, deactivateSessionGuard } from './sandbox/session-guard';
 
 export interface DemoRequest {
   flowId: string;
@@ -72,6 +73,8 @@ function ensureHydrated() {
   if (hydrated || typeof window === 'undefined') return;
   hydrated = true;
   current = readPersisted();
+  // רענון באמצע הדגמה: ה-session הבדוי צריך להיות זמין עוד לפני שזמן הריצה נטען
+  if (current) activateSessionGuard();
 }
 
 export const demoStore = {
@@ -95,6 +98,8 @@ export const demoStore = {
       returnTo: options.returnTo ?? (typeof window !== 'undefined' ? window.location.pathname : '/'),
       autoplay: options.autoplay ?? true,
     };
+    // לפני שהספקים מורכבים מחדש — כדי שהבקשה הראשונה ל-session תיענה מהפרסונה
+    activateSessionGuard();
     persist(current);
     emit();
   },
@@ -108,6 +113,7 @@ export const demoStore = {
     ensureHydrated();
     if (!current) return;
     current = null;
+    deactivateSessionGuard();
     persist(null);
     emit();
   },

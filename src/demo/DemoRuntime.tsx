@@ -8,31 +8,26 @@
  * והאתר חוזר להתנהג כרגיל.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { DEMO_CATALOG } from './catalog';
 import { DemoEngineProvider } from './engine/DemoEngineProvider';
-import { createSandbox } from './sandbox';
-import type { DemoSandbox } from './sandbox';
+import { disposeSandbox, ensureSandbox } from './sandbox';
 import { demoStore } from './store';
 import type { DemoRequest } from './store';
 import { DemoOverlay } from './ui/DemoOverlay';
 import './ui/demo.css';
 
 export default function DemoRuntime({ request, children }: { request: DemoRequest; children: React.ReactNode }) {
-  const sandbox = useRef<DemoSandbox | null>(null);
-
-  // ארגז החול חייב להיות מותקן לפני שהמסך שמתחת מבצע את הקריאה הראשונה
-  if (typeof window !== 'undefined' && !sandbox.current) {
-    sandbox.current = createSandbox({ onSignOut: () => demoStore.stop() });
-  }
+  // ארגז החול חייב להיות מותקן לפני שהמסך שמתחת מבצע את הקריאה הראשונה —
+  // יחיד לכל הדף, ולכן רינדור חוזר לא מערים ארגז על ארגז
+  if (typeof window !== 'undefined') ensureSandbox({ onSignOut: () => demoStore.stop() });
 
   useEffect(() => {
-    if (!sandbox.current) sandbox.current = createSandbox({ onSignOut: () => demoStore.stop() });
+    ensureSandbox({ onSignOut: () => demoStore.stop() });
     document.body.classList.add('mk-demo-active');
     return () => {
       document.body.classList.remove('mk-demo-active');
-      sandbox.current?.dispose();
-      sandbox.current = null;
+      disposeSandbox();
     };
   }, []);
 
