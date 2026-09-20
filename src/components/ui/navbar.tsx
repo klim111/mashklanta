@@ -50,7 +50,7 @@ export default function NavBar() {
                 className="font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
               >
                 <Shield className="w-4 h-4 ml-2" />
-                לוח הבקרה
+                אזור אישי
               </Button>
             </Link>
             <span className="text-sm text-gray-600 hidden xl:inline">
@@ -124,7 +124,7 @@ export default function NavBar() {
                       className="w-full font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600"
                     >
                       <Shield className="w-4 h-4 ml-2" />
-                      לוח הבקרה
+                      אזור אישי
                     </Button>
                   </Link>
                   <Button

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 
@@ -105,19 +106,31 @@ function RegisterForm() {
 
       if (!response.ok) {
         setError(data.error || 'אירעה שגיאה בהרשמה');
-      } else {
+      } else if (formData.role === 'ADVISOR') {
         setSuccess('ההרשמה הושלמה. אפשר להתחבר עכשיו עם שם המשתמש והסיסמה.');
-        // הבחירה שנעשתה בעמוד הבית ("מה תרצו לעשות?") ממשיכה אחרי ההתחברות
+        setTimeout(() => router.push('/auth/login?advisor=true'), 3000);
+      } else {
+        /*
+          לקוח חדש לא צריך להתחבר שוב כדי להתחיל: ההרשמה מחברת אותו ומכניסה
+          אותו ישר לאזור האישי — או לבחירה שעשה בעמוד הבית, אם הגיע משם. אם
+          ההתחברות האוטומטית נכשלת חוזרים למסך ההתחברות, כדי שלא ייתקע בלי
+          דרך להמשיך.
+        */
         const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
-        setTimeout(() => {
-          if (formData.role === 'ADVISOR') {
-            router.push('/auth/login?advisor=true');
-          } else {
-            router.push(
-              callbackUrl ? `/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/auth/login'
-            );
-          }
-        }, 3000);
+        setSuccess('ההרשמה הושלמה. מכניסים אתכם לאזור האישי…');
+        const signedIn = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+        if (signedIn?.error) {
+          setSuccess('ההרשמה הושלמה. אפשר להתחבר עכשיו עם שם המשתמש והסיסמה.');
+          router.push(
+            callbackUrl ? `/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/auth/login'
+          );
+        } else {
+          router.push(callbackUrl || '/dashboard');
+        }
       }
     } catch (error) {
       setError('אירעה שגיאה בהרשמה');

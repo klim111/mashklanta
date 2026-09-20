@@ -51,6 +51,14 @@ export function eventTone(event: CalendarEvent): { dot: string; chip: string; ca
   if (event.kind === 'task') {
     return { dot: 'bg-blue-500', chip: 'bg-blue-100 text-blue-800', card: 'border-blue-200 bg-blue-50/70' };
   }
+  // תשלום מתוכנן מכלי תכנון ההוצאות
+  if (event.kind === 'expense') {
+    return {
+      dot: 'bg-violet-500',
+      chip: 'bg-violet-100 text-violet-800',
+      card: 'border-violet-200 bg-violet-50/70',
+    };
+  }
   return event.confirmed
     ? { dot: 'bg-emerald-500', chip: 'bg-emerald-100 text-emerald-800', card: 'border-emerald-200 bg-emerald-50/70' }
     : { dot: 'bg-amber-500', chip: 'bg-amber-100 text-amber-800', card: 'border-amber-200 bg-amber-50/70' };

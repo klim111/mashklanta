@@ -59,6 +59,27 @@ interface AuctionWorkspaceProps {
   allowSelfEntry?: boolean;
   /** הבנקים שנתנו אישור עקרוני בשלב הקודם — הם שנפתחים לתמחור כברירת מחדל */
   approvedBanks?: readonly string[];
+  /** `approvedBanks` הם היחידים שאפשר להתמחר מולם — מיחזור פנימי, בנק אחד */
+  lockBanks?: boolean;
+  /** ניסוח האזורים. ברירת המחדל היא מכרז ריביות של משכנתא חדשה */
+  copy?: Partial<AuctionCopy>;
+}
+
+/**
+ * הניסוח של אזורי המסך.
+ *
+ * במכרז של משכנתא חדשה מתמחרים כמה בנקים ומחפשים את הזולה; במיחזור פנימי
+ * מתמחר בנק אחד, וההשוואה היא מול המשכנתא הקיימת ולא בין הצעות. המבנה זהה,
+ * ולכן מה שמשתנה הוא הטקסט בלבד.
+ */
+export interface AuctionCopy {
+  pricingTitle: string;
+  pricingDescription: string;
+  featuredTitle: string;
+  featuredDescription: string;
+  /** התווית שעל ההצעה שמוצגת */
+  offerBadge: { label: string; everyOffer?: boolean };
+  signLabel?: { badge: string; button: string; confirm: string };
 }
 
 /**
@@ -82,6 +103,8 @@ export function AuctionWorkspace({
   broadcastIds = [],
   allowSelfEntry = false,
   approvedBanks = [],
+  lockBanks = false,
+  copy,
 }: AuctionWorkspaceProps) {
   const [banks, setBanks] = useState<string[]>([]);
   /** ההצעה שפתוחה בדאשבורד. null — הזולה ביותר, שנבחרת אוטומטית */
@@ -231,11 +254,12 @@ export function AuctionWorkspace({
       {/* שורת הבנקים להזנת ריביות — רק למי שמזין */}
       {canPrice && onSavePriced && (
         <StagePanel
-          title="הזנת הריביות מהבנקים"
+          title={copy?.pricingTitle ?? 'הזנת הריביות מהבנקים'}
           description={
-            approvedBanks.length > 0
+            copy?.pricingDescription ??
+            (approvedBanks.length > 0
               ? 'הבנקים שנתנו אישור עקרוני פתוחים כאן לתמחור. לחיצה על שם בנק פותחת את טבלת הריביות שלו, ואחרי השמירה ההצעה מצטרפת לשורת הבנקים שמתחת.'
-              : 'לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת.'
+              : 'לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת.')
           }
         >
           <BankPricingRow
@@ -243,6 +267,7 @@ export function AuctionWorkspace({
             takenNames={takenNames}
             offersPerBank={offersPerBank}
             approvedBanks={approvedBanks}
+            lockBanks={lockBanks}
             onSave={onSavePriced}
           />
         </StagePanel>
@@ -288,11 +313,15 @@ export function AuctionWorkspace({
       {/* 5. הדאשבורד — ההצעה שנבחרה, פתוחה במלואה */}
       <StagePanel
         title={
-          featured && featured.mix.id === winner?.mix.id
+          copy?.featuredTitle ??
+          (featured && featured.mix.id === winner?.mix.id
             ? 'ההצעה הזולה ביותר — במלואה'
-            : 'ההצעה שבחרתם — במלואה'
+            : 'ההצעה שבחרתם — במלואה')
         }
-        description="התמהיל, המספרים והגרפים של ההצעה שמוצגת. לחיצה על בנק באחד האזורים שלמעלה מחליפה אותה."
+        description={
+          copy?.featuredDescription ??
+          'התמהיל, המספרים והגרפים של ההצעה שמוצגת. לחיצה על בנק באחד האזורים שלמעלה מחליפה אותה.'
+        }
       >
         <div className="space-y-4">
           <PricedDashboard
@@ -301,6 +330,8 @@ export function AuctionWorkspace({
             winnerId={winner?.mix.id ?? null}
             signedMixKey={signedMixKey ?? null}
             onSelectForSigning={onSelectForSigning}
+            offerBadge={copy?.offerBadge}
+            signLabel={copy?.signLabel}
             emptyHint={
               role === 'advised'
                 ? 'היועץ פונה לבנקים. ההצעה הראשונה שהוא ישדר אליכם תיפתח כאן במלואה, בלי צורך לרענן את הדף.'
@@ -308,7 +339,9 @@ export function AuctionWorkspace({
             }
           />
 
-          <OfferComparisonArea cheapest={winner} featured={featured} costliest={costliest} />
+          {!lockBanks && (
+            <OfferComparisonArea cheapest={winner} featured={featured} costliest={costliest} />
+          )}
         </div>
       </StagePanel>
     </div>

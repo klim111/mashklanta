@@ -21,6 +21,11 @@ interface BankPricingRowProps {
    * מהם אפשר לבקש תמחור בפועל. שאר הבנקים נשארים זמינים מאחורי כפתור.
    */
   approvedBanks?: readonly string[];
+  /**
+   * הבנקים ב-`approvedBanks` הם היחידים שאפשר להתמחר מולם, ולכן אין כפתור
+   * "בנק אחר". כך זה במיחזור פנימי, שמתנהל מול בנק אחד בלבד.
+   */
+  lockBanks?: boolean;
   onSave: (quoted: WorkspaceMix) => Promise<void> | void;
 }
 
@@ -36,6 +41,7 @@ export function BankPricingRow({
   takenNames,
   offersPerBank,
   approvedBanks = [],
+  lockBanks = false,
   onSave,
 }: BankPricingRowProps) {
   const [open, setOpen] = useState<MortgageBank | null>(null);
@@ -44,14 +50,18 @@ export function BankPricingRow({
 
   const approved = MORTGAGE_BANKS.filter((bank) => approvedBanks.includes(bank));
   const rest = MORTGAGE_BANKS.filter((bank) => !approvedBanks.includes(bank));
-  const visible = approved.length === 0 || showAll ? [...approved, ...rest] : approved;
+  /* נעילה לבנק אחד תקפה רק כשיש בנק לנעול אליו — אחרת המסך היה נשאר בלי בנקים */
+  const locked = lockBanks && approved.length > 0;
+  const visible = approved.length === 0 || (showAll && !locked) ? [...approved, ...rest] : approved;
 
   return (
     <div className="space-y-3">
       <StageSubtitle>
-        {approved.length > 0
-          ? 'הבנקים שנתנו לכם אישור עקרוני. לחצו על הבנק שחזר אליכם עם ריביות'
-          : 'לחצו על הבנק שחזר אליכם עם ריביות'}
+        {locked
+          ? 'לחצו על הבנק כדי להזין את הריביות שהוא הציע'
+          : approved.length > 0
+            ? 'הבנקים שנתנו לכם אישור עקרוני. לחצו על הבנק שחזר אליכם עם ריביות'
+            : 'לחצו על הבנק שחזר אליכם עם ריביות'}
       </StageSubtitle>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
@@ -94,7 +104,7 @@ export function BankPricingRow({
           );
         })}
 
-        {approved.length > 0 && rest.length > 0 && (
+        {!locked && approved.length > 0 && rest.length > 0 && (
           <button
             type="button"
             onClick={() => setShowAll((current) => !current)}

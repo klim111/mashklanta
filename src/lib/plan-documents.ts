@@ -1,5 +1,7 @@
 import { del, get, put } from '@vercel/blob';
 import { prisma } from './db';
+import { buildZip, safeEntryName, uniqueEntryName } from './zip';
+import type { ZipEntry } from './zip';
 
 /**
  * המסמכים התומכים של תהליך משכנתא.
@@ -234,6 +236,38 @@ export async function readPlanDocument(
   if (!blob?.stream) return null;
 
   return { stream: blob.stream, contentType: row.contentType, fileName: row.fileName };
+}
+
+/**
+ * כל מסמכי התהליך כקובץ אחד להורדה.
+ *
+ * הקבצים נקראים בשרת ונארזים לארכיון — כך שההורדה עוברת דרך אותה בדיקת
+ * הרשאה כמו הצפייה, ואף כתובת אחסון אינה נחשפת.
+ */
+export async function planDocumentsArchive(
+  userId: string,
+  planId: string
+): Promise<{ archive: Uint8Array; count: number } | null> {
+  if (!(await planForViewer(userId, planId))) return null;
+
+  const rows = await prisma.planDocument.findMany({
+    where: { planId },
+    orderBy: { uploadedAt: 'asc' },
+    select: { name: true, fileName: true, blobPath: true, uploadedAt: true },
+  });
+
+  const taken = new Set<string>();
+  const entries: ZipEntry[] = [];
+
+  for (const row of rows) {
+    const blob = await get(row.blobPath, { access: 'private' }).catch(() => null);
+    if (!blob?.stream) continue;
+    const buffer = new Uint8Array(await new Response(blob.stream).arrayBuffer());
+    const base = safeEntryName(row.fileName || row.name, 'מסמך');
+    entries.push({ name: uniqueEntryName(base, taken), data: buffer, at: row.uploadedAt });
+  }
+
+  return { archive: buildZip(entries), count: entries.length };
 }
 
 /** מחיקת מסמך — רק בעל התהליך, ותמיד גם מה-Blob */

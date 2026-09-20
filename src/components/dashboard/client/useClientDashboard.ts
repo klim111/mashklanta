@@ -6,10 +6,17 @@ import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import { useRateRequests } from '@/components/mortgage-advisor/rateRequest/useRateRequests';
 import { useAdvisorNotes, useMeetings } from '@/components/advisor/useAdvisorCrm';
 import { useClientTasks } from '@/components/plan/tasks/useClientTasks';
+import { useEquityPlanSummary } from '@/components/equity-planning/useEquityPlanSummary';
 import { advisorStages as stagesOf } from '@/lib/advisor-orders';
 import type { AdvisorOrder } from '@/lib/advisor-orders';
-import { buildCalendarEvents, buildClientTasks } from '@/lib/client-agenda';
-import type { AgendaInput, AgendaRateRequest } from '@/lib/client-agenda';
+import {
+  advisorStageNotices,
+  buildCalendarEvents,
+  buildClientTasks,
+  clientTaskIdOf,
+} from '@/lib/client-agenda';
+import type { AgendaInput, AgendaRateRequest, ClientTaskState } from '@/lib/client-agenda';
+import { useClientTaskStates } from './useClientTaskStates';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { isUnassociatedMix } from '@/components/plan/UnassignedMixes';
 import {
@@ -32,6 +39,10 @@ export function useClientDashboard() {
   const { notes } = useAdvisorNotes();
   /** המשימות שהלקוח הוסיף לעצמו — לרשימת המשימות וללוח השנה */
   const clientTasksState = useClientTasks({});
+  /** תכנון ההוצאות — התמונה בסקירה, והתשלומים שנכנסים ללוח השנה */
+  const equityState = useEquityPlanSummary();
+  /** מועדים וסימונים שהלקוח קבע למשימות הנגזרות, שאין להן רשומה משלהן */
+  const taskStatesState = useClientTaskStates();
 
   const activeIds = plansState.plans
     .filter((plan) => plan.status === 'IN_PROGRESS')
@@ -110,12 +121,45 @@ export function useClientDashboard() {
       notes,
       advisorStages,
       clientTasks: clientTasksState.tasks,
+      equityExpenses: equityState.expenses,
+      taskStates: taskStatesState.states,
     }),
-    [plansState.plans, meetingsState.meetings, rateRequests, unassignedMixes, notes, advisorStages, clientTasksState.tasks]
+    [
+      plansState.plans,
+      meetingsState.meetings,
+      rateRequests,
+      unassignedMixes,
+      notes,
+      advisorStages,
+      clientTasksState.tasks,
+      equityState.expenses,
+      taskStatesState.states,
+    ]
   );
 
   const tasks = useMemo(() => buildClientTasks(input), [input]);
-  const events = useMemo(() => buildCalendarEvents(input), [input]);
+  /* השלבים שהיועץ מטפל בהם — מוצגים בכרטיס «המשכנתא שלי», לא ברשימת המשימות */
+  const advisorNotices = useMemo(() => advisorStageNotices(input), [input]);
+
+  /**
+   * קביעת מועד למשימה, מאיפה שלא באה.
+   *
+   * למשימה שהלקוח הוסיף יש רשומה משלה, ולכן המועד נשמר עליה; משימה נגזרת אין
+   * לה רשומה, והמועד שלה נשמר בנפרד לפי מזהה המשימה. הקריאה כאן אחת, כדי
+   * שהמסך לא יצטרך לדעת מאיפה כל משימה הגיעה.
+   */
+  const scheduleTask = useCallback(
+    (taskId: string, due: string | null) => {
+      const ownId = clientTaskIdOf(taskId);
+      if (ownId) {
+        void clientTasksState.patch(ownId, { dueAt: due });
+        return;
+      }
+      void taskStatesState.schedule(taskId, due);
+    },
+    [clientTasksState, taskStatesState]
+  );
+  const events = useMemo(() => buildCalendarEvents(input, tasks), [input, tasks]);
 
   /**
    * כניסה ראשונה: עדיין אין תהליך, פגישה, משימה או פנייה ליועץ. במצב הזה
@@ -133,11 +177,15 @@ export function useClientDashboard() {
     mixesState,
     meetingsState,
     clientTasksState,
+    equityState,
     requests,
     notes,
     advisorStages,
+    advisorNotices,
     tasks,
     events,
+    taskStates: taskStatesState,
+    scheduleTask,
     contactedAdvisor,
     firstVisit,
     ready: plansState.ready && mixesState.ready && meetingsState.ready && requestsReady,

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -34,6 +35,7 @@ import {
   EMPLOYMENT_LABELS,
   EMPLOYMENT_TYPES,
   analyzeProfile,
+  borrowerLabels,
   dealMaxLtv,
   dealMaxMortgage,
   profileRequirements,
@@ -48,6 +50,7 @@ import type {
   ProfileIntent,
   ProfileLoan,
   ProfileScreen,
+  SigningData,
 } from '@/lib/mortgage-plan';
 import {
   Metric,
@@ -60,9 +63,9 @@ import {
 } from '../ui';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { pickProfileFromAnalysis } from '@/lib/client-profile';
-import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 import { StageOverview } from './analysis/StageOverview';
 import { ProfileReportPanel } from './analysis/ProfileReportPanel';
+import { PropertyOwnershipPanel } from './analysis/PropertyOwnershipPanel';
 import { IncomeCalculatorDialog } from './analysis/IncomeCalculatorDialog';
 import { DocumentsScreen } from './analysis/DocumentsScreen';
 import { RecommendationCallouts } from './analysis/RecommendationCallouts';
@@ -125,7 +128,10 @@ const reveal = {
  *
  * ההסבר על השלב, ואחריו המסכים אחד אחרי השני: הנכס והעסקה, מי לוקח, הכנסות
  * עתידיות, תיק המסמכים והדוח הסופי. הכל נשמר תוך כדי הקלדה, וההמלצות צפות
- * במסך שבו הנתון הרלוונטי מוזן. כפתור צף להיעזר ביועץ מלווה את כל המסכים.
+ * במסך שבו הנתון הרלוונטי מוזן. סרגל התת-שלבים מלווה את כל המסכים, כולל ההסבר.
+ *
+ * מי שבחר לבצע לבד מקבל כפתור צף לפנות ליועץ לעזרה בשלב; כשיועץ מטפל בשלב
+ * (`advisorSummary`), ההסבר מוצג ומיד אחריו מסך «היועץ מטפל בשלב זה».
  */
 export function AnalysisStage({
   data,
@@ -134,15 +140,33 @@ export function AnalysisStage({
   planName,
   onRequestAdvisor,
   advisorBusy = false,
+  onChangeSigning,
+  advisorSummary,
+  onShowDetails,
+  refinance = false,
+  hideAdvisorButton = false,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
   planId: string;
+  /**
+   * תהליך מיחזור. הנכס כבר בבעלות הלקוח והמשכנתא כבר קיימת, ולכן אין שאלה על
+   * הון עצמי — והיעדרו אינו חוסם את המעבר לתת-השלב הבא.
+   */
+  refinance?: boolean;
+  /** הכפתור הצף של הפנייה ליועץ מוצג על ידי שולחן העבודה, ולא כאן */
+  hideAdvisorButton?: boolean;
+  /** הגדרת בעלות הנכס נשמרת על שלב החתימה, שהוא מקור האמת שלה */
+  onChangeSigning?: (next: SigningData) => void;
   /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
   planName?: string;
-  /** בקשת ליווי חינמית לשלב הפרופיל — מכפתור "תן ליועץ" שבמסך "על השלב" */
+  /** בקשת ליווי חינמית לשלב הפרופיל — מהכפתור הצף */
   onRequestAdvisor?: () => void;
   advisorBusy?: boolean;
+  /** יועץ מטפל בשלב: המסך שלו מוצג בסוף ההסבר, והשלב עצמו נפתח רק ב"פרטים נוספים" */
+  advisorSummary?: ReactNode;
+  /** מעבר לתת-שלב מהסרגל כשיועץ מטפל בשלב — פותח את הפירוט המלא */
+  onShowDetails?: () => void;
 }) {
   const profile = data.ANALYSIS;
   const profileSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,16 +202,17 @@ export function AnalysisStage({
   const go = (profileScreen: ProfileScreen) => patch({ profileScreen });
 
   const couple = profile.household === 'COUPLE';
+  /* השמות שהוזנו — מחליפים את «לווה 1» ו«לווה 2» בכל מסכי השלב */
+  const names = borrowerLabels(profile);
   const analysis = analyzeProfile(profile);
-  const requirements = profileRequirements(profile);
+  const requirements = profileRequirements(profile, { requireEquity: !refinance });
   const personalDone = requirements
     .filter((item) => PERSONAL_KEYS.includes(item.key))
     .every((item) => item.ok);
 
-  const screen: ProfileScreen = profile.profileScreen || 'overview';
-
-  /* מי שכבר רכש את המסלול העצמאי אינו צריך לבחור שוב "לבד או עם יועץ" */
-  const { access } = usePlatformAccess();
+  /* כשיועץ מטפל בשלב מוצג ההסבר, ואחריו המסך שלו — עד שהלקוח מבקש את הפירוט המלא */
+  const advisorMode = Boolean(advisorSummary);
+  const screen: ProfileScreen = advisorMode ? 'overview' : profile.profileScreen || 'overview';
 
   /* טופס פנייה ליועץ — נפתח מכפתור גיוס ההון העצמי כשההון חסר */
   const [equityHelpOpen, setEquityHelpOpen] = useState(false);
@@ -205,26 +230,24 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
-      <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />
-
-      {screen !== 'overview' && (
-        <ScreenRail
-          current={screen}
-          intent={profile.intent}
-          personalDone={personalDone}
-          onSelect={go}
-        />
+      {!advisorMode && !hideAdvisorButton && (
+        <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />
       )}
+
+      <ScreenRail
+        current={screen}
+        intent={profile.intent}
+        personalDone={personalDone}
+        onSelect={(target) => {
+          if (advisorMode && target !== 'overview') onShowDetails?.();
+          go(target);
+        }}
+      />
 
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' && (
           <motion.div key="overview" {...reveal}>
-            <StageOverview
-              onStart={() => go('deal')}
-              onAdvisor={onRequestAdvisor}
-              advisorBusy={advisorBusy}
-              selfServicePaid={access.active}
-            />
+            <StageOverview onStart={() => go('deal')} advisorSummary={advisorSummary} />
           </motion.div>
         )}
 
@@ -265,10 +288,14 @@ export function AnalysisStage({
 
               <div className={`mt-5 grid gap-4 ${couple ? 'lg:grid-cols-2' : ''}`}>
                 <BorrowerBasicsCard
-                  title={couple ? 'לווה 1' : 'הפרטים שלי'}
+                  title={couple ? names.first : names.hasFirst ? names.first : 'הפרטים שלי'}
+                  firstName={profile.firstName}
+                  lastName={profile.lastName}
                   age={profile.age}
                   income={profile.income}
                   bank={profile.primaryBank}
+                  onFirstName={(firstName) => patch({ firstName })}
+                  onLastName={(lastName) => patch({ lastName })}
                   onAge={(age) => patch({ age })}
                   onIncome={(income) => patch({ income })}
                   onBank={(primaryBank) => patch({ primaryBank })}
@@ -276,10 +303,14 @@ export function AnalysisStage({
                 />
                 {couple && (
                   <BorrowerBasicsCard
-                    title="לווה 2"
+                    title={names.second}
+                    firstName={profile.partnerFirstName}
+                    lastName={profile.partnerLastName}
                     age={profile.partnerAge}
                     income={profile.partnerIncome}
                     bank={profile.partnerPrimaryBank}
+                    onFirstName={(partnerFirstName) => patch({ partnerFirstName })}
+                    onLastName={(partnerLastName) => patch({ partnerLastName })}
                     onAge={(partnerAge) => patch({ partnerAge })}
                     onIncome={(partnerIncome) => patch({ partnerIncome })}
                     onBank={(partnerPrimaryBank) => patch({ partnerPrimaryBank })}
@@ -351,7 +382,7 @@ export function AnalysisStage({
 
               <div className={`mt-5 grid gap-4 ${couple ? 'lg:grid-cols-2' : ''}`}>
                 <BorrowerWorkCard
-                  title={couple ? 'לווה 1' : undefined}
+                  title={couple ? names.first : undefined}
                   employment={profile.employmentType}
                   loans={
                     couple ? profile.borrowerLoans.filter((loan) => !loan.shared) : profile.borrowerLoans
@@ -384,7 +415,7 @@ export function AnalysisStage({
                 />
                 {couple && (
                   <BorrowerWorkCard
-                    title="לווה 2"
+                    title={names.second}
                     employment={profile.partnerEmploymentType}
                     loans={profile.partnerLoans.filter((loan) => !loan.shared)}
                     hasLoans={profile.partnerLoans.length > 0}
@@ -566,8 +597,17 @@ export function AnalysisStage({
 
         {screen === 'deal' && (
           <motion.div key="deal" {...reveal} className="space-y-5">
-            <PropertyPanel profile={profile} patch={patch} onNeedEquityHelp={onEquityHelp} />
+            <PropertyPanel
+              profile={profile}
+              patch={patch}
+              onNeedEquityHelp={onEquityHelp}
+              refinance={refinance}
+            />
             <RecommendationCallouts profile={profile} screen="deal" patch={patch} />
+
+            {onChangeSigning && (
+              <PropertyOwnershipPanel signing={data.SIGNING} onChange={onChangeSigning} />
+            )}
 
             <ScreenFooter
               backLabel="על השלב"
@@ -699,18 +739,26 @@ function ScreenFooter({
 /** השאלה הראשונה — גדולה במרכז המסך עד שנבחרת תשובה */
 function BorrowerBasicsCard({
   title,
+  firstName,
+  lastName,
   age,
   income,
   bank,
+  onFirstName,
+  onLastName,
   onAge,
   onIncome,
   onBank,
   showBank = true,
 }: {
   title: string;
+  firstName: string;
+  lastName: string;
   age: number | null;
   income: number | null;
   bank: string | null;
+  onFirstName: (value: string) => void;
+  onLastName: (value: string) => void;
   onAge: (value: number | null) => void;
   onIncome: (value: number | null) => void;
   onBank: (value: string | null) => void;
@@ -726,6 +774,12 @@ function BorrowerBasicsCard({
           <User className="h-4 w-4 text-white" />
         </span>
         <h4 className="text-base font-black text-slate-900">{title}</h4>
+      </div>
+
+      {/* השם מחליף את «לווה 1» בכל מקום שבו הלווה מוצג — לכן הוא נשאל ראשון */}
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        <TextField label="שם פרטי" value={firstName} onChange={onFirstName} placeholder="ישראל" />
+        <TextField label="שם משפחה" value={lastName} onChange={onLastName} placeholder="ישראלי" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -1112,11 +1166,14 @@ function PropertyPanel({
   profile,
   patch,
   onNeedEquityHelp,
+  refinance = false,
 }: {
   profile: AnalysisData;
   patch: (next: Partial<AnalysisData>) => void;
   /** נפתח כשההון העצמי הזמין נמוך מהנדרש — טופס פנייה לגיוס הון */
   onNeedEquityHelp: () => void;
+  /** במיחזור אין הון עצמי לעסקה, ולכן אזור ההון העצמי אינו מוצג */
+  refinance?: boolean;
 }) {
   const analysis = analyzeProfile(profile);
   const dealType = profile.dealType;
@@ -1270,8 +1327,22 @@ function PropertyPanel({
           </div>
         )}
 
+        {/*
+          במיחזור אין הון עצמי לעסקה: הסכום הממוחזר הוא יתרת המשכנתא הקיימת,
+          והוא נקבע בכלי המיחזור. במקום אזור ההון העצמי מוצג מה שהבנק כן בוחן.
+        */}
+        {refinance && propertyValue > 0 && (
+          <div className="mx-auto max-w-xl space-y-1 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
+            <p className="text-sm font-black text-slate-800">במיחזור אין צורך בהון עצמי</p>
+            <p className="text-xs font-medium leading-relaxed text-slate-600">
+              הנכס כבר בבעלותכם, והסכום שממוחזר הוא יתרת המשכנתא הקיימת כפי שהזנתם בכלי המיחזור.
+              מה שהבנק בוחן כאן הוא ההכנסות, ההתחייבויות ושווי הנכס מול יתרת ההלוואה.
+            </p>
+          </div>
+        )}
+
         {/* ההון העצמי — נדרש מול זמין, אחרי שנקבע מחיר הנכס */}
-        {dealType && propertyValue > 0 && (
+        {!refinance && dealType && propertyValue > 0 && (
           <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
             <div>
               <span className="block text-sm font-bold text-slate-600">הון עצמי מינימלי נדרש</span>
@@ -1285,8 +1356,9 @@ function PropertyPanel({
               </span>
             </div>
 
-            <div className="mx-auto w-56">
+            <div className="mx-auto w-64">
               <NumberField
+                emphasis
                 label="הון עצמי זמין"
                 value={profile.equity}
                 onChange={applyEquity}
@@ -1346,7 +1418,7 @@ function PropertyPanel({
           </div>
         )}
 
-        {!analysis.ratioOk && propertyValue > 0 && equityEntered && (
+        {!refinance && !analysis.ratioOk && propertyValue > 0 && equityEntered && (
           <p className="mx-auto flex max-w-xl items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             יחס ההחזר המשוער חורג מהמקובל בבנקים. אפשר להאריך את התקופה, להקטין את מחיר הנכס או לסגור

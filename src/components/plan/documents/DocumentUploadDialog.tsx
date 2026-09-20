@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, FileUp, Loader2, Lock, Upload } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle2, CircleDashed, FileUp, ListChecks, Loader2, Lock, Upload } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ALLOWED_DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from '@/lib/plan-documents';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { customDocumentKey } from '@/lib/document-progress';
+import type { PlanData } from '@/lib/mortgage-plan';
 import { usePlanDocuments } from './usePlanDocuments';
+import { usePlanRequirements } from './usePlanRequirements';
 import { demoId } from '@/demo/demo-attr';
 
 const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
@@ -23,6 +26,10 @@ export interface DocumentUploadDialogProps {
   stage: PlanStageId | null;
   /** כותרת מוצעת, למשל מכותרת המשימה */
   defaultTitle?: string;
+  /** סוג המסמך שהחלון נפתח עליו, כשנפתח משורת מסמך בתיק */
+  defaultKey?: string | null;
+  /** נתוני התהליך, כשהם כבר ביד — אחרת הם נטענים לפי המזהה */
+  data?: PlanData;
   onUploaded?: (document: PlanDocumentView) => void;
 }
 
@@ -38,10 +45,17 @@ export function DocumentUploadDialog({
   planId,
   stage,
   defaultTitle = '',
+  defaultKey = null,
+  data,
   onUploaded,
 }: DocumentUploadDialogProps) {
-  const { error, upload, busyKey } = usePlanDocuments(planId);
+  const { documents, error, upload, busyKey } = usePlanDocuments(planId);
+  const requirements = usePlanRequirements(planId, data);
   const [title, setTitle] = useState(defaultTitle);
+  /** סוג המסמך מהקטלוג; ריק — כותרת חופשית */
+  const [typeKey, setTypeKey] = useState<string>(defaultKey ?? '');
+  const [fileName, setFileName] = useState('');
+  const [showList, setShowList] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [done, setDone] = useState<PlanDocumentView | null>(null);
   const [busy, setBusy] = useState(false);
@@ -50,20 +64,48 @@ export function DocumentUploadDialog({
   useEffect(() => {
     if (!open) return;
     setTitle(defaultTitle);
+    setTypeKey(defaultKey ?? '');
     setFile(null);
+    setFileName('');
+    setShowList(false);
     setDone(null);
     setBusy(false);
-  }, [open, defaultTitle]);
+  }, [open, defaultTitle, defaultKey]);
 
-  const key = customDocumentKey(stage, title);
-  const canUpload = title.trim().length >= 2 && file !== null && !busy;
+  const byKey = useMemo(
+    () => new Map(documents.map((document) => [document.key, document])),
+    [documents]
+  );
+
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof requirements>();
+    requirements.forEach((requirement) => {
+      map.set(requirement.group, [...(map.get(requirement.group) ?? []), requirement]);
+    });
+    return [...map.entries()];
+  }, [requirements]);
+
+  const selected = requirements.find((requirement) => requirement.key === typeKey) ?? null;
+  const pending = requirements.filter((requirement) => !byKey.has(requirement.key));
+  const submitted = requirements.filter((requirement) => byKey.has(requirement.key));
+
+  /* סוג מהקטלוג שומר תחת המפתח שלו; כותרת חופשית מקבלת מפתח לפי השלב */
+  const key = selected ? selected.key : customDocumentKey(stage, title);
+  const documentName = selected ? selected.name : title.trim();
+  const canUpload = Boolean(selected || title.trim().length >= 2) && file !== null && !busy;
+
+  const pickType = (next: string) => {
+    setTypeKey(next);
+    const match = requirements.find((requirement) => requirement.key === next);
+    if (match) setTitle(match.name);
+  };
 
   const submit = async () => {
     if (!file || !canUpload) return;
     setBusy(true);
     try {
       // הקובץ עולה לאחסון הפרטי, והרשומה שחוזרת היא המסמך בתיק הלקוח
-      const record = await upload(key, title.trim(), file);
+      const record = await upload(key, documentName, file, fileName.trim() || file.name);
       if (!record) return;
       setDone(record);
       onUploaded?.(record);
@@ -101,22 +143,118 @@ export function DocumentUploadDialog({
               <div>
                 <DialogTitle className="text-xl font-black text-slate-900">העלאת מסמך לתיק</DialogTitle>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  {stage ? `שלב ${journeyStageFor(stage).shortTitle} · ` : ''}הכותרת היא המפתח שבו המסמך יישמר
+                  {stage ? `שלב ${journeyStageFor(stage).shortTitle} · ` : ''}
+                  {requirements.length > 0
+                    ? 'בחרו את סוג המסמך מתוך מה שנדרש בתהליך שלכם'
+                    : 'הכותרת היא המפתח שבו המסמך יישמר'}
                 </p>
               </div>
             </div>
 
-            <label className="block text-xs font-bold text-slate-600">
-              כותרת המסמך
-              <input
+            {/* רשימת המסמכים המלאה — מעל סוג המסמך, במרכז החלון */}
+            {requirements.length > 0 && (
+              <div className="mb-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowList((current) => !current)}
+                  className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+                >
+                  <ListChecks className="h-4 w-4 text-blue-600" />
+                  רשימת המסמכים המלאה
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                    {submitted.length}/{requirements.length}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            <AnimatePresence initial={false}>
+              {showList && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mb-3 max-h-56 space-y-3 overflow-y-auto rounded-2xl border-2 border-slate-200 bg-slate-50/60 p-3">
+                    <FullList
+                      title="עדיין לא הוגשו"
+                      icon={<CircleDashed className="h-4 w-4 text-slate-400" />}
+                      rows={pending.map((requirement) => ({
+                        key: requirement.key,
+                        name: requirement.name,
+                        note: requirement.group,
+                      }))}
+                      onPick={(next) => {
+                        pickType(next);
+                        setShowList(false);
+                      }}
+                    />
+                    <FullList
+                      title="כבר הוגשו"
+                      icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                      rows={submitted.map((requirement) => ({
+                        key: requirement.key,
+                        name: requirement.name,
+                        note: byKey.get(requirement.key)?.fileName ?? requirement.group,
+                      }))}
+                      onPick={(next) => {
+                        pickType(next);
+                        setShowList(false);
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {requirements.length > 0 && (
+              <label className="block text-xs font-bold text-slate-600">
+                סוג המסמך
+                <select
+                  value={typeKey}
+                  onChange={(event) => pickType(event.target.value)}
+                  className={`mt-1 ${inputClass}`}
+                >
+                  <option value="">כותרת חופשית…</option>
+                  {groups.map(([group, rows]) => (
+                    <optgroup key={group} label={group}>
+                      {rows.map((requirement) => (
+                        <option key={requirement.key} value={requirement.key}>
+                          {byKey.has(requirement.key) ? `✓ ${requirement.name}` : requirement.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {selected?.note && (
+              <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
+                {selected.note}
+              </p>
+            )}
+
+            {selected && byKey.has(selected.key) && (
+              <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-[11px] font-bold text-amber-900">
+                כבר קיים קובץ למסמך הזה ({byKey.get(selected.key)?.fileName}). העלאה חדשה תחליף אותו.
+              </p>
+            )}
+
+            {!selected && (
+              <label className="mt-2 block text-xs font-bold text-slate-600">
+                כותרת המסמך
+                <input
                 {...demoId('upload-title')}
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className={`mt-1 ${inputClass}`}
-                placeholder="למשל: תדפיס עו״ש 3 חודשים"
-                autoFocus
-              />
-            </label>
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className={`mt-1 ${inputClass}`}
+                  placeholder="למשל: תדפיס עו״ש 3 חודשים"
+                />
+              </label>
+            )}
 
             <input
               ref={input}
@@ -126,6 +264,7 @@ export function DocumentUploadDialog({
               onChange={(event) => {
                 const picked = event.target.files?.[0] ?? null;
                 setFile(picked);
+                setFileName(picked?.name ?? '');
                 event.target.value = '';
               }}
             />
@@ -145,6 +284,20 @@ export function DocumentUploadDialog({
                 עד {Math.round(MAX_DOCUMENT_BYTES / (1024 * 1024))}MB
               </span>
             </button>
+
+            {file && (
+              <label className="mt-3 block text-xs font-bold text-slate-600">
+                שם הקובץ שיישמר
+                <input
+                  value={fileName}
+                  onChange={(event) => setFileName(event.target.value)}
+                  className={`mt-1 ${inputClass}`}
+                />
+                <span className="mt-1 block text-[11px] font-medium text-slate-500">
+                  נשמר בשם שבו הועלה — אפשר לשנות אותו כאן לפני השמירה
+                </span>
+              </label>
+            )}
 
             {error && (
               <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
@@ -180,5 +333,43 @@ export function DocumentUploadDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FullList({
+  title,
+  icon,
+  rows,
+  onPick,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  rows: Array<{ key: string; name: string; note: string }>;
+  onPick: (key: string) => void;
+}) {
+  if (rows.length === 0) return null;
+
+  return (
+    <section>
+      <p className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-black text-slate-600">
+        {icon}
+        {title}
+        <span className="rounded-full bg-white px-1.5 text-[10px] text-slate-500">{rows.length}</span>
+      </p>
+      <ul className="space-y-1">
+        {rows.map((row) => (
+          <li key={row.key}>
+            <button
+              type="button"
+              onClick={() => onPick(row.key)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+            >
+              <span className="block text-[13px] font-black text-slate-900">{row.name}</span>
+              <span className="block text-[11px] font-medium text-slate-500">{row.note}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

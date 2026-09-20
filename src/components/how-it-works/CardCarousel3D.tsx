@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion, type PanInfo } from 'framer-motion';
 import {
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
   AlertTriangle,
-  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,7 +26,7 @@ export interface CarouselCardData {
   tag?: string;
 }
 
-interface CardCarousel3DProps {
+interface CardCarouselProps {
   cards: CarouselCardData[];
   variant?: 'track' | 'simple';
   className?: string;
@@ -35,32 +34,32 @@ interface CardCarousel3DProps {
   onActiveChange?: (index: number) => void;
 }
 
-const SWIPE_THRESHOLD = 50;
+const SWIPE_THRESHOLD = 60;
 
-const UNIFORM_TRANSITION = {
-  type: 'tween' as const,
-  duration: 0.34,
-  ease: 'linear' as const,
-};
-
-const SIDE_UNIFORM_TRANSITION = {
-  type: 'tween' as const,
-  duration: 0.3,
-  ease: 'linear' as const,
-};
-
+/**
+ * כרטיסיות ההסבר של מרכז הלמידה.
+ *
+ * כרטיס אחד על המסך, ותו לא: הקודם והבא אינם מציצים מהצדדים ואינם עולים על
+ * הטקסט שמסביב. המעבר נחתך בתוך במה סגורה (`overflow-hidden`), והכרטיס היוצא
+ * מסיים לצאת לפני שהנכנס מתחיל — כך המעבר נקי, ובכל רגע נתון ברור מה מוצג.
+ *
+ * הכיוון הוא כיוון הקריאה: «הבא» מביא את הכרטיס משמאל, כמו דף שמתהפך בעברית,
+ * ואותה תנועה בדיוק מתקבלת גם בגרירה. מי שביקש פחות תנועה (`prefers-reduced-motion`)
+ * מקבל החלפה בהעלמה בלבד.
+ */
 export default function CardCarousel3D({
   cards,
   variant = 'simple',
   className,
   activeIndex: controlledIndex,
   onActiveChange,
-}: CardCarousel3DProps) {
+}: CardCarouselProps) {
   const [internalIndex, setInternalIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
+  const [direction, setDirection] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeIndex = controlledIndex ?? internalIndex;
   const prevIndexRef = useRef(activeIndex);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (prevIndexRef.current === activeIndex) return;
@@ -71,265 +70,283 @@ export default function CardCarousel3D({
   const goTo = useCallback(
     (index: number, dir: number) => {
       const next = ((index % cards.length) + cards.length) % cards.length;
+      if (next === activeIndex) return;
       setDirection(dir);
       if (controlledIndex === undefined) setInternalIndex(next);
       onActiveChange?.(next);
     },
-    [cards.length, controlledIndex, onActiveChange]
+    [activeIndex, cards.length, controlledIndex, onActiveChange]
   );
 
   const next = useCallback(() => goTo(activeIndex + 1, 1), [activeIndex, goTo]);
   const prev = useCallback(() => goTo(activeIndex - 1, -1), [activeIndex, goTo]);
 
+  /* גרירה ימינה מביאה את הכרטיס הבא — אותה תנועה כמו האנימציה עצמה */
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x < -SWIPE_THRESHOLD) next();
-    else if (info.offset.x > SWIPE_THRESHOLD) prev();
+    if (info.offset.x > SWIPE_THRESHOLD) next();
+    else if (info.offset.x < -SWIPE_THRESHOLD) prev();
   };
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (event: KeyboardEvent) => {
       if (
         !containerRef.current?.contains(document.activeElement) &&
         document.activeElement?.tagName !== 'BODY'
       )
         return;
-      if (e.key === 'ArrowLeft') next();
-      if (e.key === 'ArrowRight') prev();
+      if (event.key === 'ArrowLeft') next();
+      if (event.key === 'ArrowRight') prev();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [next, prev]);
 
   const card = cards[activeIndex];
-  const Icon = card.icon;
-  const text = card.description ?? card.body ?? '';
+  const previousCard = cards[(activeIndex - 1 + cards.length) % cards.length];
+  const nextCard = cards[(activeIndex + 1) % cards.length];
+
+  /* בעברית הכרטיס הבא נכנס משמאל והיוצא עוזב ימינה */
+  const variants = {
+    enter: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
+  };
+  const fade = { enter: { opacity: 0 }, center: { opacity: 1 }, exit: { opacity: 0 } };
 
   return (
     <div ref={containerRef} className={cn('relative w-full', className)} tabIndex={0}>
-      <div
-        className="relative mx-auto h-[440px] sm:h-[580px] md:h-[640px] max-w-6xl"
-        style={{ perspective: '1600px', perspectiveOrigin: '50% 40%' }}
-      >
-        <div
-          className={cn(
-            'absolute inset-x-4 top-1/2 -translate-y-1/2 h-80 rounded-full blur-3xl opacity-40 transition-all duration-300 ease-in-out bg-gradient-to-r',
-            card.gradient
-          )}
-        />
-
-        <div className="absolute inset-0 hidden items-center justify-center pointer-events-none sm:flex">
-          {cards.map((c, i) => {
-            const offset = i - activeIndex;
-            if (offset === 0 || Math.abs(offset) > 2) return null;
-
-            const SideIcon = c.icon;
-            return (
-              <motion.div
-                key={c.id}
-                initial={false}
-                animate={{
-                  x: offset * 280,
-                  z: -140,
-                  rotateY: offset * -26,
-                  opacity: 0.32,
-                  scale: 0.84,
-                }}
-                transition={SIDE_UNIFORM_TRANSITION}
-                className="absolute w-[320px] sm:w-[360px]"
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                <div
-                  className={cn(
-                    'h-[380px] rounded-3xl bg-gradient-to-br p-[2px] shadow-[0_28px_70px_rgba(15,23,42,0.55)]',
-                    c.gradient
-                  )}
-                >
-                  <div className="h-full rounded-3xl bg-white p-8 flex flex-col items-center justify-center text-center border border-slate-200">
-                    <SideIcon className="w-12 h-12 text-slate-500 mb-3" />
-                    <p className="font-bold text-slate-800 text-xl">{c.shortTitle ?? c.title}</p>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        <div className="absolute inset-0 flex items-center justify-center">
-          <AnimatePresence mode="sync" initial={false} custom={direction}>
-            <motion.div
-              key={card.id}
-              custom={direction}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.12}
-              dragTransition={{ power: 0.2, timeConstant: 200 }}
-              onDragEnd={handleDragEnd}
-              initial={{
-                opacity: 0,
-                x: direction * 72,
-                rotateY: direction * -16,
-                scale: 0.94,
-                z: -60,
-                filter: 'blur(4px)',
-              }}
-              animate={{
-                opacity: 1,
-                rotateY: 0,
-                scale: 1,
-                x: 0,
-                z: 0,
-                filter: 'blur(0px)',
-              }}
-              exit={{
-                opacity: 0,
-                x: direction * -72,
-                rotateY: direction * 16,
-                scale: 0.94,
-                z: -60,
-                filter: 'blur(4px)',
-              }}
-              transition={UNIFORM_TRANSITION}
-              className="relative w-[min(94vw,560px)] sm:w-[540px] md:w-[620px] cursor-grab active:cursor-grabbing z-10"
-              style={{ transformStyle: 'preserve-3d' }}
-            >
-              <div
-                className={cn(
-                  'rounded-3xl bg-gradient-to-br p-[3px]',
-                  'shadow-[0_40px_110px_rgba(15,23,42,0.62),0_18px_40px_rgba(15,23,42,0.4),0_0_0_1px_rgba(15,23,42,0.18)]',
-                  'ring-1 ring-slate-900/15',
-                  card.gradient
-                )}
-              >
-                <div className="rounded-[22px] bg-white overflow-hidden min-h-[360px] sm:min-h-[500px] md:min-h-[540px] flex flex-col">
-                  <div
-                    className={cn(
-                      'px-5 py-5 sm:px-8 sm:py-7 bg-gradient-to-l text-white relative overflow-hidden',
-                      card.gradient
-                    )}
-                  >
-                    <div className="absolute inset-0 bg-slate-950/35" />
-                    <div className="absolute -top-6 -left-6 w-28 h-28 rounded-full bg-white/10" />
-                    <div className="absolute -bottom-4 -right-4 w-36 h-36 rounded-full bg-white/5" />
-                    <div className="relative flex items-start gap-4">
-                      <div className="p-3.5 rounded-2xl bg-white/20 backdrop-blur shrink-0">
-                        <Icon className="w-9 h-9 text-white drop-shadow" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {card.tag && (
-                          <span className="inline-block text-xs font-semibold bg-white/25 text-white px-2.5 py-0.5 rounded-full mb-1.5">
-                            {card.tag}
-                          </span>
-                        )}
-                        <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm md:text-3xl">
-                          {card.title}
-                        </h3>
-                        {card.subtitle && (
-                          <p className="text-base text-white/95 mt-1 font-medium">{card.subtitle}</p>
-                        )}
-                      </div>
-                      <Sparkles className="w-5 h-5 text-white/80 shrink-0 animate-pulse" />
-                    </div>
-                  </div>
-
-                  <div className="flex-1 px-5 py-4 overflow-y-auto text-right space-y-4 bg-slate-50 sm:px-8 sm:py-6 sm:space-y-5">
-                    <p className="text-slate-800 leading-relaxed text-base md:text-lg font-medium">
-                      {text}
-                    </p>
-
-                    {variant === 'track' && card.advantages && card.advantages.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-emerald-800 font-bold">
-                          <CheckCircle2 className="w-5 h-5 shrink-0" />
-                          <span>יתרונות</span>
-                        </div>
-                        <ul className="space-y-2 pr-1">
-                          {card.advantages.map((item, idx) => (
-                            <li key={idx} className="text-base text-slate-700 flex gap-2 items-start">
-                              <span className="text-emerald-500 mt-1.5 shrink-0">•</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {variant === 'track' && card.risks && card.risks.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-amber-800 font-bold">
-                          <AlertTriangle className="w-5 h-5 shrink-0" />
-                          <span>סיכונים</span>
-                        </div>
-                        <ul className="space-y-2 pr-1">
-                          {card.risks.map((item, idx) => (
-                            <li key={idx} className="text-base text-slate-700 flex gap-2 items-start">
-                              <span className="text-amber-500 mt-1.5 shrink-0">•</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {variant === 'simple' && card.highlights && (
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        {card.highlights.map((h) => (
-                          <span
-                            key={h}
-                            className="text-sm font-semibold px-3.5 py-1.5 rounded-full bg-slate-200 text-slate-800"
-                          >
-                            {h}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+      {/* מונה והתקדמות — מה מוצג עכשיו מתוך כמה */}
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <span className="text-[13px] font-black text-slate-500">
+          {activeIndex + 1} מתוך {cards.length}
+        </span>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+          <motion.div
+            className={cn('h-full rounded-full bg-gradient-to-l', card.gradient)}
+            initial={false}
+            animate={{ width: `${((activeIndex + 1) / cards.length) * 100}%` }}
+            transition={{ type: 'tween', duration: 0.35, ease: 'easeOut' }}
+          />
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4 mt-8">
-        <button
-          type="button"
-          onClick={prev}
-          aria-label="כרטיסיה קודמת"
-          className="p-3 rounded-full bg-white border border-gray-200 shadow-[0_12px_30px_rgba(15,23,42,0.22)] hover:shadow-[0_16px_40px_rgba(15,23,42,0.3)] hover:border-blue-300 hover:bg-blue-50 transition-all"
-        >
-          <ChevronRight className="w-5 h-5 text-blue-700" />
-        </button>
+      {/*
+        הבמה חתוכה: כרטיס באמצע מעבר אינו יכול להיראות מחוצה לה, ולכן שום דבר
+        אינו מציץ מהצדדים ואינו עולה על הכיתובים שסביב.
 
-        <div className="flex items-center gap-2 px-2">
-          {cards.map((c, i) => (
+        הגובה נקבע לפי הכרטיס הארוך ביותר במקטע — עותקים נסתרים של כולם יושבים
+        באותו תא — כך אין קפיצה במעבר בין כרטיסים, וגם אין חלל ריק במקטע שכל
+        כרטיסיו קצרים.
+      */}
+      <div className="relative">
+        <div aria-hidden className="invisible grid">
+          {cards.map((item) => (
+            <div key={item.id} className="col-start-1 row-start-1">
+              <CardFace card={item} variant={variant} />
+            </div>
+          ))}
+        </div>
+
+        <div className="absolute inset-0 overflow-hidden rounded-[28px]">
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
+          <motion.article
+            key={card.id}
+            custom={direction}
+            variants={reduceMotion ? fade : variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: 'tween', duration: reduceMotion ? 0.18 : 0.32, ease: 'easeInOut' }}
+            drag={reduceMotion ? false : 'x'}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.14}
+            onDragEnd={handleDragEnd}
+            className="absolute inset-0 cursor-grab active:cursor-grabbing"
+          >
+            <CardFace card={card} variant={variant} />
+          </motion.article>
+        </AnimatePresence>
+        </div>
+      </div>
+
+      {/*
+        הניווט: מה הקודם ומה הבא — בשם ולא בהצצה חזותית. כך ברור לאן ממשיכים
+        בלי שכרטיס חלקי ישב מעל הטקסט.
+      */}
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <NavButton
+          side="prev"
+          label={previousCard.shortTitle ?? previousCard.title}
+          onClick={prev}
+          disabled={cards.length < 2}
+        />
+
+        <div className="flex items-center gap-2">
+          {cards.map((item, index) => (
             <button
-              key={c.id}
+              key={item.id}
               type="button"
-              onClick={() => goTo(i, i > activeIndex ? 1 : -1)}
-              aria-label={`עבור ל${c.shortTitle ?? c.title}`}
+              onClick={() => goTo(index, index > activeIndex ? 1 : -1)}
+              aria-label={`מעבר ל${item.shortTitle ?? item.title}`}
+              aria-current={index === activeIndex ? 'true' : undefined}
               className={cn(
-                'rounded-full transition-all duration-300 ease-out',
-                i === activeIndex
-                  ? 'w-8 h-2.5 bg-blue-600'
-                  : 'w-2.5 h-2.5 bg-gray-300 hover:bg-blue-300'
+                'h-2.5 rounded-full transition-all duration-300',
+                index === activeIndex ? 'w-8 bg-slate-900' : 'w-2.5 bg-slate-300 hover:bg-slate-400'
               )}
             />
           ))}
         </div>
 
-        <button
-          type="button"
+        <NavButton
+          side="next"
+          label={nextCard.shortTitle ?? nextCard.title}
           onClick={next}
-          aria-label="כרטיסיה הבאה"
-          className="p-3 rounded-full bg-white border border-gray-200 shadow-[0_12px_30px_rgba(15,23,42,0.22)] hover:shadow-[0_16px_40px_rgba(15,23,42,0.3)] hover:border-blue-300 hover:bg-blue-50 transition-all"
-        >
-          <ChevronLeft className="w-5 h-5 text-blue-700" />
-        </button>
+          disabled={cards.length < 2}
+        />
       </div>
 
-      <p className="text-center text-xs text-gray-400 mt-3">
-        גרור את הכרטיסיה או השתמש בחצים • {activeIndex + 1} מתוך {cards.length}
+      <p className="mt-3 text-center text-xs text-slate-400">
+        אפשר לגרור את הכרטיסייה, ללחוץ על החצים או להשתמש במקשי החיצים
       </p>
     </div>
+  );
+}
+
+/** חץ ניווט אחד, עם שם הכרטיסייה שאליה הוא מוביל */
+function NavButton({
+  side,
+  label,
+  onClick,
+  disabled,
+}: {
+  side: 'prev' | 'next';
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const Icon = side === 'prev' ? ChevronRight : ChevronLeft;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={side === 'prev' ? 'כרטיסייה קודמת' : 'כרטיסייה הבאה'}
+      className={cn(
+        'group flex min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-right shadow-sm transition-all',
+        'hover:border-slate-900 hover:shadow-md disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:shadow-sm',
+        side === 'prev' ? 'flex-row' : 'flex-row-reverse'
+      )}
+    >
+      <Icon className="h-5 w-5 shrink-0 text-slate-700" />
+      <span className="hidden min-w-0 sm:block">
+        <span className="block text-[11px] font-bold text-slate-400">
+          {side === 'prev' ? 'הקודם' : 'הבא'}
+        </span>
+        <span className="block max-w-[9rem] truncate text-[13px] font-black text-slate-800">{label}</span>
+      </span>
+    </button>
+  );
+}
+
+
+/**
+ * פני הכרטיס.
+ *
+ * אותו רכיב משמש גם את הכרטיס המונפש וגם את העותקים הנסתרים שקובעים את גובה
+ * הבמה, כדי ששניהם יהיו זהים לחלוטין.
+ */
+function CardFace({ card, variant }: { card: CarouselCardData; variant: 'track' | 'simple' }) {
+  const Icon = card.icon;
+  const text = card.description ?? card.body ?? '';
+
+  return (
+    <div
+      className={cn(
+        'h-full rounded-[28px] bg-gradient-to-br p-[3px] shadow-[0_28px_70px_rgba(15,23,42,0.22)]',
+        card.gradient
+      )}
+    >
+      <div className="flex h-full flex-col overflow-hidden rounded-[25px] bg-white">
+                <header
+                  className={cn(
+                    'relative shrink-0 overflow-hidden bg-gradient-to-l px-5 py-5 text-white sm:px-8 sm:py-6',
+                    card.gradient
+                  )}
+                >
+                  <div className="absolute inset-0 bg-slate-950/30" />
+                  <div className="absolute -left-8 -top-8 h-28 w-28 rounded-full bg-white/10" />
+                  <div className="absolute -bottom-6 -right-6 h-36 w-36 rounded-full bg-white/5" />
+                  <div className="relative flex items-start gap-4">
+                    <span className="shrink-0 rounded-2xl bg-white/20 p-3.5 backdrop-blur">
+                      <Icon className="h-8 w-8 text-white drop-shadow" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {card.tag && (
+                        <span className="mb-1.5 inline-block rounded-full bg-white/25 px-2.5 py-0.5 text-xs font-semibold text-white">
+                          {card.tag}
+                        </span>
+                      )}
+                      <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm md:text-3xl">
+                        {card.title}
+                      </h3>
+                      {card.subtitle && (
+                        <p className="mt-1 text-base font-medium text-white/95">{card.subtitle}</p>
+                      )}
+                    </div>
+                  </div>
+                </header>
+
+                <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 px-5 py-5 text-right sm:space-y-5 sm:px-8 sm:py-6">
+                  <p className="text-base font-medium leading-relaxed text-slate-800 md:text-lg">{text}</p>
+
+                  {variant === 'track' && card.advantages && card.advantages.length > 0 && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                      <div className="mb-2 flex items-center gap-2 font-bold text-emerald-800">
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        <span>יתרונות</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {card.advantages.map((item) => (
+                          <li key={item} className="flex items-start gap-2 text-base text-slate-700">
+                            <span className="mt-1.5 shrink-0 text-emerald-500">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {variant === 'track' && card.risks && card.risks.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                      <div className="mb-2 flex items-center gap-2 font-bold text-amber-800">
+                        <AlertTriangle className="h-5 w-5 shrink-0" />
+                        <span>סיכונים</span>
+                      </div>
+                      <ul className="space-y-2">
+                        {card.risks.map((item) => (
+                          <li key={item} className="flex items-start gap-2 text-base text-slate-700">
+                            <span className="mt-1.5 shrink-0 text-amber-500">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {variant === 'simple' && card.highlights && (
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {card.highlights.map((highlight) => (
+                        <span
+                          key={highlight}
+                          className="rounded-full bg-slate-200 px-3.5 py-1.5 text-sm font-semibold text-slate-800"
+                        >
+                          {highlight}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
   );
 }

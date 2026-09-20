@@ -7,7 +7,7 @@ const flow: DemoFlow = {
   description: 'איך הניירת זורמת בתהליך',
   route: '/demo/plan',
   exitRoute: '/',
-  initialState: { docTitle: 'תדפיס עו״ש 3 חודשים' },
+  initialState: {},
   nextDemos: ['plan-stages', 'client-dashboard', 'client-area'],
   steps: [
     {
@@ -28,19 +28,28 @@ const flow: DemoFlow = {
     {
       id: 'vault-open',
       title: 'התקדמות לפי שלב',
-      caption: 'נפתח את התיק. למעלה ההתקדמות לכל שלב ולכל התהליך; מתחת — כל המסמכים שהועלו, עם צפייה ומחיקה. האישורים העקרוניים משלושה בנקים כבר כאן.',
+      caption: 'נפתח את התיק. למעלה ההתקדמות לכל שלב ולכל התהליך; מתחת — כל המסמכים שהועלו, עם צפייה והורדה. האישורים העקרוניים משלושה בנקים כבר כאן.',
       actions: [{ type: 'click', target: 'vault-button' }],
       target: 'vault-list',
       spotlight: { side: 'top' },
       duration: 6500,
     },
     {
+      id: 'full-list',
+      title: 'מה הבנק ידרוש',
+      caption: 'הרשימה המלאה מותאמת ללווים ולעסקה: תלושים, דפי בנק, אישורי יתרה — מה שכבר הוגש ומה שעדיין חסר. מכל שורה מעלים ישירות את המסמך.',
+      actions: [{ type: 'click', target: 'vault-full-list', optional: true }],
+      target: 'vault-list',
+      spotlight: { side: 'top' },
+      duration: 6500,
+    },
+    {
       id: 'upload',
-      title: 'העלאה בכותרת חופשית',
-      caption: 'מסמך שלא ברשימה? מעלים אותו בכותרת חופשית — הכותרת היא המפתח שבו הוא יישמר ויישויך לשלב הנוכחי. נכתוב: {{docTitle}}.',
+      title: 'העלאת מסמך',
+      caption: 'לוחצים על מסמך חסר — ונפתח חלון ההעלאה עם הכותרת שבה הוא יישמר בתיק. אפשר גם להעלות מסמך בכותרת חופשית משלכם.',
       actions: [
-        { type: 'click', target: 'vault-upload-free' },
-        { type: 'type', target: 'upload-title', value: 'תדפיס עו״ש 3 חודשים', key: 'docTitle' },
+        { type: 'click', target: 'vault-pick-0', optional: true },
+        { type: 'waitFor', target: 'upload-file', optional: true, timeout: 3000 },
       ],
       target: 'upload-file',
       spotlight: { side: 'top' },

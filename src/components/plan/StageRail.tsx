@@ -2,9 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { Check, Lock } from 'lucide-react';
-import { PLAN_STAGES } from '@/lib/mortgage-plan';
-import type { PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { NEW_PLAN_FLOW, flowStages } from '@/lib/mortgage-plan';
+import type { PlanFlow, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import { demoId } from '@/demo/demo-attr';
 
 /**
@@ -17,13 +17,17 @@ export function StageRail({
   current,
   statuses,
   onSelect,
+  flow = NEW_PLAN_FLOW,
 }: {
   current: PlanStageId;
   statuses: Record<PlanStageId, PlanStageStatus>;
   onSelect: (stage: PlanStageId) => void;
+  /** סוג התהליך — קובע אילו שלבים מוצגים, באיזה סדר ובאילו כותרות */
+  flow?: PlanFlow;
 }) {
-  const done = PLAN_STAGES.filter((stage) => statuses[stage] === 'COMPLETED').length;
-  const fill = (done / (PLAN_STAGES.length - 1)) * 100;
+  const stages = flowStages(flow);
+  const done = stages.filter((stage) => statuses[stage] === 'COMPLETED').length;
+  const fill = (done / Math.max(1, stages.length - 1)) * 100;
 
   return (
     <div className="relative rounded-3xl bg-white/10 px-2 py-4 ring-1 ring-white/25 md:px-4">
@@ -35,9 +39,14 @@ export function StageRail({
         transition={{ type: 'spring', stiffness: 110, damping: 22 }}
       />
 
-      <ol className="relative flex snap-x gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:gap-0 md:overflow-visible" {...demoId('plan-stage-rail')}>
-        {PLAN_STAGES.map((stage, index) => {
+      <ol
+        {...demoId('plan-stage-rail')}
+        className="relative flex snap-x gap-3 overflow-x-auto pb-1 md:grid md:gap-0 md:overflow-visible"
+        style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}
+      >
+        {stages.map((stage, index) => {
           const journey = journeyStageFor(stage);
+          const meta = planStageMeta(stage, flow);
           const status = statuses[stage];
           const isCurrent = stage === current;
           const isLocked = status === 'PENDING';
@@ -45,7 +54,10 @@ export function StageRail({
           const Icon = journey.icon;
 
           return (
-            <li key={stage} className="w-[58%] shrink-0 snap-center sm:w-[34%] md:w-auto">
+            <li
+              key={stage}
+              className="w-[58%] shrink-0 snap-center sm:w-[34%] md:w-auto"
+            >
               <button
                 type="button"
                 onClick={() => onSelect(stage)}
@@ -102,7 +114,7 @@ export function StageRail({
                     isCurrent ? 'text-white' : isLocked ? 'text-cyan-50' : 'text-white'
                   }`}
                 >
-                  {journey.shortTitle}
+                  {meta.shortTitle}
                 </span>
               </button>
             </li>

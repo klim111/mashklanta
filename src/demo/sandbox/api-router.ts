@@ -110,6 +110,7 @@ export class DemoApiRouter {
   private documents: PlanDocumentView[] = demoDocuments();
   private profile = demoProfile();
   private rateRequests: Record<string, unknown>[] = [];
+  private equityPlan: Record<string, unknown> | null = null;
   private orders: Record<string, unknown>[] = [];
   private counter = 0;
   /** כל בקשה שנענתה — לבדיקות ולתצוגת "מה נחסם" */
@@ -164,6 +165,20 @@ export class DemoApiRouter {
     if (path === '/api/platform/access') return json(demoPlatformAccess());
     if (path === '/api/platform/checkout') return json({ ok: true, demo: true });
     if (path === '/api/advisor-leads') return json({ ok: true, demo: true });
+
+    // ─── תוכנית ההון העצמי (נשמרת בזיכרון בלבד) ───
+    if (path === '/api/equity-plans') {
+      if (method === 'PUT' || method === 'POST') {
+        const body = await this.body(init, input);
+        this.equityPlan = { ...body, updatedAt: nowIso() };
+        return json(this.equityPlan);
+      }
+      if (method === 'DELETE') {
+        this.equityPlan = null;
+        return json({ ok: true });
+      }
+      return json(this.equityPlan);
+    }
 
     // ─── תהליכי משכנתא ───
     if (parts[1] === 'plans') {

@@ -130,6 +130,10 @@ model User {
    * מסמכים תומכים שהמשתמש העלה לתהליכי המשכנתא שלו
    */
   planDocuments      PlanDocument[] @relation("PlanDocumentOwner")
+  /**
+   * המועדים והסימונים שהלקוח קבע למשימות ולהמלצות באזור האישי
+   */
+  taskStates         ClientTaskState[] @relation("ClientTaskStateOwner")
 
   // ─────────────────────── גישה בתשלום לפלטפורמה ───────────────────────
   /**
@@ -144,6 +148,10 @@ model User {
    * המשימות המתוכננות שהלקוח הוסיף לעצמו — מתוך השלבים או מלוח השנה
    */
   clientTasks      ClientTask[]      @relation("ClientTaskOwner")
+  /**
+   * תכנון ההון העצמי וההוצאות הנלוות שהלקוח בנה בכלי תכנון ההוצאות
+   */
+  equityPlan       EquityPlan?       @relation("EquityPlanOwner")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -567,6 +575,31 @@ model PlanDocument {
   @@unique([planId, key])
   @@index([clientId])
   @@index([ownerId])
+}
+
+/**
+ * מועד וסימון "בוצע" למשימה או להמלצה באזור האישי של הלקוח.
+ *
+ * המשימות עצמן נגזרות מהנתונים (`buildClientTasks`) ואינן נשמרות; מה שנשמר
+ * כאן הוא רק מה שהלקוח קבע בעצמו — מתי לבצע, והאם סימן שביצע. המפתח הוא
+ * מזהה המשימה כפי שנגזר, כך שהמועד נשאר צמוד למשימה גם בטעינה הבאה.
+ */
+model ClientTaskState {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("ClientTaskStateOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  key   String
+  dueAt DateTime?
+  /**
+   * סומן כבוצע — משמש בעיקר להמלצות שהלקוח מסמן בעצמו
+   */
+  doneAt DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 /**
@@ -1218,4 +1251,45 @@ model ClientTask {
   @@index([ownerId, status])
   @@index([planId, stage])
   @@index([ownerId, dueAt])
+}
+
+/**
+ * תכנון ההון העצמי וההוצאות הנלוות לרכישת דירה — הפלט של כלי תכנון ההוצאות.
+ *
+ * ללקוח יש תכנון אחד, שנשמר ברגע שהוא נרשם ומתעדכן בכל שינוי בכלי. עמודות
+ * הסיכום משוכפלות מתוך הטבלה כדי שהדאשבורד יציג את תמונת המצב בלי לפרש JSON,
+ * והשורות המלאות — כולל מועד התשלום של כל הוצאה — יושבות ב-expensesJson וזורמות
+ * ללוח השנה הראשי של האזור האישי.
+ */
+model EquityPlan {
+  id      String @id @default(cuid())
+  ownerId String @unique
+  owner   User   @relation("EquityPlanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  propertyPrice Float     @default(0)
+  /**
+   * תאריך היעד לרכישה, שממנו נגזרים מועדי התשלום המוצעים
+   */
+  targetDate    DateTime?
+  /**
+   * פרופיל המימון: first-home / replacement / investment / any-purpose
+   */
+  financingProfile String @default("first-home")
+  /**
+   * העסקה מבוצעת בעזרת מתווך — מפעיל את ברירת המחדל בשורת התיווך
+   */
+  usesBroker       Boolean @default(false)
+
+  // תמונת מצב של הסיכום בזמן השמירה
+  minEquityRequired Float @default(0)
+  totalExpenses     Float @default(0)
+  totalRequired     Float @default(0)
+
+  /**
+   * שורות ההוצאות המלאות, כפי שהכלי מכיר אותן
+   */
+  expensesJson Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

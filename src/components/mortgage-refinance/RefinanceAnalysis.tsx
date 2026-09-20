@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Layers,
   RefreshCcw,
+  Save,
   SlidersHorizontal,
   LayoutDashboard,
 } from 'lucide-react';
@@ -85,6 +86,12 @@ import {
   volatilityBand,
   RISK_META,
 } from '@/components/mortgage-refinance/riskAnalysis';
+import { RefinanceSaveDialog } from '@/components/mortgage-refinance/RefinanceSaveDialog';
+import type {
+  RefinanceDraftState,
+  RefinanceSaveOutcome,
+  RefinanceSavePayload,
+} from '@/components/mortgage-refinance/refinancePlan';
 import { demoId } from '@/demo/demo-attr';
 
 interface RefinanceAnalysisProps {
@@ -94,6 +101,17 @@ interface RefinanceAnalysisProps {
   isGuest?: boolean;
   /** הריביות הממוצעות בשוק לפי בנק ישראל, להשוואה מול הריביות שהוזנו */
   market?: MarketRates | null;
+  /** תמהיל למיחזור שכבר נשמר — הפאנל נפתח עם הערכים שלו, לעריכה */
+  initial?: RefinanceDraftState | null;
+  /**
+   * "שמור מצב נוכחי כתמהיל למיחזור". כשקיים, הדאשבורד מציג את הכפתור, ואישור
+   * הסיכום מעביר את התמהיל לשמירה — לתהליך באזור האישי.
+   */
+  onSave?: (payload: RefinanceSavePayload) => Promise<RefinanceSaveOutcome>;
+  /** מכלי המיחזור — אחרי השמירה ממשיכים לתהליך; מתוך התהליך — נשארים בו */
+  saveContext?: 'tool' | 'plan';
+  /** חלון הסיכום נסגר אחרי שמירה שהצליחה */
+  onSaveDone?: () => void;
 }
 
 const joinNames = (tracks: MortgageTrack[]) => tracks.map((t) => t.name).join(', ');
@@ -333,6 +351,51 @@ function draftsFromTracks(tracks: MortgageTrack[]): Record<string, TrackDraft> {
   return Object.fromEntries(tracks.map((track) => [track.id, draftFromTrack(track)]));
 }
 
+/** הטיוטה של מסלול, כפי שנשמרה בתמהיל למיחזור */
+function draftFromSavedTrack(track: MortgageTrack): TrackDraft {
+  return {
+    interestRate: track.interestRate,
+    months: clampRefiTermMonths(Math.round(track.years * 12)),
+    amount: track.amount,
+    type: track.type,
+    amortizationType: track.amortizationType ?? 'spitzer',
+  };
+}
+
+interface PanelState {
+  goal: RefinanceGoal;
+  scope: RefinanceScope;
+  selectedTrackId: string | null;
+  addedTracks: MortgageTrack[];
+  drafts: Record<string, TrackDraft>;
+}
+
+/**
+ * מצב הפתיחה של הפאנל: מה שיש היום, או — כשפותחים תמהיל שמור לעריכה — מה
+ * שנשמר. מסלול שנוסף במיחזור ואינו במשכנתא הנוכחית חוזר כמסלול שנוסף בפאנל.
+ */
+function seedPanelState(currentMix: MortgageMix, initial?: RefinanceDraftState | null): PanelState {
+  const drafts = draftsFromTracks(currentMix.tracks);
+  if (!initial) {
+    return { goal: 'reduce_payment', scope: 'whole', selectedTrackId: null, addedTracks: [], drafts };
+  }
+  const currentIds = new Set(currentMix.tracks.map((track) => track.id));
+  const addedTracks: MortgageTrack[] = [];
+  initial.refinancedTracks.forEach((track) => {
+    drafts[track.id] = draftFromSavedTrack(track);
+    if (!currentIds.has(track.id)) addedTracks.push(track);
+  });
+  const selectedTrackId =
+    initial.selectedTrackId && currentIds.has(initial.selectedTrackId) ? initial.selectedTrackId : null;
+  return {
+    goal: initial.goal,
+    scope: selectedTrackId ? initial.scope : 'whole',
+    selectedTrackId,
+    addedTracks,
+    drafts,
+  };
+}
+
 /** המסלול כפי שהוא אחרי החלת הערכים מהפאנל */
 function applyDraft(track: MortgageTrack, draft?: TrackDraft, totalAmount = 0): MortgageTrack {
   if (!draft) return track;
@@ -352,34 +415,42 @@ export function RefinanceAnalysis({
   onEdit,
   isGuest = false,
   market = null,
+  initial = null,
+  onSave,
+  saveContext = 'tool',
+  onSaveDone,
 }: RefinanceAnalysisProps) {
   const baseCalc = useMemo<MortgageCalculation>(() => calculateMortgageMix(currentMix), [currentMix]);
 
+  const seed = useMemo(() => seedPanelState(currentMix, initial), [currentMix, initial]);
   /** מטרת המיחזור. ברירת המחדל היא הקטנת ההחזר החודשי — מה שרוב הלקוחות מחפשים */
-  const [goal, setGoal] = useState<RefinanceGoal>('reduce_payment');
+  const [goal, setGoal] = useState<RefinanceGoal>(seed.goal);
   /** נרשם כשהמטרה התחלפה אוטומטית בעקבות הארכת תקופה */
   const [goalSwitched, setGoalSwitched] = useState(false);
   /** מיחזור כל המשכנתא, או מסלול אחד בלבד */
-  const [scope, setScope] = useState<RefinanceScope>('whole');
-  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [scope, setScope] = useState<RefinanceScope>(seed.scope);
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(seed.selectedTrackId);
   /** מסלולים שנוספו בפאנל על הסכום שלא שובץ */
-  const [addedTracks, setAddedTracks] = useState<MortgageTrack[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, TrackDraft>>(() =>
-    draftsFromTracks(currentMix.tracks)
-  );
+  const [addedTracks, setAddedTracks] = useState<MortgageTrack[]>(seed.addedTracks);
+  const [drafts, setDrafts] = useState<Record<string, TrackDraft>>(seed.drafts);
   /** המסלול שפתוח לפירוט בדאשבורד */
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
+  /** סיכום התמהיל למיחזור לפני השמירה */
+  const [saveOpen, setSaveOpen] = useState(false);
 
   const gate = useRefinanceGuestGate(isGuest);
 
   useEffect(() => {
-    setGoal('reduce_payment');
+    const next = seedPanelState(currentMix, initial);
+    setGoal(next.goal);
     setGoalSwitched(false);
-    setScope('whole');
-    setSelectedTrackId(null);
+    setScope(next.scope);
+    setSelectedTrackId(next.selectedTrackId);
     setExpandedTrackId(null);
-    setAddedTracks([]);
-    setDrafts(draftsFromTracks(currentMix.tracks));
+    setAddedTracks(next.addedTracks);
+    setDrafts(next.drafts);
+    // הפאנל מתאפס רק כשהמשכנתא עצמה מתחלפת — לא בכל שינוי בטיוטות
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMix.id, currentMix.tracks.length]);
 
   const singleMode = scope === 'single';
@@ -583,6 +654,36 @@ export function RefinanceAnalysis({
         Math.abs(expandedTrack.refined.totalInterest - expandedTrack.base.totalInterest) > 1
       : false;
 
+  /**
+   * שמירה אפשרית רק כשיש מה לשמור: תמהיל ששונה מהמצב היום, וכל הקרן משובצת
+   * למסלולים — תמהיל חלקי אינו משכנתא שאפשר להגיש לבנק.
+   */
+  const savePayload: RefinanceSavePayload | null = onSave
+    ? {
+        goal,
+        scope,
+        selectedTrackId: singleMode ? selectedTrackId : null,
+        currentMix,
+        refinancedMix: refinedMix,
+        baseCalc,
+        refinedCalc,
+      }
+    : null;
+  const saveBlocked = !changed
+    ? 'שנו לפחות פרמטר אחד בפאנל כדי לשמור תמהיל למיחזור'
+    : !singleMode && unallocated >= MIN_TRACK_AMOUNT
+      ? 'שבצו את כל הקרן למסלולים לפני השמירה'
+      : null;
+
+  const openSave = () => {
+    if (isGuest) {
+      gate.openPrompt();
+      return;
+    }
+    if (saveBlocked) return;
+    setSaveOpen(true);
+  };
+
   return (
     <div className="space-y-3" dir="rtl">
       {/* ===== פאנל השליטה: כותרת, מטרה והיקף, ואז המסלולים ===== */}
@@ -687,14 +788,28 @@ export function RefinanceAnalysis({
               <LayoutDashboard className="h-4 w-4 text-emerald-600" />
               דאשבורד התוצאות
             </p>
-            <GoalProgressChip
-              label={progress.label}
-              delta={progress.delta}
-              tradeoff={progress.tradeoff}
-              achieved={progress.achieved}
-              regressed={progress.regressed}
-              changed={changed}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <GoalProgressChip
+                label={progress.label}
+                delta={progress.delta}
+                tradeoff={progress.tradeoff}
+                achieved={progress.achieved}
+                regressed={progress.regressed}
+                changed={changed}
+              />
+              {onSave && (
+                <Button
+                  size="sm"
+                  onClick={openSave}
+                  disabled={!isGuest && Boolean(saveBlocked)}
+                  title={saveBlocked ?? undefined}
+                  className="h-8 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {initial ? 'שמור את התמהיל למיחזור' : 'שמור מצב נוכחי כתמהיל למיחזור'}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* שורת המצב הנוכחי, ומתחתיה — אחרי שינוי — המצב שלאחר המיחזור */}
@@ -837,6 +952,17 @@ export function RefinanceAnalysis({
       </details>
 
       <GuestLimitDialog open={gate.promptOpen} onClose={gate.closePrompt} />
+
+      {onSave && (
+        <RefinanceSaveDialog
+          open={saveOpen}
+          onOpenChange={setSaveOpen}
+          payload={savePayload}
+          onConfirm={onSave}
+          context={saveContext}
+          onClosedAfterSave={onSaveDone}
+        />
+      )}
     </div>
   );
 }

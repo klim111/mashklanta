@@ -39,16 +39,47 @@ const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
  * איסוף פרטי הבקשה המלא — הלווים, ההכנסות, החשבונות והמסמכים — נמצא אצל
  * היועץ, ולא כאן.
  */
+/** הכותרות של המסך — במיחזור פנימי מדובר בבקשת מיחזור לבנק אחד, לא באישור עקרוני */
+export interface SelfPreApprovalCopy {
+  mixTitle: string;
+  mixDescription: string;
+  banksTitle: string;
+  banksDescription: string;
+}
+
+const DEFAULT_COPY: SelfPreApprovalCopy = {
+  mixTitle: 'התמהיל שנבחר לבקשה',
+  mixDescription:
+    'זה המבנה שנבחר בשלב בניית התמהיל, ועליו מוגשת הבקשה לאישור עקרוני. הוא אינו ניתן לעריכה כאן — לשינוי, חזרו לשלב בניית התמהיל.',
+  banksTitle: 'הגשת הבקשה לבנקים',
+  banksDescription:
+    'פנו לכל בנק שתרצו להתמחר מולו — הקישור פותח את אזור המשכנתאות הדיגיטלי שלו. את האישור העקרוני שתקבלו העלו כאן, והבנק ייפתח לתמחור בשלב המכרז.',
+};
+
 export function SelfPreApproval({
   data,
   planId,
   onChange,
+  banks,
+  copy = DEFAULT_COPY,
 }: {
   data: PlanData;
   planId: string;
   onChange: (next: PreApprovalData) => void;
+  /**
+   * הבנקים שמוצגים להגשה. במיחזור פנימי זה הבנק שבו המשכנתא מנוהלת בלבד;
+   * בלי הגבלה — כל הבנקים.
+   */
+  banks?: readonly string[];
+  copy?: SelfPreApprovalCopy;
 }) {
   const value = data.APPLICATIONS;
+  const bankList = useMemo(() => {
+    if (!banks || banks.length === 0) return PRE_APPROVAL_BANKS;
+    const filtered = PRE_APPROVAL_BANKS.filter((info) => banks.includes(info.bank));
+    // בנק שאין לו קישור הגשה ברשימה — מציגים את כולם, כדי שלא יישאר מסך ריק
+    return filtered.length > 0 ? filtered : PRE_APPROVAL_BANKS;
+  }, [banks]);
   const finalMixKey = data.MIX.mixKey;
   const { saved, ready: mixesReady } = useSavedMixes({ planId });
   const { documents, ready, error, busyKey, upload, remove } = usePlanDocuments(planId);
@@ -166,8 +197,8 @@ export function SelfPreApproval({
             נעול לשינויים
           </PanelBadge>
         }
-        title="התמהיל שנבחר לבקשה"
-        description="זה המבנה שנבחר בשלב בניית התמהיל, ועליו מוגשת הבקשה לאישור עקרוני. הוא אינו ניתן לעריכה כאן — לשינוי, חזרו לשלב בניית התמהיל."
+        title={copy.mixTitle}
+        description={copy.mixDescription}
       >
         {finalMix ? (
           <>
@@ -193,8 +224,8 @@ export function SelfPreApproval({
             <PanelBadge tone="emerald">{approvedCount} אישורים התקבלו</PanelBadge>
           ) : undefined
         }
-        title="הגשת הבקשה לבנקים"
-        description="פנו לכל בנק שתרצו להתמחר מולו — הקישור פותח את אזור המשכנתאות הדיגיטלי שלו. את האישור העקרוני שתקבלו העלו כאן, והבנק ייפתח לתמחור בשלב המכרז."
+        title={copy.banksTitle}
+        description={copy.banksDescription}
       >
         {error && (
           <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-[13px] font-bold text-rose-700">
@@ -202,8 +233,8 @@ export function SelfPreApproval({
           </p>
         )}
 
-        <div className="grid gap-3 md:grid-cols-2">
-          {PRE_APPROVAL_BANKS.map((info) => (
+        <div className={`grid gap-3 ${bankList.length > 1 ? 'md:grid-cols-2' : 'md:max-w-xl md:mx-auto'}`}>
+          {bankList.map((info) => (
             <BankCard
               key={info.slug}
               info={info}

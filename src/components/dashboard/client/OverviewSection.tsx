@@ -8,9 +8,11 @@ import {
   CalendarDays,
   Calculator,
   Check,
+  UserCheck,
   Compass,
   Eye,
   FileText,
+  FolderOpen,
   Gavel,
   Layers,
   ListChecks,
@@ -21,9 +23,10 @@ import {
   Search,
   Trash2,
   UserRound,
+  Wallet,
   X,
 } from 'lucide-react';
-import { journeyStageFor, PLAN_JOURNEY_STAGES } from '@/data/platform/planStages';
+import { journeyStageFor } from '@/data/platform/planStages';
 import { formatDate, formatTime, relativeDayLabel } from '@/lib/advisor-crm';
 import { planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
@@ -32,9 +35,11 @@ import { MortgageEntry } from '@/components/service-flow/MortgageEntry';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
+import { EquityOverviewCard } from './EquityOverviewCard';
 import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
-import { TaskItem } from './TaskItem';
+import { TaskGroupsList } from './TaskGroups';
+import { PlanRecommendations } from './PlanRecommendations';
 import { DashCard } from './ui';
 import type { ClientDashboardData } from './useClientDashboard';
 
@@ -64,7 +69,19 @@ export function OverviewSection({
   onDetailPlan: (planId: string | null) => void;
   onNavigate: (section: DashboardSection, day?: string) => void;
 }) {
-  const { plansState, mixesState, tasks, events, requests, advisorStages, ready } = data;
+  const {
+    plansState,
+    mixesState,
+    tasks,
+    events,
+    requests,
+    advisorStages,
+    advisorNotices,
+    equityState,
+    ready,
+    taskStates,
+    scheduleTask,
+  } = data;
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
@@ -196,24 +213,16 @@ export function OverviewSection({
   const tasksCard = (
     <DashCard
       demoId="dash-tasks-card"
-      title="המשימות הבאות שלי"
+      title="המשימות שלי"
       icon={<ListChecks className="h-5 w-5 text-blue-600" />}
       action={<GoLink onClick={() => onNavigate('agenda')}>לכל המשימות</GoLink>}
     >
-      {tasks.length === 0 ? (
-        <div className="flex items-center justify-center gap-3 py-5 text-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            <Check className="h-5 w-5" />
-          </span>
-          <p className="text-[15px] font-bold text-slate-700">אין משימות פתוחות</p>
-        </div>
-      ) : (
-        <div className="grid gap-2 md:grid-cols-2">
-          {tasks.slice(0, 4).map((task) => (
-            <TaskItem key={task.id} task={task} compact onOpen={go} />
-          ))}
-        </div>
-      )}
+      <TaskGroupsList
+        tasks={tasks}
+        compact
+        onOpen={(task) => go(task.target)}
+        onSchedule={scheduleTask}
+      />
     </DashCard>
   );
 
@@ -237,7 +246,17 @@ export function OverviewSection({
           icon={<Search className="h-4 w-4" />}
           label="בדיקת היתכנות"
         />
+        <QuickAction
+          onClick={() => onNavigate('documents')}
+          icon={<FolderOpen className="h-4 w-4" />}
+          label="תיק המסמכים שלי"
+        />
         <QuickAction href="/mortgage-refinance" icon={<RefreshCw className="h-4 w-4" />} label="מיחזור משכנתא" />
+        <QuickAction
+          onClick={() => onNavigate('expenses')}
+          icon={<Wallet className="h-4 w-4" />}
+          label="תכנון הוצאות והון עצמי"
+        />
         <QuickAction
           onClick={() => onNavigate('settings')}
           icon={<UserRound className="h-4 w-4" />}
@@ -250,7 +269,6 @@ export function OverviewSection({
   /** שורת הפירוט: התמהיל של התהליך שנבחר, דוחפת את שאר השורות מטה */
   const detailRow = detailPlan && detailMix && (
     <DashCard
-      demoId="dash-mix-card"
       title="התמהיל של המשכנתא שנבחרה"
       icon={<Layers className="h-5 w-5 text-blue-600" />}
       action={
@@ -291,11 +309,54 @@ export function OverviewSection({
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DashCard
           demoId="dash-mortgages-card"
-          title="המשכנתאות שלי — מצב נוכחי"
+          title="המשכנתא שלי"
           icon={<Compass className="h-5 w-5 text-blue-600" />}
           className="scroll-mt-24"
           id="my-mortgages"
         >
+          {/*
+            מה שהיועץ מטפל בו — מעל כל השאר בכרטיס, כי זה מה שקורה עכשיו בלי
+            שהלקוח צריך לעשות דבר. שלב שנסגר נשאר כאן בנוסח «סיים לטפל», עם
+            השלב שהלקוח עומד בו כעת.
+          */}
+          {advisorNotices.length > 0 && (
+            <ul className="mb-3 space-y-2">
+              {advisorNotices.map((notice) => (
+                <li key={notice.id}>
+                  <Link
+                    href={notice.href}
+                    className={`flex flex-wrap items-center gap-2 rounded-2xl border-2 px-4 py-3 text-right transition-colors ${
+                      notice.done
+                        ? 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-400'
+                        : 'border-violet-200 bg-violet-50/70 hover:border-violet-400'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white ${
+                        notice.done ? 'bg-emerald-600' : 'bg-violet-600'
+                      }`}
+                    >
+                      {notice.done ? <Check className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-black text-slate-900">
+                        {notice.done
+                          ? `היועץ סיים לטפל בשלב ${notice.stageNumber} · ${notice.stageTitle}`
+                          : `היועץ מטפל בשלב ${notice.stageNumber} · ${notice.stageTitle}`}
+                      </span>
+                      <span className="block text-[13px] font-medium text-slate-600">
+                        {notice.done
+                          ? `אתם עכשיו בשלב ${notice.currentStageNumber} · ${notice.currentStageTitle}`
+                          : 'אין מה לעשות מצדכם עכשיו. כשהיועץ יסיים או יקבע פגישה, זה יופיע כאן.'}
+                        {summaries.length > 1 ? ` · ${notice.planLabel}` : ''}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+
           {summaries.length === 0 ? (
             /*
               עדיין אין משכנתא או מיחזור פעילים — נקודת ההתחלה יושבת כאן, בתוך
@@ -341,8 +402,12 @@ export function OverviewSection({
             </div>
           )}
 
-          {/* פתיחת תהליך נוסף — רק כשכבר יש משכנתא; אחרת הבחירה כבר במסך */}
-          {summaries.length > 0 && (
+          {/*
+            ללקוח שכבר פתח משכנתא, מה שחשוב מתחת לשורה שלה הוא מה כדאי לעשות
+            עכשיו — ולא כפתור לפתיחת משכנתא נוספת. פתיחת תהליך נוסף נשארת
+            זמינה משאלת הפתיחה שבתפריט הצד ומאזור המשכנתאות.
+          */}
+          {summaries.length === 0 ? (
             <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
               <button
                 type="button"
@@ -353,6 +418,12 @@ export function OverviewSection({
                 משכנתא נוספת — מה תרצו לעשות?
               </button>
             </div>
+          ) : (
+            <PlanRecommendations
+              plans={active}
+              states={taskStates.states}
+              onDone={(key, done) => taskStates.setDone(key, done)}
+            />
           )}
         </DashCard>
 
@@ -361,10 +432,17 @@ export function OverviewSection({
 
       {detailRow}
 
+      {/*
+        העמודה הרחבה היא עמודת המשכנתא — ומתחתיה הפעולות המהירות; העמודה
+        הצרה היא לוח השנה — ומתחתיו המשימות, שהמועד שלהן נקבע בלוח.
+      */}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        {tasksCard}
         {quickActions}
+        {tasksCard}
       </div>
+
+      {/* תוצרי כלי תכנון ההוצאות — זמינים כאן ברגע שהתכנון נשמר בחשבון */}
+      <EquityOverviewCard plan={equityState.plan} onOpen={() => onNavigate('expenses')} />
 
       <AdvisorCta variant="row" />
       <MortgageEntry
@@ -471,12 +549,16 @@ function PlanStatusRow({
       </div>
       <p className="mt-0.5 text-[13px] text-slate-500">{planCreatedLabel(summary.createdAt)}</p>
 
-      <ol className="mt-4 grid grid-cols-5 gap-1">
-        {PLAN_JOURNEY_STAGES.map((stage, index) => {
+      <ol
+        className="mt-4 grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${summary.stageIds.length}, minmax(0, 1fr))` }}
+      >
+        {summary.stageIds.map((stageId, index) => {
+          const stage = journeyStageFor(stageId);
           const status = summary.stages[index];
           const current = index + 1 === summary.stageNumber;
           return (
-            <li key={stage.id} className="flex flex-col items-center gap-1.5 text-center">
+            <li key={stageId} className="flex flex-col items-center gap-1.5 text-center">
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-black ${
                   status === 'COMPLETED'
@@ -489,7 +571,7 @@ function PlanStatusRow({
                 {status === 'COMPLETED' ? <Check className="h-4 w-4" /> : index + 1}
               </span>
               <span className={`text-[13px] font-bold leading-tight ${current ? 'text-slate-900' : 'text-slate-500'}`}>
-                {stage.shortTitle}
+                {summary.stageTitles[index]}
               </span>
             </li>
           );

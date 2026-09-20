@@ -4,22 +4,29 @@ import {
   PLAN_STAGES,
   analysisFromPlanning,
   emptyPlanData,
+  nextPlanStage,
+  parseRefinanceMixData,
   parseStageData,
+  planFlowOf,
   planProgress,
   planSnapshot,
   propertyTypeForDeal,
   stageIsComplete,
-  stageIndex,
 } from './mortgage-plan';
 import type {
   AnalysisData,
   MixData,
   PlanData,
+  PlanKind,
   PlanStageDataMap,
   PlanStageId,
   PlanStageStatus,
   PlanStatus,
+  RefinanceMode,
 } from './mortgage-plan';
+import { saveMix } from './mixes';
+import { computeMix } from '@/components/mortgage-advisor/engine';
+import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { decryptFinancials } from './client-financials';
 import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
@@ -68,6 +75,10 @@ export interface PlanView {
   id: string;
   name: string;
   status: PlanStatus;
+  /** משכנתא חדשה או מיחזור — נגזר מנתוני שלב התמהיל */
+  kind: PlanKind;
+  /** במיחזור: פנימי, חיצוני, או null כל עוד לא נבחר */
+  refinanceMode: RefinanceMode | null;
   currentStage: PlanStageId;
   progress: number;
   propertyValue: number | null;
@@ -100,11 +111,14 @@ function collectData(row: PlanRow): PlanData {
 function toView(row: PlanRow): PlanView {
   const data = collectData(row);
   const byStage = new Map(row.stages.map((stage) => [stage.stage as PlanStageId, stage]));
+  const flow = planFlowOf(data);
 
   return {
     id: row.id,
     name: row.name,
     status: row.status as PlanStatus,
+    kind: flow.kind,
+    refinanceMode: flow.refinanceMode,
     currentStage: row.currentStage as PlanStageId,
     progress: row.progress,
     propertyValue: row.propertyValue,
@@ -338,7 +352,7 @@ export async function saveStage({
     if (!stageIsComplete(stage, current)) {
       return { ok: false, blocked: true, plan: await getPlanForUser(userId, planId) ?? undefined };
     }
-    await closeStage(planId, stage);
+    await closeStage(planId, stage, current);
   }
 
   await refreshPlan(planId);
@@ -356,14 +370,14 @@ async function loadData(planId: string): Promise<PlanData> {
   return data;
 }
 
-/** סגירת שלב ופתיחת הבא אחריו */
-async function closeStage(planId: string, stage: PlanStageId): Promise<void> {
+/** סגירת שלב ופתיחת הבא אחריו — לפי סדר השלבים של סוג התהליך */
+async function closeStage(planId: string, stage: PlanStageId, data: PlanData): Promise<void> {
   await prisma.mortgagePlanStage.update({
     where: { planId_stage: { planId, stage } },
     data: { status: 'COMPLETED', completedAt: new Date() },
   });
 
-  const next = PLAN_STAGES[stageIndex(stage) + 1];
+  const next = nextPlanStage(stage, planFlowOf(data));
   if (next) {
     await prisma.mortgagePlanStage.updateMany({
       where: { planId, stage: next, status: 'PENDING' },
@@ -543,6 +557,7 @@ export function mixDataFromSaved(saved: SavedMix, notes = '', asFinal = false): 
     notes,
     isFinal: asFinal || Boolean(saved.isFinal),
     finalLocked: asFinal || Boolean(saved.locked),
+    refinance: null,
   };
 }
 
@@ -605,6 +620,82 @@ export async function createPlanFromMix(
   return (await getPlanForUser(userId, plan.id)) ?? plan;
 }
 
+export interface CreateRefinancePlanInput {
+  /** נתוני המיחזור כפי שכלי המיחזור בנה אותם — נבדקים כאן לפני השמירה */
+  refinance: unknown;
+  /** התמהיל למיחזור כתמהיל של כלי התכנון, כדי שיישמר בתמהילים של התהליך */
+  mix: WorkspaceMix;
+}
+
+/**
+ * פתיחת תהליך מיחזור מכלי המיחזור.
+ *
+ * התהליך נפתח כששלב התמהיל כבר מלא: המשכנתא הנוכחית, התמהיל שנבנה למיחזור
+ * וסיכומיו נכנסים לשלב, והתמהיל נשמר גם כתמהיל של התהליך — כדי ששלבי ההגשה
+ * והאימות ימצאו אותו בדיוק כמו תמהיל סופי של משכנתא חדשה. הבחירה בין מיחזור
+ * פנימי לחיצוני נעשית אחר כך, בתוך התהליך.
+ */
+export async function createRefinancePlan(
+  userId: string,
+  input: CreateRefinancePlanInput
+): Promise<PlanView | null> {
+  const refinance = parseRefinanceMixData(input.refinance);
+  if (!refinance) return null;
+  // התהליך נפתח בלי בחירת סוג — זה המסך הראשון שנפתח בתוכו
+  refinance.mode = null;
+
+  const client = await prisma.client.findFirst({ where: { userId }, select: { id: true } });
+  const summary = computeMix(input.mix).summary;
+
+  const row = await prisma.mortgagePlan.create({
+    data: {
+      ownerId: userId,
+      clientId: client?.id ?? null,
+      name: `מיחזור משכנתא · ${refinance.bank}`,
+      currentStage: 'MIX',
+      mortgageAmount: refinance.refinancedMix.totalAmount,
+      stages: {
+        create: PLAN_STAGES.map((stage) => ({
+          stage,
+          status: stage === 'MIX' ? 'IN_PROGRESS' : 'PENDING',
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  const saved = await saveMix({
+    ownerId: userId,
+    mix: { ...input.mix, id: refinance.refinancedMix.id },
+    clientId: client?.id ?? null,
+    planId: row.id,
+  });
+
+  const mix: MixData = {
+    ...emptyPlanData().MIX,
+    mixRecordId: saved.recordId ?? null,
+    mixKey: refinance.refinancedMix.id,
+    mixName: refinance.refinancedMix.name || 'התמהיל למיחזור',
+    totalAmount: refinance.refinancedMix.totalAmount,
+    monthlyPayment: summary.monthlyPayment,
+    averageRate: summary.averageRate,
+    totalInterest: summary.totalInterest,
+    totalPaid: summary.totalPaid,
+    months: summary.months,
+    isFinal: true,
+    finalLocked: false,
+    refinance,
+  };
+
+  await prisma.mortgagePlanStage.update({
+    where: { planId_stage: { planId: row.id, stage: 'MIX' } },
+    data: { dataJson: mix as unknown as Prisma.InputJsonValue },
+  });
+
+  await refreshPlan(row.id);
+  return getPlanForUser(userId, row.id);
+}
+
 /**
  * חישוב מחדש של ההתקדמות ועמודות הסיכום מתוך נתוני השלבים.
  *
@@ -629,7 +720,7 @@ async function refreshPlan(planId: string): Promise<void> {
     statuses[id] = row.status as PlanStageStatus;
   });
 
-  const progress = planProgress(statuses);
+  const progress = planProgress(statuses, planFlowOf(data));
   const snapshot = planSnapshot(data);
   const done = progress === 100;
 

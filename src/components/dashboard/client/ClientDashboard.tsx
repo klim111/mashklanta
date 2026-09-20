@@ -9,12 +9,14 @@ import {
   CalendarDays,
   Calculator,
   Compass,
+  FolderOpen,
   Gavel,
   Home as HomeIcon,
   LayoutDashboard,
   LogOut,
   Settings,
   UserRound,
+  Wallet,
 } from 'lucide-react';
 import { isDashboardSection } from '@/lib/client-agenda';
 import type { DashboardSection } from '@/lib/client-agenda';
@@ -28,6 +30,8 @@ import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
+import { ClientDocumentsSection } from './ClientDocumentsSection';
+import { ExpensesSection } from './ExpensesSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
@@ -54,6 +58,22 @@ const SECTIONS: SectionMeta[] = [
     title: 'משימות ולוח שנה',
     description: 'כל מה שממתין לכם, הפגישות עם היועץ והמועדים החשובים בתהליך.',
     icon: CalendarDays,
+  },
+  {
+    id: 'expenses',
+    label: 'תכנון הוצאות',
+    title: 'תכנון הוצאות',
+    description:
+      'ההון העצמי וכל ההוצאות הנלוות עד קבלת המפתח, על ציר זמן אחד. מועדי התשלום נכנסים ללוח השנה שלכם.',
+    icon: Wallet,
+  },
+  {
+    id: 'documents',
+    label: 'תיק המסמכים',
+    title: 'תיק המסמכים שלי',
+    description:
+      'כל המסמכים שהבנק ידרוש, לפי הפרופיל ובעלות הנכס — מה כבר הוגש, מה חסר, והעלאה במקום אחד.',
+    icon: FolderOpen,
   },
   {
     id: 'rate-requests',
@@ -215,10 +235,18 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               <UserRound className="h-4 w-4 text-white" />
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">{displayName}</span>
+            {/* יציאה מהאזור האישי חוזרת לעמוד הראשי; היציאה מהחשבון נשארת לצדה */}
+            <Link
+              href="/"
+              title="לעמוד הראשי"
+              className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <HomeIcon className="h-4 w-4" />
+            </Link>
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: '/' })}
-              title="יציאה"
+              title="יציאה מהחשבון"
               className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
             >
               <LogOut className="h-4 w-4" />
@@ -239,10 +267,17 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             </Link>
             <div className="flex items-center gap-1">
               <span className="max-w-[9rem] truncate text-sm font-semibold text-white/80">{displayName}</span>
+              <Link
+                href="/"
+                title="לעמוד הראשי"
+                className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                <HomeIcon className="h-4 w-4" />
+              </Link>
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: '/' })}
-                title="יציאה"
+                title="יציאה מהחשבון"
                 className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <LogOut className="h-4 w-4" />
@@ -306,6 +341,18 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
               {section === 'agenda' && (
                 <AgendaSection data={data} initialDay={agendaDay} onNavigate={navigate} />
+              )}
+
+              {section === 'expenses' && (
+                <div {...demoId('dash-expenses')}>
+                  <ExpensesSection />
+                </div>
+              )}
+
+              {section === 'documents' && (
+                <div {...demoId('dash-documents')}>
+                  <ClientDocumentsSection data={data} />
+                </div>
               )}
 
               {section === 'rate-requests' && (
