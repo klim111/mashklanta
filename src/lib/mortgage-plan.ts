@@ -2038,7 +2038,6 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       break;
     }
     case 'AUCTION':
-      if (!data.AUCTION.mode) missing.push('בחירה בין תמחור עצמי לליווי יועץ');
       missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
       break;
     case 'SIGNING': {

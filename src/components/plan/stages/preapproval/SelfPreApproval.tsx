@@ -211,7 +211,7 @@ export function SelfPreApproval({
         ) : (
           <p className="rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-900">
             {mixesReady
-              ? 'עדיין לא נבחר תמהיל סופי. חזרו לשלב בניית התמהיל ובחרו את התמהיל שאיתו פונים לבנקים.'
+              ? 'השלימו מילוי פרטים בשלב «בניית תמהיל»: בחרו שם את התמהיל הסופי שאיתו פונים לבנקים, והוא יופיע כאן.'
               : 'טוען את התמהיל שנבחר…'}
           </p>
         )}

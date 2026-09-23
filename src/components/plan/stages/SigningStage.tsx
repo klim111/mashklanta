@@ -2,8 +2,9 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ArrowLeft, Check, PenLine, ShieldCheck } from 'lucide-react';
-import { SIGNING_CHECKS, winningOffer } from '@/lib/mortgage-plan';
-import type { BankOffer, PlanData, SigningData, SigningScreen } from '@/lib/mortgage-plan';
+import { NEW_PLAN_FLOW, SIGNING_CHECKS, winningOffer } from '@/lib/mortgage-plan';
+import type { BankOffer, PlanData, PlanFlow, SigningData, SigningScreen } from '@/lib/mortgage-plan';
+import { planStageMeta } from '@/data/platform/planStages';
 import {
   DateField,
   Metric,
@@ -13,7 +14,7 @@ import {
   formatPercent,
   formatShekel,
 } from '../ui';
-import { StageOverview } from './signing/StageOverview';
+import { StageIntro } from '../StageIntro';
 import { ScenarioPicker, resolveSelection } from './signing/ScenarioPicker';
 import type { ScenarioSelection } from './signing/ScenarioPicker';
 import { DocumentsChecklist } from './signing/DocumentsChecklist';
@@ -33,30 +34,22 @@ const reveal = {
 /**
  * שלב 5 — ההכנה לחתימה על תיק המשכנתא והחתימה עצמה.
  *
- * בכניסה לשלב מוצג עמוד ההסבר, כמו מסך הפתיחה של הפרופיל הפיננסי: מה מהות
- * השלב, מה מקבלים בביצוע עצמי ומה כולל הליווי. אחריו, בביצוע עצמי, הלקוח בוחר
- * את תרחיש הרכישה שלו — וממנו נגזרת רשימת המסמכים שהבנק ידרוש. לצידה מוצג
- * התמהיל המתומחר מהמכרז, שמולו מאמתים את הצעת המשכנתא הסופית של הבנק.
+ * בכניסה לשלב מוצג עמוד ההסבר — מסך אחד, כמו לפני כל שלב — ומיד "התחילו את
+ * השלב". אחריו הלקוח בוחר את תרחיש הרכישה שלו — וממנו נגזרת רשימת המסמכים
+ * שהבנק ידרוש. לצידה מוצג התמהיל המתומחר מהמכרז, שמולו מאמתים את הצעת המשכנתא
+ * הסופית של הבנק.
  */
 export function SigningStage({
   data,
   planId,
   onChange,
-  onRequestAdvisor,
-  advisorBusy = false,
-  skipOverview = false,
+  flow = NEW_PLAN_FLOW,
 }: {
   data: PlanData;
   planId: string;
   onChange: (next: SigningData) => void;
-  /** בקשת ליווי חינמית ליועץ, מתוך מסך ההסבר */
-  onRequestAdvisor?: () => void;
-  advisorBusy?: boolean;
-  /**
-   * פתיחה ישירה של השלב, בלי מסך ההסבר שמציע לבחור בין ביצוע עצמי לליווי.
-   * כך במיחזור: הבחירה כבר נעשתה, והפנייה ליועץ זמינה מהכפתור הצף בכל מסך.
-   */
-  skipOverview?: boolean;
+  /** סוג התהליך — לכותרות של עמוד ההסבר ולהפניה לשלב המכרז */
+  flow?: PlanFlow;
 }) {
   const value = data.SIGNING;
   const signed = data.AUCTION.signedMix;
@@ -147,24 +140,18 @@ export function SigningStage({
 
   const done = SIGNING_CHECKS.filter((check) => value.checklist[check.key]).length;
 
-  const screen = value.screen || (skipOverview ? 'documents' : 'overview');
-
-  if (screen === 'overview' && !skipOverview) {
-    return (
-      <StageOverview
-        onStart={() => go('documents')}
-        onAdvisor={onRequestAdvisor}
-        advisorBusy={advisorBusy}
-      />
-    );
-  }
+  const screen = value.screen || 'overview';
 
   return (
     <div className="space-y-5">
       <ScreenRail current={screen} dealLabel={scenario ? deal?.short ?? null : null} onSelect={go} />
 
       <AnimatePresence mode="wait" initial={false}>
-        {screen === 'documents' ? (
+        {screen === 'overview' ? (
+          <motion.div key="overview" {...reveal}>
+            <StageIntro stage="SIGNING" flow={flow} onStart={() => go('documents')} />
+          </motion.div>
+        ) : screen === 'documents' ? (
           <motion.div key="documents" {...reveal} className="space-y-5">
             <ScenarioPicker
               value={{
@@ -261,6 +248,19 @@ export function SigningStage({
             integer={false}
           />
         </div>
+
+        {/* בלי הצעה שנבחרה במכרז אין מול מה לאמת — השדות נשארים ריקים עם הפניה */}
+        {!winner && (
+          <p className="mt-5 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-[15px] leading-relaxed text-amber-950">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <span>
+              <span className="font-black">
+                השלימו מילוי פרטים בשלב «{planStageMeta('AUCTION', flow).shortTitle}».
+              </span>{' '}
+              כשתבחרו שם את ההצעה שהולכים איתה לחתימה, היא תופיע כאן להשוואה מול החוזה.
+            </span>
+          </p>
+        )}
 
         {winner && (
           <div className="mt-5">

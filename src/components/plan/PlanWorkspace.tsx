@@ -34,6 +34,7 @@ import type {
   AnalysisData,
   AuctionData,
   MixData,
+  PlanFlow,
   PlanStageId,
   PlanStageStatus,
   PreApprovalData,
@@ -48,11 +49,10 @@ import { StageTasksPanel } from './tasks/StageTasksPanel';
 import { VaultButton } from './documents/VaultButton';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import { StageRail } from './StageRail';
-import { StageLockedPreview } from './StageLockedPreview';
+import { StageIntro } from './StageIntro';
 import { formatShekel } from './ui';
 import { AdvisorStageNotes } from './AdvisorStageNotes';
 import { AdvisorStageSummary } from './advisor/AdvisorStageSummary';
-import { StageGate } from './StageGate';
 import { useAdvisorOrders } from './advisor/useAdvisorOrders';
 import { useClientMeetings, meetingForStage } from './advisor/useClientMeetings';
 import { isAdvisorStage } from '@/lib/advisor-orders';
@@ -61,7 +61,6 @@ import { MixStage } from './stages/MixStage';
 import { PreApprovalStage } from './stages/PreApprovalStage';
 import { AuctionStage } from './stages/AuctionStage';
 import { SigningStage } from './stages/SigningStage';
-import { StageOverview as SigningStageOverview } from './stages/signing/StageOverview';
 import { RefinanceMixStage } from './stages/refinance/RefinanceMixStage';
 import { RefinanceModeChoice } from './stages/refinance/RefinanceModeChoice';
 import { AdvisorHelpButton } from './stages/analysis/AdvisorHelpButton';
@@ -79,18 +78,19 @@ const saveLabels: Record<SaveState, { label: string; className: string }> = {
 /**
  * שולחן העבודה של התהליך.
  *
+ * כל שלב פתוח מהסרגל שלמעלה, גם כשהשלבים שלפניו עוד לא הושלמו: הלקוח משלים
+ * את השלבים בסדר שהוא בוחר, ושדה שנשען על שלב פתוח מוצג ריק עם הפניה לשלב
+ * שבו משלימים אותו.
+ *
  * ב-`tour` הוא רץ על תהליך הדגמה: מסכי ההסבר צפים מעל הכלי, "נסו את השלב"
  * פותח אותו לשלושה ערכים ואז ההסבר חוזר, והסרגל למעלה זז יחד עם הדפים.
  */
 export function PlanWorkspace({
   planId,
   tour = false,
-  peek = false,
 }: {
   planId: string;
   tour?: boolean;
-  /** כל שלב פתוח להצצה בלי נעילה לפי שלבים קודמים — למסכי ההדגמה */
-  peek?: boolean;
 }) {
   const {
     plan,
@@ -166,8 +166,8 @@ export function PlanWorkspace({
    */
   const [detailStages, setDetailStages] = useState<PlanStageId[]>([]);
   /**
-   * השלבים שהלקוח בחר לעבור בעצמו ("נתח לבד"). נשמר בדפדפן לפי התהליך, כדי
-   * שהשער לא יופיע שוב בכל טעינה אחרי שכבר נכנס לעבוד.
+   * השלבים שהלקוח כבר התחיל, אחרי עמוד ההסבר. נשמר בדפדפן לפי התהליך, כדי
+   * שעמוד ההסבר לא יופיע שוב בכל טעינה אחרי שכבר נכנס לעבוד.
    */
   const [enteredStages, setEnteredStages] = useState<PlanStageId[]>([]);
   /** השלב שעבורו נשלחת כעת בקשת ליווי חינמית */
@@ -198,7 +198,7 @@ export function PlanWorkspace({
       try {
         window.localStorage.setItem(enteredKey, JSON.stringify(next));
       } catch {
-        // אחסון חסום — נמשיך בלי לשמור, השער יופיע שוב בטעינה הבאה
+        // אחסון חסום — נמשיך בלי לשמור, ההסבר יופיע שוב בטעינה הבאה
       }
       return next;
     });
@@ -234,15 +234,8 @@ export function PlanWorkspace({
     const requested = params.get('stage');
     if (mix) setFocusMixKey(mix);
     if (requested && isPlanStage(requested)) {
-      const map = {} as Record<PlanStageId, PlanStageStatus>;
-      PLAN_STAGES.forEach((stageId) => {
-        map[stageId] = plan.stages.find((item) => item.stage === stageId)?.status ?? 'PENDING';
-      });
-      if (unfinishedPrerequisites(requested, map, planFlowOf(plan.data)).length > 0) {
-        setViewingStage(requested);
-      } else {
-        void goToStage(requested);
-      }
+      setViewingStage(requested);
+      void goToStage(requested);
     }
     // נקרא פעם אחת כשהתהליך נטען, כדי לפתוח תמהיל סופי מהדאשבורד
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -286,16 +279,22 @@ export function PlanWorkspace({
   const modePending = isRefinance && flow.refinanceMode === null;
 
   const stage = viewingStage ?? plan.currentStage;
-  const unfinished = unfinishedPrerequisites(stage, statuses, flow);
+  /*
+    שלבים קודמים שעוד לא הושלמו אינם נועלים את השלב. מה שנשאר מהם הוא ההפניה:
+    אם חסרים בהם פרטים, מעל הכלי מופיעה שורה שאומרת איפה משלימים אותם.
+  */
+  const openPrerequisites = tour
+    ? []
+    : unfinishedPrerequisites(stage, statuses, flow).filter(
+        (prior) => missingForStage(prior, plan.data).length > 0
+      );
   /** מסך שרק מציצים בו בסיור (האישור העקרוני): כל לחיצה מחזירה להסבר */
   const lookOnly = tour && !tourOpen && !tourAllowsTry(stage);
-  // בסיור כל שלב פתוח להצצה — אין נעילה לפי שלבים קודמים
-  const isPreview = !tour && !peek && unfinished.length > 0;
   const journey = journeyStageFor(stage);
   const meta = planStageMeta(stage, flow);
   const StageIcon = journey.icon;
   const index = stageIndex(stage, flow);
-  const canComplete = !isPreview && stageIsComplete(stage, plan.data);
+  const canComplete = stageIsComplete(stage, plan.data);
   const missing = missingForStage(stage, plan.data);
   const isDone = statuses[stage] === 'COMPLETED';
   const previous = previousPlanStage(stage, flow);
@@ -308,16 +307,6 @@ export function PlanWorkspace({
     stage !== 'ANALYSIS' ||
     (Boolean(plan.data.ANALYSIS.intent) &&
       (plan.data.ANALYSIS.profileScreen || 'overview') === 'report');
-  /**
-   * מסך "על השלב" של החתימה נפתח גם למי שקפץ לשלב לפני שסגר את קודמיו: הוא
-   * רק מסביר מה השלב עושה, ולכן הוא נשאר פעיל מעל התוכן הנעול.
-   */
-  const signingOverviewOpen =
-    stage === 'SIGNING' &&
-    // במיחזור אין מסך "איך תרצו לעבור את השלב" — השלב נפתח ישר
-    !isRefinance &&
-    (plan.data.SIGNING.screen || 'overview') === 'overview';
-
   /*
     שלב שהלקוח הזמין ליווי עליו ושילם עובר לתצוגת סיכום: דאשבורד אחד קצר
     במקום הכלים, עם כפתור "ראה פרטים" שפותח את השלב המלא כמו שהוא.
@@ -328,15 +317,8 @@ export function PlanWorkspace({
   */
   const advisorRun = isAdvisorStage(orders.orders, stage);
   const showingDetails = detailStages.includes(stage);
-  /*
-    בשלב הפרופיל ההסבר על השלב מוצג גם כשיועץ מטפל בו, ומסך "היועץ מטפל בשלב
-    זה" בא מיד אחריו — בתוך ההסבר, ולא מעליו. "פרטים נוספים" פותח את השלב המלא.
-  */
-  const analysisAdvisorIntro = stage === 'ANALYSIS' && advisorRun && !showingDetails;
-  const showAdvisorSummary = advisorRun && !analysisAdvisorIntro;
-  const advisorSummaryOnly = advisorRun && !showingDetails && !analysisAdvisorIntro;
-  const showStageFooter =
-    !tour && !isPreview && analysisOnLastSubstep && !analysisAdvisorIntro && (canComplete || isDone);
+  const advisorSummaryOnly = advisorRun && !showingDetails;
+  const showStageFooter = !tour && analysisOnLastSubstep && (canComplete || isDone);
   const advisorName =
     orders.orders.find(
       (order) =>
@@ -346,33 +328,24 @@ export function PlanWorkspace({
   const stageMeeting = meetingForStage(meetings, stage);
 
   /*
-    שער השלב: לפני שנכנסים לעבוד, כל שלב (למעט הפרופיל והחתימה, שיש להם מסך
-    "על השלב" משלהם) מציע לבחור בין ניתוח עצמי לבין ליווי יועץ. השער מוצג רק
-    כשעדיין לא נבחרה דרך, השלב אינו מטופל על ידי יועץ, וטרם נסגר.
+    עמוד ההסבר: לפני כל שלב, למעט כלי בניית התמהיל, מופיע עמוד הסבר אחד עם
+    כפתור "התחילו את השלב". בפרופיל ובחתימה הוא התת-שלב הראשון ("על השלב")
+    ולכן הם מציגים אותו בעצמם; כאן הוא מוצג לאישור העקרוני ולמכרז. אין בו
+    שאלה אם לעשות את השלב לבד או עם יועץ — הפנייה ליועץ זמינה מהכפתור הצף.
   */
-  /*
-    במיחזור אין שער שלב: הלקוח שכבר בנה תמהיל למיחזור ובחר את אופן הביצוע לא
-    נשאל בכל שלב מחדש אם לעשות אותו לבד או עם יועץ. השלב נפתח ישר, והפנייה
-    ליועץ זמינה בכל מסך דרך הכפתור הצף.
-  */
-  const needsGate =
+  const needsIntro =
     !tour &&
-    !isPreview &&
     !advisorRun &&
     !isDone &&
-    !isRefinance &&
-    stage !== 'ANALYSIS' &&
-    stage !== 'SIGNING' &&
+    (stage === 'APPLICATIONS' || stage === 'AUCTION') &&
     !enteredStages.includes(stage);
 
   const toggleStageDetails = () =>
     setDetailStages((current) =>
       current.includes(stage) ? current.filter((item) => item !== stage) : [...current, stage]
     );
-  const openStageDetails = () =>
-    setDetailStages((current) => (current.includes(stage) ? current : [...current, stage]));
 
-  /** מסך "היועץ מטפל בשלב זה" — מעל השלב, או בסוף ההסבר בשלב הפרופיל */
+  /** מסך "היועץ מטפל בשלב זה" — מעל השלב */
   const advisorSummaryCard = advisorRun ? (
     <AdvisorStageSummary
       stage={stage}
@@ -395,11 +368,11 @@ export function PlanWorkspace({
       void goToStage(nextStage);
       return;
     }
-    if (unfinishedPrerequisites(nextStage, statuses, flow).length > 0) {
-      setViewingStage(nextStage);
-      return;
-    }
-    setViewingStage(null);
+    /*
+      המעבר מיידי ואינו תלוי בשלבים הקודמים. השלב שנבחר נשמר גם בשרת, כדי
+      שהכניסה הבאה לתהליך תחזור אליו.
+    */
+    setViewingStage(nextStage);
     void goToStage(nextStage);
   };
 
@@ -702,11 +675,6 @@ export function PlanWorkspace({
                         הושלם
                       </span>
                     )}
-                    {isPreview && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">
-                        תצוגה מקדימה
-                      </span>
-                    )}
                   </div>
                   <h2 className="text-lg font-black text-slate-900 md:text-xl">{meta.title}</h2>
                   <p className="text-sm text-slate-500">{meta.hint}</p>
@@ -719,45 +687,28 @@ export function PlanWorkspace({
             {!tour && <AdvisorStageNotes stage={stage} />}
 
             {/* המשימות המתוכננות של השלב — לכל לקוח עם תהליך פתוח */}
-            {!tour && !isPreview && !advisorSummaryOnly && (
+            {!tour && !advisorSummaryOnly && !needsIntro && (
               <div {...demoId('plan-stage-tasks')}>
                 <StageTasksPanel planId={plan.id} stage={stage} />
               </div>
             )}
 
-            {showAdvisorSummary && <div className="mb-4">{advisorSummaryCard}</div>}
+            {advisorRun && <div className="mb-4">{advisorSummaryCard}</div>}
 
-            {isPreview && (
-              <StageLockedPreview
-                stage={stage}
-                unfinished={unfinished}
-                onSelectStage={selectStage}
-                flow={flow}
-              />
+            {/* עמוד ההסבר של השלב — מסך אחד, ומיד "התחילו את השלב" */}
+            {!advisorSummaryOnly && needsIntro && (
+              <StageIntro stage={stage} flow={flow} onStart={() => enterStage(stage)} />
             )}
 
             {/*
-              מסך "על השלב" של החתימה, כשהגיעו אליו לפני שנסגרו קודמיו: ההסבר
-              עצמו פעיל, והתוכן הנעול שמתחתיו מוחלף בו עד שבוחרים להתחיל.
+              שלב שנפתח לפני שקודמיו הושלמו: הכלי פתוח במלואו, והשורה הזו אומרת
+              באיזה שלב משלימים את הפרטים שהשדות הריקים נשענים עליהם.
             */}
-            {isPreview && signingOverviewOpen && (
-              <SigningStageOverview
-                onStart={() =>
-                  updateStage('SIGNING', { ...plan.data.SIGNING, screen: 'documents' })
-                }
-                onAdvisor={() => void requestFreeHandoff('SIGNING')}
-                advisorBusy={handoffBusy === 'SIGNING'}
-              />
-            )}
-
-            {/* שער השלב: הבחירה בין ניתוח עצמי לבין ליווי יועץ, זהה בכל השלבים */}
-            {!advisorSummaryOnly && needsGate && (
-              <StageGate
-                stage={stage}
-                onSelfService={() => enterStage(stage)}
-                onAdvisor={() => void requestFreeHandoff(stage)}
-                busy={handoffBusy === stage}
+            {!advisorSummaryOnly && !needsIntro && openPrerequisites.length > 0 && (
+              <PrerequisiteNotice
+                stages={openPrerequisites}
                 flow={flow}
+                onSelectStage={selectStage}
               />
             )}
 
@@ -765,21 +716,9 @@ export function PlanWorkspace({
               כשיועץ מטפל בשלב, מה שמוצג הוא הסיכום בלבד. "הצג פרטים" פותח את
               השלב המלא — אותם כלים, אותם מסכים, בלי שום הסתרה.
             */}
-            {!advisorSummaryOnly && !needsGate && !(isPreview && signingOverviewOpen) && (
-            <div className={isPreview ? 'relative' : undefined} {...demoId('plan-stage-content')}>
-              {isPreview && (
-                <div
-                  aria-hidden
-                  className="absolute inset-0 z-10 rounded-3xl bg-slate-50/10"
-                />
-              )}
-              <div
-                className={
-                  isPreview
-                    ? 'pointer-events-none select-none opacity-55 grayscale-[70%]'
-                    : undefined
-                }
-              >
+            {!advisorSummaryOnly && !needsIntro && (
+            <div {...demoId('plan-stage-content')}>
+              <div>
             {usesExistingTool ? (
               <div className="space-y-5">
                 {stage === 'ANALYSIS' && (
@@ -787,14 +726,10 @@ export function PlanWorkspace({
                     data={plan.data}
                     planId={plan.id}
                     planName={plan.propertyAddress || plan.name}
-                    onRequestAdvisor={() => void requestFreeHandoff('ANALYSIS')}
-                    advisorBusy={handoffBusy === 'ANALYSIS'}
-                    advisorSummary={analysisAdvisorIntro ? advisorSummaryCard : undefined}
-                    onShowDetails={openStageDetails}
                     onChange={(next: AnalysisData) => updateStage('ANALYSIS', next)}
                     onChangeSigning={(next: SigningData) => updateStage('SIGNING', next)}
                     refinance={isRefinance}
-                    hideAdvisorButton={isRefinance}
+                    flow={flow}
                   />
                 )}
                 {/*
@@ -870,9 +805,7 @@ export function PlanWorkspace({
                     data={plan.data}
                     planId={plan.id}
                     onChange={(next: SigningData) => updateStage('SIGNING', next)}
-                    onRequestAdvisor={() => void requestFreeHandoff('SIGNING')}
-                    advisorBusy={handoffBusy === 'SIGNING'}
-                    skipOverview={isRefinance}
+                    flow={flow}
                   />
                 )}
 
@@ -893,14 +826,19 @@ export function PlanWorkspace({
         וכך השניים אינם עולים זה על זה.
       */}
       {/*
-        פנייה ליועץ — בכל מסך, בכל שלב ובכל סוג מיחזור. בשאר התהליכים הכפתור
-        מוצג בתוך השלב עצמו (שלב הפרופיל), ולכן הוא לא מוכפל כאן.
+        פנייה ליועץ — בכל מסך, בכל שלב ובכל סוג תהליך. זו הדרך היחידה להביא
+        יועץ לשלב: אין לפני השלבים שאלה אם לעשות אותם לבד או עם יועץ.
       */}
-      {isRefinance && !tour && !advisorRun && (
+      {!tour && !advisorRun && !modePending && (
         <AdvisorHelpButton
+          key={stage}
           stageLabel={`שלב ${index + 1} מתוך ${stages.length} · ${meta.shortTitle}`}
           title="היעזרו ביועץ משכנתא בשלב הזה"
-          description={`יועץ משכלנתא ייקח על עצמו את ${meta.title} במיחזור שלכם: יבחן את מה שכבר הזנתם, ישלים את מה שחסר וילווה אתכם מול הבנק. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.`}
+          description={
+            stage === 'ANALYSIS' && !isRefinance
+              ? undefined
+              : `יועץ משכלנתא ייקח על עצמו את ${meta.title}${isRefinance ? ' במיחזור שלכם' : ''}: יבחן את מה שכבר הזנתם, ישלים את מה שחסר וילווה אתכם מול הבנק. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.`
+          }
           onRequestAdvisor={() => void requestFreeHandoff(stage)}
           busy={handoffBusy === stage}
         />
@@ -928,6 +866,44 @@ export function PlanWorkspace({
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * ההפניה לשלבים הקודמים שעוד חסרים בהם פרטים. השלב עצמו פתוח במלואו; השדות
+ * שנשענים על הפרטים האלה מוצגים ריקים עד שמשלימים אותם.
+ */
+function PrerequisiteNotice({
+  stages,
+  flow,
+  onSelectStage,
+}: {
+  stages: PlanStageId[];
+  flow: PlanFlow;
+  onSelectStage: (stage: PlanStageId) => void;
+}) {
+  const names = stages.map((item) => `«${planStageMeta(item, flow).shortTitle}»`).join(' ו');
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3">
+      <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+      <p className="min-w-0 flex-1 text-[15px] leading-relaxed text-amber-950">
+        <span className="font-black">השלימו מילוי פרטים בשלב {names}.</span> עד אז השדות שנשענים
+        עליהם מוצגים כאן ריקים — אבל אפשר לעבוד בשלב הזה כבר עכשיו.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {stages.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onSelectStage(item)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3.5 py-2 text-[13px] font-black text-amber-900 transition-colors hover:border-amber-500"
+          >
+            לשלב {stageIndex(item, flow) + 1} · {planStageMeta(item, flow).shortTitle}
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

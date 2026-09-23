@@ -73,7 +73,7 @@ const flow: DemoFlow = {
         { type: 'key', key: 'Escape' },
         { type: 'wait', ms: 400 },
         { type: 'click', target: 'plan-stage-APPLICATIONS' },
-        { type: 'click', target: 'plan-stage-gate-self', optional: true },
+        { type: 'click', target: 'plan-stage-intro-start', optional: true },
       ],
       target: 'plan-stage-title',
       spotlight: { side: 'bottom' },

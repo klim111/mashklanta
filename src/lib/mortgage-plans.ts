@@ -390,7 +390,10 @@ async function closeStage(planId: string, stage: PlanStageId, data: PlanData): P
   }
 }
 
-/** מעבר ידני בין שלבים — רק לשלב שכבר נפתח */
+/**
+ * מעבר ידני בין שלבים — לכל שלב, גם כשהשלבים שלפניו עוד לא הושלמו. הלקוח
+ * משלים את השלבים בסדר שהוא בוחר; שלב שנפתח כך לראשונה עובר ל"בעבודה".
+ */
 export async function setCurrentStage(
   userId: string,
   planId: string,
@@ -402,7 +405,13 @@ export async function setCurrentStage(
     where: { planId_stage: { planId, stage } },
     select: { status: true },
   });
-  if (!row || row.status === 'PENDING') return null;
+  if (!row) return null;
+  if (row.status === 'PENDING') {
+    await prisma.mortgagePlanStage.update({
+      where: { planId_stage: { planId, stage } },
+      data: { status: 'IN_PROGRESS' },
+    });
+  }
 
   await prisma.mortgagePlan.update({ where: { id: planId }, data: { currentStage: stage } });
   return getPlanForUser(userId, planId);
