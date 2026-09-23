@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarClock,
@@ -8,6 +9,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  FileSignature,
   FileUp,
   Landmark,
   ListChecks,
@@ -17,6 +19,7 @@ import {
 } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/advisor-crm';
 import { STAGE_TASK_TEMPLATES } from '@/lib/client-tasks';
+import { AUTHORIZATION_TASK_KEY, authorizationLettersHref } from '@/lib/authorization-letters';
 import type { ClientTaskView } from '@/lib/client-tasks';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
@@ -187,6 +190,15 @@ function TaskRow({
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {!isDone && task.templateKey === AUTHORIZATION_TASK_KEY && task.planId && (
+          <Link
+            href={authorizationLettersHref(task.planId)}
+            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-2xs font-black text-white hover:bg-blue-700"
+          >
+            <FileSignature className="h-3.5 w-3.5" />
+            פתיחה
+          </Link>
+        )}
         {!isDone && task.kind === 'DOCUMENT' && onUpload && (
           <button
             type="button"

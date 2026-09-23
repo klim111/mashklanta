@@ -33,6 +33,7 @@ import type { AgendaTarget, CalendarEvent, ClientTask, DashboardSection } from '
 import { AddTaskDialog } from '@/components/plan/tasks/AddTaskDialog';
 import { DocumentUploadDialog } from '@/components/plan/documents/DocumentUploadDialog';
 import type { ClientTaskView } from '@/lib/client-tasks';
+import { AUTHORIZATION_TASK_KEY } from '@/lib/authorization-letters';
 import { ClientCalendar, DayList, eventTone } from './ClientCalendar';
 import type { CalendarView } from './ClientCalendar';
 import { TaskItem } from './TaskItem';
@@ -390,7 +391,11 @@ function DetailPanel({
               onClick={() => onGo(task.target)}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white hover:bg-blue-700"
             >
-              {ownTask ? 'לשלב בתהליך' : 'לביצוע המשימה'}
+              {ownTask?.templateKey === AUTHORIZATION_TASK_KEY
+                ? 'פתיחת כתבי ההסמכה'
+                : ownTask
+                  ? 'לשלב בתהליך'
+                  : 'לביצוע המשימה'}
               <ArrowLeft className="h-4 w-4" />
             </button>
             {backButton}
@@ -477,7 +482,7 @@ function DetailPanel({
               href={event.target.href}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white hover:bg-blue-700"
             >
-              לשלב בתהליך
+              {ownTask?.templateKey === AUTHORIZATION_TASK_KEY ? 'פתיחת כתבי ההסמכה' : 'לשלב בתהליך'}
               <ArrowLeft className="h-4 w-4" />
             </Link>
           )}
