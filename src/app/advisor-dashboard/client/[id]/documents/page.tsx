@@ -1,15 +1,23 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, ArrowRight, FolderOpen } from 'lucide-react';
+import { AlertTriangle, ArrowRight, FileSignature, FileText, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientDocumentsPanel } from '@/components/advisor/ClientDocumentsPanel';
 import { ClientUploadedDocuments } from '@/components/advisor/ClientUploadedDocuments';
+import { ClientAuthorizationLetters } from '@/components/advisor/ClientAuthorizationLetters';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
+
+type DocumentsTab = 'documents' | 'authorization';
+
+const TABS: Array<{ id: DocumentsTab; label: string; icon: typeof FileText }> = [
+  { id: 'documents', label: 'מסמכים', icon: FileText },
+  { id: 'authorization', label: 'כתבי הסמכה חתומים', icon: FileSignature },
+];
 
 /**
  * תיק המסמכים של הלקוח, בעמוד משלו.
@@ -21,6 +29,12 @@ export default function ClientDocumentsPage() {
   const params = useParams<{ id: string }>();
   const clientId = typeof params?.id === 'string' ? params.id : '';
   const router = useRouter();
+  const [tab, setTab] = useState<DocumentsTab>('documents');
+
+  // ?tab=authorization פותח ישר את כתבי ההסמכה
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'authorization') setTab('authorization');
+  }, []);
   const { data: session, status } = useSession();
   const { client, loading, error, patch, setDocumentStatus } = useClientDetail(clientId);
 
@@ -74,15 +88,37 @@ export default function ClientDocumentsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-5">
-        <div className="space-y-4">
-          <ClientUploadedDocuments clientId={clientId} />
-          <ClientDocumentsPanel
-            documents={client.documents}
-            stage={client.stage}
-            onStageChange={(stage) => void patch({ stage })}
-            onStatusChange={(documentId, next) => void setDocumentStatus(documentId, next)}
-          />
+        <div role="tablist" className="mb-4 inline-flex gap-1 rounded-2xl border border-slate-200 bg-white p-1">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-button font-black transition-colors ${
+                tab === id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
         </div>
+
+        {tab === 'documents' ? (
+          <div className="space-y-4">
+            <ClientUploadedDocuments clientId={clientId} />
+            <ClientDocumentsPanel
+              documents={client.documents}
+              stage={client.stage}
+              onStageChange={(stage) => void patch({ stage })}
+              onStatusChange={(documentId, next) => void setDocumentStatus(documentId, next)}
+            />
+          </div>
+        ) : (
+          <ClientAuthorizationLetters clientId={clientId} clientName={client.name} />
+        )}
       </main>
     </div>
   );

@@ -12,6 +12,7 @@ import { journeyStages } from '@/data/platform/journey';
 import { GuestStart } from '@/components/service-flow/GuestStart';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
+import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
 import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
@@ -256,7 +257,7 @@ export default function Home() {
               משלמים על מה שלקחתם — ותמיד את המחיר הנמוך
             </h2>
             <p className="mx-auto max-w-2xl text-base text-slate-100 md:text-lg">
-              גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
+              גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
               המלאה כלולה בכל הזמנת ליווי — לשלב אחד או לכל הדרך.
             </p>
           </div>
@@ -266,7 +267,7 @@ export default function Home() {
               <div className="text-sm font-bold text-cyan-200">עצמאי / היברידי</div>
               <div className="my-2 text-4xl font-black text-white">₪{PLATFORM_PROCESS_PRICE}</div>
               <div className="text-sm text-slate-100">
-                לתהליך משכנתא, {PLATFORM_ACCESS_DAYS} יום גישה מלאה. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים ליועץ משכלנתא
+                לתהליך משכנתא, גישה מלאה עד {PLATFORM_ACCESS_DAYS} יום. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים ליועץ משכלנתא
               </div>
             </Link>
             <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
@@ -275,6 +276,7 @@ export default function Home() {
               <div className="text-sm text-slate-100">עד לחתימה הסופית, כולל גישה מלאה לפלטפורמה</div>
             </Link>
           </div>
+          <PlatformBillingNotes tone="dark" className="mx-auto mb-8 max-w-4xl" />
           <PricingModelStrip compact tone="dark" className="mb-10" />
           <div className="text-center">
             <Button asChild size="lg" className="w-full bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900 sm:w-auto">

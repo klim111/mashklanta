@@ -3,7 +3,9 @@ import { journeyStages, stagesTotalPrice } from './journey';
 import {
   FULL_SERVICE_PRICE,
   PLATFORM_ACCESS_DAYS,
+  PLATFORM_MAX_OPEN_PROCESSES,
   PLATFORM_PROCESS_PRICE,
+  PLATFORM_TYPICAL_TOTAL,
   PRICING_PRINCIPLES,
 } from '@/lib/service-flow';
 
@@ -50,7 +52,7 @@ export const pricingPlans: PricingPlan[] = [
     name: 'עצמאי / היברידי',
     tagline: 'מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא',
     price: `₪${PLATFORM_PROCESS_PRICE}`,
-    priceNote: `לתהליך משכנתא · ${PLATFORM_ACCESS_DAYS} יום גישה מלאה · מקוזז אם תבקשו ליווי`,
+    priceNote: `לתהליך משכנתא · גישה מלאה עד ${PLATFORM_ACCESS_DAYS} יום · מקוזז אם תבקשו ליווי`,
     icon: Bot,
     gradient: 'from-blue-500 to-cyan-500',
     ring: 'ring-blue-200',
@@ -111,7 +113,7 @@ export const comparisonRows: ComparisonRow[] = [
   { capability: 'קיזוז מה ששולם על הפלטפורמה', self: 'כשמצרפים יועץ', full: true },
   {
     capability: 'עלות',
-    self: `₪${PLATFORM_PROCESS_PRICE} לתהליך · ${PLATFORM_ACCESS_DAYS} יום`,
+    self: `₪${PLATFORM_PROCESS_PRICE} לתהליך · עד ${PLATFORM_ACCESS_DAYS} יום`,
     full: `₪${FULL_SERVICE_PRICE.toLocaleString('he-IL')}`,
   },
 ];
@@ -125,7 +127,7 @@ export const pricingFaq: { question: string; answer: string }[] = [
   {
     question: 'כמה עולה הגישה לפלטפורמה ולכמה זמן?',
     answer:
-      `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא אחד (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים ל-${PLATFORM_ACCESS_DAYS} יום. לא הספקתם? מחדשים לעוד ${PLATFORM_ACCESS_DAYS} יום באותו מחיר. תהליך נוסף, אחרי שהקודם הסתיים, נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
+      `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים עד ${PLATFORM_ACCESS_DAYS} יום. לא הספקתם? רוכשים חבילה נוספת לעוד ${PLATFORM_ACCESS_DAYS} יום באותו מחיר, ורק כשאתם מאשרים: אין חיוב חוזר אוטומטי. תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, כך שהעלות הכוללת נעה בדרך כלל בין ₪${PLATFORM_TYPICAL_TOTAL.min} ל-₪${PLATFORM_TYPICAL_TOTAL.max}. כל חבילה היא סכום קבוע לתקופה, ולכן סיום מוקדם אינו מזכה בהחזר על הימים שנשארו. בתוך החבילה אפשר לנהל עד ${PLATFORM_MAX_OPEN_PROCESSES} תהליכים במקביל, ולפתוח מחדש תהליך שמחקתם בלי תשלום נוסף. תהליך חדש אחרי שתהליך הסתיים נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
   },
   {
     question: 'איך נקבע המחיר כשמשלבים שלבים לבד ושלבים עם יועץ?',

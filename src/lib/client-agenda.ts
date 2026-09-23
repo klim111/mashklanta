@@ -23,6 +23,7 @@ import {
 } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import type { ClientTaskView } from './client-tasks';
+import { AUTHORIZATION_TASK_KEY, authorizationLettersHref } from './authorization-letters';
 import type { EquityCalendarExpense } from './equity-planning';
 import { formatDay, rateAlertDates, rateAlertStep, rateValidity } from './rate-validity';
 
@@ -178,8 +179,16 @@ const KIND_HINTS: Record<ClientTaskView['kind'], string> = {
   DOCUMENT: 'מסמך להעלאה לתיק — נסגר כשהקובץ עולה',
 };
 
+function isAuthorizationTask(task: ClientTaskView): boolean {
+  return task.templateKey === AUTHORIZATION_TASK_KEY;
+}
+
 /** לאן מובילה משימה של הלקוח: לשלב שממנו נוספה, או ללוח השנה */
 function clientTaskTarget(task: ClientTaskView, plans: AgendaPlan[]): AgendaTarget {
+  // המשימה שהיועץ שלח פותחת את חלון כתבי ההסמכה עצמו, ולא את השלב
+  if (isAuthorizationTask(task) && task.planId) {
+    return { kind: 'href', href: authorizationLettersHref(task.planId) };
+  }
   const plan = task.planId ? plans.find((item) => item.id === task.planId) : null;
   if (plan) return { kind: 'href', href: planHref(plan, task.stage ?? undefined) };
   return { kind: 'section', section: 'agenda' };
@@ -398,7 +407,9 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
       tasks.push({
         id: `${CLIENT_TASK_PREFIX}${task.id}`,
         title: task.title,
-        hint: [KIND_HINTS[task.kind], task.details ?? ''].filter(Boolean).join(' · '),
+        hint: [isAuthorizationTask(task) ? 'משימה מהיועץ' : KIND_HINTS[task.kind], task.details ?? '']
+          .filter(Boolean)
+          .join(' · '),
         tone: overdue ? 'urgent' : 'action',
         due: task.dueAt,
         /* משימה שהלקוח הוסיף נושאת את המועד שהוא קבע לה מלכתחילה */
@@ -684,7 +695,13 @@ export function buildCalendarEvents(input: AgendaInput, tasks: ClientTask[] = []
         at: task.dueAt as string,
         title: task.title,
         subtitle: [
-          task.kind === 'MEETING' ? 'פגישה שקבעתם' : task.kind === 'DOCUMENT' ? 'מסמך להעלאה' : 'משימה שלי',
+          isAuthorizationTask(task)
+            ? 'משימה מהיועץ'
+            : task.kind === 'MEETING'
+              ? 'פגישה שקבעתם'
+              : task.kind === 'DOCUMENT'
+                ? 'מסמך להעלאה'
+                : 'משימה שלי',
           task.bank ? `בנק ${task.bank}` : '',
           task.stage ? journeyStageFor(task.stage).shortTitle : '',
         ]

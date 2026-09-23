@@ -68,7 +68,7 @@ export interface PlanView {
   }>;
   data: PlanData;
   /**
-   * הגישה לכלים בתהליך — 35 יום מכל תשלום. חסר בתהליכי הדגמה, ואז הכלים
+   * הגישה לכלים בתהליך — 30 יום מכל תשלום. חסר בתהליכי הדגמה, ואז הכלים
    * פתוחים.
    */
   access?: ProcessAccess;
@@ -118,13 +118,23 @@ export async function createRefinancePlan(refinance: unknown, mix: unknown): Pro
   return readPlan(response);
 }
 
+/** פתיחת תהליך נדחתה. `userMessage` — הסבר ללקוח כשהשרת נתן כזה (למשל הגבלת התהליכים הפתוחים) */
+export class PlanCreateError extends Error {
+  constructor(readonly userMessage: string | null) {
+    super(userMessage ?? 'failed to create plan');
+  }
+}
+
 export async function createPlan(name?: string): Promise<PlanView> {
   const response = await fetch('/api/plans', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(name ? { name } : {}),
   });
-  if (!response.ok) throw new Error(`failed to create plan: ${response.status}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new PlanCreateError(typeof body?.error === 'string' && response.status === 409 ? body.error : null);
+  }
   return readPlan(response);
 }
 
@@ -168,8 +178,11 @@ export function usePlans() {
       setPlans((current) => [plan, ...current]);
       setError(null);
       return plan;
-    } catch {
-      setError('לא הצלחנו לפתוח תהליך חדש. נסו שוב בעוד רגע.');
+    } catch (failure) {
+      setError(
+        (failure instanceof PlanCreateError && failure.userMessage) ||
+          'לא הצלחנו לפתוח תהליך חדש. נסו שוב בעוד רגע.'
+      );
       throw new Error('failed to create plan');
     }
   }, []);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Eye, FileText, Loader2, Lock } from 'lucide-react';
 import type { PlanDocumentView } from '@/lib/plan-documents';
+import { isAuthorizationDocumentKey } from '@/lib/authorization-letters';
 import { SectionCard, EmptyState } from './ui';
 
 /**
@@ -20,7 +21,11 @@ export function ClientUploadedDocuments({ clientId }: { clientId: string }) {
     void fetch(`/api/clients/${clientId}/plan-documents`, { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : []))
       .then((body) => {
-        if (!cancelled) setDocuments(Array.isArray(body) ? body : []);
+        // כתבי ההסמכה החתומים מוצגים בלשונית משלהם
+        if (!cancelled) {
+          const rows: PlanDocumentView[] = Array.isArray(body) ? body : [];
+          setDocuments(rows.filter((document) => !isAuthorizationDocumentKey(document.key)));
+        }
       })
       .catch(() => undefined)
       .finally(() => {

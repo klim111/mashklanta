@@ -26,7 +26,7 @@ import type {
   RefinanceMode,
 } from './mortgage-plan';
 import { saveMix } from './mixes';
-import { openPass, processAccess, processLocked } from './process-access';
+import { MAX_OPEN_PROCESSES, newProcessPass, openPass, processAccess, processLocked } from './process-access';
 import type { ProcessAccess } from './process-access';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -65,7 +65,15 @@ const planSelect = {
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
   platformPayments: { select: { createdAt: true, amountAgorot: true } },
   advisorOrders: { select: { status: true } },
-  owner: { select: { role: true, platformAccessAt: true } },
+  owner: {
+    select: {
+      role: true,
+      platformAccessAt: true,
+      // הגישה נגזרת מכל התשלומים של הלקוח ומהתהליכים שסיים (src/lib/process-access.ts)
+      platformPayments: { where: { status: 'PAID' }, select: { createdAt: true } },
+      mortgagePlans: { where: { completedAt: { not: null } }, select: { completedAt: true } },
+    },
+  },
 } satisfies Prisma.MortgagePlanSelect;
 
 type PlanRow = Prisma.MortgagePlanGetPayload<{ select: typeof planSelect }>;
@@ -97,8 +105,12 @@ export interface PlanView {
   stages: PlanStageView[];
   /** נתוני כל השלבים יחד, כפי שהטפסים והחישובים צורכים אותם */
   data: PlanData;
-  /** הגישה לכלים בתהליך: 35 יום מכל תשלום, ללא הגבלה בליווי ששולם */
+  /** הגישה לכלים בתהליך: 30 יום מכל תשלום, ללא הגבלה בליווי ששולם */
   access: ProcessAccess;
+}
+
+function completionsOf(plans: ReadonlyArray<{ completedAt: Date | null }>): Date[] {
+  return plans.flatMap((plan) => (plan.completedAt ? [plan.completedAt] : []));
 }
 
 function accessOf(row: PlanRow): ProcessAccess {
@@ -106,6 +118,8 @@ function accessOf(row: PlanRow): ProcessAccess {
     planStatus: row.status,
     planCreatedAt: row.createdAt,
     payments: row.platformPayments,
+    ownerPayments: row.owner.platformPayments,
+    ownerCompletions: completionsOf(row.owner.mortgagePlans),
     // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ)
     hasPaidAdvisory: row.clientId !== null || row.advisorOrders.some((order) => order.status === 'PAID'),
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
@@ -274,7 +288,55 @@ async function bindOpenPass(userId: string, planId: string): Promise<void> {
 }
 
 /**
- * האם הכלים בתהליך נעולים בפני המשתמש: עברו 35 יום מהתשלום האחרון, או
+ * תהליכים פתוחים במסלול העצמאי: לא הסתיימו, לא בארכיון, ואין עליהם ליווי.
+ * עליהם חלה ההגבלה של שני תהליכים במקביל.
+ */
+export async function countOpenSelfServicePlans(userId: string): Promise<number> {
+  return prisma.mortgagePlan.count({
+    where: {
+      ownerId: userId,
+      status: 'IN_PROGRESS',
+      clientId: null,
+      advisorOrders: { none: { status: 'PAID' } },
+    },
+  });
+}
+
+/**
+ * האם המשתמש רשאי לפתוח עוד תהליך: עד שני תהליכים פתוחים במקביל. יועץ אינו
+ * מוגבל, וגם לקוח שיועץ כבר מלווה אותו — תהליכי הליווי אינם חלק מהחבילה.
+ */
+export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, advisedAs: { select: { id: true }, take: 1 } },
+  });
+  if (!user || user.role === 'ADVISOR' || user.advisedAs.length > 0) return true;
+  return (await countOpenSelfServicePlans(userId)) < MAX_OPEN_PROCESSES;
+}
+
+/**
+ * החבילה הפנויה לפתיחת תהליך חדש בלי תשלום — 30 יום מהתשלום, ורק אם לא
+ * הסתיים אחריו אף תהליך של הלקוח.
+ */
+export async function newProcessPassFor(
+  userId: string
+): Promise<{ createdAt: Date; amountAgorot: number } | null> {
+  const [payments, completed] = await Promise.all([
+    prisma.platformPayment.findMany({
+      where: { userId, status: 'PAID' },
+      select: { createdAt: true, amountAgorot: true },
+    }),
+    prisma.mortgagePlan.findMany({
+      where: { ownerId: userId, completedAt: { not: null } },
+      select: { completedAt: true },
+    }),
+  ]);
+  return newProcessPass(payments, completionsOf(completed));
+}
+
+/**
+ * האם הכלים בתהליך נעולים בפני המשתמש: עברו 30 יום מהתשלום האחרון, או
  * שהתהליך נפתח בלי תשלום. יועץ שמלווה את הלקוח אינו ננעל לעולם.
  */
 export async function planLockedFor(userId: string, planId: string): Promise<boolean> {
@@ -506,12 +568,14 @@ export type DeletePlanResult =
  * אינם חלק מהפרופיל, ולכן הם נמחקים יחד עם התהליך.
  *
  * שלב שהיועץ כבר עובד עליו בתשלום חוסם את המחיקה: העבודה שולמה ומתבצעת.
+ * תהליך שהסתיים עובר לארכיון במקום להימחק.
  */
 export async function deletePlan(userId: string, planId: string): Promise<DeletePlanResult> {
   const row = await prisma.mortgagePlan.findFirst({
     where: { id: planId, ownerId: userId },
     select: {
       id: true,
+      completedAt: true,
       stages: { where: { stage: 'ANALYSIS' }, select: { dataJson: true } },
       advisorOrders: {
         where: { workStartedAt: { not: null } },
@@ -540,6 +604,13 @@ export async function deletePlan(userId: string, planId: string): Promise<Delete
       where: { id: userId },
       data: { profileJson: merged as unknown as Prisma.InputJsonValue },
     });
+  }
+
+  // תהליך שהסתיים יורד מהאזור האישי אבל הרשומה נשמרת בארכיון: מועד הסיום
+  // שלו קובע שתהליך חדש אחריו דורש תשלום חדש (src/lib/process-access.ts)
+  if (row.completedAt) {
+    await prisma.mortgagePlan.update({ where: { id: planId }, data: { status: 'ARCHIVED' } });
+    return { ok: true };
   }
 
   await prisma.mortgagePlan.delete({ where: { id: planId } });
