@@ -100,7 +100,7 @@ export function OwnershipRow({
         )}
       </div>
 
-      <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[13px] font-medium text-slate-500">
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-sm font-medium text-slate-500">
         {scenario ? (
           <>
             <RefreshCw className="h-3.5 w-3.5" />

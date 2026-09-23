@@ -37,7 +37,7 @@ export function StagePanel({
     <section className={`rounded-3xl border-2 bg-white p-5 shadow-sm md:p-6 ${border}`}>
       <header className="mb-5 text-center">
         {badge && <div className="mb-2 flex justify-center">{badge}</div>}
-        <h3 className="text-xl font-black text-slate-900 md:text-2xl">{title}</h3>
+        <h3 className="text-subtitle font-black text-slate-900">{title}</h3>
         {description && (
           <p className="mx-auto mt-2 max-w-3xl text-sm font-medium leading-relaxed text-slate-600 md:text-base">
             {description}

@@ -61,11 +61,11 @@ export function FreeToolsSection() {
   return (
     <div dir="rtl">
       <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-[13px] font-black text-emerald-800">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-black text-emerald-800">
           <Sparkles className="h-3.5 w-3.5" />
           חינם · בלי הרשמה
         </span>
-        <h2 className="mt-3 text-3xl font-black text-slate-900 md:text-4xl">כלים לתכנון ולניתוח מקדים</h2>
+        <h2 className="mt-3 text-title font-black text-slate-900">כלים לתכנון ולניתוח מקדים</h2>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 md:text-base">
           כלים שיעזרו לכם לבצע בחינם, באמצעות הכלים של משכלנתא, את התכנון והניתוח המקדים — לפני
           שמחליטים איך להתקדם.
@@ -109,7 +109,7 @@ export function FreeToolsSection() {
       <div className="mt-4 flex justify-center">
         <Link
           href="/learn"
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
+          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-button font-bold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
         >
           <BookOpen className="h-4 w-4" />
           מרכז הלמידה

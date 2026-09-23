@@ -196,7 +196,7 @@ export function AddressAutocomplete({
                       : suggestion.city}
                   </span>
                   {suggestion.street && (
-                    <span className="block truncate text-[10px] text-slate-500">
+                    <span className="block truncate text-2xs text-slate-500">
                       {suggestion.city}
                     </span>
                   )}

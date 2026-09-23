@@ -93,7 +93,7 @@ export function AnalysisTabs({
           <GitCompareArrows className="h-4 w-4 ml-1.5" />
           השוואה
           {comparedCount > 0 && (
-            <span className="mr-1.5 rounded-full bg-white/25 px-1.5 text-[10px] font-semibold">
+            <span className="mr-1.5 rounded-full bg-white/25 px-1.5 text-2xs font-semibold">
               {comparedCount + 1}
             </span>
           )}
@@ -117,13 +117,13 @@ export function AnalysisTabs({
           (pickerOpen ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-2">
               <div className="mb-1.5 flex items-center justify-between gap-2">
-                <p className="text-[11px] font-bold text-slate-600">
+                <p className="text-2xs font-bold text-slate-600">
                   סמנו את התמהילים שייכנסו להשוואה
                 </p>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-[11px]"
+                  className="h-7 text-2xs"
                   onClick={() => setPickerOpen(false)}
                 >
                   <X className="ml-1 h-3.5 w-3.5" />

@@ -174,7 +174,7 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">בוא נכיר אותך יותר לעומק</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-4">בוא נכיר אותך יותר לעומק</h2>
         <p className="text-lg text-gray-600">פרטים אישיים שיעזרו לנו לבנות עבורך תמהיל מושלם</p>
       </div>
 
@@ -268,7 +268,7 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">מצבך הכלכלי המפורט</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-4">מצבך הכלכלי המפורט</h2>
         <p className="text-lg text-gray-600">פרטים נוספים על ההכנסות והיציבות הכלכלית שלך</p>
       </div>
 
@@ -443,7 +443,7 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">תוכניות לעתיד</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-4">תוכניות לעתיד</h2>
         <p className="text-lg text-gray-600">שינויים צפויים שישפיעו על המשכנתא שלך</p>
       </div>
 
@@ -546,7 +546,7 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">העדפות אישיות</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-4">העדפות אישיות</h2>
         <p className="text-lg text-gray-600">איך אתה מרגיש לגבי סיכונים ויציבות פיננסית</p>
       </div>
 
@@ -572,7 +572,7 @@ export default function CustomMixBuilder() {
                   step={1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-info text-gray-600">
                   <span>מוכן לסיכון (חיסכון אפשרי)</span>
                   <span className="font-bold text-lg text-blue-600">{profile.prioritizeStability}</span>
                   <span>יציבות מקסימלית</span>
@@ -603,7 +603,7 @@ export default function CustomMixBuilder() {
                   step={1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-info text-gray-600">
                   <span>מעדיף קביעות</span>
                   <span className="font-bold text-lg text-green-600">{profile.comfortableWithRateChanges}</span>
                   <span>נוח עם שינויים</span>
@@ -672,7 +672,7 @@ export default function CustomMixBuilder() {
       >
         {/* Header Summary */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">הפרופיל הפיננסי שלך</h1>
+          <h1 className="text-title font-bold text-gray-900 mb-4">הפרופיל הפיננסי שלך</h1>
           <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-6 shadow-lg">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
@@ -820,7 +820,7 @@ export default function CustomMixBuilder() {
         {/* Action Buttons */}
         <div className="text-center space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-            <h3 className="text-xl font-bold text-green-900 mb-3">
+            <h3 className="text-subtitle font-bold text-green-900 mb-3">
               הפרופיל שלך מוכן!
             </h3>
             <p className="text-green-800 mb-6">
@@ -830,7 +830,7 @@ export default function CustomMixBuilder() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-cta shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Target className="w-5 h-5 ml-2" />
                 בנה תמהיל מותאם אישית
@@ -840,7 +840,7 @@ export default function CustomMixBuilder() {
                 variant="outline"
                 size="lg"
                 onClick={() => setCurrentStep('risk')}
-                className="px-8 py-4 text-lg border-2 border-gray-300 hover:border-gray-400"
+                className="px-8 py-4 text-cta border-2 border-gray-300 hover:border-gray-400"
               >
                 <ArrowLeft className="w-5 h-5 ml-2" />
                 ערוך העדפות
@@ -872,7 +872,7 @@ export default function CustomMixBuilder() {
         
         <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
           <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
+            <h1 className="text-title font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
             <p className="text-lg text-gray-600 mb-8">
               כדי לבנות תמהיל מותאם אישית, תחילה עליך לעבור דרך כלי תכנון המשכנתא
             </p>

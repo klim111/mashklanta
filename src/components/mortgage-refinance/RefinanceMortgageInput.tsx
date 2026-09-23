@@ -267,7 +267,7 @@ export function RefinanceMortgageInput({
           >
             <span className="text-xs text-gray-500">המשכנתא הנוכחית</span>
             <Building2 className="h-4 w-4 text-blue-600" />
-            <h2 className="text-base font-bold text-gray-900">{bank}</h2>
+            <h2 className="text-subtitle font-bold text-gray-900">{bank}</h2>
             <span className="text-gray-300">·</span>
             <p className="text-base font-semibold text-blue-600">{formatCurrency(effectiveTotal)}</p>
           </motion.div>
@@ -353,7 +353,7 @@ export function RefinanceMortgageInput({
         <Card className="text-center py-12">
           <CardContent>
             <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">אין מסלולים</h3>
+            <h3 className="text-subtitle font-semibold text-gray-600 mb-2">אין מסלולים</h3>
             <p className="text-gray-500 mb-6">התחל בהוספת המסלול הראשון של המשכנתא הנוכחית</p>
             <Button onClick={() => addTrack()} className="px-6 py-3" disabled={!canAddFirstTrack} {...demoId('refi-add-track')}>
               <Plus className="h-5 w-5 ml-2" />
@@ -406,7 +406,7 @@ export function RefinanceMortgageInput({
                       paymentDay: track.paymentDay,
                     });
                     return (
-                      <li key={`dates-${track.id}`} className="text-[11px] text-blue-900">
+                      <li key={`dates-${track.id}`} className="text-2xs text-blue-900">
                         <span className="font-semibold">{track.name}</span> · נותרו{' '}
                         {trackRemainingMonths(track)} תשלומים · אחרון{' '}
                         {formatPaymentDate(dates.lastPaymentDate)} · חיוב ב-
@@ -479,7 +479,7 @@ export function RefinanceMortgageInput({
                 {...demoId('refi-summarize')}
                 onClick={revealMixSummary}
                 disabled={!isAmountBalanced}
-                className="px-8 py-6 text-lg h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400"
+                className="px-8 py-6 text-cta h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400"
               >
                 <PieChart className="h-8 w-8" />
                 <span className="font-bold">סכם משכנתא נוכחית</span>
@@ -500,7 +500,7 @@ export function RefinanceMortgageInput({
                 type="button"
                 {...demoId('refi-check-options')}
                 onClick={handlePerTrackRefinanceCheck}
-                className="px-8 py-6 text-lg h-auto flex-col gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                className="px-8 py-6 text-cta h-auto flex-col gap-2 bg-purple-600 hover:bg-purple-700 text-white"
               >
                 <RefreshCw className="h-8 w-8" />
                 <span className="font-bold">בדוק אפשרויות מיחזור</span>

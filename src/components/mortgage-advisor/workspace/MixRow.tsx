@@ -246,29 +246,29 @@ export function MixRow({
                 </>
               )}
               {active && (
-                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[9px] shrink-0">
+                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-2xs shrink-0">
                   בניתוח
                 </Badge>
               )}
               {mix.quote && (
-                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600 text-[9px] shrink-0">
+                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600 text-2xs shrink-0">
                   <BadgePercent className="ml-1 h-3 w-3" />
                   התקבלו ריביות מבנק {mix.quote.bank} · {formatQuoteDate(mix.quote.receivedAt)}
                 </Badge>
               )}
               {highlight && (
-                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[9px] shrink-0">
+                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-2xs shrink-0">
                   {highlight}
                 </Badge>
               )}
             </div>
             {renaming && requireName && (
-              <p className="text-[10px] text-blue-700">
+              <p className="text-2xs text-blue-700">
                 תנו שם לתמהיל החדש כדי להמשיך לערוך אותו באזור העבודה
               </p>
             )}
 
-            <p className="text-[11px] text-slate-500 truncate">
+            <p className="text-2xs text-slate-500 truncate">
               {formatShekel(mix.totalAmount)} · {mix.tracks.length} מסלולים ·{' '}
               {formatDuration(summary.months)}
               {mix.events.length > 0 && ` · ${mix.events.length} שינויים מתוכננים`}
@@ -348,13 +348,13 @@ export function MixRow({
           {(unallocated > 0 || (hint && !expanded)) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
               {unallocated > 0 && (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700">
+                <span className="flex items-center gap-1 text-2xs font-semibold text-amber-700">
                   <AlertTriangle className="h-3 w-3" />
                   {formatShekel(unallocated)} לא שובצו
                 </span>
               )}
               {hint && !expanded && (
-                <span className="text-[10px] text-slate-400 mr-auto">{hint}</span>
+                <span className="text-2xs text-slate-400 mr-auto">{hint}</span>
               )}
             </div>
           )}
@@ -382,7 +382,7 @@ export function RequestQuoteButton({
       type="button"
       onClick={onClick}
       title="הכנת הצעת התמהיל למיקוח מול הבנקים — מכתב בקשה בלי ריביות"
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100 sm:py-1.5 ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-2xs font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100 sm:py-1.5 ${className}`}
     >
       <Gavel className="h-3.5 w-3.5" />
       הצעה לבנקים
@@ -409,7 +409,7 @@ export function SelectFinalButton({
       type="button"
       onClick={onClick}
       title="נעילת התמהיל כתמהיל הסופי והמשך להזנת הריביות מהבנקים"
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-2xs font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
     >
       <Gavel className="h-3.5 w-3.5" />
       בחר כתמהיל סופי
@@ -430,7 +430,7 @@ export function EnterQuoteButton({
       type="button"
       onClick={onClick}
       title="הזנת הריביות שהתקבלו מהבנק — נשמרת הצעה נפרדת על שם הבנק ותאריך קבלתה"
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-2xs font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100 sm:py-1.5 ${className}`}
     >
       <BadgePercent className="h-3.5 w-3.5" />
       ריביות מהבנק
@@ -480,7 +480,7 @@ function RowStat({
       title={hint}
       className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50/70 px-2 py-1 text-center"
     >
-      <p className="flex items-center gap-1 text-[10px] leading-none text-slate-500">
+      <p className="flex items-center gap-1 text-2xs leading-none text-slate-500">
         {icon}
         {label}
         {hint && !info && <Info className="h-2.5 w-2.5 text-slate-400" />}
@@ -488,7 +488,7 @@ function RowStat({
       </p>
       <p
         className={`mt-0.5 font-bold leading-tight ${
-          emphasized ? 'text-[15px] text-blue-600' : 'text-[13px] text-slate-900'
+          emphasized ? 'text-info text-blue-600' : 'text-sm text-slate-900'
         }`}
       >
         {value}

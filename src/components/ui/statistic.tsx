@@ -158,7 +158,7 @@ export default function Statistic() {
             {live ? "נתוני שוק חיים" : status === "loading" ? "טוען נתוני שוק" : "נתוני שוק"}
             <Radio className="h-4 w-4 text-cyan-200" />
           </div>
-          <h2 className="mb-4 text-4xl font-black text-white md:text-5xl">
+          <h2 className="mb-4 text-title font-black text-white">
             שוק המשכנתאות עכשיו
           </h2>
           <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-200">
@@ -238,7 +238,7 @@ export default function Statistic() {
         >
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h3 className="text-2xl font-black text-white">מדד ריביות עדכניות</h3>
+              <h3 className="text-subtitle font-black text-white">מדד ריביות עדכניות</h3>
               <p className="mt-1 text-sm text-slate-300">
                 הריביות שמוזנות כברירת מחדל בבניית התמהיל. בפריים ובמסלולים המשתנים הן עוגן
                 מבנק ישראל בתוספת המרווח הבנקאי המקובל; בקבועות ובזכאות אין עוגן והריבית
@@ -269,11 +269,11 @@ export default function Statistic() {
                 <p className="mt-1 text-2xl font-black tracking-tight text-white">
                   {formatPct(item.rate)}
                 </p>
-                <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-400">
+                <p className="mt-1 line-clamp-2 text-2xs leading-snug text-slate-400">
                   {item.label}
                 </p>
                 {item.anchor !== null && item.spread !== null && (
-                  <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                  <p className="mt-1 text-2xs leading-snug text-slate-500">
                     עוגן {formatPct(item.anchor)} + מרווח {formatPct(item.spread)}
                   </p>
                 )}

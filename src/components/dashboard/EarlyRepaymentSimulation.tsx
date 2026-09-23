@@ -468,7 +468,7 @@ export default function EarlyRepaymentSimulation({
                   <Calculator className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">סימולציית פירעון מוקדם</h2>
+                  <h2 className="text-subtitle font-bold">סימולציית פירעון מוקדם</h2>
                   <p className="text-purple-100 text-sm mt-1">חשב כמה תחסוך בפירעון מוקדם של המשכנתא</p>
                 </div>
               </div>
@@ -485,7 +485,7 @@ export default function EarlyRepaymentSimulation({
           <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6">
             {/* Input Section */}
             <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-6 mb-6 border border-purple-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="text-subtitle font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-600" />
                 הגדרת פרמטרים לסימולציה
               </h3>
@@ -782,7 +782,7 @@ export default function EarlyRepaymentSimulation({
             {/* Track Cards */}
             {simulatedTracks.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <h3 className="text-subtitle font-semibold text-gray-900 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-purple-600" />
                   לחץ על מסלול כדי לראות איך המשכנתא תיראה אם תפרע אותו
                 </h3>
@@ -994,7 +994,7 @@ export default function EarlyRepaymentSimulation({
                 <div className="inline-flex p-4 bg-purple-100 rounded-full mb-4">
                   <Calculator className="w-12 h-12 text-purple-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">הזן סכום לפירעון</h3>
+                <h3 className="text-subtitle font-semibold text-gray-900 mb-2">הזן סכום לפירעון</h3>
                 <p className="text-gray-600 max-w-md mx-auto">
                   הכנס את הסכום הפנוי שברצונך להשתמש בו לפירעון מוקדם של המשכנתא
                 </p>
@@ -1031,7 +1031,7 @@ export default function EarlyRepaymentSimulation({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">בחר תאריך פירעון</h3>
+                  <h3 className="text-subtitle font-semibold">בחר תאריך פירעון</h3>
                   <button
                     onClick={() => setShowCalendar(false)}
                     className="p-1 hover:bg-gray-100 rounded-lg transition-colors"

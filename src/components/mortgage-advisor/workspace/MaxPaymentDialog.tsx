@@ -154,7 +154,7 @@ export function MaxPaymentDialog({
               <span className="block text-xs font-semibold text-slate-800">
                 הפחת עלויות ביטוח מהתקציב
               </span>
-              <span className="block text-[10px] text-slate-500 leading-snug mt-0.5">
+              <span className="block text-2xs text-slate-500 leading-snug mt-0.5">
                 ביטוח מבנה וביטוח חיים נכנסים לתוך תקרת ה-40%, ולכן ההחזר לבנק יוצא נמוך יותר.
               </span>
             </span>
@@ -170,14 +170,14 @@ export function MaxPaymentDialog({
                 {formatShekel(result.maxMonthlyPayment)}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-blue-900 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 text-2xs text-blue-900 sm:grid-cols-4">
               <ResultCell label="הכנסה פנויה" value={formatShekel(result.disposableIncome)} />
               <ResultCell label="החזרי הלוואות" value={formatShekel(loanPayments)} />
               <ResultCell label="משכנתא מקסימלית" value={formatShekel(result.maxLoanAmount)} />
               <ResultCell label="תקופה מקסימלית" value={formatDuration(yearsToMonths(result.maxLoanPeriod))} />
             </div>
             {result.includesInsurance && result.totalInsuranceMonthly > 0 && (
-              <p className="text-[10px] text-blue-800">
+              <p className="text-2xs text-blue-800">
                 מתוך התקציב הופחתו {formatShekel(result.totalInsuranceMonthly)} ביטוחים בחודש
                 (מבנה {formatShekel(result.propertyInsuranceMonthly)}, חיים{' '}
                 {formatShekel(result.healthInsuranceMonthly)}).
@@ -273,7 +273,7 @@ function BorrowerFields({
 function ResultCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-white/70 p-2">
-      <p className="text-[10px] text-blue-700">{label}</p>
+      <p className="text-2xs text-blue-700">{label}</p>
       <p className="text-xs font-bold text-blue-900">{value}</p>
     </div>
   );

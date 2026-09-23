@@ -38,7 +38,7 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
   if (plans.length === 0) {
     return (
       <DashCard demoId="dash-documents-card" title="תיק המסמכים" icon={<FolderOpen className="h-5 w-5 text-blue-600" />}>
-        <p className="py-6 text-center text-[15px] font-medium text-slate-600">
+        <p className="py-6 text-center text-info font-medium text-slate-600">
           תיק המסמכים נפתח יחד עם המשכנתא הראשונה. פתחו תהליך, והרשימה תיבנה לפי הפרופיל שלכם.
         </p>
       </DashCard>
@@ -57,7 +57,7 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
                 key={item.id}
                 type="button"
                 onClick={() => setPlanId(item.id)}
-                className={`rounded-2xl border-2 px-4 py-2 text-[15px] font-black transition-colors ${
+                className={`rounded-2xl border-2 px-4 py-2 text-info font-black transition-colors ${
                   item.id === plan.id
                     ? 'border-blue-500 bg-blue-50 text-slate-900'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'

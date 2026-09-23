@@ -80,7 +80,7 @@ export function TaskItem({
           <Icon className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className={`block font-black leading-snug text-slate-900 ${compact ? 'text-sm' : 'text-[15px]'}`}>
+          <span className={`block font-black leading-snug text-slate-900 ${compact ? 'text-sm' : 'text-info'}`}>
             {task.title}
           </span>
           {!compact && <span className="mt-0.5 block text-sm leading-relaxed text-slate-600">{task.hint}</span>}
@@ -118,7 +118,7 @@ export function TaskItem({
                     setPicking(false);
                   }
                 }}
-                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] font-bold text-slate-800 outline-none focus:border-blue-500"
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-500"
               />
               <button
                 type="button"
@@ -134,7 +134,7 @@ export function TaskItem({
               <button
                 type="button"
                 onClick={() => setPicking(true)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-black transition-colors ${
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black transition-colors ${
                   overdue
                     ? 'bg-rose-600 text-white hover:bg-rose-700'
                     : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700'
@@ -147,7 +147,7 @@ export function TaskItem({
                 <button
                   type="button"
                   onClick={() => onSchedule(null)}
-                  className="rounded-lg px-2.5 py-1.5 text-[13px] font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                  className="rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
                 >
                   הסרת המועד
                 </button>

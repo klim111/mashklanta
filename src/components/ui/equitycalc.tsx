@@ -73,7 +73,7 @@ export default function CapitalPlanningCalculator() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">מחשבון הון עצמי</h1>
+        <h1 className="text-title font-bold">מחשבון הון עצמי</h1>
         <Link href="/equity-planning">
           <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Calculator className="w-4 h-4 ml-2" />

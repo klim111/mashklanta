@@ -165,7 +165,7 @@ function RateSliderControl({
         max={SCENARIO_RANGES.rateDelta.max}
         step={SCENARIO_RANGES.rateDelta.step}
       />
-      <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
+      <div dir="ltr" className="flex justify-between text-2xs text-slate-400">
         <span className="flex items-center gap-1">
           <TrendingDown className="h-3 w-3 text-emerald-500" />
           ירידה {SCENARIO_RANGES.rateDelta.min}%
@@ -197,7 +197,7 @@ function InflationSliderControl({ value, onChange }: { value: number; onChange: 
         max={SCENARIO_RANGES.inflation.max}
         step={SCENARIO_RANGES.inflation.step}
       />
-      <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
+      <div dir="ltr" className="flex justify-between text-2xs text-slate-400">
         <span className="flex items-center gap-1">
           <TrendingDown className="h-3 w-3 text-emerald-500" />
           מדד יורד {SCENARIO_RANGES.inflation.min}%
@@ -219,7 +219,7 @@ function ChartPanel({ title, hint, children }: { title: string; hint: string; ch
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <p className="text-[11px] text-slate-500 mb-2 leading-snug">{hint}</p>
+      <p className="text-2xs text-slate-500 mb-2 leading-snug">{hint}</p>
       <ResponsiveContainer width="100%" height={230}>
         {children}
       </ResponsiveContainer>
@@ -351,24 +351,24 @@ function TrackRow({
         <span className={`w-1.5 h-9 rounded-full shrink-0 ${trackColor(track.type)}`} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm text-slate-900 truncate">{track.name}</p>
-          <p className="text-[11px] text-slate-500 truncate">
+          <p className="text-2xs text-slate-500 truncate">
             {TRACK_TYPES[track.type]} · {formatCurrency(track.amount)} · {formatDuration(Math.round(track.years * 12))}
             {rateVar ? ` · ${formatPercentage(effectiveRateForTrack(track, scenario))}` : ''}
           </p>
         </div>
 
         <div className="text-center hidden sm:block min-w-[92px]">
-          <p className="text-[10px] text-slate-400">החזר חודשי</p>
+          <p className="text-2xs text-slate-400">החזר חודשי</p>
           <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.monthlyPayment)}</p>
           <DeltaBadge value={mDelta} />
         </div>
         <div className="text-center hidden sm:block min-w-[92px]">
-          <p className="text-[10px] text-slate-400">סך ריבית</p>
+          <p className="text-2xs text-slate-400">סך ריבית</p>
           <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.totalInterest)}</p>
           <DeltaBadge value={iDelta} />
         </div>
 
-        <Badge variant="outline" className="shrink-0 text-[10px]">
+        <Badge variant="outline" className="shrink-0 text-2xs">
           {Math.round(track.percentage)}%
         </Badge>
         <ChevronDown
@@ -381,12 +381,12 @@ function TrackRow({
           {/* mobile summary of the figures hidden in the header */}
           <div className="grid grid-cols-2 gap-2 sm:hidden">
             <div className="rounded-lg bg-white p-2.5 text-center border border-slate-200">
-              <p className="text-[10px] text-slate-400">החזר חודשי</p>
+              <p className="text-2xs text-slate-400">החזר חודשי</p>
               <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.monthlyPayment)}</p>
               <DeltaBadge value={mDelta} />
             </div>
             <div className="rounded-lg bg-white p-2.5 text-center border border-slate-200">
-              <p className="text-[10px] text-slate-400">סך ריבית</p>
+              <p className="text-2xs text-slate-400">סך ריבית</p>
               <p className="text-sm font-bold text-slate-800">{formatCurrency(curCalc.totalInterest)}</p>
               <DeltaBadge value={iDelta} />
             </div>
@@ -418,7 +418,7 @@ function TrackRow({
           {idx && (
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5">
               <Shield className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-amber-800 leading-relaxed">
+              <p className="text-2xs text-amber-800 leading-relaxed">
                 הגנת קרן: אם המדד יורד, ערך הקרן לא יקטן מתחת לערכה המקורי במועד נטילת ההלוואה.
               </p>
             </div>
@@ -498,7 +498,7 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Layers className="h-6 w-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-slate-900">ניתוח תרחישים</h2>
+            <h2 className="text-subtitle font-bold text-slate-900">ניתוח תרחישים</h2>
           </div>
           <p className="text-slate-600 text-sm">
             השוואת השפעת עליית וירידת הריבית והמדד על {baseMix.name}
@@ -556,21 +556,21 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
           <div className="flex items-center flex-wrap gap-2 border-b border-slate-100 pb-3">
             <span className="text-xs font-medium text-slate-500">הרכב מסלולים:</span>
             {trackStats.stable > 0 && (
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className="text-2xs">
                 {trackStats.stable} מוגנים
               </Badge>
             )}
             {trackStats.rate > 0 && (
-              <Badge className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100">
+              <Badge className="text-2xs bg-blue-100 text-blue-800 hover:bg-blue-100">
                 {trackStats.rate} ריבית
               </Badge>
             )}
             {trackStats.cpi > 0 && (
-              <Badge className="text-[10px] bg-violet-100 text-violet-800 hover:bg-violet-100">
+              <Badge className="text-2xs bg-violet-100 text-violet-800 hover:bg-violet-100">
                 {trackStats.cpi} צמודי מדד
               </Badge>
             )}
-            <span className="text-[10px] text-slate-400 mr-auto">{baseMix.tracks.length} מסלולים בתמהיל</span>
+            <span className="text-2xs text-slate-400 mr-auto">{baseMix.tracks.length} מסלולים בתמהיל</span>
           </div>
 
           {!hasControls ? (
@@ -614,7 +614,7 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
               </div>
               <p className="text-2xl font-bold">{formatCurrency(currentCalculation.summary.totalMonthlyPayment)}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-slate-400 text-[11px]">מצב נוכחי:</span>
+                <span className="text-slate-400 text-2xs">מצב נוכחי:</span>
                 <span className="text-xs">{formatCurrency(baseCalculation.summary.totalMonthlyPayment)}</span>
                 <DeltaBadge value={monthlyDelta} />
               </div>
@@ -626,7 +626,7 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
               </div>
               <p className="text-2xl font-bold">{formatCurrency(currentCalculation.summary.totalInterest)}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-slate-400 text-[11px]">מצב נוכחי:</span>
+                <span className="text-slate-400 text-2xs">מצב נוכחי:</span>
                 <span className="text-xs">{formatCurrency(baseCalculation.summary.totalInterest)}</span>
                 <DeltaBadge value={interestDelta} />
               </div>

@@ -45,11 +45,11 @@ export function StageIntro({
       className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-8"
     >
       <header className="mx-auto max-w-3xl text-center">
-        <p className="text-[13px] font-black text-slate-400">על השלב</p>
-        <h3 className="mt-1 text-xl font-black leading-snug text-slate-900 md:text-2xl">
+        <p className="text-sm font-black text-slate-400">על השלב</p>
+        <h3 className="mt-1 text-subtitle font-black leading-snug text-slate-900">
           {meta.title}
         </h3>
-        <p className="mt-3 text-[15px] font-medium leading-relaxed text-slate-600">{lead}</p>
+        <p className="mt-3 text-info font-medium leading-relaxed text-slate-600">{lead}</p>
       </header>
 
       <div className={`mx-auto mt-6 grid max-w-4xl gap-4 ${outputs.length > 0 ? 'md:grid-cols-2' : ''}`}>
@@ -69,7 +69,7 @@ export function StageIntro({
         )}
       </div>
 
-      <p className="mx-auto mt-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50/60 px-4 py-3 text-[15px] leading-relaxed text-violet-950">
+      <p className="mx-auto mt-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50/60 px-4 py-3 text-info leading-relaxed text-violet-950">
         <Headset className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
         <span>
           בכל שלב שבו תרגישו שאתם צריכים ייעוץ או עזרה, הכפתור{' '}
@@ -83,7 +83,7 @@ export function StageIntro({
           {...demoId('plan-stage-intro-start')}
           type="button"
           onClick={onStart}
-          className={`inline-flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-l ${journey.gradient} px-8 text-[17px] font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110`}
+          className={`inline-flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-l ${journey.gradient} px-8 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110`}
         >
           התחילו את השלב
           <ArrowLeft className="h-5 w-5" />
@@ -106,7 +106,7 @@ function IntroList({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
-      <h4 className="mb-3 flex items-center gap-2 text-base font-black text-slate-900">
+      <h4 className="mb-3 flex items-center gap-2 text-info font-black text-slate-900">
         <span
           className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} shadow-md`}
         >
@@ -116,7 +116,7 @@ function IntroList({
       </h4>
       <ul className="space-y-2">
         {items.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-[15px] leading-relaxed text-slate-700">
+          <li key={item} className="flex items-start gap-2 text-info leading-relaxed text-slate-700">
             <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
             <span>{item}</span>
           </li>

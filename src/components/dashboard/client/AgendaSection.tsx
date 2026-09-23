@@ -122,7 +122,7 @@ export function AgendaSection({
           icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
           action={
             awaiting > 0 ? (
-              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[13px] font-black text-amber-800">
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-sm font-black text-amber-800">
                 {awaiting} ממתינות לאישורכם
               </span>
             ) : undefined
@@ -169,7 +169,7 @@ export function AgendaSection({
             <DashCard title="הקרוב ביומן" icon={<CalendarCheck2 className="h-5 w-5 text-blue-600" />}>
               <div className="space-y-4">
                 <div>
-                  <p className="mb-2 text-[13px] font-black text-slate-500">פגישות ומועדים</p>
+                  <p className="mb-2 text-sm font-black text-slate-500">פגישות ומועדים</p>
                   {upcoming.length === 0 ? (
                     <p className="text-sm text-slate-500">אין פגישות או מועדים קרובים.</p>
                   ) : (
@@ -182,10 +182,10 @@ export function AgendaSection({
                           className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-right text-sm transition-colors hover:bg-slate-50"
                         >
                           <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${eventTone(event).dot}`} />
-                          <span className="w-24 shrink-0 text-[13px] font-bold text-slate-500">
+                          <span className="w-24 shrink-0 text-sm font-bold text-slate-500">
                             {relativeDayLabel(event.at).replace(/^יום /, '')} · {formatTime(event.at)}
                           </span>
-                          <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-slate-900">
+                          <span className="min-w-0 flex-1 truncate text-info font-bold text-slate-900">
                             {event.title}
                           </span>
                           <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400" />
@@ -195,7 +195,7 @@ export function AgendaSection({
                   )}
                 </div>
                 <div>
-                  <p className="mb-2 text-[13px] font-black text-slate-500">משימות קרובות</p>
+                  <p className="mb-2 text-sm font-black text-slate-500">משימות קרובות</p>
                   {tasks.length === 0 ? (
                     <p className="text-sm text-slate-500">אין משימות פתוחות.</p>
                   ) : (
@@ -219,7 +219,7 @@ export function AgendaSection({
               {...demoId('agenda-add')}
               type="button"
               onClick={() => setAddOpen(true)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-button font-black text-white transition-colors hover:bg-slate-700"
             >
               <CalendarPlus className="h-4 w-4" />
               הוסף משימה או פגישה
@@ -278,8 +278,8 @@ export function AgendaSection({
             <div className="space-y-2">
               {sortedNotes.map((note) => (
                 <div key={note.id} className="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
-                  <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">{note.body}</p>
-                  <p className="mt-1.5 text-[13px] text-slate-500">
+                  <p className="whitespace-pre-wrap text-info leading-relaxed text-slate-800">{note.body}</p>
+                  <p className="mt-1.5 text-sm text-slate-500">
                     <span className="font-bold text-blue-700">{note.advisorName}</span> · שלב{' '}
                     {planStageNumber(note.stage)} · {formatDate(note.createdAt)} {formatTime(note.createdAt)}
                   </p>
@@ -325,7 +325,7 @@ function DetailPanel({
         <button
           type="button"
           onClick={onUpload}
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[15px] font-black text-white hover:bg-emerald-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-button font-black text-white hover:bg-emerald-700"
         >
           <Upload className="h-4 w-4" />
           העלאת המסמך לתיק
@@ -334,7 +334,7 @@ function DetailPanel({
       <button
         type="button"
         onClick={onComplete}
-        className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[15px] font-black ${
+        className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-info font-black ${
           ownTask.kind === 'DOCUMENT'
             ? 'border border-slate-200 text-slate-600 hover:bg-slate-50'
             : 'bg-emerald-600 text-white hover:bg-emerald-700'
@@ -346,7 +346,7 @@ function DetailPanel({
       <button
         type="button"
         onClick={onRemove}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2.5 text-[15px] font-bold text-slate-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2.5 text-button font-bold text-slate-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
       >
         <Trash2 className="h-4 w-4" />
         מחיקה
@@ -357,7 +357,7 @@ function DetailPanel({
     <button
       type="button"
       onClick={onBack}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50"
+      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-button font-black text-slate-700 transition-colors hover:bg-slate-50"
     >
       <ArrowRight className="h-4 w-4" />
       חזרה ללוח
@@ -369,9 +369,9 @@ function DetailPanel({
     return (
       <DashCard title="פרטי המשימה" icon={<ListChecks className="h-5 w-5 text-blue-600" />} action={backButton}>
         <div className="flex h-full flex-col">
-          <h3 className="text-xl font-black leading-snug text-slate-900">{task.title}</h3>
-          <p className="mt-2 text-[15px] leading-relaxed text-slate-600">{task.hint}</p>
-          <dl className="mt-4 space-y-2 text-[15px]">
+          <h3 className="text-subtitle font-black leading-snug text-slate-900">{task.title}</h3>
+          <p className="mt-2 text-info leading-relaxed text-slate-600">{task.hint}</p>
+          <dl className="mt-4 space-y-2 text-info">
             {task.due && (
               <Row icon={<Clock className="h-4 w-4" />} label="מועד">
                 {formatDate(task.due)} · {formatTime(task.due)}
@@ -388,7 +388,7 @@ function DetailPanel({
             <button
               type="button"
               onClick={() => onGo(task.target)}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-[15px] font-black text-white hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white hover:bg-slate-700"
             >
               {ownTask ? 'לשלב בתהליך' : 'לביצוע המשימה'}
               <ArrowLeft className="h-4 w-4" />
@@ -416,16 +416,16 @@ function DetailPanel({
     >
       <div className="flex h-full flex-col">
         <div className={`rounded-2xl border p-4 ${tone.card}`}>
-          <p className="text-[13px] font-bold text-slate-500">{relativeDayLabel(event.at)}</p>
+          <p className="text-sm font-bold text-slate-500">{relativeDayLabel(event.at)}</p>
           <p className="mt-0.5 text-2xl font-black text-slate-900">
             {formatDate(event.at)} · {formatTime(event.at)}
           </p>
-          <h3 className="mt-2 text-xl font-black leading-snug text-slate-900">{event.title}</h3>
-          <p className="mt-1 text-[15px] text-slate-600">{event.subtitle}</p>
+          <h3 className="mt-2 text-subtitle font-black leading-snug text-slate-900">{event.title}</h3>
+          <p className="mt-1 text-info text-slate-600">{event.subtitle}</p>
         </div>
 
         {meeting && (
-          <dl className="mt-4 space-y-2 text-[15px]">
+          <dl className="mt-4 space-y-2 text-info">
             <Row icon={<UserRound className="h-4 w-4" />} label="יועץ">
               {meeting.advisorName}
             </Row>
@@ -458,7 +458,7 @@ function DetailPanel({
               <button
                 type="button"
                 onClick={() => onRespond(meeting, true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-[15px] font-black text-white hover:bg-emerald-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-button font-black text-white hover:bg-emerald-700"
               >
                 <CalendarCheck2 className="h-4 w-4" />
                 אשרו את המועד
@@ -466,7 +466,7 @@ function DetailPanel({
               <button
                 type="button"
                 onClick={() => onRespond(meeting, false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-[15px] font-bold text-slate-600 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-button font-bold text-slate-600 hover:bg-slate-50"
               >
                 המועד לא מתאים
               </button>
@@ -475,7 +475,7 @@ function DetailPanel({
           {event.target.kind === 'href' && (
             <Link
               href={event.target.href}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-[15px] font-black text-white hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white hover:bg-slate-700"
             >
               לשלב בתהליך
               <ArrowLeft className="h-4 w-4" />

@@ -56,7 +56,7 @@ export function NotesAlert({
         aria-label={label ? undefined : title}
         title={title}
         className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ring-4 transition-colors ${toneButton[tone]} ${
-          label ? 'px-3 py-1.5 text-[13px] font-black' : 'h-7 w-7 justify-center'
+          label ? 'px-3 py-1.5 text-sm font-black' : 'h-7 w-7 justify-center'
         } ${className}`}
       >
         <AlertCircle className="h-4 w-4" />
@@ -71,10 +71,10 @@ export function NotesAlert({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="max-h-[85vh] max-w-xl overflow-y-auto">
           <DialogHeader className="text-center">
-            <DialogTitle className="justify-center text-center text-xl font-black text-slate-900">
+            <DialogTitle className="justify-center text-center text-subtitle font-black text-slate-900">
               {title}
             </DialogTitle>
-            <DialogDescription className="text-center text-[15px] text-slate-500">
+            <DialogDescription className="text-center text-info text-slate-500">
               {notes.length === 1 ? 'הערה אחת לנתונים שהזנתם' : `${notes.length} הערות לנתונים שהזנתם`}
             </DialogDescription>
           </DialogHeader>

@@ -32,12 +32,12 @@ export function PermissionPanel() {
           {data.viewer.canEditClientFields ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
         </span>
         <div>
-          <p className="text-[13px] font-bold text-slate-800">
+          <p className="text-sm font-bold text-slate-800">
             {data.viewer.canEditClientFields
               ? 'הלקוח העניק לך הרשאת עריכה לנתונים שהזין'
               : 'נתונים שהוזנו על ידי הלקוח מוצגים לקריאה בלבד'}
           </p>
-          <p className="text-[12px] text-slate-500">
+          <p className="text-xs text-slate-500">
             {data.viewer.canEditClientFields
               ? 'ניתן לערוך כל שדה בתיק. כל שינוי נשמר עם סימון "הוזן על ידי היועץ".'
               : 'ניתן להזין שדות ריקים ולערוך שדות שהזנת בעצמך. לעריכת נתוני הלקוח נדרשת הרשאה מהלקוח.'}
@@ -57,7 +57,7 @@ export function PermissionPanel() {
         </span>
         <div>
           <h3 className="text-sm font-bold text-slate-900">הרשאות עריכה ליועצים</h3>
-          <p className="mt-0.5 text-[12px] text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-500">
             נתונים שהזנת מוצגים ליועץ לקריאה בלבד. כאן ניתן לבחור יועץ ולתת לו הרשאה לערוך אותם.
           </p>
         </div>
@@ -80,15 +80,15 @@ export function PermissionPanel() {
                 <UserCog className="h-4 w-4" />
               </span>
               <div>
-                <p className="text-[13px] font-semibold text-slate-800">
+                <p className="text-sm font-semibold text-slate-800">
                   {advisor.advisorName ?? advisor.advisorEmail ?? 'יועץ'}
                   {advisor.isAssigned && (
-                    <span className="mr-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">
+                    <span className="mr-2 rounded-full bg-indigo-50 px-2 py-0.5 text-2xs font-medium text-indigo-600">
                       היועץ המטפל
                     </span>
                   )}
                 </p>
-                <p className="text-[11px] text-slate-400">{advisor.advisorEmail}</p>
+                <p className="text-2xs text-slate-400">{advisor.advisorEmail}</p>
               </div>
             </div>
 
@@ -103,7 +103,7 @@ export function PermissionPanel() {
                   setBusy(null);
                 }
               }}
-              className={`h-9 rounded-xl px-4 text-[12px] font-semibold transition-all disabled:opacity-50 ${
+              className={`h-9 rounded-xl px-4 text-xs font-semibold transition-all disabled:opacity-50 ${
                 advisor.canEdit
                   ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 hover:bg-emerald-600'
                   : 'border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600'

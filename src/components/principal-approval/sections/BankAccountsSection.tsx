@@ -50,7 +50,7 @@ export function BankAccountsSection() {
               title={`חשבון ${index + 1}`}
               badge={
                 values.bankCode ? (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-600">
                     {bankLabel(values.bankCode as string)}
                     {owners.length > 0 && ` · ${owners.join(', ')}`}
                   </span>

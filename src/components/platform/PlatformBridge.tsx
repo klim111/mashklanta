@@ -83,7 +83,7 @@ export default function PlatformBridge() {
         ))}
         <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-full bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-center shadow-2xl">
           <span className="text-xl font-black text-white">משכלתנא</span>
-          <span className="text-[11px] font-semibold text-white">צומת המפגש</span>
+          <span className="text-2xs font-semibold text-white">צומת המפגש</span>
         </div>
       </motion.div>
 

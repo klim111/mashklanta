@@ -213,21 +213,21 @@ export function ScenarioPicker({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className={`rounded-full bg-gradient-to-l ${deal.gradient} px-3 py-1 text-[11px] font-black text-white`}
+                      className={`rounded-full bg-gradient-to-l ${deal.gradient} px-3 py-1 text-2xs font-black text-white`}
                     >
                       {deal.short}
                     </span>
                     {registry && (
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-600">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-2xs font-black text-slate-600">
                         {registry.title}
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-2xs font-black text-emerald-700">
                       <Check className="h-3 w-3" />
                       התרחיש נבחר
                     </span>
                   </div>
-                  <h3 className="mt-2.5 text-xl font-black leading-snug text-slate-900 md:text-2xl">
+                  <h3 className="mt-2.5 text-subtitle font-black leading-snug text-slate-900">
                     {scenario.title}
                   </h3>
                   <p className="mt-1.5 text-sm text-slate-500">
@@ -262,9 +262,9 @@ function StepHeading({
 }) {
   return (
     <div className="mb-6 text-center">
-      <p className="text-[13px] font-black tracking-wide text-slate-400">{eyebrow}</p>
-      <h3 className="mt-1.5 text-2xl font-black leading-snug text-slate-900 md:text-3xl">{title}</h3>
-      <p className="mx-auto mt-2 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
+      <p className="text-sm font-black tracking-wide text-slate-400">{eyebrow}</p>
+      <h3 className="mt-1.5 text-subtitle font-black leading-snug text-slate-900">{title}</h3>
+      <p className="mx-auto mt-2 max-w-2xl text-info font-medium leading-relaxed text-slate-600">
         {hint}
       </p>
     </div>
@@ -352,7 +352,7 @@ function ChoiceCard({
         <Icon className="h-6 w-6 text-white" />
       </span>
       <h4 className="relative text-base font-black leading-snug text-slate-900">{title}</h4>
-      <p className="relative mt-1.5 flex-1 text-[15px] font-medium leading-relaxed text-slate-600">
+      <p className="relative mt-1.5 flex-1 text-info font-medium leading-relaxed text-slate-600">
         {description}
       </p>
       <span className="relative mt-4 inline-flex items-center gap-1.5 text-xs font-black text-slate-400 transition-colors group-hover:text-slate-700">
@@ -391,10 +391,10 @@ function ScenarioRow({
         {number}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-black leading-snug text-slate-900 md:text-base">
+        <span className="block text-info font-black leading-snug text-slate-900 md:text-base">
           {scenario.title}
         </span>
-        <span className="mt-1 block text-[13px] font-bold text-slate-500">
+        <span className="mt-1 block text-sm font-bold text-slate-500">
           {scenario.documents.length} מסמכים ודרישות
         </span>
       </span>

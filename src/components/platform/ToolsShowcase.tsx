@@ -80,7 +80,7 @@ export default function ToolsShowcase() {
                     />
 
                     {tool.badge && (
-                      <span className="absolute left-4 top-4 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-700">
+                      <span className="absolute left-4 top-4 rounded-full bg-amber-100 px-2.5 py-1 text-2xs font-black text-amber-700">
                         {tool.badge}
                       </span>
                     )}
@@ -91,7 +91,7 @@ export default function ToolsShowcase() {
                       <Icon className="h-6 w-6 text-white" />
                     </div>
 
-                    <h3 className="mb-2 text-lg font-bold text-gray-900 transition-colors group-hover:text-blue-700">
+                    <h3 className="mb-2 text-subtitle font-bold text-gray-900 transition-colors group-hover:text-blue-700">
                       {tool.title}
                     </h3>
                     <p className="mb-4 flex-1 text-sm leading-relaxed text-gray-600">

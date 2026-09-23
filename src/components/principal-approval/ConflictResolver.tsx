@@ -63,7 +63,7 @@ export function ConflictResolver() {
           <h3 className="text-sm font-bold text-amber-900">
             נמצאו סתירות בין הנתונים בפרופיל הלקוח לבין הנתונים שהוזנו כאן ({openConflicts.length})
           </h3>
-          <p className="mt-0.5 text-[12px] text-amber-800">
+          <p className="mt-0.5 text-xs text-amber-800">
             יש לבחור עבור כל שדה איזה ערך נכון. הערך שייבחר יעודכן בבסיס הנתונים ובכל המסכים שמושכים ממנו.
           </p>
         </div>
@@ -72,7 +72,7 @@ export function ConflictResolver() {
       <div className="space-y-3">
         {openConflicts.map((conflict) => (
           <div key={conflict.id} className="rounded-xl border border-amber-200 bg-white p-4">
-            <p className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-slate-800">
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
               <ArrowLeftRight className="h-3.5 w-3.5 text-amber-500" />
               {conflict.entityLabel} · {conflict.fieldLabel}
             </p>
@@ -84,14 +84,14 @@ export function ConflictResolver() {
                 onClick={() => void choose(conflict, 'profile')}
                 className="group rounded-xl border border-slate-200 p-3 text-right transition-all hover:border-indigo-300 hover:bg-indigo-50/50 disabled:opacity-50"
               >
-                <span className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                <span className="mb-1 flex items-center gap-1.5 text-2xs font-medium text-slate-400">
                   <Database className="h-3 w-3" />
                   הערך מפרופיל הלקוח
                 </span>
                 <span className="block text-sm font-bold text-slate-800">
                   {displayValue(conflict, conflict.profileValue)}
                 </span>
-                <span className="mt-2 block text-[11px] font-semibold text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="mt-2 block text-2xs font-semibold text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100">
                   בחר ערך זה
                 </span>
               </button>
@@ -102,14 +102,14 @@ export function ConflictResolver() {
                 onClick={() => void choose(conflict, 'case')}
                 className="group rounded-xl border border-slate-200 p-3 text-right transition-all hover:border-emerald-300 hover:bg-emerald-50/50 disabled:opacity-50"
               >
-                <span className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                <span className="mb-1 flex items-center gap-1.5 text-2xs font-medium text-slate-400">
                   <FileEdit className="h-3 w-3" />
                   הערך שהוזן באישור העקרוני
                 </span>
                 <span className="block text-sm font-bold text-slate-800">
                   {displayValue(conflict, conflict.caseValue)}
                 </span>
-                <span className="mt-2 block text-[11px] font-semibold text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="mt-2 block text-2xs font-semibold text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
                   בחר ערך זה
                 </span>
               </button>

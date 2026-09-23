@@ -71,7 +71,7 @@ interface TooltipRow {
 function TooltipCard({ title, rows, note }: { title: string; rows: TooltipRow[]; note?: string }) {
   return (
     <div dir="rtl" className="min-w-[180px] rounded-xl border border-slate-200 bg-white p-3 text-right shadow-lg">
-      <div className="text-[11px] font-black text-slate-500">{title}</div>
+      <div className="text-2xs font-black text-slate-500">{title}</div>
       <ul className="mt-1 space-y-0.5">
         {rows.map((row) => (
           <li key={row.label} className="flex items-center justify-between gap-3 text-xs">
@@ -83,7 +83,7 @@ function TooltipCard({ title, rows, note }: { title: string; rows: TooltipRow[];
           </li>
         ))}
       </ul>
-      {note && <div className="mt-1.5 border-t border-slate-100 pt-1.5 text-[11px] leading-snug text-slate-500">{note}</div>}
+      {note && <div className="mt-1.5 border-t border-slate-100 pt-1.5 text-2xs leading-snug text-slate-500">{note}</div>}
     </div>
   );
 }
@@ -202,7 +202,7 @@ export function LimitGauge({
         )}
       </svg>
       {exceeds && (
-        <figcaption className="-mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-black text-rose-700">
+        <figcaption className="-mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-2xs font-black text-rose-700">
           <AlertTriangle className="h-3 w-3" />
           חורג מהמגבלה ב-{(value - limit).toFixed(1)}
           {unit}
@@ -558,7 +558,7 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
 
   return (
     <div className="w-full text-right">
-      <div className="grid grid-cols-[minmax(150px,1fr)_minmax(0,2.2fr)] items-end gap-x-3 border-b border-slate-200 pb-1 text-[11px] font-bold text-slate-500 sm:grid-cols-[minmax(190px,1fr)_minmax(0,3fr)]">
+      <div className="grid grid-cols-[minmax(150px,1fr)_minmax(0,2.2fr)] items-end gap-x-3 border-b border-slate-200 pb-1 text-2xs font-bold text-slate-500 sm:grid-cols-[minmax(190px,1fr)_minmax(0,3fr)]">
         <span>שלב / אבן דרך</span>
         <div className="relative h-4">
           {ticks.map((week) => (
@@ -590,9 +590,9 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
               key={item.id}
               className="grid grid-cols-[minmax(150px,1fr)_minmax(0,2.2fr)] items-center gap-x-3 py-2 sm:grid-cols-[minmax(190px,1fr)_minmax(0,3fr)]"
             >
-              <span className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-slate-800">
+              <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-slate-800">
                 <span
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-2xs font-black text-white"
                   style={{ background: isStage ? SERIES.income : SERIES.milestone }}
                 >
                   {isStage ? stageNumber : '•'}
@@ -623,7 +623,7 @@ export function ProcessGantt({ items }: { items: TimelineItem[] }) {
           );
         })}
       </ol>
-      <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-2xs font-bold text-slate-500">
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-4 rounded-sm" style={{ background: SERIES.income }} />
           שלב בפלטפורמה
@@ -672,16 +672,16 @@ export function MixTracks({ tracks }: { tracks: MixTrackGuide[] }) {
       {tracks.map((track) => (
         <article key={track.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h5 className="text-[13px] font-black leading-snug text-slate-900">{track.label}</h5>
+            <h5 className="text-sm font-black leading-snug text-slate-900">{track.label}</h5>
             {track.linked && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-black text-amber-800">
                 <TrendingUp className="h-3 w-3" />
                 צמוד מדד
               </span>
             )}
           </div>
 
-          <dl className="mt-3 space-y-1.5 text-[12px]">
+          <dl className="mt-3 space-y-1.5 text-xs">
             {(
               [
                 ['סיכון', track.risk, Shield],
@@ -695,17 +695,17 @@ export function MixTracks({ tracks }: { tracks: MixTrackGuide[] }) {
                   {name}
                 </dt>
                 <dd className="flex items-center gap-2 font-bold text-slate-700">
-                  <span className="text-[11px] text-slate-500">{RATING_TEXT[level]}</span>
+                  <span className="text-2xs text-slate-500">{RATING_TEXT[level]}</span>
                   <RatingDots level={level} />
                 </dd>
               </div>
             ))}
           </dl>
 
-          <p className="mb-3 mt-3 text-[12px] leading-relaxed text-slate-600">{track.role}</p>
+          <p className="mb-3 mt-3 text-xs leading-relaxed text-slate-600">{track.role}</p>
 
           {track.linked && (
-            <p className="mt-auto rounded-xl bg-amber-50 px-3 py-2 pt-2 text-[11px] font-bold leading-relaxed text-amber-900">
+            <p className="mt-auto rounded-xl bg-amber-50 px-3 py-2 pt-2 text-2xs font-bold leading-relaxed text-amber-900">
               סיכון מיוחד למסלול צמוד: הקרן עצמה משתנה יחד עם האינפלציה במשק, ולא רק ההחזר החודשי —
               היתרה לתשלום יכולה לגדול גם אחרי שנים של תשלומים.
             </p>

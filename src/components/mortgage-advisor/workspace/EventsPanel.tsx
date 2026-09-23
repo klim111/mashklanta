@@ -59,7 +59,7 @@ export function EventsPanel({ result, onRemove, onAddPrepayment, onAddRefinance 
 
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-2xs text-slate-500 leading-relaxed">
             אין שינויים מתוכננים. הוסיפו סכום חד-פעמי לפרעון מוקדם
             {onAddRefinance ? ' או מחזור של מסלול' : ''}, וההשפעה תיכנס מיד לגרפים, לסיכום וללוח
             ההחזרים.
@@ -78,7 +78,7 @@ export function EventsPanel({ result, onRemove, onAddPrepayment, onAddRefinance 
                       <p className="text-xs font-semibold text-slate-800">
                         פרעון מוקדם {formatShekel(event.amount)}
                       </p>
-                      <p className="text-[10px] text-slate-500 truncate">
+                      <p className="text-2xs text-slate-500 truncate">
                         {dateFor(event.month)} · {trackName(event.trackId)} ·{' '}
                         {event.mode === 'shorten_term' ? 'קיצור תקופה' : 'הקטנת החזר'}
                       </p>
@@ -91,7 +91,7 @@ export function EventsPanel({ result, onRemove, onAddPrepayment, onAddRefinance 
                       <p className="text-xs font-semibold text-slate-800">
                         מחזור ל-{formatPercentage(event.newRate)} · {formatDuration(Math.round(event.newYears * 12))}
                       </p>
-                      <p className="text-[10px] text-slate-500 truncate">
+                      <p className="text-2xs text-slate-500 truncate">
                         {dateFor(event.month)} · {trackName(event.trackId)}
                         {event.fee ? ` · עמלות ${formatShekel(event.fee)}` : ''}
                       </p>

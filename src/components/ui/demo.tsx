@@ -221,7 +221,7 @@ export default function Demo() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl font-bold mb-4">איך המערכת עובדת?</h2>
+          <h2 className="text-title font-bold mb-4">איך המערכת עובדת?</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             צפה בדמו אינטראקטיבי של תהליך המשכנתא החכם שלנו
           </p>
@@ -309,7 +309,7 @@ export default function Demo() {
                         <div className="flex items-center space-x-3 space-x-reverse mb-6">
                           {demoSteps[currentStep].icon}
                           <div>
-                            <h3 className="text-xl font-semibold">
+                            <h3 className="text-subtitle font-semibold">
                               {demoSteps[currentStep].title}
                             </h3>
                             <p className="text-gray-600">

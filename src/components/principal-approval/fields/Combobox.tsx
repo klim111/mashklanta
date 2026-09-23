@@ -132,7 +132,7 @@ export function Combobox({
                 >
                   <span className="truncate">
                     {option.label}
-                    {option.hint && <span className="mr-2 text-[11px] text-slate-400">{option.hint}</span>}
+                    {option.hint && <span className="mr-2 text-2xs text-slate-400">{option.hint}</span>}
                   </span>
                   {option.value === value && <Check className="h-3.5 w-3.5 text-indigo-600" />}
                 </button>
@@ -206,7 +206,7 @@ export function MultiCombobox({
           return (
             <span
               key={v}
-              className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+              className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-0.5 text-2xs font-medium text-indigo-700"
             >
               {option?.label ?? v}
               {!readOnly && (

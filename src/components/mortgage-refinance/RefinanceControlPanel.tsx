@@ -104,7 +104,7 @@ export function RefinanceControlPanel({
       {/* בחירת המסלול למיחזור — מופיעה מעל הפאנל במצב מסלול בודד */}
       {singleMode && (
         <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-2.5">
-          <p className="mb-1.5 text-[11px] font-bold text-violet-900">
+          <p className="mb-1.5 text-2xs font-bold text-violet-900">
             איזה מסלול תרצו למחזר?
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -115,7 +115,7 @@ export function RefinanceControlPanel({
                   key={track.id}
                   type="button"
                   onClick={() => onSelectTrack(track.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-2xs font-bold transition-all ${
                     active
                       ? 'border-violet-500 bg-white text-violet-900 shadow-sm ring-2 ring-violet-200'
                       : 'border-violet-200 bg-white/70 text-slate-600 hover:border-violet-400'
@@ -136,7 +136,7 @@ export function RefinanceControlPanel({
 
       {/* מצב חלוקת הסכום בין המסלולים */}
       {!singleMode && unallocated >= MIN_TRACK_AMOUNT && (
-        <p className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] font-bold text-blue-900">
+        <p className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-2xs font-bold text-blue-900">
           <Coins className="h-3.5 w-3.5" />
           {formatCurrency(unallocated)} מתוך {formatCurrency(totalAmount)} עדיין לא שובצו — הגדילו
           מסלול קיים או הוסיפו מסלול חדש
@@ -184,8 +184,8 @@ export function RefinanceControlPanel({
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow">
                 <Plus className="h-5 w-5" />
               </span>
-              <span className="text-[13px] font-bold text-blue-900">הוספת מסלול</span>
-              <span className="text-[11px] leading-snug text-blue-700">
+              <span className="text-sm font-bold text-blue-900">הוספת מסלול</span>
+              <span className="text-2xs leading-snug text-blue-700">
                 נותרו {formatCurrency(unallocated)} שלא שובצו לאף מסלול
               </span>
             </button>
@@ -227,17 +227,17 @@ function TrackBriefCard({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
-      <p className="mb-1.5 text-[12px] font-bold text-slate-900">
+      <p className="mb-1.5 text-xs font-bold text-slate-900">
         מה שכדאי לדעת על המסלול הזה
       </p>
-      <p className={`mb-1.5 text-[10px] font-bold ${RISK_META[risk.level].text}`}>
+      <p className={`mb-1.5 text-2xs font-bold ${RISK_META[risk.level].text}`}>
         {RISK_META[risk.level].label}
       </p>
-      <p className="text-[11px] leading-relaxed text-slate-600">{risk.description}</p>
+      <p className="text-2xs leading-relaxed text-slate-600">{risk.description}</p>
       {risk.stationNote && (
-        <p className="mt-1 text-[10px] text-slate-500">{risk.stationNote}</p>
+        <p className="mt-1 text-2xs text-slate-500">{risk.stationNote}</p>
       )}
-      <ul className="mt-2 space-y-0.5 text-[10px] text-slate-600">
+      <ul className="mt-2 space-y-0.5 text-2xs text-slate-600">
         <li>
           יתרה למיחזור: <span className="font-bold">{formatCurrency(track.amount)}</span> · נותרו{' '}
           <span className="font-bold">{formatDuration(months)}</span>
@@ -318,17 +318,17 @@ function TrackControlCard({
           style={{ backgroundColor: trackColor(current.type) }}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-bold text-slate-900">
+          <p className="truncate text-sm font-bold text-slate-900">
             {TRACK_TYPES[current.type]}
           </p>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-2xs text-slate-500">
             {formatCurrency(current.amount)}
             {Math.round(current.amount) !== Math.round(track.amount) && (
               <span className="text-blue-600"> (היום {formatCurrency(track.amount)})</span>
             )}
           </p>
         </div>
-        <span className={`shrink-0 text-[10px] font-bold ${RISK_META[risk.level].text}`}>
+        <span className={`shrink-0 text-2xs font-bold ${RISK_META[risk.level].text}`}>
           {RISK_META[risk.level].label}
         </span>
         {onRemove && (
@@ -354,7 +354,7 @@ function TrackControlCard({
             value={current.type}
             onValueChange={(value) => onChange({ type: value as MortgageTrack['type'] })}
           >
-            <SelectTrigger dir="rtl" className="h-8 text-[11px] [&>span:first-of-type]:text-right">
+            <SelectTrigger dir="rtl" className="h-8 text-2xs [&>span:first-of-type]:text-right">
               <SelectValue />
             </SelectTrigger>
             <SelectContent dir="rtl" className="text-right">
@@ -378,7 +378,7 @@ function TrackControlCard({
               onChange({ amortizationType: value as TrackDraft['amortizationType'] })
             }
           >
-            <SelectTrigger dir="rtl" className="h-8 text-[11px] [&>span:first-of-type]:text-right">
+            <SelectTrigger dir="rtl" className="h-8 text-2xs [&>span:first-of-type]:text-right">
               <SelectValue />
             </SelectTrigger>
             <SelectContent dir="rtl" className="text-right">
@@ -406,7 +406,7 @@ function TrackControlCard({
             step={0.05}
           />
           <span
-            className={`w-14 shrink-0 rounded-md border px-1 py-0.5 text-center text-[12px] font-bold ${
+            className={`w-14 shrink-0 rounded-md border px-1 py-0.5 text-center text-xs font-bold ${
               current.interestRate < track.interestRate - 0.001
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                 : current.interestRate > track.interestRate + 0.001
@@ -417,7 +417,7 @@ function TrackControlCard({
             {current.interestRate.toFixed(2)}%
           </span>
         </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-400">
+        <div className="flex items-center justify-between text-2xs text-slate-400">
           <span>היום {formatPercentage(track.interestRate)}</span>
           {typeof marketRate === 'number' && (
             <button
@@ -447,7 +447,7 @@ function TrackControlCard({
               step={5000}
             />
             <span
-              className={`w-[74px] shrink-0 rounded-md border px-1 py-0.5 text-center text-[12px] font-bold ${
+              className={`w-[74px] shrink-0 rounded-md border px-1 py-0.5 text-center text-xs font-bold ${
                 Math.round(current.amount) !== Math.round(track.amount)
                   ? 'border-blue-300 bg-blue-50 text-blue-700'
                   : 'border-slate-200 bg-slate-50 text-slate-700'
@@ -456,7 +456,7 @@ function TrackControlCard({
               {formatCurrency(current.amount)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[10px] text-slate-400">
+          <div className="flex items-center justify-between text-2xs text-slate-400">
             <span>מינימום {formatCurrency(MIN_TRACK_AMOUNT)}</span>
             <span>עד {formatCurrency(maxAmount)} (כולל מה שלא שובץ)</span>
           </div>
@@ -477,7 +477,7 @@ function TrackControlCard({
             step={1}
           />
           <span
-            className={`w-14 shrink-0 rounded-md border px-1 py-0.5 text-center text-[12px] font-bold ${
+            className={`w-14 shrink-0 rounded-md border px-1 py-0.5 text-center text-xs font-bold ${
               Math.round(current.months) !== baseMonths
                 ? 'border-violet-300 bg-violet-50 text-violet-700'
                 : 'border-slate-200 bg-slate-50 text-slate-700'
@@ -486,7 +486,7 @@ function TrackControlCard({
             {Math.round(current.months)} ח׳
           </span>
         </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-400">
+        <div className="flex items-center justify-between text-2xs text-slate-400">
           <span>היום {formatDuration(baseMonths)}</span>
           <span>
             {formatDuration(Math.round(current.months))}
@@ -513,7 +513,7 @@ function Field({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-1">
-        <span className="flex items-center gap-1 text-[10px] font-medium text-slate-600">
+        <span className="flex items-center gap-1 text-2xs font-medium text-slate-600">
           <Icon className="h-3 w-3 text-slate-400" />
           {label}
         </span>
@@ -559,7 +559,7 @@ function GuidanceChip({ guidance }: { guidance: ParamGuidance }) {
   return (
     <span
       title={`${label} — ${hint}`}
-      className={`inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${tone}`}
+      className={`inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-2xs font-bold ${tone}`}
     >
       <Icon className="h-2.5 w-2.5" />
       {text}
@@ -594,11 +594,11 @@ export function GoalGuidanceStrip({
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="text-[11px] font-bold text-slate-500">כדי להשיג את המטרה:</span>
+      <span className="text-2xs font-bold text-slate-500">כדי להשיג את המטרה:</span>
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <span key={item.text} className={`inline-flex items-center gap-1 text-[11px] font-semibold ${item.tone}`}>
+          <span key={item.text} className={`inline-flex items-center gap-1 text-2xs font-semibold ${item.tone}`}>
             <Icon className="h-3 w-3" />
             {item.text}
           </span>

@@ -135,7 +135,7 @@ export default function MortgageJourneyMap({
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-6"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-title font-bold text-gray-900 mb-2">
             🗺️ מפת המסע למשכנתא
           </h1>
           <p className="text-lg text-gray-600">
@@ -151,7 +151,7 @@ export default function MortgageJourneyMap({
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">התקדמות כללית</h3>
+              <h3 className="text-subtitle font-bold text-gray-900">התקדמות כללית</h3>
               <p className="text-gray-600">
                 {Math.round(overallProgress)}% הושלמו מתוך {stepsWithDates.length} שלבים
               </p>
@@ -544,7 +544,7 @@ export default function MortgageJourneyMap({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-gray-900">
+                <h3 className="text-subtitle font-bold text-gray-900">
                   {selectedStep.title}
                 </h3>
                 <Button 

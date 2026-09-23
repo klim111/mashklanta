@@ -119,7 +119,7 @@ export function DemoOverlay() {
             <span className="mk-demo-end__icon">
               <Sparkles className="h-6 w-6" />
             </span>
-            <h2 className="text-2xl font-black text-slate-900">סיימתם את ההדגמה: {flow.title}</h2>
+            <h2 className="text-subtitle font-black text-slate-900">סיימתם את ההדגמה: {flow.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-600">
               כל מה שראיתם רץ על נתונים בדויים ולא נשמר. אפשר לצפות שוב, להמשיך להדגמה אחרת, או
               לפתוח את הכלי האמיתי ולהתחיל לבד.
@@ -143,7 +143,7 @@ export function DemoOverlay() {
                         </span>
                         <span className="min-w-0">
                           <span className="block text-sm font-black text-slate-900">{item.title}</span>
-                          <span className="block text-[11px] text-slate-500">כ-{item.minutes} דק׳</span>
+                          <span className="block text-2xs text-slate-500">כ-{item.minutes} דק׳</span>
                         </span>
                         <ArrowLeft className="mr-auto h-4 w-4 shrink-0 text-blue-600" />
                       </button>

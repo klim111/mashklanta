@@ -374,7 +374,7 @@ export default function EquityCalculatorModal({
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <Calculator className="w-6 h-6" />
-                  <h3 className="text-2xl font-bold">מחשבון הון עצמי</h3>
+                  <h3 className="text-subtitle font-bold">מחשבון הון עצמי</h3>
                 </div>
                 <div className="flex items-center gap-4">
                   {/* Home Type Selector */}
@@ -413,7 +413,7 @@ export default function EquityCalculatorModal({
               
               {/* Progress Bar */}
               <div className="mt-4">
-                <div className="flex justify-between text-sm mb-2">
+                <div className="flex justify-between text-info mb-2">
                   <span>
                     {currentStep === 1 ? 'הון פנוי' : 
                      currentStep === 2 && currentTab === 'required' ? 'הוצאות נדרשות' :

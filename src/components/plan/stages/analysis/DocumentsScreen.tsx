@@ -61,7 +61,7 @@ function DocumentBadge({ doc, appraisalRecommended }: { doc: StageDocument; appr
           <TooltipTrigger asChild>
             <button
               type="button"
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-black ${
                 appraisalRecommended ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'
               }`}
             >
@@ -69,7 +69,7 @@ function DocumentBadge({ doc, appraisalRecommended }: { doc: StageDocument; appr
               {appraisalRecommended ? 'מומלץ: שמאות מוקדמת לפני החוזה' : 'אופציונלי בשלב זה'}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs bg-slate-900 text-right text-[11px] leading-relaxed text-white">
+          <TooltipContent side="top" className="max-w-xs bg-slate-900 text-right text-2xs leading-relaxed text-white">
             {EARLY_APPRAISAL_TOOLTIP}
           </TooltipContent>
         </Tooltip>
@@ -78,13 +78,13 @@ function DocumentBadge({ doc, appraisalRecommended }: { doc: StageDocument; appr
   }
   if (doc.key in PROPERTY_DOCUMENT_NOTES || doc.required === false) {
     return (
-      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-bold text-slate-500">
         אופציונלי בשלב זה
       </span>
     );
   }
   return (
-    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-black text-indigo-700">
+    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-2xs font-black text-indigo-700">
       נדרש לאישור העקרוני
     </span>
   );
@@ -157,7 +157,7 @@ export function DocumentsScreen({
               <button
                 type="button"
                 onClick={() => patch({ profileScreen: 'report' })}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-slate-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
               >
                 נמשיך להעלות בשלב מאוחר יותר — לדוח הסופי
                 <ArrowLeft className="h-4 w-4" />
@@ -175,7 +175,7 @@ export function DocumentsScreen({
                     </span>
                     <div>
                       <h4 className="text-sm font-black text-slate-900">{group.title}</h4>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-2xs text-slate-500">
                         {group.id === 'property'
                           ? `אופציונלי בשלב זה — נדרש לפני הביצוע`
                           : group.subtitle ?? ''}
@@ -204,7 +204,7 @@ export function DocumentsScreen({
                                 </span>
                                 <DocumentBadge doc={doc} appraisalRecommended={appraisalRecommended} />
                               </div>
-                              {note && <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{note}</p>}
+                              {note && <p className="mt-0.5 text-2xs leading-relaxed text-slate-500">{note}</p>}
                             </div>
                           </li>
                         );

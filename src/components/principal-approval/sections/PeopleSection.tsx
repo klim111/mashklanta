@@ -106,7 +106,7 @@ export function PeopleSection({ kind }: { kind: 'borrower' | 'guarantor' }) {
                     type="button"
                     onClick={() => setActiveId(person.id)}
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all',
+                      'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-button font-semibold transition-all',
                       isActive
                         ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
                         : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700',
@@ -116,7 +116,7 @@ export function PeopleSection({ kind }: { kind: 'borrower' | 'guarantor' }) {
                     <span className="max-w-[180px] truncate">{tabLabel(person.id, index)}</span>
                     <span
                       className={cn(
-                        'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                        'rounded-full px-1.5 py-0.5 text-2xs font-medium',
                         isActive
                           ? 'bg-white/15 text-white'
                           : c.ratio === 1

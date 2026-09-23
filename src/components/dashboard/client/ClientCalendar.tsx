@@ -102,12 +102,12 @@ export function MiniCalendar({
         <NavButton label="החודש הקודם" onClick={() => shift(-1)}>
           <ChevronRight className="h-4 w-4" />
         </NavButton>
-        <p className="text-[15px] font-black text-slate-900">{MONTH_FORMAT.format(anchor)}</p>
+        <p className="text-info font-black text-slate-900">{MONTH_FORMAT.format(anchor)}</p>
         <NavButton label="החודש הבא" onClick={() => shift(1)}>
           <ChevronLeft className="h-4 w-4" />
         </NavButton>
       </div>
-      <div className="mb-1 grid grid-cols-7 text-center text-[13px] font-bold text-slate-400">
+      <div className="mb-1 grid grid-cols-7 text-center text-sm font-bold text-slate-400">
         {WEEKDAYS.map((day) => (
           <span key={day}>{day}</span>
         ))}
@@ -124,7 +124,7 @@ export function MiniCalendar({
               type="button"
               onClick={() => onSelect(key)}
               title={items.map((item) => item.title).join(', ') || undefined}
-              className={`flex h-10 flex-col items-center justify-center rounded-lg text-[15px] font-bold transition-colors ${
+              className={`flex h-10 flex-col items-center justify-center rounded-lg text-info font-bold transition-colors ${
                 isToday
                   ? 'bg-blue-600 text-white'
                   : inMonth
@@ -239,7 +239,7 @@ export function ClientCalendar({
           <button
             type="button"
             onClick={goToday}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-button font-bold text-slate-700 hover:bg-slate-50"
           >
             היום
           </button>
@@ -251,7 +251,7 @@ export function ClientCalendar({
 
       {view === 'month' && (
         <>
-          <div className="mb-1 grid grid-cols-7 text-center text-[13px] font-bold text-slate-400">
+          <div className="mb-1 grid grid-cols-7 text-center text-sm font-bold text-slate-400">
             {WEEKDAYS.map((day) => (
               <span key={day}>{day}</span>
             ))}
@@ -350,7 +350,7 @@ export function ClientCalendar({
                       className={`rounded-lg border px-2 py-1.5 text-right transition-colors hover:brightness-95 ${eventTone(item).card}`}
                     >
                       <span className="block text-xs font-black text-slate-700">{formatTime(item.at)}</span>
-                      <span className="block text-[13px] font-bold leading-snug text-slate-900">{item.title}</span>
+                      <span className="block text-sm font-bold leading-snug text-slate-900">{item.title}</span>
                     </button>
                   ))}
                 </div>
@@ -368,7 +368,7 @@ export function ClientCalendar({
         />
       )}
 
-      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[13px] font-semibold text-slate-500">
+      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm font-semibold text-slate-500">
         <Legend dot="bg-emerald-500" label="פגישה מאושרת" />
         <Legend dot="bg-amber-500" label="ממתינה לאישורכם" />
         <Legend dot="bg-rose-500" label="מועד חשוב" />
@@ -392,7 +392,7 @@ export function DayList({
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 py-10 text-center">
         <CalendarDays className="h-7 w-7 text-slate-300" />
-        <p className="text-[15px] text-slate-500">{empty}</p>
+        <p className="text-info text-slate-500">{empty}</p>
       </div>
     );
   }
@@ -410,8 +410,8 @@ export function DayList({
             <span className="w-14 shrink-0 text-center text-base font-black text-slate-800">{formatTime(item.at)}</span>
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-black text-slate-900">{item.title}</span>
-              <span className="block truncate text-[13px] text-slate-600">{item.subtitle}</span>
+              <span className="block truncate text-info font-black text-slate-900">{item.title}</span>
+              <span className="block truncate text-sm text-slate-600">{item.subtitle}</span>
             </span>
             <ChevronLeft className="h-4 w-4 shrink-0 text-slate-400" />
           </button>

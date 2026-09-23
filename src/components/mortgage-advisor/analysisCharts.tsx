@@ -132,7 +132,7 @@ export function ChartPanel({ title, hint, children }: { title: string; hint: str
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <p className="text-[11px] text-slate-500 mb-2 leading-snug">{hint}</p>
+      <p className="text-2xs text-slate-500 mb-2 leading-snug">{hint}</p>
       <ResponsiveContainer width="100%" height={230}>
         {children}
       </ResponsiveContainer>

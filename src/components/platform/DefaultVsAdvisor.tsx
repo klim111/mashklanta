@@ -102,17 +102,17 @@ export default function DefaultVsAdvisor() {
 
           <dl className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <dt className="text-sm text-gray-600">ריבית משוקללת</dt>
+              <dt className="text-info text-gray-600">ריבית משוקללת</dt>
               <dd className="font-bold text-gray-900">{(DEFAULT_RATE * 100).toFixed(2)}%</dd>
             </div>
             <div className="flex items-baseline justify-between">
-              <dt className="text-sm text-gray-600">החזר חודשי</dt>
+              <dt className="text-info text-gray-600">החזר חודשי</dt>
               <dd className="text-lg font-black text-gray-900">
                 <AnimatedNumber value={basePayment} prefix="₪" live duration={700} />
               </dd>
             </div>
             <div className="flex items-baseline justify-between border-t border-gray-200 pt-3">
-              <dt className="text-sm text-gray-600">עלות כוללת</dt>
+              <dt className="text-info text-gray-600">עלות כוללת</dt>
               <dd className="text-lg font-black text-gray-900">
                 <AnimatedNumber value={baseTotal} prefix="₪" live duration={700} />
               </dd>
@@ -163,19 +163,19 @@ export default function DefaultVsAdvisor() {
 
           <dl className="relative space-y-3">
             <div className="flex items-baseline justify-between">
-              <dt className="text-sm text-gray-600">ריבית משוקללת</dt>
+              <dt className="text-info text-gray-600">ריבית משוקללת</dt>
               <dd className="font-bold text-emerald-700">
                 {(OPTIMISED_RATE * 100).toFixed(2)}%
               </dd>
             </div>
             <div className="flex items-baseline justify-between">
-              <dt className="text-sm text-gray-600">החזר חודשי</dt>
+              <dt className="text-info text-gray-600">החזר חודשי</dt>
               <dd className="text-lg font-black text-emerald-700">
                 <AnimatedNumber value={optimisedPayment} prefix="₪" live duration={700} />
               </dd>
             </div>
             <div className="flex items-baseline justify-between border-t border-emerald-200 pt-3">
-              <dt className="text-sm text-gray-600">עלות כוללת</dt>
+              <dt className="text-info text-gray-600">עלות כוללת</dt>
               <dd className="text-lg font-black text-emerald-700">
                 <AnimatedNumber value={optimisedTotal} prefix="₪" live duration={700} />
               </dd>

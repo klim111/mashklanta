@@ -78,8 +78,8 @@ export function LoanComparison({
             <ArrowLeftRight className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="text-[15px] font-black text-slate-900">בחרו שתי הלוואות ומעלה להשוואה</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-slate-600">
+            <h3 className="text-info font-black text-slate-900">בחרו שתי הלוואות ומעלה להשוואה</h3>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
               סימון הלוואות בפאנל השליטה (או לחיצה על מקטע בפס הרכב התיק) פותח כאן את הסיכום
               המשותף, תרחיש איחוד, תרחיש פירעון מוקדם וההשוואה הגרפית.
             </p>
@@ -95,7 +95,7 @@ export function LoanComparison({
                   key={loan.id}
                   type="button"
                   onClick={() => onToggleSelect(loan.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-2xs font-bold transition-all ${
                     active
                       ? 'border-blue-500 bg-blue-50 text-blue-900'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-blue-400'
@@ -128,14 +128,14 @@ export function LoanComparison({
     <div className="space-y-2.5">
       {/* בחירת ההלוואות המושוות */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
-        <p className="text-[11px] font-bold text-blue-900">מושוות כרגע:</p>
+        <p className="text-2xs font-bold text-blue-900">מושוות כרגע:</p>
         {selected.map((loan) => (
           <button
             key={loan.id}
             type="button"
             onClick={() => onToggleSelect(loan.id)}
             title="הסרה מההשוואה"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors hover:border-rose-300 hover:text-rose-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-2.5 py-1 text-2xs font-bold text-slate-700 transition-colors hover:border-rose-300 hover:text-rose-700"
           >
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: loanColor(loan) }} />
             {loan.name}
@@ -145,7 +145,7 @@ export function LoanComparison({
         <button
           type="button"
           onClick={onClearSelection}
-          className="mr-auto rounded-lg px-2.5 py-1 text-[11px] font-bold text-slate-500 transition-colors hover:bg-white hover:text-slate-800"
+          className="mr-auto rounded-lg px-2.5 py-1 text-2xs font-bold text-slate-500 transition-colors hover:bg-white hover:text-slate-800"
         >
           ניקוי הבחירה
         </button>
@@ -161,7 +161,7 @@ export function LoanComparison({
               key={item.id}
               type="button"
               onClick={() => onViewChange(item.id)}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] font-black transition-all ${
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition-all ${
                 active
                   ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
@@ -191,8 +191,8 @@ export function LoanComparison({
       {view === 'summary' && (
         <div className="space-y-2.5">
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-[12px]">
-              <thead className="bg-slate-50 text-[10px] font-bold text-slate-500">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-2xs font-bold text-slate-500">
                 <tr>
                   <th className="p-2 text-right">הלוואה</th>
                   <th className="p-2 text-right">קרן</th>
@@ -230,7 +230,7 @@ export function LoanComparison({
             </table>
           </div>
 
-          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11.5px] leading-relaxed text-slate-600">
+          <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-2xs leading-relaxed text-slate-600">
             ההלוואה שיש להתחיל ממנה היא זו עם הריבית הגבוהה, לא זו עם היתרה הגדולה: כל שקל שמופנה
             לריבית הגבוהה חוסך יותר. סימון ההלוואות כאן ומעבר לתרחיש איחוד או פירעון מוקדם מראה
             בדיוק כמה.
@@ -287,7 +287,7 @@ export function LoanComparison({
             tone="scenario"
           />
 
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-2xs leading-relaxed text-amber-900">
             שימו לב לשני הכיוונים: איחוד בריבית נמוכה חוסך ריבית, אבל פריסה לתקופה ארוכה יותר
             מקטינה את ההחזר החודשי ומגדילה את הריבית הכוללת. המספרים כאן מראים את שני הדברים
             במקביל, כדי שהבחירה תהיה מודעת.
@@ -299,15 +299,15 @@ export function LoanComparison({
         <div className="space-y-2.5">
           <div className="rounded-xl border border-slate-200 bg-white p-2.5">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[12px] font-bold text-slate-700">סכום מזומן שאפשר להפנות עכשיו</p>
+              <p className="text-xs font-bold text-slate-700">סכום מזומן שאפשר להפנות עכשיו</p>
               <FormattedNumberValueInput
                 value={cash || ''}
                 onValueChange={setCash}
                 placeholder="0"
                 aria-label="סכום מזומן לפירעון מוקדם"
-                className="h-8 w-32 text-[12px]"
+                className="h-8 w-32 text-xs"
               />
-              <span className="text-[11px] text-slate-500">
+              <span className="text-2xs text-slate-500">
                 הכלי מפנה אותו להלוואה עם הריבית הגבוהה — שיטת האוולנץ׳
               </span>
             </div>
@@ -315,7 +315,7 @@ export function LoanComparison({
 
           {prepayment ? (
             <>
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-[11.5px] font-bold text-emerald-900">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-2xs font-bold text-emerald-900">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 {formatILS(prepayment.payoffAmount)} מופנים ל{prepayment.target.name} (
                 {prepayment.target.apr.toFixed(2)}%)
@@ -344,7 +344,7 @@ export function LoanComparison({
               />
             </>
           ) : (
-            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
               הזינו סכום מזומן כדי לראות לאיזו הלוואה כדאי להפנות אותו וכמה ריבית הוא חוסך.
             </p>
           )}
@@ -534,8 +534,8 @@ export function ScenarioRow({
     <div className={`rounded-xl border p-2.5 ${tones[tone]}`}>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(150px,1.2fr)_repeat(5,1fr)] lg:items-center">
         <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-          <p className={`text-[13px] font-bold leading-tight ${titleTones[tone]}`}>{title}</p>
-          {subtitle && <p className="text-[10px] text-slate-500">{subtitle}</p>}
+          <p className={`text-sm font-bold leading-tight ${titleTones[tone]}`}>{title}</p>
+          {subtitle && <p className="text-2xs text-slate-500">{subtitle}</p>}
         </div>
         <DeltaCell label="החזר חודשי" value={stats.monthlyPayment} baseline={baseline?.monthlyPayment} emphasized />
         <DeltaCell label="סך ריבית" value={stats.totalInterest} baseline={baseline?.totalInterest} />
@@ -577,16 +577,16 @@ function DeltaCell({
 
   return (
     <div className="min-w-0">
-      <p className="text-[10px] text-slate-500">{label}</p>
+      <p className="text-2xs text-slate-500">{label}</p>
       <p
         className={`truncate font-bold leading-tight ${
-          emphasized ? 'text-[15px] text-blue-700' : 'text-[13px] text-slate-900'
+          emphasized ? 'text-info text-blue-700' : 'text-sm text-slate-900'
         }`}
       >
         {format === 'months' ? `${Math.round(value)} ח׳` : formatILS(value)}
       </p>
       {deltaText && (
-        <p className={`text-[10px] font-bold ${improved ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <p className={`text-2xs font-bold ${improved ? 'text-emerald-600' : 'text-rose-600'}`}>
           {deltaText}
         </p>
       )}
@@ -621,8 +621,8 @@ export function SliderField({
     <div>
       <div className="mb-1 flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-        <span className="text-[11px] font-bold text-slate-600">{label}</span>
-        <span className="mr-auto text-[12px] font-black text-slate-900">{display}</span>
+        <span className="text-2xs font-bold text-slate-600">{label}</span>
+        <span className="mr-auto text-xs font-black text-slate-900">{display}</span>
       </div>
       <div dir="ltr">
         <Slider
@@ -633,7 +633,7 @@ export function SliderField({
           max={max}
           step={step}
         />
-        <div className="mt-0.5 flex justify-between text-[9px] text-slate-400" dir="ltr">
+        <div className="mt-0.5 flex justify-between text-2xs text-slate-400" dir="ltr">
           <span>{minLabel}</span>
           <span>{maxLabel}</span>
         </div>
@@ -654,8 +654,8 @@ function ChartCard({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
-        <p className="text-[12px] font-bold text-slate-800">{title}</p>
-        <p className="text-[10px] text-slate-500">{hint}</p>
+        <p className="text-xs font-bold text-slate-800">{title}</p>
+        <p className="text-2xs text-slate-500">{hint}</p>
       </div>
       <div className="h-52 w-full" dir="ltr">
         {children}
@@ -685,11 +685,11 @@ function MoneyTooltip({
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div dir="rtl" className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
-      <p className="mb-1 text-[11px] font-black text-slate-900">
+      <p className="mb-1 text-2xs font-black text-slate-900">
         {suffix ? `${suffix} ${label}` : label}
       </p>
       {payload.map((entry) => (
-        <div key={String(entry.dataKey)} className="flex items-center gap-1.5 text-[11px]">
+        <div key={String(entry.dataKey)} className="flex items-center gap-1.5 text-2xs">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
           <span className="text-slate-600">
             {entry.name}: <strong className="text-slate-900">{formatILS(entry.value ?? 0)}</strong>

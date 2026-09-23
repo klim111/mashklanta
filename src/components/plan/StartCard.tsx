@@ -128,7 +128,7 @@ export function StartCard({
     ? 'border-blue-400 bg-blue-500/20 text-white'
     : 'border-blue-500 bg-blue-50 text-slate-900';
   const entrySize = variant === 'sidebar' ? 'px-3.5 py-3' : 'px-5 py-4';
-  const titleSize = variant === 'sidebar' ? 'text-[15px]' : 'text-lg';
+  const titleSize = variant === 'sidebar' ? 'text-info' : 'text-lg';
   const hintTone = dark ? 'text-white/65' : 'text-slate-500';
   const optionCard = dark
     ? 'border-white/15 bg-white/5 hover:border-white/35 hover:bg-white/10'
@@ -195,10 +195,10 @@ export function StartCard({
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className={`block text-[15px] font-black leading-snug ${optionTitle}`}>
+                    <span className={`block text-info font-black leading-snug ${optionTitle}`}>
                       {option.label}
                     </span>
-                    <span className={`mt-0.5 block text-[13px] leading-snug ${optionHint}`}>{option.hint}</span>
+                    <span className={`mt-0.5 block text-sm leading-snug ${optionHint}`}>{option.hint}</span>
                   </span>
                 </button>
               ))}
@@ -243,7 +243,7 @@ export function StartCard({
   if (variant === 'sidebar') {
     return (
       <div className="rounded-2xl bg-white/5 p-3">
-        <p className="mb-2.5 px-1 text-center text-[13px] font-black text-white/70">
+        <p className="mb-2.5 px-1 text-center text-sm font-black text-white/70">
           {hasPlans ? 'מתכננים משכנתא נוספת?' : 'איפה אתם בתהליך?'}
         </p>
         {entry}
@@ -261,16 +261,16 @@ export function StartCard({
 
       <div className="relative mx-auto max-w-3xl">
         <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[13px] font-black text-white/80 backdrop-blur">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm font-black text-white/80 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5" />
             משכלנתא מלווה אתכם מהצעד הראשון ועד החתימה
           </span>
-          <h2 className="mt-3 text-3xl font-black leading-tight text-white md:text-4xl">
+          <h2 className="mt-3 text-title font-black leading-tight text-white">
             {hasPlans
               ? 'מתכננים משכנתא נוספת? איפה אתם בתהליך?'
               : 'בואו נתחיל את הדרך למשכנתא הראשונה שלכם עם משכלנתא'}
           </h2>
-          <p className="mx-auto mt-2 max-w-xl text-[15px] leading-relaxed text-white/65">
+          <p className="mx-auto mt-2 max-w-xl text-info leading-relaxed text-white/65">
             נתחיל מהמקום שבו אתם נמצאים. בחרו את המצב שמתאים לכם, ונתאים לכם את הצעד הבא.
           </p>
         </div>

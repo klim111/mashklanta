@@ -68,13 +68,13 @@ function ValidityChip({
         )}
       />
       <div>
-        <p className="text-[10px] font-medium text-slate-500">{label}</p>
-        <p className="text-[13px] font-bold text-slate-800">
+        <p className="text-2xs font-medium text-slate-500">{label}</p>
+        <p className="text-sm font-bold text-slate-800">
           {formatDate(date)}
           {daysLeft !== null && (
             <span
               className={cn(
-                'mr-1.5 text-[11px] font-medium',
+                'mr-1.5 text-2xs font-medium',
                 expired ? 'text-rose-600' : soon ? 'text-amber-600' : 'text-emerald-600',
               )}
             >
@@ -126,7 +126,7 @@ export function BankApprovalsSection() {
       )}
 
       {carried?.bankName && (
-        <p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-2.5 text-[12px] text-indigo-900">
+        <p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-2.5 text-xs text-indigo-900">
           הריביות של <strong>{carried.bankName}</strong> הן אלה שימשיכו לשלב בניית התמהיל. כדי להמשיך
           עם בנק אחר, יש לסמן אותו כמאושר לפני האחרים.
         </p>
@@ -145,7 +145,7 @@ export function BankApprovalsSection() {
                 : `אישור עקרוני ${index + 1}`}
               badge={
                 approved ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-medium text-emerald-700">
                     <BadgeCheck className="h-2.5 w-2.5" />
                     אושר{' '}
                     {typeof values.approvedAmount === 'number'
@@ -153,7 +153,7 @@ export function BankApprovalsSection() {
                       : ''}
                   </span>
                 ) : (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-500">
                     ממתין לתשובה
                   </span>
                 )

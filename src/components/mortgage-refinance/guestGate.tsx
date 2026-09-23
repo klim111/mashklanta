@@ -85,7 +85,7 @@ export function GuestLimitDialog({ open, onClose }: { open: boolean; onClose: ()
           <DialogTitle className="text-center text-lg font-bold leading-snug text-slate-900">
             בדקתם {GUEST_CHANGE_ALLOWANCE} שינויים. הכלי המלא במרחק הרשמה אחת
           </DialogTitle>
-          <DialogDescription className="text-center text-[13px] leading-relaxed text-slate-600">
+          <DialogDescription className="text-center text-sm leading-relaxed text-slate-600">
             בתצוגה הפתוחה אפשר לבחון {GUEST_CHANGE_ALLOWANCE} שינויים בפאנל השליטה. פתיחת חשבון —
             בחינם, בפחות מדקה — מסירה את ההגבלה לגמרי.
           </DialogDescription>
@@ -125,7 +125,7 @@ function Benefit({ icon: Icon, text }: { icon: React.ElementType; text: string }
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-blue-600 shadow-sm">
         <Icon className="h-3.5 w-3.5" />
       </span>
-      <span className="min-w-0 break-words text-[13px] leading-snug text-slate-700">{text}</span>
+      <span className="min-w-0 break-words text-sm leading-snug text-slate-700">{text}</span>
     </li>
   );
 }

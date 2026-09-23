@@ -84,7 +84,7 @@ const RISK_TONE: Record<RecommendationTone, { ring: string; icon: typeof Info; i
 function StatusChip({ status }: { status: CheckStatus }) {
   const tone = STATUS_STYLE[status];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${tone.chip}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-black ${tone.chip}`}>
       {tone.label}
     </span>
   );
@@ -110,13 +110,13 @@ function Tile({
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-[11px] font-bold ${dark ? 'text-white/70' : 'text-slate-500'}`}>{label}</span>
+        <span className={`text-2xs font-bold ${dark ? 'text-white/70' : 'text-slate-500'}`}>{label}</span>
         {status && <StatusChip status={status} />}
       </div>
-      <div className={`mt-1 text-2xl font-black leading-none md:text-[28px] ${dark ? 'text-white' : 'text-slate-900'}`}>
+      <div className={`mt-1 text-2xl font-black leading-none md:text-3xl ${dark ? 'text-white' : 'text-slate-900'}`}>
         {value}
       </div>
-      {note && <div className={`mt-1.5 text-[11px] leading-snug ${dark ? 'text-white/60' : 'text-slate-500'}`}>{note}</div>}
+      {note && <div className={`mt-1.5 text-2xs leading-snug ${dark ? 'text-white/60' : 'text-slate-500'}`}>{note}</div>}
     </div>
   );
 }
@@ -147,7 +147,7 @@ function Block({
         </span>
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-black text-slate-900">{title}</h4>
-          {subtitle && <p className="text-[11px] text-slate-500">{subtitle}</p>}
+          {subtitle && <p className="text-2xs text-slate-500">{subtitle}</p>}
         </div>
         {badge}
       </div>
@@ -169,8 +169,8 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
 function SubTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div className="mb-2">
-      <h5 className="text-[13px] font-black text-slate-800">{children}</h5>
-      {hint && <p className="text-[11px] leading-snug text-slate-500">{hint}</p>}
+      <h5 className="text-sm font-black text-slate-800">{children}</h5>
+      {hint && <p className="text-2xs leading-snug text-slate-500">{hint}</p>}
     </div>
   );
 }
@@ -215,7 +215,7 @@ export function ProfileReportPanel({
     <button
       type="button"
       onClick={() => printProfileReport(report, planName)}
-      className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-lg transition-all hover:bg-blue-50"
+      className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-button font-black text-slate-900 shadow-lg transition-all hover:bg-blue-50"
     >
       <Download className="h-4 w-4" />
       הורדת הדוח
@@ -234,15 +234,15 @@ export function ProfileReportPanel({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="text-right">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-black">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-2xs font-black">
                   <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
                   התוצר של השלב
                 </span>
                 {sample && (
-                  <span className="rounded-full bg-amber-400 px-3 py-1 text-[11px] font-black text-slate-900">דוגמה</span>
+                  <span className="rounded-full bg-amber-400 px-3 py-1 text-2xs font-black text-slate-900">דוגמה</span>
                 )}
               </div>
-              <h3 className="mt-3 text-2xl font-black leading-tight md:text-3xl">דוח פרופיל פיננסי</h3>
+              <h3 className="mt-3 text-subtitle font-black leading-tight">דוח פרופיל פיננסי</h3>
               <p className="mt-1 text-sm text-white/80">{planName || 'הפרופיל הפיננסי שלכם'}</p>
               <p className="mt-0.5 text-sm text-white/60">
                 {report.headline} · הופק {date}
@@ -304,7 +304,7 @@ export function ProfileReportPanel({
               value={describeMonths(Math.min(30, summary.maxYearsByAge) * 12)}
             />
           )}
-          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+          <p className="mt-3 text-2xs leading-relaxed text-slate-500">
             הבטוחה למשכנתא היא הנכס עצמו. הפער מהתקרה הוא מרווח הביטחון שלכם מול שמאות נמוכה
             ממחיר הרכישה.
           </p>
@@ -314,7 +314,7 @@ export function ProfileReportPanel({
           <div className={`grid gap-3 ${summary.couple ? 'sm:grid-cols-2' : ''}`}>
             {summary.borrowers.map((borrower) => (
               <div key={borrower.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                <div className="mb-1.5 text-[11px] font-black text-slate-500">{borrower.label}</div>
+                <div className="mb-1.5 text-2xs font-black text-slate-500">{borrower.label}</div>
                 <Row label="הכנסה נטו" value={formatShekel(borrower.income)} strong />
                 <Row label="גיל" value={borrower.age !== null ? String(borrower.age) : '—'} />
                 <Row label="אופן העסקה" value={borrower.employment ?? '—'} />
@@ -332,7 +332,7 @@ export function ProfileReportPanel({
           {(data.ANALYSIS.futureLumpSums.some((item) => (item.amount ?? 0) > 0) ||
             (data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0) && (
             <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
-              <div className="mb-1 text-[11px] font-black text-emerald-800">צפי הכנסות עתידיות</div>
+              <div className="mb-1 text-2xs font-black text-emerald-800">צפי הכנסות עתידיות</div>
               <ul className="space-y-0.5 text-xs text-emerald-900">
                 {data.ANALYSIS.futureLumpSums
                   .filter((item) => (item.amount ?? 0) > 0)
@@ -373,7 +373,7 @@ export function ProfileReportPanel({
               status={summary.ltvStatus}
               label="שיעור המימון"
             />
-            <div className="space-y-2 text-[12px] leading-relaxed text-slate-600">
+            <div className="space-y-2 text-xs leading-relaxed text-slate-600">
               <p className="text-sm font-black text-slate-900">{distanceToLimit(summary.ltv, summary.maxLtv)}</p>
               <p>
                 הבנק מממן אחוז מהנמוך מבין מחיר הרכישה לשווי השמאות. הקשת כולה היא הטווח המותר,
@@ -405,7 +405,7 @@ export function ProfileReportPanel({
               status={summary.ratioStatus}
               label="יחס ההחזר"
             />
-            <div className="space-y-2 text-[12px] leading-relaxed text-slate-600">
+            <div className="space-y-2 text-xs leading-relaxed text-slate-600">
               <p className="text-sm font-black text-slate-900">{distanceToLimit(summary.repaymentRatio, summary.ratioLimit)}</p>
               <p>
                 מעל {summary.ratioLimit}% הבקשה כמעט תמיד נדחית, ובין {summary.ratioComfort}% ל-{summary.ratioLimit}% החיתום
@@ -432,7 +432,7 @@ export function ProfileReportPanel({
       >
         <div className="mb-4 flex items-start gap-2.5 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-3.5">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <p className="text-[12px] font-bold leading-relaxed text-amber-900">
+          <p className="text-xs font-bold leading-relaxed text-amber-900">
             ההחזר החודשי המשוער כאן הוא הערכה גסה בלבד, שנועדה לתת סדר גודל.
             <span className="font-black">
               {' '}
@@ -479,7 +479,7 @@ export function ProfileReportPanel({
             {cashFlow.timeline
               .filter((point) => point.events.length > 0)
               .map((point) => (
-                <li key={point.year} className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-900 ring-1 ring-teal-200">
+                <li key={point.year} className="rounded-full bg-teal-50 px-3 py-1 text-2xs font-bold text-teal-900 ring-1 ring-teal-200">
                   שנה {point.year}: {point.events.join(' · ')} → נשאר {formatShekel(point.remaining)}
                 </li>
               ))}
@@ -555,7 +555,7 @@ export function ProfileReportPanel({
                     <Lightbulb className="h-4 w-4 shrink-0" />
                     {item.title}
                   </h5>
-                  <p className="mt-1 text-[12px] leading-relaxed text-slate-700">{item.body}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-700">{item.body}</p>
                 </div>
               ))}
             </div>
@@ -574,7 +574,7 @@ export function ProfileReportPanel({
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[560px] text-right text-xs">
             <thead>
-              <tr className="text-[11px] font-black text-slate-500">
+              <tr className="text-2xs font-black text-slate-500">
                 <th className="pb-2 pl-3 font-black">שלב / אבן דרך</th>
                 <th className="pb-2 pl-3 font-black">מתי</th>
                 <th className="pb-2 pl-3 font-black">משך אופייני</th>
@@ -593,7 +593,7 @@ export function ProfileReportPanel({
             </tbody>
           </table>
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+        <p className="mt-3 text-2xs leading-relaxed text-slate-500">
           הזמנים הם קצב אופייני של תהליך שמתקדם בלי עיכובים. מועדי התשלום בחוזה המכר, תוקף האישור
           העקרוני וזמן הביצוע בבנק הם מה שקובע בפועל — ולכן כדאי לתאם אותם מראש.
         </p>
@@ -610,7 +610,7 @@ export function ProfileReportPanel({
             <div key={group.title} className="rounded-2xl border border-slate-100 bg-white p-3.5">
               <div className="mb-2 flex items-center gap-2">
                 <Building2 className="h-3.5 w-3.5 text-indigo-500" />
-                <h5 className="text-[13px] font-black text-slate-800">{group.title}</h5>
+                <h5 className="text-sm font-black text-slate-800">{group.title}</h5>
               </div>
               <ul className="space-y-1.5">
                 {group.documents.map((name) => (
@@ -645,7 +645,7 @@ export function ProfileReportPanel({
           {report.guidelines.map((item, index) => (
             <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-black text-white">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-2xs font-black text-white">
                   {index + 1}
                 </span>
                 <h5 className="text-sm font-black text-slate-900">{item.title}</h5>
@@ -663,24 +663,24 @@ export function ProfileReportPanel({
         subtitle="שלוש זוויות שכל תמהיל מאזן ביניהן: יציבות מול סיכון, גמישות לשינויים, ועלות המימון"
         accent="from-emerald-600 to-teal-500"
         badge={
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-black text-slate-600">
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-2xs font-black text-slate-600">
             תיאור עקרוני · הסכומים ייקבעו בשלב התמהיל
           </span>
         }
       >
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
-            <div className="mb-1 text-[13px] font-black text-slate-900">סיכון ↔ יציבות</div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs leading-relaxed text-slate-600">
+            <div className="mb-1 text-sm font-black text-slate-900">סיכון ↔ יציבות</div>
             ריבית קבועה נועלת את ההחזר ומבטלת הפתעות; פריים ומשתנה זולים יותר בהתחלה אבל ההחזר זז עם
             השוק. ככל שיחס ההחזר קרוב למגבלה, כך צריך יותר יציבות.
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
-            <div className="mb-1 text-[13px] font-black text-slate-900">גמישות ↔ עמלת היוון</div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs leading-relaxed text-slate-600">
+            <div className="mb-1 text-sm font-black text-slate-900">גמישות ↔ עמלת היוון</div>
             במסלולי פריים ומשתנה אפשר לפרוע מוקדם ולמחזר בלי קנס; בקבועה ייתכן קנס כשהריביות יורדות.
             כסף שצפוי להיכנס מכוון למסלול הגמיש.
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-[12px] leading-relaxed text-slate-600">
-            <div className="mb-1 text-[13px] font-black text-slate-900">עלות ↔ ביטחון</div>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs leading-relaxed text-slate-600">
+            <div className="mb-1 text-sm font-black text-slate-900">עלות ↔ ביטחון</div>
             הריבית הקבועה היא המחיר של הביטוח. סך הריביות נקבע גם מהתקופה של כל מסלול — מקצרים את
             היקרים, מאריכים את הזולים, ומתכננים פירעון מוקדם שמקצר את הכל.
           </div>
@@ -694,7 +694,7 @@ export function ProfileReportPanel({
           <button
             type="button"
             onClick={() => printProfileReport(report, planName)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-base font-black text-white shadow-lg transition-colors hover:bg-slate-700"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-colors hover:bg-slate-700"
           >
             <Download className="h-5 w-5" />
             הורדת הדוח
@@ -702,7 +702,7 @@ export function ProfileReportPanel({
         </div>
       )}
 
-      <p className="px-2 text-center text-[11px] font-medium leading-relaxed text-slate-500">
+      <p className="px-2 text-center text-2xs font-medium leading-relaxed text-slate-500">
         ההחזר החודשי ויחס ההחזר שבדוח הם הערכה גסה לפי ריבית קבועה לא צמודה של {summary.estimateRate}% על
         כל הסכום, לצורך סדר גודל בלבד; ההחזר המדויק ייחושב לאחר בניית התמהיל והשגת הריביות מול הגוף
         המממן. הדוח אינו אישור עקרוני ואינו מחייב בנק כלשהו — ההחלטה על אישור המשכנתא, גובהה

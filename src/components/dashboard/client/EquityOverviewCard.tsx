@@ -53,15 +53,15 @@ export function EquityOverviewCard({
     >
       {!plan || plan.totalExpenses <= 0 ? (
         <div className="py-4 text-center">
-          <p className="text-[15px] font-bold text-slate-600">עדיין לא בניתם תכנון הוצאות</p>
-          <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-slate-500">
+          <p className="text-info font-bold text-slate-600">עדיין לא בניתם תכנון הוצאות</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-slate-500">
             ההון העצמי, מס הרכישה, עורך הדין, התיווך והשיפוץ — הכול על ציר זמן אחד, עם מועדי תשלום
             שנכנסים ללוח השנה שלכם.
           </p>
           <button
             type="button"
             onClick={onOpen}
-            className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+            className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
           >
             <Wallet className="h-4 w-4" />
             לתכנון ההוצאות
@@ -76,7 +76,7 @@ export function EquityOverviewCard({
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <p className="mb-2 flex items-center gap-1.5 text-[13px] font-black text-slate-500">
+            <p className="mb-2 flex items-center gap-1.5 text-sm font-black text-slate-500">
               <CalendarDays className="h-4 w-4" />
               התשלומים הקרובים
             </p>
@@ -91,18 +91,18 @@ export function EquityOverviewCard({
                     key={expense.id}
                     className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
                   >
-                    <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-[12px] font-black text-violet-700">
+                    <span className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-xs font-black text-violet-700">
                       {SHORT_DATE.format(new Date(expense.date))}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-black text-slate-900">
+                      <span className="block truncate text-sm font-black text-slate-900">
                         {expense.title}
                       </span>
-                      <span className="block truncate text-[12px] text-slate-500">
+                      <span className="block truncate text-xs text-slate-500">
                         {expense.categoryName}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[14px] font-black text-slate-900">
+                    <span className="shrink-0 text-sm font-black text-slate-900">
                       {money(expense.amount)}
                     </span>
                   </li>
@@ -112,7 +112,7 @@ export function EquityOverviewCard({
           </div>
 
           {plan.propertyPrice > 0 && (
-            <p className="text-center text-[12px] font-semibold text-slate-400">
+            <p className="text-center text-xs font-semibold text-slate-400">
               נכס בשווי {money(plan.propertyPrice)} · הון עצמי מינימלי לפי בנק ישראל{' '}
               {money(plan.minEquityRequired)}
             </p>
@@ -145,11 +145,11 @@ function Tile({
 
   return (
     <div className={`rounded-xl border p-3 ${shell}`}>
-      <span className={`flex items-center gap-1 text-[11px] font-black ${labelTone}`}>
+      <span className={`flex items-center gap-1 text-2xs font-black ${labelTone}`}>
         {icon}
         {label}
       </span>
-      <p className={`mt-1 text-[17px] font-black leading-tight ${valueTone}`}>{value}</p>
+      <p className={`mt-1 text-lg font-black leading-tight ${valueTone}`}>{value}</p>
     </div>
   );
 }

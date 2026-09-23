@@ -72,7 +72,7 @@ export function BankRateRequests() {
     <div className="space-y-4" {...demoId('rate-requests')}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-xl font-black text-slate-900">
+          <h2 className="flex items-center gap-2 text-subtitle font-black text-slate-900">
             <Gavel className="h-5 w-5 text-amber-600" />
             תמהילים שהוגשו לבנקים
           </h2>
@@ -93,14 +93,14 @@ export function BankRateRequests() {
       {!signedIn && ready && requests.length > 0 && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
           <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-[11px] leading-relaxed text-amber-800">
+          <p className="text-2xs leading-relaxed text-amber-800">
             הבקשות שמורות בדפדפן הזה בלבד ויעלו לחשבון בהתחברות הבאה.
           </p>
         </div>
       )}
 
       {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-[11px] font-semibold text-red-800">
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-2xs font-semibold text-red-800">
           {error}
         </p>
       )}
@@ -111,7 +111,7 @@ export function BankRateRequests() {
         <Card className="border-slate-200">
           <CardContent className="py-14 text-center">
             <Gavel className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-            <h3 className="text-lg font-semibold text-slate-700">עוד לא הוגשה בקשת ריביות</h3>
+            <h3 className="text-subtitle font-semibold text-slate-700">עוד לא הוגשה בקשת ריביות</h3>
             <p className="mb-5 mt-1 text-sm text-slate-500">
               בכלי בניית התמהילים, לחצו על &quot;הצעה לבנקים&quot; בכרטיסייה או בשורה של התמהיל,
               ושמרו את הבקשה כאן.
@@ -202,7 +202,7 @@ function RequestCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-slate-900">{doc.mixName}</p>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-slate-500">
               <span className="flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" />
                 נוצרה ב-{formatRateRequestDate(item.createdAt)}
@@ -221,21 +221,21 @@ function RequestCard({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <Badge className="bg-amber-100 text-[10px] text-amber-900 hover:bg-amber-100">
+          <Badge className="bg-amber-100 text-2xs text-amber-900 hover:bg-amber-100">
             <Building2 className="ml-1 h-3 w-3" />
             {doc.details.bankName ? `בנק ${doc.details.bankName}` : 'ללא ציון בנק'}
           </Badge>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-2xs">
             <Layers className="ml-1 h-3 w-3" />
             {doc.lines.length} מסלולים
           </Badge>
           {doc.periodLabel && (
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-2xs">
               {doc.periodLabel}
             </Badge>
           )}
           {doc.propertyAddress && (
-            <Badge variant="secondary" className="max-w-[14rem] truncate text-[10px]">
+            <Badge variant="secondary" className="max-w-[14rem] truncate text-2xs">
               <MapPin className="ml-1 h-3 w-3" />
               {doc.propertyAddress}
             </Badge>
@@ -261,7 +261,7 @@ function RequestCard({
 
         {offers.length > 0 && (
           <div className="space-y-1.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2">
-            <p className="flex items-center gap-1 text-[10px] font-bold text-emerald-900">
+            <p className="flex items-center gap-1 text-2xs font-bold text-emerald-900">
               <BadgePercent className="h-3 w-3" />
               הריביות שהתקבלו על התמהיל הזה
             </p>
@@ -271,7 +271,7 @@ function RequestCard({
                 type="button"
                 onClick={() => onOpenOffer(offer)}
                 title="פתיחת ההצעה בכלי בניית התמהילים"
-                className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-right text-[11px] transition-colors hover:border-emerald-400"
+                className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-right text-2xs transition-colors hover:border-emerald-400"
               >
                 <span className="font-bold text-emerald-900">
                   בנק {offer.mix.quote?.bank}
@@ -351,7 +351,7 @@ function Fact({
 
   return (
     <div className={`rounded-xl border p-2 ${tones.box}`}>
-      <p className="text-[10px] text-slate-500">{label}</p>
+      <p className="text-2xs text-slate-500">{label}</p>
       <p className={`text-sm font-bold leading-tight ${tones.text}`}>{value}</p>
     </div>
   );

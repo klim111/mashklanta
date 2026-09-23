@@ -149,7 +149,7 @@ function PropertyGroup({
           <p className="text-base font-bold text-slate-900 truncate">
             {address || `משכנתא בסך ${formatShekel(totalAmount)}`}
           </p>
-          <p className="text-[11px] text-slate-500 flex flex-wrap gap-x-1.5 gap-y-0.5">
+          <p className="text-2xs text-slate-500 flex flex-wrap gap-x-1.5 gap-y-0.5">
             משכנתא {formatShekel(totalAmount)}
             {propertyValue && propertyValue > 0 && ` · עלות נכס ${formatShekel(propertyValue)}`}
             {propertyValue && propertyValue > 0 && ` · הון עצמי ${formatShekel(equity)}`}
@@ -159,13 +159,13 @@ function PropertyGroup({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {dealType && (
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-2xs">
               {DEAL_TYPES[dealType]} · עד {MAX_LTV_PERCENT[dealType]}%
             </Badge>
           )}
           {ltv > 0 && (
             <Badge
-              className={`text-[10px] ${
+              className={`text-2xs ${
                 dealType && ltv > MAX_LTV_PERCENT[dealType] + 0.05
                   ? 'bg-red-100 text-red-800 hover:bg-red-100'
                   : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'
@@ -179,7 +179,7 @@ function PropertyGroup({
 
       <CardContent className="p-3 space-y-3">
         {items.length > 1 && (
-          <span className="text-[11px] text-slate-500 flex items-center gap-1.5">
+          <span className="text-2xs text-slate-500 flex items-center gap-1.5">
             <GitCompareArrows className="h-3.5 w-3.5" />
             {groupSelected.length > 0
               ? `${groupSelected.length} תמהילים בהשוואה`
@@ -231,12 +231,12 @@ function MixOrigin({ item, viewer }: { item: SavedMix; viewer: 'client' | 'advis
   return (
     <>
       {quote && (
-        <Badge className="bg-emerald-600 text-[10px] text-white hover:bg-emerald-600">
+        <Badge className="bg-emerald-600 text-2xs text-white hover:bg-emerald-600">
           התקבלו ריביות מבנק {quote.bank} · {formatQuoteDate(quote.receivedAt)}
         </Badge>
       )}
       <Badge
-        className={`text-[10px] ${
+        className={`text-2xs ${
           byAdvisor
             ? 'bg-violet-100 text-violet-900 hover:bg-violet-100'
             : 'bg-sky-100 text-sky-900 hover:bg-sky-100'
@@ -249,7 +249,7 @@ function MixOrigin({ item, viewer }: { item: SavedMix; viewer: 'client' | 'advis
           : 'נוצר על ידי הלקוח'}
       </Badge>
       {!item.planId && (
-        <Badge className="bg-amber-100 text-[10px] text-amber-800 hover:bg-amber-100">
+        <Badge className="bg-amber-100 text-2xs text-amber-800 hover:bg-amber-100">
           תמהיל לא משויך לנכס
         </Badge>
       )}

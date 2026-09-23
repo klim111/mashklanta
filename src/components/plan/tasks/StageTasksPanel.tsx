@@ -53,7 +53,7 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
           </span>
           <div>
             <h3 className="text-sm font-black text-slate-900">המשימות המתוכננות שלי · {journey.shortTitle}</h3>
-            <p className="text-[12px] text-slate-500">
+            <p className="text-xs text-slate-500">
               {open.length === 0
                 ? suggestions > 0
                   ? `יש ${suggestions} משימות מוצעות לשלב, ואפשר להוסיף כל משימה בניסוח חופשי`
@@ -65,7 +65,7 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
         <button
           type="button"
           onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-slate-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-button font-black text-white shadow-sm transition-colors hover:bg-slate-700"
         >
           <CalendarPlus className="h-4 w-4" />
           הוסף משימה מתוכננת
@@ -93,7 +93,7 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
           <button
             type="button"
             onClick={() => setShowDone((value) => !value)}
-            className="inline-flex items-center gap-1.5 text-[12px] font-black text-slate-500 hover:text-slate-800"
+            className="inline-flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-slate-800"
           >
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDone ? 'rotate-180' : ''}`} />
             {done.length} משימות שבוצעו
@@ -171,7 +171,7 @@ function TaskRow({
         <p className={`text-sm font-black leading-snug ${isDone ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
           {task.title}
         </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-slate-500">
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
           {task.dueAt && (
             <span className="font-bold">
               {formatDate(task.dueAt)} · {formatTime(task.dueAt)}
@@ -192,7 +192,7 @@ function TaskRow({
             type="button"
             onClick={onUpload}
             title="העלאת המסמך לתיק"
-            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-black text-white hover:bg-emerald-700"
+            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-2xs font-black text-white hover:bg-emerald-700"
           >
             <Upload className="h-3.5 w-3.5" />
             העלאה

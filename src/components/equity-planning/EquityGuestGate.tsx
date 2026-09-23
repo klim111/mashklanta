@@ -97,10 +97,10 @@ export function GuestSaveNotice({ gate }: { gate: EquityGuestGate }) {
         <Lock className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-black text-amber-900">
+        <p className="text-info font-black text-amber-900">
           הערכים שהזנתם עדיין לא נשמרו
         </p>
-        <p className="mt-0.5 text-[13px] leading-relaxed text-amber-800/80">
+        <p className="mt-0.5 text-sm leading-relaxed text-amber-800/80">
           כדי לשמור את הערכים ולהמשיך לעבוד עם הכלי צריך להירשם לפלטפורמה.
           {gate.spent
             ? ' מכסת ההזנה ללא חשבון נוצלה — ההרשמה פותחת את הכלי במלואו.'
@@ -132,7 +132,7 @@ export function EquityGuestDialog({ open, onClose }: { open: boolean; onClose: (
           <DialogTitle className="text-center text-lg font-bold leading-snug text-slate-900">
             כדי לשמור את הערכים ולהמשיך — צריך להירשם
           </DialogTitle>
-          <DialogDescription className="text-center text-[13px] leading-relaxed text-slate-600">
+          <DialogDescription className="text-center text-sm leading-relaxed text-slate-600">
             הזנתם {EQUITY_GUEST_ALLOWANCE} ערכים בתצוגה הפתוחה. פתיחת חשבון — בחינם, בפחות מדקה —
             שומרת את מה שהזנתם ומסירה את ההגבלה לגמרי.
           </DialogDescription>
@@ -174,7 +174,7 @@ function Benefit({ icon: Icon, text }: { icon: React.ElementType; text: string }
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-emerald-600 shadow-sm">
         <Icon className="h-3.5 w-3.5" />
       </span>
-      <span className="min-w-0 break-words text-[13px] leading-snug text-slate-700">{text}</span>
+      <span className="min-w-0 break-words text-sm leading-snug text-slate-700">{text}</span>
     </li>
   );
 }

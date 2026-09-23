@@ -91,7 +91,7 @@ export function InflationForecastChart({
         <TrendingUp className="h-4 w-4 text-violet-600" />
         תחזית אינפלציה — בנק ישראל
       </p>
-      <p className="text-[11px] text-violet-900/80 mb-2 leading-snug">
+      <p className="text-2xs text-violet-900/80 mb-2 leading-snug">
         {typeof constantPct === 'number' ? (
           <>תרחיש פעיל: אינפלציה שנתית קבועה של {constantPct.toFixed(2)}%, במקום נתיב הציפיות של בנק ישראל.</>
         ) : (

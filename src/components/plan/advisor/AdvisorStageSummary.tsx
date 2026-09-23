@@ -100,22 +100,22 @@ export function AdvisorStageSummary({
           </span>
 
           <div className="min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-black text-violet-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-0.5 text-2xs font-black text-violet-700">
               <UserCheck className="h-3 w-3" />
               {advisorName ? `היועץ ${advisorName} מטפל בשלב זה` : 'היועץ מטפל בשלב זה'}
             </span>
-            <h3 className="mt-1 text-lg font-black text-slate-900">{snapshot.headline}</h3>
+            <h3 className="mt-1 text-subtitle font-black text-slate-900">{snapshot.headline}</h3>
             <p className="text-xs text-slate-500">
               {journey.title} · {journey.duration}
             </p>
           </div>
 
           {status === 'COMPLETED' ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black text-emerald-700">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-2xs font-black text-emerald-700">
               הושלם
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black text-amber-800">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-2xs font-black text-amber-800">
               <Clock className="h-3 w-3" />
               בביצוע
             </span>
@@ -128,11 +128,11 @@ export function AdvisorStageSummary({
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {snapshot.items.map((item) => (
               <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
-                <div className="text-[13px] font-bold text-slate-500">{item.label}</div>
+                <div className="text-sm font-bold text-slate-500">{item.label}</div>
                 <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">
                   {item.value ?? '—'}
                 </div>
-                {item.note && <div className="text-[11px] text-slate-400">{item.note}</div>}
+                {item.note && <div className="text-2xs text-slate-400">{item.note}</div>}
               </div>
             ))}
           </div>
@@ -157,13 +157,13 @@ export function AdvisorStageSummary({
         )}
 
         <div className="mt-4 flex flex-col items-center gap-2 text-center">
-          <p className="text-[15px] font-bold text-slate-600">
+          <p className="text-info font-bold text-slate-600">
             {journey.valueHeadline} — {journey.tagline}
           </p>
           <button
             type="button"
             onClick={onToggleDetails}
-            className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-800 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-button font-black text-slate-800 transition-colors hover:bg-slate-50"
           >
             {detailsOpen ? (
               <ChevronUp className="h-4 w-4" />
@@ -191,7 +191,7 @@ function AwaitingAdvisorRow() {
         <Clock className="h-4 w-4" />
         יועץ משכלנתא עובר על הפנייה שלכם ויקבע לכם פגישת ייעוץ בהקדם
       </p>
-      <p className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[15px] font-medium leading-relaxed text-slate-600">
+      <p className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-info font-medium leading-relaxed text-slate-600">
         <Mail className="h-4 w-4 shrink-0" />
         את פרטי הפגישה תראו במסך הזה ובאזור האישי שלכם במשכלנתא, וגם יישלח אליכם מייל התרעה.
       </p>
@@ -219,7 +219,7 @@ function StageMeetingRow({ meeting }: { meeting: StageMeeting }) {
         </span>
       )}
       <span
-        className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${
+        className={`rounded-full px-2.5 py-0.5 text-2xs font-black ${
           proposed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'
         }`}
       >
@@ -258,7 +258,7 @@ function AdvantageTile({ row }: { row: AdvantageRow }) {
         {row.better ? 'נמוך ב' : 'גבוה ב'}
         {gap}
       </div>
-      <div className="mt-0.5 text-[11px] font-semibold text-slate-500">
+      <div className="mt-0.5 text-2xs font-semibold text-slate-500">
         בברירת המחדל {format(row.baseline)}
       </div>
     </div>

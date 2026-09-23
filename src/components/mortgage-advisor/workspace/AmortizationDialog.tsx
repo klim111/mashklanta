@@ -287,7 +287,7 @@ export function AmortizationDialog({
               <button
                 type="button"
                 onClick={() => setWithInflation(false)}
-                className={`h-9 px-3 text-[11px] font-semibold ${
+                className={`h-9 px-3 text-2xs font-semibold ${
                   !withInflation ? 'bg-violet-600 text-white' : 'bg-white text-violet-800 hover:bg-violet-50'
                 }`}
               >
@@ -296,7 +296,7 @@ export function AmortizationDialog({
               <button
                 type="button"
                 onClick={() => setWithInflation(true)}
-                className={`h-9 px-3 text-[11px] font-semibold ${
+                className={`h-9 px-3 text-2xs font-semibold ${
                   withInflation ? 'bg-violet-600 text-white' : 'bg-white text-violet-800 hover:bg-violet-50'
                 }`}
               >
@@ -310,7 +310,7 @@ export function AmortizationDialog({
             ייצוא CSV
           </Button>
 
-          <span className="text-[11px] text-slate-500 mr-auto">{rows.length} שורות</span>
+          <span className="text-2xs text-slate-500 mr-auto">{rows.length} שורות</span>
         </div>
 
         {inflationAvailable && withInflation && inflationStats && (
@@ -318,9 +318,9 @@ export function AmortizationDialog({
             <div className="flex items-start gap-2 rounded-lg bg-violet-50 border border-violet-200 px-3 py-2">
               <TrendingUp className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[10px] text-violet-700">הקרן גדלה מהאינפלציה</p>
+                <p className="text-2xs text-violet-700">הקרן גדלה מהאינפלציה</p>
                 <p className="text-sm font-bold text-violet-950">{formatShekel(inflationStats.principalGrowth)}</p>
-                <p className="text-[10px] text-violet-800/80 leading-snug">
+                <p className="text-2xs text-violet-800/80 leading-snug">
                   סך ההצמדה לקרן לפי תחזית בנק ישראל לאורך התקופה
                 </p>
               </div>
@@ -328,9 +328,9 @@ export function AmortizationDialog({
             <div className="flex items-start gap-2 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2">
               <Flame className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[10px] text-orange-700">כסף שנשרף על אינפלציה</p>
+                <p className="text-2xs text-orange-700">כסף שנשרף על אינפלציה</p>
                 <p className="text-sm font-bold text-orange-950">{formatShekel(inflationStats.inflationCost)}</p>
-                <p className="text-[10px] text-orange-800/80 leading-snug">
+                <p className="text-2xs text-orange-800/80 leading-snug">
                   הפרש סך התשלום מול לוח שבו המדד לא זז — קרן נוספת וריבית עליה
                 </p>
               </div>
@@ -339,14 +339,14 @@ export function AmortizationDialog({
         )}
 
         {inflationAvailable && !withInflation && (
-          <p className="text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 leading-snug">
+          <p className="text-2xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 leading-snug">
             הלוח מוצג כאילו המדד לא זז. סך הריבית וסך התשלום בתמהיל עצמו מחושבים לפי תחזית האינפלציה
             של בנק ישראל — לחצו «עם תחזית אינפלציה» כדי לראות את הערכים הצפויים.
           </p>
         )}
 
         {hasStations && (
-          <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 leading-snug">
+          <p className="text-2xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 leading-snug">
             שורות ירוקות הן תחנות שינוי ריבית במסלול משתנה לא צמוד. בתחנות האלה יש פטור מעמלת פירעון
             מוקדם.
           </p>
@@ -387,7 +387,7 @@ export function AmortizationDialog({
                   <td className="p-2 text-slate-700">
                     <span className="whitespace-nowrap">{row.label}</span>
                     {row.isRateStation && (
-                      <span className="mr-1.5 inline-block rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-800">
+                      <span className="mr-1.5 inline-block rounded-full bg-emerald-100 px-1.5 py-0.5 text-2xs font-semibold text-emerald-800">
                         תחנת יציאה · פטור מעמלת פירעון מוקדם
                       </span>
                     )}

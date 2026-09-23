@@ -84,13 +84,13 @@ export function Metric({
 
   return (
     <div className={`rounded-xl border p-3 shadow-sm ${toneClass}`}>
-      <div className={`flex items-center gap-1.5 text-[11px] ${labelClass}`}>
+      <div className={`flex items-center gap-1.5 text-2xs ${labelClass}`}>
         {icon}
         {label}
       </div>
       <p className={`text-lg font-bold leading-tight mt-0.5 ${valueClass}`}>{value}</p>
       {delta !== undefined && <DeltaTag value={delta} />}
-      {hint && <p className={`text-[10px] mt-0.5 ${labelClass}`}>{hint}</p>}
+      {hint && <p className={`text-2xs mt-0.5 ${labelClass}`}>{hint}</p>}
     </div>
   );
 }
@@ -98,11 +98,11 @@ export function Metric({
 /** הפרש כספי מול הבסיס: אדום ביוקר, ירוק בחיסכון. */
 export function DeltaTag({ value, invert = false }: { value: number; invert?: boolean }) {
   if (Math.abs(value) < 1) {
-    return <span className="text-[10px] text-slate-400">ללא שינוי</span>;
+    return <span className="text-2xs text-slate-400">ללא שינוי</span>;
   }
   const bad = invert ? value < 0 : value > 0;
   return (
-    <span className={`text-[11px] font-semibold ${bad ? 'text-red-500' : 'text-emerald-500'}`}>
+    <span className={`text-2xs font-semibold ${bad ? 'text-red-500' : 'text-emerald-500'}`}>
       {value > 0 ? '+' : '−'}
       {formatCurrency(Math.abs(Math.round(value)))}
     </span>
@@ -153,7 +153,7 @@ export function SliderField({
         step={step}
       />
       {(minLabel || maxLabel) && (
-        <div dir="ltr" className="flex justify-between text-[10px] text-slate-400">
+        <div dir="ltr" className="flex justify-between text-2xs text-slate-400">
           <span>{minLabel}</span>
           <span>{maxLabel}</span>
         </div>
@@ -217,7 +217,7 @@ export function AmountAndPercent({
           value={Math.round(amount)}
           onValueChange={onChange}
         />
-        <p className="text-[10px] text-slate-400">סכום (₪)</p>
+        <p className="text-2xs text-slate-400">סכום (₪)</p>
       </div>
       <div className="space-y-0.5">
         <NumericInput
@@ -229,7 +229,7 @@ export function AmountAndPercent({
           }}
           disabled={disabled}
         />
-        <p className="text-[10px] text-slate-400">אחוז מהמשכנתא (%)</p>
+        <p className="text-2xs text-slate-400">אחוז מהמשכנתא (%)</p>
       </div>
     </div>
   );

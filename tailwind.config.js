@@ -10,8 +10,18 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'hebrew': ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
-        'sans': ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
+        // גופן אחד לכל הפלטפורמה: Assistant, נטען דרך next/font ב-app/layout.tsx
+        'hebrew': ['var(--font-app)'],
+        'sans': ['var(--font-app)'],
+      },
+      // סולם הטיפוגרפיה המשותף. הערכים עצמם מוגדרים כמשתנים ב-app/globals.css
+      fontSize: {
+        '2xs': ['var(--text-2xs)', { lineHeight: '1rem' }],
+        'info': ['var(--text-info)', { lineHeight: '1.5rem' }],
+        'button': ['var(--text-button)', { lineHeight: '1.375rem', fontWeight: '600' }],
+        'cta': ['var(--text-cta)', { lineHeight: '1.5rem', fontWeight: '700' }],
+        'subtitle': ['var(--text-subtitle)', { lineHeight: '1.75rem', fontWeight: '800' }],
+        'title': ['var(--text-title)', { lineHeight: '1.2', fontWeight: '800' }],
       },
       colors: {
         // Professional Financial Colors

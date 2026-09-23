@@ -104,7 +104,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
     <div className="space-y-8" dir="rtl">
       {/* כותרת */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
+        <h1 className="text-title font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
           <Sparkles className="h-10 w-10 text-purple-600" />
           אופטימיזציית תמהיל משכנתא
         </h1>
@@ -243,7 +243,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
 
           {/* מכווני העדפות */}
           <div className="space-y-6 pt-4 border-t border-purple-200">
-            <h3 className="text-lg font-semibold text-gray-900">העדפות והתאמות</h3>
+            <h3 className="text-subtitle font-semibold text-gray-900">העדפות והתאמות</h3>
 
             {/* רגישות לעלייה בריבית */}
             <div className="space-y-3">
@@ -322,7 +322,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
       {/* תמהילים מומלצים */}
       <div className="space-y-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 sm:text-2xl">
+          <h2 className="text-subtitle font-bold text-gray-900 flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-purple-600" />
             תמהילים מומלצים עבורך
           </h2>
@@ -358,7 +358,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
         {/* כפתור השוואה */}
         {selectedMixIds.length >= 2 && (
           <div className="text-center p-6 bg-purple-50 rounded-lg border-2 border-purple-200">
-            <h3 className="text-lg font-semibold text-purple-900 mb-4">
+            <h3 className="text-subtitle font-semibold text-purple-900 mb-4">
               נבחרו {selectedMixIds.length} תמהילים להשוואה
             </h3>
             <p className="text-sm text-purple-700 mb-4">

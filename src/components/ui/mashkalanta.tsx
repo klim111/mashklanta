@@ -54,7 +54,7 @@ export default function LoanWordJump({
       : "flex h-24 cursor-pointer select-none flex-col items-center justify-center sm:h-48 md:h-64 lg:h-96";
 
   const wordClass = isHeader
-    ? "text-2xl font-bold text-white md:text-[1.7rem]"
+    ? "text-2xl font-bold text-white md:text-2xl"
     : isNav
       ? "text-xl font-black text-gray-900 md:text-2xl"
       : "text-3xl font-bold sm:text-4xl md:text-5xl";
@@ -114,7 +114,7 @@ export default function LoanWordJump({
             transition={{ delay: 0.3, duration: 1 }}
             className={
               isHeader
-                ? "mt-1 max-w-[11rem] text-center text-[10px] font-semibold leading-tight text-cyan-100/90 md:text-[11px]"
+                ? "mt-1 max-w-[11rem] text-center text-2xs font-semibold leading-tight text-cyan-100/90 md:text-2xs"
                 : "mt-2 text-base text-gray-700 sm:mt-4 sm:text-xl"
             }
           >

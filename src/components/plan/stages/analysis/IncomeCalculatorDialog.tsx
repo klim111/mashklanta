@@ -172,7 +172,7 @@ export function IncomeCalculatorDialog({
               <button
                 type="button"
                 onClick={() => setExtras((current) => [...current, newExtra()])}
-                className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-emerald-300 bg-white px-4 py-2 text-sm font-black text-emerald-800 transition-colors hover:bg-emerald-50"
+                className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-emerald-300 bg-white px-4 py-2 text-button font-black text-emerald-800 transition-colors hover:bg-emerald-50"
               >
                 <Plus className="h-4 w-4" />
                 הוספת הכנסה קבועה
@@ -211,7 +211,7 @@ export function IncomeCalculatorDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50"
+            className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-button font-black text-slate-600 transition-colors hover:bg-slate-50"
           >
             ביטול
           </button>

@@ -38,7 +38,7 @@ export interface AnchorSpreadRateProps {
 const FIELD_CLASS =
   'h-9 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm';
 const COMPACT_FIELD_CLASS =
-  'h-7 w-full rounded-md border border-input bg-transparent px-1 py-0.5 text-[11px] shadow-sm';
+  'h-7 w-full rounded-md border border-input bg-transparent px-1 py-0.5 text-2xs shadow-sm';
 
 export function AnchorSpreadRate({
   anchor,
@@ -98,8 +98,8 @@ export function AnchorSpreadRate({
     בשורת המסלול, כדי שהשדות יישארו מיושרים לגובה השכנים.
   */
   const labelClass = compact
-    ? 'mb-0.5 block truncate text-center text-[9px] font-medium leading-none text-slate-500'
-    : 'flex items-center justify-center gap-1 text-center text-[11px] font-medium text-slate-600';
+    ? 'mb-0.5 block truncate text-center text-2xs font-medium leading-none text-slate-500'
+    : 'flex items-center justify-center gap-1 text-center text-2xs font-medium text-slate-600';
   const operatorClass = `h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`;
 
   return (
@@ -152,7 +152,7 @@ export function AnchorSpreadRate({
       </div>
 
       {!compact && (
-        <p className="flex flex-wrap items-center gap-1 text-[10px] leading-snug text-slate-500">
+        <p className="flex flex-wrap items-center gap-1 text-2xs leading-snug text-slate-500">
           <span>{anchor.label}</span>
           {anchor.source === 'boi' ? (
             <span className="text-emerald-700">

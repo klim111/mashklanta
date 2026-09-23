@@ -76,7 +76,7 @@ export default function MortgageRefinancePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">מה המטרה שלך במיחזור?</h1>
+        <h1 className="text-title font-bold text-gray-900 mb-6">מה המטרה שלך במיחזור?</h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
           בחר את הכיוון שמתאים לך ונמשיך לניתוח האפשרויות
         </p>
@@ -92,7 +92,7 @@ export default function MortgageRefinancePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Banknote className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
                 הקטנת תשלום חודשי
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed">
@@ -111,7 +111,7 @@ export default function MortgageRefinancePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Clock className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
                 הקטנת סכום
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed">
@@ -147,7 +147,7 @@ export default function MortgageRefinancePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">סריקת דוח יתרות לסילוק</h1>
+        <h1 className="text-title font-bold text-gray-900 mb-6">סריקת דוח יתרות לסילוק</h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
           העלה את דוח היתרות לסילוק של המשכנתא הנוכחית שלך
         </p>
@@ -187,12 +187,12 @@ export default function MortgageRefinancePage() {
           ייכנסו למסך בלי גלילה מיותרת */}
       {mixSummaryRevealed ? (
         <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-center">
-          <h1 className="text-lg font-bold text-gray-900">מיחזור המשכנתא שלכם</h1>
+          <h1 className="text-title font-bold text-gray-900">מיחזור המשכנתא שלכם</h1>
           <span className="text-sm text-gray-500">— שנו פרמטרים בפאנל וראו מיד את התוצאה</span>
         </div>
       ) : (
         <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
+          <h1 className="text-title font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
           </p>
@@ -283,7 +283,7 @@ export default function MortgageRefinancePage() {
       {signedIn && (
         <Link
           href="/dashboard"
-          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-button font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
         >
           <LayoutDashboard className="h-5 w-5" />
           חזרה לדאשבורד

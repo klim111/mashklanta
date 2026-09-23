@@ -23,7 +23,7 @@ export function HomeFloatingButton({
   return (
     <Link
       href={href}
-      className={`fixed bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5 print:hidden ${
+      className={`fixed bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-info font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5 print:hidden ${
         side === 'right' ? 'right-5' : 'left-5'
       }`}
     >

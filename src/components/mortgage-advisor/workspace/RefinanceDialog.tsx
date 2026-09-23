@@ -145,7 +145,7 @@ export function RefinanceDialog({
             maxLabel="סוף התקופה"
           />
 
-          <div className="rounded-lg bg-slate-50 border border-slate-200 p-2.5 text-[11px] text-slate-600">
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-2.5 text-2xs text-slate-600">
             במועד זה יתרת החוב במסלול היא <strong>{formatShekel(remainingBalance)}</strong> ונותרו{' '}
             <strong>{formatDuration(remainingMonths)}</strong> לפי התנאים הקיימים.
           </div>
@@ -273,9 +273,9 @@ function PreviewStat({
   const valueClass = tone === 'good' ? 'text-emerald-700' : tone === 'bad' ? 'text-red-600' : 'text-slate-800';
   return (
     <div className="rounded-lg bg-white border border-blue-200 p-2 text-center">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-2xs text-slate-400">{label}</p>
       <p className={`text-xs font-bold ${valueClass}`}>{value}</p>
-      {hint && <p className="text-[10px] text-slate-400">{hint}</p>}
+      {hint && <p className="text-2xs text-slate-400">{hint}</p>}
     </div>
   );
 }

@@ -74,14 +74,14 @@ function DataGrid({
     return !(v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0));
   });
   if (filled.length === 0) {
-    return <p className="text-[12px] text-slate-400">לא הוזנו נתונים</p>;
+    return <p className="text-xs text-slate-400">לא הוזנו נתונים</p>;
   }
   return (
     <dl className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-3">
       {filled.map((field) => (
         <div key={field.key} className="break-inside-avoid border-b border-dashed border-slate-100 pb-1.5">
-          <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{field.label}</dt>
-          <dd className="text-[13px] font-semibold text-slate-800">
+          <dt className="text-2xs font-medium uppercase tracking-wide text-slate-400">{field.label}</dt>
+          <dd className="text-info font-semibold text-slate-800">
             {renderValue(field, values[field.key], peopleLabels)}
           </dd>
         </div>
@@ -93,7 +93,7 @@ function DataGrid({
 function ReportSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="break-inside-avoid space-y-3">
-      <h2 className="border-r-4 border-indigo-500 pr-3 text-[15px] font-bold text-slate-900">{title}</h2>
+      <h2 className="border-r-4 border-indigo-500 pr-3 text-subtitle font-bold text-slate-900">{title}</h2>
       <div className="space-y-4">{children}</div>
     </section>
   );
@@ -185,13 +185,13 @@ export function ApprovalReport() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">דוח אישור עקרוני</h2>
-          <p className="text-[13px] text-slate-500">סיכום מלא של כל הנתונים שנאספו, מוכן להגשה לבנק</p>
+          <h2 className="text-subtitle font-bold text-slate-900">דוח אישור עקרוני</h2>
+          <p className="text-sm text-slate-500">סיכום מלא של כל הנתונים שנאספו, מוכן להגשה לבנק</p>
         </div>
         <button
           type="button"
           onClick={printReport}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-lg shadow-indigo-200 transition-all hover:shadow-xl"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-2.5 text-button font-semibold text-white shadow-lg shadow-indigo-200 transition-all hover:shadow-xl"
         >
           <Download className="h-4 w-4" />
           הורדת הדוח כ-PDF
@@ -206,13 +206,13 @@ export function ApprovalReport() {
               <FileText className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-xl font-black tracking-tight text-slate-900">בקשה לאישור עקרוני למשכנתא</h1>
-              <p className="text-[13px] text-slate-500">
+              <h1 className="text-title font-black tracking-tight text-slate-900">בקשה לאישור עקרוני למשכנתא</h1>
+              <p className="text-sm text-slate-500">
                 {clientName} · הופק בתאריך {generatedAt}
               </p>
             </div>
           </div>
-          <div className="text-left text-[11px] text-slate-400">
+          <div className="text-left text-2xs text-slate-400">
             <p>מספר תיק: {data.id.slice(-8).toUpperCase()}</p>
             {data.advisor && <p>יועץ מטפל: {data.advisor.name ?? data.advisor.email}</p>}
           </div>
@@ -227,8 +227,8 @@ export function ApprovalReport() {
             { label: 'שיעור מימון', value: ltv === null ? '—' : `${ltv}%` },
           ].map((stat) => (
             <div key={stat.label} className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-100">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{stat.label}</p>
-              <p className="mt-0.5 text-[15px] font-bold text-slate-900">{stat.value}</p>
+              <p className="text-2xs font-medium uppercase tracking-wide text-slate-400">{stat.label}</p>
+              <p className="mt-0.5 text-info font-bold text-slate-900">{stat.value}</p>
             </div>
           ))}
         </div>
@@ -243,7 +243,7 @@ export function ApprovalReport() {
             const name = [values.firstName, values.lastName].filter(Boolean).join(' ');
             return (
               <div key={borrower.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50/50 p-4">
-                <h3 className="mb-3 text-[13px] font-bold text-slate-800">
+                <h3 className="mb-3 text-sm font-bold text-slate-800">
                   לווה {index + 1}
                   {name && ` · ${name}`}
                   {age !== null && <span className="mr-2 font-normal text-slate-500">(גיל {age})</span>}
@@ -255,11 +255,11 @@ export function ApprovalReport() {
                   const previous = entities('prevEmployment', income.id);
                   return (
                     <div key={income.id} className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
-                      <h4 className="mb-2 text-[12px] font-bold text-slate-700">הכנסה {incomeIndex + 1}</h4>
+                      <h4 className="mb-2 text-xs font-bold text-slate-700">הכנסה {incomeIndex + 1}</h4>
                       <DataGrid fields={INCOME_FIELDS} values={incomeValues} peopleLabels={peopleLabels} />
                       {previous.map((prev, prevIndex) => (
                         <div key={prev.id} className="mt-3 rounded-lg bg-amber-50/60 p-3">
-                          <h5 className="mb-2 text-[11px] font-bold text-amber-800">
+                          <h5 className="mb-2 text-2xs font-bold text-amber-800">
                             מקום עבודה קודם {prevIndex + 1}
                           </h5>
                           <DataGrid
@@ -275,17 +275,17 @@ export function ApprovalReport() {
               </div>
             );
           })}
-          <p className="text-[13px] font-semibold text-slate-700">
+          <p className="text-sm font-semibold text-slate-700">
             סך ההכנסות החודשיות של כל הלווים והערבים: {formatCurrency(totalMonthlyIncome)}
           </p>
         </ReportSection>
 
         <ReportSection title="חשבונות בנק">
           <div className="space-y-2">
-            {accounts.length === 0 && <p className="text-[12px] text-slate-400">לא הוזנו חשבונות</p>}
+            {accounts.length === 0 && <p className="text-xs text-slate-400">לא הוזנו חשבונות</p>}
             {accounts.map((account, index) => (
               <div key={account.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50/50 p-4">
-                <h3 className="mb-2 text-[13px] font-bold text-slate-800">חשבון {index + 1}</h3>
+                <h3 className="mb-2 text-sm font-bold text-slate-800">חשבון {index + 1}</h3>
                 <DataGrid
                   fields={BANK_ACCOUNT_FIELDS}
                   values={valuesOf('bankAccount', account.id)}
@@ -301,7 +301,7 @@ export function ApprovalReport() {
         </ReportSection>
 
         <ReportSection title="מקורות מימון">
-          <table className="w-full border-collapse text-[12px]">
+          <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500">
                 <th className="py-1.5 text-right font-medium">מקור</th>
@@ -345,14 +345,14 @@ export function ApprovalReport() {
               const name = [values.firstName, values.lastName].filter(Boolean).join(' ');
               return (
                 <div key={guarantor.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50/50 p-4">
-                  <h3 className="mb-3 text-[13px] font-bold text-slate-800">
+                  <h3 className="mb-3 text-sm font-bold text-slate-800">
                     ערב {index + 1}
                     {name && ` · ${name}`}
                   </h3>
                   <DataGrid fields={GUARANTOR_FIELDS} values={values} peopleLabels={peopleLabels} />
                   {entities('income', guarantor.id).map((income, incomeIndex) => (
                     <div key={income.id} className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-                      <h4 className="mb-2 text-[12px] font-bold text-slate-700">הכנסה {incomeIndex + 1}</h4>
+                      <h4 className="mb-2 text-xs font-bold text-slate-700">הכנסה {incomeIndex + 1}</h4>
                       <DataGrid
                         fields={INCOME_FIELDS}
                         values={valuesOf('income', income.id)}
@@ -385,13 +385,13 @@ export function ApprovalReport() {
             const progress = documentProgress(groups, collected);
             return (
               <>
-                <p className="text-[13px] font-semibold text-slate-700">
+                <p className="text-sm font-semibold text-slate-700">
                   נאספו {progress.collected} מתוך {progress.total} מסמכים
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {groups.map((group) => (
                     <div key={group.id} className="break-inside-avoid rounded-lg border border-slate-200 bg-white p-3">
-                      <h4 className="mb-1.5 text-[12px] font-bold text-slate-700">
+                      <h4 className="mb-1.5 text-xs font-bold text-slate-700">
                         {group.title}
                         {group.subtitle && (
                           <span className="mr-2 font-normal text-slate-400">{group.subtitle}</span>
@@ -399,7 +399,7 @@ export function ApprovalReport() {
                       </h4>
                       <ul className="space-y-0.5">
                         {group.documents.map((doc) => (
-                          <li key={doc.key} className="flex items-center gap-1.5 text-[12px]">
+                          <li key={doc.key} className="flex items-center gap-1.5 text-xs">
                             <span
                               className={
                                 collected[doc.key]
@@ -423,7 +423,7 @@ export function ApprovalReport() {
           })()}
         </ReportSection>
 
-        <footer className="border-t border-slate-200 pt-4 text-[10px] leading-relaxed text-slate-400">
+        <footer className="border-t border-slate-200 pt-4 text-2xs leading-relaxed text-slate-400">
           <p>
             הדוח הופק אוטומטית מתוך הנתונים שהוזנו במערכת ומשקף את המידע נכון למועד ההפקה. אין בדוח זה משום
             אישור עקרוני או התחייבות של גורם מממן כלשהו.

@@ -77,7 +77,7 @@ export default function DateNavigator({
         className="bg-white rounded-xl shadow-lg p-6"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">ניווט בזמן</h3>
+          <h3 className="text-subtitle font-semibold text-gray-900">ניווט בזמן</h3>
           <div className="flex gap-2">
             <button
               onClick={jumpToToday}
@@ -104,7 +104,7 @@ export default function DateNavigator({
           </button>
 
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-subtitle font-bold text-gray-900">
               {format(currentDate, 'MMMM yyyy', { locale: he })}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -212,7 +212,7 @@ export default function DateNavigator({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">בחר תאריך</h3>
+                <h3 className="text-subtitle font-semibold">בחר תאריך</h3>
                 <button
                   onClick={() => setShowCalendar(false)}
                   className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
@@ -323,7 +323,7 @@ export default function DateNavigator({
             >
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-xl font-bold">מצב המשכנתא</h3>
+                  <h3 className="text-subtitle font-bold">מצב המשכנתא</h3>
                   <p className="text-gray-600 mt-1">
                     {format(currentDate, 'dd MMMM yyyy', { locale: he })}
                   </p>

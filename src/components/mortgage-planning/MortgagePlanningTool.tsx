@@ -460,7 +460,7 @@ export function MortgagePlanningContent({
             </Button>
           )}
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-gray-900 mb-6">
           כלי תכנון המשכנתא
         </h1>
         <p className="text-xl text-gray-600 mb-4">
@@ -528,7 +528,7 @@ export function MortgagePlanningContent({
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+        <h2 className="text-title font-bold text-gray-900 mb-6">
           איך תרצה להתחיל?
         </h2>
         <p className="text-lg text-gray-600">
@@ -549,7 +549,7 @@ export function MortgagePlanningContent({
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                   <Calculator className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
                   תחשב מה אני יכול להרשות לעצמי
                 </h3>
                 <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -576,7 +576,7 @@ export function MortgagePlanningContent({
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                   <Banknote className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
                   תחשב משכנתא לנכס קיים
                 </h3>
                 <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -603,7 +603,7 @@ export function MortgagePlanningContent({
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                   <FileText className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
                   תבדוק הצעה שקיבלתי
                 </h3>
                 <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -640,7 +640,7 @@ export function MortgagePlanningContent({
       className="max-w-3xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+        <h2 className="text-title font-bold text-gray-900 mb-6">
           בדיקת הצעת בנק
         </h2>
         <p className="text-lg text-gray-600">
@@ -656,7 +656,7 @@ export function MortgagePlanningContent({
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg">
                 <Upload className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">העלה הצעת בנק</h3>
+              <h3 className="text-subtitle font-bold text-gray-900 mb-3">העלה הצעת בנק</h3>
               <p className="text-gray-600 mb-6">תמוך בתמונות או PDF של מסמך ההצעה</p>
               <div className="flex items-center justify-center">
                 <div className="relative">
@@ -734,7 +734,7 @@ export function MortgagePlanningContent({
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg">
                 <Calculator className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">הזנה ידנית</h3>
+              <h3 className="text-subtitle font-bold text-gray-900 mb-3">הזנה ידנית</h3>
               <p className="text-gray-600 mb-6">פתח את כלי היועצים לבניית תמהיל והשוואת תנאים</p>
               <Button
                 onClick={() => {
@@ -789,7 +789,7 @@ export function MortgagePlanningContent({
       className="max-w-lg mx-auto"
     >
       <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+        <h2 className="text-title font-bold text-gray-900 mb-6">
           {embedded ? 'פרופיל הלקוח' : 'בוא נכיר'}
         </h2>
         <p className="text-lg text-gray-600">
@@ -942,7 +942,7 @@ export function MortgagePlanningContent({
       className="max-w-lg mx-auto"
     >
       <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+        <h2 className="text-title font-bold text-gray-900 mb-6">
           פרטי הנכס
         </h2>
         <p className="text-lg text-gray-600">
@@ -992,7 +992,7 @@ export function MortgagePlanningContent({
               </Button>
               <Link href="/equity-planning" className="sm:contents">
                 <Button
-                  className="w-full px-4 py-3 whitespace-normal text-sm bg-blue-600 hover:bg-blue-700 text-white sm:w-auto sm:whitespace-nowrap"
+                  className="w-full px-4 py-3 whitespace-normal text-button bg-blue-600 hover:bg-blue-700 text-white sm:w-auto sm:whitespace-nowrap"
                 >
                   תכנון מתקדם
                 </Button>
@@ -1099,7 +1099,7 @@ export function MortgagePlanningContent({
       className="max-w-lg mx-auto"
     >
       <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+        <h2 className="text-title font-bold text-gray-900 mb-6">
           משכנתא לכל מטרה
         </h2>
         <p className="text-lg text-gray-600">
@@ -1205,7 +1205,7 @@ export function MortgagePlanningContent({
                 className="bg-green-50 border border-green-200 rounded-lg p-6 text-center"
               >
                 <div className="flex items-center justify-center gap-2 mb-3">
-                  <h3 className="text-xl font-bold text-green-800">
+                  <h3 className="text-subtitle font-bold text-green-800">
                     אתה זכאי למשכנתא הפוכה!
                   </h3>
                   <div className="relative group cursor-pointer">
@@ -1251,7 +1251,7 @@ export function MortgagePlanningContent({
                 transition={{ duration: 0.3 }}
                 className="bg-orange-50 border border-orange-200 rounded-lg p-6 text-center"
               >
-                <h3 className="text-xl font-bold text-orange-800 mb-3">
+                <h3 className="text-subtitle font-bold text-orange-800 mb-3">
                   לא זכאי למשכנתא הפוכה
                 </h3>
                 <p className="text-orange-700 mb-2">
@@ -1304,11 +1304,11 @@ export function MortgagePlanningContent({
           className="max-w-4xl mx-auto"
         >
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-title font-bold text-gray-900 mb-4">
               משכנתא לכל מטרה - התוצאות שלך
             </h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 inline-block shadow-sm">
-              <h3 className="text-xl font-bold text-blue-800 mb-2">
+              <h3 className="text-subtitle font-bold text-blue-800 mb-2">
                 חישוב משכנתא הפוכה
               </h3>
               <p className="text-blue-700 font-medium">
@@ -1330,7 +1330,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">מחיר הנכס</h3>
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4">מחיר הנכס</h3>
                 <p className="text-3xl font-bold text-blue-600 mb-2">
                   ₪{currentPropertyPrice.toLocaleString()}
                 </p>
@@ -1344,7 +1344,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">יתרת משכנתא</h3>
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4">יתרת משכנתא</h3>
                 <p className="text-3xl font-bold text-red-600 mb-2">
                   ₪{remainingMortgage.toLocaleString()}
                 </p>
@@ -1360,7 +1360,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.3 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">ערך בבעלותך</h3>
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4">ערך בבעלותך</h3>
                 <p className="text-3xl font-bold text-green-600 mb-2">
                   ₪{ownedValue.toLocaleString()}
                 </p>
@@ -1374,7 +1374,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[160px] flex flex-col justify-center bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200">
-                <h3 className="text-xl font-bold text-purple-900 mb-4">משכנתא הפוכה אפשרית</h3>
+                <h3 className="text-subtitle font-bold text-purple-900 mb-4">משכנתא הפוכה אפשרית</h3>
                 <p className="text-3xl font-bold text-purple-600 mb-2">
                   ₪{reverseMortgageAmount.toLocaleString()}
                 </p>
@@ -1385,7 +1385,7 @@ export function MortgagePlanningContent({
 
           <div className="text-center space-y-4">
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-              <h3 className="text-lg font-bold text-yellow-800 mb-3">חשוב לדעת</h3>
+              <h3 className="text-subtitle font-bold text-yellow-800 mb-3">חשוב לדעת</h3>
               <div className="text-sm text-yellow-700 space-y-2 text-right">
                 <p>• הסכום מחושב על בסיס ערך הנכס שבבעלותך בפועל</p>
                 <p>• התנאים הסופיים ייקבעו בהתאם לגילך ולמצב הבריאותי</p>
@@ -1601,7 +1601,7 @@ export function MortgagePlanningContent({
           className="max-w-4xl mx-auto"
         >
           <div className="text-center mb-4">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            <h2 className="text-title font-bold text-gray-900 mb-2">
               התוצאות שלך
             </h2>
             <p className="text-sm md:text-base text-gray-700 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
@@ -1788,7 +1788,7 @@ export function MortgagePlanningContent({
               <Card className="p-4 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-bold text-gray-900">
+                    <h3 className="text-subtitle font-bold text-gray-900">
                       {effectivePropertyPrice >= results.maxPropertyPrice && !exceedsMaxLoan && !exceedsMaxLTV
                         ? 'מחיר נכס מקסימלי'
                         : 'מחיר הנכס'}
@@ -1873,7 +1873,7 @@ export function MortgagePlanningContent({
                 }`}
               >
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  <h3 className="text-subtitle font-bold text-gray-900 mb-2">
                     {effectiveLoanAmount >= loanSliderMax && !exceedsMaxLoan
                       ? 'סכום משכנתא מקסימלי'
                       : 'סכום משכנתא'}
@@ -1976,7 +1976,7 @@ export function MortgagePlanningContent({
                 }`}
               >
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">החזר חודשי צפוי</h3>
+                  <h3 className="text-subtitle font-bold text-gray-900 mb-2">החזר חודשי צפוי</h3>
                   {results.includesInsurance ? (
                     <>
                       <p
@@ -2148,7 +2148,7 @@ export function MortgagePlanningContent({
               <Card className="p-3 hover:shadow-lg transition-shadow duration-300">
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
                   <div className="md:w-1/4 md:flex-shrink-0 flex items-baseline gap-2">
-                    <h3 className="text-lg font-bold text-gray-900">תקופת משכנתא:</h3>
+                    <h3 className="text-subtitle font-bold text-gray-900">תקופת משכנתא:</h3>
                     <p className="text-xl font-bold text-orange-600">
                       {termLabel}
                     </p>
@@ -2189,7 +2189,7 @@ export function MortgagePlanningContent({
               className="md:col-span-2 lg:col-span-3"
             >
               <Card className="p-4 hover:shadow-lg transition-shadow duration-300">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-subtitle font-bold text-gray-900 mb-2">
                   {isCouple ? 'סיכום נתונים מצרפיים' : 'סיכום פרטים'}
                 </h3>
                 {(() => {
@@ -2395,7 +2395,7 @@ export function MortgagePlanningContent({
                       interestRate: results.interestRate,
                     })
                   }
-                  className="px-5 py-2 h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  className="px-5 py-2 h-9 bg-blue-600 hover:bg-blue-700 text-white text-button"
                 >
                   המשך לתכנון ולקיחת המשכנתא
                   <ArrowLeft className="w-4 h-4 ml-2" />
@@ -2420,7 +2420,7 @@ export function MortgagePlanningContent({
           className="max-w-4xl mx-auto"
         >
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-title font-bold text-gray-900 mb-6">
               סיכום הנכס שלך
             </h2>
             <p className="text-lg text-gray-600">
@@ -2435,7 +2435,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[140px] flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">מחיר הנכס</h3>
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4">מחיר הנכס</h3>
                 <p className="text-3xl font-bold text-blue-600 mb-2">
                   ₪{propertyPrice.toLocaleString()}
                 </p>
@@ -2448,7 +2448,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[140px] flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">הון עצמי</h3>
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4">הון עצמי</h3>
                 <p className="text-3xl font-bold text-green-600 mb-2">
                   ₪{ownCapital.toLocaleString()}
                 </p>
@@ -2461,7 +2461,7 @@ export function MortgagePlanningContent({
               transition={{ duration: 0.6, delay: 0.3 }}
             >
               <Card className="p-6 hover:shadow-lg transition-shadow duration-300 min-h-[140px] flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">סכום משכנתא</h3>
+                <h3 className="text-subtitle font-bold text-gray-900 mb-4">סכום משכנתא</h3>
                 <p className="text-3xl font-bold text-purple-600 mb-2">
                   ₪{loanAmount.toLocaleString()}
                 </p>
@@ -2484,7 +2484,7 @@ export function MortgagePlanningContent({
                 <Button
                   size="lg"
                   onClick={() => continueToMortgagePlanning()}
-                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg"
+                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-cta"
                 >
                   המשך לתכנון ולקיחת המשכנתא
                   <ArrowLeft className="w-5 h-5 ml-2" />
@@ -2513,7 +2513,7 @@ export function MortgagePlanningContent({
         <span className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
           <CheckCircle2 className="h-8 w-8" />
         </span>
-        <h2 className="text-3xl font-bold text-gray-900 mb-3">הפרופיל נשמר</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-3">הפרופיל נשמר</h2>
         <p className="text-lg text-gray-600 mb-8">
           פרטי הלקוח מוכנים. בשלב הבא תזינו את כתובת הנכס, המחיר וסכום המשכנתא ותבנו תמהיל מאפס.
         </p>
@@ -2669,7 +2669,7 @@ export function MortgagePlanningContent({
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">מחשבון הון עצמי</h2>
+                <h2 className="text-subtitle font-bold text-gray-900">מחשבון הון עצמי</h2>
                 <Button
                   variant="ghost"
                   size="sm"
