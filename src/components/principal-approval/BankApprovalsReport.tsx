@@ -155,7 +155,7 @@ function BankPanel({ approval, hidden }: { approval: ApprovalSummary; hidden: bo
   return (
     <div
       className={cn(
-        'break-inside-avoid rounded-xl border border-slate-200 bg-slate-50/50 p-4',
+        'break-inside-avoid rounded-xl border border-slate-200 bg-slate-50 p-4',
         // On screen only the selected bank shows; in print every bank is included.
         hidden && 'hidden print:block',
       )}

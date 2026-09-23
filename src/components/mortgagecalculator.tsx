@@ -158,13 +158,13 @@ export default function MortgageCalculator() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -100 }}
             transition={{ duration: 0.4 }}
-            className="mt-6 bg-gray-100 p-4 rounded-lg shadow-md"
+            className="mt-6 bg-slate-100 p-4 rounded-lg shadow-md"
           >
             <h2 className="text-subtitle font-semibold mb-2">לוח סילוקין</h2>
             <div className="overflow-auto max-h-[400px] border rounded">
               <table className="table-auto w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-300">
+                  <tr className="bg-slate-300">
                     <th className="px-2 py-1">חודש</th>
                     <th className="px-2 py-1">קרן</th>
                     <th className="px-2 py-1">ריבית</th>
@@ -174,7 +174,7 @@ export default function MortgageCalculator() {
                 </thead>
                 <tbody>
                   {schedule.map((payment, index) => (
-                    <tr key={index} className="even:bg-white odd:bg-gray-200">
+                    <tr key={index} className="even:bg-white odd:bg-slate-200">
                       <td className="px-2 py-1">{payment.month}</td>
                       <td className="px-2 py-1">
                         {payment.principal.toFixed(2)}

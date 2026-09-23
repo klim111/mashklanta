@@ -75,7 +75,7 @@ export function EntityCard({
       className={cn(
         'rounded-2xl border p-5 transition-shadow',
         tone === 'muted'
-          ? 'border-slate-150 bg-slate-50/60'
+          ? 'border-slate-150 bg-slate-50'
           : 'border-slate-200 bg-white shadow-sm hover:shadow-md hover:shadow-slate-100',
       )}
     >

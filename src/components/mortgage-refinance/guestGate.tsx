@@ -100,7 +100,7 @@ export function GuestLimitDialog({ open, onClose }: { open: boolean; onClose: ()
 
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row-reverse sm:items-center">
           <Link href="/auth/register" className="min-w-0 sm:flex-1">
-            <Button className="w-full bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-700 hover:to-violet-700">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               פתיחת חשבון חינם
               <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
             </Button>
@@ -121,7 +121,7 @@ export function GuestLimitDialog({ open, onClose }: { open: boolean; onClose: ()
 
 function Benefit({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
   return (
-    <li className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+    <li className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-blue-600 shadow-sm">
         <Icon className="h-3.5 w-3.5" />
       </span>

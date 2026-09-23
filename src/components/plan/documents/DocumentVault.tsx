@@ -130,7 +130,7 @@ export function DocumentVault({
       )}
 
       {!hideModes && skipped && (
-        <p className="mt-3 rounded-2xl border-2 border-amber-200 bg-amber-50/70 px-4 py-3 text-center text-info font-bold leading-relaxed text-amber-900">
+        <p className="mt-3 rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-center text-info font-bold leading-relaxed text-amber-900">
           {mode === 'SELF_SUBMIT'
             ? 'סימנתם הגשה עצמאית לבנק — הרשימה כאן היא מה שצריך להביא איתכם.'
             : 'סימנתם שתעלו את המסמכים בשלב האישור העקרוני — הרשימה תחכה לכם שם.'}{' '}
@@ -170,7 +170,7 @@ export function DocumentVault({
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {groups.map((group) => (
-          <div key={group.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4">
+          <div key={group.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
             <h5 className="text-center text-base font-black text-slate-900">{group.title}</h5>
             <ul className="mt-3 space-y-2">
               {group.documents.map((doc) => (
@@ -257,7 +257,7 @@ function DocumentRow({
             <button
               type="button"
               onClick={() => onView(uploaded)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               <Eye className="h-3.5 w-3.5" />
               צפה במסמך

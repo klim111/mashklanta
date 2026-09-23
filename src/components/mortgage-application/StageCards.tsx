@@ -164,7 +164,7 @@ export function StageCard({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="border-t border-slate-200 bg-slate-50/50 overflow-hidden"
+            className="border-t border-slate-200 bg-slate-50 overflow-hidden"
           >
             <div className="p-6 space-y-4">
               {/* Full Requirements List */}

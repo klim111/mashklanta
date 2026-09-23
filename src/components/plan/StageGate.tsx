@@ -44,7 +44,7 @@ export function StageGate({
       </header>
 
       {steps.length > 0 && (
-        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <div className="mx-auto mb-6 max-w-2xl rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <h4 className="mb-2 flex items-center justify-center gap-1.5 text-sm font-black text-slate-800">
             <ListChecks className="h-4 w-4 text-blue-600" />
             מה כולל השלב
@@ -65,7 +65,7 @@ export function StageGate({
           {...demoId('plan-stage-gate-self')}
           type="button"
           onClick={onSelfService}
-          className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-200 bg-blue-50/40 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          className="flex flex-col items-center gap-2 rounded-3xl border-2 border-blue-200 bg-blue-50 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
             <Wrench className="h-6 w-6 text-white" />
@@ -84,7 +84,7 @@ export function StageGate({
           type="button"
           onClick={onAdvisor}
           disabled={busy}
-          className="flex flex-col items-center gap-2 rounded-3xl border-2 border-violet-300 bg-violet-50/50 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
+          className="flex flex-col items-center gap-2 rounded-3xl border-2 border-violet-300 bg-violet-50 p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
             {busy ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : <Sparkles className="h-6 w-6 text-white" />}

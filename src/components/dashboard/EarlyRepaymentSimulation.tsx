@@ -336,23 +336,23 @@ export default function EarlyRepaymentSimulation({
       animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm mt-2"
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm mt-2"
     >
-      <div className="bg-gray-50 p-6">
+      <div className="bg-slate-50 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-lg font-semibold text-gray-900">
+          <h4 className="text-lg font-semibold text-slate-900">
             לוח סילוקין מעודכן - {title}
           </h4>
           <button
             onClick={() => setExpandedSchedule(null)}
-            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            <ChevronUp className="w-5 h-5 text-gray-600" />
+            <ChevronUp className="w-5 h-5 text-slate-600" />
           </button>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-gray-50 font-semibold text-sm text-gray-700 border-b">
+        <div className="bg-white rounded-lg border border-slate-200">
+          <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-slate-50 font-semibold text-sm text-slate-700 border-b">
             <div>#</div>
             <div>תאריך</div>
             <div>קרן</div>
@@ -362,12 +362,12 @@ export default function EarlyRepaymentSimulation({
             <div>סטטוס</div>
           </div>
 
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-slate-200">
             {paginatedPayments.map((payment) => (
               <div
                 key={payment.id}
                 className={`grid grid-cols-7 gap-4 px-4 py-3 text-sm ${
-                  payment.isPaid ? 'bg-gray-50 text-gray-600' : 'bg-white text-gray-900'
+                  payment.isPaid ? 'bg-slate-50 text-slate-600' : 'bg-white text-slate-900'
                 }`}
               >
                 <div className="font-medium">#{payment.paymentNumber}</div>
@@ -383,7 +383,7 @@ export default function EarlyRepaymentSimulation({
                       שולם
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-gray-700">
+                    <span className="flex items-center gap-1 text-slate-700">
                       <Clock className="w-4 h-4" />
                       ממתין
                     </span>
@@ -399,20 +399,20 @@ export default function EarlyRepaymentSimulation({
             <button
               onClick={() => setScheduleCurrentPage(prev => Math.max(0, prev - 1))}
               disabled={scheduleCurrentPage === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors font-medium"
             >
               <ChevronRight className="w-5 h-5" />
               <span>הקודם</span>
             </button>
             
-            <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-4 py-2 rounded-lg">
+            <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-4 py-2 rounded-lg">
               עמוד {scheduleCurrentPage + 1} מתוך {totalPages}
             </span>
             
             <button
               onClick={() => setScheduleCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
               disabled={scheduleCurrentPage === totalPages - 1}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors font-medium"
             >
               <span>הבא</span>
               <ChevronLeft className="w-5 h-5" />
@@ -461,7 +461,7 @@ export default function EarlyRepaymentSimulation({
           className="bg-white w-full max-w-7xl rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden"
         >
           {/* Header */}
-          <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-6 text-white">
+          <div className="bg-blue-600 p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
@@ -469,7 +469,7 @@ export default function EarlyRepaymentSimulation({
                 </div>
                 <div>
                   <h2 className="text-subtitle font-bold">סימולציית פירעון מוקדם</h2>
-                  <p className="text-purple-100 text-sm mt-1">חשב כמה תחסוך בפירעון מוקדם של המשכנתא</p>
+                  <p className="text-blue-100 text-sm mt-1">חשב כמה תחסוך בפירעון מוקדם של המשכנתא</p>
                 </div>
               </div>
               <button
@@ -484,16 +484,16 @@ export default function EarlyRepaymentSimulation({
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6">
             {/* Input Section */}
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-6 mb-6 border border-purple-200">
-              <h3 className="text-subtitle font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
+            <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+              <h3 className="text-subtitle font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-blue-600" />
                 הגדרת פרמטרים לסימולציה
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Repayment Amount */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
                     סכום פנוי לפירעון
                   </label>
@@ -502,15 +502,15 @@ export default function EarlyRepaymentSimulation({
                       value={repaymentAmount}
                       onValueChange={setRepaymentAmount}
                       placeholder="הכנס סכום"
-                      className="w-full px-4 py-3 pr-8 border-2 border-purple-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all text-lg font-semibold"
+                      className="w-full px-4 py-3 pr-8 border-2 border-blue-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-lg font-semibold"
                     />
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₪</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₪</span>
                   </div>
                 </div>
 
                 {/* Early Repayment Fee */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-orange-600" />
                     עמלת פירעון מוקדם
                   </label>
@@ -519,25 +519,25 @@ export default function EarlyRepaymentSimulation({
                       value={earlyRepaymentFee}
                       onValueChange={setEarlyRepaymentFee}
                       placeholder="הכנס סכום"
-                      className="w-full px-4 py-3 pr-8 border-2 border-purple-300 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all text-lg font-semibold"
+                      className="w-full px-4 py-3 pr-8 border-2 border-blue-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-lg font-semibold"
                     />
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₪</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₪</span>
                   </div>
                 </div>
 
                 {/* Repayment Strategy */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-purple-600" />
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-blue-600" />
                     מה המטרה שלך?
                   </label>
-                  <div className="flex bg-white rounded-xl border-2 border-purple-300 p-1">
+                  <div className="flex bg-white rounded-xl border-2 border-blue-300 p-1">
                     <button
                       onClick={() => setRepaymentStrategy('reduce-time')}
                       className={`flex-1 py-2.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                         repaymentStrategy === 'reduce-time'
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-gray-600 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       <Timer className="w-4 h-4" />
@@ -547,8 +547,8 @@ export default function EarlyRepaymentSimulation({
                       onClick={() => setRepaymentStrategy('reduce-payment')}
                       className={`flex-1 py-2.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                         repaymentStrategy === 'reduce-payment'
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-gray-600 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       <Wallet className="w-4 h-4" />
@@ -559,17 +559,17 @@ export default function EarlyRepaymentSimulation({
 
                 {/* Timing Toggle */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-blue-600" />
                     מתי הכסף יהיה זמין?
                   </label>
-                  <div className="flex bg-white rounded-xl border-2 border-purple-300 p-1">
+                  <div className="flex bg-white rounded-xl border-2 border-blue-300 p-1">
                     <button
                       onClick={() => setRepaymentTiming('now')}
                       className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all ${
                         repaymentTiming === 'now'
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-gray-600 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       יש לי עכשיו
@@ -578,8 +578,8 @@ export default function EarlyRepaymentSimulation({
                       onClick={() => setRepaymentTiming('future')}
                       className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all ${
                         repaymentTiming === 'future'
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-gray-600 hover:bg-gray-100'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       יהיה לי בעתיד
@@ -590,23 +590,23 @@ export default function EarlyRepaymentSimulation({
                 {/* Date Selection (if future) */}
                 {repaymentTiming === 'future' && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-purple-600" />
+                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
                       תאריך פירעון משוער
                     </label>
                     <button
                       onClick={() => setShowCalendar(true)}
-                      className="w-full px-4 py-3 bg-white border-2 border-purple-300 rounded-xl hover:border-purple-500 transition-all text-left font-medium flex items-center justify-between"
+                      className="w-full px-4 py-3 bg-white border-2 border-blue-300 rounded-xl hover:border-blue-500 transition-all text-left font-medium flex items-center justify-between"
                     >
                       <span>{format(repaymentDate, 'dd/MM/yyyy', { locale: he })}</span>
-                      <Calendar className="w-5 h-5 text-purple-600" />
+                      <Calendar className="w-5 h-5 text-blue-600" />
                     </button>
                   </div>
                 )}
 
                 {/* Net Amount Display */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                     <PiggyBank className="w-4 h-4 text-green-600" />
                     סכום נטו לפירעון
                   </label>
@@ -633,11 +633,11 @@ export default function EarlyRepaymentSimulation({
             {/* Total Mortgage Summary - Like Dashboard */}
             {simulatedTracks.length > 0 && (
               <div className="mb-6">
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-purple-300">
-                  <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-6 text-white">
-                    <div className="bg-white/90 text-gray-900 rounded-lg p-5 transition-all">
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-blue-300">
+                  <div className="bg-blue-600 p-6 text-white">
+                    <div className="bg-white/90 text-slate-900 rounded-lg p-5 transition-all">
                       <div className="flex flex-col items-center gap-4 text-center">
-                        <p className="text-sm font-medium text-gray-600">
+                        <p className="text-sm font-medium text-slate-600">
                           {selectedTrackForRepayment 
                             ? `סיכום המשכנתא אחרי פירעון ${simulatedTracks.find(t => t.id === selectedTrackForRepayment)?.name}`
                             : 'בחר מסלול לראות את השפעת הפירעון על המשכנתא הכללית'
@@ -645,14 +645,14 @@ export default function EarlyRepaymentSimulation({
                         </p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full text-center">
                           <div>
-                            <p className="text-xs text-gray-600 mb-1">סך המשכנתא</p>
+                            <p className="text-xs text-slate-600 mb-1">סך המשכנתא</p>
                             <p className="text-2xl font-bold">₪{totalSummary.totalAmount.toLocaleString()}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600 mb-1">נותר לתשלום</p>
+                            <p className="text-xs text-slate-600 mb-1">נותר לתשלום</p>
                             <p className="text-2xl font-bold">
                               {selectedTrackForRepayment && totalSummary.originalTotalRemaining !== totalSummary.totalRemaining && (
-                                <span className="text-sm line-through text-gray-500 block">
+                                <span className="text-sm line-through text-slate-500 block">
                                   ₪{totalSummary.originalTotalRemaining?.toLocaleString()}
                                 </span>
                               )}
@@ -662,14 +662,14 @@ export default function EarlyRepaymentSimulation({
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600 mb-1">התקדמות</p>
+                            <p className="text-xs text-slate-600 mb-1">התקדמות</p>
                             <p className="text-2xl font-bold">{totalSummary.progress}%</p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600 mb-1">תשלום חודשי כולל</p>
+                            <p className="text-xs text-slate-600 mb-1">תשלום חודשי כולל</p>
                             <p className="text-2xl font-bold">
                               {selectedTrackForRepayment && totalSummary.originalTotalMonthly !== totalSummary.totalMonthly && (
-                                <span className="text-sm line-through text-gray-500 block">
+                                <span className="text-sm line-through text-slate-500 block">
                                   ₪{totalSummary.originalTotalMonthly?.toLocaleString()}
                                 </span>
                               )}
@@ -689,10 +689,10 @@ export default function EarlyRepaymentSimulation({
                             disabled={!selectedTrackForRepayment}
                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                               expandedSchedule === 'full'
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
                                 : selectedTrackForRepayment
-                                  ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                  ? 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                             }`}
                             title="לוח סילוקין"
                           >
@@ -707,10 +707,10 @@ export default function EarlyRepaymentSimulation({
                             disabled={!selectedTrackForRepayment}
                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                               expandedGeneralDetails
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
                                 : selectedTrackForRepayment
-                                  ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                  ? 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                             }`}
                             title="פרטים"
                           >
@@ -737,23 +737,23 @@ export default function EarlyRepaymentSimulation({
                         transition={{ duration: 0.3 }}
                         className="p-6 pt-0 overflow-hidden"
                       >
-                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                          <h4 className="font-semibold text-gray-900 mb-4">
+                        <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                          <h4 className="font-semibold text-slate-900 mb-4">
                             פרטי המשכנתא הכללית אחרי פירעון {simulatedTracks.find(t => t.id === selectedTrackForRepayment)?.name}
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="p-3 bg-gray-50 rounded-lg">
-                              <p className="text-xs text-gray-600 mb-1">סכום שנפרע (נטו)</p>
-                              <p className="text-xl font-bold text-gray-900">₪{getNetAmount().toLocaleString()}</p>
+                            <div className="p-3 bg-slate-50 rounded-lg">
+                              <p className="text-xs text-slate-600 mb-1">סכום שנפרע (נטו)</p>
+                              <p className="text-xl font-bold text-slate-900">₪{getNetAmount().toLocaleString()}</p>
                             </div>
                             <div className="p-3 bg-green-50 rounded-lg">
-                              <p className="text-xs text-gray-600 mb-1">חיסכון בריבית</p>
+                              <p className="text-xs text-slate-600 mb-1">חיסכון בריבית</p>
                               <p className="text-xl font-bold text-green-600">
                                 ₪{simulatedTracks.find(t => t.id === selectedTrackForRepayment)?.interestSaved.toLocaleString() || '0'}
                               </p>
                             </div>
                             <div className="p-3 bg-blue-50 rounded-lg">
-                              <p className="text-xs text-gray-600 mb-1">
+                              <p className="text-xs text-slate-600 mb-1">
                                 {repaymentStrategy === 'reduce-time' ? 'חודשים שנחסכו' : 'הפחתה חודשית'}
                               </p>
                               <p className="text-xl font-bold text-blue-600">
@@ -764,9 +764,9 @@ export default function EarlyRepaymentSimulation({
                                 }
                               </p>
                             </div>
-                            <div className="p-3 bg-purple-50 rounded-lg">
-                              <p className="text-xs text-gray-600 mb-1">אסטרטגיה</p>
-                              <p className="text-xl font-bold text-purple-600">
+                            <div className="p-3 bg-blue-50 rounded-lg">
+                              <p className="text-xs text-slate-600 mb-1">אסטרטגיה</p>
+                              <p className="text-xl font-bold text-blue-600">
                                 {repaymentStrategy === 'reduce-time' ? 'קיצור תקופה' : 'הפחתת תשלום'}
                               </p>
                             </div>
@@ -782,8 +782,8 @@ export default function EarlyRepaymentSimulation({
             {/* Track Cards */}
             {simulatedTracks.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-subtitle font-semibold text-gray-900 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                <h3 className="text-subtitle font-semibold text-slate-900 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
                   לחץ על מסלול כדי לראות איך המשכנתא תיראה אם תפרע אותו
                 </h3>
 
@@ -794,7 +794,7 @@ export default function EarlyRepaymentSimulation({
                     prime: 'bg-blue-50 text-blue-900 border-blue-200',
                     fixed: 'bg-green-50 text-green-900 border-green-200',
                     variable: 'bg-orange-50 text-orange-900 border-orange-200',
-                    adjustable: 'bg-purple-50 text-purple-900 border-purple-200',
+                    adjustable: 'bg-blue-50 text-blue-900 border-blue-200',
                     eligibility: 'bg-pink-50 text-pink-900 border-pink-200'
                   }[track.type];
 
@@ -804,7 +804,7 @@ export default function EarlyRepaymentSimulation({
                         whileHover={{ scale: 1.01 }}
                         onClick={() => setSelectedTrackForRepayment(isSelected ? null : track.id)}
                         className={`${trackTypeColor} border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          isSelected ? 'shadow-lg ring-2 ring-purple-400' : 'hover:shadow-md'
+                          isSelected ? 'shadow-lg ring-2 ring-blue-400' : 'hover:shadow-md'
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -832,7 +832,7 @@ export default function EarlyRepaymentSimulation({
                                 <p className="text-xs opacity-75">תשלום חודשי</p>
                                 <div>
                                   {track.originalMonthlyPayment !== track.newMonthlyPayment && (
-                                    <p className="text-xs line-through text-gray-500">₪{track.originalMonthlyPayment.toLocaleString()}</p>
+                                    <p className="text-xs line-through text-slate-500">₪{track.originalMonthlyPayment.toLocaleString()}</p>
                                   )}
                                   <p className="font-semibold text-green-700">₪{track.newMonthlyPayment.toLocaleString()}</p>
                                 </div>
@@ -859,8 +859,8 @@ export default function EarlyRepaymentSimulation({
                               }}
                               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                                 expandedSchedule === track.id
-                                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                  : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                               }`}
                               title="לוח סילוקין"
                             >
@@ -874,8 +874,8 @@ export default function EarlyRepaymentSimulation({
                               }}
                               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                                 expandedDetails === track.id
-                                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                  : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                               }`}
                               title="פרטים"
                             >
@@ -901,30 +901,30 @@ export default function EarlyRepaymentSimulation({
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                              <h4 className="font-semibold text-gray-900 mb-4">
+                            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                              <h4 className="font-semibold text-slate-900 mb-4">
                                 השוואה מפורטת - {track.name}
                               </h4>
                               
                               <div className="grid grid-cols-2 gap-6">
                                 {/* Before */}
                                 <div className="space-y-3">
-                                  <h5 className="font-medium text-gray-700 pb-2 border-b">לפני הפירעון</h5>
+                                  <h5 className="font-medium text-slate-700 pb-2 border-b">לפני הפירעון</h5>
                                   <div className="space-y-2">
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">יתרת קרן</span>
+                                      <span className="text-sm text-slate-600">יתרת קרן</span>
                                       <span className="font-semibold">₪{track.remainingPrincipalBeforeRepayment.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">תשלום חודשי</span>
+                                      <span className="text-sm text-slate-600">תשלום חודשי</span>
                                       <span className="font-semibold">₪{track.originalMonthlyPayment.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">חודשים נותרים</span>
+                                      <span className="text-sm text-slate-600">חודשים נותרים</span>
                                       <span className="font-semibold">{track.originalRemainingMonths}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">סיום משוער</span>
+                                      <span className="text-sm text-slate-600">סיום משוער</span>
                                       <span className="font-semibold">{format(track.originalEndDate, 'MM/yyyy', { locale: he })}</span>
                                     </div>
                                   </div>
@@ -935,19 +935,19 @@ export default function EarlyRepaymentSimulation({
                                   <h5 className="font-medium text-green-700 pb-2 border-b border-green-200">אחרי הפירעון</h5>
                                   <div className="space-y-2">
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">יתרת קרן</span>
+                                      <span className="text-sm text-slate-600">יתרת קרן</span>
                                       <span className="font-semibold text-green-700">₪{track.newRemainingPrincipal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">תשלום חודשי</span>
+                                      <span className="text-sm text-slate-600">תשלום חודשי</span>
                                       <span className="font-semibold text-green-700">₪{track.newMonthlyPayment.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">חודשים נותרים</span>
+                                      <span className="text-sm text-slate-600">חודשים נותרים</span>
                                       <span className="font-semibold text-green-700">{track.newRemainingMonths}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-sm text-gray-600">סיום משוער</span>
+                                      <span className="text-sm text-slate-600">סיום משוער</span>
                                       <span className="font-semibold text-green-700">{format(track.newEndDate, 'MM/yyyy', { locale: he })}</span>
                                     </div>
                                   </div>
@@ -958,15 +958,15 @@ export default function EarlyRepaymentSimulation({
                               <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                                 <div className="grid grid-cols-3 gap-4 text-center">
                                   <div>
-                                    <p className="text-xs text-gray-600 mb-1">סכום נטו שנפרע</p>
-                                    <p className="text-xl font-bold text-gray-900">₪{track.actualRepaymentAmount.toLocaleString()}</p>
+                                    <p className="text-xs text-slate-600 mb-1">סכום נטו שנפרע</p>
+                                    <p className="text-xl font-bold text-slate-900">₪{track.actualRepaymentAmount.toLocaleString()}</p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-600 mb-1">חיסכון בריבית</p>
+                                    <p className="text-xs text-slate-600 mb-1">חיסכון בריבית</p>
                                     <p className="text-xl font-bold text-green-600">₪{track.interestSaved.toLocaleString()}</p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-600 mb-1">
+                                    <p className="text-xs text-slate-600 mb-1">
                                       {repaymentStrategy === 'reduce-time' ? 'קיצור זמן' : 'הפחתה חודשית'}
                                     </p>
                                     <p className="text-xl font-bold text-blue-600">
@@ -991,11 +991,11 @@ export default function EarlyRepaymentSimulation({
             {/* Empty State */}
             {!repaymentAmount && (
               <div className="text-center py-12">
-                <div className="inline-flex p-4 bg-purple-100 rounded-full mb-4">
-                  <Calculator className="w-12 h-12 text-purple-600" />
+                <div className="inline-flex p-4 bg-blue-100 rounded-full mb-4">
+                  <Calculator className="w-12 h-12 text-blue-600" />
                 </div>
-                <h3 className="text-subtitle font-semibold text-gray-900 mb-2">הזן סכום לפירעון</h3>
-                <p className="text-gray-600 max-w-md mx-auto">
+                <h3 className="text-subtitle font-semibold text-slate-900 mb-2">הזן סכום לפירעון</h3>
+                <p className="text-slate-600 max-w-md mx-auto">
                   הכנס את הסכום הפנוי שברצונך להשתמש בו לפירעון מוקדם של המשכנתא
                 </p>
               </div>
@@ -1003,10 +1003,10 @@ export default function EarlyRepaymentSimulation({
           </div>
 
           {/* Footer */}
-          <div className="border-t bg-gray-50 p-4 flex items-center justify-between">
+          <div className="border-t bg-slate-50 p-4 flex items-center justify-between">
             <button
               onClick={onClose}
-              className="px-6 py-2.5 text-gray-700 hover:bg-gray-200 rounded-xl transition-colors font-medium"
+              className="px-6 py-2.5 text-slate-700 hover:bg-slate-200 rounded-xl transition-colors font-medium"
             >
               סגור
             </button>
@@ -1034,7 +1034,7 @@ export default function EarlyRepaymentSimulation({
                   <h3 className="text-subtitle font-semibold">בחר תאריך פירעון</h3>
                   <button
                     onClick={() => setShowCalendar(false)}
-                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1044,18 +1044,18 @@ export default function EarlyRepaymentSimulation({
                 <div className="flex items-center justify-between mb-4">
                   <button
                     onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
                   
-                  <h4 className="font-semibold text-gray-900">
+                  <h4 className="font-semibold text-slate-900">
                     {format(calendarMonth, 'MMMM yyyy', { locale: he })}
                   </h4>
                   
                   <button
                     onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -1065,7 +1065,7 @@ export default function EarlyRepaymentSimulation({
                 <div className="grid grid-cols-7 gap-1 text-center">
                   {/* Weekday headers */}
                   {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(day => (
-                    <div key={day} className="text-xs font-semibold text-gray-600 py-2">
+                    <div key={day} className="text-xs font-semibold text-slate-600 py-2">
                       {day}
                     </div>
                   ))}
@@ -1089,12 +1089,12 @@ export default function EarlyRepaymentSimulation({
                         className={`
                           p-2 rounded-lg text-sm transition-all
                           ${isSelected 
-                            ? 'bg-purple-600 text-white' 
+                            ? 'bg-blue-600 text-white' 
                             : isCurrentDay
-                              ? 'bg-purple-100 text-purple-700 font-semibold'
+                              ? 'bg-blue-100 text-blue-700 font-semibold'
                               : isPast
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-900 hover:bg-gray-100'
+                                ? 'text-slate-300 cursor-not-allowed'
+                                : 'text-slate-900 hover:bg-slate-100'
                           }
                         `}
                       >

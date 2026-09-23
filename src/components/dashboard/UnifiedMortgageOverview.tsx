@@ -277,19 +277,19 @@ export default function UnifiedMortgageOverview({
         animate={{ height: 'auto', opacity: 1 }}
         exit={{ height: 0, opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+        className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
       >
-        <div className="bg-gray-50 p-6">
+        <div className="bg-slate-50 p-6">
           {/* Schedule Header */}
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-gray-900">
+            <h4 className="text-lg font-semibold text-slate-900">
               לוח סילוקין - {trackId === 'full' ? 'כל המשכנתא' : track?.name}
             </h4>
             <button
               onClick={() => setExpandedSchedule(null)}
-              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+              className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
             >
-              <ChevronUp className="w-5 h-5 text-gray-600" />
+              <ChevronUp className="w-5 h-5 text-slate-600" />
             </button>
           </div>
 
@@ -300,8 +300,8 @@ export default function UnifiedMortgageOverview({
                 onClick={() => setScheduleViewMode('list')}
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   scheduleViewMode === 'list'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 }`}
               >
                 רשימה
@@ -310,8 +310,8 @@ export default function UnifiedMortgageOverview({
                 onClick={() => setScheduleViewMode('timeline')}
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   scheduleViewMode === 'timeline'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 }`}
               >
                 ציר זמן
@@ -321,9 +321,9 @@ export default function UnifiedMortgageOverview({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowScheduleCalendar(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-button text-gray-900"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-button text-slate-900"
               >
-                <CalendarDays className="w-4 h-4 text-gray-700" />
+                <CalendarDays className="w-4 h-4 text-slate-700" />
                 {scheduleFilterDate ? format(scheduleFilterDate, 'MM/yyyy', { locale: he }) : 'סנן לפי תאריך'}
               </button>
               {scheduleFilterDate && (
@@ -339,9 +339,9 @@ export default function UnifiedMortgageOverview({
 
           {/* Payments View */}
           {scheduleViewMode === 'list' ? (
-            <div className="bg-white rounded-lg border border-gray-200">
+            <div className="bg-white rounded-lg border border-slate-200">
               {/* Table Header */}
-              <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-gray-50 font-semibold text-sm text-gray-700 border-b">
+              <div className="grid grid-cols-7 gap-4 px-4 py-3 bg-slate-50 font-semibold text-sm text-slate-700 border-b">
                 <div>#</div>
                 <div>תאריך</div>
                 <div>קרן</div>
@@ -352,7 +352,7 @@ export default function UnifiedMortgageOverview({
               </div>
 
               {/* Payments List */}
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-slate-200">
                 {paginatedPayments.map((payment) => {
                   const isNext = !payment.isPaid && paidPayments.length > 0 && 
                     paidPayments[paidPayments.length - 1].paymentNumber === payment.paymentNumber - 1;
@@ -362,25 +362,25 @@ export default function UnifiedMortgageOverview({
                       key={payment.id}
                       className={`grid grid-cols-7 gap-4 px-4 py-3 text-sm ${
                         payment.isPaid 
-                          ? 'bg-gray-50 text-gray-600' 
+                          ? 'bg-slate-50 text-slate-600' 
                           : isNext
-                            ? 'bg-purple-50 text-gray-900'
-                            : 'bg-white text-gray-900'
+                            ? 'bg-blue-50 text-slate-900'
+                            : 'bg-white text-slate-900'
                       }`}
                     >
                       <div className="font-medium">
                         #{payment.paymentNumber}
                         {isNext && (
-                          <span className="mr-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                          <span className="mr-2 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
                             הבא
                           </span>
                         )}
                       </div>
-                      <div className="text-gray-900">{format(payment.date, 'dd/MM/yyyy', { locale: he })}</div>
-                      <div className="text-gray-900">₪{payment.principal.toLocaleString()}</div>
-                      <div className="text-gray-900">₪{payment.interest.toLocaleString()}</div>
-                      <div className="font-semibold text-gray-900">₪{payment.totalPayment.toLocaleString()}</div>
-                      <div className="text-gray-900">₪{payment.remainingBalance.toLocaleString()}</div>
+                      <div className="text-slate-900">{format(payment.date, 'dd/MM/yyyy', { locale: he })}</div>
+                      <div className="text-slate-900">₪{payment.principal.toLocaleString()}</div>
+                      <div className="text-slate-900">₪{payment.interest.toLocaleString()}</div>
+                      <div className="font-semibold text-slate-900">₪{payment.totalPayment.toLocaleString()}</div>
+                      <div className="text-slate-900">₪{payment.remainingBalance.toLocaleString()}</div>
                       <div>
                         {payment.isPaid ? (
                           <span className="flex items-center gap-1 text-green-600">
@@ -388,7 +388,7 @@ export default function UnifiedMortgageOverview({
                             שולם
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-gray-700">
+                          <span className="flex items-center gap-1 text-slate-700">
                             <Clock className="w-4 h-4" />
                             ממתין
                           </span>
@@ -401,9 +401,9 @@ export default function UnifiedMortgageOverview({
             </div>
           ) : (
             /* Timeline View */
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="bg-white rounded-lg p-4 border border-slate-200">
               <div className="relative">
-                <div className="absolute right-4 top-0 bottom-0 w-0.5 bg-gray-200" />
+                <div className="absolute right-4 top-0 bottom-0 w-0.5 bg-slate-200" />
                 
                 <div className="space-y-4">
                   {paginatedPayments.map((payment, index) => {
@@ -417,8 +417,8 @@ export default function UnifiedMortgageOverview({
                           ${payment.isPaid 
                             ? 'bg-green-500' 
                             : isNext
-                              ? 'bg-purple-600 ring-4 ring-purple-200'
-                              : 'bg-gray-300'
+                              ? 'bg-blue-600 ring-4 ring-blue-200'
+                              : 'bg-slate-300'
                           }
                         `}>
                           {payment.isPaid ? (
@@ -430,41 +430,41 @@ export default function UnifiedMortgageOverview({
                         
                         <div className={`flex-1 p-3 rounded-lg border ${
                           payment.isPaid 
-                            ? 'bg-gray-50 border-gray-200 text-gray-700' 
+                            ? 'bg-slate-50 border-slate-200 text-slate-700' 
                             : isNext
-                              ? 'bg-purple-50 border-purple-300 text-gray-900'
-                              : 'bg-white border-gray-200 text-gray-900'
+                              ? 'bg-blue-50 border-blue-300 text-slate-900'
+                              : 'bg-white border-slate-200 text-slate-900'
                         }`}>
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <span className="font-semibold text-gray-900">תשלום #{payment.paymentNumber}</span>
+                              <span className="font-semibold text-slate-900">תשלום #{payment.paymentNumber}</span>
                               {isNext && (
-                                <span className="mr-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                                <span className="mr-2 px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
                                   הבא
                                 </span>
                               )}
                             </div>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-slate-600">
                               {format(payment.date, 'dd/MM/yyyy', { locale: he })}
                             </span>
                           </div>
                           
                           <div className="grid grid-cols-4 gap-4 text-sm">
                             <div>
-                              <span className="text-gray-600">קרן: </span>
-                              <span className="font-medium text-gray-900">₪{payment.principal.toLocaleString()}</span>
+                              <span className="text-slate-600">קרן: </span>
+                              <span className="font-medium text-slate-900">₪{payment.principal.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-gray-600">ריבית: </span>
-                              <span className="font-medium text-gray-900">₪{payment.interest.toLocaleString()}</span>
+                              <span className="text-slate-600">ריבית: </span>
+                              <span className="font-medium text-slate-900">₪{payment.interest.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-gray-600">סה"כ: </span>
-                              <span className="font-medium text-gray-900">₪{payment.totalPayment.toLocaleString()}</span>
+                              <span className="text-slate-600">סה"כ: </span>
+                              <span className="font-medium text-slate-900">₪{payment.totalPayment.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-gray-600">יתרה: </span>
-                              <span className="font-medium text-gray-900">₪{payment.remainingBalance.toLocaleString()}</span>
+                              <span className="text-slate-600">יתרה: </span>
+                              <span className="font-medium text-slate-900">₪{payment.remainingBalance.toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -482,20 +482,20 @@ export default function UnifiedMortgageOverview({
               <button
                 onClick={() => setScheduleCurrentPage(prev => Math.max(0, prev - 1))}
                 disabled={scheduleCurrentPage === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors font-medium"
               >
                 <ChevronRight className="w-5 h-5" />
                 <span>הקודם</span>
               </button>
               
-              <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-4 py-2 rounded-lg">
+              <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-4 py-2 rounded-lg">
                 עמוד {scheduleCurrentPage + 1} מתוך {totalPages}
               </span>
               
               <button
                 onClick={() => setScheduleCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
                 disabled={scheduleCurrentPage === totalPages - 1}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors font-medium"
               >
                 <span>הבא</span>
                 <ChevronLeft className="w-5 h-5" />
@@ -512,11 +512,11 @@ export default function UnifiedMortgageOverview({
       {/* Main Unified Card */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Header with Timeline */}
-        <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-6 text-white">
+        <div className="bg-blue-600 p-6 text-white">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-subtitle font-bold mb-1">המשכנתא שלך</h2>
-              <p className="text-purple-100 flex items-center gap-2 text-sm">
+              <p className="text-blue-100 flex items-center gap-2 text-sm">
                 <Home className="w-4 h-4" />
                 {mortgage.propertyAddress}
               </p>
@@ -554,7 +554,7 @@ export default function UnifiedMortgageOverview({
                 <h3 className="text-subtitle font-bold">
                   {format(selectedDate, 'MMMM yyyy', { locale: he })}
                 </h3>
-                <p className="text-xs text-purple-200">
+                <p className="text-xs text-blue-200">
                   {format(selectedDate, 'dd/MM/yyyy', { locale: he })}
                 </p>
               </div>
@@ -587,12 +587,12 @@ export default function UnifiedMortgageOverview({
                 >
                   {/* Draggable Handle - positioned at the left edge (end of filled bar in RTL) */}
                   <div 
-                    className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg cursor-grab active:cursor-grabbing hover:scale-110 transition-transform z-10 border-2 border-purple-600"
+                    className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg cursor-grab active:cursor-grabbing hover:scale-110 transition-transform z-10 border-2 border-blue-600"
                   />
                 </motion.div>
               </div>
               
-              <div className="flex justify-between text-xs text-purple-200 mt-2">
+              <div className="flex justify-between text-xs text-blue-200 mt-2">
                 <span>{format(mortgage.startDate, 'MM/yyyy', { locale: he })}</span>
                 <span className="font-semibold text-white">
                   {monthsPassed} מתוך {totalMonths} חודשים
@@ -604,27 +604,27 @@ export default function UnifiedMortgageOverview({
 
           {/* Total Mortgage Summary Row */}
             <div 
-              className="bg-white/90 text-gray-900 rounded-lg p-5 mb-3 transition-colors"
+              className="bg-white/90 text-slate-900 rounded-lg p-5 mb-3 transition-colors"
             >
               <div className="flex flex-col items-center gap-4 text-center">
-                <p className="text-sm font-medium text-gray-600">סיכום המשכנתא הכללית</p>
+                <p className="text-sm font-medium text-slate-600">סיכום המשכנתא הכללית</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full text-center">
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">סך המשכנתא</p>
+                    <p className="text-xs text-slate-600 mb-1">סך המשכנתא</p>
                     <p className="text-2xl font-bold">₪{mortgage.originalAmount.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">נותר לתשלום</p>
+                    <p className="text-xs text-slate-600 mb-1">נותר לתשלום</p>
                     <p className="text-2xl font-bold">
                       ₪{snapshot ? snapshot.totalRemainingPrincipal.toLocaleString() : '0'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">התקדמות</p>
+                    <p className="text-xs text-slate-600 mb-1">התקדמות</p>
                     <p className="text-2xl font-bold">{overallProgress}%</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">תשלום חודשי כולל</p>
+                    <p className="text-xs text-slate-600 mb-1">תשלום חודשי כולל</p>
                     <p className="text-2xl font-bold">₪{dynamicMonthlyPayment.toLocaleString()}</p>
                   </div>
                 </div>
@@ -640,8 +640,8 @@ export default function UnifiedMortgageOverview({
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                       expandedSchedule === 'full'
-                        ? 'bg-purple-600 text-white hover:bg-purple-700'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                     }`}
                     title="לוח סילוקין"
                   >
@@ -659,8 +659,8 @@ export default function UnifiedMortgageOverview({
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                       expandedGeneralDetails
-                        ? 'bg-purple-600 text-white hover:bg-purple-700'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                     }`}
                     title="פרטים"
                   >
@@ -702,7 +702,7 @@ export default function UnifiedMortgageOverview({
                 prime: 'bg-blue-50 text-blue-900 border-blue-200',
                 fixed: 'bg-green-50 text-green-900 border-green-200',
                 variable: 'bg-orange-50 text-orange-900 border-orange-200',
-                adjustable: 'bg-purple-50 text-purple-900 border-purple-200',
+                adjustable: 'bg-blue-50 text-blue-900 border-blue-200',
                 eligibility: 'bg-pink-50 text-pink-900 border-pink-200'
               }[track.type];
 
@@ -710,7 +710,7 @@ export default function UnifiedMortgageOverview({
                   <div key={track.id} className="space-y-2">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
-                      className={`${trackTypeColor} border rounded-lg p-3 transition-all ${expandedSchedule === track.id || expandedDetails === track.id ? 'shadow-md ring-1 ring-purple-200' : 'hover:shadow-md'}`}
+                      className={`${trackTypeColor} border rounded-lg p-3 transition-all ${expandedSchedule === track.id || expandedDetails === track.id ? 'shadow-md ring-1 ring-blue-200' : 'hover:shadow-md'}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1">
@@ -760,8 +760,8 @@ export default function UnifiedMortgageOverview({
                             }}
                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                               expandedSchedule === track.id
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                             }`}
                             title="לוח סילוקין"
                           >
@@ -779,8 +779,8 @@ export default function UnifiedMortgageOverview({
                             }}
                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all shadow-sm ${
                               expandedDetails === track.id
-                                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                             }`}
                             title="פרטים"
                           >
@@ -819,14 +819,14 @@ export default function UnifiedMortgageOverview({
         </div>
 
         {/* Rest of the content */}
-        <div className="bg-gray-50 p-6">
+        <div className="bg-slate-50 p-6">
           {/* Actions on Mortgage Section */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
-            <h3 className="text-subtitle font-semibold text-gray-900 mb-4">פעולות על המשכנתא</h3>
+          <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm mb-6">
+            <h3 className="text-subtitle font-semibold text-slate-900 mb-4">פעולות על המשכנתא</h3>
             <div className="flex items-center justify-center gap-4">
               <button
                 onClick={() => setShowEarlyRepaymentSimulation(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm font-medium"
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm font-medium"
               >
                 <Calculator className="w-5 h-5" />
                 סימולציית פירעון מוקדם
@@ -835,7 +835,7 @@ export default function UnifiedMortgageOverview({
                 onClick={() => {
                   onRefinance('all');
                 }}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm font-medium"
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm font-medium"
               >
                 <ArrowLeftRight className="w-5 h-5" />
                 סימולציית מחזור
@@ -844,10 +844,10 @@ export default function UnifiedMortgageOverview({
           </div>
 
           {/* Detailed Tracks Section */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-subtitle font-semibold text-gray-900">פירוט מסלולי המשכנתא</h3>
-              <span className="text-sm text-gray-600">
+              <h3 className="text-subtitle font-semibold text-slate-900">פירוט מסלולי המשכנתא</h3>
+              <span className="text-sm text-slate-600">
                 {mortgage.tracks.filter(t => !calculateDynamicValues(t).isCompleted).length} מסלולים פעילים
               </span>
             </div>
@@ -871,7 +871,7 @@ export default function UnifiedMortgageOverview({
                   prime: 'border-blue-300 bg-blue-50',
                   fixed: 'border-green-300 bg-green-50',
                   variable: 'border-orange-300 bg-orange-50',
-                  adjustable: 'border-purple-300 bg-purple-50',
+                  adjustable: 'border-blue-300 bg-blue-50',
                   eligibility: 'border-pink-300 bg-pink-50'
                 }[track.type];
 
@@ -879,7 +879,7 @@ export default function UnifiedMortgageOverview({
                   prime: 'bg-blue-100 text-blue-700 border-blue-200',
                   fixed: 'bg-green-100 text-green-700 border-green-200',
                   variable: 'bg-orange-100 text-orange-700 border-orange-200',
-                  adjustable: 'bg-purple-100 text-purple-700 border-purple-200',
+                  adjustable: 'bg-blue-100 text-blue-700 border-blue-200',
                   eligibility: 'bg-pink-100 text-pink-700 border-pink-200'
                 }[track.type];
 
@@ -889,12 +889,12 @@ export default function UnifiedMortgageOverview({
                     whileHover={{ scale: 1.02 }}
                     onClick={() => setExpandedSchedule(expandedSchedule === track.id ? null : track.id)}
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                      dynamicValues.isCompleted ? 'opacity-60 bg-gray-50 border-gray-300' : trackTypeColor
+                      dynamicValues.isCompleted ? 'opacity-60 bg-slate-50 border-slate-300' : trackTypeColor
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{track.name}</h4>
+                        <h4 className="font-semibold text-slate-900">{track.name}</h4>
                         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 border ${trackTypeBadge}`}>
                           {trackTypeLabel}
                         </span>
@@ -905,51 +905,51 @@ export default function UnifiedMortgageOverview({
                             e.stopPropagation();
                             onRefinance(track.id);
                           }}
-                          className="p-1.5 bg-white rounded-lg hover:bg-gray-100 transition-colors border border-gray-300"
+                          className="p-1.5 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-300"
                           title="מחזור"
                         >
-                          <RefreshCw className="w-4 h-4 text-gray-600" />
+                          <RefreshCw className="w-4 h-4 text-slate-600" />
                         </button>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                       <div>
-                        <span className="text-gray-600">ריבית:</span>
-                        <span className="font-semibold text-gray-900 mr-1">{track.interestRate}%</span>
+                        <span className="text-slate-600">ריבית:</span>
+                        <span className="font-semibold text-slate-900 mr-1">{track.interestRate}%</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">תשלום:</span>
-                        <span className="font-semibold text-gray-900 mr-1">₪{track.monthlyPayment.toLocaleString()}</span>
+                        <span className="text-slate-600">תשלום:</span>
+                        <span className="font-semibold text-slate-900 mr-1">₪{track.monthlyPayment.toLocaleString()}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">שולם:</span>
-                        <span className="font-semibold text-gray-900 mr-1">₪{dynamicValues.paidPrincipal.toLocaleString()}</span>
+                        <span className="text-slate-600">שולם:</span>
+                        <span className="font-semibold text-slate-900 mr-1">₪{dynamicValues.paidPrincipal.toLocaleString()}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">נותר:</span>
-                        <span className="font-semibold text-gray-900 mr-1">₪{dynamicValues.remainingPrincipal.toLocaleString()}</span>
+                        <span className="text-slate-600">נותר:</span>
+                        <span className="font-semibold text-slate-900 mr-1">₪{dynamicValues.remainingPrincipal.toLocaleString()}</span>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-600">התקדמות</span>
-                        <span className="font-semibold text-gray-900">{dynamicValues.progress.toFixed(1)}%</span>
+                        <span className="text-slate-600">התקדמות</span>
+                        <span className="font-semibold text-slate-900">{dynamicValues.progress.toFixed(1)}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-slate-200 rounded-full h-2">
                         <motion.div 
                           animate={{ width: `${dynamicValues.progress}%` }}
                           className={`h-2 rounded-full ${
-                            dynamicValues.isCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-500 to-blue-500'
+                            dynamicValues.isCompleted ? 'bg-slate-400' : 'bg-blue-500'
                           }`}
                           transition={{ duration: 0.3 }}
                         />
                       </div>
-                      <div className="flex justify-between text-xs mt-1 text-gray-500">
+                      <div className="flex justify-between text-xs mt-1 text-slate-500">
                         <span>{dynamicValues.remainingMonths} חודשים נותרו</span>
                         {!dynamicValues.isCompleted && (
-                          <span className="text-purple-600 font-medium">לחץ ללוח סילוקין →</span>
+                          <span className="text-blue-600 font-medium">לחץ ללוח סילוקין →</span>
                         )}
                       </div>
                     </div>
@@ -962,7 +962,7 @@ export default function UnifiedMortgageOverview({
                     )}
 
                     {dynamicValues.isCompleted && (
-                      <div className="mt-3 text-center text-xs text-gray-500 bg-gray-100 rounded-lg py-1">
+                      <div className="mt-3 text-center text-xs text-slate-500 bg-slate-100 rounded-lg py-1">
                         הושלם
                       </div>
                     )}
@@ -974,53 +974,53 @@ export default function UnifiedMortgageOverview({
 
           {/* Payment Distribution Summary */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-purple-600" />
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+              <h4 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-blue-600" />
                 התפלגות תשלומים עד התאריך הנבחר
               </h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">קרן ששולמה</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-slate-600">קרן ששולמה</span>
+                  <span className="font-semibold text-slate-900">
                     ₪{snapshot ? snapshot.totalPaidPrincipal.toLocaleString() : '0'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">ריבית ששולמה</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-slate-600">ריבית ששולמה</span>
+                  <span className="font-semibold text-slate-900">
                     ₪{snapshot ? snapshot.totalPaidInterest.toLocaleString() : '0'}
                   </span>
                 </div>
                 <div className="pt-3 border-t flex justify-between items-center">
-                  <span className="font-medium text-gray-900">סה"כ שולם</span>
-                  <span className="font-bold text-lg text-purple-600">
+                  <span className="font-medium text-slate-900">סה"כ שולם</span>
+                  <span className="font-bold text-lg text-blue-600">
                     ₪{snapshot ? (snapshot.totalPaidPrincipal + snapshot.totalPaidInterest).toLocaleString() : '0'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+              <h4 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-green-600" />
                 יתרות מהתאריך הנבחר
               </h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">קרן נותרת</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-slate-600">קרן נותרת</span>
+                  <span className="font-semibold text-slate-900">
                     ₪{snapshot ? snapshot.totalRemainingPrincipal.toLocaleString() : '0'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">תשלומים נותרים</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-slate-600">תשלומים נותרים</span>
+                  <span className="font-semibold text-slate-900">
                     {snapshot ? snapshot.totalRemainingPayments : 0}
                   </span>
                 </div>
                 <div className="pt-3 border-t">
-                  <div className="text-xs text-gray-500 text-center">
+                  <div className="text-xs text-slate-500 text-center">
                     התשלום החודשי הממוצע: ₪{dynamicMonthlyPayment.toLocaleString()}
                   </div>
                 </div>
@@ -1059,7 +1059,7 @@ export default function UnifiedMortgageOverview({
                     setShowCalendar(false);
                     setShowScheduleCalendar(false);
                   }}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1069,12 +1069,12 @@ export default function UnifiedMortgageOverview({
               <div className="flex items-center justify-between mb-4">
                 <button
                   onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 
-                <h4 className="font-semibold text-gray-900">
+                <h4 className="font-semibold text-slate-900">
                   {showScheduleCalendar 
                     ? format(calendarMonth, 'yyyy', { locale: he })
                     : format(calendarMonth, 'MMMM yyyy', { locale: he })
@@ -1083,7 +1083,7 @@ export default function UnifiedMortgageOverview({
                 
                 <button
                   onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -1107,8 +1107,8 @@ export default function UnifiedMortgageOverview({
                         }}
                         className={`p-3 rounded-lg text-sm font-medium transition-all ${
                           isSelected
-                            ? 'bg-purple-600 text-white shadow-md'
-                            : 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 hover:border-purple-300'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white border border-slate-200 text-slate-900 hover:bg-slate-50 hover:border-blue-300'
                         }`}
                       >
                         {format(monthDate, 'MMM', { locale: he })}
@@ -1121,7 +1121,7 @@ export default function UnifiedMortgageOverview({
                 <div className="grid grid-cols-7 gap-1 text-center">
                   {/* Weekday headers */}
                   {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(day => (
-                    <div key={day} className="text-xs font-semibold text-gray-600 py-2">
+                    <div key={day} className="text-xs font-semibold text-slate-600 py-2">
                       {day}
                     </div>
                   ))}
@@ -1145,12 +1145,12 @@ export default function UnifiedMortgageOverview({
                         className={`
                           p-2 rounded-lg text-sm transition-all
                           ${isSelected 
-                            ? 'bg-purple-600 text-white' 
+                            ? 'bg-blue-600 text-white' 
                             : isCurrentDay
-                              ? 'bg-purple-100 text-purple-700 font-semibold'
+                              ? 'bg-blue-100 text-blue-700 font-semibold'
                               : isDisabled
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-900 hover:bg-gray-100'
+                                ? 'text-slate-300 cursor-not-allowed'
+                                : 'text-slate-900 hover:bg-slate-100'
                           }
                         `}
                       >
@@ -1169,14 +1169,14 @@ export default function UnifiedMortgageOverview({
                       setShowScheduleCalendar(false);
                       setScheduleCurrentPage(0);
                     }}
-                    className="flex-1 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    className="flex-1 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
                   >
                     הסר סינון
                   </button>
                 ) : (
                   <button
                     onClick={jumpToToday}
-                    className="flex-1 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     היום
                   </button>
@@ -1186,7 +1186,7 @@ export default function UnifiedMortgageOverview({
                     setShowCalendar(false);
                     setShowScheduleCalendar(false);
                   }}
-                  className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
                 >
                   ביטול
                 </button>

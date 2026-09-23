@@ -10,17 +10,17 @@ import type { PlatformTool } from '@/data/platform/tools';
 
 const hintTone: Record<HintTone, { ring: string; badge: string; text: string }> = {
   info: {
-    ring: 'border-blue-200 bg-blue-50/50',
+    ring: 'border-blue-200 bg-blue-50',
     badge: 'bg-blue-100 text-blue-700',
     text: 'text-blue-900',
   },
   warning: {
-    ring: 'border-amber-300 bg-amber-50/60',
+    ring: 'border-amber-300 bg-amber-50',
     badge: 'bg-amber-100 text-amber-800',
     text: 'text-amber-900',
   },
   success: {
-    ring: 'border-emerald-200 bg-emerald-50/50',
+    ring: 'border-emerald-200 bg-emerald-50',
     badge: 'bg-emerald-100 text-emerald-700',
     text: 'text-emerald-900',
   },

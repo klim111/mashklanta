@@ -61,7 +61,7 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
             <FieldGrid fields={INCOME_FIELDS} entityType="income" entityId={income.id} />
 
             {needsPrevious && (
-              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
                     <TriangleAlert className="h-3.5 w-3.5" />

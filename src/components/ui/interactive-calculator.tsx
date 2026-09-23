@@ -556,9 +556,9 @@ export default function InteractiveCalculator() {
     if (!hasRequiredFields) {
       return {
         message: "הזן את כל הפרטים הנדרשים לקבלת חישוב",
-        color: "text-gray-600",
-        bgColor: "bg-gray-50",
-        borderColor: "border-gray-200",
+        color: "text-slate-600",
+        bgColor: "bg-slate-50",
+        borderColor: "border-slate-200",
         showButton: false,
         buttonText: "",
         buttonAction: () => {}
@@ -609,7 +609,7 @@ export default function InteractiveCalculator() {
           className="text-center mb-12"
         >
           <h2 className="text-title font-bold mb-4">מחשבון משכנתא אינטראקטיבי</h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             בחר את סוג המשכנתא שלך וקבל חישוב מדויק
           </p>
         </motion.div>
@@ -628,7 +628,7 @@ export default function InteractiveCalculator() {
                   <div className="text-center">
                     <Home className="w-16 h-16 mx-auto mb-4 text-blue-600" />
                     <h3 className="text-subtitle font-bold mb-2">לקיחת משכנתא</h3>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-slate-600 mb-4">
                       חישוב משכנתא חדשה לרכישת דירה
                     </p>
                     <Button className="w-full">
@@ -643,7 +643,7 @@ export default function InteractiveCalculator() {
                   <div className="text-center">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4 text-green-600" />
                     <h3 className="text-subtitle font-bold mb-2">מחזר משכנתא</h3>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-slate-600 mb-4">
                       חישוב מחזור משכנתא קיימת
                     </p>
                     <Button className="w-full">
@@ -666,7 +666,7 @@ export default function InteractiveCalculator() {
           >
             <div className="text-center mb-8">
               <h3 className="text-subtitle font-bold mb-4">בחר סוג דירה</h3>
-              <p className="text-gray-600">בחר את סוג הדירה שלך לקבלת חישוב מדויק</p>
+              <p className="text-slate-600">בחר את סוג הדירה שלך לקבלת חישוב מדויק</p>
             </div>
             
             <Card>
@@ -714,7 +714,7 @@ export default function InteractiveCalculator() {
                 ← חזור לבחירה
               </Button>
               <h3 className="text-subtitle font-bold mb-2">מחזור משכנתא</h3>
-              <p className="text-gray-600">השווה בין שתי אפשרויות: הורדת תשלום חודשי או קיצור התקופה להקטנת סך הריבית</p>
+              <p className="text-slate-600">השווה בין שתי אפשרויות: הורדת תשלום חודשי או קיצור התקופה להקטנת סך הריבית</p>
             </div>
 
             {/* New: Upload payoff schedule image first */}
@@ -743,7 +743,7 @@ export default function InteractiveCalculator() {
                       <Upload className="w-4 h-4" /> בחר תמונה
                     </label>
                   </div>
-                  {isUploading && <span className="text-sm text-gray-600">מעלה ומנתח מסמך…</span>}
+                  {isUploading && <span className="text-sm text-slate-600">מעלה ומנתח מסמך…</span>}
                   {ocrError && <span className="text-sm text-red-600">{ocrError}</span>}
                 </div>
                 {uploadedPreviewUrl && (
@@ -850,16 +850,16 @@ export default function InteractiveCalculator() {
                       placeholder="3.80"
                       className="w-full text-left border-2 focus:border-purple-500"
                     />
-                    <div className="text-xs text-gray-500 mt-1">שיעור ריבית שנתי ממוצע</div>
+                    <div className="text-xs text-slate-500 mt-1">שיעור ריבית שנתי ממוצע</div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="bg-slate-50 rounded-lg p-3">
                     <div className="flex justify-between text-info">
-                      <span className="text-gray-600">תשלום חודשי (נוכחי):</span>
+                      <span className="text-slate-600">תשלום חודשי (נוכחי):</span>
                       <span className="font-semibold text-blue-700">{hasRefiRequired ? formatCurrency(currentMonthlyPayment) : '—'}</span>
                     </div>
                     <div className="flex justify-between text-info">
-                      <span className="text-gray-600">סך ריביות שנותרו:</span>
+                      <span className="text-slate-600">סך ריביות שנותרו:</span>
                       <span className="font-semibold text-purple-700">{hasRefiRequired ? formatCurrency(currentTotalInterest) : '—'}</span>
                     </div>
                   </div>
@@ -928,7 +928,7 @@ export default function InteractiveCalculator() {
                       placeholder="0"
                       className="w-full text-left border-2 focus:border-red-500"
                     />
-                    <div className="text-xs text-gray-500 mt-1">עמלות, קנסות פירעון מוקדם, עו"ד, שמאי וכו'</div>
+                    <div className="text-xs text-slate-500 mt-1">עמלות, קנסות פירעון מוקדם, עו"ד, שמאי וכו'</div>
                   </div>
 
                   {/* Option A: Lower monthly payment */}
@@ -952,15 +952,15 @@ export default function InteractiveCalculator() {
                     />
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="bg-white rounded-md p-3">
-                        <div className="text-gray-600">תשלום חודשי חדש</div>
+                        <div className="text-slate-600">תשלום חודשי חדש</div>
                         <div className="text-lg font-bold text-blue-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentMonthly) : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3">
-                        <div className="text-gray-600">סך ריביות (כולל עלויות)</div>
+                        <div className="text-slate-600">סך ריביות (כולל עלויות)</div>
                         <div className="text-lg font-bold text-purple-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentTotalInterest) : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3 col-span-2">
-                        <div className="text-gray-600">חיסכון מוערך בריביות</div>
+                        <div className="text-slate-600">חיסכון מוערך בריביות</div>
                         <div className="text-lg font-bold text-green-700">{hasRefiRequired && refiNewTermNum > 0 ? formatCurrency(lowerPaymentSavings) : '—'}</div>
                       </div>
                     </div>
@@ -974,15 +974,15 @@ export default function InteractiveCalculator() {
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="bg-white rounded-md p-3">
-                        <div className="text-gray-600">תקופה חדשה (שנים)</div>
+                        <div className="text-slate-600">תקופה חדשה (שנים)</div>
                         <div className="text-lg font-bold text-green-700">{shortenYears > 0 ? `${(shortenYears).toFixed(1)} שנים` : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3">
-                        <div className="text-gray-600">סך ריביות (כולל עלויות)</div>
+                        <div className="text-slate-600">סך ריביות (כולל עלויות)</div>
                         <div className="text-lg font-bold text-purple-700">{shortenMonths > 0 ? formatCurrency(shortenTotalInterest) : '—'}</div>
                       </div>
                       <div className="bg-white rounded-md p-3 col-span-2">
-                        <div className="text-gray-600">חיסכון מוערך בריביות</div>
+                        <div className="text-slate-600">חיסכון מוערך בריביות</div>
                         <div className="text-lg font-bold text-green-700">{shortenMonths > 0 ? formatCurrency(shortenSavings) : '—'}</div>
                       </div>
                     </div>
@@ -993,10 +993,10 @@ export default function InteractiveCalculator() {
 
             {/* Summary comparison */}
             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-gray-50">
+              <Card className="bg-slate-50">
                 <CardContent className="p-4 text-center">
-                  <div className="text-sm text-gray-600">סך ריביות נוכחי</div>
-                  <div className="text-xl font-bold text-gray-800">{hasRefiRequired ? formatCurrency(currentTotalInterest) : '—'}</div>
+                  <div className="text-sm text-slate-600">סך ריביות נוכחי</div>
+                  <div className="text-xl font-bold text-slate-800">{hasRefiRequired ? formatCurrency(currentTotalInterest) : '—'}</div>
                 </CardContent>
               </Card>
               <Card className="bg-blue-50">
@@ -1034,7 +1034,7 @@ export default function InteractiveCalculator() {
                 ← חזור לבחירה
               </Button>
               <h3 className="text-subtitle font-bold mb-2">מחשבון משכנתא - {selectedType.name}</h3>
-              <p className="text-gray-600">הזן את הפרטים שלך לקבלת חישוב מדויק</p>
+              <p className="text-slate-600">הזן את הפרטים שלך לקבלת חישוב מדויק</p>
             </div>
 
             {/* בחירת סוג השקעה */}
@@ -1118,11 +1118,11 @@ export default function InteractiveCalculator() {
                         setPropertyPrice(formattedValue)
                       }}
                       placeholder=""
-                      className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-blue-500 placeholder:font-medium ${
+                      className={`w-full text-left placeholder:text-slate-500 placeholder:text-base border-2 focus:border-blue-500 placeholder:font-medium ${
                         propertyPriceNum < 500000 || propertyPriceNum > 5000000 ? 'border-red-300' : ''
                       }`}
                     />
-                    <div className="flex justify-between text-info text-gray-500 mt-1">
+                    <div className="flex justify-between text-info text-slate-500 mt-1">
                       <span>₪500K</span>
                       <span>₪5M</span>
                     </div>
@@ -1183,18 +1183,18 @@ export default function InteractiveCalculator() {
                             setDownPayment(formattedValue)
                           }}
                           placeholder=""
-                          className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-green-500 placeholder:font-medium ${
+                          className={`w-full text-left placeholder:text-slate-500 placeholder:text-base border-2 focus:border-green-500 placeholder:font-medium ${
                             downPaymentNum < requiredDownPayment || downPaymentNum > propertyPriceNum * 0.8 ? 'border-red-300' : ''
                           }`}
                         />
                         <div className="space-y-2 mt-2">
                           <div className="flex justify-between text-info">
-                            <span className="text-gray-600">הון עצמי מינימלי נדרש:</span>
+                            <span className="text-slate-600">הון עצמי מינימלי נדרש:</span>
                             <span className="font-medium text-blue-600">{propertyPrice ? formatCurrency(requiredDownPayment) : 'הזן ערכים'}</span>
                           </div>
                           {downPayment && propertyPrice && (
                             <div className="flex justify-between text-info">
-                              <span className="text-gray-600">הון עצמי מחושב:</span>
+                              <span className="text-slate-600">הון עצמי מחושב:</span>
                               <span className="font-medium text-green-600">{formatCurrency(calculatedDownPayment)}</span>
                             </div>
                           )}
@@ -1211,7 +1211,7 @@ export default function InteractiveCalculator() {
                     {downPaymentMode === 'calculate' && calculatedEquity > 0 && (
                       <div className="space-y-3">
                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <div className="text-sm text-gray-600">הון עצמי מחושב</div>
+                          <div className="text-sm text-slate-600">הון עצמי מחושב</div>
                           <div className="text-lg font-bold text-green-600">
                             {formatCurrency(calculatedEquity)}
                           </div>
@@ -1236,8 +1236,8 @@ export default function InteractiveCalculator() {
                         {(propertyPrice && downPayment) ? formatCurrency(loanAmount) : 'הזן ערכים'}
                       </span>
                     </div>
-                    <div className="w-full p-3 bg-gray-100 rounded-md text-center">
-                      <span className="text-sm text-gray-600">
+                    <div className="w-full p-3 bg-slate-100 rounded-md text-center">
+                      <span className="text-sm text-slate-600">
                         מחושב אוטומטית: מחיר הנכס - הון עצמי
                       </span>
                     </div>
@@ -1254,7 +1254,7 @@ export default function InteractiveCalculator() {
                                          <div className="space-y-4">
                        {/* Fixed Rate Tracks */}
                        <div>
-                         <h4 className="text-sm font-semibold text-gray-700 mb-2">ריביות קבועות</h4>
+                         <h4 className="text-sm font-semibold text-slate-700 mb-2">ריביות קבועות</h4>
                          <div className="grid grid-cols-2 gap-2">
                            {loanTracks.filter(track => track.category === 'fixed').map((track) => (
                              <Button
@@ -1283,7 +1283,7 @@ export default function InteractiveCalculator() {
                        
                        {/* Variable Rate Tracks */}
                        <div>
-                         <h4 className="text-sm font-semibold text-gray-700 mb-2">ריביות משתנות</h4>
+                         <h4 className="text-sm font-semibold text-slate-700 mb-2">ריביות משתנות</h4>
                          <div className="grid grid-cols-2 gap-2">
                            {loanTracks.filter(track => track.category === 'variable').map((track) => (
                              <Button
@@ -1310,11 +1310,11 @@ export default function InteractiveCalculator() {
                          </div>
                        </div>
                      </div>
-                      <div className="text-sm text-gray-500 mt-2 text-center">
+                      <div className="text-sm text-slate-500 mt-2 text-center">
                         <span>בחר מסלול הלוואה לקבלת חישוב מדויק</span>
                       </div>
                       {isFetchingRate && (
-                        <div className="text-xs text-gray-500 mt-1 text-center">טוען ריבית עדכנית מבנק ישראל…</div>
+                        <div className="text-xs text-slate-500 mt-1 text-center">טוען ריבית עדכנית מבנק ישראל…</div>
                       )}
                       {ratesError && (
                         <div className="text-xs text-red-600 mt-1 text-center">{ratesError}</div>
@@ -1351,11 +1351,11 @@ export default function InteractiveCalculator() {
                           }
                         }}
                         placeholder=""
-                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
+                        className={`w-full text-left placeholder:text-slate-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
                           loanTermNum < 10 || loanTermNum > selectedType.maxTerm ? 'border-red-300' : ''
                         }`}
                       />
-                      <div className="flex justify-between text-info text-gray-500 mt-1">
+                      <div className="flex justify-between text-info text-slate-500 mt-1">
                         <span>10 שנים</span>
                         <span>{selectedType.maxTerm} שנים</span>
                       </div>
@@ -1394,11 +1394,11 @@ export default function InteractiveCalculator() {
                           setMonthlyIncome(formattedValue)
                         }}
                         placeholder=""
-                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-indigo-500 placeholder:font-medium ${
+                        className={`w-full text-left placeholder:text-slate-500 placeholder:text-base border-2 focus:border-indigo-500 placeholder:font-medium ${
                           monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000 ? 'border-red-300' : ''
                         }`}
                       />
-                      <div className="flex justify-between text-info text-gray-500 mt-1">
+                      <div className="flex justify-between text-info text-slate-500 mt-1">
                         <span>₪8K</span>
                         <span>₪50K</span>
                       </div>
@@ -1437,11 +1437,11 @@ export default function InteractiveCalculator() {
                           setOtherLoans(formattedValue)
                         }}
                         placeholder=""
-                        className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-red-500 placeholder:font-medium ${
+                        className={`w-full text-left placeholder:text-slate-500 placeholder:text-base border-2 focus:border-red-500 placeholder:font-medium ${
                           otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum ? 'border-red-300' : ''
                         }`}
                       />
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-slate-500 mt-1">
                         סכום החזר חודשי של הלוואות קיימות
                       </div>
                       {(otherLoansNum < 0 || otherLoansNum > monthlyIncomeNum) && otherLoans && (
@@ -1483,11 +1483,11 @@ export default function InteractiveCalculator() {
                              }
                            }}
                            placeholder="60"
-                           className={`w-full text-left placeholder:text-gray-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
+                           className={`w-full text-left placeholder:text-slate-500 placeholder:text-base border-2 focus:border-orange-500 placeholder:font-medium ${
                              otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300 ? 'border-red-300' : ''
                            }`}
                          />
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-slate-500 mt-1">
                           מספר החודשים שנשארו לשלם את ההלוואה
                         </div>
                         {(otherLoansMonthsNum < 1 || otherLoansMonthsNum > 300) && otherLoansMonths && (
@@ -1520,13 +1520,13 @@ export default function InteractiveCalculator() {
                       >
                         <div className="grid grid-cols-2 gap-4">
                           <div className="bg-blue-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">תשלום חודשי</div>
+                            <div className="text-sm text-slate-600">תשלום חודשי</div>
                             <div className="text-2xl font-bold text-blue-600">
                               {hasRequiredFields ? formatCurrency(monthlyPayment) : 'הזן ערכים'}
                             </div>
                           </div>
                           <div className="bg-green-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">סכום הלוואה</div>
+                            <div className="text-sm text-slate-600">סכום הלוואה</div>
                             <div className="text-2xl font-bold text-green-600">
                               {hasRequiredFields ? formatCurrency(loanAmount) : 'הזן ערכים'}
                             </div>
@@ -1535,13 +1535,13 @@ export default function InteractiveCalculator() {
                         
                         <div className="grid grid-cols-2 gap-4">
                           <div className="bg-purple-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">סך ריביות</div>
+                            <div className="text-sm text-slate-600">סך ריביות</div>
                             <div className="text-xl font-bold text-purple-600">
                               {hasRequiredFields ? formatCurrency(totalInterest) : 'הזן ערכים'}
                             </div>
                           </div>
                           <div className="bg-orange-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">יחס החזר</div>
+                            <div className="text-sm text-slate-600">יחס החזר</div>
                             <div className="text-xl font-bold text-orange-600">
                               {hasRequiredFields ? debtToIncomeRatio.toFixed(1) + '%' : 'הזן ערכים'}
                             </div>
@@ -1549,14 +1549,14 @@ export default function InteractiveCalculator() {
                         </div>
 
                         {/* LTV Ratio */}
-                        <div className={`p-4 rounded-lg ${isLTVExceeded ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                        <div className={`p-4 rounded-lg ${isLTVExceeded ? 'bg-red-50 border border-red-200' : 'bg-slate-50'}`}>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">יחס הלוואה (LTV)</span>
+                            <span className="text-sm text-slate-600">יחס הלוואה (LTV)</span>
                             <span className={`font-bold ${isLTVExceeded ? 'text-red-600' : 'text-green-600'}`}>
                               {hasRequiredFields ? ltvRatio.toFixed(1) + '%' : 'הזן ערכים'}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-slate-500 mt-1">
                             מקסימום מותר: {selectedType.maxLTV * 100}%
                           </div>
                           {isLTVExceeded && hasRequiredFields && (
@@ -1605,7 +1605,7 @@ export default function InteractiveCalculator() {
                         </div>
                         
                         {hasRequiredFields && (
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-slate-200 rounded-full h-2">
                             <motion.div
                               className={`h-2 rounded-full ${
                                 debtToIncomeRatio <= 30 ? 'bg-green-500' : 
@@ -1623,7 +1623,7 @@ export default function InteractiveCalculator() {
                             {debtRatioInfo.message}
                           </div>
                           {otherLoansNum > 0 && hasRequiredFields && (
-                            <div className="text-xs text-gray-600 mt-1">
+                            <div className="text-xs text-slate-600 mt-1">
                               הכנסה זמינה: {formatCurrency(availableIncome)} (הכנסה - הלוואות קיימות)
                             </div>
                           )}
@@ -1699,7 +1699,7 @@ export default function InteractiveCalculator() {
                       <CardContent>
                         <div className="overflow-auto max-h-96 border rounded-lg">
                           <table className="w-full text-sm">
-                            <thead className="bg-gray-50 sticky top-0">
+                            <thead className="bg-slate-50 sticky top-0">
                               <tr>
                                 <th className="px-4 py-3 text-right font-semibold">חודש</th>
                                 <th className="px-4 py-3 text-right font-semibold">קרן</th>
@@ -1710,7 +1710,7 @@ export default function InteractiveCalculator() {
                             </thead>
                             <tbody>
                               {schedule.map((payment, index) => (
-                                <tr key={index} className="border-b hover:bg-gray-50">
+                                <tr key={index} className="border-b hover:bg-slate-50">
                                   <td className="px-4 py-2 text-right">{payment.month}</td>
                                   <td className="px-4 py-2 text-right font-mono">
                                     {formatCurrency(payment.principal)}
@@ -1732,19 +1732,19 @@ export default function InteractiveCalculator() {
                         
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                           <div className="bg-blue-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">סה"כ החזר</div>
+                            <div className="text-sm text-slate-600">סה"כ החזר</div>
                             <div className="text-xl font-bold text-blue-600">
                               {formatCurrency(totalPayment)}
                             </div>
                           </div>
                           <div className="bg-green-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">סך ריביות</div>
+                            <div className="text-sm text-slate-600">סך ריביות</div>
                             <div className="text-xl font-bold text-green-600">
                               {formatCurrency(totalInterest)}
                             </div>
                           </div>
                           <div className="bg-purple-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-600">החזר לשקל</div>
+                            <div className="text-sm text-slate-600">החזר לשקל</div>
                             <div className="text-xl font-bold text-purple-600">
                               {(totalPayment / loanAmount).toFixed(3)} ₪
                             </div>

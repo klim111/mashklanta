@@ -869,7 +869,7 @@ export function RefinanceAnalysis({
 
             {/* פירוט המסלול שנלחץ: שורות וגרפים */}
             {expandedTrack?.track && (expandedTrack.base || expandedTrack.refined) && (
-              <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50/40 p-2.5">
+              <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-2.5">
                 {expandedTrack.base && (
                   <MixResultRow
                     title={`${TRACK_TYPES[expandedTrack.base.track.type]} — היום`}

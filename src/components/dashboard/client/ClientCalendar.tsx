@@ -46,22 +46,22 @@ function monthGrid(anchor: Date): Date[] {
 /** הצבע של אירוע בלוח: פגישה מאושרת, פגישה שממתינה, או מועד חשוב */
 export function eventTone(event: CalendarEvent): { dot: string; chip: string; card: string } {
   if (event.kind === 'deadline') {
-    return { dot: 'bg-rose-500', chip: 'bg-rose-100 text-rose-800', card: 'border-rose-200 bg-rose-50/70' };
+    return { dot: 'bg-rose-500', chip: 'bg-rose-100 text-rose-800', card: 'border-rose-200 bg-rose-50' };
   }
   if (event.kind === 'task') {
-    return { dot: 'bg-blue-500', chip: 'bg-blue-100 text-blue-800', card: 'border-blue-200 bg-blue-50/70' };
+    return { dot: 'bg-blue-500', chip: 'bg-blue-100 text-blue-800', card: 'border-blue-200 bg-blue-50' };
   }
   // תשלום מתוכנן מכלי תכנון ההוצאות
   if (event.kind === 'expense') {
     return {
       dot: 'bg-violet-500',
       chip: 'bg-violet-100 text-violet-800',
-      card: 'border-violet-200 bg-violet-50/70',
+      card: 'border-violet-200 bg-violet-50',
     };
   }
   return event.confirmed
-    ? { dot: 'bg-emerald-500', chip: 'bg-emerald-100 text-emerald-800', card: 'border-emerald-200 bg-emerald-50/70' }
-    : { dot: 'bg-amber-500', chip: 'bg-amber-100 text-amber-800', card: 'border-amber-200 bg-amber-50/70' };
+    ? { dot: 'bg-emerald-500', chip: 'bg-emerald-100 text-emerald-800', card: 'border-emerald-200 bg-emerald-50' }
+    : { dot: 'bg-amber-500', chip: 'bg-amber-100 text-amber-800', card: 'border-amber-200 bg-amber-50' };
 }
 
 function useEventsByDay(events: CalendarEvent[]) {
@@ -277,7 +277,7 @@ export function ClientCalendar({
                       ? 'border-blue-500 bg-blue-50'
                       : inMonth
                         ? 'border-slate-200 bg-white hover:border-blue-300'
-                        : 'border-transparent bg-slate-50/70'
+                        : 'border-transparent bg-slate-50'
                   }`}
                 >
                   <span
@@ -327,7 +327,7 @@ export function ClientCalendar({
                   if (event.key === 'Enter' || event.key === ' ') pick(key);
                 }}
                 className={`flex min-h-[260px] cursor-pointer flex-col rounded-xl border transition-colors ${
-                  isSelected ? 'border-blue-500 bg-blue-50/60' : 'border-slate-200 bg-white hover:border-blue-300'
+                  isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'
                 }`}
               >
                 <div

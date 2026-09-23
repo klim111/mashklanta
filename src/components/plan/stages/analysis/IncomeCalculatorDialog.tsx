@@ -87,7 +87,7 @@ export function IncomeCalculatorDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pl-1">
-          <div className="rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-4">
+          <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
             <h4 className="text-center text-base font-black text-slate-900">
               שלוש משכורות נטו, חודשים עוקבים
             </h4>
@@ -112,7 +112,7 @@ export function IncomeCalculatorDialog({
             </div>
           </div>
 
-          <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
+          <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4">
             <h4 className="text-center text-base font-black text-slate-900">
               הכנסות קבועות נוספות
             </h4>
@@ -180,7 +180,7 @@ export function IncomeCalculatorDialog({
             </div>
           </div>
 
-          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4">
+          <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
             <h4 className="flex items-center justify-center gap-2 text-center text-base font-black text-amber-900">
               <AlertTriangle className="h-4 w-4" />
               הסכומים חייבים להיות מגובים במסמכים
@@ -191,7 +191,7 @@ export function IncomeCalculatorDialog({
             </p>
           </div>
 
-          <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/60 p-4 text-center">
+          <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4 text-center">
             <span className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-900">
               <Info className="h-4 w-4" />
               {ready

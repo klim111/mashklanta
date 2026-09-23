@@ -82,11 +82,11 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
               <Users className="w-8 h-8 text-white" />
             </div>
             
-            <h2 className="text-subtitle font-bold text-gray-900 mb-4">
+            <h2 className="text-subtitle font-bold text-slate-900 mb-4">
               הצטרף לנבחרת היועצים
             </h2>
             
-            <p className="text-gray-600 mb-8 leading-relaxed">
+            <p className="text-slate-600 mb-8 leading-relaxed">
               הצטרף לנבחרת היועצים של משכנתא ועזור ללקוחות למצוא את המשכנתא המושלמת
             </p>
             
@@ -104,7 +104,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full border-gray-300 text-gray-600 hover:bg-gray-50"
+                className="w-full border-slate-300 text-slate-600 hover:bg-slate-50"
                 onClick={() => setShowRegisterModal(false)}
               >
                 חזרה להתחברות
@@ -113,7 +113,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
             
             <button
               onClick={onClose}
-              className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute top-4 left-4 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -143,11 +143,11 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
             <UserCheck className="w-8 h-8 text-white" />
           </div>
           
-          <h2 className="text-subtitle font-bold text-gray-900 mb-4">
+          <h2 className="text-subtitle font-bold text-slate-900 mb-4">
             התחברות ליועצי משכנתאות
           </h2>
           
-          <p className="text-gray-600 mb-6 leading-relaxed">
+          <p className="text-slate-600 mb-6 leading-relaxed">
             התחבר לחשבון היועץ שלך
           </p>
 
@@ -166,7 +166,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2 text-right">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2 text-right">
                 שם משתמש או מייל
               </label>
               <div className="relative">
@@ -177,15 +177,15 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="שם משתמש או your@email.com"
                 />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2 text-right">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2 text-right">
                 סיסמה
               </label>
               <div className="relative">
@@ -195,10 +195,10 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
@@ -221,10 +221,10 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-slate-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">או</span>
+              <span className="px-4 bg-white text-slate-500">או</span>
             </div>
           </div>
 
@@ -240,7 +240,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
           
           <button
             onClick={onClose}
-            className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute top-4 left-4 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>

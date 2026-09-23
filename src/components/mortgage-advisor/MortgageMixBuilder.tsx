@@ -164,13 +164,13 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
               <button
                 type="button"
                 onClick={() => setIsEditingName(true)}
-                className="text-2xl font-bold text-gray-900 hover:text-blue-600 underline-offset-4 hover:underline transition-colors"
+                className="text-2xl font-bold text-slate-900 hover:text-blue-600 underline-offset-4 hover:underline transition-colors"
                 title="לחץ לשינוי שם התמהיל"
               >
                 {mixName}
               </button>
             )}
-            <p className="text-sm text-gray-500">לחץ על השם לשינוי</p>
+            <p className="text-sm text-slate-500">לחץ על השם לשינוי</p>
           </div>
           {editingMix && (
             <p className="text-sm text-blue-600 mt-2 text-center">
@@ -231,11 +231,11 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
       {tracks.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
-            <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-subtitle font-semibold text-gray-600 mb-2">
+            <Calculator className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-subtitle font-semibold text-slate-600 mb-2">
               אין מסלולים בתמהיל
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="text-slate-500 mb-6">
               התחל על ידי הוספת המסלול הראשון שלך
             </p>
             <Button onClick={() => addTrack()} className="px-6 py-3">
@@ -259,7 +259,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
                 />
 
                 {showCompletionCta && index === tracks.length - 1 && (
-                  <Card className="border-2 border-dashed border-blue-300 bg-blue-50/80">
+                  <Card className="border-2 border-dashed border-blue-300 bg-blue-50">
                     <CardContent className="h-full flex items-center justify-center p-6">
                       <Button onClick={() => addTrack(remainingToComplete)} className="px-6 py-3 text-base">
                         <Plus className="h-5 w-5 ml-2" />
@@ -270,7 +270,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
                 )}
 
                 {showReductionCta && index === tracks.length - 1 && (
-                  <Card className="border-2 border-dashed border-amber-300 bg-amber-50/80">
+                  <Card className="border-2 border-dashed border-amber-300 bg-amber-50">
                     <CardContent className="h-full flex items-center justify-center p-6">
                       <Button
                         onClick={reduceLastTrackByExcess}
@@ -300,28 +300,28 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
                 <div className="text-2xl font-bold text-blue-600">
                   {formatCurrency(calculation.summary.totalMonthlyPayment)}
                 </div>
-                <div className="text-sm text-gray-600">תשלום חודשי</div>
+                <div className="text-sm text-slate-600">תשלום חודשי</div>
               </div>
               
               <div className="text-center">
                 <div className="text-xl font-bold text-green-600">
                   {formatPercentage(calculation.summary.averageRate)}
                 </div>
-                <div className="text-sm text-gray-600">ריבית ממוצעת</div>
+                <div className="text-sm text-slate-600">ריבית ממוצעת</div>
               </div>
               
               <div className="text-center">
                 <div className="text-xl font-bold text-orange-600">
                   {calculation.summary.weightedAverageYears.toFixed(1)}
                 </div>
-                <div className="text-sm text-gray-600">שנים ממוצע</div>
+                <div className="text-sm text-slate-600">שנים ממוצע</div>
               </div>
               
               <div className="text-center">
                 <div className="text-xl font-bold text-red-600">
                   {formatCurrency(calculation.summary.totalInterest)}
                 </div>
-                <div className="text-sm text-gray-600">סך הריבית</div>
+                <div className="text-sm text-slate-600">סך הריבית</div>
               </div>
             </div>
           </CardContent>

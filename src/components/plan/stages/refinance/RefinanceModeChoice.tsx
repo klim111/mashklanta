@@ -113,7 +113,7 @@ function ModeCard({
   disabled: boolean;
 }) {
   return (
-    <div className="flex flex-col rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5">
+    <div className="flex flex-col rounded-3xl border-2 border-slate-200 bg-slate-50 p-5">
       <div className="flex items-center gap-3">
         <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} shadow-lg`}>
           <Icon className="h-6 w-6 text-white" />
@@ -144,7 +144,7 @@ function ModeCard({
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className={`mt-4 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-l ${gradient} px-5 py-3 text-sm font-black text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-60`}
+        className={`mt-4 inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg transition-all hover:bg-blue-700 disabled:opacity-60`}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
         {cta}

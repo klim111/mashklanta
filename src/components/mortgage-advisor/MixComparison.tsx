@@ -365,7 +365,7 @@ function HeadToHead({
   };
 
   return (
-    <div dir="rtl" className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:p-5">
+    <div dir="rtl" className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
       <p className="mb-4 text-sm font-black text-slate-800">השוואה זה מול זה</p>
 
       {pair ? (
@@ -587,12 +587,12 @@ function MixFaceCard({
   const barRatio = Math.max(0.18, item.result.summary.totalPaid / maxPaid);
 
   const wrap = allWin
-    ? 'border-2 border-emerald-300 bg-emerald-50/70 shadow-lg'
+    ? 'border-2 border-emerald-300 bg-emerald-50 shadow-lg'
     : allLose
-      ? 'border-2 border-gray-200 bg-gray-50'
-      : 'border-2 border-amber-300 bg-amber-50/50 shadow-md';
+      ? 'border-2 border-slate-200 bg-slate-50'
+      : 'border-2 border-amber-300 bg-amber-50 shadow-md';
 
-  const titleColor = allWin ? 'text-emerald-900' : allLose ? 'text-gray-900' : 'text-amber-950';
+  const titleColor = allWin ? 'text-emerald-900' : allLose ? 'text-slate-900' : 'text-amber-950';
   const valueWin = 'font-black text-emerald-700';
   const valueLose = 'font-black text-rose-700';
   const valueNeutral = 'font-black text-slate-800';
@@ -606,21 +606,21 @@ function MixFaceCard({
             allWin
               ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
               : allLose
-                ? 'bg-gray-300'
+                ? 'bg-slate-300'
                 : 'bg-gradient-to-br from-amber-400 to-orange-500'
           }`}
         >
           {allWin ? (
             <TrendingDown className="h-5 w-5 text-white" />
           ) : allLose ? (
-            <TrendingUp className="h-5 w-5 text-gray-700" />
+            <TrendingUp className="h-5 w-5 text-slate-700" />
           ) : (
             <ArrowDownRight className="h-5 w-5 text-white" />
           )}
         </div>
         <div className="min-w-0">
           <div className={`truncate font-black ${titleColor}`}>{item.label}</div>
-          <div className={`text-xs ${allWin ? 'text-emerald-700' : allLose ? 'text-gray-600' : 'text-amber-800'}`}>
+          <div className={`text-xs ${allWin ? 'text-emerald-700' : allLose ? 'text-slate-600' : 'text-amber-800'}`}>
             {allWin ? 'מוביל בכל הפרמטרים' : allLose ? 'חלש יותר בכל הפרמטרים' : 'תוצאה מעורבת — יתרון בחלק מהמדדים'}
           </div>
         </div>
@@ -628,7 +628,7 @@ function MixFaceCard({
 
       <div
         className={`relative mb-5 h-3.5 w-full overflow-hidden rounded-full ${
-          allWin ? 'bg-emerald-100' : allLose ? 'bg-gray-200' : 'bg-amber-100'
+          allWin ? 'bg-emerald-100' : allLose ? 'bg-slate-200' : 'bg-amber-100'
         }`}
       >
         <div
@@ -636,7 +636,7 @@ function MixFaceCard({
             allWin
               ? 'bg-gradient-to-l from-emerald-500 to-teal-500'
               : allLose
-                ? 'bg-gradient-to-l from-gray-400 to-gray-500'
+                ? 'bg-gradient-to-l from-slate-400 to-slate-500'
                 : 'bg-gradient-to-l from-amber-400 to-orange-500'
           }`}
           style={{ width: `${barRatio * 100}%` }}
@@ -664,7 +664,7 @@ function MixFaceCard({
         </div>
         <div
           className={`flex items-baseline justify-between gap-2 border-t pt-3 ${
-            allWin ? 'border-emerald-200' : allLose ? 'border-gray-200' : 'border-amber-200'
+            allWin ? 'border-emerald-200' : allLose ? 'border-slate-200' : 'border-amber-200'
           }`}
         >
           <dt className="text-info text-slate-600">עלות כוללת</dt>
@@ -694,7 +694,7 @@ function MixFaceCard({
                   onSelectFinal?.();
                 }
               }}
-              className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-slate-700"
+              className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-blue-700"
             >
               {selectFinalLabel}
             </button>
@@ -762,9 +762,9 @@ function PaydownPaceDialog({
               const fastest = rank === 0;
               const slowest = rank === ranked.length - 1 && ranked.length > 1;
               const wrap = fastest
-                ? 'border-2 border-emerald-300 bg-emerald-50/70'
+                ? 'border-2 border-emerald-300 bg-emerald-50'
                 : slowest
-                  ? 'border-2 border-rose-200 bg-rose-50/60'
+                  ? 'border-2 border-rose-200 bg-rose-50'
                   : 'border-2 border-slate-200 bg-slate-50';
               const barFill = fastest
                 ? 'bg-emerald-500'

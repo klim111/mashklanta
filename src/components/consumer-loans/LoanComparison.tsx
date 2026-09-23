@@ -127,7 +127,7 @@ export function LoanComparison({
   return (
     <div className="space-y-2.5">
       {/* בחירת ההלוואות המושוות */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 p-2.5">
         <p className="text-2xs font-bold text-blue-900">מושוות כרגע:</p>
         {selected.map((loan) => (
           <button
@@ -315,7 +315,7 @@ export function LoanComparison({
 
           {prepayment ? (
             <>
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-2xs font-bold text-emerald-900">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-2xs font-bold text-emerald-900">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 {formatILS(prepayment.payoffAmount)} מופנים ל{prepayment.target.name} (
                 {prepayment.target.apr.toFixed(2)}%)
@@ -521,8 +521,8 @@ export function ScenarioRow({
 }) {
   const tones = {
     current: 'border-slate-200 bg-white',
-    scenario: 'border-emerald-300 bg-emerald-50/50',
-    best: 'border-violet-300 bg-violet-50/50',
+    scenario: 'border-emerald-300 bg-emerald-50',
+    best: 'border-violet-300 bg-violet-50',
   } as const;
   const titleTones = {
     current: 'text-slate-900',

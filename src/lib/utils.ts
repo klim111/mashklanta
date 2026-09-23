@@ -8,6 +8,10 @@ const twMerge = extendTailwindMerge({
     theme: {
       text: ['2xs', 'info', 'button', 'cta', 'subtitle', 'title'],
     },
+    // רקעי הגרדיאנט המשותפים הם תמונת רקע, לא צבע, ולכן לא מבטלים את bg-* של צבע
+    classGroups: {
+      'bg-image': [{ bg: ['brand-dark', 'hero-soft'] }],
+    },
   },
 });
 

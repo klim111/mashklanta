@@ -144,7 +144,7 @@ const KIND_COPY: Record<
     description:
       'הפריים הגלום בעקום התשואות השקלי של בנק ישראל — מידע על ציפיות השוק בלבד. לוחות ההחזרים בפלטפורמה מחושבים לפי ריבית הפריים התקפה עכשיו, ולא לפי התחזית הזו.',
     border: 'border-orange-200',
-    bg: 'bg-orange-50/40',
+    bg: 'bg-orange-50',
     titleText: 'text-orange-950',
     body: 'text-orange-900/80',
   },
@@ -154,7 +154,7 @@ const KIND_COPY: Record<
     description:
       'הריבית נשארת קבועה עד לתחנת היציאה, ומתעדכנת לפי הפורוורד לתקופת המסלול (2–5 שנים) מעקום התשואות השקלי של בנק ישראל והמרווח שצוטט מהבנק.',
     border: 'border-emerald-200',
-    bg: 'bg-emerald-50/40',
+    bg: 'bg-emerald-50',
     titleText: 'text-emerald-950',
     body: 'text-emerald-900/80',
   },

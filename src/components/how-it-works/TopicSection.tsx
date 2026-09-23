@@ -37,7 +37,7 @@ export default function TopicSection({
       ref={ref}
       className={cn(
         'relative py-20 md:py-28 scroll-mt-52 overflow-hidden',
-        index % 2 === 0 ? 'bg-white' : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40'
+        index % 2 === 0 ? 'bg-white' : 'bg-hero-soft'
       )}
     >
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

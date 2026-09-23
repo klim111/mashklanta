@@ -221,7 +221,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
 function OfferScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="relative overflow-hidden">
-      <div className="relative bg-slate-950 px-6 py-8 text-white md:px-8">
+      <div className="relative bg-brand-dark px-6 py-8 text-white md:px-8">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-600/30 blur-3xl" />
           <div className="absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-violet-600/30 blur-3xl" />
@@ -264,7 +264,7 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
           </div>
           <Link
             href="/dashboard/checkout?next=plan"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
+            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
           >
             קבל גישה
             <ArrowLeft className="h-4 w-4" />
@@ -276,10 +276,10 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
 }
 
 const BLOCK_TONES = {
-  blue: 'border-blue-100 bg-blue-50/60 text-blue-700',
-  amber: 'border-amber-100 bg-amber-50/70 text-amber-700',
-  violet: 'border-violet-100 bg-violet-50/60 text-violet-700',
-  emerald: 'border-emerald-100 bg-emerald-50/60 text-emerald-700',
+  blue: 'border-blue-100 bg-blue-50 text-blue-700',
+  amber: 'border-amber-100 bg-amber-50 text-amber-700',
+  violet: 'border-violet-100 bg-violet-50 text-violet-700',
+  emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700',
 } as const;
 
 function GuideBlock({
@@ -325,7 +325,7 @@ function NavButton({
       aria-label={label}
       className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-black transition-all disabled:opacity-30 ${
         primary
-          ? 'bg-slate-900 text-white shadow-md hover:bg-slate-700'
+          ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700'
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
       }`}
     >

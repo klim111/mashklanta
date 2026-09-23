@@ -91,7 +91,7 @@ export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: stri
       </div>
 
       {!ready && (
-        <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-sm text-slate-500">
+        <div className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           טוענים את התמהיל המתומחר…
         </div>

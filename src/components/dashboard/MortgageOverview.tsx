@@ -110,17 +110,17 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
           className="bg-white rounded-xl shadow-lg p-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-subtitle font-semibold text-gray-900">התפלגות תשלומים</h3>
-            <PieChart className="w-5 h-5 text-gray-400" />
+            <h3 className="text-subtitle font-semibold text-slate-900">התפלגות תשלומים</h3>
+            <PieChart className="w-5 h-5 text-slate-400" />
           </div>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-info mb-1">
-                <span className="text-gray-600">קרן ששולמה</span>
+                <span className="text-slate-600">קרן ששולמה</span>
                 <span className="font-semibold">₪{mortgage.totalPaidPrincipal.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-green-500 h-2 rounded-full"
                   style={{ width: `${(mortgage.totalPaidPrincipal / (mortgage.totalPaidPrincipal + mortgage.totalPaidInterest)) * 100}%` }}
@@ -130,10 +130,10 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
             
             <div>
               <div className="flex justify-between text-info mb-1">
-                <span className="text-gray-600">ריבית ששולמה</span>
+                <span className="text-slate-600">ריבית ששולמה</span>
                 <span className="font-semibold">₪{mortgage.totalPaidInterest.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-orange-500 h-2 rounded-full"
                   style={{ width: `${(mortgage.totalPaidInterest / (mortgage.totalPaidPrincipal + mortgage.totalPaidInterest)) * 100}%` }}
@@ -143,7 +143,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
 
             <div className="pt-4 border-t">
               <div className="flex justify-between">
-                <span className="text-gray-600">סה"כ שולם</span>
+                <span className="text-slate-600">סה"כ שולם</span>
                 <span className="font-bold text-lg">
                   ₪{(mortgage.totalPaidPrincipal + mortgage.totalPaidInterest).toLocaleString()}
                 </span>
@@ -159,17 +159,17 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
           className="bg-white rounded-xl shadow-lg p-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-subtitle font-semibold text-gray-900">יתרות לתשלום</h3>
-            <DollarSign className="w-5 h-5 text-gray-400" />
+            <h3 className="text-subtitle font-semibold text-slate-900">יתרות לתשלום</h3>
+            <DollarSign className="w-5 h-5 text-slate-400" />
           </div>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-info mb-1">
-                <span className="text-gray-600">קרן נותרת</span>
+                <span className="text-slate-600">קרן נותרת</span>
                 <span className="font-semibold">₪{mortgage.totalRemainingPrincipal.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-blue-500 h-2 rounded-full"
                   style={{ width: `${(mortgage.totalRemainingPrincipal / (mortgage.totalRemainingPrincipal + mortgage.totalRemainingInterest)) * 100}%` }}
@@ -179,10 +179,10 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
             
             <div>
               <div className="flex justify-between text-info mb-1">
-                <span className="text-gray-600">ריבית עתידית</span>
+                <span className="text-slate-600">ריבית עתידית</span>
                 <span className="font-semibold">₪{mortgage.totalRemainingInterest.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-purple-500 h-2 rounded-full"
                   style={{ width: `${(mortgage.totalRemainingInterest / (mortgage.totalRemainingPrincipal + mortgage.totalRemainingInterest)) * 100}%` }}
@@ -192,7 +192,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
 
             <div className="pt-4 border-t">
               <div className="flex justify-between">
-                <span className="text-gray-600">סה"כ נותר לתשלום</span>
+                <span className="text-slate-600">סה"כ נותר לתשלום</span>
                 <span className="font-bold text-lg">
                   ₪{(mortgage.totalRemainingPrincipal + mortgage.totalRemainingInterest).toLocaleString()}
                 </span>
@@ -210,7 +210,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
         className="bg-white rounded-xl shadow-lg p-6"
       >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-subtitle font-semibold text-gray-900">מסלולי המשכנתא</h3>
+          <h3 className="text-subtitle font-semibold text-slate-900">מסלולי המשכנתא</h3>
           <div className="flex gap-4 text-sm">
             <span className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full" />
@@ -218,7 +218,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
             </span>
             {completedTracksCount > 0 && (
               <span className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-gray-400 rounded-full" />
+                <div className="w-3 h-3 bg-slate-400 rounded-full" />
                 {completedTracksCount} הושלמו
               </span>
             )}
@@ -250,42 +250,42 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
                 whileHover={{ scale: 1.02 }}
                 onClick={() => onTrackSelect(track.id)}
                 className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                  track.isCompleted ? 'bg-gray-50 border-gray-300' : 'bg-white border-gray-200'
+                  track.isCompleted ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-200'
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h4 className="font-semibold text-gray-900">{track.name}</h4>
+                    <h4 className="font-semibold text-slate-900">{track.name}</h4>
                     <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${trackTypeColor}`}>
                       {trackTypeLabel}
                     </span>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
                 </div>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">ריבית</span>
+                    <span className="text-slate-600">ריבית</span>
                     <span className="font-medium">{track.interestRate}%</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">תשלום חודשי</span>
+                    <span className="text-slate-600">תשלום חודשי</span>
                     <span className="font-medium">₪{track.monthlyPayment.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">יתרת קרן</span>
+                    <span className="text-slate-600">יתרת קרן</span>
                     <span className="font-medium">₪{track.remainingPrincipal.toLocaleString()}</span>
                   </div>
                 </div>
 
                 <div className="mt-3">
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-500">התקדמות</span>
-                    <span className="text-gray-500">{trackProgress.toFixed(1)}%</span>
+                    <span className="text-slate-500">התקדמות</span>
+                    <span className="text-slate-500">{trackProgress.toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="w-full bg-slate-200 rounded-full h-1.5">
                     <div 
-                      className={`h-1.5 rounded-full ${track.isCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-500 to-blue-500'}`}
+                      className={`h-1.5 rounded-full ${track.isCompleted ? 'bg-slate-400' : 'bg-gradient-to-r from-purple-500 to-blue-500'}`}
                       style={{ width: `${trackProgress}%` }}
                     />
                   </div>
@@ -301,7 +301,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
                 )}
 
                 {track.isCompleted && (
-                  <div className="mt-3 text-center text-xs text-gray-500 bg-gray-100 rounded-lg py-1">
+                  <div className="mt-3 text-center text-xs text-slate-500 bg-slate-100 rounded-lg py-1">
                     הושלם ב-{format(track.endDate, 'dd/MM/yyyy', { locale: he })}
                   </div>
                 )}

@@ -32,11 +32,11 @@ function AutoStart() {
 export default function DemoLandingPage() {
   const overview = demoById('overview');
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50" dir="rtl">
+    <div className="min-h-screen bg-slate-50" dir="rtl">
       <Suspense fallback={null}>
         <AutoStart />
       </Suspense>
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
       </div>
 
@@ -113,7 +113,7 @@ export default function DemoLandingPage() {
         </p>
       </main>
 
-      <div className="bg-gray-900 text-white">
+      <div className="bg-slate-900 text-white">
         <Footer />
       </div>
     </div>

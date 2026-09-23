@@ -42,7 +42,7 @@ export function PropertyOwnershipPanel({
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-rose-500 to-pink-600 px-6 py-3 text-button font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:brightness-110"
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:brightness-110"
         >
           <ScrollText className="h-5 w-5" />
           הגדרת בעלות הנכס

@@ -20,7 +20,7 @@ export function PermissionPanel() {
       <div
         className={`flex items-center gap-3 rounded-2xl border p-4 ${
           data.viewer.canEditClientFields
-            ? 'border-emerald-200 bg-emerald-50/60'
+            ? 'border-emerald-200 bg-emerald-50'
             : 'border-slate-200 bg-slate-50'
         }`}
       >
@@ -73,7 +73,7 @@ export function PermissionPanel() {
         {advisors.map((advisor) => (
           <div
             key={advisor.advisorId}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3"
           >
             <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-500 ring-1 ring-slate-200">

@@ -393,7 +393,7 @@ export function OfferMixer({ offers = sampleOffers }: OfferMixerProps) {
                   min-h-[200px] rounded-xl border-2 border-dashed transition-all
                   ${selectedTracks.length > 0 
                     ? 'border-indigo-300 bg-white/50' 
-                    : 'border-slate-300 bg-slate-50/50'
+                    : 'border-slate-300 bg-slate-50'
                   }
                 `}
               >

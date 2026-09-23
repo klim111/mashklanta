@@ -91,7 +91,7 @@ function ChoiceCard({
   return (
     <div
       className={`flex flex-col overflow-hidden rounded-3xl border-2 text-center transition-all hover:shadow-lg ${
-        primary ? 'border-violet-300 bg-violet-50/40' : 'border-blue-200 bg-blue-50/30'
+        primary ? 'border-violet-300 bg-violet-50' : 'border-blue-200 bg-blue-50'
       }`}
     >
       <div className={`h-1.5 w-full bg-gradient-to-l ${gradient}`} />
@@ -118,7 +118,7 @@ function ChoiceCard({
         <button
           type="button"
           onClick={onClick}
-          className={`mt-1 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white shadow-sm transition-all hover:brightness-110 bg-gradient-to-l ${gradient}`}
+          className={`mt-1 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white shadow-sm transition-all ${primary ? 'bg-violet-600 hover:bg-violet-700' : 'bg-blue-600 hover:bg-blue-700'}`}
         >
           {cta}
           <ArrowLeft className="h-4 w-4" />

@@ -238,13 +238,13 @@ export default function MortgageInfographic({
   const visualBarHeight = 120;
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-6 mb-6">
+    <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-xl border border-slate-200 p-6 mb-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-subtitle font-bold text-gray-900 flex items-center gap-2">
+        <h3 className="text-subtitle font-bold text-slate-900 flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-purple-600" />
           תמונת מצב כללית
         </h3>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
           <Info className="w-4 h-4" />
           <span>עדכון אחרון: {selectedDate.toLocaleDateString('he-IL')}</span>
         </div>
@@ -253,15 +253,15 @@ export default function MortgageInfographic({
       {/* Main Visual Bar - Showing paid amount "cut out" */}
       <div className="mb-8 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-medium text-gray-700">סכום מקורי של המשכנתא</span>
-          <span className="text-2xl font-bold text-gray-900">
+          <span className="text-sm font-medium text-slate-700">סכום מקורי של המשכנתא</span>
+          <span className="text-2xl font-bold text-slate-900">
             ₪{originalAmount.toLocaleString()}
           </span>
         </div>
         
         <div className="relative overflow-hidden rounded-xl" style={{ height: `${visualBarHeight}px`, maxWidth: '100%' }}>
           {/* Background - Total Amount (Full Bar) */}
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl overflow-hidden shadow-inner">
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-200 to-slate-300 rounded-xl overflow-hidden shadow-inner">
           </div>
 
           {/* Remaining Principal - Right side, no gap from interest - Only show if not zero */}
@@ -389,33 +389,33 @@ export default function MortgageInfographic({
         <div className="flex items-center justify-center gap-6 mt-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-green-500 rounded"></div>
-            <span className="text-gray-700">קרן ששולמה: ₪{paidPrincipal.toLocaleString()}</span>
+            <span className="text-slate-700">קרן ששולמה: ₪{paidPrincipal.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-orange-500 rounded"></div>
-            <span className="text-gray-700">ריבית ששולמה: ₪{paidInterest.toLocaleString()}</span>
+            <span className="text-slate-700">ריבית ששולמה: ₪{paidInterest.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span className="text-gray-700">יתרה: ₪{remainingPrincipal.toLocaleString()}</span>
+            <span className="text-slate-700">יתרה: ₪{remainingPrincipal.toLocaleString()}</span>
           </div>
         </div>
       </div>
 
       {/* Breakdown Pie Chart Representation */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-xl p-5 border border-slate-200">
+          <h4 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
             <PieChart className="w-4 h-4" />
             התפלגות התשלומים ששולמו
           </h4>
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-info mb-1">
-                <span className="text-gray-600">קרן</span>
+                <span className="text-slate-600">קרן</span>
                 <span className="font-semibold">₪{paidPrincipal.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${totalPaid > 0 ? (paidPrincipal / totalPaid) * 100 : 0}%` }}
@@ -423,16 +423,16 @@ export default function MortgageInfographic({
                   className="bg-green-500 h-2 rounded-full"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 {totalPaid > 0 ? ((paidPrincipal / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
               </p>
             </div>
             <div>
               <div className="flex justify-between text-info mb-1">
-                <span className="text-gray-600">ריבית</span>
+                <span className="text-slate-600">ריבית</span>
                 <span className="font-semibold">₪{paidInterest.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${totalPaid > 0 ? (paidInterest / totalPaid) * 100 : 0}%` }}
@@ -440,49 +440,49 @@ export default function MortgageInfographic({
                   className="bg-orange-500 h-2 rounded-full"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 {totalPaid > 0 ? ((paidInterest / totalPaid) * 100).toFixed(1) : 0}% מהתשלומים
               </p>
             </div>
             <div className="pt-3 border-t mt-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-700 font-medium">שולם על כל שקל קרן שהוחזר:</span>
+                <span className="text-sm text-slate-700 font-medium">שולם על כל שקל קרן שהוחזר:</span>
                 <span className="text-lg font-bold text-purple-600">
                   ₪{(paidPrincipal > 0 ? (totalPaid / paidPrincipal) : 0).toFixed(3)}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 כולל קרן + ריבית על ₪{paidPrincipal.toLocaleString()} קרן ששולמה
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-xl p-5 border border-slate-200">
+          <h4 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
             סיכום כללי
           </h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600">סכום מקורי:</span>
+              <span className="text-slate-600">סכום מקורי:</span>
               <span className="font-semibold">₪{originalAmount.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">שולם (קרן + ריבית):</span>
+              <span className="text-slate-600">שולם (קרן + ריבית):</span>
               <span className="font-semibold text-green-600">₪{totalPaid.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">יתרת קרן:</span>
+              <span className="text-slate-600">יתרת קרן:</span>
               <span className="font-semibold text-blue-600">₪{remainingPrincipal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">ריבית משוערת נותרת:</span>
+              <span className="text-slate-600">ריבית משוערת נותרת:</span>
               <span className="font-semibold text-purple-600">₪{estimatedRemainingInterest.toLocaleString()}</span>
             </div>
             <div className="pt-2 border-t mt-2">
               <div className="flex justify-between font-bold">
-                <span className="text-gray-900">סה"כ תשלומים צפויים:</span>
+                <span className="text-slate-900">סה"כ תשלומים צפויים:</span>
                 <span className="text-purple-600">
                   ₪{(remainingPrincipal + estimatedRemainingInterest).toLocaleString()}
                 </span>
@@ -490,12 +490,12 @@ export default function MortgageInfographic({
             </div>
             <div className="pt-2 border-t mt-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-700 font-medium">משוער להיות משולם על כל שקל:</span>
+                <span className="text-sm text-slate-700 font-medium">משוער להיות משולם על כל שקל:</span>
                 <span className="text-lg font-bold text-purple-600">
                   ₪{(originalAmount > 0 ? ((totalPaid + remainingPrincipal + estimatedRemainingInterest) / originalAmount) : 0).toFixed(3)}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 כולל שולם עד כה + נותר לשלם
               </p>
             </div>
@@ -513,7 +513,7 @@ export default function MortgageInfographic({
         >
           <div className="flex items-center gap-2 mb-4">
             <PieChart className="w-5 h-5 text-orange-600" />
-            <h4 className="text-lg font-semibold text-gray-900">
+            <h4 className="text-lg font-semibold text-slate-900">
               השפעת הצמדה למדד ({indexationData.indexLinkedTracksCount} מסלולים צמודי מדד)
             </h4>
           </div>
@@ -522,7 +522,7 @@ export default function MortgageInfographic({
             {/* Total Indexation Change */}
             <div className="bg-white rounded-lg p-4 border border-orange-200">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">שינוי כולל מהצמדה</span>
+                <span className="text-sm text-slate-600">שינוי כולל מהצמדה</span>
                 {indexationData.totalIndexationChange >= 0 ? (
                   <ArrowUp className="w-4 h-4 text-red-600" />
                 ) : (
@@ -535,7 +535,7 @@ export default function MortgageInfographic({
                 {indexationData.totalIndexationChange >= 0 ? '+' : ''}
                 ₪{Math.abs(indexationData.totalIndexationChange).toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 ({indexationData.totalIndexationChangePercentage >= 0 ? '+' : ''}
                 {indexationData.totalIndexationChangePercentage.toFixed(2)}%)
               </p>
@@ -544,13 +544,13 @@ export default function MortgageInfographic({
             {/* Paid Indexation */}
             <div className="bg-white rounded-lg p-4 border border-orange-200">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">שולם על חשבון עליית המדד</span>
+                <span className="text-sm text-slate-600">שולם על חשבון עליית המדד</span>
                 <TrendingUp className="w-4 h-4 text-orange-600" />
               </div>
               <p className="text-xl font-bold text-orange-600">
                 ₪{indexationData.paidIndexationAmount.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 מתוך השינוי הכולל
               </p>
             </div>
@@ -558,7 +558,7 @@ export default function MortgageInfographic({
             {/* Remaining Principal Indexation Change */}
             <div className="bg-white rounded-lg p-4 border border-orange-200">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">שינוי יתרת קרן מהצמדה</span>
+                <span className="text-sm text-slate-600">שינוי יתרת קרן מהצמדה</span>
                 {indexationData.remainingPrincipalIndexationChange >= 0 ? (
                   <ArrowUp className="w-4 h-4 text-red-600" />
                 ) : (
@@ -571,7 +571,7 @@ export default function MortgageInfographic({
                 {indexationData.remainingPrincipalIndexationChange >= 0 ? '+' : ''}
                 ₪{Math.abs(indexationData.remainingPrincipalIndexationChange).toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 השפעה על הקרן הנותרת
               </p>
             </div>

@@ -112,7 +112,7 @@ export function MortgageDemo() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30" dir="rtl">
+    <div className="min-h-screen bg-slate-50" dir="rtl">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div

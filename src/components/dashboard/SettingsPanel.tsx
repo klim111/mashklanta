@@ -249,7 +249,7 @@ export function SettingsPanel() {
             {...demoId('settings-save')}
             onClick={() => void save()}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white hover:bg-slate-700 disabled:opacity-70"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white hover:bg-blue-700 disabled:opacity-70"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             שמירת ההגדרות
@@ -302,7 +302,7 @@ function BorrowerBlock({
 }) {
   const hasLoans = loans.length > 0;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <h4 className="mb-4 text-sm font-black text-slate-900">{title}</h4>
       <div className="mb-4 grid gap-4 sm:grid-cols-2">
         <TextField label="שם פרטי" value={firstName} onChange={onFirstName} />
