@@ -82,6 +82,13 @@ interface MixListProps {
    */
   /** בחירת תמהיל כתמהיל הסופי — ממשיך לשלב 4 */
   onSelectAsFinal?: (mixId: string) => void;
+  /** התמהיל שבעבודה הוא התמהיל הסופי להגשה לבנקים, ונעול לשינויים */
+  activeFinal?: boolean;
+  /** פתיחת התמהיל הסופי חזרה לעריכה */
+  onReopenFinal?: () => void;
+  /** המסלול שבמיקוד באזור הגרפים — לחיצה על מסלול בפס של התמהיל שבעבודה */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
   onSaveBankQuote?: (quoted: WorkspaceMix) => Promise<void> | void;
   /** פתיחת התמהיל שהתקבל מהבנק באזור העבודה */
   onOpenBankQuote?: (quoted: WorkspaceMix) => void;
@@ -132,6 +139,10 @@ export function MixList({
   onSaveBankQuote,
   onOpenBankQuote,
   onSelectAsFinal,
+  activeFinal = false,
+  onReopenFinal,
+  focusTrackId = null,
+  onFocusTrack,
 }: MixListProps) {
   /** התמהיל שממנו מפיקים עכשיו מכתב בקשת ריביות לבנקים */
   const [quoteTarget, setQuoteTarget] = useState<{
@@ -254,7 +265,13 @@ export function MixList({
             </div>
           )}
 
-          <section className="rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-white p-2 shadow-sm">
+          <section
+            className={`rounded-2xl border-2 p-2 shadow-sm ${
+              activeFinal
+                ? 'border-emerald-500 bg-gradient-to-b from-emerald-50 to-white'
+                : 'border-blue-400 bg-gradient-to-b from-blue-50 to-white'
+            }`}
+          >
             {/* כותרת אזור העבודה בשורה אחת — ההסבר עבר ל-title כדי לפנות גובה */}
             <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span
@@ -313,6 +330,11 @@ export function MixList({
                 setQuoteTarget({ mix: activeResult.mix, summary: activeResult.summary })
               }
               onSelectAsFinal={onSelectAsFinal && (() => onSelectAsFinal(activeResult.mix.id))}
+              final={activeFinal}
+              stackActions
+              onReopenFinal={onReopenFinal}
+              focusTrackId={focusTrackId}
+              onFocusTrack={onFocusTrack}
               actions={
                 <>
                   <button

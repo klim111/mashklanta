@@ -173,13 +173,7 @@ describe('סגירת שלבים', () => {
   it('שלב התמחור נסגר בבחירת התמהיל המתומחר שהולכים איתו לחתימה', () => {
     const data = profile();
     expect(stageIsComplete('AUCTION', data)).toBe(false);
-    // עוד לא נבחרה דרך — ולכן זה הדבר הראשון שחסר
-    expect(missingForStage('AUCTION', data)).toEqual([
-      'בחירה בין תמחור עצמי לליווי יועץ',
-      'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
-    ]);
-
-    data.AUCTION = { ...data.AUCTION, mode: 'self' };
+    // אין לפני השלב שאלה אם לתמחר לבד או עם יועץ — מה שחסר הוא רק הבחירה עצמה
     expect(missingForStage('AUCTION', data)).toEqual([
       'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
     ]);

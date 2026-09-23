@@ -8,7 +8,7 @@ import { DEMO_PLAN_ID } from '@/lib/demo-plan';
 export default function DemoPlanPage() {
   return (
     <DemoScreenGate flowId="plan-stages">
-      <PlanWorkspace planId={DEMO_PLAN_ID} peek />
+      <PlanWorkspace planId={DEMO_PLAN_ID} />
     </DemoScreenGate>
   );
 }

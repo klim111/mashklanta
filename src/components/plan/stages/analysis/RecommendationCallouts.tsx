@@ -1,11 +1,10 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertOctagon, AlertTriangle, Lightbulb, TrendingUp } from 'lucide-react';
-import { profileRecommendations, shouldAskIncomeIncrease } from '@/lib/profile-report';
+import { AlertOctagon, AlertTriangle, Lightbulb } from 'lucide-react';
+import { profileRecommendations } from '@/lib/profile-report';
 import type { ProfileRecommendation, RecommendationTone } from '@/lib/profile-report';
 import type { AnalysisData, ProfileScreen } from '@/lib/mortgage-plan';
-import { NumberField } from '../../ui';
 
 const toneStyles: Record<
   RecommendationTone,
@@ -43,11 +42,16 @@ const toneLabel: Record<RecommendationTone, string> = {
   critical: 'קריטי',
 };
 
+/** מה שכרטיס הערה מציג — המלצה מהפרופיל, או הערה של מסך שנבנתה במקום */
+export type RecommendationNote = Pick<ProfileRecommendation, 'tone' | 'title' | 'body' | 'bullets'> & {
+  id: string;
+};
+
 export function RecommendationCard({
   recommendation,
   compact = false,
 }: {
-  recommendation: ProfileRecommendation;
+  recommendation: RecommendationNote;
   compact?: boolean;
 }) {
   const style = toneStyles[recommendation.tone];
@@ -85,106 +89,22 @@ export function RecommendationCard({
 }
 
 /**
- * השאלה שנשאלת כשיחס ההחזר קרוב למגבלה: האם ההכנסה הפנויה צפויה לגדול. תשובה
- * חיובית פותחת את «בכמה ומתי», ומהן נגזר מסלול הגרייס שמופיע מיד מתחת.
- */
-function IncomeIncreaseQuestion({
-  profile,
-  patch,
-}: {
-  profile: AnalysisData;
-  patch: (next: Partial<AnalysisData>) => void;
-}) {
-  const answer = profile.expectsIncomeIncrease;
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 shadow-md">
-          <TrendingUp className="h-4 w-4 text-white" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-black text-slate-900">האם צפויה הגדלה בהכנסה הפנויה?</h4>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            סיום הלוואה, קידום, חזרה לעבודה מלאה או סיום תשלום גן — אם ההכנסה הפנויה תגדל
-            בהמשך, אפשר להקל על ההחזר בתקופה הראשונה עם מסלול בלון.
-          </p>
-          <div className="mt-3 flex gap-2">
-            {[
-              { value: true, label: 'כן, צפויה עלייה' },
-              { value: false, label: 'לא צפויה' },
-            ].map((option) => {
-              const selected = answer === option.value;
-              return (
-                <button
-                  key={String(option.value)}
-                  type="button"
-                  onClick={() => patch({ expectsIncomeIncrease: option.value })}
-                  className={`flex-1 rounded-xl border-2 px-4 py-2 text-sm font-bold transition-all ${
-                    selected
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-          <AnimatePresence initial={false}>
-            {answer === true && (
-              <motion.div
-                key="details"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <NumberField
-                    label="בכמה תגדל ההכנסה הפנויה (לחודש)"
-                    value={profile.futureMonthlyIncrease}
-                    onChange={(futureMonthlyIncrease) => patch({ futureMonthlyIncrease })}
-                    suffix="₪"
-                    placeholder="2,500"
-                  />
-                  <NumberField
-                    label="בעוד כמה שנים"
-                    value={profile.futureMonthlyIncreaseInYears}
-                    onChange={(futureMonthlyIncreaseInYears) => patch({ futureMonthlyIncreaseInYears })}
-                    suffix="שנים"
-                    max={30}
-                  />
-                </div>
-                {(profile.futureMonthlyIncreaseInYears ?? 0) <= 0 && (
-                  <p className="mt-2 text-2xs text-slate-400">
-                    הזינו בעוד כמה שנים צפויה העלייה — לפי זה ייקבע אורך מסלול הגרייס המומלץ.
-                  </p>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * ההמלצות שצפות במסך הנוכחי, בסדר שבו הן נגזרות מהפרופיל. אחרי המלצת יחס
- * ההחזר נשאלת שאלת ההכנסה, כי התשובה עליה היא שפותחת את המלצת הגרייס.
+ * ההמלצות שצפות במסך הנוכחי, בסדר שבו הן נגזרות מהפרופיל. המלצות שמוצגות
+ * כסימן קריאה ליד הנתון שלהן (`exclude`) אינן חוזרות כאן כשורה.
  */
 export function RecommendationCallouts({
   profile,
   screen,
-  patch,
+  exclude = [],
 }: {
   profile: AnalysisData;
   screen: ProfileScreen;
-  patch: (next: Partial<AnalysisData>) => void;
+  exclude?: string[];
 }) {
-  const items = profileRecommendations(profile).filter((item) => item.screens.includes(screen));
-  const askIncome = shouldAskIncomeIncrease(profile) && (screen === 'borrowers' || screen === 'deal');
-  if (items.length === 0 && !askIncome) return null;
+  const items = profileRecommendations(profile).filter(
+    (item) => item.screens.includes(screen) && !exclude.includes(item.id)
+  );
+  if (items.length === 0) return null;
 
   return (
     <div className="space-y-3">
@@ -196,12 +116,8 @@ export function RecommendationCallouts({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="space-y-3"
           >
             <RecommendationCard recommendation={item} />
-            {item.id === 'repayment-ratio' && askIncome && (
-              <IncomeIncreaseQuestion profile={profile} patch={patch} />
-            )}
           </motion.div>
         ))}
       </AnimatePresence>

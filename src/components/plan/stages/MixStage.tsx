@@ -178,6 +178,9 @@ export function MixStage({
           persist.current(toMixData(item, notes.current, current.finalLocked && current.mixKey === item.mix.id));
         }}
         onSelectFinal={(item) => persist.current(toMixData(item, notes.current, true))}
+        onReopenFinal={(item) =>
+          persist.current({ ...toMixData(item, notes.current), isFinal: false, finalLocked: false })
+        }
         onFinalConfirmed={onFinalConfirmed}
         onDealChange={onAnalysisChange ? applyDealChange : undefined}
       />

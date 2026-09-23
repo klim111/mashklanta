@@ -240,6 +240,32 @@ export async function markMixAsFinal(userId: string, recordId: string, planId: s
   return updated ? fromRow(updated) : null;
 }
 
+/** ביטול הבחירה כתמהיל סופי — התמהיל נפתח שוב לעריכה */
+export async function unmarkMixAsFinal(userId: string, recordId: string): Promise<SavedMix | null> {
+  if (!(await canEditMix(userId, recordId))) return null;
+
+  const row = await prisma.mortgageMix.findUnique({
+    where: { id: recordId },
+    select: { mixJson: true },
+  });
+  if (!row) return null;
+
+  await prisma.mortgageMix.update({
+    where: { id: recordId },
+    data: {
+      isFinal: false,
+      locked: false,
+      mixJson: {
+        ...((row.mixJson && typeof row.mixJson === 'object' ? row.mixJson : {}) as object),
+        locked: false,
+      } as Prisma.InputJsonValue,
+    },
+  });
+
+  const updated = await prisma.mortgageMix.findUnique({ where: { id: recordId }, select: mixSelect });
+  return updated ? fromRow(updated) : null;
+}
+
 /** שיוך תמהיל ללא נכס לכתובת ולתהליך */
 export async function assignMixDeal(
   userId: string,

@@ -19,8 +19,8 @@ function stageSteps(stage: PlanStageId, index: number): DemoStep[] {
       caption: `${guide.importance}`,
       actions: [
         { type: 'click', target: `plan-stage-${stage}` },
-        // שער השלב (לבד / עם יועץ) — בהדגמה ממשיכים לבד כדי לראות את הכלי
-        { type: 'click', target: 'plan-stage-gate-self', optional: true },
+        // עמוד ההסבר של השלב — בהדגמה מתחילים את השלב כדי לראות את הכלי
+        { type: 'click', target: 'plan-stage-intro-start', optional: true },
       ],
       target: 'plan-stage-title',
       spotlight: { side: 'bottom' },

@@ -15,7 +15,6 @@ import {
   Check,
   ChevronRight,
   CreditCard,
-  Landmark,
   MapPin,
   Plus,
   Trash2,
@@ -34,6 +33,7 @@ import { startConsumerLoansImport } from '@/lib/consumer-loans-import';
 import {
   EMPLOYMENT_LABELS,
   EMPLOYMENT_TYPES,
+  NEW_PLAN_FLOW,
   analyzeProfile,
   borrowerLabels,
   dealMaxLtv,
@@ -47,6 +47,7 @@ import type {
   EmploymentType,
   FutureLumpSum,
   PlanData,
+  PlanFlow,
   ProfileIntent,
   ProfileLoan,
   ProfileScreen,
@@ -63,13 +64,15 @@ import {
 } from '../ui';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { pickProfileFromAnalysis } from '@/lib/client-profile';
-import { StageOverview } from './analysis/StageOverview';
+import { profileRecommendations } from '@/lib/profile-report';
+import { StageIntro } from '../StageIntro';
 import { ProfileReportPanel } from './analysis/ProfileReportPanel';
-import { PropertyOwnershipPanel } from './analysis/PropertyOwnershipPanel';
+import { OwnershipRow } from './analysis/OwnershipRow';
+import { NotesAlert } from './analysis/NotesAlert';
 import { IncomeCalculatorDialog } from './analysis/IncomeCalculatorDialog';
 import { DocumentsScreen } from './analysis/DocumentsScreen';
 import { RecommendationCallouts } from './analysis/RecommendationCallouts';
-import { AdvisorHelpButton } from './analysis/AdvisorHelpButton';
+import type { RecommendationNote } from './analysis/RecommendationCallouts';
 import { AdvisorLeadDialog } from '../advisor/AdvisorLeadDialog';
 
 const AFFORDABILITY_TOOL = '/mortgage-planning?flow=affordability';
@@ -126,25 +129,19 @@ const reveal = {
 /**
  * שלב 1 — הפרופיל הפיננסי.
  *
- * ההסבר על השלב, ואחריו המסכים אחד אחרי השני: הנכס והעסקה, מי לוקח, הכנסות
- * עתידיות, תיק המסמכים והדוח הסופי. הכל נשמר תוך כדי הקלדה, וההמלצות צפות
- * במסך שבו הנתון הרלוונטי מוזן. סרגל התת-שלבים מלווה את כל המסכים, כולל ההסבר.
- *
- * מי שבחר לבצע לבד מקבל כפתור צף לפנות ליועץ לעזרה בשלב; כשיועץ מטפל בשלב
- * (`advisorSummary`), ההסבר מוצג ומיד אחריו מסך «היועץ מטפל בשלב זה».
+ * עמוד ההסבר על השלב, ואחריו המסכים אחד אחרי השני: הנכס והעסקה, מי לוקח,
+ * הכנסות עתידיות, תיק המסמכים והדוח הסופי. הכל נשמר תוך כדי הקלדה, וההמלצות
+ * צפות במסך שבו הנתון הרלוונטי מוזן. סרגל התת-שלבים מלווה את כל המסכים, וכל
+ * תת-שלב פתוח בו בכל רגע. הפנייה ליועץ היא הכפתור הצף של שולחן העבודה.
  */
 export function AnalysisStage({
   data,
   onChange,
   planId,
   planName,
-  onRequestAdvisor,
-  advisorBusy = false,
   onChangeSigning,
-  advisorSummary,
-  onShowDetails,
   refinance = false,
-  hideAdvisorButton = false,
+  flow = NEW_PLAN_FLOW,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
@@ -154,19 +151,12 @@ export function AnalysisStage({
    * הון עצמי — והיעדרו אינו חוסם את המעבר לתת-השלב הבא.
    */
   refinance?: boolean;
-  /** הכפתור הצף של הפנייה ליועץ מוצג על ידי שולחן העבודה, ולא כאן */
-  hideAdvisorButton?: boolean;
+  /** סוג התהליך — לכותרות של עמוד ההסבר */
+  flow?: PlanFlow;
   /** הגדרת בעלות הנכס נשמרת על שלב החתימה, שהוא מקור האמת שלה */
   onChangeSigning?: (next: SigningData) => void;
   /** שם התהליך — מופיע בכותרת דוח הפרופיל שמורידים */
   planName?: string;
-  /** בקשת ליווי חינמית לשלב הפרופיל — מהכפתור הצף */
-  onRequestAdvisor?: () => void;
-  advisorBusy?: boolean;
-  /** יועץ מטפל בשלב: המסך שלו מוצג בסוף ההסבר, והשלב עצמו נפתח רק ב"פרטים נוספים" */
-  advisorSummary?: ReactNode;
-  /** מעבר לתת-שלב מהסרגל כשיועץ מטפל בשלב — פותח את הפירוט המלא */
-  onShowDetails?: () => void;
 }) {
   const profile = data.ANALYSIS;
   const profileSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,9 +200,13 @@ export function AnalysisStage({
     .filter((item) => PERSONAL_KEYS.includes(item.key))
     .every((item) => item.ok);
 
-  /* כשיועץ מטפל בשלב מוצג ההסבר, ואחריו המסך שלו — עד שהלקוח מבקש את הפירוט המלא */
-  const advisorMode = Boolean(advisorSummary);
-  const screen: ProfileScreen = advisorMode ? 'overview' : profile.profileScreen || 'overview';
+  const screen: ProfileScreen = profile.profileScreen || 'overview';
+  /*
+    ההערות שמוצגות כסימן קריאה ליד הנתון שהן מתייחסות אליו, במקום שורה מתחת
+    למודול. מתי הן מופיעות ומה כתוב בהן — בדיוק כמו קודם.
+  */
+  const recommendations = profileRecommendations(profile);
+  const noteById = (id: string) => recommendations.filter((item) => item.id === id);
 
   /* טופס פנייה ליועץ — נפתח מכפתור גיוס ההון העצמי כשההון חסר */
   const [equityHelpOpen, setEquityHelpOpen] = useState(false);
@@ -230,24 +224,12 @@ export function AnalysisStage({
 
   return (
     <div className="space-y-5">
-      {!advisorMode && !hideAdvisorButton && (
-        <AdvisorHelpButton onRequestAdvisor={onRequestAdvisor} busy={advisorBusy} />
-      )}
-
-      <ScreenRail
-        current={screen}
-        intent={profile.intent}
-        personalDone={personalDone}
-        onSelect={(target) => {
-          if (advisorMode && target !== 'overview') onShowDetails?.();
-          go(target);
-        }}
-      />
+      <ScreenRail current={screen} intent={profile.intent} onSelect={go} />
 
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' && (
           <motion.div key="overview" {...reveal}>
-            <StageOverview onStart={() => go('deal')} advisorSummary={advisorSummary} />
+            <StageIntro stage="ANALYSIS" flow={flow} onStart={() => go('deal')} />
           </motion.div>
         )}
 
@@ -300,6 +282,7 @@ export function AnalysisStage({
                   onIncome={(income) => patch({ income })}
                   onBank={(primaryBank) => patch({ primaryBank })}
                   showBank={!couple || profile.bankAccountMode !== 'JOINT'}
+                  bankNotes={noteById('primary-bank')}
                 />
                 {couple && (
                   <BorrowerBasicsCard
@@ -315,6 +298,7 @@ export function AnalysisStage({
                     onIncome={(partnerIncome) => patch({ partnerIncome })}
                     onBank={(partnerPrimaryBank) => patch({ partnerPrimaryBank })}
                     showBank={profile.bankAccountMode !== 'JOINT'}
+                    bankNotes={noteById('primary-bank')}
                   />
                 )}
               </div>
@@ -326,6 +310,7 @@ export function AnalysisStage({
                     title="הבנק של החשבון המשותף"
                     bank={profile.primaryBank}
                     onBank={(bank) => patch({ primaryBank: bank, partnerPrimaryBank: bank })}
+                    notes={noteById('primary-bank')}
                   />
                 </div>
               )}
@@ -532,12 +517,20 @@ export function AnalysisStage({
                     value={formatShekel(analysis.totalIncome)}
                     note={couple ? 'שני הלווים יחד' : undefined}
                   />
-                  <Metric
-                    label="החזר חודשי מרבי"
-                    value={formatShekel(analysis.maxMonthlyPayment)}
-                    note="לפי מגבלת יחס ההחזר של בנק ישראל"
-                    tone="good"
-                  />
+                  {/* הערת יחס ההחזר המשוער — סימן קריאה על תיבת ההחזר, ולא שורה מתחת */}
+                  <div className="relative">
+                    <Metric
+                      label="החזר חודשי מרבי"
+                      value={formatShekel(analysis.maxMonthlyPayment)}
+                      note="לפי מגבלת יחס ההחזר של בנק ישראל"
+                      tone="good"
+                    />
+                    <NotesAlert
+                      notes={noteById('repayment-ratio')}
+                      title="הערה על יחס ההחזר המשוער"
+                      className="absolute left-3 top-3"
+                    />
+                  </div>
                   <Metric
                     label="החזר על הלוואות קיימות"
                     value={formatShekel(profile.existingLoans ?? 0)}
@@ -548,18 +541,21 @@ export function AnalysisStage({
               )}
             </Panel>
 
-            <RecommendationCallouts profile={profile} screen="borrowers" patch={patch} />
+            <RecommendationCallouts
+              profile={profile}
+              screen="borrowers"
+              exclude={['repayment-ratio', 'primary-bank']}
+            />
 
             <ScreenFooter
               backLabel="הנכס והעסקה"
               onBack={() => go('deal')}
               nextLabel="המשך לצפי הכנסות עתידיות"
               onNext={() => go('future')}
-              nextDisabled={!personalDone}
               nextHint={
                 personalDone
                   ? undefined
-                  : `כדי להמשיך חסר: ${requirements
+                  : `עוד חסר: ${requirements
                       .filter((item) => PERSONAL_KEYS.includes(item.key) && !item.ok)
                       .map((item) => item.label)
                       .join(', ')}`
@@ -571,7 +567,7 @@ export function AnalysisStage({
         {screen === 'future' && (
           <motion.div key="future" {...reveal} className="space-y-5">
             <FutureIncomePanel profile={profile} patch={patch} />
-            <RecommendationCallouts profile={profile} screen="future" patch={patch} />
+            <RecommendationCallouts profile={profile} screen="future" />
             <ScreenFooter
               backLabel="מי לוקח את המשכנתא"
               onBack={() => go('borrowers')}
@@ -602,12 +598,13 @@ export function AnalysisStage({
               patch={patch}
               onNeedEquityHelp={onEquityHelp}
               refinance={refinance}
+              notes={recommendations.filter((item) => item.screens.includes('deal'))}
+              ownership={
+                onChangeSigning ? (
+                  <OwnershipRow signing={data.SIGNING} onChange={onChangeSigning} />
+                ) : null
+              }
             />
-            <RecommendationCallouts profile={profile} screen="deal" patch={patch} />
-
-            {onChangeSigning && (
-              <PropertyOwnershipPanel signing={data.SIGNING} onChange={onChangeSigning} />
-            )}
 
             <ScreenFooter
               backLabel="על השלב"
@@ -631,15 +628,17 @@ export function AnalysisStage({
   );
 }
 
+/**
+ * סרגל התת-שלבים. כל תת-שלב פתוח בכל רגע, כמו השלבים עצמם: מה שעוד חסר מוצג
+ * ריק בתת-השלב שנשען עליו, והלקוח משלים בסדר שהוא בוחר.
+ */
 function ScreenRail({
   current,
   intent,
-  personalDone,
   onSelect,
 }: {
   current: ProfileScreen;
   intent: ProfileIntent | null;
-  personalDone: boolean;
   onSelect: (screen: ProfileScreen) => void;
 }) {
   // הסדר כאן הוא סדר התת-שלבים בפועל (PROFILE_SCREENS), ולא סדר אחר
@@ -651,9 +650,9 @@ function ScreenRail({
       unlocked: true,
     },
     { id: 'borrowers', label: 'מי לוקח', unlocked: true },
-    { id: 'future', label: 'הכנסות עתידיות', unlocked: personalDone },
-    { id: 'documents', label: 'מסמכים', unlocked: personalDone },
-    { id: 'report', label: 'דוח הפרופיל', unlocked: personalDone && Boolean(intent) },
+    { id: 'future', label: 'הכנסות עתידיות', unlocked: true },
+    { id: 'documents', label: 'מסמכים', unlocked: true },
+    { id: 'report', label: 'דוח הפרופיל', unlocked: true },
   ];
 
   return (
@@ -750,6 +749,7 @@ function BorrowerBasicsCard({
   onIncome,
   onBank,
   showBank = true,
+  bankNotes = [],
 }: {
   title: string;
   firstName: string;
@@ -764,6 +764,8 @@ function BorrowerBasicsCard({
   onBank: (value: string | null) => void;
   /** בחשבון משותף הבנק מוצג בבלוק נפרד המשותף לשני הלווים, ולא בכרטיס */
   showBank?: boolean;
+  /** ההמלצה לכלול את הבנק של החשבון בבקשה — סימן קריאה ליד בורר הבנק */
+  bankNotes?: RecommendationNote[];
 }) {
   const [calculatorOpen, setCalculatorOpen] = useState(false);
 
@@ -816,7 +818,7 @@ function BorrowerBasicsCard({
 
       {showBank && (
         <div className="mt-4 text-center">
-          <BankChooser bank={bank} onBank={onBank} />
+          <BankChooser bank={bank} onBank={onBank} notes={bank ? bankNotes : []} />
         </div>
       )}
     </div>
@@ -828,16 +830,20 @@ function BankChooser({
   bank,
   onBank,
   title = 'הבנק של החשבון הראשי',
+  notes = [],
 }: {
   bank: string | null;
   onBank: (value: string | null) => void;
   title?: string;
+  /** ההמלצה לכלול את הבנק בבקשה לאישור עקרוני — נפתחת מסימן הקריאה */
+  notes?: RecommendationNote[];
 }) {
   return (
     <div className="text-center">
       <span className="mb-1.5 flex items-center justify-center gap-1.5 text-sm font-bold text-slate-700">
         <Building2 className="h-4 w-4 text-slate-400" />
         {title}
+        <NotesAlert notes={notes} title="הערה על הבנק של החשבון" className="mr-1" />
       </span>
       <p className="mb-2 text-xs leading-relaxed text-slate-500">
         החשבון שאליו מועברת ההכנסה העיקרית בכל חודש. יוצע כברירת מחדל באישור העקרוני.
@@ -861,21 +867,6 @@ function BankChooser({
           );
         })}
       </div>
-      {/* ההתרעה בשורה — ברגע שנבחר הבנק. ההמלצה המלאה מופיעה למטה ובדוח הסופי */}
-      {bank && (
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-3 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-right text-2xs leading-relaxed text-blue-900"
-        >
-          <Landmark className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
-          <span>
-            <span className="font-black">מומלץ לכלול את בנק {bank} בבנקים שאליהם תוגש הבקשה לאישור עקרוני.</span>{' '}
-            בנק שמנהל את החשבון שלכם נוטה לתת תנאים טובים יותר — הצעה ראשונית זולה ממנו תקל
-            בשלב המיקוח מול בנקים אחרים ותחסוך סבבי מיקוח. ההמלצה תופיע גם בדוח הסופי.
-          </span>
-        </motion.p>
-      )}
     </div>
   );
 }
@@ -1161,12 +1152,17 @@ function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId
   );
 }
 
-/** פרטי הנכס והעסקה — כתובת, סוג עסקה, ואז מחיר שממנו נגזרות המשכנתא ואחוז המימון */
+/**
+ * פרטי הנכס והעסקה — כתובת, מחיר, סוג עסקה, בעלות הנכס ורישום הזכויות, ואז
+ * ההון העצמי שממנו נגזרות המשכנתא ואחוז המימון.
+ */
 function PropertyPanel({
   profile,
   patch,
   onNeedEquityHelp,
   refinance = false,
+  notes,
+  ownership,
 }: {
   profile: AnalysisData;
   patch: (next: Partial<AnalysisData>) => void;
@@ -1174,6 +1170,10 @@ function PropertyPanel({
   onNeedEquityHelp: () => void;
   /** במיחזור אין הון עצמי לעסקה, ולכן אזור ההון העצמי אינו מוצג */
   refinance?: boolean;
+  /** ההערות של המסך (יחס החזר, יחס מימון קרוב לתקרה) — נפתחות מסימן הקריאה */
+  notes: RecommendationNote[];
+  /** שורת בעלות הנכס ורישום הזכויות, מתחת לשורת סוג העסקה */
+  ownership: ReactNode;
 }) {
   const analysis = analyzeProfile(profile);
   const dealType = profile.dealType;
@@ -1227,6 +1227,28 @@ function PropertyPanel({
     });
   };
 
+  /*
+    ההערות של המסך, כולל חריגת יחס ההחזר, נאספות לחלון צף שנפתח מסימן קריאה
+    במודול ההון העצמי — באותם תנאים שבהם הופיעו קודם כשורות מתחת למודול.
+  */
+  const ratioExceeded = !refinance && !analysis.ratioOk && propertyValue > 0 && equityEntered;
+  const importantNotes: RecommendationNote[] = ratioExceeded
+    ? [
+        ...notes,
+        {
+          id: 'ratio-exceeded',
+          tone: 'warning',
+          title: 'יחס ההחזר המשוער חורג מהמקובל בבנקים',
+          body: 'אפשר להאריך את התקופה, להקטין את מחיר הנכס או לסגור הלוואות קיימות לפני ההגשה.',
+        },
+      ]
+    : notes;
+  const notesButton = (
+    <NotesAlert notes={importantNotes} label="הערות חשובות" className="mx-auto" />
+  );
+  const equityBoxShown = !refinance && Boolean(dealType) && propertyValue > 0;
+  const refinanceBoxShown = refinance && propertyValue > 0;
+
   const applyCombinedLtv = (raw: number | null) => {
     if (raw === null || raw <= 0) {
       applyPropertyValue(profile.propertyValue, profile.dealType, null);
@@ -1241,7 +1263,7 @@ function PropertyPanel({
     <Panel
       centered
       title="הנכס והעסקה"
-      description="הכתובת, סוג העסקה ומחיר הנכס. אחרי המחיר נראה מה ההון העצמי המינימלי הנדרש, ותזינו את ההון הזמין לכם."
+      description="הכתובת, מחיר הנכס וסוג העסקה. אחרי המחיר וסוג העסקה נראה מה ההון העצמי המינימלי הנדרש, ותזינו את ההון הזמין לכם."
     >
       <div className="space-y-6">
         <div className="mx-auto max-w-xl text-center">
@@ -1259,6 +1281,23 @@ function PropertyPanel({
             תמהילים לאותה כתובת מקובצים ומושווים יחד באזור האישי. בלי כתובת הם מקובצים לפי סכום
             המשכנתא.
           </p>
+        </div>
+
+        {/* מחיר הנכס — מתחת לכתובת ובאותו עיצוב, לפני סוג העסקה */}
+        <div className="mx-auto max-w-xl text-center">
+          <span className="mb-1.5 flex items-center justify-center gap-1.5 text-sm font-bold text-slate-700">
+            <Banknote className="h-4 w-4 text-slate-400" />
+            מחיר הנכס
+          </span>
+          <div className="mx-auto w-56">
+            <NumberField
+              label=""
+              value={profile.propertyValue}
+              onChange={(value) => applyPropertyValue(value, profile.dealType)}
+              suffix="₪"
+              placeholder="2,000,000"
+            />
+          </div>
         </div>
 
         <div>
@@ -1312,27 +1351,15 @@ function PropertyPanel({
           )}
         </div>
 
-        {dealType && (
-          <div className="text-center">
-            <span className="mb-2 block text-base font-black text-slate-800">מחיר הנכס</span>
-            <div className="mx-auto w-56">
-              <NumberField
-                label=""
-                value={profile.propertyValue}
-                onChange={(value) => applyPropertyValue(value, dealType)}
-                suffix="₪"
-                placeholder="2,000,000"
-              />
-            </div>
-          </div>
-        )}
+        {ownership}
 
         {/*
           במיחזור אין הון עצמי לעסקה: הסכום הממוחזר הוא יתרת המשכנתא הקיימת,
           והוא נקבע בכלי המיחזור. במקום אזור ההון העצמי מוצג מה שהבנק כן בוחן.
         */}
-        {refinance && propertyValue > 0 && (
+        {refinanceBoxShown && (
           <div className="mx-auto max-w-xl space-y-1 rounded-3xl border-2 border-slate-200 bg-slate-50 p-5 text-center">
+            {importantNotes.length > 0 && <div className="mb-2 flex justify-center">{notesButton}</div>}
             <p className="text-sm font-black text-slate-800">במיחזור אין צורך בהון עצמי</p>
             <p className="text-xs font-medium leading-relaxed text-slate-600">
               הנכס כבר בבעלותכם, והסכום שממוחזר הוא יתרת המשכנתא הקיימת כפי שהזנתם בכלי המיחזור.
@@ -1342,8 +1369,9 @@ function PropertyPanel({
         )}
 
         {/* ההון העצמי — נדרש מול זמין, אחרי שנקבע מחיר הנכס */}
-        {!refinance && dealType && propertyValue > 0 && (
+        {equityBoxShown && (
           <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50 p-5 text-center">
+            {importantNotes.length > 0 && <div className="flex justify-center">{notesButton}</div>}
             <div>
               <span className="block text-sm font-bold text-slate-600">הון עצמי מינימלי נדרש</span>
               <span className="mt-0.5 block text-2xl font-black tabular-nums text-slate-900">
@@ -1418,12 +1446,9 @@ function PropertyPanel({
           </div>
         )}
 
-        {!refinance && !analysis.ratioOk && propertyValue > 0 && equityEntered && (
-          <p className="mx-auto flex max-w-xl items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            יחס ההחזר המשוער חורג מהמקובל בבנקים. אפשר להאריך את התקופה, להקטין את מחיר הנכס או לסגור
-            הלוואות קיימות לפני ההגשה.
-          </p>
+        {/* הערות שאין עדיין מודול להציג בו את הסימן — למשל לפני שהוזן מחיר */}
+        {!equityBoxShown && !refinanceBoxShown && importantNotes.length > 0 && (
+          <div className="flex justify-center">{notesButton}</div>
         )}
       </div>
     </Panel>
@@ -1512,6 +1537,32 @@ function FutureIncomePanel({
   const addLumpSum = () =>
     patch({ futureLumpSums: [...profile.futureLumpSums, newLumpSum()] });
 
+  /*
+    השאלה פותחת את המסך: רק מי שעונה "כן" רואה את שתי האפשרויות — סכום חד-פעמי
+    וצפי להגדלת ההכנסה הפנויה. תהליך ישן שכבר הוזנו בו סכומים לפני שהשאלה
+    נשאלה כאן נפתח כאילו נענה "כן", כדי שהסכומים לא ייעלמו מהעין.
+  */
+  const hasFutureData =
+    profile.futureLumpSums.length > 0 ||
+    (profile.futureMonthlyIncrease ?? 0) > 0 ||
+    (profile.futureMonthlyIncreaseInYears ?? 0) > 0;
+  const answer = profile.expectsIncomeIncrease ?? (hasFutureData ? true : null);
+
+  const answerNo = () => {
+    if (
+      hasFutureData &&
+      !window.confirm('הסכומים העתידיים שהזנתם יימחקו מהפרופיל. להמשיך?')
+    ) {
+      return;
+    }
+    patch({
+      expectsIncomeIncrease: false,
+      futureLumpSums: [],
+      futureMonthlyIncrease: null,
+      futureMonthlyIncreaseInYears: null,
+    });
+  };
+
   return (
     <Panel
       centered
@@ -1519,6 +1570,43 @@ function FutureIncomePanel({
       description="כסף שצפוי להיכנס בהמשך, והכנסה שצפויה לגדול, משנים את התמהיל שכדאי לבנות. שניהם נכנסים לתכנון בשלב הבא — ולכן שווה להזין אותם כאן, גם אם המועד עוד לא מדויק."
     >
       <div className="space-y-5">
+        <div className="mx-auto max-w-xl text-center">
+          <span className="mb-2 flex items-center justify-center gap-1.5 text-base font-black text-slate-800">
+            <TrendingUp className="h-4 w-4 text-slate-400" />
+            האם צפויה הגדלה בהכנסה הפנויה?
+          </span>
+          <p className="mb-3 text-sm leading-relaxed text-slate-500">
+            סכום חד-פעמי שייכנס (קרן השתלמות, מענק, ירושה) או הכנסה חודשית שתגדל (סיום הלוואה,
+            קידום, חזרה לעבודה מלאה).
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => patch({ expectsIncomeIncrease: true })}
+              className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-button font-bold transition-all ${
+                answer === true
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+              }`}
+            >
+              כן, צפויה הגדלה
+            </button>
+            <button
+              type="button"
+              onClick={answerNo}
+              className={`flex-1 rounded-xl border-2 px-4 py-2.5 text-button font-bold transition-all ${
+                answer === false
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+              }`}
+            >
+              לא צפויה
+            </button>
+          </div>
+        </div>
+
+        {answer === true && (
+          <>
         {/* כסף חד-פעמי — אזור בצבע אחד, כי הוא הופך לפירעון מוקדם */}
         <section className="rounded-3xl border-2 border-blue-200 bg-blue-50 p-5">
           <header className="mb-4 text-center">
@@ -1632,7 +1720,15 @@ function FutureIncomePanel({
               max={30}
             />
           </div>
+          {(profile.futureMonthlyIncrease ?? 0) > 0 &&
+            (profile.futureMonthlyIncreaseInYears ?? 0) <= 0 && (
+              <p className="mt-2 text-center text-2xs text-slate-400">
+                הזינו בעוד כמה שנים צפויה העלייה — לפי זה ייקבע אורך מסלול הגרייס המומלץ.
+              </p>
+            )}
         </section>
+          </>
+        )}
       </div>
     </Panel>
   );

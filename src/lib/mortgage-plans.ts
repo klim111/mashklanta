@@ -436,7 +436,10 @@ async function closeStage(planId: string, stage: PlanStageId, data: PlanData): P
   }
 }
 
-/** מעבר ידני בין שלבים — רק לשלב שכבר נפתח */
+/**
+ * מעבר ידני בין שלבים — לכל שלב, גם כשהשלבים שלפניו עוד לא הושלמו. הלקוח
+ * משלים את השלבים בסדר שהוא בוחר; שלב שנפתח כך לראשונה עובר ל"בעבודה".
+ */
 export async function setCurrentStage(
   userId: string,
   planId: string,
@@ -448,7 +451,13 @@ export async function setCurrentStage(
     where: { planId_stage: { planId, stage } },
     select: { status: true },
   });
-  if (!row || row.status === 'PENDING') return null;
+  if (!row) return null;
+  if (row.status === 'PENDING') {
+    await prisma.mortgagePlanStage.update({
+      where: { planId_stage: { planId, stage } },
+      data: { status: 'IN_PROGRESS' },
+    });
+  }
 
   await prisma.mortgagePlan.update({ where: { id: planId }, data: { currentStage: stage } });
   return getPlanForUser(userId, planId);
@@ -630,6 +639,25 @@ export async function persistFinalMix(
 
   await refreshPlan(planId);
   return getPlanForUser(userId, planId);
+}
+
+/**
+ * פתיחת התמהיל הסופי חזרה לעריכה: שלב התמהיל ממשיך להצביע על אותו תמהיל,
+ * אבל הוא כבר לא סופי ולא נעול. סטטוס השלב לא משתנה — בחירה מחדש כסופי מאשרת
+ * אותו שוב.
+ */
+export async function clearFinalMix(userId: string, planId: string, recordId: string): Promise<void> {
+  if (!(await assertAccess(userId, planId))) return;
+  const data = await loadData(planId);
+  if (data.MIX.mixRecordId && data.MIX.mixRecordId !== recordId) return;
+  const mix: MixData = { ...data.MIX, isFinal: false, finalLocked: false };
+
+  await prisma.mortgagePlanStage.updateMany({
+    where: { planId, stage: 'MIX' },
+    data: { dataJson: mix as unknown as Prisma.InputJsonValue },
+  });
+
+  await refreshPlan(planId);
 }
 
 /**

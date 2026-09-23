@@ -32,6 +32,7 @@ import {
   usesForwardPricedRate,
 } from './PrimeForwardChart';
 import { InflationForecastChart } from './InflationForecastChart';
+import { InfoTip } from '@/components/ui/info-tip';
 import { isIndexLinked } from '../scenarioCalculations';
 
 interface WorkspaceChartsProps {
@@ -55,6 +56,16 @@ interface WorkspaceChartsProps {
    * הוא חוזר על עצמו ורק גוזל גובה — ואז אפשר לכבות אותו כאן.
    */
   showCompositionStrip?: boolean;
+  /**
+   * בלי מסגרת הכרטיס והכותרת — כשהגרפים יושבים בתוך מודול שכבר נושא את הכותרת
+   * ואת כפתורי המעבר בין ניתוח גרפי להשוואה.
+   */
+  bare?: boolean;
+  /**
+   * עמודה צרה לצד אזור העבודה: שני גרפים בשורה במקום שלושה, ונמוכים יותר, כדי
+   * שהתוצאות יישארו על המסך בזמן שמשנים פרמטרים במסלולים.
+   */
+  split?: boolean;
 }
 
 interface TrackRow {
@@ -139,7 +150,20 @@ export function WorkspaceCharts({
   onFocusTrack,
   showForecasts = true,
   showCompositionStrip = true,
+  bare = false,
+  split = false,
 }: WorkspaceChartsProps) {
+  /**
+   * פריסת אזור הגרפים: שלוש עמודות ברוחב מלא. בעמודה שלצד אזור העבודה (ממסך
+   * רחב) — שתיים, כי העמודה ברוחב חצי מסך.
+   */
+  const grid = split
+    ? 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2'
+    : 'grid gap-3 lg:grid-cols-3';
+  const fullRow = split ? 'sm:col-span-2 lg:col-span-3 xl:col-span-2' : 'lg:col-span-3';
+  const chartHeight = split ? 190 : 230;
+  /** בעמודה הצרה ההסבר של כל גרף עובר לאייקון מידע ליד הכותרת, כדי לפנות גובה */
+  const compact = split;
   /** המסלול שבמיקוד — כל הגרפים והביאורים שלו מוצגים כאן, ולא בתוך הפאנל */
   const focusTrack = focusTrackId
     ? result.tracks.find((item) => item.track.id === focusTrackId) ?? null
@@ -222,10 +246,10 @@ export function WorkspaceCharts({
     typeof value === 'number' ? formatShekel(value) : value;
   const labelFormatter = (label: number | string) => `שנה ${label}`;
 
-  return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="pb-2">
+  const header = (
+    <>
         <div className="flex flex-wrap items-center justify-between gap-2">
+          {!bare && (
           <CardTitle className="text-base flex items-center gap-2">
             <LineChartIcon className="h-4 w-4 text-blue-600" />
             ניתוח גרפי
@@ -235,16 +259,41 @@ export function WorkspaceCharts({
               </span>
             )}
           </CardTitle>
+          )}
+          {bare && focusTrack && (
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-800">
+                {TRACK_TYPES[focusTrack.track.type]}
+              </span>
+              {split && onFocusTrack && (
+                <button
+                  type="button"
+                  onClick={() => onFocusTrack(null)}
+                  className="rounded-full border border-violet-200 px-2 py-0.5 text-2xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
+                >
+                  חזרה לכל התמהיל
+                </button>
+              )}
+            </span>
+          )}
           <span className="text-2xs text-slate-500 flex items-center gap-1">
             <MousePointerClick className="h-3.5 w-3.5" />
             {focusTrack
-              ? 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
-              : 'לחיצה על מסלול בפס מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'}
+              ? split
+                ? 'מוצגים הגרפים של המסלול שנבחר'
+                : 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
+              : split
+                ? 'לחיצה על מסלול בפס שבאזור העבודה מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'
+                : 'לחיצה על מסלול בפס מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'}
           </span>
         </div>
 
-        {/* פס ההרכב — אותה תצוגה שבכלי המיחזור, ולחיצה מחליפה את אזור הגרפים */}
-        {showCompositionStrip && (
+        {/*
+          פס ההרכב — אותה תצוגה שבכלי המיחזור, ולחיצה מחליפה את אזור הגרפים.
+          בעמודה שלצד אזור העבודה הוא לא חוזר כאן: הפס שבשורת התמהיל ממלא את
+          אותו תפקיד, והגובה נשאר לגרפים.
+        */}
+        {showCompositionStrip && !split && (
         <div className="pt-2">
           <TrackCompositionStrip
             tracks={result.mix.tracks}
@@ -260,20 +309,27 @@ export function WorkspaceCharts({
           />
         </div>
         )}
-      </CardHeader>
+    </>
+  );
 
-      <CardContent className="grid gap-3 lg:grid-cols-3">
+  const charts = (
+    <>
         {focusTrack && (
           <TrackFocusCharts
             track={focusTrack}
             assumptions={result.mix.assumptions}
             showForecasts={showForecasts}
+            fullRow={fullRow}
+            chartHeight={chartHeight}
+            compact={compact}
           />
         )}
 
         {!focusTrack && (
           <>
         <ChartPanel
+          height={chartHeight}
+          compact={compact}
           title="יתרת החוב"
           hint="קצב סילוק הקרן. במסלולים צמודי מדד היתרה גדלה עם המדד וקצב הסילוק מואט."
         >
@@ -310,6 +366,8 @@ export function WorkspaceCharts({
         </ChartPanel>
 
         <ChartPanel
+          height={chartHeight}
+          compact={compact}
           title="החזר חודשי"
           hint={
             `${
@@ -382,6 +440,8 @@ export function WorkspaceCharts({
         </ChartPanel>
 
         <ChartPanel
+          height={chartHeight}
+          compact={compact}
           title="קרן מול ריבית מצטברת"
           hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן."
         >
@@ -414,16 +474,16 @@ export function WorkspaceCharts({
         </ChartPanel>
 
         {showForecasts && primeExpectations.length >= 2 && (
-          <div className="lg:col-span-3">
+          <div className={fullRow}>
             <PrimeForwardChart
               previewPoints={primeExpectations}
               quotedRate={primeTrack?.track.interestRate}
-              height={230}
+              height={chartHeight}
             />
           </div>
         )}
         {showForecasts && hasVariableUnlinked && (
-          <div className="lg:col-span-3">
+          <div className={fullRow}>
             <VariableForwardChart
               tracks={result.tracks}
               quotedRate={
@@ -431,25 +491,40 @@ export function WorkspaceCharts({
                   ? result.tracks.find((t) => t.track.type === 'variable_unlinked')?.track.interestRate
                   : undefined
               }
-              height={230}
+              height={chartHeight}
             />
           </div>
         )}
         {showForecasts && hasIndexed && (
-          <div className="lg:col-span-3">
+          <div className={fullRow}>
             <InflationForecastChart
               assumptions={result.mix.assumptions}
               years={Math.max(
                 ...result.tracks.filter((t) => isIndexLinked(t.track.type)).map((t) => t.track.years),
                 1
               )}
-              height={230}
+              height={chartHeight}
             />
           </div>
         )}
           </>
         )}
-      </CardContent>
+    </>
+  );
+
+  if (bare) {
+    return (
+      <div className="space-y-3">
+        <div>{header}</div>
+        <div className={grid}>{charts}</div>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="border-slate-200 shadow-sm">
+      <CardHeader className="pb-2">{header}</CardHeader>
+      <CardContent className={grid}>{charts}</CardContent>
     </Card>
   );
 }
@@ -462,10 +537,17 @@ function TrackFocusCharts({
   track,
   assumptions,
   showForecasts,
+  fullRow,
+  chartHeight,
+  compact,
 }: {
   track: TrackResult;
   assumptions: MixResult['mix']['assumptions'];
   showForecasts: boolean;
+  /** מחלקת הרוחב של שורה מלאה בפריסה הנוכחית */
+  fullRow: string;
+  chartHeight: number;
+  compact: boolean;
 }) {
   const rows = trackRows(track);
   const data = track.track;
@@ -487,7 +569,7 @@ function TrackFocusCharts({
 
   return (
     <>
-      <div className="lg:col-span-3">
+      <div className={fullRow}>
         <div className="grid gap-2 rounded-xl border border-violet-200 bg-violet-50 p-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <TrackStat label="החזר חודשי" value={track.monthlyPayment > 0.01 ? formatShekel(track.monthlyPayment) : 'אין החזר שוטף'} />
           <TrackStat label="סך ריבית" value={formatShekel(track.totalInterest)} />
@@ -499,7 +581,7 @@ function TrackFocusCharts({
         </div>
       </div>
 
-      <ChartPanel title="יתרת החוב במסלול" hint="קצב סילוק הקרן במסלול שנבחר.">
+      <ChartPanel height={chartHeight} compact={compact} title="יתרת החוב במסלול" hint="קצב סילוק הקרן במסלול שנבחר.">
         <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis dataKey="year" tick={{ fontSize: 10 }} />
@@ -518,6 +600,8 @@ function TrackFocusCharts({
       </ChartPanel>
 
       <ChartPanel
+          height={chartHeight}
+          compact={compact}
         title="החזר חודשי במסלול"
         hint="ההחזר של המסלול לאורך התקופה, ומתחתיו פיצול כל החזר לקרן (ירוק) ולריבית (אדום) לפי לוח הסילוקין."
       >
@@ -560,7 +644,7 @@ function TrackFocusCharts({
         </ComposedChart>
       </ChartPanel>
 
-      <ChartPanel title="קרן מול ריבית במסלול" hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן.">
+      <ChartPanel height={chartHeight} compact={compact} title="קרן מול ריבית במסלול" hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן.">
         <AreaChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis dataKey="year" tick={{ fontSize: 10 }} />
@@ -589,27 +673,27 @@ function TrackFocusCharts({
       </ChartPanel>
 
       {showForecasts && data.type === 'prime' && primeExpectations.length >= 2 && (
-        <div className="lg:col-span-3">
+        <div className={fullRow}>
           <PrimeForwardChart
             previewPoints={primeExpectations}
             quotedRate={data.interestRate}
-            height={220}
+            height={chartHeight}
           />
         </div>
       )}
       {showForecasts && data.type === 'variable_unlinked' && track.schedule.length > 1 && (
-        <div className="lg:col-span-3">
-          <VariableForwardChart tracks={[track]} quotedRate={data.interestRate} height={220} />
+        <div className={fullRow}>
+          <VariableForwardChart tracks={[track]} quotedRate={data.interestRate} height={chartHeight} />
         </div>
       )}
       {showForecasts && isIndexLinked(data.type) && track.schedule.length > 1 && (
-        <div className="lg:col-span-3">
-          <InflationForecastChart assumptions={assumptions} years={data.years} height={220} />
+        <div className={fullRow}>
+          <InflationForecastChart assumptions={assumptions} years={data.years} height={chartHeight} />
         </div>
       )}
 
       {/* הביאורים של המסלול — אותם הסברים שהיו בתוך המסלול, כאן לצד הגרפים */}
-      <div className="space-y-2 lg:col-span-3">
+      <div className={`space-y-2 ${fullRow}`}>
         {showsRateChangeNote(data.type) && track.monthlyPayment > 0.01 && (
           <p className="text-2xs leading-snug text-slate-500">{CURRENT_RATE_PAYMENT_NOTE}</p>
         )}
@@ -675,17 +759,35 @@ function TrackStat({ label, value }: { label: string; value: string }) {
 function ChartPanel({
   title,
   hint,
+  height = 230,
+  compact = false,
   children,
 }: {
   title: string;
   hint: string;
+  height?: number;
+  /** ההסבר באייקון מידע ליד הכותרת במקום בשורה מתחתיה */
+  compact?: boolean;
   children: React.ReactElement;
 }) {
+  if (compact) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-3">
+        <p className="mb-2 flex items-center gap-1 text-sm font-semibold text-slate-800">
+          {title}
+          <InfoTip text={hint} label={`הסבר: ${title}`} />
+        </p>
+        <ResponsiveContainer width="100%" height={height}>
+          {children}
+        </ResponsiveContainer>
+      </div>
+    );
+  }
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-sm font-semibold text-slate-800">{title}</p>
       <p className="text-2xs text-slate-500 mb-2 leading-snug">{hint}</p>
-      <ResponsiveContainer width="100%" height={230}>
+      <ResponsiveContainer width="100%" height={height}>
         {children}
       </ResponsiveContainer>
     </div>

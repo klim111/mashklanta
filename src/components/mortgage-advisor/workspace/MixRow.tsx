@@ -11,6 +11,8 @@ import {
   Coins,
   Gavel,
   Info,
+  Lock,
+  LockOpen,
   Pencil,
   Percent,
   Wallet,
@@ -56,6 +58,15 @@ interface MixRowProps {
   onEnterQuote?: () => void;
   /** בחירת התמהיל כתמהיל הסופי — משם ממשיכים להזנת הריביות מהבנקים בשלב 4 */
   onSelectAsFinal?: () => void;
+  /** התמהיל נבחר כתמהיל הסופי להגשה לבנקים ונעול לשינויים */
+  final?: boolean;
+  /** פתיחת התמהיל הסופי חזרה לעריכה */
+  onReopenFinal?: () => void;
+  /**
+   * הפעולות בשורה משלהן מתחת לשם, גם במסך רחב — כשהשורה יושבת בעמודה צרה
+   * (אזור העבודה שלצד הניתוח הגרפי) ואין לידה מקום לשם ולכפתורים יחד.
+   */
+  stackActions?: boolean;
   /** מה שנפתח מתחת לשורה כשהיא פתוחה */
   detail?: React.ReactNode;
   hint?: string;
@@ -97,6 +108,9 @@ export function MixRow({
   onRequestQuote,
   onEnterQuote,
   onSelectAsFinal,
+  final = false,
+  onReopenFinal,
+  stackActions = false,
   detail,
   hint,
   note,
@@ -166,7 +180,9 @@ export function MixRow({
   return (
     <div
       className={`rounded-2xl border bg-white shadow-sm transition-all ${
-        active
+        final
+          ? 'border-2 border-emerald-500 ring-2 ring-emerald-100'
+          : active
           ? 'border-blue-500 ring-2 ring-blue-100'
           : selected
             ? 'border-blue-300'
@@ -245,9 +261,15 @@ export function MixRow({
                   )}
                 </>
               )}
-              {active && (
+              {active && !final && (
                 <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-2xs shrink-0">
                   בניתוח
+                </Badge>
+              )}
+              {final && (
+                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600 text-xs shrink-0">
+                  <Lock className="ml-1 h-3 w-3" />
+                  תמהיל שנבחר כתמהיל סופי
                 </Badge>
               )}
               {mix.quote && (
@@ -276,10 +298,16 @@ export function MixRow({
             </p>
           </div>
 
-          {(actions || onRequestQuote || onEnterQuote || onSelectAsFinal) && (
-            <span onClick={stopRowClick} className="flex w-full flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:shrink-0 lg:justify-end">
+          {(actions || onRequestQuote || onEnterQuote || onSelectAsFinal || onReopenFinal) && (
+            <span
+              onClick={stopRowClick}
+              className={`flex w-full flex-wrap items-center justify-center gap-1.5 ${
+                stackActions ? 'order-last sm:justify-start' : 'lg:w-auto lg:shrink-0 lg:justify-end'
+              }`}
+            >
               {onRequestQuote && <RequestQuoteButton onClick={onRequestQuote} />}
-              {onSelectAsFinal && <SelectFinalButton onClick={onSelectAsFinal} />}
+              {onSelectAsFinal && !final && <SelectFinalButton onClick={onSelectAsFinal} />}
+              {final && onReopenFinal && <ReopenFinalButton onClick={onReopenFinal} />}
               {onEnterQuote && <EnterQuoteButton onClick={onEnterQuote} />}
               {actions}
             </span>
@@ -413,6 +441,30 @@ export function SelectFinalButton({
     >
       <Gavel className="h-3.5 w-3.5" />
       בחר כתמהיל סופי
+    </button>
+  );
+}
+
+/**
+ * פתיחת התמהיל הסופי חזרה לעריכה. הבחירה כסופי מתבטלת, ובחירה מחדש נועלת
+ * אותו שוב.
+ */
+export function ReopenFinalButton({
+  onClick,
+  className = '',
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="ביטול הנעילה ופתיחת התמהיל לעריכה"
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-400 bg-white px-2.5 py-2 text-2xs font-bold text-emerald-900 transition-colors hover:bg-emerald-50 sm:py-1.5 ${className}`}
+    >
+      <LockOpen className="h-3.5 w-3.5" />
+      פתח תמהיל לעריכה
     </button>
   );
 }
