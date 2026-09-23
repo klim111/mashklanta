@@ -10,8 +10,6 @@ import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
 import { GuestStart } from '@/components/service-flow/GuestStart';
-import { HeroScreenShowcase } from '@/components/home/HeroScreenShowcase';
-import { PlatformDemoSection } from '@/components/home/PlatformDemoSection';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
@@ -205,16 +203,8 @@ export default function Home() {
               </svg>
             </div>
           </div>
-
-          {/* Slide 4: המסכים האמיתיים — האזור האישי ושלבי התהליך */}
-          <div className="absolute inset-0 opacity-0 animate-carousel-slide-4 flex items-end justify-center pb-[12%]">
-            <HeroScreenShowcase />
-          </div>
         </div>
       </motion.section>
-
-      {/* ראו את הפלטפורמה מבפנים — המסכים האמיתיים, לפי מה שמתאים לצופה */}
-      <PlatformDemoSection />
 
       {/* Action Cards Section */}
         <motion.section
@@ -231,23 +221,14 @@ export default function Home() {
             <FreeToolsSection />
           </div>
 
+          {/* מה תרצו לעשות? — נקודת הכניסה, גם למי שעדיין לא נרשם */}
+          <div id="start" className="mt-8 scroll-mt-24 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
+            <GuestStart />
+          </div>
+
           {/* הכירו את הכלים — הדגמה חיה לכל כלי, מתוך קטלוג ההדגמות */}
           <div className="mt-8 rounded-3xl border border-indigo-100 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10">
             <DemoCatalogSection />
-          </div>
-
-          {/* הגשר בין הכלים לבחירה */}
-          <div className="my-8 flex items-center justify-center gap-4">
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300 to-transparent" />
-            <p className="text-center text-lg font-black text-slate-700 md:text-xl">
-              כבר מבינים את תמונת המצב ורוצים להתקדם?
-            </p>
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300 to-transparent" />
-          </div>
-
-          {/* מה תרצו לעשות? — נקודת הכניסה, גם למי שעדיין לא נרשם */}
-          <div id="start" className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
-            <GuestStart />
           </div>
         </div>
         </motion.section>

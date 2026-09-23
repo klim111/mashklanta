@@ -172,50 +172,34 @@
 }
 
 /*
- * קרוסלת הראש: שלושה סליידים של מסר (3.4 שניות כל אחד) ואחריהם הסלייד של
- * המסכים האמיתיים, שמקבל את רוב המחזור — שם מתחלפים האזור האישי ומסכי
- * השלבים, ולכן הוא צריך זמן מסך אמיתי.
+ * קרוסלת הראש: שלושה מסכים מתחלפים — פשטות ושקיפות, ניווט לאורך השלבים
+ * ותמהיל אופטימלי. כל מסך מוצג כארבע שניות מתוך מחזור של 12.
  */
 @keyframes carousel-slide {
-  0%, 14% {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  3%, 30% {
     opacity: 1;
     transform: scale(1);
   }
-  17%, 100% {
+  33%, 100% {
     opacity: 0;
     transform: scale(0.98);
   }
 }
 
-@keyframes carousel-screens {
-  0%, 50% {
-    opacity: 0;
-    transform: scale(0.985);
-  }
-  53%, 97% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.985);
-  }
-}
-
 .animate-carousel-slide-1 {
-  animation: carousel-slide 22s ease-in-out infinite;
+  animation: carousel-slide 12s ease-in-out infinite;
 }
 
 .animate-carousel-slide-2 {
-  animation: carousel-slide 22s ease-in-out infinite 3.6s;
+  animation: carousel-slide 12s ease-in-out infinite 4s;
 }
 
 .animate-carousel-slide-3 {
-  animation: carousel-slide 22s ease-in-out infinite 7.2s;
-}
-
-.animate-carousel-slide-4 {
-  animation: carousel-screens 22s ease-in-out infinite;
+  animation: carousel-slide 12s ease-in-out infinite 8s;
 }
 
 /* Financial Elements Animation */
