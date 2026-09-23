@@ -86,6 +86,9 @@ interface MixListProps {
   activeFinal?: boolean;
   /** פתיחת התמהיל הסופי חזרה לעריכה */
   onReopenFinal?: () => void;
+  /** המסלול שבמיקוד באזור הגרפים — לחיצה על מסלול בפס של התמהיל שבעבודה */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
   onSaveBankQuote?: (quoted: WorkspaceMix) => Promise<void> | void;
   /** פתיחת התמהיל שהתקבל מהבנק באזור העבודה */
   onOpenBankQuote?: (quoted: WorkspaceMix) => void;
@@ -138,6 +141,8 @@ export function MixList({
   onSelectAsFinal,
   activeFinal = false,
   onReopenFinal,
+  focusTrackId = null,
+  onFocusTrack,
 }: MixListProps) {
   /** התמהיל שממנו מפיקים עכשיו מכתב בקשת ריביות לבנקים */
   const [quoteTarget, setQuoteTarget] = useState<{
@@ -328,6 +333,8 @@ export function MixList({
               final={activeFinal}
               stackActions
               onReopenFinal={onReopenFinal}
+              focusTrackId={focusTrackId}
+              onFocusTrack={onFocusTrack}
               actions={
                 <>
                   <button

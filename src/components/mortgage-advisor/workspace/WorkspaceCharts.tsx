@@ -261,20 +261,39 @@ export function WorkspaceCharts({
           </CardTitle>
           )}
           {bare && focusTrack && (
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-800">
-              {TRACK_TYPES[focusTrack.track.type]}
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-800">
+                {TRACK_TYPES[focusTrack.track.type]}
+              </span>
+              {split && onFocusTrack && (
+                <button
+                  type="button"
+                  onClick={() => onFocusTrack(null)}
+                  className="rounded-full border border-violet-200 px-2 py-0.5 text-2xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
+                >
+                  חזרה לכל התמהיל
+                </button>
+              )}
             </span>
           )}
           <span className="text-2xs text-slate-500 flex items-center gap-1">
             <MousePointerClick className="h-3.5 w-3.5" />
             {focusTrack
-              ? 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
-              : 'לחיצה על מסלול בפס מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'}
+              ? split
+                ? 'מוצגים הגרפים של המסלול שנבחר'
+                : 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
+              : split
+                ? 'לחיצה על מסלול בפס שבאזור העבודה מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'
+                : 'לחיצה על מסלול בפס מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'}
           </span>
         </div>
 
-        {/* פס ההרכב — אותה תצוגה שבכלי המיחזור, ולחיצה מחליפה את אזור הגרפים */}
-        {showCompositionStrip && (
+        {/*
+          פס ההרכב — אותה תצוגה שבכלי המיחזור, ולחיצה מחליפה את אזור הגרפים.
+          בעמודה שלצד אזור העבודה הוא לא חוזר כאן: הפס שבשורת התמהיל ממלא את
+          אותו תפקיד, והגובה נשאר לגרפים.
+        */}
+        {showCompositionStrip && !split && (
         <div className="pt-2">
           <TrackCompositionStrip
             tracks={result.mix.tracks}

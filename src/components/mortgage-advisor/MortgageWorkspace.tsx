@@ -1221,6 +1221,8 @@ export function MortgageWorkspace({
           onOpenBankQuote={openBankQuote}
           onSelectAsFinal={allowSelectFinal ? setFinalCandidateId : undefined}
           activeFinal={Boolean(mix.locked)}
+          focusTrackId={focusTrackId}
+          onFocusTrack={setFocusTrackId}
           onReopenFinal={allowSelectFinal ? () => setReopenOpen(true) : undefined}
           activeActions={
             <>
