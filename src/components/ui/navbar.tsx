@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { MenuIcon, Shield, LogIn, UserCheck } from "lucide-react";
+import { MenuIcon, Shield, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import AdvisorLoginModal from "@/components/ui/AdvisorLoginModal";
 import Mashkalanta from "@/components/ui/mashkalanta";
 import { demoId } from '@/demo/demo-attr';
 
@@ -24,7 +22,6 @@ const linkClass =
 
 export default function NavBar() {
   const { data: session } = useSession();
-  const [showAdvisorModal, setShowAdvisorModal] = useState(false);
 
   return (
     <header className="bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100 px-4 md:px-6 py-2 flex justify-between items-center gap-3" {...demoId('nav-root')}>
@@ -78,14 +75,13 @@ export default function NavBar() {
               </Button>
             </Link>
 
-            <Button
-              size="lg"
-              className="font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-              onClick={() => setShowAdvisorModal(true)}
-            >
-              <UserCheck className="w-4 h-4 ml-2" />
-              כניסה ליועצים
-            </Button>
+            {/* כניסת יועצים נמצאת בתחתית מסך ההתחברות */}
+            <Link href="/auth/register">
+              <Button size="lg" className="font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
+                <UserPlus className="w-4 h-4 ml-2" />
+                הרשמה
+              </Button>
+            </Link>
           </div>
         )}
       </div>
@@ -149,14 +145,12 @@ export default function NavBar() {
                     </Button>
                   </Link>
 
-                  <Button
-                    size="lg"
-                    className="w-full font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                    onClick={() => setShowAdvisorModal(true)}
-                  >
-                    <UserCheck className="w-4 h-4 ml-2" />
-                    כניסה ליועצים
-                  </Button>
+                  <Link href="/auth/register">
+                    <Button size="lg" className="w-full font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
+                      <UserPlus className="w-4 h-4 ml-2" />
+                      הרשמה
+                    </Button>
+                  </Link>
                 </>
               )}
             </div>
@@ -164,7 +158,6 @@ export default function NavBar() {
         </SheetContent>
       </Sheet>
 
-      {showAdvisorModal && <AdvisorLoginModal onClose={() => setShowAdvisorModal(false)} />}
     </header>
   );
 }

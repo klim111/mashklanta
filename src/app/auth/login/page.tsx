@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, CheckCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, ChevronDown } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 
@@ -16,12 +16,10 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showAdvisorMessage, setShowAdvisorMessage] = useState(false);
+  const [unverified, setUnverified] = useState(false);
+  const [resendNotice, setResendNotice] = useState('');
 
   useEffect(() => {
-    if (searchParams.get('advisor') === 'true') {
-      setShowAdvisorMessage(true);
-    }
     const oauthError = authErrorMessage(searchParams.get('error'));
     if (oauthError) setError(oauthError);
   }, [searchParams]);
@@ -29,6 +27,8 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setUnverified(false);
+    setResendNotice('');
     setIsLoading(true);
 
     try {
@@ -39,7 +39,8 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError('שם משתמש או סיסמה שגויים');
+        setUnverified(result.error === 'EmailNotVerified');
+        setError(authErrorMessage(result.error));
       } else {
         // Check user role and redirect accordingly
         const response = await fetch('/api/auth/session');
@@ -59,6 +60,17 @@ function LoginForm() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const resendVerification = async () => {
+    setResendNotice('');
+    const response = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resend', email: email.trim() }),
+    }).catch(() => null);
+    const data = response ? await response.json().catch(() => ({})) : {};
+    setResendNotice(response?.ok ? 'שלחנו קישור חדש למייל.' : data.error || 'לא הצלחנו לשלוח קישור חדש.');
   };
 
   return (
@@ -81,18 +93,6 @@ function LoginForm() {
             <p className="text-slate-600 mt-2">ברוכים השבים למשכלנתא</p>
           </div>
 
-          {/* Success Message for Advisor Registration */}
-          {showAdvisorMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700"
-            >
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">ההרשמה ליועצים הושלמה בהצלחה! התחבר עכשיו</span>
-            </motion.div>
-          )}
-
           {/* Error Message */}
           {error && (
             <motion.div
@@ -101,7 +101,18 @@ function LoginForm() {
               className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700"
             >
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{error}</span>
+              <span className="text-sm">
+                {error}
+                {unverified && email.includes('@') && (
+                  <>
+                    {' '}
+                    <button type="button" onClick={resendVerification} className="font-semibold underline">
+                      שלחו לי את הקישור שוב
+                    </button>
+                  </>
+                )}
+                {resendNotice && <span className="mt-1 block">{resendNotice}</span>}
+              </span>
             </motion.div>
           )}
 
@@ -186,7 +197,7 @@ function LoginForm() {
           />
 
           {/* Register Link */}
-          <div className="mt-8 text-center space-y-3">
+          <div className="mt-8 text-center">
             <p className="text-slate-600">
               עדיין אין לך חשבון?{' '}
               <Link
@@ -196,23 +207,10 @@ function LoginForm() {
                 הירשם עכשיו
               </Link>
             </p>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-slate-500">או</span>
-              </div>
-            </div>
-            
-            <Link href="/auth/register?role=ADVISOR">
-              <button className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2">
-                <UserCheck className="w-5 h-5" />
-                הצטרף לנבחרת היועצים
-              </button>
-            </Link>
           </div>
+
+          {/* כניסה ליועצים — בתחתית החלון, ליועצים שכבר רשומים במערכת בלבד */}
+          <AdvisorLogin />
         </div>
 
         {/* Back to Home */}
@@ -226,6 +224,96 @@ function LoginForm() {
           </Link>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/**
+ * כניסת יועצים. אין כאן הרשמה: יועצים נוספים למערכת רק על ידי הנהלת האתר.
+ * השרת בודק את התפקיד לפני שנוצרת התחברות, כך שחשבון לקוח לא נפתח מכאן.
+ */
+function AdvisorLogin() {
+  const [open, setOpen] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const result = await signIn('credentials', {
+        email: identifier,
+        password,
+        portal: 'advisor',
+        redirect: false,
+      });
+      if (result?.error) {
+        setError(authErrorMessage(result.error));
+        return;
+      }
+      window.location.assign('/advisor-dashboard');
+    } catch {
+      setError('אירעה שגיאה בהתחברות');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-8 border-t border-slate-200 pt-5">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="mx-auto flex items-center gap-2 text-button font-semibold text-violet-700 hover:text-violet-800"
+      >
+        <UserCheck className="h-4 w-4" />
+        כניסה ליועצים
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <form onSubmit={submit} className="mt-4 space-y-3 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+          <p className="text-2xs text-slate-600">ליועצים שכבר רשומים במערכת בלבד.</p>
+          {error && (
+            <p className="flex items-start gap-2 text-sm text-red-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
+          <input
+            type="text"
+            autoComplete="username"
+            aria-label="שם משתמש או מייל של יועץ"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            required
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-right focus:border-transparent focus:ring-2 focus:ring-violet-500"
+            placeholder="שם משתמש או מייל"
+          />
+          <input
+            type="password"
+            autoComplete="current-password"
+            aria-label="סיסמת יועץ"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-right focus:border-transparent focus:ring-2 focus:ring-violet-500"
+            placeholder="סיסמה"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-button font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+          >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            כניסה כיועץ
+          </button>
+        </form>
+      )}
     </div>
   );
 }

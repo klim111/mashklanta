@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
-import { signIn } from 'next-auth/react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 
@@ -24,22 +23,17 @@ function RegisterForm() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'CLIENT' as 'CLIENT' | 'ADVISOR',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const role = searchParams.get('role');
-    if (role === 'ADVISOR') {
-      setFormData(prev => ({ ...prev, role: 'ADVISOR' }));
-    }
     const oauthError = authErrorMessage(searchParams.get('error'));
     if (oauthError) setError(oauthError);
   }, [searchParams]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -92,7 +86,7 @@ function RegisterForm() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
-          role: formData.role,
+          callbackUrl: safeCallbackUrl(searchParams.get('callbackUrl')),
         }),
       });
 
@@ -106,31 +100,14 @@ function RegisterForm() {
 
       if (!response.ok) {
         setError(data.error || 'אירעה שגיאה בהרשמה');
-      } else if (formData.role === 'ADVISOR') {
-        setSuccess('ההרשמה הושלמה. אפשר להתחבר עכשיו עם שם המשתמש והסיסמה.');
-        setTimeout(() => router.push('/auth/login?advisor=true'), 3000);
       } else {
         /*
-          לקוח חדש לא צריך להתחבר שוב כדי להתחיל: ההרשמה מחברת אותו ומכניסה
-          אותו ישר לאזור האישי — או לבחירה שעשה בעמוד הבית, אם הגיע משם. אם
-          ההתחברות האוטומטית נכשלת חוזרים למסך ההתחברות, כדי שלא ייתקע בלי
-          דרך להמשיך.
+          החשבון עוד לא נפתח: הוא נוצר, והאזור האישי נפתח, רק אחרי שהלקוח
+          יאשר את הקישור שנשלח אליו במייל. הבחירה שעשה בעמוד הבית שמורה עם
+          ההרשמה וממתינה לו אחרי האישור.
         */
-        const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
-        setSuccess('ההרשמה הושלמה. מכניסים אתכם לאזור האישי…');
-        const signedIn = await signIn('credentials', {
-          email: formData.email,
-          password: formData.password,
-          redirect: false,
-        });
-        if (signedIn?.error) {
-          setSuccess('ההרשמה הושלמה. אפשר להתחבר עכשיו עם שם המשתמש והסיסמה.');
-          router.push(
-            callbackUrl ? `/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/auth/login'
-          );
-        } else {
-          router.push(callbackUrl || '/dashboard');
-        }
+        setSuccess('שלחנו לכם מייל לאישור ההרשמה');
+        router.push(`/auth/check-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
       }
     } catch (error) {
       setError('אירעה שגיאה בהרשמה');
@@ -155,15 +132,8 @@ function RegisterForm() {
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-title font-bold text-slate-900">
-              {formData.role === 'ADVISOR' ? 'הרשמה ליועצי משכנתאות' : 'הרשמה'}
-            </h1>
-            <p className="text-slate-600 mt-2">
-              {formData.role === 'ADVISOR' 
-                ? 'הצטרף לנבחרת היועצים של משכנתא' 
-                : 'צור חשבון חדש במשכלנתא'
-              }
-            </p>
+            <h1 className="text-title font-bold text-slate-900">הרשמה</h1>
+            <p className="text-slate-600 mt-2">פתיחת חשבון לקוח במשכלנתא. נשלח לכם מייל לאישור הכתובת.</p>
           </div>
 
           {/* Success Message */}
@@ -192,25 +162,6 @@ function RegisterForm() {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Role Selection - only show if not pre-selected */}
-            {!searchParams.get('role') && (
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-slate-700 mb-2">
-                  סוג משתמש
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="CLIENT">לקוח</option>
-                  <option value="ADVISOR">יועץ משכנתאות</option>
-                </select>
-              </div>
-            )}
-
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
                 שם מלא
@@ -321,10 +272,10 @@ function RegisterForm() {
               ) : success ? (
                 <>
                   <CheckCircle className="w-5 h-5" />
-                  נרשמת בהצלחה!
+                  נשלח מייל לאישור
                 </>
               ) : (
-                formData.role === 'ADVISOR' ? 'הצטרף לנבחרת היועצים' : 'הירשם'
+                'הירשם'
               )}
             </button>
           </form>
@@ -341,24 +292,20 @@ function RegisterForm() {
             </Link>
           </p>
 
-          {formData.role !== 'ADVISOR' && (
-            <>
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-slate-500">או</span>
-                </div>
-              </div>
-              <div className="mb-6">
-                <GoogleAuthButton
-                  label="הרשמה עם Google"
-                  callbackUrl={safeCallbackUrl(searchParams.get('callbackUrl')) ?? '/dashboard'}
-                />
-              </div>
-            </>
-          )}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-slate-500">או</span>
+            </div>
+          </div>
+          <div className="mb-6">
+            <GoogleAuthButton
+              label="הרשמה עם Google"
+              callbackUrl={safeCallbackUrl(searchParams.get('callbackUrl')) ?? '/dashboard'}
+            />
+          </div>
 
           {/* Login Link */}
           <div className="text-center">

@@ -199,6 +199,37 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+/**
+ * הרשמה שממתינה לאישור הקישור שנשלח במייל.
+ *
+ * החשבון עצמו (User) נוצר רק כשהקישור מאושר, כך שמייל שאיש לא הוכיח שהוא
+ * בבעלותו לעולם אינו הופך למשתמש רשום. לכל מייל יש לכל היותר הרשמה ממתינה
+ * אחת; הרשמה חדשה לאותו מייל מחליפה אותה, ורק הקישור האחרון שנשלח תקף.
+ * הטוקן עצמו לא נשמר, רק ה-SHA-256 שלו.
+ */
+model PendingRegistration {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  username          String?
+  hashedPassword    String?
+  image             String?
+  /** "google" להרשמה דרך גוגל; ריק להרשמה עם סיסמה */
+  provider          String?
+  providerAccountId String?
+  tokenHash         String    @unique
+  /** hash של עוגיית הדפדפן שממנו נרשמו — אישור מדפדפן אחר דורש את הסיסמה */
+  deviceHash        String?
+  callbackUrl       String?
+  expires           DateTime
+  sendCount         Int       @default(1)
+  lastSentAt        DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+
+  @@index([username])
+  @@index([expires])
+}
+
 // Domain models
 model Document {
   id          String         @id @default(cuid())
