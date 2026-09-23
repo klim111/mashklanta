@@ -19,6 +19,7 @@ import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow
 import { formatCardNumber, formatExpiry, validateCheckout } from '@/lib/platform-access';
 import type { CheckoutInput } from '@/lib/platform-access';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
+import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { PLAN_JOURNEY_STAGES } from '@/data/platform/planStages';
 
 type Field = keyof CheckoutInput;
@@ -30,7 +31,7 @@ function CheckoutBody() {
   const router = useRouter();
   const params = useSearchParams();
   const { data: session } = useSession();
-  /** חידוש הגישה לתהליך שננעל אחרי 35 יום */
+  /** חידוש הגישה לתהליך שננעל אחרי 30 יום */
   const renewPlanId = params.get('planId');
 
   const [form, setForm] = useState<CheckoutInput>({
@@ -124,12 +125,12 @@ function CheckoutBody() {
             האזור האישי
           </Link>
           <h1 className="mt-3 text-title font-black text-white">
-            {renewPlanId ? 'חידוש הגישה לתהליך' : 'מסלול עצמאי / היברידי'}
+            {renewPlanId ? 'חבילת גישה נוספת' : 'מסלול עצמאי / היברידי'}
           </h1>
           <p className="mt-2 max-w-2xl text-info leading-relaxed text-white/70">
             {renewPlanId
-              ? `₪${PLATFORM_PROCESS_PRICE} לעוד ${PLATFORM_ACCESS_DAYS} יום. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
-              : `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עם ${PLATFORM_ACCESS_DAYS} יום גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
+              ? `חבילת גישה נוספת: ₪${PLATFORM_PROCESS_PRICE} לעוד ${PLATFORM_ACCESS_DAYS} יום. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
+              : `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עם גישה מלאה לכל השלבים והכלים עד ${PLATFORM_ACCESS_DAYS} יום. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
           </p>
         </div>
       </header>
@@ -300,7 +301,7 @@ function CheckoutBody() {
                     <span className="text-base font-bold text-white/70"> / תהליך</span>
                   </div>
                   <div className="text-sm text-white/80">
-                    {PLATFORM_ACCESS_DAYS} יום גישה מלאה · אין חיוב חוזר, מחדשים רק אם צריך
+                    גישה מלאה עד {PLATFORM_ACCESS_DAYS} יום · אין חיוב חוזר בלי אישור שלכם
                   </div>
                 </div>
                 <ul className="space-y-2 px-6 py-5">
@@ -320,6 +321,8 @@ function CheckoutBody() {
                   </li>
                 </ul>
               </div>
+
+              <PlatformBillingNotes layout="stack" />
 
               {!renewPlanId && (
                 <Link
