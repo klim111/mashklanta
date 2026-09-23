@@ -13,7 +13,7 @@ import type { Loan } from './types';
 import { principalFromAnnuityPayment } from './loanMath';
 
 const highlightFieldClass =
-  'ring-2 ring-amber-400 border-amber-400 bg-amber-50/80 focus-visible:ring-amber-500';
+  'ring-2 ring-amber-400 border-amber-400 bg-amber-50 focus-visible:ring-amber-500';
 
 type LoanAgeMode = 'past' | 'new';
 
@@ -141,8 +141,8 @@ export function LoanPlanningImportWizard({
         <p className="text-sm font-medium text-blue-700 bg-blue-50 inline-block px-4 py-1 rounded-full">
           הלוואה {currentIndex + 1} מתוך {loans.length}
         </p>
-        <h2 className="text-subtitle font-bold text-gray-900">בוא נשלים את פרטי ההלוואות שלך</h2>
-        <p className="text-gray-600 text-sm">
+        <h2 className="text-subtitle font-bold text-slate-900">בוא נשלים את פרטי ההלוואות שלך</h2>
+        <p className="text-slate-600 text-sm">
           הזנת במסך ההכרות את ההחזר החודשי — עכשיו מלא את הריבית, התקופה ומתי נלקחה ההלוואה, אחת אחרי השנייה.
         </p>
       </motion.div>
@@ -156,12 +156,12 @@ export function LoanPlanningImportWizard({
           transition={{ duration: 0.25 }}
         >
           <Card className="p-6 shadow-md border-blue-100" dir="rtl">
-            <h3 className="text-subtitle font-semibold text-gray-900 mb-6 text-center">{currentLoan.label}</h3>
+            <h3 className="text-subtitle font-semibold text-slate-900 mb-6 text-center">{currentLoan.label}</h3>
 
             <motion.div layout className="space-y-5">
-              <motion.div layout className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                <Label className="text-gray-600 text-sm mb-1 block">החזר חודשי שציינת במסך ההכרות</Label>
-                <p className="text-2xl font-bold text-gray-900">{formatILS(currentLoan.monthlyPayment)}</p>
+              <motion.div layout className="rounded-lg bg-slate-50 border border-slate-200 p-4">
+                <Label className="text-slate-600 text-sm mb-1 block">החזר חודשי שציינת במסך ההכרות</Label>
+                <p className="text-2xl font-bold text-slate-900">{formatILS(currentLoan.monthlyPayment)}</p>
               </motion.div>
 
               <motion.div layout className="grid sm:grid-cols-2 gap-4">
@@ -200,7 +200,7 @@ export function LoanPlanningImportWizard({
               {/* בחירת מצב: הלוואה מהעבר (עם תאריך) לעומת הלוואה חדשה מהיום */}
               <motion.div
                 layout
-                className="rounded-lg border border-blue-100 bg-blue-50/60 p-4"
+                className="rounded-lg border border-blue-100 bg-blue-50 p-4"
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {ageMode === 'past' ? (
@@ -233,7 +233,7 @@ export function LoanPlanningImportWizard({
                         </p>
                       )}
                       <div className="flex items-center justify-between gap-3 pt-1">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-slate-600">
                           זו הלוואה חדשה שאתה לוקח עכשיו?
                         </span>
                         <Button
@@ -264,7 +264,7 @@ export function LoanPlanningImportWizard({
                         <Sparkles className="w-4 h-4" />
                         מחושבת כהלוואה חדשה שנלקחת היום
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-slate-600">
                         החישוב יתבצע להלוואה מלאה מהיום, ללא חודשי עבר.
                       </p>
                       <Button
@@ -290,20 +290,20 @@ export function LoanPlanningImportWizard({
                   className="rounded-lg border border-green-100 bg-green-50 py-3 px-4 space-y-2"
                 >
                   <div className="flex justify-between text-info">
-                    <span className="text-gray-700">סכום הלוואה מקורי</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-slate-700">סכום הלוואה מקורי</span>
+                    <span className="font-semibold text-slate-900">
                       {formatILS(originalPrincipal)}
                     </span>
                   </div>
                   {ageMode === 'past' ? (
                     <>
                       <div className="flex justify-between text-info">
-                        <span className="text-gray-700">חודשים שעברו</span>
-                        <span className="font-semibold text-gray-900">{monthsElapsed}</span>
+                        <span className="text-slate-700">חודשים שעברו</span>
+                        <span className="font-semibold text-slate-900">{monthsElapsed}</span>
                       </div>
                       <div className="flex justify-between text-info">
-                        <span className="text-gray-700">חודשים שנותרו</span>
-                        <span className="font-semibold text-gray-900">{remainingMonths}</span>
+                        <span className="text-slate-700">חודשים שנותרו</span>
+                        <span className="font-semibold text-slate-900">{remainingMonths}</span>
                       </div>
                       <div className="flex justify-between text-info pt-2 border-t border-green-200">
                         <span className="text-green-800 font-medium">יתרת קרן להיום</span>
@@ -347,13 +347,13 @@ export function LoanPlanningImportWizard({
       </AnimatePresence>
 
       {completedLoans.length > 0 && (
-        <motion.div layout className="text-center text-sm text-gray-500">
+        <motion.div layout className="text-center text-sm text-slate-500">
           הושלמו {completedLoans.length} מתוך {loans.length} הלוואות
         </motion.div>
       )}
 
       <div className="text-center">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="text-gray-500">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="text-slate-500">
           דלג — אמשיך לבד במתכנן
         </Button>
       </div>

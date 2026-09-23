@@ -46,21 +46,21 @@ const STATUS_STYLE: Record<
   { box: string; text: string; chip: string; label: string; icon: React.ReactNode }
 > = {
   pass: {
-    box: 'border-emerald-300 bg-emerald-50/70',
+    box: 'border-emerald-300 bg-emerald-50',
     text: 'text-emerald-700',
     chip: 'bg-emerald-100 text-emerald-800',
     label: 'עומד בדרישה',
     icon: <CheckCircle2 className="h-5 w-5" />,
   },
   near: {
-    box: 'border-amber-300 bg-amber-50/70',
+    box: 'border-amber-300 bg-amber-50',
     text: 'text-amber-700',
     chip: 'bg-amber-100 text-amber-800',
     label: 'קרוב למגבלה',
     icon: <AlertTriangle className="h-5 w-5" />,
   },
   fail: {
-    box: 'border-rose-300 bg-rose-50/70',
+    box: 'border-rose-300 bg-rose-50',
     text: 'text-rose-700',
     chip: 'bg-rose-100 text-rose-800',
     label: 'אינו עומד בדרישה',
@@ -76,9 +76,9 @@ const STATUS_STYLE: Record<
 };
 
 const RISK_TONE: Record<RecommendationTone, { ring: string; icon: typeof Info; iconColor: string }> = {
-  info: { ring: 'border-blue-200 bg-blue-50/60', icon: Info, iconColor: 'text-blue-600' },
-  warning: { ring: 'border-amber-200 bg-amber-50/70', icon: AlertTriangle, iconColor: 'text-amber-600' },
-  critical: { ring: 'border-rose-200 bg-rose-50/70', icon: AlertOctagon, iconColor: 'text-rose-600' },
+  info: { ring: 'border-blue-200 bg-blue-50', icon: Info, iconColor: 'text-blue-600' },
+  warning: { ring: 'border-amber-200 bg-amber-50', icon: AlertTriangle, iconColor: 'text-amber-600' },
+  critical: { ring: 'border-rose-200 bg-rose-50', icon: AlertOctagon, iconColor: 'text-rose-600' },
 };
 
 function StatusChip({ status }: { status: CheckStatus }) {
@@ -225,7 +225,7 @@ export function ProfileReportPanel({
   return (
     <section className="space-y-4">
       {/* כותרת ומספרי המפתח */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-brand-dark text-white shadow-xl">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-600/30 blur-3xl" />
           <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-cyan-500/20 blur-3xl" />
@@ -313,7 +313,7 @@ export function ProfileReportPanel({
         <Block icon={Users} title="פרופיל הלקוח" subtitle="הלווים, ההכנסות והתחייבויות" accent="from-violet-600 to-fuchsia-500">
           <div className={`grid gap-3 ${summary.couple ? 'sm:grid-cols-2' : ''}`}>
             {summary.borrowers.map((borrower) => (
-              <div key={borrower.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+              <div key={borrower.label} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
                 <div className="mb-1.5 text-2xs font-black text-slate-500">{borrower.label}</div>
                 <Row label="הכנסה נטו" value={formatShekel(borrower.income)} strong />
                 <Row label="גיל" value={borrower.age !== null ? String(borrower.age) : '—'} />
@@ -331,7 +331,7 @@ export function ProfileReportPanel({
           </div>
           {(data.ANALYSIS.futureLumpSums.some((item) => (item.amount ?? 0) > 0) ||
             (data.ANALYSIS.futureMonthlyIncrease ?? 0) > 0) && (
-            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
+            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
               <div className="mb-1 text-2xs font-black text-emerald-800">צפי הכנסות עתידיות</div>
               <ul className="space-y-0.5 text-xs text-emerald-900">
                 {data.ANALYSIS.futureLumpSums
@@ -430,7 +430,7 @@ export function ProfileReportPanel({
         accent="from-teal-600 to-emerald-500"
         badge={<StatusChip status={afterStatus} />}
       >
-        <div className="mb-4 flex items-start gap-2.5 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-3.5">
+        <div className="mb-4 flex items-start gap-2.5 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3.5">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
           <p className="text-xs font-bold leading-relaxed text-amber-900">
             ההחזר החודשי המשוער כאן הוא הערכה גסה בלבד, שנועדה לתת סדר גודל.
@@ -550,7 +550,7 @@ export function ProfileReportPanel({
                 <RecommendationCard key={item.id} recommendation={item} compact />
               ))}
               {report.recommendations.map((item) => (
-                <div key={item.title} className="rounded-2xl border border-blue-200 bg-blue-50/50 p-3.5">
+                <div key={item.title} className="rounded-2xl border border-blue-200 bg-blue-50 p-3.5">
                   <h5 className="flex items-center gap-2 text-sm font-black text-blue-900">
                     <Lightbulb className="h-4 w-4 shrink-0" />
                     {item.title}
@@ -583,7 +583,7 @@ export function ProfileReportPanel({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {report.timeline.map((item) => (
-                <tr key={item.id} className={item.emphasized ? 'bg-amber-50/60' : undefined}>
+                <tr key={item.id} className={item.emphasized ? 'bg-amber-50' : undefined}>
                   <td className="py-2 pl-3 font-black text-slate-900">{item.label}</td>
                   <td className="py-2 pl-3 text-slate-700">{item.when}</td>
                   <td className="py-2 pl-3 text-slate-700">{item.duration}</td>
@@ -626,7 +626,7 @@ export function ProfileReportPanel({
             </div>
           ))}
         </div>
-        <div className="mt-4 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4">
+        <div className="mt-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
           <h5 className="flex items-center gap-2 text-sm font-black text-amber-900">
             <AlertTriangle className="h-4 w-4" />
             לפני ההגשה — הצליבו את הסכומים וודאו שכל מסמך תקין ומלא
@@ -643,7 +643,7 @@ export function ProfileReportPanel({
       >
         <div className="grid gap-3 md:grid-cols-2">
           {report.guidelines.map((item, index) => (
-            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-2xs font-black text-white">
                   {index + 1}
@@ -669,17 +669,17 @@ export function ProfileReportPanel({
         }
       >
         <div className="mb-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs leading-relaxed text-slate-600">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600">
             <div className="mb-1 text-sm font-black text-slate-900">סיכון ↔ יציבות</div>
             ריבית קבועה נועלת את ההחזר ומבטלת הפתעות; פריים ומשתנה זולים יותר בהתחלה אבל ההחזר זז עם
             השוק. ככל שיחס ההחזר קרוב למגבלה, כך צריך יותר יציבות.
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs leading-relaxed text-slate-600">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600">
             <div className="mb-1 text-sm font-black text-slate-900">גמישות ↔ עמלת היוון</div>
             במסלולי פריים ומשתנה אפשר לפרוע מוקדם ולמחזר בלי קנס; בקבועה ייתכן קנס כשהריביות יורדות.
             כסף שצפוי להיכנס מכוון למסלול הגמיש.
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs leading-relaxed text-slate-600">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-600">
             <div className="mb-1 text-sm font-black text-slate-900">עלות ↔ ביטחון</div>
             הריבית הקבועה היא המחיר של הביטוח. סך הריביות נקבע גם מהתקופה של כל מסלול — מקצרים את
             היקרים, מאריכים את הזולים, ומתכננים פירעון מוקדם שמקצר את הכל.
@@ -694,7 +694,7 @@ export function ProfileReportPanel({
           <button
             type="button"
             onClick={() => printProfileReport(report, planName)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-colors hover:bg-slate-700"
+            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-colors hover:bg-blue-700"
           >
             <Download className="h-5 w-5" />
             הורדת הדוח

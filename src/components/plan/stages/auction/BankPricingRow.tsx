@@ -124,7 +124,7 @@ export function BankPricingRow({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-4">
+            <div className="rounded-3xl border-2 border-slate-200 bg-slate-50 p-4">
               <BankRateEntry
                 mix={mix}
                 bank={open}

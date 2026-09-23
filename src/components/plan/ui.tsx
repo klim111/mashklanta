@@ -248,9 +248,9 @@ export type MetricTone = 'default' | 'good' | 'warn' | 'bad';
 
 const metricTone: Record<MetricTone, string> = {
   default: 'border-slate-200 bg-white',
-  good: 'border-emerald-200 bg-emerald-50/70',
-  warn: 'border-amber-200 bg-amber-50/70',
-  bad: 'border-rose-200 bg-rose-50/70',
+  good: 'border-emerald-200 bg-emerald-50',
+  warn: 'border-amber-200 bg-amber-50',
+  bad: 'border-rose-200 bg-rose-50',
 };
 
 const metricValueTone: Record<MetricTone, string> = {
@@ -332,7 +332,7 @@ export function Panel({
 
 export function EmptyHint({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-8 text-center text-sm text-slate-500">
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
       {children}
     </div>
   );

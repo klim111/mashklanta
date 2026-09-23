@@ -185,13 +185,13 @@ export function RefinanceSaveDialog({
               {context === 'tool' && outcome.href ? (
                 <Link
                   href={outcome.href}
-                  className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
                 >
                   המשך לביצוע המיחזור
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               ) : (
-                <Button onClick={() => changeOpen(false)} className="bg-slate-900 text-white hover:bg-slate-700">
+                <Button onClick={() => changeOpen(false)} className="bg-blue-600 text-white hover:bg-blue-700">
                   סגירה
                 </Button>
               )}

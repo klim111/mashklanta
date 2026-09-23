@@ -308,14 +308,14 @@ const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmoun
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className={`relative bg-white rounded-2xl shadow-lg border-2 ${highlight ? 'border-blue-400' : 'border-gray-200'} p-4 h-48`}
+      className={`relative bg-white rounded-2xl shadow-lg border-2 ${highlight ? 'border-blue-400' : 'border-slate-200'} p-4 h-48`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
             <Icon className="w-4 h-4 text-white" />
           </div>
-          <h3 className="font-semibold text-gray-800">{title}</h3>
+          <h3 className="font-semibold text-slate-800">{title}</h3>
         </div>
         {trend !== undefined && trend !== 0 && (
           <Badge variant={trend > 0 ? "default" : "destructive"} className="text-xs">
@@ -325,7 +325,7 @@ const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmoun
         )}
       </div>
       
-      <div className="relative h-24 bg-gray-100 rounded-xl overflow-hidden">
+      <div className="relative h-24 bg-slate-100 rounded-xl overflow-hidden">
         <motion.div
           className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${color} opacity-80`}
           initial={{ height: 0 }}
@@ -333,7 +333,7 @@ const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmoun
           transition={{ duration: 0.5, ease: "easeOut" }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold text-gray-800">
+          <span className="text-2xl font-bold text-slate-800">
             ₪{amount.toLocaleString()}
           </span>
         </div>
@@ -465,16 +465,16 @@ export default function FinancialDynamicsPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
+    <div className="min-h-screen bg-slate-50" dir="rtl">
       <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
         <NavBar />
       </div>
-      <div className="border-b border-gray-200 bg-white/90">
+      <div className="border-b border-slate-200 bg-white/90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-2 min-h-14 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <Activity className="w-5 h-5 shrink-0 text-indigo-600" />
-              <h1 className="truncate text-title font-bold text-gray-900">דינמיקה פיננסית</h1>
+              <h1 className="truncate text-title font-bold text-slate-900">דינמיקה פיננסית</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -520,17 +520,17 @@ export default function FinancialDynamicsPage() {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed inset-y-0 right-0 top-16 z-50 w-full max-w-md overflow-y-auto border-l border-gray-200 bg-white shadow-2xl sm:w-96"
+                className="fixed inset-y-0 right-0 top-16 z-50 w-full max-w-md overflow-y-auto border-l border-slate-200 bg-white shadow-2xl sm:w-96"
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-subtitle font-bold text-gray-900">הגדרות סימולציה</h2>
+                    <h2 className="text-subtitle font-bold text-slate-900">הגדרות סימולציה</h2>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSettingsPanelOpen(false)}
-                        className="rounded-full hover:bg-gray-100"
+                        className="rounded-full hover:bg-slate-100"
                         title="סגור"
                       >
                         <ChevronLeft className="w-5 h-5" />
@@ -539,7 +539,7 @@ export default function FinancialDynamicsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSettingsPanelOpen(false)}
-                        className="rounded-full hover:bg-gray-100 text-gray-500"
+                        className="rounded-full hover:bg-slate-100 text-slate-500"
                         title="סגור"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -715,7 +715,7 @@ export default function FinancialDynamicsPage() {
                     step={1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500">
+                  <div className="flex justify-between text-xs text-slate-500">
                     <span>התחלה</span>
                     <span>{Math.floor((timeline.length - 1) / 12)} שנים</span>
                   </div>
@@ -762,7 +762,7 @@ export default function FinancialDynamicsPage() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="text-center text-xs text-gray-500 mt-1">
+                  <div className="text-center text-xs text-slate-500 mt-1">
                     x{playSpeed}
                   </div>
                 </div>
@@ -788,7 +788,7 @@ export default function FinancialDynamicsPage() {
                       onChange={(e) => setSavingsPaymentDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
                       className="text-center font-bold"
                     />
-                    <p className="text-xs text-gray-500 mt-1">יום 1-31 בכל חודש</p>
+                    <p className="text-xs text-slate-500 mt-1">יום 1-31 בכל חודש</p>
                   </div>
                   
                   <div>
@@ -802,11 +802,11 @@ export default function FinancialDynamicsPage() {
                       onChange={(e) => setDebtPaymentDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
                       className="text-center font-bold"
                     />
-                    <p className="text-xs text-gray-500 mt-1">יום 1-31 בכל חודש</p>
+                    <p className="text-xs text-slate-500 mt-1">יום 1-31 בכל חודש</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-green-500" />
                     <span className="text-sm">חיסכון: יום {savingsPaymentDay}</span>
@@ -924,7 +924,7 @@ export default function FinancialDynamicsPage() {
                 <div className="text-3xl font-bold text-green-600">
                   ₪{currentState.wealth.toLocaleString()}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   חיסכון + נכסים - חוב
                 </p>
                 <div className="mt-4 space-y-1">
@@ -952,7 +952,7 @@ export default function FinancialDynamicsPage() {
                 <div className="text-3xl font-bold text-red-600">
                   ₪{currentState.lost.toLocaleString()}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   ריבית ששולמה על חובות
                 </p>
                 <Alert className="mt-4">
@@ -971,7 +971,7 @@ export default function FinancialDynamicsPage() {
                 <div className={`text-3xl font-bold ${currentState.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   ₪{currentState.netCashFlow.toLocaleString()}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   הכנסה - הוצאות
                 </p>
               </CardContent>

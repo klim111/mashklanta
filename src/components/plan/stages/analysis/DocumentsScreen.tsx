@@ -157,7 +157,7 @@ export function DocumentsScreen({
               <button
                 type="button"
                 onClick={() => patch({ profileScreen: 'report' })}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
               >
                 נמשיך להעלות בשלב מאוחר יותר — לדוח הסופי
                 <ArrowLeft className="h-4 w-4" />
@@ -168,7 +168,7 @@ export function DocumentsScreen({
           <motion.div key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-6">
             <div className="grid gap-4 lg:grid-cols-2">
               {groups.map((group) => (
-                <div key={group.id} className="rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-4 text-right">
+                <div key={group.id} className="rounded-3xl border-2 border-slate-200 bg-slate-50 p-4 text-right">
                   <div className="mb-3 flex items-center gap-2">
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 shadow-md">
                       <Building2 className="h-4 w-4 text-white" />

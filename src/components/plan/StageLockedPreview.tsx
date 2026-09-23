@@ -64,7 +64,7 @@ export function StageLockedPreview({
           <button
             type="button"
             onClick={() => onSelectStage(firstUnfinished)}
-            className="mt-4 inline-flex rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
+            className="mt-4 inline-flex rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-blue-700"
           >
             חזרה להשלמת השלב הפתוח
           </button>

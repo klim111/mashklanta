@@ -210,7 +210,7 @@ export function LoanWorkspace() {
   /* ---------------- תצוגה ---------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 pb-24" dir="rtl">
+    <div className="min-h-screen bg-slate-50 pb-24" dir="rtl">
       <div className="container mx-auto px-3 py-4 sm:px-6 sm:py-6">
         {/* כותרת הכלי */}
         <div className="mb-3 flex flex-wrap items-start gap-3">
@@ -451,7 +451,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl"
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl"
         >
           <Plus className="h-4 w-4" />
           הוספת ההלוואה הראשונה

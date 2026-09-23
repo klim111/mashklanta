@@ -62,7 +62,7 @@ export function PlanMixDetail({ mix, planId }: { mix: PlanMix; planId: string })
   const tone = bankTone(mix.bank);
 
   return (
-    <div className={`rounded-2xl border-2 p-4 ${mix.priced ? `${tone.border} ${tone.surface}` : 'border-slate-200 bg-slate-50/70'}`}>
+    <div className={`rounded-2xl border-2 p-4 ${mix.priced ? `${tone.border} ${tone.surface}` : 'border-slate-200 bg-slate-50'}`}>
       <div className="flex flex-wrap items-center justify-center gap-2 text-center">
         <span className="inline-flex items-center gap-1.5 text-lg font-black text-slate-900">
           {mix.priced ? (
@@ -100,7 +100,7 @@ export function PlanMixDetail({ mix, planId }: { mix: PlanMix; planId: string })
       <div className="mt-4 flex justify-center">
         <Link
           href={`/dashboard/plans/${planId}?stage=${mix.priced ? 'SIGNING' : 'MIX'}`}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-info font-black text-white transition-colors hover:bg-slate-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-info font-black text-white transition-colors hover:bg-blue-700"
         >
           {mix.priced ? 'לשלב החתימה' : 'לעריכת התמהיל'}
           <ArrowLeft className="h-4 w-4" />

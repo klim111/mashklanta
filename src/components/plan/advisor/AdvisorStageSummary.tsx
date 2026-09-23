@@ -127,7 +127,7 @@ export function AdvisorStageSummary({
         {detailsOpen && hasValues && (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {snapshot.items.map((item) => (
-              <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
+              <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-center">
                 <div className="text-sm font-bold text-slate-500">{item.label}</div>
                 <div className="mt-0.5 text-lg font-black tabular-nums text-slate-900">
                   {item.value ?? '—'}
@@ -139,7 +139,7 @@ export function AdvisorStageSummary({
         )}
 
         {result && advantages.length > 0 && baseline && (
-          <div className="mt-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
+          <div className="mt-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4">
             <h4 className="text-center text-base font-black text-slate-900">
               {headline ?? 'מה הליווי הביא'}
             </h4>
@@ -186,7 +186,7 @@ export function AdvisorStageSummary({
  */
 function AwaitingAdvisorRow() {
   return (
-    <div className="mt-4 rounded-2xl border-2 border-violet-200 bg-violet-50/60 px-4 py-4 text-center">
+    <div className="mt-4 rounded-2xl border-2 border-violet-200 bg-violet-50 px-4 py-4 text-center">
       <p className="flex flex-wrap items-center justify-center gap-2 text-base font-black text-violet-900">
         <Clock className="h-4 w-4" />
         יועץ משכלנתא עובר על הפנייה שלכם ויקבע לכם פגישת ייעוץ בהקדם
@@ -207,7 +207,7 @@ function StageMeetingRow({ meeting }: { meeting: StageMeeting }) {
   const proposed = meeting.status === 'PROPOSED';
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 px-4 py-3 text-center">
+    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
       <span className="inline-flex items-center gap-1.5 text-sm font-black text-emerald-900">
         <CalendarClock className="h-4 w-4" />
         פגישה עם היועץ — {date} בשעה {time}

@@ -89,10 +89,10 @@ export function StageStat({
     tone === 'good' ? 'text-emerald-700' : tone === 'warn' ? 'text-amber-700' : 'text-slate-900';
   const box =
     tone === 'good'
-      ? 'border-emerald-200 bg-emerald-50/70'
+      ? 'border-emerald-200 bg-emerald-50'
       : tone === 'warn'
-        ? 'border-amber-200 bg-amber-50/70'
-        : 'border-slate-200 bg-slate-50/70';
+        ? 'border-amber-200 bg-amber-50'
+        : 'border-slate-200 bg-slate-50';
 
   return (
     <div className={`rounded-2xl border p-3 text-center ${box}`}>
@@ -106,7 +106,7 @@ export function StageStat({
 /** הודעה כשאין עדיין מה להציג באזור */
 export function StageEmpty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-5 py-8 text-center text-sm font-semibold leading-relaxed text-slate-600">
+    <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center text-sm font-semibold leading-relaxed text-slate-600">
       {children}
     </div>
   );

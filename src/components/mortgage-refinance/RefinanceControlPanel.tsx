@@ -103,7 +103,7 @@ export function RefinanceControlPanel({
     <div className="space-y-2.5">
       {/* בחירת המסלול למיחזור — מופיעה מעל הפאנל במצב מסלול בודד */}
       {singleMode && (
-        <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-2.5">
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-2.5">
           <p className="mb-1.5 text-2xs font-bold text-violet-900">
             איזה מסלול תרצו למחזר?
           </p>
@@ -179,7 +179,7 @@ export function RefinanceControlPanel({
             <button
               type="button"
               onClick={onAddTrack}
-              className="flex min-h-[168px] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50/60 p-3 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
+              className="flex min-h-[168px] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 p-3 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow">
                 <Plus className="h-5 w-5" />
@@ -226,7 +226,7 @@ function TrackBriefCard({
   const months = clampRefiTermMonths(trackRemainingMonths(track));
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
       <p className="mb-1.5 text-xs font-bold text-slate-900">
         מה שכדאי לדעת על המסלול הזה
       </p>

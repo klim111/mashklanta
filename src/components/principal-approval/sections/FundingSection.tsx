@@ -52,8 +52,8 @@ export function FundingSection() {
       <div
         className={`flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4 ${
           reconciliation.valid
-            ? 'border-emerald-200 bg-emerald-50/60'
-            : 'border-amber-200 bg-amber-50/60'
+            ? 'border-emerald-200 bg-emerald-50'
+            : 'border-amber-200 bg-amber-50'
         }`}
       >
         <div className="flex items-center gap-3">

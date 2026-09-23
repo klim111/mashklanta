@@ -65,12 +65,12 @@ export default function LearnPage() {
 
   return (
     <div className="min-h-screen bg-white" dir="rtl">
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <NavBar />
       </div>
 
       {/* Hero */}
-      <section className="relative min-h-[62vh] sm:min-h-[72vh] lg:min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white px-4">
+      <section className="relative min-h-[62vh] sm:min-h-[72vh] lg:min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark text-white px-4">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 right-[8%] h-[26rem] w-[26rem] rounded-full bg-blue-500/20 blur-3xl animate-blob" />
           <div className="absolute bottom-[-6rem] left-[6%] h-[30rem] w-[30rem] rounded-full bg-violet-500/20 blur-3xl animate-blob [animation-delay:3s]" />
@@ -155,7 +155,7 @@ export default function LearnPage() {
       </section>
 
       {/* Sticky stage rail — כמו בכלי תכנון המשכנתא */}
-      <nav className="sticky top-14 z-40 overflow-hidden bg-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.45)] md:top-[72px]">
+      <nav className="sticky top-14 z-40 overflow-hidden bg-brand-dark shadow-[0_18px_40px_rgba(15,23,42,0.45)] md:top-[72px]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-600/25 blur-3xl" />
           <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-violet-600/20 blur-3xl" />
@@ -221,7 +221,7 @@ export default function LearnPage() {
       ))}
 
       {/* CTA */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-800 to-violet-900 py-20 text-white">
+      <section className="relative overflow-hidden bg-brand-dark py-20 text-white">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-20 right-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
           <div className="absolute -bottom-24 left-1/4 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl" />

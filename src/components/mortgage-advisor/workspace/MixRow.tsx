@@ -530,7 +530,7 @@ function RowStat({
   return (
     <div
       title={hint}
-      className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50/70 px-2 py-1 text-center"
+      className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-center"
     >
       <p className="flex items-center gap-1 text-2xs leading-none text-slate-500">
         {icon}

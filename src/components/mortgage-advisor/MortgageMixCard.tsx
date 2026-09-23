@@ -110,7 +110,7 @@ export function MortgageMixCard({
   return (
     <Card
       className={`hover:shadow-lg transition-all duration-200 border-2 ${
-        isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+        isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200'
       } ${isSelectableCard ? 'cursor-pointer' : ''}`}
       onClick={handleCardSelect}
     >
@@ -142,15 +142,15 @@ export function MortgageMixCard({
             <div className="space-y-2">
               {summaryHeaderConfig ? (
                 <>
-                  <h4 className="text-xl font-bold text-gray-900 sm:text-2xl lg:text-3xl">{summaryHeaderConfig.title}</h4>
-                  <p className="text-base text-gray-500">{summaryHeaderConfig.description}</p>
+                  <h4 className="text-xl font-bold text-slate-900 sm:text-2xl lg:text-3xl">{summaryHeaderConfig.title}</h4>
+                  <p className="text-base text-slate-500">{summaryHeaderConfig.description}</p>
                 </>
               ) : (
                 <>
-                  <p className="text-lg font-semibold text-gray-900">
+                  <p className="text-lg font-semibold text-slate-900">
                     סכום משכנתא: {formatCurrency(mix.totalAmount)}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     מספר מסלולים בסל: {mix.tracks.length}
                   </p>
                 </>
@@ -229,7 +229,7 @@ export function MortgageMixCard({
                           stopPropagation(e);
                           setIsEditing(true);
                         }}
-                        className="text-gray-600 hover:text-gray-800"
+                        className="text-slate-600 hover:text-slate-800"
                         title="עריכת שם והערות"
                       >
                         <Edit className="h-4 w-4" />
@@ -335,7 +335,7 @@ export function MortgageMixCard({
                         stopPropagation(e);
                         setIsEditing(true);
                       }}
-                      className="text-gray-600 hover:text-gray-800"
+                      className="text-slate-600 hover:text-slate-800"
                       title="עריכת שם והערות"
                     >
                       <Edit className="h-4 w-4" />
@@ -364,40 +364,40 @@ export function MortgageMixCard({
         {!showSummaryHeader && (
           <div className="grid grid-cols-2 gap-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">סך המשכנתא:</span>
+              <span className="text-sm text-slate-600">סך המשכנתא:</span>
               <span className="font-bold text-lg">{formatCurrency(mix.totalAmount)}</span>
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">מספר מסלולים:</span>
+              <span className="text-sm text-slate-600">מספר מסלולים:</span>
               <span className="font-medium">{mix.tracks.length}</span>
             </div>
           </div>
         )}
 
         {/* סיכום חישובים */}
-        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+        <div className="bg-slate-50 rounded-lg p-4 space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">תשלום חודשי:</span>
+            <span className="text-sm text-slate-600">תשלום חודשי:</span>
             <span className="font-bold text-blue-600 text-lg">
               {formatCurrency(summary.totalMonthlyPayment)}
             </span>
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">ריבית ממוצעת:</span>
+            <span className="text-sm text-slate-600">ריבית ממוצעת:</span>
             <span className="font-medium">{formatPercentage(summary.averageRate)}</span>
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">תקופה ממוצעת:</span>
+            <span className="text-sm text-slate-600">תקופה ממוצעת:</span>
             <span className="font-medium">{formatDuration(yearsToMonths(summary.weightedAverageYears))}</span>
           </div>
         </div>
 
         {/* רשימת מסלולים */}
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-gray-700">מסלולי המשכנתא:</h4>
+          <h4 className="text-sm font-semibold text-slate-700">מסלולי המשכנתא:</h4>
           <div className="space-y-1">
             {mix.tracks.map((track) => (
               <div key={track.id} className="flex justify-between items-center text-info p-2 bg-white rounded border">
@@ -410,17 +410,17 @@ export function MortgageMixCard({
                     track.type === 'variable_linked' ? 'bg-green-400' :
                     track.type === 'makam' ? 'bg-purple-500' :
                     track.type === 'dollar' ? 'bg-yellow-500' :
-                    track.type === 'euro' ? 'bg-gray-500' :
+                    track.type === 'euro' ? 'bg-slate-500' :
                     track.type === 'eligibility' ? 'bg-pink-500' :
                     track.type === 'five_year_plan' ? 'bg-indigo-500' :
                     track.type === 'grant' ? 'bg-teal-500' :
-                    'bg-gray-400'
+                    'bg-slate-400'
                   }`} />
                   <span className="font-medium">{formatTrackTypeWithAmortization(track)}</span>
                 </div>
                 <div className="text-left">
                   <div>{formatCurrency(track.amount)}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-500">
                     {formatPercentage(track.percentage, 1)} • {formatPercentage(track.interestRate)}
                     {(track.type.includes('linked') || track.type === 'makam') && cpiData && (
                       <div className="text-xs text-purple-600 flex items-center gap-1 mt-1">
@@ -456,13 +456,13 @@ export function MortgageMixCard({
             />
           </div>
         ) : mix.notes && (
-          <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded border-l-4 border-yellow-400">
+          <div className="text-sm text-slate-600 bg-yellow-50 p-2 rounded border-l-4 border-yellow-400">
             <strong>הערות:</strong> {mix.notes}
           </div>
         )}
 
         {/* מידע נוסף */}
-        <div className="text-xs text-gray-500 pt-2 border-t">
+        <div className="text-xs text-slate-500 pt-2 border-t">
           <div className="flex justify-between">
             <span>נוצר: {new Date(mix.createdAt).toLocaleDateString('he-IL')}</span>
             <div className="flex items-center gap-2">

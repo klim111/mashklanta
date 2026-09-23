@@ -20,10 +20,10 @@ export default function ExistingMortgagePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-slate-900 mb-6">
           פעולות על משכנתא קיימת
         </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
           בחר את הפעולה המתאימה לך ונתחיל בתהליך האופטימיזציה של המשכנתא שלך
         </p>
       </div>
@@ -36,17 +36,17 @@ export default function ExistingMortgagePage() {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className="group relative overflow-hidden border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
             onClick={() => setSelectedOption('refinance')}
           >
             <CardContent className="p-8 text-center h-full flex flex-col justify-center">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <RefreshCw className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-blue-600 transition-colors">
                 מיחזור משכנתא קיימת
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 תן למשכלנתא לשפר את תנאי המשכנתא הנוכחית שלך
               </p>
               <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
@@ -64,17 +64,17 @@ export default function ExistingMortgagePage() {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className="group relative overflow-hidden border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
             onClick={() => setSelectedOption('transfer')}
           >
             <CardContent className="p-8 text-center h-full flex flex-col justify-center">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <TrendingUp className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-green-600 transition-colors">
                 גרירת משכנתא
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 תרכוש נכס חדש ותישאר עם המשכנתא הנוכחית שלך
               </p>
               <div className="flex items-center justify-center text-green-600 group-hover:text-green-700 font-semibold">
@@ -109,10 +109,10 @@ export default function ExistingMortgagePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-slate-900 mb-6">
           מיחזור משכנתא קיימת
         </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
           בחר את המטרה שלך למיחזור המשכנתא ונתחיל בתהליך האופטימיזציה
         </p>
       </div>
@@ -125,20 +125,20 @@ export default function ExistingMortgagePage() {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className="group relative overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
             onClick={() => setRefinanceOption('reduce-payment')}
           >
             <CardContent className="p-8 text-center h-full flex flex-col justify-center">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Banknote className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-blue-600 transition-colors">
                 הקטן את התשלום החודשי
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 נסה למצוא תנאים טובים יותר שיפחיתו את ההחזר החודשי שלך
               </p>
-              <div className="flex items-center justify-center text-purple-600 group-hover:text-purple-700 font-semibold">
+              <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
                 <span>התחל עכשיו</span>
                 <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -153,17 +153,17 @@ export default function ExistingMortgagePage() {
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
           <Card 
-            className="group relative overflow-hidden border border-gray-200 hover:border-orange-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-orange-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
             onClick={() => setRefinanceOption('shorten-period')}
           >
             <CardContent className="p-8 text-center h-full flex flex-col justify-center">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Clock className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-orange-600 transition-colors">
                 לקצר את תקופת המשכנתא
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 קיצור של תקופת המשכנתא גם מקטין את הסכום הכללי שישולם עד תום תקופת המשכנתא
               </p>
               <div className="flex items-center justify-center text-orange-600 group-hover:text-orange-700 font-semibold">
@@ -197,10 +197,10 @@ export default function ExistingMortgagePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-slate-900 mb-6">
           גרירת משכנתא
         </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
           העבר את המשכנתא הקיימת שלך לנכס חדש וחסוך עלויות מיותרות
         </p>
       </div>
@@ -209,10 +209,10 @@ export default function ExistingMortgagePage() {
         <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center shadow-lg">
           <TrendingUp className="w-10 h-10 text-white" />
         </div>
-        <h3 className="text-subtitle font-bold text-gray-900 mb-4">
+        <h3 className="text-subtitle font-bold text-slate-900 mb-4">
           תהליך גרירת משכנתא
         </h3>
-        <p className="text-gray-600 text-lg leading-relaxed mb-8">
+        <p className="text-slate-600 text-lg leading-relaxed mb-8">
           גרירת משכנתא מאפשרת לך להעביר את המשכנתא הקיימת שלך לנכס חדש, 
           תוך שמירה על התנאים הנוכחיים וחיסכון בעלויות של משכנתא חדשה.
         </p>
@@ -253,9 +253,9 @@ export default function ExistingMortgagePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
       </div>
       
@@ -271,10 +271,10 @@ export default function ExistingMortgagePage() {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-12">
-              <h1 className="text-title font-bold text-gray-900 mb-6">
+              <h1 className="text-title font-bold text-slate-900 mb-6">
                 {refinanceOption === 'reduce-payment' ? 'הקטן את התשלום החודשי' : 'לקצר את תקופת המשכנתא'}
               </h1>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-slate-600 max-w-3xl mx-auto">
                 {refinanceOption === 'reduce-payment' 
                   ? 'נסה למצוא תנאים טובים יותר שיפחיתו את ההחזר החודשי שלך'
                   : 'קיצור של תקופת המשכנתא גם מקטין את הסכום הכללי שישולם עד תום תקופת המשכנתא'
@@ -284,7 +284,7 @@ export default function ExistingMortgagePage() {
 
             <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
               <div className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${
-                refinanceOption === 'reduce-payment' ? 'from-purple-600 to-purple-700' : 'from-orange-600 to-orange-700'
+                refinanceOption === 'reduce-payment' ? 'from-blue-600 to-blue-700' : 'from-orange-600 to-orange-700'
               } rounded-2xl flex items-center justify-center shadow-lg`}>
                 {refinanceOption === 'reduce-payment' ? (
                   <Banknote className="w-10 h-10 text-white" />
@@ -293,11 +293,11 @@ export default function ExistingMortgagePage() {
                 )}
               </div>
               
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4">
                 {refinanceOption === 'reduce-payment' ? 'מיחזור להקטנת תשלום חודשי' : 'מיחזור לקיצור תקופה'}
               </h3>
               
-              <p className="text-gray-600 text-lg leading-relaxed mb-8">
+              <p className="text-slate-600 text-lg leading-relaxed mb-8">
                 {refinanceOption === 'reduce-payment' 
                   ? 'נסה למצוא ריביות נמוכות יותר ותנאים טובים יותר שיפחיתו את ההחזר החודשי שלך, תוך שמירה על תקופת המשכנתא הנוכחית.'
                   : 'קיצור תקופת המשכנתא יגדיל את ההחזר החודשי אבל יקטין משמעותית את הסכום הכולל שתשלם לאורך כל תקופת המשכנתא.'
@@ -309,7 +309,7 @@ export default function ExistingMortgagePage() {
                   size="lg"
                   className={`px-8 py-4 ${
                     refinanceOption === 'reduce-payment' 
-                      ? 'bg-purple-600 hover:bg-purple-700' 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
                       : 'bg-orange-600 hover:bg-orange-700'
                   } text-white text-lg`}
                 >

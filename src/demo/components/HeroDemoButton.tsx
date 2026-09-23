@@ -19,7 +19,7 @@ export function HeroDemoButton({ className = '' }: { className?: string }) {
       <button
         type="button"
         onClick={() => demoStore.start('overview', { returnTo: '/' })}
-        className="group inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-7 py-3.5 text-cta font-black text-white shadow-xl shadow-blue-600/25 transition-all hover:shadow-2xl md:w-auto"
+        className="group inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 px-7 py-3.5 text-cta font-black text-white shadow-xl shadow-blue-600/25 transition-all hover:shadow-2xl md:w-auto"
         {...demoId('home-demo-button')}
       >
         <PlayCircle className="h-6 w-6 transition-transform group-hover:scale-110" />

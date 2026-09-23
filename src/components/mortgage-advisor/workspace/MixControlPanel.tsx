@@ -151,7 +151,7 @@ export function MixControlPanel({
 
         {/* הוספת מסלול מוצעת רק כשיש סכום שטרם שובץ — גם היא שורה, לא בלוק */}
         {remaining > 0 && !locked && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/70 p-1.5">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 p-1.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
               <Plus className="h-4 w-4" />
             </span>

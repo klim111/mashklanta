@@ -253,7 +253,7 @@ export function StartCard({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 shadow-xl md:p-8">
+    <section className="relative overflow-hidden rounded-3xl bg-brand-dark p-6 shadow-xl md:p-8">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-600/30 blur-3xl" />
         <div className="absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-violet-600/25 blur-3xl" />

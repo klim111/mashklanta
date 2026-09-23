@@ -54,7 +54,7 @@ export function ConflictResolver() {
   };
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
       <div className="mb-4 flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
           <TriangleAlert className="h-4 w-4" />

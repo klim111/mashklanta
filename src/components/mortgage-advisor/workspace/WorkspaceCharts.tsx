@@ -570,7 +570,7 @@ function TrackFocusCharts({
   return (
     <>
       <div className={fullRow}>
-        <div className="grid gap-2 rounded-xl border border-violet-200 bg-violet-50/50 p-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 rounded-xl border border-violet-200 bg-violet-50 p-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <TrackStat label="החזר חודשי" value={track.monthlyPayment > 0.01 ? formatShekel(track.monthlyPayment) : 'אין החזר שוטף'} />
           <TrackStat label="סך ריבית" value={formatShekel(track.totalInterest)} />
           <TrackStat label="סך תשלום" value={formatShekel(track.totalPaid)} />

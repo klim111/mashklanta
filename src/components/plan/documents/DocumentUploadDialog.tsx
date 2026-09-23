@@ -129,7 +129,7 @@ export function DocumentUploadDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="mt-5 rounded-xl bg-slate-900 px-6 py-2.5 text-button font-black text-white hover:bg-slate-700"
+              className="mt-5 rounded-xl bg-blue-600 px-6 py-2.5 text-button font-black text-white hover:bg-blue-700"
             >
               סגירה
             </button>
@@ -177,7 +177,7 @@ export function DocumentUploadDialog({
                   transition={{ duration: 0.25 }}
                   className="overflow-hidden"
                 >
-                  <div className="mb-3 max-h-56 space-y-3 overflow-y-auto rounded-2xl border-2 border-slate-200 bg-slate-50/60 p-3">
+                  <div className="mb-3 max-h-56 space-y-3 overflow-y-auto rounded-2xl border-2 border-slate-200 bg-slate-50 p-3">
                     <FullList
                       title="עדיין לא הוגשו"
                       icon={<CircleDashed className="h-4 w-4 text-slate-400" />}
@@ -238,7 +238,7 @@ export function DocumentUploadDialog({
             )}
 
             {selected && byKey.has(selected.key) && (
-              <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-2xs font-bold text-amber-900">
+              <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-2xs font-bold text-amber-900">
                 כבר קיים קובץ למסמך הזה ({byKey.get(selected.key)?.fileName}). העלאה חדשה תחליף אותו.
               </p>
             )}
@@ -273,7 +273,7 @@ export function DocumentUploadDialog({
               type="button"
               onClick={() => input.current?.click()}
               className={`mt-3 flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
-                file ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/40'
+                file ? 'border-emerald-300 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/40'
               }`}
             >
               <Upload className={`h-6 w-6 ${file ? 'text-emerald-600' : 'text-slate-400'}`} />

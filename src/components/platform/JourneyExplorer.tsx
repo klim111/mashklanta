@@ -47,7 +47,7 @@ export default function JourneyExplorer() {
     <div dir="rtl" className="w-full">
       {/* Stage rail */}
       <div className="relative mb-10">
-        <div className="absolute top-7 right-[10%] left-[10%] h-1 bg-gray-200 rounded-full hidden md:block" />
+        <div className="absolute top-7 right-[10%] left-[10%] h-1 bg-slate-200 rounded-full hidden md:block" />
         <motion.div
           className="absolute top-7 right-[10%] h-1 bg-gradient-to-l from-blue-500 via-violet-500 to-amber-500 rounded-full hidden md:block"
           animate={{ width: `${progress * 0.8}%` }}
@@ -73,8 +73,8 @@ export default function JourneyExplorer() {
                       isActive
                         ? `bg-gradient-to-br ${s.gradient} text-white shadow-xl`
                         : isPassed
-                          ? 'bg-white text-gray-700 border-2 border-gray-300'
-                          : 'bg-white text-gray-600 border-2 border-gray-200 group-hover:border-blue-300 group-hover:text-blue-600'
+                          ? 'bg-white text-slate-700 border-2 border-slate-300'
+                          : 'bg-white text-slate-600 border-2 border-slate-200 group-hover:border-blue-300 group-hover:text-blue-600'
                     }`}
                   >
                     {isPassed ? <Check className="h-6 w-6 text-emerald-600" /> : s.number}
@@ -87,7 +87,7 @@ export default function JourneyExplorer() {
                   </motion.span>
                   <span
                     className={`mt-3 text-sm font-bold leading-snug transition-colors ${
-                      isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'
+                      isActive ? 'text-slate-900' : 'text-slate-600 group-hover:text-slate-900'
                     }`}
                   >
                     {s.shortTitle}
@@ -100,7 +100,7 @@ export default function JourneyExplorer() {
       </div>
 
       {/* Detail panel */}
-      <div className="relative rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+      <div className="relative rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
         <div className={`h-1.5 w-full bg-gradient-to-l ${stage.gradient}`} />
 
         <div className="p-6 md:p-10">
@@ -113,15 +113,15 @@ export default function JourneyExplorer() {
                 <Icon className="h-8 w-8 text-white" />
               </div>
               <div>
-                <div className="mb-1 text-sm font-bold text-gray-600">
+                <div className="mb-1 text-sm font-bold text-slate-600">
                   שלב {stage.number} מתוך {journeyStages.length}
                 </div>
-                <h3 className="text-subtitle font-black text-gray-900 leading-tight">
+                <h3 className="text-subtitle font-black text-slate-900 leading-tight">
                   {stage.title}
                 </h3>
-                <p className="mt-2 text-gray-600">{stage.tagline}</p>
+                <p className="mt-2 text-slate-600">{stage.tagline}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     <Clock className="h-3.5 w-3.5" />
                     {stage.duration}
                   </span>
@@ -139,8 +139,8 @@ export default function JourneyExplorer() {
 
             {/* Performer toggle */}
             <div className="shrink-0">
-              <div className="mb-2 text-xs font-bold text-gray-600 md:text-left">מי מבצע את השלב?</div>
-              <div className="relative z-0 flex w-full flex-col gap-1 rounded-2xl bg-gray-100 p-1 sm:w-auto sm:flex-row">
+              <div className="mb-2 text-xs font-bold text-slate-600 md:text-left">מי מבצע את השלב?</div>
+              <div className="relative z-0 flex w-full flex-col gap-1 rounded-2xl bg-slate-100 p-1 sm:w-auto sm:flex-row">
                 {(
                   [
                     { id: 'advisor' as const, label: 'היועץ', icon: UserCheck },
@@ -158,13 +158,13 @@ export default function JourneyExplorer() {
                         setAutoplay(false);
                       }}
                       className={`relative z-10 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:py-2.5 sm:text-sm ${
-                        selected ? 'text-white' : 'text-gray-700 hover:text-gray-900'
+                        selected ? 'text-white' : 'text-slate-700 hover:text-slate-900'
                       }`}
                     >
                       {selected && (
                         <motion.span
                           layoutId="performer-pill"
-                          className="absolute inset-0 z-0 rounded-xl bg-gray-900"
+                          className="absolute inset-0 z-0 rounded-xl bg-slate-900"
                           transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                         />
                       )}
@@ -191,8 +191,8 @@ export default function JourneyExplorer() {
               >
                 {performer === 'advisor' ? (
                   <>
-                    <div className="lg:col-span-3 rounded-2xl border border-gray-200 bg-gray-50/70 p-6">
-                      <h4 className="mb-4 text-lg font-bold text-gray-900">
+                    <div className="lg:col-span-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-6">
+                      <h4 className="mb-4 text-lg font-bold text-slate-900">
                         מה היועץ עושה בפועל
                       </h4>
                       <ul className="space-y-3">
@@ -207,7 +207,7 @@ export default function JourneyExplorer() {
                             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
                               <Check className="h-3 w-3 text-emerald-600" />
                             </span>
-                            <span className="text-gray-700 leading-relaxed">{action}</span>
+                            <span className="text-slate-700 leading-relaxed">{action}</span>
                           </motion.li>
                         ))}
                       </ul>
@@ -228,11 +228,11 @@ export default function JourneyExplorer() {
                   </>
                 ) : (
                   <>
-                    <div className="lg:col-span-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-6">
-                      <h4 className="mb-2 text-lg font-bold text-gray-900">
+                    <div className="lg:col-span-3 rounded-2xl border border-blue-200 bg-blue-50 p-6">
+                      <h4 className="mb-2 text-lg font-bold text-slate-900">
                         איך עושים את זה לבד בפלטפורמה
                       </h4>
-                      <p className="mb-4 text-gray-600 leading-relaxed">
+                      <p className="mb-4 text-slate-600 leading-relaxed">
                         {stage.selfServiceSummary}
                       </p>
                       <ul className="space-y-3">
@@ -247,14 +247,14 @@ export default function JourneyExplorer() {
                             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-2xs font-black text-white">
                               {i + 1}
                             </span>
-                            <span className="text-gray-700 leading-relaxed">{step}</span>
+                            <span className="text-slate-700 leading-relaxed">{step}</span>
                           </motion.li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white p-6">
-                      <h4 className="mb-4 text-lg font-bold text-gray-900">
+                    <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6">
+                      <h4 className="mb-4 text-lg font-bold text-slate-900">
                         הכלים שמחכים לכם
                       </h4>
                       <div className="space-y-2">
@@ -267,12 +267,12 @@ export default function JourneyExplorer() {
                           >
                             <Link
                               href={tool.href}
-                              className="group flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 transition-all hover:border-blue-300 hover:bg-blue-50"
+                              className="group flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 transition-all hover:border-blue-300 hover:bg-blue-50"
                             >
-                              <span className="font-semibold text-gray-800 group-hover:text-blue-700">
+                              <span className="font-semibold text-slate-800 group-hover:text-blue-700">
                                 {tool.label}
                               </span>
-                              <ArrowUpLeft className="h-4 w-4 text-gray-400 transition-transform group-hover:-translate-y-0.5 group-hover:text-blue-600" />
+                              <ArrowUpLeft className="h-4 w-4 text-slate-400 transition-transform group-hover:-translate-y-0.5 group-hover:text-blue-600" />
                             </Link>
                           </motion.div>
                         ))}
@@ -285,11 +285,11 @@ export default function JourneyExplorer() {
           </div>
 
           {/* Panel footer navigation */}
-          <div className="mt-8 flex flex-col gap-4 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-8 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={() => select(activeIndex - 1)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 sm:w-auto"
             >
               <ChevronRight className="h-4 w-4" />
               השלב הקודם
@@ -303,7 +303,7 @@ export default function JourneyExplorer() {
                   onClick={() => select(index)}
                   aria-label={s.shortTitle}
                   className={`h-2 rounded-full transition-all ${
-                    index === activeIndex ? 'w-8 bg-gray-900' : 'w-2 bg-gray-300 hover:bg-gray-400'
+                    index === activeIndex ? 'w-8 bg-slate-900' : 'w-2 bg-slate-300 hover:bg-slate-400'
                   }`}
                 />
               ))}
@@ -312,7 +312,7 @@ export default function JourneyExplorer() {
             <button
               type="button"
               onClick={() => select(activeIndex + 1)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 sm:w-auto"
             >
               השלב הבא
               <ChevronLeft className="h-4 w-4" />

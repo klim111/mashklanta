@@ -249,7 +249,7 @@ export function MixList({
       <CardContent>
         <div className="space-y-3">
           {othersOpen && others.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
               <MixSliderSection
                 items={others}
                 originOf={originOf}
@@ -433,7 +433,7 @@ export function MixSliderSection({
   const quoteCount = items.filter((item) => originOf(item) === 'quote').length;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
       <div className="mb-2.5 flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2 sm:text-right">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-white">
           <GitCompareArrows className="h-3.5 w-3.5" />

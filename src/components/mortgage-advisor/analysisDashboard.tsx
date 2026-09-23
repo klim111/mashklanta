@@ -108,7 +108,7 @@ export function StateBlocksRow({
   return (
     <div
       className={`rounded-2xl border p-2 ${
-        current ? 'border-slate-200 bg-slate-50/70' : 'border-emerald-300 bg-emerald-50/70'
+        current ? 'border-slate-200 bg-slate-50' : 'border-emerald-300 bg-emerald-50'
       }`}
     >
       <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
@@ -127,7 +127,7 @@ export function StateBlocksRow({
           gradient={
             baseline
               ? deltaGradient(snapshot.monthlyPayment - baseline.monthlyPayment, baseline.monthlyPayment)
-              : 'bg-gradient-to-br from-slate-900 to-indigo-900'
+              : 'bg-brand-dark'
           }
         />
         <StateBlock

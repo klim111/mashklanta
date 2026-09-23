@@ -164,7 +164,7 @@ function UnassignedMixCard({
             type="button"
             disabled={busy || !address.trim()}
             onClick={() => onAttach({ address, value, amount })}
-            className="w-full rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-black text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-black text-white disabled:opacity-50"
           >
             {busy ? 'משייך…' : 'שייכו לנכס והפכו למשכנתא בתהליך'}
           </button>

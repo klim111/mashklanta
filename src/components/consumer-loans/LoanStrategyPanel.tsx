@@ -303,7 +303,7 @@ export function LoanStrategyPanel({
                     <tr
                       key={`${scenario.type}-${scenario.description}-${index}`}
                       className={`border-t border-slate-100 ${
-                        isBest ? 'bg-violet-50/70' : overBudget ? 'bg-rose-50/50' : ''
+                        isBest ? 'bg-violet-50' : overBudget ? 'bg-rose-50' : ''
                       }`}
                     >
                       <td className="p-2 font-bold text-slate-900">

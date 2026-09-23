@@ -177,7 +177,7 @@ function SnapshotStat({
 }) {
   const toneClass =
     tone === 'dark'
-      ? 'bg-gradient-to-br from-slate-900 to-indigo-900 text-white border-transparent'
+      ? 'bg-brand-dark text-white border-transparent'
       : tone === 'warning'
         ? 'bg-amber-50 border-amber-200'
         : 'bg-white border-slate-200';

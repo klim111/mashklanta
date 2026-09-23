@@ -86,7 +86,7 @@ export function InflationForecastChart({
       : 'לפי תחזית חטיבת המחקר ויעד האינפלציה';
 
   return (
-    <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3">
+    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
       <p className="text-sm font-semibold text-violet-950 flex items-center gap-1.5">
         <TrendingUp className="h-4 w-4 text-violet-600" />
         תחזית אינפלציה — בנק ישראל

@@ -45,23 +45,23 @@ function CellValue({ value }: { value: boolean | string }) {
   }
   if (value === false) {
     return (
-      <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-gray-100">
-        <Minus className="h-4 w-4 text-gray-400" />
+      <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-slate-100">
+        <Minus className="h-4 w-4 text-slate-400" />
       </span>
     );
   }
-  return <span className="text-sm font-semibold text-gray-700">{value}</span>;
+  return <span className="text-sm font-semibold text-slate-700">{value}</span>;
 }
 
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white" dir="rtl">
-      <div className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur-md">
+      <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 shadow-sm backdrop-blur-md">
         <NavBar />
       </div>
 
       {/* ─────────────────────────── Hero ─────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-4 py-24 text-white md:py-32">
+      <section className="relative overflow-hidden bg-brand-dark px-4 py-24 text-white md:py-32">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 right-[10%] h-96 w-96 rounded-full bg-violet-500/25 blur-3xl animate-blob" />
           <div className="absolute -bottom-24 left-[10%] h-96 w-96 rounded-full bg-blue-500/25 blur-3xl animate-blob [animation-delay:3s]" />
@@ -125,10 +125,10 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mx-auto mb-14 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               שלושה מסלולים, מעבר חופשי ביניהם
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               רוב הלקוחות מתחילים לבד ומצרפים יועץ בשלב שבו זה באמת משתלם — התמהיל וההתמחרות.
             </p>
           </motion.div>
@@ -146,7 +146,7 @@ export default function PricingPage() {
                   className={`relative flex h-full flex-col rounded-3xl border-2 bg-white p-5 shadow-lg transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl sm:p-8 ${
                     plan.popular
                       ? 'border-violet-400 lg:-mt-4 lg:pb-12 lg:shadow-2xl'
-                      : 'border-gray-200'
+                      : 'border-slate-200'
                   }`}
                 >
                   {plan.popular && (
@@ -161,38 +161,38 @@ export default function PricingPage() {
                     <Icon className="h-7 w-7 text-white" />
                   </div>
 
-                  <h3 className="text-subtitle font-black text-gray-900">{plan.name}</h3>
-                  <p className="mt-1.5 min-h-[3rem] text-sm leading-relaxed text-gray-600">
+                  <h3 className="text-subtitle font-black text-slate-900">{plan.name}</h3>
+                  <p className="mt-1.5 min-h-[3rem] text-sm leading-relaxed text-slate-600">
                     {plan.tagline}
                   </p>
 
-                  <div className="my-6 border-y border-gray-100 py-5">
-                    <div className="text-4xl font-black text-gray-900">{plan.price}</div>
-                    <div className="mt-1 text-sm text-gray-600">{plan.priceNote}</div>
+                  <div className="my-6 border-y border-slate-100 py-5">
+                    <div className="text-4xl font-black text-slate-900">{plan.price}</div>
+                    <div className="mt-1 text-sm text-slate-600">{plan.priceNote}</div>
                   </div>
 
                   <ul className="mb-7 flex-1 space-y-3">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5">
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                        <span className="text-sm leading-relaxed text-gray-700">
+                        <span className="text-sm leading-relaxed text-slate-700">
                           {feature}
                         </span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="mb-5 rounded-xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">
-                    <strong className="text-gray-900">מתאים ל:</strong> {plan.bestFor}
+                  <div className="mb-5 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+                    <strong className="text-slate-900">מתאים ל:</strong> {plan.bestFor}
                   </div>
 
                   <Button
                     asChild
                     size="lg"
-                    className={`w-full text-base font-bold text-white shadow-lg ${
+                    className={`w-full text-base font-bold shadow-lg ${
                       plan.popular
-                        ? 'bg-gradient-to-l from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 hover:text-white'
-                        : 'bg-gray-900 hover:bg-gray-800 hover:text-white'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:text-white'
+                        : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     <Link href={plan.ctaHref}>{plan.ctaLabel}</Link>
@@ -205,7 +205,7 @@ export default function PricingPage() {
       </section>
 
       {/* ─────────────────────── Principles ─────────────────────── */}
-      <section className="bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 py-20 text-white md:py-28">
+      <section className="bg-brand-dark py-20 text-white md:py-28">
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -238,7 +238,7 @@ export default function PricingPage() {
       {/* ─────────────────────── Stage pricing ─────────────────────── */}
       <section
         id="builder"
-        className="scroll-mt-24 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50 py-20 md:py-28"
+        className="scroll-mt-24 bg-hero-soft py-20 md:py-28"
       >
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
@@ -251,10 +251,10 @@ export default function PricingPage() {
               <Calculator className="h-4 w-4" />
               מחשבון החבילה
             </div>
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               סמנו מה היועץ יעשה — ותראו מחיר מיד
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               כל שלב שלא סימנתם הוא שלב שאתם מבצעים בעצמכם בפלטפורמה. סימנתם שלב אחד לפחות?
               הגישה לפלטפורמה כלולה, מה שכבר שילמתם עליה מקוזז, ואם ליווי מלא יוצא זול יותר —
               זה המחיר שתשלמו.
@@ -270,7 +270,7 @@ export default function PricingPage() {
                 label: 'סכום חמשת השלבים בנפרד',
                 value: `₪${stagesTotalPrice.toLocaleString('he-IL')}`,
                 note: 'כשרוכשים אותם אחד־אחד',
-                tone: 'text-gray-900',
+                tone: 'text-slate-900',
               },
               {
                 label: 'מחיר חבילת הליווי המלא',
@@ -291,11 +291,11 @@ export default function PricingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-md"
+                className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-md"
               >
-                <div className="text-sm font-semibold text-gray-600">{item.label}</div>
+                <div className="text-sm font-semibold text-slate-600">{item.label}</div>
                 <div className={`my-1.5 text-3xl font-black ${item.tone}`}>{item.value}</div>
-                <div className="text-xs text-gray-600">{item.note}</div>
+                <div className="text-xs text-slate-600">{item.note}</div>
               </motion.div>
             ))}
           </div>
@@ -311,10 +311,10 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mx-auto mb-12 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               מחירון השלבים
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               מה כלול בכל שלב, כמה הוא עולה עם יועץ, ומה מקבלים במקומו כשעושים אותו לבד.
             </p>
           </motion.div>
@@ -329,7 +329,7 @@ export default function PricingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.06 }}
-                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition-shadow hover:shadow-xl"
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md transition-shadow hover:shadow-xl"
                 >
                   <div className={`h-1 w-full bg-gradient-to-l ${stage.gradient}`} />
                   <div className="grid gap-5 p-6 md:grid-cols-[auto_1fr_auto] md:items-center">
@@ -340,11 +340,11 @@ export default function PricingPage() {
                     </div>
 
                     <div>
-                      <div className="text-xs font-bold text-gray-600">
+                      <div className="text-xs font-bold text-slate-600">
                         שלב {stage.number} · {stage.duration}
                       </div>
-                      <h3 className="text-subtitle font-bold text-gray-900">{stage.title}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                      <h3 className="text-subtitle font-bold text-slate-900">{stage.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-600">
                         {stage.valueHeadline} — {stage.tagline}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -352,7 +352,7 @@ export default function PricingPage() {
                           <Link
                             key={tool.href + tool.label}
                             href={tool.href}
-                            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 transition-colors hover:bg-blue-100 hover:text-blue-700"
+                            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-blue-100 hover:text-blue-700"
                           >
                             {tool.label}
                             <ArrowUpLeft className="h-3 w-3" />
@@ -363,14 +363,14 @@ export default function PricingPage() {
 
                     <div className="flex flex-row items-center gap-6 md:flex-col md:items-end md:gap-2">
                       <div className="text-right md:text-left">
-                        <div className="text-2xl font-black text-gray-900">
+                        <div className="text-2xl font-black text-slate-900">
                           ₪{stage.advisorPrice.toLocaleString('he-IL')}
                         </div>
-                        <div className="text-xs font-semibold text-gray-600">עם יועץ</div>
+                        <div className="text-xs font-semibold text-slate-600">עם יועץ</div>
                       </div>
                       <div className="text-right md:text-left">
                         <div className="text-sm font-black text-blue-700">כלול במנוי</div>
-                        <div className="text-xs font-semibold text-gray-600">
+                        <div className="text-xs font-semibold text-slate-600">
                           בביצוע עצמי
                         </div>
                       </div>
@@ -384,7 +384,7 @@ export default function PricingPage() {
       </section>
 
       {/* ─────────────────────── Comparison table ─────────────────────── */}
-      <section className="bg-gradient-to-br from-gray-50 to-slate-100 py-20 md:py-28">
+      <section className="bg-slate-50 py-20 md:py-28">
         <div className="mx-auto max-w-5xl px-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -396,17 +396,17 @@ export default function PricingPage() {
               <BadgeCheck className="h-4 w-4" />
               השוואה מלאה
             </div>
-            <h2 className="text-title font-black text-gray-900">
+            <h2 className="text-title font-black text-slate-900">
               מה כלול בכל מסלול
             </h2>
           </motion.div>
 
-          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div className="overflow-x-auto overscroll-x-contain">
-              <p className="mb-2 px-4 pt-3 text-center text-xs text-gray-500 md:hidden">גללו הצידה לצפייה בהשוואה המלאה</p>
+              <p className="mb-2 px-4 pt-3 text-center text-xs text-slate-500 md:hidden">גללו הצידה לצפייה בהשוואה המלאה</p>
               <table className="w-full min-w-[560px] text-right">
                 <thead>
-                  <tr className="bg-gray-900 text-white">
+                  <tr className="bg-slate-900 text-white">
                     <th className="px-6 py-4 text-sm font-bold">יכולת</th>
                     <th className="px-4 py-4 text-center text-sm font-bold">עצמאי</th>
                     <th className="bg-violet-700 px-4 py-4 text-center text-sm font-bold">
@@ -419,15 +419,15 @@ export default function PricingPage() {
                   {comparisonRows.map((row, i) => (
                     <tr
                       key={row.capability}
-                      className={`border-t border-gray-100 ${
-                        i === comparisonRows.length - 1 ? 'bg-gray-50 font-bold' : ''
+                      className={`border-t border-slate-100 ${
+                        i === comparisonRows.length - 1 ? 'bg-slate-50 font-bold' : ''
                       }`}
                     >
-                      <td className="px-6 py-4 text-sm text-gray-800">{row.capability}</td>
+                      <td className="px-6 py-4 text-sm text-slate-800">{row.capability}</td>
                       <td className="px-4 py-4 text-center">
                         <CellValue value={row.self} />
                       </td>
-                      <td className="bg-violet-50/60 px-4 py-4 text-center">
+                      <td className="bg-violet-50 px-4 py-4 text-center">
                         <CellValue value={row.hybrid} />
                       </td>
                       <td className="px-4 py-4 text-center">
@@ -440,7 +440,7 @@ export default function PricingPage() {
             </div>
           </div>
 
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-slate-600">
             הגישה לפלטפורמה בסך ₪{PLATFORM_MONTHLY_PRICE} לחודש נגבית עד לסיום התהליך וניתנת להפסקה
             בכל עת. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה ששולם עליה מקוזז.
           </p>
@@ -456,7 +456,7 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mb-12 text-center"
           >
-            <h2 className="text-title font-black text-gray-900">שאלות נפוצות</h2>
+            <h2 className="text-title font-black text-slate-900">שאלות נפוצות</h2>
           </motion.div>
 
           <Accordion type="single" collapsible className="w-full">
@@ -464,12 +464,12 @@ export default function PricingPage() {
               <AccordionItem
                 key={item.question}
                 value={`faq-${i}`}
-                className="border-b border-gray-200"
+                className="border-b border-slate-200"
               >
-                <AccordionTrigger className="gap-4 text-right text-base font-bold text-gray-900 hover:no-underline">
+                <AccordionTrigger className="gap-4 text-right text-base font-bold text-slate-900 hover:no-underline">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-base leading-relaxed text-gray-600">
+                <AccordionContent className="text-base leading-relaxed text-slate-600">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>
@@ -479,7 +479,7 @@ export default function PricingPage() {
       </section>
 
       {/* ─────────────────────────── CTA ─────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-800 to-violet-900 py-20 text-white md:py-24">
+      <section className="relative overflow-hidden bg-brand-dark py-20 text-white md:py-24">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-20 right-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl animate-float" />
           <div className="absolute -bottom-24 left-1/4 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl animate-float-slow" />

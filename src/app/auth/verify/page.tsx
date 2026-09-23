@@ -55,7 +55,7 @@ function VerifyEmailContent() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -89,14 +89,14 @@ function VerifyEmailContent() {
             </motion.div>
 
             {/* Title */}
-            <h1 className="text-title font-bold text-gray-900 mb-2">
+            <h1 className="text-title font-bold text-slate-900 mb-2">
               {status === 'loading' && 'מאמת את כתובת המייל...'}
               {status === 'success' && 'אימות הושלם בהצלחה!'}
               {status === 'error' && 'אימות נכשל'}
             </h1>
 
             {/* Message */}
-            <p className="text-gray-600 mb-8">{message}</p>
+            <p className="text-slate-600 mb-8">{message}</p>
 
             {/* Actions */}
             {status === 'success' && (
@@ -105,10 +105,10 @@ function VerifyEmailContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <p className="text-sm text-gray-500 mb-4">מעביר אותך לדף ההתחברות...</p>
+                <p className="text-sm text-slate-500 mb-4">מעביר אותך לדף ההתחברות...</p>
                 <Link
                   href="/auth/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all"
                 >
                   המשך להתחברות
                 </Link>
@@ -124,14 +124,14 @@ function VerifyEmailContent() {
               >
                 <Link
                   href="/auth/register"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all"
                 >
                   <Mail className="w-5 h-5" />
                   נסה להירשם שוב
                 </Link>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   או{' '}
-                  <Link href="/contact" className="text-purple-600 hover:text-purple-700">
+                  <Link href="/contact" className="text-blue-600 hover:text-blue-700">
                     צור קשר עם התמיכה
                   </Link>
                 </p>
@@ -144,7 +144,7 @@ function VerifyEmailContent() {
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-gray-600 hover:text-gray-800 transition-colors inline-flex items-center gap-2"
+            className="text-slate-600 hover:text-slate-800 transition-colors inline-flex items-center gap-2"
           >
             <Home className="w-4 h-4" />
             חזרה לדף הבית
@@ -158,8 +158,8 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     }>
       <VerifyEmailContent />

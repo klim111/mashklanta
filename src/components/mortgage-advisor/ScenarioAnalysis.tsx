@@ -377,7 +377,7 @@ function TrackRow({
       </button>
 
       {open && (
-        <div className="p-3 sm:p-4 bg-slate-50/60 border-t border-slate-100 space-y-4">
+        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 space-y-4">
           {/* mobile summary of the figures hidden in the header */}
           <div className="grid grid-cols-2 gap-2 sm:hidden">
             <div className="rounded-lg bg-white p-2.5 text-center border border-slate-200">
@@ -607,7 +607,7 @@ export function ScenarioAnalysis({ baseMix, onClose }: ScenarioAnalysisProps) {
         <CardContent className="space-y-4">
           {/* KPI boxes — both prominent, close shades */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-slate-900 to-indigo-900 text-white p-4 shadow-md">
+            <div className="rounded-xl bg-brand-dark text-white p-4 shadow-md">
               <div className="flex items-center gap-2 text-slate-300 text-xs mb-1">
                 <Wallet className="h-3.5 w-3.5" />
                 החזר חודשי — תרחיש נבחר

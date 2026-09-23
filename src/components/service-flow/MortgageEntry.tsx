@@ -202,7 +202,7 @@ export function MortgageEntry({
       <motion.section
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 shadow-xl md:p-10"
+        className="relative overflow-hidden rounded-3xl bg-brand-dark p-6 shadow-xl md:p-10"
       >
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/30 blur-3xl" />

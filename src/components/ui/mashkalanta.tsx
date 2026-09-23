@@ -45,7 +45,7 @@ export default function LoanWordJump({
   const finalWord = ["מ", "ש", "כ", "ל", "נ", "ת", "א"];
   const blinkClass = isHeader ? "blink-and-bold-header" : "blink-and-bold";
   const lamedInClass = isHeader ? "text-emerald-300" : "text-emerald-600";
-  const letterClass = isHeader ? "text-white" : isNav ? "text-gray-900" : undefined;
+  const letterClass = isHeader ? "text-white" : isNav ? "text-slate-900" : undefined;
 
   const wrapClass = isHeader
     ? "flex shrink-0 cursor-pointer select-none flex-col items-center justify-center"
@@ -56,7 +56,7 @@ export default function LoanWordJump({
   const wordClass = isHeader
     ? "text-2xl font-bold text-white md:text-2xl"
     : isNav
-      ? "text-xl font-black text-gray-900 md:text-2xl"
+      ? "text-xl font-black text-slate-900 md:text-2xl"
       : "text-3xl font-bold sm:text-4xl md:text-5xl";
 
   return (
@@ -115,7 +115,7 @@ export default function LoanWordJump({
             className={
               isHeader
                 ? "mt-1 max-w-[11rem] text-center text-2xs font-semibold leading-tight text-cyan-100/90 md:text-2xs"
-                : "mt-2 text-base text-gray-700 sm:mt-4 sm:text-xl"
+                : "mt-2 text-base text-slate-700 sm:mt-4 sm:text-xl"
             }
           >
             מוסיפים שכל למשכנתא שלך

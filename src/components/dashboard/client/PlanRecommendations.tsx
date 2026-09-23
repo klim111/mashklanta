@@ -60,9 +60,9 @@ export function PlanRecommendations({
               animate={{ opacity: 1, y: 0 }}
               className={`flex flex-wrap items-start gap-3 rounded-2xl border-2 p-3.5 transition-colors ${
                 done
-                  ? 'border-emerald-200 bg-emerald-50/50'
+                  ? 'border-emerald-200 bg-emerald-50'
                   : recommendation.tone === 'warning'
-                    ? 'border-amber-200 bg-amber-50/60'
+                    ? 'border-amber-200 bg-amber-50'
                     : 'border-slate-200 bg-white'
               }`}
             >
@@ -104,7 +104,7 @@ export function PlanRecommendations({
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-black transition-colors ${
                   done
                     ? 'border-2 border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50'
-                    : 'bg-slate-900 text-white hover:bg-slate-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
                 {done ? (

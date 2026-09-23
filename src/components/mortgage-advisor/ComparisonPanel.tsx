@@ -212,7 +212,7 @@ function MixRow({
       </button>
 
       {open && (
-        <div className="p-3 sm:p-4 bg-slate-50/60 border-t border-slate-100 space-y-3">
+        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 space-y-3">
           {mix.tracks.map((track) => {
             const pct = track.percentage ?? 0;
             return (

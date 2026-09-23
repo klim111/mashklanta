@@ -395,7 +395,7 @@ export function SmartHintsDemo() {
   };
 
   return (
-    <div className="p-8 bg-slate-100 min-h-screen">
+    <div className="p-8 bg-slate-50 min-h-screen">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-title font-bold text-slate-800 mb-4">
           דמו של רמזים חכמים

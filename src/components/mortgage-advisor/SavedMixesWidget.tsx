@@ -36,7 +36,7 @@ export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6" dir="rtl">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
           <BookmarkCheck className="w-5 h-5 text-emerald-600" />
           תמהילים שמורים
         </h3>
@@ -48,8 +48,8 @@ export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
       </div>
 
       {ready && saved.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <PieChart className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+        <div className="text-center py-8 text-slate-500">
+          <PieChart className="w-12 h-12 mx-auto mb-2 text-slate-300" />
           <p className="text-sm mb-3">עוד לא שמרתם תמהילים</p>
           <Link href="/mortgage-advisor" className="text-sm text-blue-600 hover:underline">
             פתח את כלי התכנון

@@ -57,7 +57,7 @@ export default function PlatformBridge() {
               <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100">
                 <Icon className="h-4 w-4 text-blue-700" />
               </span>
-              <span className="text-gray-700">{text}</span>
+              <span className="text-slate-700">{text}</span>
             </li>
           ))}
         </ul>
@@ -106,7 +106,7 @@ export default function PlatformBridge() {
               <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100">
                 <Icon className="h-4 w-4 text-violet-700" />
               </span>
-              <span className="text-gray-700">{text}</span>
+              <span className="text-slate-700">{text}</span>
             </li>
           ))}
         </ul>

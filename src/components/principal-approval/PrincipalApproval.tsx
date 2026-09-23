@@ -171,7 +171,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
         className={cn(
           'print:hidden',
           embedded
-            ? 'rounded-2xl border border-slate-200 bg-slate-50/60 p-4'
+            ? 'rounded-2xl border border-slate-200 bg-slate-50 p-4'
             : 'rounded-3xl border border-slate-200 bg-white p-6 shadow-sm',
         )}
       >
@@ -258,7 +258,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       {openConflicts.length === 0 && percent === 100 && step !== 'report' && (
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 print:hidden">
+        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 print:hidden">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
           <p className="text-sm font-medium text-emerald-900">
             כל שדות החובה מולאו — ניתן לעבור ללשונית "דוח מסכם" ולהפיק את הדוח.
@@ -306,7 +306,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
             'inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-button font-semibold transition-all',
             stepIndex === STEPS.length - 1
               ? 'cursor-not-allowed bg-slate-100 text-slate-300'
-              : 'bg-slate-900 text-white shadow-lg shadow-slate-200 hover:bg-slate-800',
+              : 'bg-blue-600 text-white shadow-lg shadow-slate-200 hover:bg-blue-700',
           )}
         >
           {stepIndex === STEPS.length - 1 ? 'סוף הטופס' : STEPS[stepIndex + 1].label}
@@ -351,7 +351,7 @@ export function PrincipalApproval({
   return (
     <CaseProvider clientRecordId={clientRecordId}>
       {onApprovals && <ApprovalsReporter onApprovals={onApprovals} />}
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+      <div className="min-h-screen bg-slate-50">
         <ApprovalShell />
       </div>
     </CaseProvider>

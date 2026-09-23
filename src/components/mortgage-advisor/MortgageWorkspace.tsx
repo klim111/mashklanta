@@ -1582,7 +1582,7 @@ export function MortgageWorkspace({
 
           <div className="space-y-3">
             {finalCandidate && (
-              <div className="rounded-2xl border-2 border-blue-300 bg-blue-50/60 p-3">
+              <div className="rounded-2xl border-2 border-blue-300 bg-blue-50 p-3">
                 <p className="text-sm font-black text-blue-950">
                   {finalCandidate.name || 'תמהיל ללא שם'}
                 </p>

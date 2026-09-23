@@ -141,7 +141,7 @@ function PropertyGroup({
 
   return (
     <Card className="border-slate-200 shadow-sm overflow-hidden">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/70 p-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50 p-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-600 shrink-0">
           {address ? <MapPin className="h-4 w-4" /> : <Home className="h-4 w-4" />}
         </span>

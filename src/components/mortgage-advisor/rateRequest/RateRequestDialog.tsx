@@ -193,7 +193,7 @@ export function RateRequestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="shrink-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+        <div className="shrink-0 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
           {/*
             כשהבנק ידוע מראש (מיחזור — הבנק שנבחר במסך הראשון של הכלי) המכתב
             מופנה אליו, ואין שורה של בחירה בין הבנקים.
