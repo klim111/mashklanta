@@ -15,6 +15,8 @@ import {
 import { ALLOWED_DOCUMENT_TYPES } from '@/lib/plan-documents';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import type { BankPreApproval, PlanData, PreApprovalData } from '@/lib/mortgage-plan';
+import { dayKey, parseDay, rateValidity } from '@/lib/rate-validity';
+import type { RateValidityRow } from '@/lib/rate-validity';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
@@ -25,6 +27,7 @@ import { DocumentViewerDialog } from '../../documents/DocumentViewerDialog';
 import { PRE_APPROVAL_BANKS, preApprovalDocumentKey } from './banks';
 import type { PreApprovalBankInfo } from './banks';
 import { BankMark } from './BankMark';
+import { RateCountdown } from '../../RateValidity';
 
 const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
 
@@ -184,6 +187,24 @@ export function SelfPreApproval({
     onChange(withApprovals(bankApprovals));
   };
 
+  /**
+   * יום קבלת האישור — ממנו נספרים 24 ימי תוקף הריביות. ברירת המחדל היא יום
+   * העלאת הקובץ, והלקוח מתקן אותו ליום שבו הבנק באמת נתן את האישור.
+   */
+  const setReceivedAt = (bank: string, day: string | null) => {
+    const existing = approvalOf(bank);
+    if (!existing || !day) return;
+    const bankApprovals = value.bankApprovals.map((item) =>
+      item.bank === bank ? { ...item, approvedAt: day } : item
+    );
+    lastPushed.current = null;
+    onChange(withApprovals(bankApprovals));
+  };
+
+  const validity = useMemo(() => rateValidity(data), [data]);
+  const validityOf = (bank: string): RateValidityRow | null =>
+    validity.find((row) => row.bank === bank) ?? null;
+
   const approvedCount = value.bankApprovals.filter((row) => row.approved).length;
 
   return (
@@ -247,6 +268,8 @@ export function SelfPreApproval({
               onRemove={(documentId) => remove(documentId, preApprovalDocumentKey(info.slug))}
               onView={setViewing}
               onMarkSubmitted={() => markSubmitted(info.bank)}
+              validity={validityOf(info.bank)}
+              onReceivedAt={(day) => setReceivedAt(info.bank, day)}
             />
           ))}
         </div>
@@ -267,6 +290,8 @@ function BankCard({
   onRemove,
   onView,
   onMarkSubmitted,
+  validity,
+  onReceivedAt,
 }: {
   info: PreApprovalBankInfo;
   approval: BankPreApproval | null;
@@ -276,8 +301,12 @@ function BankCard({
   onRemove: (documentId: string) => void | Promise<void>;
   onView: (document: PlanDocumentView) => void;
   onMarkSubmitted: () => void;
+  /** תוקף הריביות באישור, כשהתקבל */
+  validity: RateValidityRow | null;
+  onReceivedAt: (day: string | null) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const received = approval?.approvedAt ? parseDay(approval.approvedAt) : null;
   const approved = Boolean(uploaded);
 
   return (
@@ -368,6 +397,23 @@ function BankCard({
           </>
         )}
       </div>
+
+      {/* תאריך הקבלה והספירה של 24 ימי תוקף הריביות */}
+      {approved && (
+        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-700">
+            תאריך קבלת האישור
+            <input
+              type="date"
+              value={received ? dayKey(received) : ''}
+              max={dayKey(new Date())}
+              onChange={(event) => onReceivedAt(event.target.value || null)}
+              className="rounded-lg border-2 border-slate-200 bg-white px-2 py-1 text-sm font-bold text-slate-900 focus:border-blue-400 focus:outline-none"
+            />
+          </label>
+          {validity && <RateCountdown row={validity} compact />}
+        </div>
+      )}
     </section>
   );
 }

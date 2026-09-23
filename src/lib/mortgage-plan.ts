@@ -517,6 +517,11 @@ export interface PreApprovalData {
   /** הלקוח סימן שהאישור העקרוני התקבל — התנאי לסגירת השלב */
   approved: boolean;
   approvedAmount: number | null;
+  /**
+   * יום קבלת האישור של הבנק המוביל, כשהיועץ מילא את הבקשה. אצל לקוח שמגיש
+   * בעצמו התאריך נשמר לכל בנק ב-`bankApprovals`. ממנו נספרים 24 ימי תוקף הריביות.
+   */
+  approvedAt: string | null;
   validUntil: string | null;
   baskets: PreApprovalBasket[];
   /**
@@ -581,7 +586,7 @@ export interface AuctionData {
 }
 
 /** תת-המסכים של שלב החתימה, לפי הסדר שבו עוברים בהם */
-export const SIGNING_SCREENS = ['overview', 'documents', 'verify'] as const;
+export const SIGNING_SCREENS = ['overview', 'bank-file', 'documents', 'verify'] as const;
 export type SigningScreen = (typeof SIGNING_SCREENS)[number];
 
 /** שלב 5 — החתימה בבנק */
@@ -602,6 +607,13 @@ export interface SigningData {
   scenarioId: string | null;
   /** `${scenarioId}:${documentKey}` → האם המסמך נאסף */
   documents: Record<string, boolean>;
+  /**
+   * תת-השלב "אישור לבנק לפתיחת תיק": מפתח ההנחיה (bank-file:…) → בוצעה.
+   * המקור העיקרי הוא המשימה של הלקוח; זה הגיבוי כשאין משימות (סיור, יועץ).
+   */
+  bankFile: Record<string, boolean>;
+  /** חלון רשימת הבטחונות כבר קפץ פעם אחת */
+  collateralShown: boolean;
 }
 
 export interface PlanStageDataMap {
@@ -699,6 +711,7 @@ const EMPTY: PlanData = {
     documents: {},
     approved: false,
     approvedAmount: null,
+    approvedAt: null,
     validUntil: null,
     baskets: [],
     bankApprovals: [],
@@ -717,6 +730,8 @@ const EMPTY: PlanData = {
     registryId: null,
     scenarioId: null,
     documents: {},
+    bankFile: {},
+    collateralShown: false,
   },
 };
 
@@ -761,6 +776,16 @@ function flagMap(value: unknown, keys: string[]): Record<string, boolean> {
   const result: Record<string, boolean> = {};
   keys.forEach((key) => {
     if (bool(source[key])) result[key] = true;
+  });
+  return result;
+}
+
+/** סימונים שהמפתחות שלהם נקבעים מחוץ לקובץ — נשמרים רק אלה שבקידומת הצפויה */
+function prefixedFlags(value: unknown, prefix: string): Record<string, boolean> {
+  const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const result: Record<string, boolean> = {};
+  Object.entries(source).forEach(([key, flag]) => {
+    if (key.startsWith(prefix) && key.length <= 80 && bool(flag)) result[key] = true;
   });
   return result;
 }
@@ -1226,6 +1251,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
             ? legacy.approved || bankApprovals.some((row) => row.approved)
             : bool(source.approved),
         approvedAmount: num(source.approvedAmount),
+        approvedAt: typeof source.approvedAt === 'string' ? source.approvedAt : null,
         validUntil: typeof source.validUntil === 'string' ? source.validUntil : null,
         baskets,
         bankApprovals,
@@ -1296,6 +1322,8 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         registryId: registry?.id ?? null,
         scenarioId: scenario?.id ?? null,
         documents: flagMap(source.documents, ALL_SIGNING_DOCUMENT_KEYS),
+        bankFile: prefixedFlags(source.bankFile, 'bank-file:'),
+        collateralShown: bool(source.collateralShown),
       } as PlanStageDataMap[S];
     }
 

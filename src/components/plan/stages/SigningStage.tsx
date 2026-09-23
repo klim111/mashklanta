@@ -19,6 +19,7 @@ import { ScenarioPicker, resolveSelection } from './signing/ScenarioPicker';
 import type { ScenarioSelection } from './signing/ScenarioPicker';
 import { DocumentsChecklist } from './signing/DocumentsChecklist';
 import { FinalTermsPanel } from './signing/FinalTermsPanel';
+import { BankFileScreen } from './signing/BankFileScreen';
 
 /** פער שאינו נובע מעיגול — סימן שמשהו בחוזה שונה ממה שסוכם */
 const MONTHLY_TOLERANCE = 5;
@@ -35,7 +36,8 @@ const reveal = {
  * שלב 5 — ההכנה לחתימה על תיק המשכנתא והחתימה עצמה.
  *
  * בכניסה לשלב מוצג עמוד ההסבר — מסך אחד, כמו לפני כל שלב — ומיד "התחילו את
- * השלב". אחריו הלקוח בוחר את תרחיש הרכישה שלו — וממנו נגזרת רשימת המסמכים
+ * השלב". אחריו האישור לבנק לפתיחת תיק המשכנתא: המסמכים העדכניים שהבנק צריך
+ * ורשימת הבטחונות לעורך הדין. אחר כך הלקוח בוחר את תרחיש הרכישה שלו — וממנו נגזרת רשימת המסמכים
  * שהבנק ידרוש. לצידה מוצג התמהיל המתומחר מהמכרז, שמולו מאמתים את הצעת המשכנתא
  * הסופית של הבנק.
  */
@@ -44,12 +46,15 @@ export function SigningStage({
   planId,
   onChange,
   flow = NEW_PLAN_FLOW,
+  advisorRun = false,
 }: {
   data: PlanData;
   planId: string;
   onChange: (next: SigningData) => void;
   /** סוג התהליך — לכותרות של עמוד ההסבר ולהפניה לשלב המכרז */
   flow?: PlanFlow;
+  /** יועץ מלווה את שלב החתימה — משנה את תת-השלב של פתיחת התיק */
+  advisorRun?: boolean;
 }) {
   const value = data.SIGNING;
   const signed = data.AUCTION.signedMix;
@@ -149,7 +154,18 @@ export function SigningStage({
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' ? (
           <motion.div key="overview" {...reveal}>
-            <StageIntro stage="SIGNING" flow={flow} onStart={() => go('documents')} />
+            <StageIntro stage="SIGNING" flow={flow} onStart={() => go('bank-file')} />
+          </motion.div>
+        ) : screen === 'bank-file' ? (
+          <motion.div key="bank-file" {...reveal}>
+            <BankFileScreen
+              data={data}
+              planId={planId}
+              onChange={onChange}
+              advisorRun={advisorRun}
+              flow={flow}
+              onContinue={() => go('documents')}
+            />
           </motion.div>
         ) : screen === 'documents' ? (
           <motion.div key="documents" {...reveal} className="space-y-5">
@@ -396,6 +412,7 @@ function ScreenRail({
 }) {
   const items: Array<{ id: SigningScreen; label: string }> = [
     { id: 'overview', label: 'על השלב' },
+    { id: 'bank-file', label: 'אישור לבנק לפתיחת תיק' },
     { id: 'documents', label: dealLabel ? `המסמכים · ${dealLabel}` : 'מסמכי התיק' },
     { id: 'verify', label: 'אימות ההצעה והחתימה' },
   ];

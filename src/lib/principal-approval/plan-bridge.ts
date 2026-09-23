@@ -81,7 +81,14 @@ export function toPreApprovalData(
 ): PreApprovalData {
   const carried = carriedApproval(approvals);
   if (!carried) {
-    return { ...existing, bank: null, approved: false, approvedAmount: null, baskets: [] };
+    return {
+      ...existing,
+      bank: null,
+      approved: false,
+      approvedAmount: null,
+      approvedAt: null,
+      baskets: [],
+    };
   }
 
   const baskets: PreApprovalBasket[] = UNIFORM_BASKETS.map((basket) => {
@@ -103,6 +110,7 @@ export function toPreApprovalData(
     submittedAt: carried.submittedAt,
     approved: carried.approved,
     approvedAmount: carried.approvedAmount,
+    approvedAt: carried.approved ? carried.approvedAt : null,
     validUntil: addMonths(carried.approvedAt, APPROVAL_VALIDITY_MONTHS),
     note: carried.bankerName ?? existing.note,
     baskets,

@@ -58,6 +58,8 @@ import { formatShekel } from './ui';
 import { AdvisorStageNotes } from './AdvisorStageNotes';
 import { AdvisorStageSummary } from './advisor/AdvisorStageSummary';
 import { useAdvisorOrders } from './advisor/useAdvisorOrders';
+import { RateValidityStrip } from './RateValidity';
+import { rateValidity } from '@/lib/rate-validity';
 import { useClientMeetings, meetingForStage } from './advisor/useClientMeetings';
 import { isAdvisorStage } from '@/lib/advisor-orders';
 import { AnalysisStage } from './stages/AnalysisStage';
@@ -715,6 +717,17 @@ export function PlanWorkspace({
             {/* מה שהיועץ כתב ללקוח בשלב הזה, מעל תוכן השלב עצמו */}
             {!tour && <AdvisorStageNotes stage={stage} />}
 
+            {/*
+              שעון תוקף הריביות — מהמכרז ועד החתימה, לכל אישור עקרוני שהתקבל.
+              בשלב האישור העקרוני עצמו השעון יושב בכרטיס של כל בנק, ולכן הפס
+              מוצג שם רק כשהיועץ הוא שמילא את הבקשה.
+            */}
+            {!tour &&
+              !planSigned &&
+              (stage === 'AUCTION' || stage === 'SIGNING' || (stage === 'APPLICATIONS' && advisorRun)) && (
+                <RateValidityStrip rows={rateValidity(plan.data)} />
+              )}
+
             {/* המשימות המתוכננות של השלב — לכל לקוח עם תהליך פתוח */}
             {!tour && !advisorSummaryOnly && !needsIntro && (
               <div {...demoId('plan-stage-tasks')}>
@@ -835,6 +848,7 @@ export function PlanWorkspace({
                     planId={plan.id}
                     onChange={(next: SigningData) => updateStage('SIGNING', next)}
                     flow={flow}
+                    advisorRun={advisorRun}
                   />
                 )}
 

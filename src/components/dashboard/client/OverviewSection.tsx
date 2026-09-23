@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
+  AlarmClock,
   ArrowLeft,
   CalendarDays,
   Calculator,
@@ -32,6 +33,9 @@ import { planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-ag
 import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
 import { useStartPlan } from '@/components/plan/StartCard';
 import { MortgageEntry } from '@/components/service-flow/MortgageEntry';
+import { RateValidityDialog } from '@/components/plan/RateValidity';
+import { rateValidity } from '@/lib/rate-validity';
+import type { RateValidityRow } from '@/lib/rate-validity';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
@@ -365,10 +369,11 @@ export function OverviewSection({
             <MortgageEntry variant="hero" onStart={startPlan} busy={busy} hasPlans={completed.length > 0} />
           ) : (
             <div className="max-h-[430px] space-y-3 overflow-y-auto pl-1">
-              {summaries.map((summary) => (
+              {summaries.map((summary, index) => (
                 <PlanStatusRow
                   key={summary.id}
                   summary={summary}
+                  rates={rateValidity(active[index].data)}
                   onPeek={() => setPeekPlanId(summary.id)}
                   onDelete={() => setDeletePlanId(summary.id)}
                 />
@@ -528,14 +533,24 @@ function KpiTile({
 /** שורת מצב של תהליך אחד: חמשת השלבים כמסלול, ומה הפעולה הבאה */
 function PlanStatusRow({
   summary,
+  rates,
   onPeek,
   onDelete,
 }: {
   summary: ReturnType<typeof summarizePlan>;
+  /** תוקף הריביות בכל אישור עקרוני שהתקבל — ריק עד שהלקוח הגיע לשלב הזה */
+  rates: RateValidityRow[];
   onPeek: () => void;
   onDelete: () => void;
 }) {
+  const [ratesOpen, setRatesOpen] = useState(false);
   const journey = journeyStageFor(summary.currentStage);
+  /* הבנק שנבחר סופית קובע את הספירה שעל הכפתור; עד שנבחר — האישור הקרוב לפקוע */
+  const leadRate =
+    rates.find((row) => row.final) ??
+    [...rates].filter((row) => row.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft)[0] ??
+    rates[0] ??
+    null;
   const progress = Math.round((summary.completedStages / summary.stages.length) * 100);
 
   return (
@@ -596,6 +611,27 @@ function PlanStatusRow({
           <Eye className="h-4 w-4" />
           להציץ בפרטים
         </button>
+        {leadRate && (
+          <button
+            type="button"
+            onClick={() => setRatesOpen(true)}
+            className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-4 py-2.5 text-button font-black transition-colors ${
+              leadRate.daysLeft < 0
+                ? 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                : leadRate.daysLeft <= 5
+                  ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-400'
+                  : leadRate.daysLeft <= 10
+                    ? 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-400'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40'
+            }`}
+          >
+            <AlarmClock className="h-4 w-4" />
+            תוקף ריביות
+            <span className="rounded-full bg-white/80 px-2 py-0.5 text-2xs font-black">
+              {leadRate.daysLeft >= 0 ? `${leadRate.daysLeft} ימים` : 'פג'}
+            </span>
+          </button>
+        )}
         <Link
           href={summary.href}
           className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-info font-black text-white ${
@@ -615,6 +651,14 @@ function PlanStatusRow({
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
+      {rates.length > 0 && (
+        <RateValidityDialog
+          rows={rates}
+          title={summary.label}
+          open={ratesOpen}
+          onOpenChange={setRatesOpen}
+        />
+      )}
     </div>
   );
 }

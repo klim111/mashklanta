@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, Gavel, Lightbulb, TrendingUp, Undo2 } from 'lucide-react';
+import { AlarmClock, Check, Gavel, Lightbulb, TrendingUp, Undo2 } from 'lucide-react';
 import { planRecommendations } from '@/lib/client-agenda';
 import type { AgendaPlan, ClientTaskState, PlanRecommendation } from '@/lib/client-agenda';
 
@@ -13,6 +13,8 @@ const ICONS: Record<string, typeof Gavel> = {
 
 function iconFor(recommendation: PlanRecommendation) {
   const suffix = recommendation.key.split(':').pop() ?? '';
+  // התראות תוקף הריביות: rate-alert-20, rate-alert-15 … ו-rate-expired
+  if (suffix.startsWith('rate-')) return AlarmClock;
   return ICONS[suffix] ?? Lightbulb;
 }
 
