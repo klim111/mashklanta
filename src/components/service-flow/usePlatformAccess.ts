@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 
 export interface PlatformAccess {
-  /** יש גישה פנויה לפתיחת תהליך משכנתא — שולם ועוד לא נקשר לתהליך */
+  /** יש חבילת גישה פנויה לפתיחת תהליך משכנתא בלי תשלום נוסף */
   active: boolean;
   since: string | null;
   /** מה ששולם על הגישה הפנויה — מקוזז אם יוזמן ליווי */
@@ -12,6 +13,10 @@ export interface PlatformAccess {
   price: number;
   accessDays: number;
   passExpiresAt: string | null;
+  openProcesses: number;
+  maxOpenProcesses: number;
+  /** עד שני תהליכים פתוחים במקביל — כשמלא, צריך לסיים או למחוק תהליך */
+  canOpenMore: boolean;
 }
 
 const NO_ACCESS: PlatformAccess = {
@@ -21,6 +26,9 @@ const NO_ACCESS: PlatformAccess = {
   price: PLATFORM_PROCESS_PRICE,
   accessDays: PLATFORM_ACCESS_DAYS,
   passExpiresAt: null,
+  openProcesses: 0,
+  maxOpenProcesses: MAX_OPEN_PROCESSES,
+  canOpenMore: true,
 };
 
 /**
@@ -45,6 +53,9 @@ export function usePlatformAccess() {
         price: typeof body.price === 'number' ? body.price : PLATFORM_PROCESS_PRICE,
         accessDays: typeof body.accessDays === 'number' ? body.accessDays : PLATFORM_ACCESS_DAYS,
         passExpiresAt: typeof body.passExpiresAt === 'string' ? body.passExpiresAt : null,
+        openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
+        maxOpenProcesses: typeof body.maxOpenProcesses === 'number' ? body.maxOpenProcesses : MAX_OPEN_PROCESSES,
+        canOpenMore: body.canOpenMore !== false,
       });
     } catch {
       setAccess(NO_ACCESS);

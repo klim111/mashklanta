@@ -11,7 +11,7 @@
  */
 
 import { journeyStages } from '@/data/platform/journey';
-import { PROCESS_ACCESS_DAYS, PROCESS_PRICE } from './process-access';
+import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_DAYS, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
 
 // ─────────────────────────────── מה רוצים לעשות ───────────────────────────────
 
@@ -105,6 +105,38 @@ export const PLATFORM_PROCESS_PRICE = PROCESS_PRICE;
 /** כמה ימים הכלים פתוחים מכל תשלום על תהליך */
 export const PLATFORM_ACCESS_DAYS = PROCESS_ACCESS_DAYS;
 
+/** כמה תהליכים פתוחים אפשר לנהל במקביל על אותה חבילת גישה */
+export const PLATFORM_MAX_OPEN_PROCESSES = MAX_OPEN_PROCESSES;
+
+/** העלות הכוללת של הגישה בתהליך טיפוסי — חודש עד שלושה חודשים */
+export const PLATFORM_TYPICAL_TOTAL = {
+  min: PLATFORM_PROCESS_PRICE * TYPICAL_PROCESS_MONTHS.min,
+  max: PLATFORM_PROCESS_PRICE * TYPICAL_PROCESS_MONTHS.max,
+} as const;
+
+/**
+ * מה חשוב לדעת על החיוב במסלול העצמאי — בעמוד התמחור, במסך התשלום ובעמוד
+ * הבית. נוסח אחד, מקור אחד. הנוסח מרגיע ולא מזהיר: אין הפתעות, העלות צפויה,
+ * ותקופה שנפתחה היא סכום קבוע.
+ */
+export const PLATFORM_BILLING_NOTES: Array<{ id: string; title: string; description: string }> = [
+  {
+    id: 'no-auto',
+    title: 'אין חיוב בלי אישור שלכם',
+    description: `הפלטפורמה לא מחייבת שוב מעצמה. כש-${PLATFORM_ACCESS_DAYS} הימים מסתיימים, אתם מחליטים אם להמשיך.`,
+  },
+  {
+    id: 'range',
+    title: `בדרך כלל ₪${PLATFORM_TYPICAL_TOTAL.min} עד ₪${PLATFORM_TYPICAL_TOTAL.max} בסך הכול`,
+    description: `תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, ולכן העלות הכוללת של הגישה נעה בין ₪${PLATFORM_TYPICAL_TOTAL.min} ל-₪${PLATFORM_TYPICAL_TOTAL.max}.`,
+  },
+  {
+    id: 'period',
+    title: 'משלמים לתקופה, לא ליום',
+    description: `כל חבילה היא סכום קבוע ל-${PLATFORM_ACCESS_DAYS} יום. סיימתם מוקדם? מצוין, חסכתם זמן. ימים שנשארו בחבילה אינם מוחזרים.`,
+  },
+];
+
 /** ליווי מלא — חמשת השלבים יחד */
 export const FULL_SERVICE_PRICE = 6000;
 
@@ -119,7 +151,7 @@ export const PRICING_PRINCIPLES: Array<{ id: string; title: string; description:
   {
     id: 'platform',
     title: `גישה לפלטפורמה — ₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
-    description: `כל השלבים וכל הכלים פתוחים בלי הגבלה ל-${PLATFORM_ACCESS_DAYS} יום. צריכים עוד זמן? מחדשים באותו מחיר.`,
+    description: `כל השלבים וכל הכלים פתוחים עד ${PLATFORM_ACCESS_DAYS} יום. צריכים עוד זמן? רוכשים חבילה נוספת באותו מחיר, רק באישור שלכם.`,
   },
   {
     id: 'credit',

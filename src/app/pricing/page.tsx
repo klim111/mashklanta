@@ -14,6 +14,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import NavBar from '@/components/ui/navbar';
+import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import {
@@ -90,7 +91,7 @@ export default function PricingPage() {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
-            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, ל-{PLATFORM_ACCESS_DAYS} יום. כל שלב עם
+            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. כל שלב עם
             יועץ מתומחר בנפרד, מה ששילמתם על הפלטפורמה מקוזז מהליווי, והגישה המלאה כלולה בכל הזמנת ליווי.
           </p>
 
@@ -436,9 +437,11 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-600">
-            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא אחד ל-{PLATFORM_ACCESS_DAYS} יום, וניתנת
-            לחידוש באותו מחיר. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה ששולם עליה מקוזז.
+            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא עד {PLATFORM_ACCESS_DAYS} יום, ואם צריך
+            עוד זמן, אפשר לרכוש חבילה נוספת באותו מחיר. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה
+            ששולם עליה מקוזז.
           </p>
+          <PlatformBillingNotes className="mx-auto mt-8 max-w-5xl" />
         </div>
       </section>
 

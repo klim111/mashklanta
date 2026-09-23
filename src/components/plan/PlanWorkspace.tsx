@@ -898,7 +898,7 @@ export function PlanWorkspace({
         </Link>
       </div>
 
-      {/* עברו 35 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
+      {/* עברו 30 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
       {!tour && plan.access && processLocked(plan.access) && (
         <PlanAccessLock planId={plan.id} access={plan.access} />
       )}

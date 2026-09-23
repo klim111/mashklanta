@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { createPlan, createPlanFromMix, createRefinancePlan, listPlansForUser } from '@/lib/mortgage-plans';
+import {
+  canOpenAnotherPlan,
+  createPlan,
+  createPlanFromMix,
+  createRefinancePlan,
+  listPlansForUser,
+} from '@/lib/mortgage-plans';
+import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 import { assignMixDeal, getMixForUser } from '@/lib/mixes';
 import { sanitizeMix } from '@/components/mortgage-advisor/engine';
 import { rateLimit } from '@/lib/rate-limit';
@@ -28,6 +35,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'Too many plans' },
       { status: 429, headers: { 'Retry-After': String(limited.resetInSeconds) } }
+    );
+  }
+
+  // עד שני תהליכים פתוחים במקביל. תהליך שנמחק או הסתיים מפנה מקום
+  if (!(await canOpenAnotherPlan(userId))) {
+    return NextResponse.json(
+      {
+        error: `אפשר לנהל עד ${MAX_OPEN_PROCESSES} תהליכים פתוחים במקביל. כדי לפתוח תהליך חדש, סיימו או מחקו אחד מהתהליכים הפתוחים.`,
+        reason: 'max-open',
+      },
+      { status: 409 }
     );
   }
 
