@@ -59,6 +59,11 @@ interface MixComparisonProps {
   selectFinalLabel?: string;
   selectFinalConfirm?: string;
   selectedFinalLabel?: string;
+  /**
+   * בלי מסגרת הכרטיס והכותרת — כשההשוואה יושבת בתוך מודול הניתוח, שכותרתו
+   * כבר נושאת את כפתורי המעבר ואת הוספת התמהילים להשוואה.
+   */
+  bare?: boolean;
 }
 
 type ComputedMix = ComparisonEntry & {
@@ -95,6 +100,7 @@ export function MixComparison({
   selectFinalLabel = 'בחר תמהיל זה כתמהיל סופי',
   selectFinalConfirm = 'לבחור תמהיל זה כתמהיל הסופי? הוא יינעל לשינויים, יישמר בחשבון, והנתונים שלו ייטענו בשלבי המיקוח מול הבנקים והחתימה.',
   selectedFinalLabel = 'זה התמהיל הסופי שנבחר למכרז',
+  bare = false,
 }: MixComparisonProps) {
   const [paydownOpen, setPaydownOpen] = useState(false);
 
@@ -150,14 +156,20 @@ export function MixComparison({
   );
 
   if (entries.length === 0) {
+    const empty = (
+      <div className="py-10 text-center">
+        <GitCompareArrows className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+        <p className="text-sm text-slate-500">
+          {bare
+            ? 'בחרו תמהילים בכפתור "הוסף תמהיל להשוואה". אם עדיין אין תמהיל נוסף לנכס, שמרו או צרו אחד באזור העבודה.'
+            : 'בחרו תמהילים מהרשימה מעלה להשוואה על ידי סימון בווי.'}
+        </p>
+      </div>
+    );
+    if (bare) return empty;
     return (
       <Card className="border-slate-200 shadow-sm">
-        <CardContent className="py-10 text-center">
-          <GitCompareArrows className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">
-            בחרו תמהילים מהרשימה מעלה להשוואה על ידי סימון בווי.
-          </p>
-        </CardContent>
+        <CardContent className="p-0">{empty}</CardContent>
       </Card>
     );
   }
@@ -165,17 +177,8 @@ export function MixComparison({
   const tooltipFormatter = (value: number | string) =>
     typeof value === 'number' ? formatShekel(value) : value;
 
-  return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <GitCompareArrows className="h-4 w-4 text-blue-600" />
-          השוואה בין תמהילים
-          <span className="text-xs font-normal text-slate-500">{entries.length} תמהילים</span>
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
+  const content = (
+    <>
         {entries.some((entry) => mixHasForecastSensitiveTracks(entry.mix)) && (
           <ForecastDisclaimer
             mix={entries.find((entry) => mixHasForecastSensitiveTracks(entry.mix))?.mix ?? entries[0].mix}
@@ -307,9 +310,35 @@ export function MixComparison({
           selectedFinalLabel={selectedFinalLabel}
           entries={entries}
         />
-      </CardContent>
+    </>
+  );
 
-      <PaydownPaceDialog open={paydownOpen} onOpenChange={setPaydownOpen} mixes={computed} />
+  const paydownDialog = (
+    <PaydownPaceDialog open={paydownOpen} onOpenChange={setPaydownOpen} mixes={computed} />
+  );
+
+  if (bare) {
+    return (
+      <div className="space-y-4">
+        {content}
+        {paydownDialog}
+      </div>
+    );
+  }
+
+  return (
+    <Card className="border-slate-200 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <GitCompareArrows className="h-4 w-4 text-blue-600" />
+          השוואה בין תמהילים
+          <span className="text-xs font-normal text-slate-500">{entries.length} תמהילים</span>
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">{content}</CardContent>
+
+      {paydownDialog}
     </Card>
   );
 }

@@ -388,10 +388,14 @@ export class DemoApiRouter {
           const body = await this.body(init, input);
           const current = this.mixes[index];
           const mix = (body.mix as SavedMix['mix'] | undefined) ?? current.mix;
+          // בחירה כסופי נועלת את התמהיל, וביטולה פותח אותו — כמו בשרת האמיתי
+          const lock = typeof body.isFinal === 'boolean' ? body.isFinal : undefined;
+          const named = typeof body.name === 'string' ? { ...mix, name: body.name } : mix;
           this.mixes[index] = {
             ...current,
             ...(body as Partial<SavedMix>),
-            mix: typeof body.name === 'string' ? { ...mix, name: body.name } : mix,
+            ...(lock === undefined ? {} : { locked: lock }),
+            mix: lock === undefined ? named : { ...named, locked: lock },
             savedAt: nowIso(),
           };
         }
