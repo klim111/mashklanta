@@ -7,9 +7,9 @@ import type { AgendaTarget, ClientTask } from '@/lib/client-agenda';
 import { StageChip } from '@/components/advisor/ui';
 
 const TONES = {
-  urgent: { icon: AlertCircle, ring: 'border-rose-200 bg-rose-50/60', badge: 'bg-rose-100 text-rose-700', label: 'דחוף' },
+  urgent: { icon: AlertCircle, ring: 'border-rose-200 bg-rose-50', badge: 'bg-rose-100 text-rose-700', label: 'דחוף' },
   action: { icon: Zap, ring: 'border-slate-200 bg-white', badge: 'bg-blue-100 text-blue-700', label: 'לביצוע' },
-  info: { icon: Info, ring: 'border-slate-200 bg-slate-50/70', badge: 'bg-slate-200 text-slate-700', label: 'לידיעה' },
+  info: { icon: Info, ring: 'border-slate-200 bg-slate-50', badge: 'bg-slate-200 text-slate-700', label: 'לידיעה' },
 } as const;
 
 /** `datetime-local` עובד בזמן מקומי, ולכן ההמרה נעשית ידנית ולא דרך toISOString */
@@ -62,7 +62,7 @@ export function TaskItem({
   const shell = overdue
     ? 'border-rose-300 bg-rose-50'
     : task.scheduled
-      ? 'border-blue-200 bg-blue-50/40'
+      ? 'border-blue-200 bg-blue-50'
       : tone.ring;
 
   return (

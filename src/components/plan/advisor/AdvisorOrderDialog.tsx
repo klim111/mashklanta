@@ -334,7 +334,7 @@ export function AdvisorOrderDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="mr-auto rounded-xl bg-slate-900 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="mr-auto rounded-xl bg-blue-600 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               חזרה לתהליך
             </button>
@@ -391,9 +391,9 @@ function StageChooser({
             aria-pressed={active}
             className={`w-full overflow-hidden rounded-2xl border-2 text-right transition-all ${
               done
-                ? 'cursor-default border-emerald-200 bg-emerald-50/60'
+                ? 'cursor-default border-emerald-200 bg-emerald-50'
                 : active
-                  ? 'border-violet-400 bg-violet-50/60 shadow-sm'
+                  ? 'border-violet-400 bg-violet-50 shadow-sm'
                   : 'border-slate-200 bg-white hover:border-slate-300'
             }`}
           >

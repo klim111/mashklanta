@@ -115,7 +115,7 @@ export function AnalysisTabs({
       <TabsContent value="comparison" className="space-y-2">
         {comparePicker &&
           (pickerOpen ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <p className="text-2xs font-bold text-slate-600">
                   סמנו את התמהילים שייכנסו להשוואה

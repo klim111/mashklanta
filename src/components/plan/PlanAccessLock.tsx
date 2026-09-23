@@ -48,7 +48,7 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
 
         <Link
           href={`/dashboard/checkout?planId=${encodeURIComponent(planId)}`}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl"
         >
           {expired ? 'חדשו את הגישה' : 'פתחו את התהליך'}
           <ArrowLeft className="h-4 w-4" />

@@ -115,7 +115,7 @@ export default function TrackDetails({
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             חזרה לסקירה כללית
@@ -123,7 +123,7 @@ export default function TrackDetails({
           
           <button
             onClick={onRefinance}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
           >
             <RefreshCw className="w-4 h-4" />
             מחזור משכנתא
@@ -136,15 +136,15 @@ export default function TrackDetails({
           </div>
           
           <div className="flex-1">
-            <h2 className="text-subtitle font-bold text-gray-900">{track.name}</h2>
-            <p className="text-gray-600 mt-1">{trackInfo.label}</p>
+            <h2 className="text-subtitle font-bold text-slate-900">{track.name}</h2>
+            <p className="text-slate-600 mt-1">{trackInfo.label}</p>
             {trackInfo.description && (
-              <p className="text-sm text-gray-500 mt-1">{trackInfo.description}</p>
+              <p className="text-sm text-slate-500 mt-1">{trackInfo.description}</p>
             )}
           </div>
           
           {track.isCompleted && (
-            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-medium">
               הושלם
             </span>
           )}
@@ -153,10 +153,10 @@ export default function TrackDetails({
         {/* Progress Bar */}
         <div className="mt-6">
           <div className="flex justify-between text-info mb-2">
-            <span className="text-gray-600">התקדמות</span>
+            <span className="text-slate-600">התקדמות</span>
             <span className="font-semibold">{progressPercentage}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-slate-200 rounded-full h-3">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progressPercentage}%` }}
@@ -164,7 +164,7 @@ export default function TrackDetails({
               className={`bg-gradient-to-r from-${trackInfo.color}-500 to-${trackInfo.color}-600 rounded-full h-3`}
             />
           </div>
-          <div className="flex justify-between text-info mt-2 text-gray-500">
+          <div className="flex justify-between text-info mt-2 text-slate-500">
             <span>{paidPayments.length} תשלומים שולמו</span>
             <span>{upcomingPayments.length} תשלומים נותרו</span>
           </div>
@@ -180,15 +180,15 @@ export default function TrackDetails({
           className="bg-white rounded-xl shadow-lg p-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <Percent className="w-8 h-8 text-purple-600" />
+            <Percent className="w-8 h-8 text-blue-600" />
             <span className="text-2xl font-bold">{track.interestRate}%</span>
           </div>
-          <h3 className="font-semibold text-gray-900">ריבית נוכחית</h3>
+          <h3 className="font-semibold text-slate-900">ריבית נוכחית</h3>
           {track.indexType && (
-            <p className="text-sm text-gray-600 mt-1">צמוד ל-{track.indexType}</p>
+            <p className="text-sm text-slate-600 mt-1">צמוד ל-{track.indexType}</p>
           )}
           {track.margin && (
-            <p className="text-sm text-gray-600">מרווח: {track.margin}%</p>
+            <p className="text-sm text-slate-600">מרווח: {track.margin}%</p>
           )}
         </motion.div>
 
@@ -202,8 +202,8 @@ export default function TrackDetails({
             <DollarSign className="w-8 h-8 text-green-600" />
             <span className="text-2xl font-bold">₪{track.monthlyPayment.toLocaleString()}</span>
           </div>
-          <h3 className="font-semibold text-gray-900">תשלום חודשי</h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <h3 className="font-semibold text-slate-900">תשלום חודשי</h3>
+          <p className="text-sm text-slate-600 mt-1">
             התשלום הבא: {nextPayment && format(nextPayment.date, 'dd/MM', { locale: he })}
           </p>
         </motion.div>
@@ -218,8 +218,8 @@ export default function TrackDetails({
             <Clock className="w-8 h-8 text-blue-600" />
             <span className="text-2xl font-bold">{monthsRemaining}</span>
           </div>
-          <h3 className="font-semibold text-gray-900">חודשים נותרו</h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <h3 className="font-semibold text-slate-900">חודשים נותרו</h3>
+          <p className="text-sm text-slate-600 mt-1">
             סיום: {format(track.endDate, 'MM/yyyy', { locale: he })}
           </p>
         </motion.div>
@@ -259,15 +259,15 @@ export default function TrackDetails({
           transition={{ delay: 0.4 }}
           className="bg-white rounded-xl shadow-lg p-6"
         >
-          <h3 className="text-subtitle font-semibold text-gray-900 mb-4">תשלומים עד כה</h3>
+          <h3 className="text-subtitle font-semibold text-slate-900 mb-4">תשלומים עד כה</h3>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between mb-1">
-                <span className="text-gray-600">קרן</span>
+                <span className="text-slate-600">קרן</span>
                 <span className="font-semibold">₪{totalPaidPrincipal.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-green-500 h-2 rounded-full"
                   style={{ width: `${(totalPaidPrincipal / (totalPaidPrincipal + totalPaidInterest)) * 100}%` }}
@@ -277,10 +277,10 @@ export default function TrackDetails({
             
             <div>
               <div className="flex justify-between mb-1">
-                <span className="text-gray-600">ריבית</span>
+                <span className="text-slate-600">ריבית</span>
                 <span className="font-semibold">₪{totalPaidInterest.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-orange-500 h-2 rounded-full"
                   style={{ width: `${(totalPaidInterest / (totalPaidPrincipal + totalPaidInterest)) * 100}%` }}
@@ -290,7 +290,7 @@ export default function TrackDetails({
 
             <div className="pt-4 border-t">
               <div className="flex justify-between">
-                <span className="text-gray-900 font-medium">סה"כ שולם</span>
+                <span className="text-slate-900 font-medium">סה"כ שולם</span>
                 <span className="font-bold text-lg">
                   ₪{(totalPaidPrincipal + totalPaidInterest).toLocaleString()}
                 </span>
@@ -305,15 +305,15 @@ export default function TrackDetails({
           transition={{ delay: 0.5 }}
           className="bg-white rounded-xl shadow-lg p-6"
         >
-          <h3 className="text-subtitle font-semibold text-gray-900 mb-4">תשלומים עתידיים</h3>
+          <h3 className="text-subtitle font-semibold text-slate-900 mb-4">תשלומים עתידיים</h3>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between mb-1">
-                <span className="text-gray-600">קרן</span>
+                <span className="text-slate-600">קרן</span>
                 <span className="font-semibold">₪{totalRemainingPrincipal.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
                   className="bg-blue-500 h-2 rounded-full"
                   style={{ width: `${(totalRemainingPrincipal / (totalRemainingPrincipal + totalRemainingInterest)) * 100}%` }}
@@ -323,12 +323,12 @@ export default function TrackDetails({
             
             <div>
               <div className="flex justify-between mb-1">
-                <span className="text-gray-600">ריבית</span>
+                <span className="text-slate-600">ריבית</span>
                 <span className="font-semibold">₪{totalRemainingInterest.toLocaleString()}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div 
-                  className="bg-purple-500 h-2 rounded-full"
+                  className="bg-blue-500 h-2 rounded-full"
                   style={{ width: `${(totalRemainingInterest / (totalRemainingPrincipal + totalRemainingInterest)) * 100}%` }}
                 />
               </div>
@@ -336,7 +336,7 @@ export default function TrackDetails({
 
             <div className="pt-4 border-t">
               <div className="flex justify-between">
-                <span className="text-gray-900 font-medium">סה"כ נותר</span>
+                <span className="text-slate-900 font-medium">סה"כ נותר</span>
                 <span className="font-bold text-lg">
                   ₪{(totalRemainingPrincipal + totalRemainingInterest).toLocaleString()}
                 </span>
@@ -353,10 +353,10 @@ export default function TrackDetails({
         transition={{ delay: 0.6 }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-subtitle font-semibold text-gray-900">לוח סילוקין</h3>
+          <h3 className="text-subtitle font-semibold text-slate-900">לוח סילוקין</h3>
           <button
             onClick={() => setShowFullSchedule(!showFullSchedule)}
-            className="flex items-center gap-2 text-purple-600 hover:text-purple-700 transition-colors"
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
           >
             {showFullSchedule ? (
               <>
@@ -387,35 +387,35 @@ export default function TrackDetails({
                   key={payment.id}
                   className={`p-4 rounded-lg border ${
                     index === 0 
-                      ? 'border-purple-300 bg-purple-50' 
-                      : 'border-gray-200 bg-gray-50'
+                      ? 'border-blue-300 bg-blue-50' 
+                      : 'border-slate-200 bg-slate-50'
                   }`}
                 >
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="font-semibold">תשלום #{payment.paymentNumber}</span>
                       {index === 0 && (
-                        <span className="mr-2 px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
+                        <span className="mr-2 px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
                           הבא
                         </span>
                       )}
                     </div>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-slate-600">
                       {format(payment.date, 'dd/MM/yyyy', { locale: he })}
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
                     <div>
-                      <span className="text-gray-600">קרן: </span>
+                      <span className="text-slate-600">קרן: </span>
                       <span className="font-medium">₪{payment.principal.toLocaleString()}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">ריבית: </span>
+                      <span className="text-slate-600">ריבית: </span>
                       <span className="font-medium">₪{payment.interest.toLocaleString()}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">סה"כ: </span>
+                      <span className="text-slate-600">סה"כ: </span>
                       <span className="font-medium">₪{payment.totalPayment.toLocaleString()}</span>
                     </div>
                   </div>
@@ -425,7 +425,7 @@ export default function TrackDetails({
             
             <button
               onClick={() => setShowFullSchedule(true)}
-              className="w-full mt-4 py-2 text-center text-purple-600 hover:text-purple-700 font-medium transition-colors"
+              className="w-full mt-4 py-2 text-center text-blue-600 hover:text-blue-700 font-medium transition-colors"
             >
               הצג את כל לוח הסילוקין
             </button>

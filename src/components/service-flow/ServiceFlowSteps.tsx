@@ -49,13 +49,13 @@ export function ServiceFlowSteps({ tone = 'light' }: { tone?: 'light' | 'dark' }
           viewport={{ once: true }}
           transition={{ delay: index * 0.1 }}
           className={`relative rounded-3xl p-6 ${
-            dark ? 'border border-white/15 bg-white/5 text-white backdrop-blur' : 'border border-gray-200 bg-white text-gray-900 shadow-lg'
+            dark ? 'border border-white/15 bg-white/5 text-white backdrop-blur' : 'border border-slate-200 bg-white text-slate-900 shadow-lg'
           }`}
         >
           {index < STEPS.length - 1 && (
             <span
               className={`absolute -left-3 top-1/2 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full md:flex ${
-                dark ? 'bg-white/15 text-white' : 'bg-gray-900 text-white shadow'
+                dark ? 'bg-white/15 text-white' : 'bg-slate-900 text-white shadow'
               }`}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -69,7 +69,7 @@ export function ServiceFlowSteps({ tone = 'light' }: { tone?: 'light' | 'dark' }
             {step.number}
           </span>
           <h3 className="text-subtitle font-black">{step.title}</h3>
-          <p className={`mt-2 text-sm leading-relaxed ${dark ? 'text-white/70' : 'text-gray-600'}`}>
+          <p className={`mt-2 text-sm leading-relaxed ${dark ? 'text-white/70' : 'text-slate-600'}`}>
             {step.description}
           </p>
           {step.chips.length > 0 && (

@@ -76,8 +76,8 @@ export default function MortgageRefinancePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-gray-900 mb-6">מה המטרה שלך במיחזור?</h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+        <h1 className="text-title font-bold text-slate-900 mb-6">מה המטרה שלך במיחזור?</h1>
+        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
           בחר את הכיוון שמתאים לך ונמשיך לניתוח האפשרויות
         </p>
       </div>
@@ -85,17 +85,17 @@ export default function MortgageRefinancePage() {
       <div className="grid md:grid-cols-2 gap-8">
         <motion.div whileHover={{ scale: 1.02, y: -5 }} whileTap={{ scale: 0.98 }}>
           <Card
-            className="group cursor-pointer border border-gray-200 hover:border-purple-300 transition-all duration-300 bg-white shadow-xl hover:shadow-2xl min-h-[320px]"
+            className="group cursor-pointer border border-slate-200 hover:border-purple-300 transition-all duration-300 bg-white shadow-xl hover:shadow-2xl min-h-[320px]"
             onClick={() => handleGoalSelect('reduce-payment')}
           >
             <CardContent className="p-8 text-center h-full flex flex-col justify-center">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Banknote className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-purple-600 transition-colors">
                 הקטנת תשלום חודשי
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed">
+              <p className="text-slate-600 text-lg leading-relaxed">
                 מציאת תנאים טובים יותר שיפחיתו את ההחזר החודשי תוך שמירה על תקופת המשכנתא
               </p>
             </CardContent>
@@ -104,17 +104,17 @@ export default function MortgageRefinancePage() {
 
         <motion.div whileHover={{ scale: 1.02, y: -5 }} whileTap={{ scale: 0.98 }}>
           <Card
-            className="group cursor-pointer border border-gray-200 hover:border-orange-300 transition-all duration-300 bg-white shadow-xl hover:shadow-2xl min-h-[320px]"
+            className="group cursor-pointer border border-slate-200 hover:border-orange-300 transition-all duration-300 bg-white shadow-xl hover:shadow-2xl min-h-[320px]"
             onClick={() => handleGoalSelect('shorten-period')}
           >
             <CardContent className="p-8 text-center h-full flex flex-col justify-center">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Clock className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-orange-600 transition-colors">
                 הקטנת סכום
               </h3>
-              <p className="text-gray-600 text-lg leading-relaxed">
+              <p className="text-slate-600 text-lg leading-relaxed">
                 קיצור תקופת המשכנתא להקטנת הסכום הכולל שישולם עד סיום ההלוואה
               </p>
             </CardContent>
@@ -147,16 +147,16 @@ export default function MortgageRefinancePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-gray-900 mb-6">סריקת דוח יתרות לסילוק</h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+        <h1 className="text-title font-bold text-slate-900 mb-6">סריקת דוח יתרות לסילוק</h1>
+        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
           העלה את דוח היתרות לסילוק של המשכנתא הנוכחית שלך
         </p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 mb-6">
-          <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">גרור קובץ לכאן או לחץ לבחירה</p>
+        <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 mb-6">
+          <Upload className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-600 mb-4">גרור קובץ לכאן או לחץ לבחירה</p>
           <Button variant="outline" className="px-6 py-3">
             בחר קובץ
           </Button>
@@ -187,13 +187,13 @@ export default function MortgageRefinancePage() {
           ייכנסו למסך בלי גלילה מיותרת */}
       {mixSummaryRevealed ? (
         <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-center">
-          <h1 className="text-title font-bold text-gray-900">מיחזור המשכנתא שלכם</h1>
-          <span className="text-sm text-gray-500">— שנו פרמטרים בפאנל וראו מיד את התוצאה</span>
+          <h1 className="text-title font-bold text-slate-900">מיחזור המשכנתא שלכם</h1>
+          <span className="text-sm text-slate-500">— שנו פרמטרים בפאנל וראו מיד את התוצאה</span>
         </div>
       ) : (
         <div className="text-center mb-10">
-          <h1 className="text-title font-bold text-gray-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <h1 className="text-title font-bold text-slate-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
             הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
           </p>
           <Button variant="link" className="mt-4 text-blue-600" onClick={() => setInputMethod('scan')}>
@@ -249,8 +249,8 @@ export default function MortgageRefinancePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+    <div className="min-h-screen bg-slate-50">
+      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
       </div>
 
@@ -283,7 +283,7 @@ export default function MortgageRefinancePage() {
       {signedIn && (
         <Link
           href="/dashboard"
-          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-button font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
         >
           <LayoutDashboard className="h-5 w-5" />
           חזרה לדאשבורד

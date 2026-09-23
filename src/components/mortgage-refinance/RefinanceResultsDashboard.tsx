@@ -97,8 +97,8 @@ export function MixResultRow({
 }) {
   const tones = {
     current: 'border-slate-200 bg-white',
-    refinanced: 'border-emerald-300 bg-emerald-50/50',
-    track: 'border-violet-300 bg-violet-50/50',
+    refinanced: 'border-emerald-300 bg-emerald-50',
+    track: 'border-violet-300 bg-violet-50',
   } as const;
 
   const titleTones = {

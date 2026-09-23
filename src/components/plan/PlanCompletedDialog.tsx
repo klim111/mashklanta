@@ -46,7 +46,7 @@ export function PlanCompletedDialog({
         <button
           type="button"
           onClick={onDone}
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-slate-700"
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700"
         >
           לאזור האישי
           <ArrowLeft className="h-4 w-4" />

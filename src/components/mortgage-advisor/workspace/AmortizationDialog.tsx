@@ -378,9 +378,9 @@ export function AmortizationDialog({
                   onClick={() => onSelectMonth(row.month)}
                   className={`border-t border-slate-100 cursor-pointer hover:bg-blue-50 ${
                     row.isRateStation
-                      ? 'bg-emerald-50/80'
+                      ? 'bg-emerald-50'
                       : row.prepayment > 0
-                        ? 'bg-emerald-50/60'
+                        ? 'bg-emerald-50'
                         : ''
                   }`}
                 >

@@ -18,7 +18,7 @@ export function AdvisorStageNotes({ stage }: { stage: PlanStageId }) {
   if (!ready || forStage.length === 0) return null;
 
   return (
-    <div className="mb-4 overflow-hidden rounded-3xl border border-blue-200 bg-blue-50/60">
+    <div className="mb-4 overflow-hidden rounded-3xl border border-blue-200 bg-blue-50">
       <div className="flex items-center gap-2 border-b border-blue-100 px-4 py-2.5">
         <MessageSquare className="h-4 w-4 text-blue-600" />
         <span className="text-sm font-black text-blue-900">הערות מהיועץ שלכם בשלב הזה</span>

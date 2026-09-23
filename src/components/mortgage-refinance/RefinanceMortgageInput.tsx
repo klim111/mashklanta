@@ -265,10 +265,10 @@ export function RefinanceMortgageInput({
             transition={{ duration: 0.35 }}
             className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-1 text-center"
           >
-            <span className="text-xs text-gray-500">המשכנתא הנוכחית</span>
+            <span className="text-xs text-slate-500">המשכנתא הנוכחית</span>
             <Building2 className="h-4 w-4 text-blue-600" />
-            <h2 className="text-subtitle font-bold text-gray-900">{bank}</h2>
-            <span className="text-gray-300">·</span>
+            <h2 className="text-subtitle font-bold text-slate-900">{bank}</h2>
+            <span className="text-slate-300">·</span>
             <p className="text-base font-semibold text-blue-600">{formatCurrency(effectiveTotal)}</p>
           </motion.div>
         ) : (
@@ -282,7 +282,7 @@ export function RefinanceMortgageInput({
           >
       <Card>
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-2xl text-gray-900">נתוני המשכנתא</CardTitle>
+          <CardTitle className="text-2xl text-slate-900">נתוני המשכנתא</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -330,7 +330,7 @@ export function RefinanceMortgageInput({
                   variant={perTrackRefinanceEnabled ? 'default' : 'outline'}
                   className={cn(
                     'h-10 shrink-0 px-3 text-sm',
-                    perTrackRefinanceEnabled && 'bg-purple-600 hover:bg-purple-700'
+                    perTrackRefinanceEnabled && 'bg-blue-600 hover:bg-blue-700'
                   )}
                   onClick={handlePerTrackModeToggle}
                   {...demoId('refi-per-track')}
@@ -352,15 +352,15 @@ export function RefinanceMortgageInput({
       {tracks.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
-            <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-subtitle font-semibold text-gray-600 mb-2">אין מסלולים</h3>
-            <p className="text-gray-500 mb-6">התחל בהוספת המסלול הראשון של המשכנתא הנוכחית</p>
+            <Calculator className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-subtitle font-semibold text-slate-600 mb-2">אין מסלולים</h3>
+            <p className="text-slate-500 mb-6">התחל בהוספת המסלול הראשון של המשכנתא הנוכחית</p>
             <Button onClick={() => addTrack()} className="px-6 py-3" disabled={!canAddFirstTrack} {...demoId('refi-add-track')}>
               <Plus className="h-5 w-5 ml-2" />
               הוסף מסלול ראשון
             </Button>
             {!canAddFirstTrack && (
-              <p className="text-sm text-gray-500 mt-3">
+              <p className="text-sm text-slate-500 mt-3">
                 {perTrackRefinanceEnabled
                   ? 'יש לבחור בנק לפני הוספת מסלול'
                   : 'יש לבחור בנק ולהזין סכום משכנתא, או להפעיל "בדוק מיחזור לכל מסלול"'}
@@ -389,7 +389,7 @@ export function RefinanceMortgageInput({
         <>
           {/* מועדי סיום התשלומים — הבסיס לחישוב מה שנותר לשלם */}
           {tracks.length > 0 && (
-            <Card className="border-blue-200 bg-blue-50/50">
+            <Card className="border-blue-200 bg-blue-50">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <CalendarClock className="h-4 w-4 text-blue-600" />
@@ -442,7 +442,7 @@ export function RefinanceMortgageInput({
                 </div>
 
                 {showCompletionCta && index === tracks.length - 1 && (
-                  <Card className="border-2 border-dashed border-blue-300 bg-blue-50/80">
+                  <Card className="border-2 border-dashed border-blue-300 bg-blue-50">
                     <CardContent className="h-full flex items-center justify-center p-6">
                       <Button
                         onClick={() => addTrack(remainingToComplete)}
@@ -456,7 +456,7 @@ export function RefinanceMortgageInput({
                 )}
 
                 {showReductionCta && index === tracks.length - 1 && (
-                  <Card className="border-2 border-dashed border-amber-300 bg-amber-50/80">
+                  <Card className="border-2 border-dashed border-amber-300 bg-amber-50">
                     <CardContent className="h-full flex items-center justify-center p-6">
                       <Button
                         onClick={reduceLastTrackByExcess}
@@ -500,7 +500,7 @@ export function RefinanceMortgageInput({
                 type="button"
                 {...demoId('refi-check-options')}
                 onClick={handlePerTrackRefinanceCheck}
-                className="px-8 py-6 text-cta h-auto flex-col gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                className="px-8 py-6 text-cta h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <RefreshCw className="h-8 w-8" />
                 <span className="font-bold">בדוק אפשרויות מיחזור</span>

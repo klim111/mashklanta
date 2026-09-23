@@ -179,6 +179,9 @@ module.exports = {
         'float': 'float 3s ease-in-out infinite',
       },
       backgroundImage: {
+        // סט הרקעים המשותף: רצועה כהה אחת לכותרות ולרצועות, ורקע בהיר אחד ל-hero בדפים הציבוריים
+        'brand-dark': 'linear-gradient(135deg, #020617 0%, #1e1b4b 55%, #0f172a 100%)',
+        'hero-soft': 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 50%, #eef2ff 100%)',
         'financial-gradient': 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
         'financial-gradient-subtle': 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
         'financial-success-gradient': 'linear-gradient(135deg, #059669 0%, #10b981 100%)',

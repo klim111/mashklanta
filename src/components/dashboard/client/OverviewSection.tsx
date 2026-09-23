@@ -327,8 +327,8 @@ export function OverviewSection({
                     href={notice.href}
                     className={`flex flex-wrap items-center gap-2 rounded-2xl border-2 px-4 py-3 text-right transition-colors ${
                       notice.done
-                        ? 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-400'
-                        : 'border-violet-200 bg-violet-50/70 hover:border-violet-400'
+                        ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-400'
+                        : 'border-violet-200 bg-violet-50 hover:border-violet-400'
                     }`}
                   >
                     <span
@@ -388,7 +388,7 @@ export function OverviewSection({
                   <Link
                     key={plan.id}
                     href={`/dashboard/plans/${plan.id}`}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-2.5 text-info transition-colors hover:border-emerald-400"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-info transition-colors hover:border-emerald-400"
                   >
                     <span className="min-w-0 truncate font-black text-slate-900">
                       {plan.propertyAddress || plan.name}
@@ -414,7 +414,7 @@ export function OverviewSection({
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
               >
                 <Plus className="h-5 w-5" />
                 משכנתא נוספת — מה תרצו לעשות?
@@ -539,7 +539,7 @@ function PlanStatusRow({
   const progress = Math.round((summary.completedStages / summary.stages.length) * 100);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-2 text-lg font-black text-slate-900">
           <MapPin className="h-5 w-5 shrink-0 text-slate-400" />
@@ -599,7 +599,7 @@ function PlanStatusRow({
         <Link
           href={summary.href}
           className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-info font-black text-white ${
-            summary.advisorStage ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-900 hover:bg-slate-700'
+            summary.advisorStage ? 'bg-violet-600 hover:bg-violet-700' : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
           {summary.advisorStage ? 'היועץ מטפל · הצג פרטים' : 'המשיכו'}

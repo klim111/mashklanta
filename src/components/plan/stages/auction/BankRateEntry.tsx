@@ -245,7 +245,7 @@ export function BankRateEntry({
                       </span>
                     )}
                   </td>
-                  <td className="bg-emerald-50/60 px-2 py-1.5">
+                  <td className="bg-emerald-50 px-2 py-1.5">
                     <AnchorSpreadRate
                       compact
                       anchor={breakdown.anchor}
@@ -285,7 +285,7 @@ export function BankRateEntry({
       </label>
 
       {preview && (
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:grid-cols-4">
           <PricingStat
             icon={<Wallet className="h-3 w-3" />}
             label="החזר חודשי בהצעה"

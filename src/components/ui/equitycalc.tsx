@@ -116,7 +116,7 @@ export default function CapitalPlanningCalculator() {
             onValueChange={setEquity}
           />
           {propertyPrice && selectedType && minEquity > 0 && (
-            <p className="text-sm mt-1 text-gray-600 text-right">
+            <p className="text-sm mt-1 text-slate-600 text-right">
               הון עצמי מינימלי נדרש:{" "}
               <span className="font-bold text-rose-600">
                 {minEquity.toLocaleString("he-IL", {
@@ -132,18 +132,18 @@ export default function CapitalPlanningCalculator() {
 
       {/* טבלת הוצאות */}
       <div className="overflow-x-auto">
-        <table className="table-auto w-full border-collapse border border-gray-300 text-right">
-          <thead className="bg-gray-100">
+        <table className="table-auto w-full border-collapse border border-slate-300 text-right">
+          <thead className="bg-slate-100">
             <tr>
-              <th className="border border-gray-300 p-2">תאריך</th>
-              <th className="border border-gray-300 p-2">עלות</th>
-              <th className="border border-gray-300 p-2">תיאור</th>
+              <th className="border border-slate-300 p-2">תאריך</th>
+              <th className="border border-slate-300 p-2">עלות</th>
+              <th className="border border-slate-300 p-2">תיאור</th>
             </tr>
           </thead>
           <tbody>
             {expenses.map((row, index) => (
               <tr key={row.description}>
-                <td className="border border-gray-300 p-2">
+                <td className="border border-slate-300 p-2">
                   <Input
                     type="date"
                     className="text-right"
@@ -151,20 +151,20 @@ export default function CapitalPlanningCalculator() {
                     onChange={(e) => handleDateChange(index, e.target.value)}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">
+                <td className="border border-slate-300 p-2">
                   <FormattedNumberInput
                     className="text-right"
                     value={row.amount}
                     onValueChange={(value) => handleAmountChange(index, value)}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">{row.description}</td>
+                <td className="border border-slate-300 p-2">{row.description}</td>
               </tr>
             ))}
-            <tr className="font-bold bg-gray-50">
-              <td className="border border-gray-300 p-2" />
-              <td className="border border-gray-300 p-2">{totalExpenses.toLocaleString()}</td>
-              <td className="border border-gray-300 p-2">סה"כ</td>
+            <tr className="font-bold bg-slate-50">
+              <td className="border border-slate-300 p-2" />
+              <td className="border border-slate-300 p-2">{totalExpenses.toLocaleString()}</td>
+              <td className="border border-slate-300 p-2">סה"כ</td>
             </tr>
           </tbody>
         </table>

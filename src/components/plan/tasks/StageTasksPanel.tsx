@@ -65,7 +65,7 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
         <button
           type="button"
           onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-button font-black text-white shadow-sm transition-colors hover:bg-slate-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-button font-black text-white shadow-sm transition-colors hover:bg-blue-700"
         >
           <CalendarPlus className="h-4 w-4" />
           הוסף משימה מתוכננת
@@ -151,7 +151,7 @@ function TaskRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
       className={`flex items-start gap-3 rounded-2xl border px-3.5 py-3 ${
-        isDone ? 'border-emerald-200 bg-emerald-50/60' : 'border-slate-200 bg-slate-50/60'
+        isDone ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'
       }`}
     >
       <span

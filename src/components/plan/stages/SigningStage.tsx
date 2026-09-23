@@ -188,7 +188,7 @@ export function SigningStage({
                   <button
                     type="button"
                     onClick={() => go('verify')}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
                   >
                     להשוואת ההצעה הסופית
                     <ArrowLeft className="h-4 w-4" />
@@ -219,7 +219,7 @@ export function SigningStage({
               <button
                 type="button"
                 onClick={pullFromWinner}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-slate-700"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-blue-700"
               >
                 {signed ? 'טענו את התמהיל שנבחר לחתימה' : 'טענו את תנאי ההצעה הזוכה'}
               </button>
@@ -348,7 +348,7 @@ export function SigningStage({
                 onClick={() => toggleCheck(check.key)}
                 className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-right transition-all ${
                   checked
-                    ? 'border-emerald-200 bg-emerald-50/60'
+                    ? 'border-emerald-200 bg-emerald-50'
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >

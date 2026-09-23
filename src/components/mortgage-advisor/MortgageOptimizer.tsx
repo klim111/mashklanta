@@ -104,11 +104,11 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
     <div className="space-y-8" dir="rtl">
       {/* כותרת */}
       <div className="text-center">
-        <h1 className="text-title font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
+        <h1 className="text-title font-bold text-slate-900 mb-4 flex items-center justify-center gap-3">
           <Sparkles className="h-10 w-10 text-purple-600" />
           אופטימיזציית תמהיל משכנתא
         </h1>
-        <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+        <p className="text-lg text-slate-600 max-w-3xl mx-auto">
           כלי חכם שמנתח את המצב הפיננסי שלך ומציע תמהילי משכנתא מותאמים אישית
         </p>
       </div>
@@ -178,7 +178,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
                 onChange={(e) => setInputs({ ...inputs, retirementAge: parseFloat(e.target.value) || 0 })}
                 className="text-lg"
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {yearsToRetirement > 0 ? `נותרו ${yearsToRetirement} שנים עד הפרישה` : 'כבר בגיל פרישה'}
               </p>
             </div>
@@ -243,7 +243,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
 
           {/* מכווני העדפות */}
           <div className="space-y-6 pt-4 border-t border-purple-200">
-            <h3 className="text-subtitle font-semibold text-gray-900">העדפות והתאמות</h3>
+            <h3 className="text-subtitle font-semibold text-slate-900">העדפות והתאמות</h3>
 
             {/* רגישות לעלייה בריבית */}
             <div className="space-y-3">
@@ -261,7 +261,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
                 step={1}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-slate-500">
                 <span>מוכן לקחת סיכון</span>
                 <span>רוצה יציבות מקסימלית</span>
               </div>
@@ -283,7 +283,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
                 step={1}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-slate-500">
                 <span>שמרני (בטוח)</span>
                 <span>אגרסיבי (פוטנציאל חיסכון)</span>
               </div>
@@ -306,11 +306,11 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
                 step={1}
                 className="w-full"
               />
-              <div dir="ltr" className="flex justify-between text-xs text-gray-500">
+              <div dir="ltr" className="flex justify-between text-xs text-slate-500">
                 <span>{PLAN_TERM_MONTHS_MIN} חודשים</span>
                 <span>{PLAN_TERM_MONTHS_MAX} חודשים</span>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 מקסימום עד גיל 80:{' '}
                 {formatDuration(Math.max(PLAN_TERM_MONTHS_MIN, (80 - inputs.currentAge) * 12))}
               </p>
@@ -322,7 +322,7 @@ export function MortgageOptimizer({ onSelectMix }: { onSelectMix?: (mix: Mortgag
       {/* תמהילים מומלצים */}
       <div className="space-y-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-subtitle font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-subtitle font-bold text-slate-900 flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-purple-600" />
             תמהילים מומלצים עבורך
           </h2>
@@ -458,42 +458,42 @@ function OptimizedMixCard({
             <div className="text-2xl font-bold text-blue-600">
               {formatCurrency(calculation.summary.totalMonthlyPayment)}
             </div>
-            <div className="text-xs text-gray-600">תשלום חודשי</div>
+            <div className="text-xs text-slate-600">תשלום חודשי</div>
           </div>
           
           <div className="text-center p-3 bg-green-50 rounded-lg">
             <div className="text-xl font-bold text-green-600">
               {formatPercentage(calculation.summary.averageRate)}
             </div>
-            <div className="text-xs text-gray-600">ריבית ממוצעת</div>
+            <div className="text-xs text-slate-600">ריבית ממוצעת</div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-2 bg-gray-50 rounded">
-            <div className="text-lg font-bold text-gray-700">
+          <div className="text-center p-2 bg-slate-50 rounded">
+            <div className="text-lg font-bold text-slate-700">
               {calculation.summary.weightedAverageYears.toFixed(1)}
             </div>
-            <div className="text-xs text-gray-600">שנים</div>
+            <div className="text-xs text-slate-600">שנים</div>
           </div>
           
-          <div className="text-center p-2 bg-gray-50 rounded">
-            <div className="text-lg font-bold text-gray-700">
+          <div className="text-center p-2 bg-slate-50 rounded">
+            <div className="text-lg font-bold text-slate-700">
               {formatCurrency(calculation.summary.totalInterest)}
             </div>
-            <div className="text-xs text-gray-600">סך ריבית</div>
+            <div className="text-xs text-slate-600">סך ריבית</div>
           </div>
         </div>
 
         {/* יתרונות */}
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             יתרונות
           </h4>
           <ul className="space-y-1">
             {optimized.advantages.slice(0, 3).map((adv, i) => (
-              <li key={i} className="text-xs text-gray-600 flex items-start gap-2">
+              <li key={i} className="text-xs text-slate-600 flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
                 <span>{adv}</span>
               </li>
@@ -504,13 +504,13 @@ function OptimizedMixCard({
         {/* אזהרות */}
         {optimized.warnings.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-orange-600" />
               שים לב
             </h4>
             <ul className="space-y-1">
               {optimized.warnings.slice(0, 2).map((warn, i) => (
-                <li key={i} className="text-xs text-gray-600 flex items-start gap-2">
+                <li key={i} className="text-xs text-slate-600 flex items-start gap-2">
                   <span className="text-orange-600 mt-0.5">⚠</span>
                   <span>{warn}</span>
                 </li>
@@ -520,12 +520,12 @@ function OptimizedMixCard({
         )}
 
         {/* חלוקת מסלולים */}
-        <div className="pt-3 border-t border-gray-200">
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">חלוקת מסלולים</h4>
+        <div className="pt-3 border-t border-slate-200">
+          <h4 className="text-sm font-semibold text-slate-700 mb-2">חלוקת מסלולים</h4>
           <div className="space-y-1">
             {optimized.mix.tracks.map((track, i) => (
               <div key={i} className="flex justify-between items-center text-xs">
-                <span className="text-gray-600">{track.name}</span>
+                <span className="text-slate-600">{track.name}</span>
                 <span className="font-semibold">{track.percentage.toFixed(0)}%</span>
               </div>
             ))}

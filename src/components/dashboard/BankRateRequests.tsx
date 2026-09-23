@@ -260,7 +260,7 @@ function RequestCard({
         </div>
 
         {offers.length > 0 && (
-          <div className="space-y-1.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2">
+          <div className="space-y-1.5 rounded-xl border border-emerald-200 bg-emerald-50 p-2">
             <p className="flex items-center gap-1 text-2xs font-bold text-emerald-900">
               <BadgePercent className="h-3 w-3" />
               הריביות שהתקבלו על התמהיל הזה
@@ -344,7 +344,7 @@ function Fact({
   tone?: 'slate' | 'amber' | 'emerald';
 }) {
   const tones = {
-    slate: { box: 'border-slate-200 bg-slate-50/70', text: 'text-slate-900' },
+    slate: { box: 'border-slate-200 bg-slate-50', text: 'text-slate-900' },
     amber: { box: 'border-amber-200 bg-amber-50', text: 'text-amber-800' },
     emerald: { box: 'border-emerald-200 bg-emerald-50', text: 'text-emerald-800' },
   }[tone];

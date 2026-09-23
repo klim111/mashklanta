@@ -61,7 +61,7 @@ export function EquityOverviewCard({
           <button
             type="button"
             onClick={onOpen}
-            className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+            className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
           >
             <Wallet className="h-4 w-4" />
             לתכנון ההוצאות
@@ -136,7 +136,7 @@ function Tile({
 }) {
   const shell =
     tone === 'dark'
-      ? 'bg-gradient-to-br from-slate-900 to-indigo-900 text-white border-transparent'
+      ? 'bg-brand-dark text-white border-transparent'
       : tone === 'emerald'
         ? 'bg-emerald-50 border-emerald-100'
         : 'bg-amber-50 border-amber-100';

@@ -78,7 +78,7 @@ export function BroadcastMixDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pl-1">
-          <div className="rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-4 text-center">
+          <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-4 text-center">
             {bank && (
               <span
                 className="mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black text-white"
@@ -166,7 +166,7 @@ export function BroadcastMixDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               <Check className="h-4 w-4" />
               סיום

@@ -122,7 +122,7 @@ export function DocumentVaultDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-3xl overflow-y-auto rounded-3xl bg-white p-0" {...demoId('vault-dialog')}>
-        <div className="relative overflow-hidden bg-slate-950 px-6 py-6 text-white md:px-8">
+        <div className="relative overflow-hidden bg-brand-dark px-6 py-6 text-white md:px-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-600/30 blur-3xl" />
             <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
@@ -196,7 +196,7 @@ export function DocumentVaultDialog({
                 transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
-                <div className="mb-4 space-y-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 p-4">
+                <div className="mb-4 space-y-4 rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
                   <RequirementList
                     title="עדיין לא הוגשו"
                     icon={<CircleDashed className="h-4 w-4 text-slate-400" />}
@@ -284,7 +284,7 @@ export function DocumentVaultDialog({
                       <button
                         type="button"
                         onClick={() => setViewing(document)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black text-white hover:bg-slate-700"
+                        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white hover:bg-blue-700"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         צפייה

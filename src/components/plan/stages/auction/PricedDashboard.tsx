@@ -130,7 +130,7 @@ export function PricedDashboard({
                   onSelectForSigning(featured.mix.id);
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               <Gavel className="h-4 w-4" />
               {signLabel?.button ?? 'בחר תמהיל זה כתמהיל סופי לחתימה'}

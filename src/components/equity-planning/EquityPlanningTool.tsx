@@ -584,7 +584,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
             type="button"
             disabled={!canContinue}
             onClick={() => goToStep(1)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-4 text-cta font-black text-white shadow-lg shadow-slate-900/20 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none disabled:hover:translate-y-0"
+            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-8 py-4 text-cta font-black text-white shadow-lg shadow-blue-600/20 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none disabled:hover:translate-y-0"
           >
             המשך לטבלת ההוצאות
             <ArrowLeft className="h-5 w-5" />
@@ -822,7 +822,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
                   {...demoId('eq-export-csv')}
                   type="button"
                   onClick={exportToCSV}
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
                 >
                   <Download className="h-4 w-4" />
                   ייצוא לאקסל (CSV)
@@ -866,7 +866,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
 
   const header = (
     <section
-      className={`relative overflow-hidden bg-slate-950 px-4 py-6 sm:px-6 md:py-8 ${
+      className={`relative overflow-hidden bg-brand-dark px-4 py-6 sm:px-6 md:py-8 ${
         embedded ? 'rounded-3xl' : ''
       }`}
     >
@@ -964,7 +964,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
   );
 
   return (
-    <div dir="rtl" className={embedded ? '' : 'min-h-screen bg-slate-100 pb-16'}>
+    <div dir="rtl" className={embedded ? '' : 'min-h-screen bg-slate-50 pb-16'}>
       {header}
       {body}
       <EquityGuestDialog open={gate.promptOpen} onClose={gate.closePrompt} />
@@ -1021,7 +1021,7 @@ function Metric({
 }) {
   const shell =
     tone === 'dark'
-      ? 'bg-gradient-to-br from-slate-900 to-indigo-900 border-transparent text-white'
+      ? 'bg-brand-dark border-transparent text-white'
       : tone === 'emerald'
         ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100'
         : tone === 'amber'
@@ -1069,7 +1069,7 @@ function StepNav({
           type="button"
           {...demoId('eq-continue-summary')}
           onClick={onNext}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-8 py-3 text-button font-black text-white shadow-lg shadow-slate-900/20 transition-transform hover:-translate-y-0.5"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-8 py-3 text-button font-black text-white shadow-lg shadow-blue-600/20 transition-transform hover:-translate-y-0.5"
         >
           {nextLabel}
           <ArrowLeft className="h-4 w-4" />

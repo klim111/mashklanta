@@ -59,7 +59,7 @@ export default function PackageBuilder() {
       {/* Stage picker */}
       <div>
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-bold text-gray-700">התחילו מתבנית:</span>
+          <span className="text-sm font-bold text-slate-700">התחילו מתבנית:</span>
           {presets.map((preset) => (
             <button
               key={preset.id}
@@ -67,8 +67,8 @@ export default function PackageBuilder() {
               onClick={() => setSelected(preset.stages)}
               className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
                 activePreset?.id === preset.id
-                  ? 'bg-gray-900 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+                  ? 'bg-slate-900 text-white shadow-lg'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
               }`}
             >
               {preset.label}
@@ -89,13 +89,13 @@ export default function PackageBuilder() {
                 aria-pressed={isOn}
                 className={`group flex w-full flex-col gap-3 rounded-2xl border-2 p-4 text-right transition-all sm:flex-row sm:items-center sm:gap-4 ${
                   isOn
-                    ? 'border-blue-500 bg-blue-50/70 shadow-lg'
-                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                    ? 'border-blue-500 bg-blue-50 shadow-lg'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
                 }`}
               >
                 <span
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-all ${
-                    isOn ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'
+                    isOn ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
                   }`}
                 >
                   {isOn && <Check className="h-4 w-4 text-white" />}
@@ -108,11 +108,11 @@ export default function PackageBuilder() {
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-bold text-gray-600">
+                  <span className="block text-xs font-bold text-slate-600">
                     שלב {stage.number}
                   </span>
-                  <span className="block font-bold text-gray-900">{stage.title}</span>
-                  <span className="mt-0.5 block text-sm text-gray-700">
+                  <span className="block font-bold text-slate-900">{stage.title}</span>
+                  <span className="mt-0.5 block text-sm text-slate-700">
                     {isOn ? (
                       <span className="font-semibold text-blue-800">היועץ מבצע עבורכם · {stage.duration}</span>
                     ) : (
@@ -127,12 +127,12 @@ export default function PackageBuilder() {
                 <span className="shrink-0 text-left">
                   <span
                     className={`block text-lg font-black ${
-                      isOn ? 'text-blue-800' : 'text-gray-500 line-through decoration-1'
+                      isOn ? 'text-blue-800' : 'text-slate-500 line-through decoration-1'
                     }`}
                   >
                     ₪{stage.advisorPrice.toLocaleString('he-IL')}
                   </span>
-                  <span className="block text-2xs font-semibold text-gray-600">
+                  <span className="block text-2xs font-semibold text-slate-600">
                     מחיר השלב
                   </span>
                 </span>
@@ -144,13 +144,13 @@ export default function PackageBuilder() {
         {/* Access periods slider */}
         <div
           className={`mt-6 rounded-2xl border-2 p-5 transition-all ${
-            withAdvisor ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'
+            withAdvisor ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'
           }`}
         >
           <div className="mb-3 flex items-baseline justify-between gap-4">
             <div>
-              <div className="font-bold text-gray-900">גישה לפלטפורמה</div>
-              <div className="text-sm text-gray-700">
+              <div className="font-bold text-slate-900">גישה לפלטפורמה</div>
+              <div className="text-sm text-slate-700">
                 ₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, ל-{PLATFORM_ACCESS_DAYS} יום. אפשר לחדש באותו מחיר
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function PackageBuilder() {
                   כלול בכל ליווי
                 </span>
               ) : (
-                <span className="text-lg font-black text-gray-900">{periods * PLATFORM_ACCESS_DAYS} יום</span>
+                <span className="text-lg font-black text-slate-900">{periods * PLATFORM_ACCESS_DAYS} יום</span>
               )}
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function PackageBuilder() {
                 step={1}
                 aria-label="כמה זמן ייקח התהליך"
               />
-              <div className="mt-2 flex justify-between text-xs text-gray-600">
+              <div className="mt-2 flex justify-between text-xs text-slate-600">
                 <span>{6 * PLATFORM_ACCESS_DAYS} יום</span>
                 <span>{PLATFORM_ACCESS_DAYS} יום</span>
               </div>
@@ -184,18 +184,18 @@ export default function PackageBuilder() {
 
         {/* Credit slider */}
         {withAdvisor && (
-          <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50/50 p-5">
+          <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50 p-5">
             <div className="mb-3 flex items-baseline justify-between gap-4">
               <div>
-                <div className="flex items-center gap-1.5 font-bold text-gray-900">
+                <div className="flex items-center gap-1.5 font-bold text-slate-900">
                   <Coins className="h-4 w-4 text-blue-600" />
                   כבר שילמתם על הגישה לפלטפורמה?
                 </div>
-                <div className="text-sm text-gray-700">
+                <div className="text-sm text-slate-700">
                   התחלתם לבד ועכשיו מזמינים ליווי — כל תשלום על הגישה מקוזז מהמחיר
                 </div>
               </div>
-              <span className="text-lg font-black text-gray-900">
+              <span className="text-lg font-black text-slate-900">
                 {paidPeriods === 0 ? 'עדיין לא' : `₪${paidPeriods * PLATFORM_PROCESS_PRICE}`}
               </span>
             </div>
@@ -207,7 +207,7 @@ export default function PackageBuilder() {
               step={1}
               aria-label="תשלומי גישה לפלטפורמה ששולמו"
             />
-            <div className="mt-2 flex justify-between text-xs text-gray-600">
+            <div className="mt-2 flex justify-between text-xs text-slate-600">
               <span>₪{6 * PLATFORM_PROCESS_PRICE}</span>
               <span>0</span>
             </div>
@@ -217,7 +217,7 @@ export default function PackageBuilder() {
 
       {/* Summary */}
       <div className="lg:sticky lg:top-24">
-        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
           <div className="bg-gradient-to-l from-blue-600 via-indigo-600 to-violet-600 px-6 py-5 text-white">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Receipt className="h-4 w-4" />
@@ -238,27 +238,27 @@ export default function PackageBuilder() {
           <div className="space-y-3 px-6 py-5">
             {selected.length > 0 && (
               <div className="flex items-baseline justify-between text-info">
-                <span className="text-gray-600">
+                <span className="text-slate-600">
                   ליווי יועץ ({selected.length} שלבים)
                 </span>
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-slate-900">
                   ₪{advisorCost.toLocaleString('he-IL')}
                 </span>
               </div>
             )}
 
             <div className="flex items-baseline justify-between text-info">
-              <span className="text-gray-600">
+              <span className="text-slate-600">
                 גישה לפלטפורמה{withAdvisor ? '' : ` · ${periods * PLATFORM_ACCESS_DAYS} יום`}
               </span>
-              <span className="font-bold text-gray-900">
+              <span className="font-bold text-slate-900">
                 {withAdvisor ? 'כלולה' : `₪${platformCost.toLocaleString('he-IL')}`}
               </span>
             </div>
 
             {credit > 0 && (
               <div className="flex items-baseline justify-between text-info">
-                <span className="text-gray-600">קיזוז גישה ששולמה</span>
+                <span className="text-slate-600">קיזוז גישה ששולמה</span>
                 <span className="font-bold text-emerald-700">−₪{credit.toLocaleString('he-IL')}</span>
               </div>
             )}
@@ -295,14 +295,14 @@ export default function PackageBuilder() {
               </div>
             )}
 
-            <div className="border-t border-gray-100 pt-4">
+            <div className="border-t border-slate-100 pt-4">
               <div className="flex items-baseline justify-between">
-                <span className="font-bold text-gray-900">סה״כ</span>
-                <span className="text-2xl font-black text-gray-900">
+                <span className="font-bold text-slate-900">סה״כ</span>
+                <span className="text-2xl font-black text-slate-900">
                   ₪{total.toLocaleString('he-IL')}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-gray-600">
+              <p className="mt-1 text-xs text-slate-600">
                 המחירים אינם כוללים מע״מ. ניתן לשנות את ההרכב בכל שלב בתהליך — ותמיד תחויבו
                 במחיר הנמוך מבין כל האופציות.
               </p>
@@ -311,7 +311,7 @@ export default function PackageBuilder() {
             <Button
               asChild
               size="lg"
-              className="w-full bg-gradient-to-l from-blue-600 to-violet-600 text-base font-bold text-white shadow-lg hover:from-blue-700 hover:to-violet-700 hover:text-white"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-base font-bold text-white shadow-lg hover:text-white"
             >
               <Link href="/#start">
                 {selected.length === 0 ? 'התחילו בסיור בכלי' : 'בקשו ליווי עם ההרכב הזה'}

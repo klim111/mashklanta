@@ -110,7 +110,7 @@ const tools = [
 export function ToolsHub() {
   return (
     <div dir="rtl" className="space-y-6">
-      <div className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 shadow-xl md:p-8">
+      <div className="relative overflow-hidden rounded-3xl bg-brand-dark p-6 shadow-xl md:p-8">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-600/30 blur-3xl" />
           <div className="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-cyan-500/20 blur-3xl" />
@@ -144,7 +144,7 @@ export function ToolsHub() {
                 <Link
                   {...demoId(`dash-tool-${tool.id}`)}
                   href={tool.href}
-                  className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-l ${tool.gradient} px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-transform group-hover:scale-[1.02] sm:w-auto sm:min-w-[11.5rem]`}
+                  className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-all group-hover:scale-[1.02] hover:bg-blue-700 sm:w-auto sm:min-w-[11.5rem]`}
                 >
                   <Icon className="h-5 w-5" />
                   {tool.title}

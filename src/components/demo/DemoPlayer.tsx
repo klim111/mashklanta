@@ -247,7 +247,7 @@ export function DemoPlayer({
           <Link
             href="/#start"
             onClick={() => onOpenChange(false)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-blue-600 to-violet-600 px-5 py-2.5 text-button font-black text-white shadow-lg transition-all hover:shadow-xl sm:mr-auto"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-button font-black text-white shadow-lg transition-all hover:shadow-xl sm:mr-auto"
           >
             להתחיל עכשיו — הכלים חינם
             <ArrowLeft className="h-4 w-4" />

@@ -229,7 +229,7 @@ export function AddTaskDialog({
           </div>
         )}
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <p className="mb-3 flex items-center gap-1.5 text-xs font-black text-slate-500">
             <PenLine className="h-3.5 w-3.5 text-blue-600" />
             {picked === 'free' ? 'או בניסוח חופשי' : 'פרטי המשימה'}
@@ -319,7 +319,7 @@ export function AddTaskDialog({
                     onClick={() => fileInput.current?.click()}
                     className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
                       file
-                        ? 'border-emerald-300 bg-emerald-50/60'
+                        ? 'border-emerald-300 bg-emerald-50'
                         : 'border-slate-300 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
                     }`}
                   >
@@ -391,7 +391,7 @@ export function AddTaskDialog({
             {...demoId('task-submit')}
             disabled={!canSubmit || busy}
             onClick={() => void submit()}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-button font-black text-white shadow-md transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-button font-black text-white shadow-md transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />

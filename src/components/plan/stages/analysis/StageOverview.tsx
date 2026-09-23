@@ -199,7 +199,7 @@ function StartStageCard({ onStart }: { onStart: () => void }) {
         onClick={onStart}
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.98 }}
-        className="mt-1 inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-600 to-cyan-500 px-8 py-4 text-cta font-black text-white shadow-[0_14px_36px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_18px_44px_rgba(37,99,235,0.45)]"
+        className="mt-1 inline-flex items-center gap-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 px-8 py-4 text-cta font-black text-white shadow-[0_14px_36px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_18px_44px_rgba(37,99,235,0.45)]"
       >
         <Play className="h-5 w-5" />
         התחל שלב
@@ -237,7 +237,7 @@ function SlideFooter({
       <button
         type="button"
         onClick={onNext}
-        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-cta font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+        className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-8 py-3.5 text-cta font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
       >
         המשך
         <ArrowLeft className="h-4 w-4" />
@@ -306,7 +306,7 @@ function ActionsList({ compact = false }: { compact?: boolean }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
           transition={{ delay: index * 0.08, duration: 0.35 }}
-          className="flex gap-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-4"
+          className="flex gap-3 rounded-3xl border-2 border-slate-200 bg-slate-50 p-4"
         >
           <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${step.gradient} shadow-lg`}>
             {step.icon}
@@ -331,7 +331,7 @@ function OutputsList() {
   return (
     <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2 xl:grid-cols-3">
       {REPORT_OUTPUTS.map((item) => (
-        <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-3.5">
+        <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-3.5">
           <p className="flex items-center gap-2 text-sm font-black text-slate-900">
             <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}>
               {item.icon}
@@ -356,7 +356,7 @@ function IntroSlide({ compact = false }: { compact?: boolean }) {
       badge={<Badge icon={<Sparkles className="h-4 w-4" />} text="על השלב · שלב 1 מתוך 5" tone="bg-blue-600" />}
       title="הפרופיל הפיננסי שלכם"
       lead={
-        <p className="mx-auto mt-3 max-w-3xl rounded-2xl bg-blue-50/70 px-5 py-4 text-lg font-black leading-relaxed text-slate-800 md:text-xl">
+        <p className="mx-auto mt-3 max-w-3xl rounded-2xl bg-blue-50 px-5 py-4 text-lg font-black leading-relaxed text-slate-800 md:text-xl">
           שלב קריטי שבו בונים את פרופיל העסקה והפרופיל הפיננסי, בודקים עמידה בדרישות הבנקים
           והרגולציה, ומכינים את תיק המסמכים ואת הקווים המנחים לתמהיל — הבסיס שכל שאר השלבים
           נשענים עליו.
@@ -490,7 +490,7 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
 
 function CriticalNote() {
   return (
-    <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-info font-bold leading-relaxed text-slate-800">
+    <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-info font-bold leading-relaxed text-slate-800">
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
       השלב הזה קריטי למזעור הסיכוי לסירוב או לעיכוב בתהליך, ולוודא שכל המסמכים שיוגשו יהיו
       תקינים ומלאים — ולהבנה מלאה של איך ייראה המצב הכלכלי של משק הבית שלכם אחרי לקיחת

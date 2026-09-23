@@ -208,9 +208,9 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
     });
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
+    <div dir="rtl" className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
       {/* תפריט הצד — במסך רחב */}
-      <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:bg-slate-950 lg:px-4 lg:py-5">
+      <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:bg-brand-dark lg:px-4 lg:py-5">
         <Link href="/" className="flex items-center gap-2.5 px-2">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg">
             <HomeIcon className="h-5 w-5 text-white" />
@@ -257,7 +257,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
       <div className="flex min-h-screen min-w-0 flex-col">
         {/* ראש העמוד במסך צר — מותג, משתמש וניווט אופקי */}
-        <header className="sticky top-0 z-30 bg-slate-950 lg:hidden">
+        <header className="sticky top-0 z-30 bg-brand-dark lg:hidden">
           <div className="flex h-14 items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600">
@@ -291,7 +291,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           <div className="mx-auto max-w-[1400px]">
             {/* במסך צר אין תפריט צד — שאלת הפתיחה יושבת מעל התוכן */}
             {vaultPlan && (
-              <div className="mb-4 rounded-2xl bg-slate-950 p-3 lg:hidden">
+              <div className="mb-4 rounded-2xl bg-brand-dark p-3 lg:hidden">
                 <VaultButton planId={vaultPlan.id} data={vaultPlan.data} variant="sidebar" />
               </div>
             )}
@@ -404,7 +404,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           <button
             type="button"
             onClick={() => navigate('overview')}
-            className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-button font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+            className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
           >
             <LayoutDashboard className="h-5 w-5" />
             חזרה לדאשבורד

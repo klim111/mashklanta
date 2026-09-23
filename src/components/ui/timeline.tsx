@@ -138,7 +138,7 @@ export default function InteractiveTimeline() {
   return (
     <div dir="rtl" className="relative min-h-screen p-6 bg-muted">
       {/* קו מרכזי */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 h-full border-r-2 border-gray-300 z-0"></div>
+      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 h-full border-r-2 border-slate-300 z-0"></div>
 
       <div className="relative z-10 space-y-12">
         {steps.map((step, index) => {

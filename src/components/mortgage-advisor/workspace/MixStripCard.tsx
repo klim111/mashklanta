@@ -24,7 +24,7 @@ const ORIGIN_LABELS: Record<MixOrigin, string> = {
 
 /** תמהיל שהריביות בו כבר התקבלו מבנק — מצב שגובר על הגוון של מי שבנה אותו */
 const QUOTE_STYLE = {
-  card: 'border-emerald-400 bg-emerald-50/70',
+  card: 'border-emerald-400 bg-emerald-50',
   badge: 'bg-emerald-600 text-white',
 };
 
@@ -35,13 +35,13 @@ const QUOTE_STYLE = {
 const AUTHOR_STYLES: Record<MixAuthor, { card: string; badge: string; label: string; dot: string }> =
   {
     client: {
-      card: 'border-sky-300 bg-sky-50/60',
+      card: 'border-sky-300 bg-sky-50',
       badge: 'bg-sky-100 text-sky-900',
       label: 'נוצר על ידי הלקוח',
       dot: 'bg-sky-400',
     },
     advisor: {
-      card: 'border-violet-300 bg-violet-50/50',
+      card: 'border-violet-300 bg-violet-50',
       badge: 'bg-violet-100 text-violet-900',
       label: 'נוצר על ידי היועץ',
       dot: 'bg-violet-400',

@@ -67,7 +67,7 @@ export function MixSummaryCard({
       highlight={highlight}
       hint="לפרטים המלאים"
       detail={
-        <div className="border-t border-slate-100 bg-slate-50/70 p-3 space-y-3">
+        <div className="border-t border-slate-100 bg-slate-50 p-3 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <DetailStat
               icon={<CalendarClock className="h-3 w-3" />}

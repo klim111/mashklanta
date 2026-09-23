@@ -62,7 +62,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -73,12 +73,12 @@ function LoginForm() {
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-title font-bold text-gray-900">התחברות</h1>
-            <p className="text-gray-600 mt-2">ברוכים השבים למשכלנתא</p>
+            <h1 className="text-title font-bold text-slate-900">התחברות</h1>
+            <p className="text-slate-600 mt-2">ברוכים השבים למשכלנתא</p>
           </div>
 
           {/* Success Message for Advisor Registration */}
@@ -108,7 +108,7 @@ function LoginForm() {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 שם משתמש או מייל
               </label>
               <div className="relative">
@@ -119,15 +119,15 @@ function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="שם משתמש או your@email.com"
                 />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 סיסמה
               </label>
               <div className="relative">
@@ -137,17 +137,17 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 pl-12 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <Link
                 href="/auth/forgot-password"
-                className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
               >
                 שכחת סיסמה?
               </Link>
@@ -156,7 +156,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -172,10 +172,10 @@ function LoginForm() {
           {/* Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-slate-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">או</span>
+              <span className="px-4 bg-white text-slate-500">או</span>
             </div>
           </div>
 
@@ -187,11 +187,11 @@ function LoginForm() {
 
           {/* Register Link */}
           <div className="mt-8 text-center space-y-3">
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               עדיין אין לך חשבון?{' '}
               <Link
                 href="/auth/register"
-                className="font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
                 הירשם עכשיו
               </Link>
@@ -199,15 +199,15 @@ function LoginForm() {
             
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-slate-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">או</span>
+                <span className="px-4 bg-white text-slate-500">או</span>
               </div>
             </div>
             
             <Link href="/auth/register?role=ADVISOR">
-              <button className="w-full py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2">
+              <button className="w-full py-3 px-4 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2">
                 <UserCheck className="w-5 h-5" />
                 הצטרף לנבחרת היועצים
               </button>
@@ -219,7 +219,7 @@ function LoginForm() {
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-gray-600 hover:text-gray-800 transition-colors inline-flex items-center gap-2"
+            className="text-slate-600 hover:text-slate-800 transition-colors inline-flex items-center gap-2"
           >
             <Home className="w-4 h-4" />
             חזרה לדף הבית
@@ -233,11 +233,11 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">טוען...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-slate-600">טוען...</p>
           </div>
         </div>
       </div>

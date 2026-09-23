@@ -29,7 +29,7 @@ export default function Home() {
       {/* Professional Navigation */}
       <motion.div
         style={{ y, opacity }}
-        className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100"
+        className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100"
       >
         <NavBar />
       </motion.div>
@@ -40,7 +40,7 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 md:min-h-[100svh] lg:h-screen"
+        className="relative overflow-hidden bg-hero-soft md:min-h-[100svh] lg:h-screen"
         {...demoId('home-hero')}
       >
         {/* Logo Section - Top */}
@@ -55,7 +55,7 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
-            className="mx-auto max-w-md text-base leading-relaxed text-gray-600 md:max-w-4xl md:text-xl"
+            className="mx-auto max-w-md text-base leading-relaxed text-slate-600 md:max-w-4xl md:text-xl"
             {...demoId('home-hero-title')}
           >
             פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
@@ -149,7 +149,7 @@ export default function Home() {
           <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
             <div className="max-w-4xl w-full px-8" dir="rtl">
               <div className="relative mb-10">
-                <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-gray-200 md:block" />
+                <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-slate-200 md:block" />
                 <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 overflow-hidden rounded-full md:block">
                   <div className="h-full w-full bg-gradient-to-l from-blue-500 via-violet-500 to-rose-500 animate-draw-line" />
                 </div>
@@ -161,7 +161,7 @@ export default function Home() {
                       >
                         {stage.number}
                       </span>
-                      <span className="mt-1.5 text-2xs font-bold leading-tight text-gray-800 sm:mt-3 sm:text-2xs md:text-sm">
+                      <span className="mt-1.5 text-2xs font-bold leading-tight text-slate-800 sm:mt-3 sm:text-2xs md:text-sm">
                         {stage.shortTitle}
                       </span>
                     </li>
@@ -171,7 +171,7 @@ export default function Home() {
               <p className="text-center text-2xl font-black text-emerald-600 md:text-3xl">
                 ניווט לאורך כל השלבים
               </p>
-              <p className="mt-1 text-center text-base text-gray-600 md:text-lg">
+              <p className="mt-1 text-center text-base text-slate-600 md:text-lg">
                 ליווי מקצועי מהתחלה ועד הסוף
               </p>
             </div>
@@ -223,11 +223,11 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true, margin: "-100px" }}
-        className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-10 px-4 md:min-h-screen md:px-6 md:py-20"
+        className="relative overflow-hidden bg-hero-soft py-10 px-4 md:min-h-screen md:px-6 md:py-20"
       >
         <div className="max-w-6xl mx-auto">
           {/* הכלים החינמיים — תכנון וניתוח מקדים, לפני שבוחרים איך להתקדם */}
-          <div className="rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-free-tools')}>
+          <div className="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-free-tools')}>
             <FreeToolsSection />
           </div>
 
@@ -246,7 +246,7 @@ export default function Home() {
           </div>
 
           {/* מה תרצו לעשות? — נקודת הכניסה, גם למי שעדיין לא נרשם */}
-          <div id="start" className="scroll-mt-24 rounded-3xl border border-gray-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
+          <div id="start" className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
             <GuestStart />
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true, margin: "-80px" }}
-        className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-4 py-12 text-white md:px-6 md:py-20"
+        className="relative overflow-hidden bg-brand-dark px-4 py-12 text-white md:px-6 md:py-20"
         {...demoId('home-pricing')}
       >
         <div className="pointer-events-none absolute inset-0">
@@ -320,7 +320,7 @@ export default function Home() {
           whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
           viewport={{ once: true, margin: "-100px" }}
-        className="bg-gray-900 text-white"
+        className="bg-slate-900 text-white"
         >
           <Footer />
         </motion.section>

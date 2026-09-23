@@ -219,7 +219,7 @@ export function AgendaSection({
               {...demoId('agenda-add')}
               type="button"
               onClick={() => setAddOpen(true)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               <CalendarPlus className="h-4 w-4" />
               הוסף משימה או פגישה
@@ -277,7 +277,7 @@ export function AgendaSection({
           <DashCard title="הערות מהיועץ" icon={<MessageSquare className="h-5 w-5 text-blue-600" />}>
             <div className="space-y-2">
               {sortedNotes.map((note) => (
-                <div key={note.id} className="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+                <div key={note.id} className="rounded-xl border border-blue-100 bg-blue-50 p-3">
                   <p className="whitespace-pre-wrap text-info leading-relaxed text-slate-800">{note.body}</p>
                   <p className="mt-1.5 text-sm text-slate-500">
                     <span className="font-bold text-blue-700">{note.advisorName}</span> · שלב{' '}
@@ -388,7 +388,7 @@ function DetailPanel({
             <button
               type="button"
               onClick={() => onGo(task.target)}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white hover:bg-blue-700"
             >
               {ownTask ? 'לשלב בתהליך' : 'לביצוע המשימה'}
               <ArrowLeft className="h-4 w-4" />
@@ -475,7 +475,7 @@ function DetailPanel({
           {event.target.kind === 'href' && (
             <Link
               href={event.target.href}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white hover:bg-blue-700"
             >
               לשלב בתהליך
               <ArrowLeft className="h-4 w-4" />
