@@ -128,6 +128,8 @@ interface MortgageWorkspaceProps {
   onSelectFinal?: (item: SavedMix) => void;
   /** אחרי שהתמהיל הסופי אושר — התהליך ממשיך לשלב הבא */
   onFinalConfirmed?: () => void;
+  /** התמהיל הסופי נפתח חזרה לעריכה — הוא כבר לא הסופי של התהליך */
+  onReopenFinal?: (item: SavedMix) => void;
 }
 
 /** פרטי העסקה אחרי עריכה שעברה את הבדיקה הרגולטורית */
@@ -180,6 +182,7 @@ export function MortgageWorkspace({
   finalMixKey,
   onSelectFinal,
   onFinalConfirmed,
+  onReopenFinal,
 }: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
   const { data: session } = useSession();
@@ -997,6 +1000,35 @@ export function MortgageWorkspace({
     [planId, allowSelectFinal, saved, mix, save, onSelectFinal, actions, refresh, onFinalConfirmed]
   );
 
+  /**
+   * פתיחת התמהיל הסופי חזרה לעריכה. הנעילה יורדת והבחירה כסופי מתבטלת — כדי
+   * שהלקוח לא ישלח לבנקים תמהיל ששונה אחרי שנבחר. בחירה מחדש נועלת שוב.
+   */
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopening, setReopening] = useState(false);
+
+  const reopenFinalMix = useCallback(async () => {
+    setReopening(true);
+    try {
+      const item = saved.find((entry) => entry.mix.id === mix.id);
+      if (planId && item?.recordId) {
+        const response = await fetch(`/api/mixes/${item.recordId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isFinal: false, planId }),
+        });
+        if (!response.ok) return;
+        const stored = (await response.json()) as SavedMix;
+        onReopenFinal?.(stored);
+        await refresh();
+      }
+      actions.patchMix({ locked: false });
+      setReopenOpen(false);
+    } finally {
+      setReopening(false);
+    }
+  }, [saved, mix.id, planId, onReopenFinal, refresh, actions]);
+
   /** התמהיל שעליו נשאלת שאלת האישור — מהשורה שנלחצה, ואחרת זה שבעבודה */
   const finalCandidate = useMemo(() => {
     if (!finalCandidateId) return null;
@@ -1149,6 +1181,13 @@ export function MortgageWorkspace({
           </div>
         )}
 
+        {/*
+          אזור העבודה והניתוח זה לצד זה במסך רחב: אזור העבודה מימין, והמצב
+          והגרפים משמאל ונדבקים לראש המסך — כך כל שינוי בפרמטרים של מסלול
+          נראה מיד בתוצאות בלי לגלול. במסך צר הם אחד מעל השני כמו קודם.
+        */}
+        <div className="space-y-3 xl:grid xl:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] xl:items-start xl:gap-3 xl:space-y-0">
+        <div className="min-w-0 space-y-3">
         {/* כל התמהילים של הנכס באותה תצוגה; זה שבניתוח בראש הרשימה */}
         <div {...demoId('ws-mix-list')}>
         <MixList
@@ -1181,6 +1220,8 @@ export function MortgageWorkspace({
           onSaveBankQuote={saveBankQuote}
           onOpenBankQuote={openBankQuote}
           onSelectAsFinal={allowSelectFinal ? setFinalCandidateId : undefined}
+          activeFinal={Boolean(mix.locked)}
+          onReopenFinal={allowSelectFinal ? () => setReopenOpen(true) : undefined}
           activeActions={
             <>
               <Button
@@ -1354,7 +1395,9 @@ export function MortgageWorkspace({
             onHide={() => setShowRisk(false)}
           />
         )}
+        </div>
 
+        <div className="min-w-0 space-y-3 xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pb-1">
         {/* דאשבורד: מצב התמהיל שבפאנל, ומה השתנה מאז שנפתח */}
         <div className="space-y-2">
           <StateBlocksRow
@@ -1403,7 +1446,10 @@ export function MortgageWorkspace({
               />
             ) : null
           }
+          split
         />
+        </div>
+        </div>
         </div>
       </div>
 
@@ -1489,6 +1535,34 @@ export function MortgageWorkspace({
         onClose={() => setRefinanceTarget(null)}
         onConfirm={actions.addRefinance}
       />
+
+      {/* פתיחת התמהיל הסופי לעריכה — הבחירה כסופי מתבטלת עד שייבחר שוב */}
+      <Dialog
+        open={reopenOpen}
+        onOpenChange={(open) => {
+          if (!open && !reopening) setReopenOpen(false);
+        }}
+      >
+        <DialogContent dir="rtl" className="max-w-lg text-right">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-black text-slate-900">
+              לפתוח את התמהיל הסופי לעריכה?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm leading-relaxed text-slate-700">
+            הנעילה תוסר ואפשר יהיה לשנות את המסלולים. התמהיל כבר לא יסומן כתמהיל הסופי להגשה
+            לבנקים, ואחרי העריכה בוחרים אותו שוב כתמהיל סופי.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" disabled={reopening} onClick={() => setReopenOpen(false)}>
+              ביטול
+            </Button>
+            <Button className="min-w-32" disabled={reopening} onClick={() => void reopenFinalMix()}>
+              {reopening ? 'רגע…' : 'פתח לעריכה'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* אישור בחירת התמהיל הסופי — מה שקורה אחריו, לפני שהוא קורה */}
       <Dialog

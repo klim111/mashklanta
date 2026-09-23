@@ -7,9 +7,10 @@ import {
   markMixAsFinal,
   setMixCategory,
   shareMixWithClient,
+  unmarkMixAsFinal,
 } from '@/lib/mixes';
 import { findAccessibleClient } from '@/lib/clients';
-import { getPlanForUser, persistFinalMix } from '@/lib/mortgage-plans';
+import { clearFinalMix, getPlanForUser, persistFinalMix } from '@/lib/mortgage-plans';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -34,6 +35,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     const saved = await markMixAsFinal(userId, id, body.planId);
     if (!saved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     await persistFinalMix(userId, body.planId, saved);
+    return NextResponse.json(saved);
+  }
+
+  /* פתיחת התמהיל הסופי חזרה לעריכה */
+  if (body?.isFinal === false && typeof body?.planId === 'string') {
+    const plan = await getPlanForUser(userId, body.planId);
+    if (!plan) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const saved = await unmarkMixAsFinal(userId, id);
+    if (!saved) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    await clearFinalMix(userId, body.planId, id);
     return NextResponse.json(saved);
   }
 

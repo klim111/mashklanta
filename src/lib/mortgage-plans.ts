@@ -587,6 +587,25 @@ export async function persistFinalMix(
 }
 
 /**
+ * פתיחת התמהיל הסופי חזרה לעריכה: שלב התמהיל ממשיך להצביע על אותו תמהיל,
+ * אבל הוא כבר לא סופי ולא נעול. סטטוס השלב לא משתנה — בחירה מחדש כסופי מאשרת
+ * אותו שוב.
+ */
+export async function clearFinalMix(userId: string, planId: string, recordId: string): Promise<void> {
+  if (!(await assertAccess(userId, planId))) return;
+  const data = await loadData(planId);
+  if (data.MIX.mixRecordId && data.MIX.mixRecordId !== recordId) return;
+  const mix: MixData = { ...data.MIX, isFinal: false, finalLocked: false };
+
+  await prisma.mortgagePlanStage.updateMany({
+    where: { planId, stage: 'MIX' },
+    data: { dataJson: mix as unknown as Prisma.InputJsonValue },
+  });
+
+  await refreshPlan(planId);
+}
+
+/**
  * יצירת תהליך משכנתא מתמהיל ללא שיוך, ברגע שמזינים לו נכס.
  */
 export async function createPlanFromMix(
