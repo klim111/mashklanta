@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, ArrowRight, Mail, Phone, Video } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Mail, MessageCircle, Phone, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
@@ -17,6 +17,7 @@ import { MeetingDialog } from '@/components/advisor/MeetingDialog';
 import { QuickActions } from '@/components/advisor/QuickActions';
 import { TaskDialog } from '@/components/advisor/TaskDialog';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
+import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 import {
   useAdvisorNotes,
   useAdvisorTasks,
@@ -38,6 +39,8 @@ export default function AdvisorClientPage() {
   const { data: session, status } = useSession();
 
   const [callOpen, setCallOpen] = useState(false);
+  /** עולה בכל לחיצה על "צ'אט ומיילים" — פותח את השיחה עם הלקוח */
+  const [chatSignal, setChatSignal] = useState(0);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [meetingStage, setMeetingStage] = useState<PlanStageId | null>(null);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -156,6 +159,17 @@ export default function AdvisorClientPage() {
               <Video className="h-4 w-4" />
               שיחת וידאו
             </button>
+
+            {client.userId && (
+              <button
+                type="button"
+                onClick={() => setChatSignal((value) => value + 1)}
+                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-violet-700"
+              >
+                <MessageCircle className="h-4 w-4" />
+                צ'אט ומיילים
+              </button>
+            )}
           </div>
 
           <div className="mt-4">
@@ -256,6 +270,11 @@ export default function AdvisorClientPage() {
           name: session.user?.name || 'יועץ',
           email: session.user?.email || '',
         }}
+      />
+
+      <AdvisorInboxDock
+        client={client.userId ? { userId: client.userId, name: client.name } : null}
+        openSignal={chatSignal}
       />
     </div>
   );

@@ -38,6 +38,7 @@ import { StageChip } from './ui';
 import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
+import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 
 type TabId =
   | 'clients'
@@ -443,6 +444,8 @@ export function AdvisorConsole() {
           return failure;
         }}
       />
+
+      <AdvisorInboxDock />
     </div>
   );
 }

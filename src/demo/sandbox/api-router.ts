@@ -17,6 +17,7 @@ import { demoDocuments, demoPlanData } from '@/lib/demo-plan';
 import type { ClientTaskView } from '@/lib/client-tasks';
 import type { AdvisorMeetingView } from '@/lib/advisor-crm';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
+import type { ChatMessageView, ConversationContact, ConversationEmailView } from '@/lib/conversation';
 import {
   DEMO_ADDRESS,
   DEMO_MORTGAGE,
@@ -112,6 +113,8 @@ export class DemoApiRouter {
   private rateRequests: Record<string, unknown>[] = [];
   private equityPlan: Record<string, unknown> | null = null;
   private orders: Record<string, unknown>[] = [];
+  private chat: ChatMessageView[] = demoChat();
+  private emails: ConversationEmailView[] = demoEmails();
   private counter = 0;
   /** כל בקשה שנענתה — לבדיקות ולתצוגת "מה נחסם" */
   readonly log: Array<{ method: string; path: string }> = [];
@@ -438,10 +441,134 @@ export class DemoApiRouter {
       return json(this.rateRequests);
     }
 
+    // ─── התכתבות עם היועץ: צ'אט ומיילים, בזיכרון בלבד ───
+    if (path === '/api/conversation/summary') {
+      return json({
+        unreadChat: 0,
+        unreadEmails: 0,
+        advisorName: 'רון, יועץ משכלנתא',
+        mailboxAddress: 'c-demo0000000000000000@inbox.mashkalanta.example',
+        receivesEmail: true,
+      });
+    }
+    if (path === '/api/conversation/messages') {
+      if (method === 'POST') {
+        const body = await this.body(init, input);
+        const message: ChatMessageView = {
+          id: this.nextId('demo-chat'),
+          authorRole: 'CLIENT',
+          authorName: DEMO_PERSONA.name,
+          body: String(body.body ?? '').trim(),
+          createdAt: nowIso(),
+          readAt: null,
+        };
+        this.chat = [...this.chat, message];
+        return json(message, 201);
+      }
+      return json(this.chat);
+    }
+    if (path === '/api/conversation/emails') {
+      if (method === 'POST') {
+        const body = await this.body(init, input);
+        const to = Array.isArray(body.to) ? body.to.map(String) : [];
+        const email: ConversationEmailView = {
+          id: this.nextId('demo-email'),
+          direction: 'OUTBOUND',
+          senderRole: 'CLIENT',
+          fromAddress: DEMO_PERSONA.email,
+          fromName: DEMO_PERSONA.name,
+          toAddresses: to,
+          ccAddresses: DEMO_CONTACTS.filter((item) => item.kind !== 'BANKER' && !to.includes(item.email)).map(
+            (item) => item.email
+          ),
+          subject: String(body.subject ?? ''),
+          text: String(body.text ?? ''),
+          bank: DEMO_CONTACTS.find((item) => to.includes(item.email) && item.bank)?.bank ?? null,
+          createdAt: nowIso(),
+          unread: false,
+        };
+        this.emails = [email, ...this.emails];
+        return json(email, 201);
+      }
+      return json({ emails: this.emails, contacts: DEMO_CONTACTS });
+    }
+
     // ─── כל השאר: מוצלח וריק, בלי לגעת בשום דבר אמיתי ───
     if (process.env.NODE_ENV !== 'production') {
       console.debug(`[demo] ${method} ${path} נענה מהשרת המדומה (ריק)`);
     }
     return json(method === 'GET' ? [] : { ok: true, demo: true });
   }
+}
+
+const DEMO_CONTACTS: ConversationContact[] = [
+  { kind: 'BANKER', email: 'michal.cohen@leumi.example', name: 'מיכל כהן', bank: 'לאומי' },
+  { kind: 'ADVISOR', email: 'ron@mashkalanta.example', name: 'רון, יועץ משכלנתא', bank: null },
+  { kind: 'CLIENT', email: DEMO_PERSONA.email, name: DEMO_PERSONA.name, bank: null },
+];
+
+function hoursAgo(hours: number): string {
+  return new Date(Date.now() - hours * 3600 * 1000).toISOString();
+}
+
+function demoChat(): ChatMessageView[] {
+  return [
+    {
+      id: 'demo-chat-1',
+      authorRole: 'ADVISOR',
+      authorName: 'רון, יועץ משכלנתא',
+      body: 'היי דנה, ראיתי שהגשתם ללאומי. אם הבנקאית תבקש תלושים נוספים, תעלו אותם לתיק ואעבור עליהם.',
+      createdAt: hoursAgo(26),
+      readAt: hoursAgo(25),
+    },
+    {
+      id: 'demo-chat-2',
+      authorRole: 'CLIENT',
+      authorName: DEMO_PERSONA.name,
+      body: 'תודה! היא ביקשה גם דפי חשבון של שלושה חודשים. לשלוח לה ישר?',
+      createdAt: hoursAgo(3),
+      readAt: hoursAgo(2),
+    },
+    {
+      id: 'demo-chat-3',
+      authorRole: 'ADVISOR',
+      authorName: 'רון, יועץ משכלנתא',
+      body: 'כן, שלחו מטאב המיילים כדי שהכול יישמר כאן. אני בהעתק.',
+      createdAt: hoursAgo(2),
+      readAt: null,
+    },
+  ];
+}
+
+function demoEmails(): ConversationEmailView[] {
+  return [
+    {
+      id: 'demo-email-2',
+      direction: 'INBOUND',
+      senderRole: null,
+      fromAddress: 'michal.cohen@leumi.example',
+      fromName: 'מיכל כהן',
+      toAddresses: [DEMO_PERSONA.email],
+      ccAddresses: ['ron@mashkalanta.example'],
+      subject: 'Re: בקשה לאישור עקרוני · לוי',
+      text: 'שלום דנה,\nקיבלתי את הבקשה. כדי להשלים אותה אצטרך דפי עו"ש של שלושת החודשים האחרונים.\nבברכה, מיכל',
+      bank: 'לאומי',
+      createdAt: hoursAgo(4),
+      unread: true,
+    },
+    {
+      id: 'demo-email-1',
+      direction: 'OUTBOUND',
+      senderRole: 'CLIENT',
+      fromAddress: DEMO_PERSONA.email,
+      fromName: DEMO_PERSONA.name,
+      toAddresses: ['michal.cohen@leumi.example'],
+      ccAddresses: ['ron@mashkalanta.example', DEMO_PERSONA.email],
+      subject: 'בקשה לאישור עקרוני · לוי',
+      text: 'שלום מיכל,\nהגשנו היום בקשה לאישור עקרוני באתר. המייל שציינו בבקשה הוא המייל הזה.\nתודה, דנה',
+      bank: 'לאומי',
+      createdAt: hoursAgo(28),
+      unread: false,
+    },
+  ];
 }

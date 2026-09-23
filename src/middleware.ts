@@ -19,6 +19,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/market',
   '/api/currency',
   '/api/turn',
+  // ה-webhook של Resend למיילים נכנסים. הנתיב עצמו מאמת את החתימה
+  '/api/email/inbound',
 ];
 
 function isPublicApi(pathname: string): boolean {

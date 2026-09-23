@@ -154,6 +154,26 @@ model User {
    */
   equityPlan       EquityPlan?       @relation("EquityPlanOwner")
 
+  // ─────────────────────── התכתבות עם היועץ ───────────────────────
+  /**
+   * מפתח הכתובת האישית שמקבלת מיילים בשם הלקוח (`c-<key>@<דומיין קבלת המיילים>`).
+   * נוצר בפעם הראשונה שנשלח מייל מהפלטפורמה, וכך תשובות הבנקאי חוזרות לשיחה.
+   */
+  mailboxKey             String?               @unique
+  /**
+   * ההודעות בשיחה שבה המשתמש הוא הלקוח
+   */
+  conversationMessages   ConversationMessage[] @relation("ConversationClient")
+  /**
+   * ההודעות שהמשתמש כתב, בין כלקוח ובין כיועץ
+   */
+  authoredMessages       ConversationMessage[] @relation("ConversationAuthor")
+  /**
+   * המיילים של השיחה שבה המשתמש הוא הלקוח — לבנקאי, ליועץ וממנו
+   */
+  conversationEmails     ConversationEmail[]   @relation("ConversationEmailClient")
+  sentConversationEmails ConversationEmail[]   @relation("ConversationEmailSender")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1337,4 +1357,77 @@ model EquityPlan {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ───────────────────────── התכתבות לקוח–יועץ ─────────────────────────
+
+/**
+ * הודעה בצ'אט בין הלקוח ליועץ. לכל לקוח שיחה אחת, והיא מזוהה בחשבון הלקוח —
+ * כך השיחה נשמרת גם לפני שיועץ שויך אליו, וגם אם היועץ מתחלף.
+ */
+model ConversationMessage {
+  id           String           @id @default(cuid())
+  clientUserId String
+  clientUser   User             @relation("ConversationClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  authorId     String?
+  author       User?            @relation("ConversationAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  authorRole   ConversationRole
+  body         String
+  /**
+   * מתי הצד השני קרא את ההודעה
+   */
+  readAt       DateTime?
+  createdAt    DateTime         @default(now())
+
+  @@index([clientUserId, createdAt])
+}
+
+enum ConversationRole {
+  CLIENT
+  ADVISOR
+}
+
+enum EmailDirection {
+  /**
+   * נשלח מהפלטפורמה — מהלקוח או מהיועץ
+   */
+  OUTBOUND
+  /**
+   * התקבל בכתובת האישית של הלקוח — תשובת בנקאי, או מייל שהלקוח העביר
+   */
+  INBOUND
+}
+
+/**
+ * מייל בשיחה של הלקוח: מה שנשלח מהפלטפורמה לבנקאי או ליועץ, ומה שחזר לכתובת
+ * האישית של הלקוח. הטקסט נשמר כטקסט בלבד — HTML מבחוץ אינו מוצג כמו שהוא.
+ */
+model ConversationEmail {
+  id              String            @id @default(cuid())
+  clientUserId    String
+  clientUser      User              @relation("ConversationEmailClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  direction       EmailDirection
+  senderId        String?
+  sender          User?             @relation("ConversationEmailSender", fields: [senderId], references: [id], onDelete: SetNull)
+  senderRole      ConversationRole?
+  fromAddress     String
+  fromName        String?
+  toAddresses     String[]
+  ccAddresses     String[]
+  subject         String
+  text            String
+  /**
+   * הבנק שהמייל שייך אליו, כשהנמען או השולח הוא בנקאי שהלקוח הזין
+   */
+  bank            String?
+  /**
+   * המזהה אצל ספק המיילים — מונע שמירה כפולה של אותו מייל נכנס
+   */
+  providerId      String?           @unique
+  messageId       String?
+  readByClientAt  DateTime?
+  readByAdvisorAt DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([clientUserId, createdAt])
 }

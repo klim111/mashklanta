@@ -9,9 +9,14 @@ import {
   FileUp,
   Loader2,
   Lock,
+  Mail,
   Trash2,
   Upload,
+  UserRound,
 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { isValidEmail, normalizeEmail } from '@/lib/conversation';
 import { ALLOWED_DOCUMENT_TYPES } from '@/lib/plan-documents';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import type { BankPreApproval, PlanData, PreApprovalData } from '@/lib/mortgage-plan';
@@ -87,6 +92,10 @@ export function SelfPreApproval({
   const { saved, ready: mixesReady } = useSavedMixes({ planId });
   const { documents, ready, error, busyKey, upload, remove } = usePlanDocuments(planId);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
+  /** הבנק שהלקוח עומד לעבור לאתר שלו — לפני המעבר מוצגת תזכורת המייל */
+  const [leaving, setLeaving] = useState<PreApprovalBankInfo | null>(null);
+  const { data: session } = useSession();
+  const registeredEmail = session?.user?.role === 'ADVISOR' ? null : session?.user?.email ?? null;
 
   const finalMix = useMemo(
     () => saved.find((item) => item.mix.id === finalMixKey) ?? null,
@@ -121,6 +130,8 @@ export function SelfPreApproval({
             approvedAmount: existing?.approvedAmount ?? null,
             documentName: document?.fileName ?? null,
             note: existing?.note ?? '',
+            bankerName: existing?.bankerName ?? '',
+            bankerEmail: existing?.bankerEmail ?? '',
           },
         ];
       }),
@@ -176,6 +187,8 @@ export function SelfPreApproval({
       approvedAmount: null,
       documentName: null,
       note: '',
+      bankerName: '',
+      bankerEmail: '',
       ...(existing ?? {}),
       submittedAt: new Date().toISOString(),
     };
@@ -197,6 +210,37 @@ export function SelfPreApproval({
     const bankApprovals = value.bankApprovals.map((item) =>
       item.bank === bank ? { ...item, approvedAt: day } : item
     );
+    lastPushed.current = null;
+    onChange(withApprovals(bankApprovals));
+  };
+
+  /**
+   * הבנקאי שמטפל בבקשה. המייל שלו נפתח כנמען בטאב המיילים של ההתכתבות עם
+   * היועץ, וממנו מזוהות התשובות שחוזרות מהבנק.
+   */
+  const setBanker = (bank: string, banker: { bankerName: string; bankerEmail: string }) => {
+    const existing = approvalOf(bank);
+    if (
+      (existing?.bankerName ?? '') === banker.bankerName &&
+      (existing?.bankerEmail ?? '') === banker.bankerEmail
+    ) {
+      return;
+    }
+    const row: BankPreApproval = existing
+      ? { ...existing, ...banker }
+      : {
+          bank,
+          submittedAt: null,
+          approved: false,
+          approvedAt: null,
+          approvedAmount: null,
+          documentName: null,
+          note: '',
+          ...banker,
+        };
+    const bankApprovals = existing
+      ? value.bankApprovals.map((item) => (item.bank === bank ? row : item))
+      : [...value.bankApprovals, row];
     lastPushed.current = null;
     onChange(withApprovals(bankApprovals));
   };
@@ -267,7 +311,8 @@ export function SelfPreApproval({
               }
               onRemove={(documentId) => remove(documentId, preApprovalDocumentKey(info.slug))}
               onView={setViewing}
-              onMarkSubmitted={() => markSubmitted(info.bank)}
+              onApply={() => setLeaving(info)}
+              onBanker={(banker) => setBanker(info.bank, banker)}
               validity={validityOf(info.bank)}
               onReceivedAt={(day) => setReceivedAt(info.bank, day)}
             />
@@ -276,6 +321,162 @@ export function SelfPreApproval({
       </StagePanel>
 
       <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
+
+      <BankEmailReminder
+        info={leaving}
+        email={registeredEmail}
+        onClose={() => setLeaving(null)}
+        onContinue={(info) => {
+          markSubmitted(info.bank);
+          setLeaving(null);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * תזכורת לפני המעבר לאתר הבנק: בבקשה לבנק מציינים את המייל שאיתו נרשמו
+ * לפלטפורמה. כך תשובות הבנק מגיעות לאותה תיבה, ומייל שיישלח לבנקאי מטאב
+ * המיילים יזוהה אצלו כשייך לאותה בקשה.
+ */
+function BankEmailReminder({
+  info,
+  email,
+  onClose,
+  onContinue,
+}: {
+  info: PreApprovalBankInfo | null;
+  email: string | null;
+  onClose: () => void;
+  onContinue: (info: PreApprovalBankInfo) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setCopied(false), [info]);
+
+  return (
+    <Dialog open={Boolean(info)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent dir="rtl" className="max-w-md">
+        {info && (
+          <div className="space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <BankMark info={info} />
+              <div>
+                <DialogTitle className="text-subtitle font-black text-slate-900">לפני המעבר לאתר {info.bank}</DialogTitle>
+                <DialogDescription className="text-sm font-semibold text-slate-500">
+                  תזכורת קצרה אחת, והבקשה תהיה מסונכרנת עם הפלטפורמה
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-3">
+              <p className="text-info font-black text-amber-950">בטופס הבקשה ציינו את המייל שאיתו נרשמתם:</p>
+              {email ? (
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard?.writeText(email).then(() => setCopied(true))}
+                  className="mt-2 flex w-full items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-info font-black text-slate-900 shadow-sm"
+                >
+                  <span dir="ltr" className="truncate">
+                    {email}
+                  </span>
+                  <span className="shrink-0 text-2xs font-bold text-slate-500">{copied ? 'הועתק' : 'העתקה'}</span>
+                </button>
+              ) : (
+                <p className="mt-1 text-sm font-bold text-amber-900">המייל שמופיע בפרטי החשבון שלכם.</p>
+              )}
+              <p className="mt-2 text-sm leading-relaxed text-amber-900">
+                כך תשובות הבנק יגיעו אליכם, ומייל שתשלחו לבנקאי מטאב המיילים בהתכתבות עם היועץ יזוהה אצלו
+                כשייך לבקשה.
+              </p>
+            </div>
+
+            <p className="text-sm leading-relaxed text-slate-600">
+              אחרי ההגשה, הזינו בכרטיס של {info.bank} את השם והמייל של הבנקאי שמטפל בבקשה.
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={info.applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => onContinue(info)}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-button font-black text-white hover:bg-blue-700"
+              >
+                <ExternalLink className="h-4 w-4" />
+                הבנתי, לאתר הבנק
+              </a>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border-2 border-slate-200 px-4 py-2.5 text-button font-black text-slate-700 hover:bg-slate-50"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** השם והמייל של הבנקאי שמטפל בבקשה בבנק אחד. נשמר כשיוצאים מהשדה */
+function BankerFields({
+  approval,
+  onSave,
+}: {
+  approval: BankPreApproval | null;
+  onSave: (banker: { bankerName: string; bankerEmail: string }) => void;
+}) {
+  const [name, setName] = useState(approval?.bankerName ?? '');
+  const [email, setEmail] = useState(approval?.bankerEmail ?? '');
+  useEffect(() => setName(approval?.bankerName ?? ''), [approval?.bankerName]);
+  useEffect(() => setEmail(approval?.bankerEmail ?? ''), [approval?.bankerEmail]);
+
+  const normalized = normalizeEmail(email);
+  const invalid = normalized !== '' && !isValidEmail(normalized);
+  const save = () => {
+    if (invalid) return;
+    onSave({ bankerName: name.trim(), bankerEmail: normalized });
+  };
+
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <p className="text-sm font-black text-slate-700">הבנקאי שמטפל בבקשה</p>
+      <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+        <label className="flex items-center gap-2 rounded-lg border-2 border-slate-200 bg-white px-2 focus-within:border-blue-400">
+          <UserRound className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onBlur={save}
+            placeholder="שם הבנקאי"
+            className="min-w-0 flex-1 bg-transparent py-1.5 text-sm font-bold text-slate-900 focus:outline-none"
+          />
+        </label>
+        <label
+          className={`flex items-center gap-2 rounded-lg border-2 bg-white px-2 ${
+            invalid ? 'border-rose-300' : 'border-slate-200 focus-within:border-blue-400'
+          }`}
+        >
+          <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            type="email"
+            dir="ltr"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            onBlur={save}
+            placeholder="banker@bank.co.il"
+            className="min-w-0 flex-1 bg-transparent py-1.5 text-left text-sm font-bold text-slate-900 focus:outline-none"
+          />
+        </label>
+      </div>
+      <p className={`mt-1 text-2xs font-semibold ${invalid ? 'text-rose-600' : 'text-slate-500'}`}>
+        {invalid
+          ? 'כתובת המייל אינה תקינה'
+          : 'אפשר לשלוח לבנקאי מייל מטאב המיילים בהתכתבות עם היועץ, והתשובות יישמרו שם.'}
+      </p>
     </div>
   );
 }
@@ -289,7 +490,8 @@ function BankCard({
   onUpload,
   onRemove,
   onView,
-  onMarkSubmitted,
+  onApply,
+  onBanker,
   validity,
   onReceivedAt,
 }: {
@@ -300,7 +502,9 @@ function BankCard({
   onUpload: (file: File) => unknown;
   onRemove: (documentId: string) => void | Promise<void>;
   onView: (document: PlanDocumentView) => void;
-  onMarkSubmitted: () => void;
+  /** לחיצה על ההגשה באתר הבנק — פותחת קודם את תזכורת המייל */
+  onApply: () => void;
+  onBanker: (banker: { bankerName: string; bankerEmail: string }) => void;
   /** תוקף הריביות באישור, כשהתקבל */
   validity: RateValidityRow | null;
   onReceivedAt: (day: string | null) => void;
@@ -336,17 +540,15 @@ function BankCard({
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <a
-          href={info.applyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onMarkSubmitted}
+        <button
+          type="button"
+          onClick={onApply}
           className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
           style={{ backgroundColor: info.color }}
         >
           <ExternalLink className="h-3.5 w-3.5" />
           להגשה באתר הבנק
-        </a>
+        </button>
 
         <input
           ref={input}
@@ -397,6 +599,8 @@ function BankCard({
           </>
         )}
       </div>
+
+      <BankerFields approval={approval} onSave={onBanker} />
 
       {/* תאריך הקבלה והספירה של 24 ימי תוקף הריביות */}
       {approved && (

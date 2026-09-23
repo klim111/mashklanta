@@ -21,6 +21,8 @@ export interface ClientDocumentView {
 
 export interface ClientDetail {
   id: string;
+  /** חשבון הלקוח — מזהה את השיחה איתו בצ'אט ובמיילים */
+  userId?: string;
   name: string;
   email: string;
   phone: string | null;

@@ -14,6 +14,7 @@ import {
   Home as HomeIcon,
   LayoutDashboard,
   LogOut,
+  MessageCircle,
   Settings,
   UserRound,
   Wallet,
@@ -35,6 +36,8 @@ import { ExpensesSection } from './ExpensesSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
+import { ClientChatDock } from '@/components/conversation/ClientChatDock';
+import type { ConversationMode } from '@/components/conversation/ConversationWindow';
 
 interface SectionMeta {
   id: DashboardSection;
@@ -136,9 +139,20 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const [entryOpen, setEntryOpen] = useState(false);
   const [entryGoal, setEntryGoal] = useState<'NEW_MORTGAGE' | 'REFINANCE' | null>(null);
   const [entryService, setEntryService] = useState<ServiceType | null>(null);
+  /** ההתכתבות עם היועץ — סגורה, מוקטנת לשורה או פתוחה כחלון מלא */
+  const [chatMode, setChatMode] = useState<ConversationMode>('closed');
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => {
-    const fromHash = () => setSection(sectionFromHash());
+    const fromHash = () => {
+      // הקישור מהתראת המייל על הודעה חדשה — `/dashboard#chat` — פותח את השיחה
+      if (window.location.hash === '#chat') {
+        setChatMode('open');
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
+      setSection(sectionFromHash());
+    };
     fromHash();
     window.addEventListener('hashchange', fromHash);
     const query = readEntryQuery();
@@ -173,6 +187,24 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const vaultPlan = data.plansState.plans.find((plan) => plan.status === 'IN_PROGRESS') ?? null;
   const displayName = name || email || 'אורח';
   const firstName = name?.split(' ')[0] || 'ברוכים הבאים';
+
+  const chatButton = (tone: 'sidebar' | 'bar') => (
+    <button
+      type="button"
+      onClick={() => setChatMode((mode) => (mode === 'open' ? 'bar' : 'open'))}
+      className={
+        tone === 'sidebar'
+          ? 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-base font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white'
+          : 'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-info font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white'
+      }
+    >
+      <MessageCircle className="h-5 w-5 shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-right">התכתבות עם היועץ</span>
+      {chatUnread > 0 && (
+        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-black text-white">{chatUnread}</span>
+      )}
+    </button>
+  );
 
   const navItems = (tone: 'sidebar' | 'bar') =>
     SECTIONS.map((item) => {
@@ -219,7 +251,10 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         </Link>
 
         <p className="mt-6 px-3 text-xs font-bold tracking-wide text-white/40">האזור האישי</p>
-        <nav className="mt-2 space-y-1" {...demoId('dash-sidebar-nav')}>{navItems('sidebar')}</nav>
+        <nav className="mt-2 space-y-1" {...demoId('dash-sidebar-nav')}>
+          {navItems('sidebar')}
+          {chatButton('sidebar')}
+        </nav>
 
         <div className="mt-auto space-y-3 pt-6">
           {vaultPlan && <VaultButton planId={vaultPlan.id} data={vaultPlan.data} variant="sidebar" />}
@@ -284,7 +319,10 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               </button>
             </div>
           </div>
-          <nav className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">{navItems('bar')}</nav>
+          <nav className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none]">
+            {navItems('bar')}
+            {chatButton('bar')}
+          </nav>
         </header>
 
         <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8" {...demoId('dash-main')}>
@@ -404,12 +442,14 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           <button
             type="button"
             onClick={() => navigate('overview')}
-            className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
+            className={`fixed left-5 z-40 inline-flex ${chatMode === 'bar' ? 'bottom-20' : 'bottom-5'} items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5`}
           >
             <LayoutDashboard className="h-5 w-5" />
             חזרה לדאשבורד
           </button>
         )}
+
+        <ClientChatDock mode={chatMode} onMode={setChatMode} onSummary={setChatUnread} />
       </div>
     </div>
   );

@@ -502,6 +502,12 @@ export interface BankPreApproval {
   /** שם הקובץ של האישור שהועלה לתיק התהליך */
   documentName: string | null;
   note: string;
+  /**
+   * הבנקאי שמטפל בבקשה — הלקוח מזין אותו בהגשה, והמייל שלו נפתח לשליחה בטאב
+   * המיילים של ההתכתבות עם היועץ
+   */
+  bankerName?: string;
+  bankerEmail?: string;
 }
 
 /**
@@ -1231,6 +1237,8 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
             approvedAmount: num(row.approvedAmount),
             documentName: typeof row.documentName === 'string' ? row.documentName : null,
             note: str(row.note),
+            bankerName: str(row.bankerName),
+            bankerEmail: str(row.bankerEmail).trim().toLowerCase(),
           },
         ];
       });
