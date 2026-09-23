@@ -1,4 +1,4 @@
-/** הודעות שגיאה בעברית לשגיאות NextAuth / OAuth שחוזרות ב-query. */
+/** הודעות שגיאה בעברית לשגיאות NextAuth / OAuth שחוזרות ב-query או מ-signIn. */
 export function authErrorMessage(code: string | null | undefined): string {
   switch (code) {
     case "OAuthSignin":
@@ -15,6 +15,22 @@ export function authErrorMessage(code: string | null | undefined): string {
       return "התחברות עם Google עדיין לא הוגדרה בשרת. חסרים מפתחות OAuth.";
     case "Verification":
       return "פג תוקף הקישור. נסו להתחבר שוב.";
+    case "CredentialsSignin":
+      return "שם משתמש או סיסמה שגויים";
+    case "EmailNotVerified":
+      return "עוד לא אישרתם את כתובת המייל. פתחו את הקישור ששלחנו לכם כדי להשלים את ההרשמה.";
+    case "NotAdvisor":
+      return "הכניסה הזו מיועדת ליועצים הרשומים במערכת בלבד. לקוחות מתחברים בטופס שלמעלה.";
+    case "GoogleEmailUnverified":
+      return "Google לא אישרה את כתובת המייל של החשבון הזה, ולכן אי אפשר להתחבר איתו.";
+    case "VerificationInvalid":
+      return "הקישור אינו תקף. ייתכן שכבר השתמשתם בו, או שנשלח קישור חדש יותר.";
+    case "VerificationExpired":
+      return "פג תוקף הקישור. אפשר לשלוח קישור חדש.";
+    case "VerificationPasswordRequired":
+      return "הסיסמה אינה תואמת לזו שנבחרה בהרשמה.";
+    case "VerificationAccountExists":
+      return "כבר קיים חשבון עם המייל הזה. אפשר להתחבר אליו.";
     default:
       return code ? "אירעה שגיאה בהתחברות. נסו שוב." : "";
   }

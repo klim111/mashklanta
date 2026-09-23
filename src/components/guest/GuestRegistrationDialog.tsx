@@ -1,20 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
-import { AlertCircle, ArrowLeft, CheckCircle2, LayoutDashboard, Loader2, Lock, Mail, Sparkles, User } from 'lucide-react';
+import { AlertCircle, ArrowLeft, LayoutDashboard, Loader2, Lock, Mail, Sparkles, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
 
 /**
  * ההרשמה שנפתחת מתוך הכלים הפתוחים.
  *
  * הלקוח שסיים לשחק עם הכלי ורוצה להמשיך לתכנון ולקיחת המשכנתא לא נשלח לעמוד
- * הרשמה נפרד — הוא נפתח כאן, מעל התוצאות שהוא כבר רואה. עם השליחה נוצר
- * חשבון הלקוח בבסיס הנתונים, ההתחברות מתבצעת מיד אחריה, והלקוח נכנס לדאשבורד
- * של האזור האישי שלו — בלי מסך התחברות באמצע.
+ * הרשמה נפרד — הוא נפתח כאן, מעל התוצאות שהוא כבר רואה. עם השליחה נשלח אליו
+ * מייל עם קישור אימות; רק אישור הקישור יוצר את החשבון ופותח את הדאשבורד,
+ * ישר ליעד שממנו נרשם.
  */
 
 const inputClass =
@@ -44,9 +43,8 @@ export function GuestRegistrationDialog({
   onOpenChange,
   redirectTo = '/dashboard',
   title = 'עוד שלב אחד — ונמשיך לתכנון ולקיחת המשכנתא',
-  description = 'פתיחת חשבון לוקחת פחות מדקה, והיא חינמית. מיד לאחריה נפתח האזור האישי שלכם עם כל שלבי התהליך, והנתונים שהזנתם בכלי ממשיכים איתכם.',
+  description = 'פתיחת חשבון לוקחת פחות מדקה, והיא חינמית. נשלח לכם מייל לאישור, ומיד אחריו נפתח האזור האישי עם כל שלבי התהליך, והנתונים שהזנתם בכלי ממשיכים איתכם.',
 }: GuestRegistrationDialogProps) {
-  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,7 +93,7 @@ export function GuestRegistrationDialog({
             username,
             email: email.trim(),
             password,
-            role: 'CLIENT',
+            callbackUrl: redirectTo,
           }),
         });
 
@@ -113,19 +111,7 @@ export function GuestRegistrationDialog({
         return;
       }
 
-      // ההתחברות מתבצעת מיד אחרי יצירת החשבון — הלקוח לא עובר במסך התחברות
-      const signedIn = await signIn('credentials', {
-        email: email.trim(),
-        password,
-        redirect: false,
-      });
-      if (signedIn?.error) {
-        setError('החשבון נוצר, אך ההתחברות נכשלה. התחברו עם המייל והסיסמה שבחרתם.');
-        return;
-      }
-
       setDone(true);
-      router.push(redirectTo);
     } catch {
       setError('ההרשמה נכשלה. בדקו את החיבור ונסו שוב.');
     } finally {
@@ -140,17 +126,10 @@ export function GuestRegistrationDialog({
         className="w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl sm:w-full"
       >
         {done ? (
-          <div className="px-8 py-10 text-center">
-            <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-            </span>
-            <DialogTitle className="text-xl font-black text-slate-900">
-              החשבון נוצר — פותחים את האזור האישי
-            </DialogTitle>
-            <DialogDescription className="mt-2 text-sm text-slate-500">
-              עוד רגע והדאשבורד שלכם ייטען, עם שלבי תכנון ולקיחת המשכנתא.
-            </DialogDescription>
-            <Loader2 className="mx-auto mt-5 h-5 w-5 animate-spin text-blue-500" />
+          <div className="px-8 py-10">
+            <DialogTitle className="sr-only">בדקו את תיבת המייל</DialogTitle>
+            <DialogDescription className="sr-only">שלחנו קישור לאישור ההרשמה</DialogDescription>
+            <CheckEmailPanel email={email.trim().toLowerCase()} />
           </div>
         ) : (
           <form onSubmit={submit} className="p-6 md:p-7">
@@ -170,7 +149,7 @@ export function GuestRegistrationDialog({
 
             <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-xs font-bold text-blue-900">
               <LayoutDashboard className="h-4 w-4 shrink-0" />
-              מיד לאחר ההרשמה נפתח הדאשבורד של האזור האישי, עם חמשת שלבי התהליך
+              אחרי אישור המייל נפתח הדאשבורד של האזור האישי, עם חמשת שלבי התהליך
             </div>
 
             <label className="block text-xs font-bold text-slate-600">
