@@ -19,7 +19,7 @@ const presets: { id: string; label: string; stages: string[] }[] = [
 
 export default function PackageBuilder() {
   const [selected, setSelected] = useState<string[]>(['mix', 'auction']);
-  /** כמה תקופות גישה (35 יום כל אחת) התהליך צפוי לקחת במסלול העצמאי */
+  /** כמה תקופות גישה (30 יום כל אחת) התהליך צפוי לקחת במסלול העצמאי */
   const [periods, setPeriods] = useState(2);
   /** תקופות גישה שכבר שולמו לפני שמזמינים ליווי — מקוזזות מהמחיר */
   const [paidPeriods, setPaidPeriods] = useState(0);

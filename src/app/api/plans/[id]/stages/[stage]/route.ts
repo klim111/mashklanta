@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  // עברו 35 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש
+  // עברו 30 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש
   if (await planLockedFor(userId, id)) {
     return NextResponse.json({ error: 'Payment required' }, { status: 402 });
   }

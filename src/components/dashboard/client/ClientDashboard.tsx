@@ -29,6 +29,7 @@ import type { ServiceType } from '@/lib/service-flow';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
+import { AccessExpiredNotice } from './AccessExpiredNotice';
 import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
 import { ClientDocumentsSection } from './ClientDocumentsSection';
@@ -436,6 +437,9 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             autoService={entryService}
           />
         )}
+
+        {/* עברו 30 הימים ויש תהליך שלא הסתיים — הצעה לרכוש חבילת גישה נוספת */}
+        {data.ready && <AccessExpiredNotice plans={data.plansState.plans} />}
 
         {/* חזרה לדאשבורד המלא — זמינה תמיד, גם אחרי גלילה, מכל אזור שנכנסים אליו */}
         {section !== 'overview' && (

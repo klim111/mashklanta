@@ -7,7 +7,7 @@ import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow
 import type { ProcessAccess } from '@/lib/process-access';
 
 /**
- * הכלים נעולים: עברו 35 יום מהתשלום על התהליך, או שהתהליך נפתח בלי תשלום
+ * הכלים נעולים: עברו 30 יום מהתשלום על התהליך, או שהתהליך נפתח בלי תשלום
  * (למשל מכלי המיחזור). החלון יושב מעל שולחן העבודה ואינו נסגר — הדרך היחידה
  * להמשיך היא לחדש את הגישה. כל מה שהוזן שמור ומחכה.
  */
@@ -35,14 +35,14 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
         </h2>
         <p className="mt-2 text-info leading-relaxed text-slate-600">
           {expired
-            ? `כל מה שהזנתם שמור. חדשו את הגישה לעוד ${PLATFORM_ACCESS_DAYS} יום, והכלים ייפתחו בדיוק איפה שעצרתם.`
+            ? `כל מה שהזנתם שמור. רכשו חבילת גישה נוספת לעוד ${PLATFORM_ACCESS_DAYS} יום, והכלים ייפתחו בדיוק איפה שעצרתם.`
             : `כדי להמשיך בתהליך פותחים אותו במסלול העצמאי / ההיברידי: גישה מלאה לכל השלבים והכלים ל-${PLATFORM_ACCESS_DAYS} יום.`}
         </p>
 
         <div className="my-5 rounded-2xl bg-slate-50 py-4">
           <div className="text-4xl font-black text-slate-900">₪{PLATFORM_PROCESS_PRICE}</div>
           <div className="mt-0.5 text-sm font-bold text-slate-500">
-            לעוד {PLATFORM_ACCESS_DAYS} יום · אין חיוב חוזר
+            לעוד {PLATFORM_ACCESS_DAYS} יום · אין חיוב בלי אישור שלכם
           </div>
         </div>
 
@@ -50,7 +50,7 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
           href={`/dashboard/checkout?planId=${encodeURIComponent(planId)}`}
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl"
         >
-          {expired ? 'חדשו את הגישה' : 'פתחו את התהליך'}
+          {expired ? 'לרכישת חבילת גישה נוספת' : 'פתחו את התהליך'}
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <Link

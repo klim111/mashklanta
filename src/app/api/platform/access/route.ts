@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
-import { openPass, passExpiresAt } from '@/lib/process-access';
+import { MAX_OPEN_PROCESSES, passExpiresAt } from '@/lib/process-access';
+import { canOpenAnotherPlan, countOpenSelfServicePlans, newProcessPassFor } from '@/lib/mortgage-plans';
 
 export interface PlatformAccessView {
   /**
-   * האם אפשר לפתוח עכשיו תהליך משכנתא בלי לשלם: יש תשלום שעוד לא נקשר לתהליך
-   * ועוד לא עברו ממנו 35 יום. תשלום שכבר פתח תהליך אינו פותח תהליך נוסף.
+   * האם אפשר לפתוח עכשיו תהליך משכנתא בלי לשלם: יש תשלום שעוד לא עברו ממנו
+   * 30 יום, ולא הסתיים אחריו אף תהליך. סיום תהליך מחייב תשלום על התהליך הבא.
    */
   active: boolean;
   since: string | null;
@@ -17,6 +18,11 @@ export interface PlatformAccessView {
   accessDays: number;
   /** עד מתי הגישה הפנויה בתוקף */
   passExpiresAt: string | null;
+  /** תהליכים פתוחים במסלול העצמאי, ומה המקסימום במקביל */
+  openProcesses: number;
+  maxOpenProcesses: number;
+  /** האם מותר לפתוח עוד תהליך, בלי קשר לתשלום */
+  canOpenMore: boolean;
 }
 
 /** האם למשתמש המחובר יש גישה פנויה לפתיחת תהליך משכנתא */
@@ -31,11 +37,11 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const unbound = await prisma.platformPayment.findMany({
-    where: { userId, planId: null, status: 'PAID' },
-    select: { createdAt: true, amountAgorot: true },
-  });
-  const pass = openPass(unbound);
+  const [pass, openProcesses, canOpenMore] = await Promise.all([
+    newProcessPassFor(userId),
+    countOpenSelfServicePlans(userId),
+    canOpenAnotherPlan(userId),
+  ]);
 
   // ליועץ הכלים פתוחים תמיד — הוא הצד שמפעיל אותם
   const view: PlatformAccessView = {
@@ -45,6 +51,9 @@ export async function GET() {
     price: PLATFORM_PROCESS_PRICE,
     accessDays: PLATFORM_ACCESS_DAYS,
     passExpiresAt: pass ? passExpiresAt(pass.createdAt).toISOString() : null,
+    openProcesses,
+    maxOpenProcesses: MAX_OPEN_PROCESSES,
+    canOpenMore,
   };
   return NextResponse.json(view);
 }

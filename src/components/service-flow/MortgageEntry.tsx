@@ -75,6 +75,7 @@ export function MortgageEntry({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogGoal, setDialogGoal] = useState<FlowGoal | null>(initialGoal);
   const [request, setRequest] = useState<{ goal: MortgageGoal; service: ServiceType } | null>(null);
+  const [limitOpen, setLimitOpen] = useState(false);
   const autoHandled = useRef(false);
 
   const isOpen = variant === 'dialog' ? Boolean(open) : dialogOpen;
@@ -85,6 +86,11 @@ export function MortgageEntry({
 
   const onSelf = (goal: FlowGoal) => {
     setOpen(false);
+    // עד שני תהליכים פתוחים במקביל — לא שולחים לתשלום כשאין מקום לתהליך נוסף
+    if (!access.canOpenMore) {
+      setLimitOpen(true);
+      return;
+    }
     // עוד לא שולם — ₪49 לתהליך, ומשם חוזרים לכאן והתהליך נפתח
     if (!access.active) {
       router.push(`/dashboard/checkout?next=plan&goal=${goal}`);
@@ -123,6 +129,25 @@ export function MortgageEntry({
             onSelf={onSelf}
             onAdvisor={onAdvisor}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={limitOpen} onOpenChange={setLimitOpen}>
+        <DialogContent dir="rtl" className="max-w-md rounded-3xl bg-white p-6 text-center">
+          <DialogTitle className="text-subtitle font-black text-slate-900">
+            יש לכם כבר {access.openProcesses} תהליכים פתוחים
+          </DialogTitle>
+          <p className="text-info leading-relaxed text-slate-600">
+            אפשר לנהל עד {access.maxOpenProcesses} תהליכים במקביל. כדי לפתוח תהליך חדש, סיימו או מחקו אחד
+            מהתהליכים הפתוחים באזור האישי.
+          </p>
+          <button
+            type="button"
+            onClick={() => setLimitOpen(false)}
+            className="text-button mt-2 rounded-2xl bg-blue-600 px-5 py-3 font-black text-white hover:bg-blue-700"
+          >
+            הבנתי
+          </button>
         </DialogContent>
       </Dialog>
 

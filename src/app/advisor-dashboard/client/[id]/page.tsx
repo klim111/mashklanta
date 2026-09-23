@@ -15,6 +15,7 @@ import { ClientContextRow } from '@/components/advisor/ClientContextRow';
 import { ClientStageWorkspace } from '@/components/advisor/ClientStageWorkspace';
 import { MeetingDialog } from '@/components/advisor/MeetingDialog';
 import { QuickActions } from '@/components/advisor/QuickActions';
+import { SendAuthorizationButton } from '@/components/advisor/ClientAuthorizationLetters';
 import { TaskDialog } from '@/components/advisor/TaskDialog';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
@@ -150,6 +151,8 @@ export default function AdvisorClientPage() {
                 return failure;
               }}
             />
+
+            <SendAuthorizationButton clientId={client.id} clientName={client.name} />
 
             <button
               type="button"

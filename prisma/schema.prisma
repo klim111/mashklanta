@@ -1254,7 +1254,7 @@ model PlatformPayment {
 
   /**
    * התהליך שהתשלום פותח. ריק — תשלום שעוד לא נקשר לתהליך, והוא נקשר לתהליך
-   * הבא שנפתח. כל תשלום פותח תהליך אחד ל-35 יום (src/lib/process-access.ts).
+   * הבא שנפתח. כל תשלום הוא חבילת גישה ל-30 יום (src/lib/process-access.ts).
    */
   planId String?
   plan   MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
