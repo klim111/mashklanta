@@ -38,7 +38,7 @@ export function PricingModelStrip({
           return (
             <li
               key={item.id}
-              className={`flex items-start gap-2 rounded-2xl px-3 py-2.5 text-[12px] leading-snug ${
+              className={`flex items-start gap-2 rounded-2xl px-3 py-2.5 text-xs leading-snug ${
                 dark
                   ? 'bg-white/10 text-white/85 ring-1 ring-white/15'
                   : 'bg-white text-slate-700 ring-1 ring-slate-200'
@@ -77,7 +77,7 @@ export function PricingModelStrip({
             >
               <Icon className="h-5 w-5" />
             </span>
-            <span className={`mb-1 text-[11px] font-black ${dark ? 'text-white/50' : 'text-slate-400'}`}>
+            <span className={`mb-1 text-2xs font-black ${dark ? 'text-white/50' : 'text-slate-400'}`}>
               עיקרון {index + 1}
             </span>
             <h3 className="text-sm font-black leading-snug">{item.title}</h3>

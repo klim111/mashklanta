@@ -35,10 +35,10 @@ export function PlanCompletedDialog({
         >
           <PartyPopper className="h-10 w-10 text-white" />
         </motion.span>
-        <DialogTitle className="text-center text-2xl font-black leading-snug text-slate-900">
+        <DialogTitle className="text-center text-subtitle font-black leading-snug text-slate-900">
           מזל טוב! {refinance ? 'המיחזור הושלם' : 'המשכנתא נחתמה'}
         </DialogTitle>
-        <DialogDescription className="mt-2 text-center text-[15px] leading-relaxed text-slate-600">
+        <DialogDescription className="mt-2 text-center text-info leading-relaxed text-slate-600">
           {bank ? `חתמתם מול בנק ${bank}, ` : ''}
           והתהליך עם משכלנתא הסתיים בהצלחה. עשיתם את זה בדרך הנכונה: הגעתם לבנק עם תכנון, מספרים
           והשוואה, ולא עם ניחושים. בהצלחה בבית, והמשכנתא נשארת זמינה אצלכם באזור האישי.
@@ -46,7 +46,7 @@ export function PlanCompletedDialog({
         <button
           type="button"
           onClick={onDone}
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-slate-700"
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-slate-700"
         >
           לאזור האישי
           <ArrowLeft className="h-4 w-4" />

@@ -32,7 +32,7 @@ export default function SavedMixesPage() {
       <div className="container mx-auto px-4 py-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="text-title font-bold text-slate-900 flex items-center gap-2">
               <BookmarkCheck className="h-6 w-6 text-blue-600" />
               תמהילים שמורים
             </h1>
@@ -62,7 +62,7 @@ export default function SavedMixesPage() {
         {!signedIn && ready && saved.length > 0 && (
           <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
             <CloudOff className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-amber-800 leading-relaxed">
+            <p className="text-2xs text-amber-800 leading-relaxed">
               התמהילים שמורים בדפדפן הזה בלבד.{' '}
               <Link href="/auth/login" className="underline font-semibold">
                 התחברו לחשבון
@@ -83,7 +83,7 @@ export default function SavedMixesPage() {
             <Card className="border-slate-200">
               <CardContent className="py-14 text-center">
                 <PieChart className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <h2 className="text-lg font-semibold text-slate-700">עוד לא שמרתם תמהילים</h2>
+                <h2 className="text-subtitle font-semibold text-slate-700">עוד לא שמרתם תמהילים</h2>
                 <p className="text-sm text-slate-500 mt-1 mb-5">
                   בנו תמהיל בכלי התכנון ולחצו על &quot;שמור תמהיל&quot; — הוא יופיע כאן.
                 </p>

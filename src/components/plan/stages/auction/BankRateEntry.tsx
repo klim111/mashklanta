@@ -168,7 +168,7 @@ export function BankRateEntry({
 
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+            <span className="flex items-center gap-1 text-2xs font-semibold text-slate-500">
               <CalendarDays className="h-3 w-3" />
               תאריך קבלת הריביות
             </span>
@@ -180,7 +180,7 @@ export function BankRateEntry({
             />
           </label>
           <label className="space-y-1">
-            <span className="text-[10px] font-semibold text-slate-500">שם ההצעה</span>
+            <span className="text-2xs font-semibold text-slate-500">שם ההצעה</span>
             <input
               className={fieldClass}
               value={name}
@@ -197,7 +197,7 @@ export function BankRateEntry({
       <div className="overflow-x-auto rounded-2xl border border-slate-200">
         <table className="w-full min-w-[640px] text-right text-xs">
           <thead>
-            <tr className="bg-slate-100 text-[10px] text-slate-600">
+            <tr className="bg-slate-100 text-2xs text-slate-600">
               <th className="px-2 py-2 font-bold">המסלול</th>
               <th className="px-2 py-2 font-bold">לוח סילוקין</th>
               <th className="px-2 py-2 font-bold">תקופה</th>
@@ -273,7 +273,7 @@ export function BankRateEntry({
       </div>
 
       <label className="block space-y-1">
-        <span className="text-[10px] font-semibold text-slate-500">
+        <span className="text-2xs font-semibold text-slate-500">
           הערות מההצעה (רשות) — עמלות, תוקף ההצעה, תנאים
         </span>
         <input
@@ -331,7 +331,7 @@ export function BankRateEntry({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50"
+            className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-button font-black text-slate-600 transition-colors hover:bg-slate-50"
           >
             ביטול
           </button>
@@ -371,7 +371,7 @@ function PricingStat({
 
   return (
     <div>
-      <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-800">
+      <span className="flex items-center gap-1 text-2xs font-semibold text-emerald-800">
         {icon}
         {label}
       </span>
@@ -382,7 +382,7 @@ function PricingStat({
       </span>
       {meaningful && (
         <span
-          className={`block text-[10px] font-bold ${delta! < 0 ? 'text-emerald-700' : 'text-rose-600'}`}
+          className={`block text-2xs font-bold ${delta! < 0 ? 'text-emerald-700' : 'text-rose-600'}`}
         >
           {delta! < 0 ? 'זול מהתכנון ב' : 'יקר מהתכנון ב'}
           {formatShekel(Math.abs(delta!))}

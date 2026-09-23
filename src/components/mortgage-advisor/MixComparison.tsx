@@ -201,7 +201,7 @@ export function MixComparison({
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                       <span className="font-semibold text-slate-800">{item.label}</span>
                       {item.current && (
-                        <Badge variant="secondary" className="text-[9px]">
+                        <Badge variant="secondary" className="text-2xs">
                           בעבודה
                         </Badge>
                       )}
@@ -212,12 +212,12 @@ export function MixComparison({
                       ? formatShekel(item.result.summary.monthlyPayment)
                       : 'אין החזר שוטף'}
                     {best?.byMonthly.id === item.id && (
-                      <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[9px]">
+                      <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-2xs">
                         הזול
                       </Badge>
                     )}
                     {item.result.summary.balloonPayment > 1 && (
-                      <p className="text-[9px] font-normal text-amber-700">
+                      <p className="text-2xs font-normal text-amber-700">
                         + בלון {formatShekel(item.result.summary.balloonPayment)}
                       </p>
                     )}
@@ -225,7 +225,7 @@ export function MixComparison({
                   <td className="p-2 text-left">
                     {formatShekel(item.result.summary.totalInterest)}
                     {best?.byInterest.id === item.id && (
-                      <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[9px]">
+                      <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-2xs">
                         מינימלי
                       </Badge>
                     )}
@@ -235,7 +235,7 @@ export function MixComparison({
                   <td className="p-2 text-left">
                     {formatDuration(item.result.summary.months)}
                     {best?.byDuration.id === item.id && (
-                      <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[9px]">
+                      <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-2xs">
                         הקצר
                       </Badge>
                     )}
@@ -543,9 +543,9 @@ function GapCard({ metric }: { metric: GapMetric }) {
       <div className="mx-auto mb-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
         {metric.icon}
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-white">{metric.title}</div>
+      <div className="text-2xs font-bold uppercase tracking-wide text-white">{metric.title}</div>
       <div className="my-1 text-xl font-black leading-tight text-white md:text-2xl">{metric.value}</div>
-      <div className="text-[11px] leading-snug text-white/90">{metric.footnote}</div>
+      <div className="text-2xs leading-snug text-white/90">{metric.footnote}</div>
     </div>
   );
 }
@@ -645,19 +645,19 @@ function MixFaceCard({
 
       <dl className="relative space-y-3">
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-sm text-slate-600">ריבית משוקללת</dt>
+          <dt className="text-info text-slate-600">ריבית משוקללת</dt>
           <dd className={wins.interest ? valueWin : allLose ? valueLose : valueNeutral}>
             {formatPercentage(item.result.summary.averageRate)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-sm text-slate-600">החזר חודשי</dt>
+          <dt className="text-info text-slate-600">החזר חודשי</dt>
           <dd className={`text-lg ${wins.monthly ? valueWin : winCount === 0 ? valueLose : valueNeutral}`}>
             {formatShekel(item.result.summary.monthlyPayment)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-sm text-slate-600">קצב החזרת קרן (10 שנים)</dt>
+          <dt className="text-info text-slate-600">קצב החזרת קרן (10 שנים)</dt>
           <dd className={wins.paydown ? valueWin : winCount === 0 ? valueLose : valueNeutral}>
             {(item.repaidBy10 * 100).toFixed(0)}%
           </dd>
@@ -667,13 +667,13 @@ function MixFaceCard({
             allWin ? 'border-emerald-200' : allLose ? 'border-gray-200' : 'border-amber-200'
           }`}
         >
-          <dt className="text-sm text-slate-600">עלות כוללת</dt>
+          <dt className="text-info text-slate-600">עלות כוללת</dt>
           <dd className={`text-lg ${wins.interest ? valueWin : winCount === 0 ? valueLose : valueNeutral}`}>
             {formatShekel(item.result.summary.totalPaid)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">
-          <dt className="text-sm text-slate-600">סך ריבית</dt>
+          <dt className="text-info text-slate-600">סך ריבית</dt>
           <dd className={wins.interest ? valueWin : winCount === 0 ? valueLose : valueNeutral}>
             {formatShekel(item.result.summary.totalInterest)}
           </dd>
@@ -778,7 +778,7 @@ function PaydownPaceDialog({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-slate-900">{item.label}</p>
                       <p
-                        className={`text-[11px] font-bold ${
+                        className={`text-2xs font-bold ${
                           fastest ? 'text-emerald-700' : slowest ? 'text-rose-700' : 'text-slate-600'
                         }`}
                       >
@@ -811,7 +811,7 @@ function PaydownPaceDialog({
 
                   <p className="mb-3 text-center text-lg font-black text-slate-900">
                     {(item.repaidBy10 * 100).toFixed(0)}%
-                    <span className="mr-1 text-[11px] font-semibold text-slate-500">מהקרן ב־10 שנים</span>
+                    <span className="mr-1 text-2xs font-semibold text-slate-500">מהקרן ב־10 שנים</span>
                   </p>
 
                   <ul className="space-y-2">
@@ -820,7 +820,7 @@ function PaydownPaceDialog({
                       const remainingPct = item.principal > 0 ? remaining / item.principal : 0;
                       return (
                         <li key={year}>
-                          <div className="mb-0.5 flex items-baseline justify-between text-[11px]">
+                          <div className="mb-0.5 flex items-baseline justify-between text-2xs">
                             <span className="font-semibold text-slate-500">שנה {year}</span>
                             <span className="font-bold text-slate-800">{formatShekel(remaining)}</span>
                           </div>
@@ -878,7 +878,7 @@ function Panel({
     >
       <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-slate-800">{title}</p>
-        {hint && <p className="text-[10px] font-medium text-blue-600">{hint}</p>}
+        {hint && <p className="text-2xs font-medium text-blue-600">{hint}</p>}
       </div>
       <ResponsiveContainer width="100%" height={240}>
         {children}

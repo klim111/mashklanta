@@ -31,7 +31,7 @@ export function ChildAgesInput({ count, value, onChange, readOnly }: ChildAgesIn
     <div className="flex flex-wrap gap-2">
       {ages.map((age, index) => (
         <div key={index} className="flex items-center gap-1">
-          <span className="text-[11px] text-slate-400">ילד {index + 1}</span>
+          <span className="text-2xs text-slate-400">ילד {index + 1}</span>
           <input
             type="text"
             inputMode="numeric"

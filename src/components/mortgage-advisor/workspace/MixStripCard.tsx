@@ -104,7 +104,7 @@ export function MixStripCard({
       }`}
     >
       <span
-        className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black ${tone.badge}`}
+        className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-2xs font-black ${tone.badge}`}
       >
         {author_.label}
       </span>
@@ -130,15 +130,15 @@ export function MixStripCard({
 
       <p className="truncate text-sm font-bold text-slate-900">{mix.name || 'תמהיל ללא שם'}</p>
       {quote ? (
-        <p className="mt-0.5 truncate text-[10px] font-bold text-emerald-800">
+        <p className="mt-0.5 truncate text-2xs font-bold text-emerald-800">
           התקבלו ריביות מבנק {quote.bank} · {formatQuoteDate(quote.receivedAt)}
         </p>
       ) : (
-        <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+        <p className="mt-0.5 truncate text-2xs font-semibold text-slate-400">
           {ORIGIN_LABELS[origin]}
         </p>
       )}
-      <p className="mt-0.5 truncate text-[11px] text-slate-500">
+      <p className="mt-0.5 truncate text-2xs text-slate-500">
         {formatShekel(summary.monthlyPayment)} לחודש · {mix.tracks.length} מסלולים ·{' '}
         {formatDuration(summary.months)}
       </p>
@@ -146,7 +146,7 @@ export function MixStripCard({
         <CompositionBar tracks={mix.tracks} height={8} />
         <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 sm:justify-start">
           {mix.tracks.map((track) => (
-            <span key={track.id} className="flex items-center gap-1 text-[10px] text-slate-500">
+            <span key={track.id} className="flex items-center gap-1 text-2xs text-slate-500">
               <span
                 className="h-1.5 w-1.5 rounded-full"
                 style={{ backgroundColor: trackColor(track.type) }}
@@ -167,7 +167,7 @@ export function MixStripCard({
                 onRequestQuote();
               }}
               title="הכנת הצעת התמהיל למיקוח מול הבנקים — מכתב בקשה בלי ריביות"
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-[11px] font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-2xs font-bold text-amber-900 transition-colors hover:border-amber-400 hover:bg-amber-100"
             >
               <Gavel className="h-3.5 w-3.5" />
               הצעה לבנקים
@@ -181,7 +181,7 @@ export function MixStripCard({
                 onEnterQuote();
               }}
               title="הזנת הריביות שהתקבלו מהבנק על מבנה התמהיל הזה"
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-2 text-[11px] font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-2 text-2xs font-bold text-emerald-900 transition-colors hover:border-emerald-400 hover:bg-emerald-100"
             >
               <BadgePercent className="h-3.5 w-3.5" />
               ריביות מהבנק

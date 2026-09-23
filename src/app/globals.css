@@ -254,6 +254,30 @@
   animation: draw-line 3s ease-in-out infinite;
 }
 
+/* ---------------------------------------------------------------------------
+   Typography tokens: one font and one type scale for every client screen.
+   Tailwind exposes the sizes as text-title, text-subtitle, text-cta,
+   text-button, text-info and text-2xs (tailwind.config.js), so a size is
+   changed here and nowhere else. --font-assistant is set on <html> by
+   next/font in app/layout.tsx.
+--------------------------------------------------------------------------- */
+:root {
+  --font-app: var(--font-assistant), 'Assistant', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* כותרת ראשית של מסך */
+  --text-title: clamp(1.625rem, 1.25rem + 1.5vw, 2.25rem);
+  /* תת-כותרת: כותרת של אזור או כרטיס */
+  --text-subtitle: 1.25rem;
+  /* כפתור קריאה לפעולה */
+  --text-cta: 1.0625rem;
+  /* כפתור רגיל */
+  --text-button: 0.9375rem;
+  /* שורת מידע: תווית וערך */
+  --text-info: 0.9375rem;
+  /* תגיות ותוויות זעירות — הגודל המינימלי בפלטפורמה */
+  --text-2xs: 0.6875rem;
+}
+
 /* Professional Financial Design System */
 :root {
   /* Primary Financial Brand Colors - More Professional */
@@ -291,7 +315,7 @@
   --bg-dark: #0f172a;
   
   /* Professional Typography */
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app);
   line-height: 1.6;
   font-weight: 400;
   color-scheme: light;
@@ -308,7 +332,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app);
   direction: rtl;
   background: var(--bg-primary);
   color: var(--financial-gray-800);
@@ -317,7 +341,7 @@ body {
 
 /* Professional Typography Scale */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app);
   font-weight: 700;
   direction: rtl;
   color: var(--financial-gray-900);
@@ -326,19 +350,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-size: var(--text-title);
   font-weight: 800;
   color: var(--financial-primary);
 }
 
 h2 {
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: var(--text-subtitle);
   font-weight: 700;
   color: var(--financial-primary);
 }
 
 h3 {
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--financial-gray-800);
 }
@@ -351,7 +375,7 @@ h3 {
   padding: 1rem 2rem;
   border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--text-button);
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -375,7 +399,7 @@ h3 {
   padding: 1rem 2rem;
   border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--text-button);
   transition: all 0.2s ease;
 }
 
@@ -696,7 +720,7 @@ html {
 /* Hebrew text styling — only apply to elements without an explicit dir attribute,
    so any `dir="ltr"` (e.g. on slider scales) is honored instead of being overridden. */
 p:not([dir]), span:not([dir]), div:not([dir]) {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-app);
   direction: rtl;
   text-align: center;
 }
@@ -903,6 +927,10 @@ html {
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+  /* כפתור בלי גודל מפורש מקבל את גודל הכפתור המשותף */
+  button {
+    font-size: var(--text-button);
   }
 }
 

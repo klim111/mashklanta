@@ -196,10 +196,10 @@ export function ServiceChooser({
               >
                 {GOAL_LABELS[goal].title}
               </span>
-              <h2 className={`max-w-2xl text-2xl font-black leading-snug md:text-3xl ${heading}`}>
+              <h2 className={`max-w-2xl text-title font-black leading-snug ${heading}`}>
                 {TRACKS_HEADLINE}
               </h2>
-              <p className={`max-w-2xl text-[15px] leading-relaxed ${muted}`}>{TRACKS_INTRO}</p>
+              <p className={`max-w-2xl text-info leading-relaxed ${muted}`}>{TRACKS_INTRO}</p>
             </div>
 
             <div className="mx-auto mt-8 grid max-w-3xl gap-4 md:grid-cols-2">
@@ -225,7 +225,7 @@ export function ServiceChooser({
                     }`}
                   >
                     {featured && (
-                      <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-3 py-0.5 text-[11px] font-black text-white shadow">
+                      <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-3 py-0.5 text-2xs font-black text-white shadow">
                         הכי נבחר
                       </span>
                     )}
@@ -235,12 +235,12 @@ export function ServiceChooser({
                       <Icon className="h-7 w-7 text-white" />
                     </span>
                     <span className="text-xl font-black">{labels.title}</span>
-                    <span className={`mt-1.5 flex-1 text-[15px] leading-relaxed ${muted}`}>{labels.description}</span>
+                    <span className={`mt-1.5 flex-1 text-info leading-relaxed ${muted}`}>{labels.description}</span>
                     <span className={`mt-4 border-t pt-4 ${dark ? 'border-white/10' : 'border-slate-100'}`}>
                       <span className="block text-lg font-black">
                         {selfOpen ? 'הגישה שלכם פעילה' : meta.price}
                       </span>
-                      <span className={`block text-[11px] ${muted}`}>
+                      <span className={`block text-2xs ${muted}`}>
                         {selfOpen ? 'הכלי המלא פתוח, בלי הגבלות' : meta.priceNote}
                       </span>
                     </span>
@@ -285,7 +285,7 @@ export function ServiceChooser({
 
       {showPricing && (
         <div className="mt-8">
-          <p className={`mb-3 text-center text-[11px] font-black uppercase tracking-wide ${muted}`}>
+          <p className={`mb-3 text-center text-2xs font-black uppercase tracking-wide ${muted}`}>
             כך עובד התמחור
           </p>
           <PricingModelStrip compact tone={tone} />

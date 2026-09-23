@@ -97,7 +97,7 @@ export default function Pricing() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl font-bold mb-4">מודל המחירים שלנו</h2>
+          <h2 className="text-title font-bold mb-4">מודל המחירים שלנו</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             בחר את הפתרון המתאים לך - מהכלים הבסיסיים ועד לייעוץ מלא
           </p>
@@ -202,15 +202,15 @@ export default function Pricing() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                 <div>
-                  <h3 className="font-bold text-lg mb-2">חיסכון משמעותי</h3>
+                  <h3 className="font-bold text-subtitle mb-2">חיסכון משמעותי</h3>
                   <p className="text-gray-600">חסכו עד ₪270,000 בממוצע למשפחה</p>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg mb-2">זמן מהיר</h3>
+                  <h3 className="font-bold text-subtitle mb-2">זמן מהיר</h3>
                   <p className="text-gray-600">תהליך מהיר של 30 דקות במקום שבועות</p>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg mb-2">שקיפות מלאה</h3>
+                  <h3 className="font-bold text-subtitle mb-2">שקיפות מלאה</h3>
                   <p className="text-gray-600">כל המידע והחישובים גלויים לכם</p>
                 </div>
               </div>

@@ -63,12 +63,12 @@ export function DeletePlanDialog({
               למחוק את התהליך?
             </span>
           </DialogTitle>
-          <DialogDescription className="text-center text-[15px]">
+          <DialogDescription className="text-center text-info">
             {planHeadline(plan)}
           </DialogDescription>
         </DialogHeader>
 
-        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-center text-[15px] leading-relaxed text-slate-700">
+        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-center text-info leading-relaxed text-slate-700">
           המחיקה סופית: התהליך, השלבים שמילאתם בו ופרטי הנכס יימחקו.
           <br />
           <span className="font-black text-slate-900">
@@ -78,7 +78,7 @@ export function DeletePlanDialog({
         </p>
 
         {error && (
-          <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[15px] font-bold leading-relaxed text-amber-900">
+          <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-info font-bold leading-relaxed text-amber-900">
             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
             {error}
           </p>
@@ -89,7 +89,7 @@ export function DeletePlanDialog({
             type="button"
             disabled={busy}
             onClick={() => void confirm()}
-            className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-6 py-3 text-[15px] font-black text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-6 py-3 text-button font-black text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             כן, מחקו את התהליך
@@ -97,7 +97,7 @@ export function DeletePlanDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-2xl border-2 border-slate-200 px-6 py-3 text-[15px] font-black text-slate-700 transition-colors hover:bg-slate-50"
+            className="rounded-2xl border-2 border-slate-200 px-6 py-3 text-button font-black text-slate-700 transition-colors hover:bg-slate-50"
           >
             ביטול
           </button>

@@ -268,11 +268,11 @@ export function PlanWorkspace({
     return (
       <div className="mx-auto max-w-md px-4 py-24 text-center">
         <AlertCircle className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-        <h2 className="text-xl font-black text-slate-900">התהליך לא נמצא</h2>
+        <h2 className="text-subtitle font-black text-slate-900">התהליך לא נמצא</h2>
         <p className="mt-2 text-sm text-slate-500">{error}</p>
         <Link
           href="/dashboard"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-bold text-white"
         >
           חזרה לאזור האישי
           <ChevronLeft className="h-4 w-4" />
@@ -446,7 +446,7 @@ export function PlanWorkspace({
                       <button
                         type="button"
                         onClick={() => selectStage(next)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-black text-white transition-all hover:bg-slate-700"
+                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-button font-black text-white transition-all hover:bg-slate-700"
                       >
                         המשיכו לשלב הבא
                         <ArrowLeft className="h-4 w-4" />
@@ -456,7 +456,7 @@ export function PlanWorkspace({
                         type="button"
                         disabled={!canComplete || completing || (!next && planSigned)}
                         onClick={() => void onComplete()}
-                        className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-black text-white transition-all ${
+                        className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-black text-white transition-all ${
                           canComplete
                             ? `bg-gradient-to-l ${journey.gradient} shadow-lg hover:shadow-xl hover:brightness-110`
                             : 'cursor-not-allowed bg-slate-200 text-slate-400'
@@ -476,12 +476,12 @@ export function PlanWorkspace({
                     )}
 
                     {!canComplete && missing.length > 0 && (
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-2xs text-slate-400">
                         כדי לסגור את השלב חסר: {missing.join(', ')}
                       </span>
                     )}
                     {blocked === stage && (
-                      <span className="text-[11px] font-bold text-rose-500">
+                      <span className="text-2xs font-bold text-rose-500">
                         השרת דחה את סגירת השלב — הנתונים נשמרו, אך עדיין חסר מידע.
                       </span>
                     )}
@@ -543,7 +543,7 @@ export function PlanWorkspace({
 
               {tour ? (
                 <div className="md:mx-auto">
-                  <h1 className="text-2xl font-black text-white md:text-3xl">{plan.name}</h1>
+                  <h1 className="text-title font-black text-white">{plan.name}</h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2 md:justify-center">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-xs font-black text-amber-100 ring-1 ring-amber-300/40">
                       <Sparkles className="h-3.5 w-3.5" />
@@ -585,7 +585,7 @@ export function PlanWorkspace({
                   }}
                   className="group flex items-center gap-2 md:mx-auto"
                 >
-                  <h1 className="truncate text-2xl font-black text-white md:text-3xl">
+                  <h1 className="truncate text-title font-black text-white">
                     {plan.name}
                   </h1>
                   <Pencil className="h-4 w-4 shrink-0 text-white/50 transition-colors group-hover:text-white" />
@@ -726,18 +726,18 @@ export function PlanWorkspace({
                       שלב {index + 1} מתוך {stages.length}
                     </span>
                     {isDone && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-2xs font-black text-emerald-700">
                         <Check className="h-3 w-3" />
                         הושלם
                       </span>
                     )}
                     {isPreview && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-2xs font-black text-amber-800">
                         תצוגה מקדימה
                       </span>
                     )}
                   </div>
-                  <h2 className="text-lg font-black text-slate-900 md:text-xl">{meta.title}</h2>
+                  <h2 className="text-subtitle font-black text-slate-900">{meta.title}</h2>
                   <p className="text-sm text-slate-500">{meta.hint}</p>
                 </div>
 
@@ -939,7 +939,7 @@ export function PlanWorkspace({
         {!tour && <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-button font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
         >
           <LayoutDashboard className="h-5 w-5" />
           חזרה לדאשבורד
@@ -999,7 +999,7 @@ function ProgressRing({ value }: { value: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-lg font-black text-white">{value}%</span>
-        <span className="text-[9px] font-bold text-white/40">הושלם</span>
+        <span className="text-2xs font-bold text-white/40">הושלם</span>
       </div>
     </div>
   );

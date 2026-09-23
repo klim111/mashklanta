@@ -31,7 +31,7 @@ export function AllocationDonut({
     return (
       <div className="py-8 text-center text-slate-400">
         <PieChart className="mx-auto mb-2 h-10 w-10 opacity-30" />
-        <p className="text-[13px] font-semibold">הזינו סכומים בטבלה כדי לראות את חלוקת ההון</p>
+        <p className="text-sm font-semibold">הזינו סכומים בטבלה כדי לראות את חלוקת ההון</p>
       </div>
     );
   }
@@ -86,15 +86,15 @@ export function AllocationDonut({
             );
           })}
           <circle cx="100" cy="100" r="54" fill="#ffffff" />
-          <text x="100" y="94" textAnchor="middle" className="fill-slate-400 text-[12px] font-bold">
+          <text x="100" y="94" textAnchor="middle" className="fill-slate-400 text-xs font-bold">
             {focused ? 'קטגוריה' : 'סה״כ'}
           </text>
-          <text x="100" y="116" textAnchor="middle" className="fill-slate-900 text-[22px] font-black">
+          <text x="100" y="116" textAnchor="middle" className="fill-slate-900 text-xl font-black">
             {compactShekel(focused ? focused.total : total)}
           </text>
         </svg>
         {focused && (
-          <div className="pointer-events-none absolute -top-1 right-1/2 translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg">
+          <div className="pointer-events-none absolute -top-1 right-1/2 translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-1 text-2xs font-bold text-white shadow-lg">
             {focused.name} · {((focused.total / total) * 100).toFixed(0)}%
           </div>
         )}
@@ -119,13 +119,13 @@ export function AllocationDonut({
                   className="h-2.5 w-2.5 shrink-0 rounded-sm"
                   style={{ backgroundColor: slice.hex }}
                 />
-                <span className="truncate text-[11px] font-semibold text-slate-700">{slice.name}</span>
+                <span className="truncate text-2xs font-semibold text-slate-700">{slice.name}</span>
               </span>
               <span className="flex shrink-0 items-baseline gap-1">
-                <span className="text-[11px] font-black text-slate-900">
+                <span className="text-2xs font-black text-slate-900">
                   {compactShekel(slice.total)}
                 </span>
-                <span className="text-[9px] font-bold text-slate-400">
+                <span className="text-2xs font-bold text-slate-400">
                   {((slice.total / total) * 100).toFixed(0)}%
                 </span>
               </span>

@@ -59,7 +59,7 @@ export function DocumentsChecklist({
             transition={{ type: 'spring', stiffness: 80, damping: 20 }}
           />
         </div>
-        <div className="mt-1.5 text-[13px] font-bold text-slate-500">
+        <div className="mt-1.5 text-sm font-bold text-slate-500">
           {done === total
             ? 'כל המסמכים נאספו — אפשר לקבוע את מועד החתימה.'
             : `נאספו ${percent}% מהמסמכים. חסרים עוד ${total - done}.`}
@@ -85,7 +85,7 @@ export function DocumentsChecklist({
               }`}
             >
               <span
-                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 text-[11px] font-black transition-colors ${
+                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 text-2xs font-black transition-colors ${
                   checked
                     ? 'border-emerald-500 bg-emerald-500 text-white'
                     : 'border-slate-200 bg-slate-50 text-slate-400'
@@ -95,14 +95,14 @@ export function DocumentsChecklist({
               </span>
               <span className="min-w-0 flex-1">
                 <span
-                  className={`block text-[15px] font-black leading-snug ${
+                  className={`block text-info font-black leading-snug ${
                     checked ? 'text-emerald-900' : 'text-slate-900'
                   }`}
                 >
                   {document.name}
                 </span>
                 <span
-                  className={`mt-1 block text-[13px] font-medium leading-relaxed ${
+                  className={`mt-1 block text-sm font-medium leading-relaxed ${
                     checked ? 'text-emerald-800/80' : 'text-slate-600'
                   }`}
                 >

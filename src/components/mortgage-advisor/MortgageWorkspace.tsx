@@ -1047,14 +1047,14 @@ export function MortgageWorkspace({
                 <Settings2 className="h-4 w-4 ml-1" />
                 הגדרות
                 {(showRisk || showGoals) && (
-                  <span className="mr-1.5 rounded-full bg-slate-200 px-1.5 text-[10px] font-semibold text-slate-700">
+                  <span className="mr-1.5 rounded-full bg-slate-200 px-1.5 text-2xs font-semibold text-slate-700">
                     {Number(showRisk) + Number(showGoals)}
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent dir="rtl" align="end" className="w-72 p-2">
-              <p className="px-2 py-1.5 text-[11px] font-semibold text-slate-500">
+              <p className="px-2 py-1.5 text-2xs font-semibold text-slate-500">
                 כלים נוספים למסך
               </p>
               <SettingToggle
@@ -1270,7 +1270,7 @@ export function MortgageWorkspace({
                 <p className="text-sm font-bold text-slate-900">
                   בחרו תמהיל לניתוח מתוך התמהילים השמורים, או צרו תמהיל חדש
                 </p>
-                <p className="max-w-md text-[11px] text-slate-600">
+                <p className="max-w-md text-2xs text-slate-600">
                   לחיצה על שורת תמהיל פותחת אותו כאן בפאנל השליטה — כל המסלולים והפרמטרים שלהם
                   פתוחים לשינוי, והדאשבורד שמתחת מתעדכן מיד.
                 </p>
@@ -1569,7 +1569,7 @@ function ClientSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent dir="rtl" align="end" className="w-72 p-2">
-        <p className="px-2 py-1.5 text-[11px] font-semibold text-slate-500">
+        <p className="px-2 py-1.5 text-2xs font-semibold text-slate-500">
           שמירת התמהילים עבור
         </p>
         <button
@@ -1582,7 +1582,7 @@ function ClientSelector({
           ללא שיוך ללקוח
         </button>
         {clients.length === 0 ? (
-          <p className="px-2 py-2 text-[11px] text-slate-500">
+          <p className="px-2 py-2 text-2xs text-slate-500">
             עדיין אין לקוחות. אפשר לצרף לקוח מהאזור האישי.
           </p>
         ) : (
@@ -1602,7 +1602,7 @@ function ClientSelector({
               >
                 {client.name}
               </span>
-              <span className="block text-[10px] text-slate-500">{client.email}</span>
+              <span className="block text-2xs text-slate-500">{client.email}</span>
             </button>
           ))
         )}
@@ -1636,7 +1636,7 @@ function SettingToggle({
           {icon}
           {label}
         </span>
-        <span className="block text-[10px] text-slate-500 leading-snug mt-0.5">{hint}</span>
+        <span className="block text-2xs text-slate-500 leading-snug mt-0.5">{hint}</span>
       </span>
     </button>
   );

@@ -200,24 +200,24 @@ export function RateRequestDialog({
           */}
           {fixedBank ? (
             <div className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
+              <span className="flex items-center gap-1 text-2xs font-bold text-slate-600">
                 <Building2 className="h-3.5 w-3.5" />
                 לכבוד
               </span>
-              <span className="rounded-full border border-blue-500 bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white">
+              <span className="rounded-full border border-blue-500 bg-blue-600 px-2.5 py-1 text-2xs font-bold text-white">
                 בנק {fixedBank}
               </span>
             </div>
           ) : (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
+            <span className="flex items-center gap-1 text-2xs font-bold text-slate-600">
               <Building2 className="h-3.5 w-3.5" />
               לכבוד
             </span>
             <button
               type="button"
               onClick={() => patch({ bankName: undefined })}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+              className={`rounded-full border px-2.5 py-1 text-2xs font-semibold transition-colors ${
                 !details.bankName
                   ? 'border-blue-500 bg-blue-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
@@ -230,7 +230,7 @@ export function RateRequestDialog({
                 key={bank}
                 type="button"
                 onClick={() => patch({ bankName: bank })}
-                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                className={`rounded-full border px-2.5 py-1 text-2xs font-semibold transition-colors ${
                   details.bankName === bank
                     ? 'border-blue-500 bg-blue-600 text-white'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
@@ -244,7 +244,7 @@ export function RateRequestDialog({
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <label className="space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500">שם הפונה</span>
+              <span className="text-2xs font-semibold text-slate-500">שם הפונה</span>
               <input
                 className={fieldClass}
                 value={details.applicantName ?? ''}
@@ -253,7 +253,7 @@ export function RateRequestDialog({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500">טלפון</span>
+              <span className="text-2xs font-semibold text-slate-500">טלפון</span>
               <input
                 className={fieldClass}
                 value={details.contactPhone ?? ''}
@@ -262,7 +262,7 @@ export function RateRequestDialog({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500">דוא"ל</span>
+              <span className="text-2xs font-semibold text-slate-500">דוא"ל</span>
               <input
                 className={fieldClass}
                 value={details.contactEmail ?? ''}
@@ -271,7 +271,7 @@ export function RateRequestDialog({
               />
             </label>
             <label className="space-y-1">
-              <span className="text-[10px] font-semibold text-slate-500">מועד אחרון לתשובה</span>
+              <span className="text-2xs font-semibold text-slate-500">מועד אחרון לתשובה</span>
               <input
                 type="date"
                 className={fieldClass}
@@ -282,7 +282,7 @@ export function RateRequestDialog({
           </div>
 
           <label className="block space-y-1">
-            <span className="text-[10px] font-semibold text-slate-500">
+            <span className="text-2xs font-semibold text-slate-500">
               בקשה נוספת שתתווסף לסעיפי המכתב (רשות)
             </span>
             <input
@@ -300,7 +300,7 @@ export function RateRequestDialog({
 
         <div className="shrink-0 space-y-2">
           {savedAt && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-2xs font-semibold text-emerald-800">
               <CheckCircle2 className="h-4 w-4" />
               הבקשה נשמרה באזור האישי, תחת &quot;תמהילים שהוגשו לבנקים&quot;.
               <Link href={personalAreaHref} className="underline">
@@ -309,7 +309,7 @@ export function RateRequestDialog({
             </div>
           )}
           {!signedIn && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-2xs text-amber-800">
               <CloudOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 אינכם מחוברים — שמירה תישמר בדפדפן הזה בלבד ותעלה לחשבון בהתחברות הבאה.
@@ -343,7 +343,7 @@ export function RateRequestDialog({
               {existing ? 'עדכון הבקשה השמורה' : 'שמור הצעה באזור האישי'}
             </Button>
           </div>
-          <p className="text-center text-[10px] text-slate-400 sm:text-right">
+          <p className="text-center text-2xs text-slate-400 sm:text-right">
             <FileText className="ml-1 inline h-3 w-3" />
             שמירה כ-PDF נעשית דרך חלון ההדפסה של הדפדפן — בחרו ביעד &quot;שמירה כ-PDF&quot;.
           </p>

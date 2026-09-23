@@ -24,7 +24,7 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-600">
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
           <Briefcase className="h-3.5 w-3.5 text-indigo-500" />
           מקורות ההכנסה של {personLabel}
         </p>
@@ -51,7 +51,7 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
             title={`הכנסה ${index + 1}`}
             badge={
               months !== null ? (
-                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">
+                <span className="rounded-full bg-white px-2 py-0.5 text-2xs font-medium text-slate-500 ring-1 ring-slate-200">
                   ותק: {months} חודשים
                 </span>
               ) : undefined
@@ -63,7 +63,7 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
             {needsPrevious && (
               <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-800">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
                     <TriangleAlert className="h-3.5 w-3.5" />
                     ותק אצל המעסיק נמוך משנה — נדרש פירוט מקום עבודה קודם
                   </p>
@@ -83,14 +83,14 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
                   {prevEmployments.map((prev, prevIndex) => (
                     <div key={prev.id} className="rounded-xl border border-amber-200 bg-white p-4">
                       <div className="mb-3 flex items-center justify-between">
-                        <p className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-700">
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
                           <History className="h-3.5 w-3.5 text-amber-500" />
                           מקום עבודה קודם {prevIndex + 1}
                         </p>
                         <button
                           type="button"
                           onClick={() => void removeEntity(prev.id)}
-                          className="text-[11px] font-medium text-slate-400 hover:text-rose-600"
+                          className="text-2xs font-medium text-slate-400 hover:text-rose-600"
                         >
                           הסרה
                         </button>

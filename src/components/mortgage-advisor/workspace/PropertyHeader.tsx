@@ -137,7 +137,7 @@ export function PropertyHeader({
               onCommitDeal({ propertyAddress: propertyAddress.trim() }, 'propertyAddress')
             }
           />
-          <p className="text-[11px] text-slate-500 flex flex-wrap items-center gap-1.5">
+          <p className="text-2xs text-slate-500 flex flex-wrap items-center gap-1.5">
             <MapPin className="h-3 w-3" />
             {mix.propertyAddress?.trim()
               ? 'כל התמהילים לכתובת הזו מוצגים ומושווים יחד'
@@ -162,7 +162,7 @@ export function PropertyHeader({
           </Select>
           {propertyValue > 0 && (
             <Badge
-              className={`text-[10px] ${
+              className={`text-2xs ${
                 overFinanced
                   ? 'bg-red-100 text-red-800 hover:bg-red-100'
                   : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'
@@ -219,7 +219,7 @@ export function PropertyHeader({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 px-1.5 text-[10px] text-blue-600"
+              className="h-6 px-1.5 text-2xs text-blue-600"
               onClick={() => setShowMaxPayment(true)}
             >
               חשב
@@ -242,7 +242,7 @@ export function PropertyHeader({
           <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
           <div className="min-w-0 flex-1 space-y-0.5">
             <p className="text-xs font-bold text-red-900">השינוי חורג ממגבלות בנק ישראל</p>
-            <p className="text-[11px] leading-relaxed text-red-800">{notice}</p>
+            <p className="text-2xs leading-relaxed text-red-800">{notice}</p>
           </div>
           {onDismissNotice && (
             <button
@@ -263,7 +263,7 @@ export function PropertyHeader({
             <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
             <div className="min-w-0 space-y-1">
               <p className="text-xs font-bold text-red-900">עליך להגדיל את ההון העצמי</p>
-              <p className="text-[11px] text-red-800 leading-relaxed">
+              <p className="text-2xs text-red-800 leading-relaxed">
                 משכנתא של {formatShekel(pendingAmount)} חורגת מתקרת המימון — ב{DEAL_TYPES[dealType]}{' '}
                 מותר עד {ltvLimit}% משווי הנכס, כלומר {formatShekel(maxMortgage)} לנכס הנוכחי. כדי
                 לקחת את הסכום הזה נדרש הון עצמי של {formatShekel(requiredEquity)} לפחות, ועלות הנכס
@@ -274,7 +274,7 @@ export function PropertyHeader({
 
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
-              <Label className="text-[11px] text-red-900">הון עצמי (₪)</Label>
+              <Label className="text-2xs text-red-900">הון עצמי (₪)</Label>
               <FormattedNumberValueInput
                 className="h-9 w-40 bg-white"
                 autoFocus
@@ -299,7 +299,7 @@ export function PropertyHeader({
               בטל
             </Button>
             {draftEquity >= requiredEquity - 1 && (
-              <span className="text-[11px] text-red-800">
+              <span className="text-2xs text-red-800">
                 עלות הנכס תתעדכן ל{formatShekel(pendingAmount + draftEquity)}
               </span>
             )}
@@ -310,7 +310,7 @@ export function PropertyHeader({
       {overFinanced && pendingAmount === null && (
         <div className="flex flex-wrap items-center gap-2 border-t border-red-200 bg-red-50 p-3">
           <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-          <p className="min-w-0 flex-1 text-[11px] text-red-800 leading-relaxed">
+          <p className="min-w-0 flex-1 text-2xs text-red-800 leading-relaxed">
             אחוז המימון ({ltv.toFixed(1)}%) גבוה מהתקרה של בנק ישראל ל{DEAL_TYPES[dealType]} (
             {ltvLimit}%). עליך להגדיל את ההון העצמי, או להקטין את המשכנתא עד{' '}
             {formatShekel(maxMortgage)}.
@@ -329,7 +329,7 @@ export function PropertyHeader({
       {overPayment && (
         <div className="flex items-start gap-2 border-t border-amber-200 bg-amber-50 p-3">
           <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-800 leading-relaxed">
+          <p className="text-2xs text-amber-800 leading-relaxed">
             ההחזר החודשי בתמהיל ({formatShekel(monthlyPayment)}) גבוה מההחזר המקסימלי שנקבע ללקוח (
             {formatShekel(mix.maxMonthlyPayment ?? 0)}). האריכו תקופה, הקטינו את המשכנתא או עדכנו את
             התקרה.
@@ -382,7 +382,7 @@ function EditableAmount({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-2.5">
       <div className="flex items-center justify-between gap-1">
-        <p className="text-[10px] text-slate-500 flex items-center gap-1">
+        <p className="text-2xs text-slate-500 flex items-center gap-1">
           {icon}
           {label}
         </p>
@@ -419,7 +419,7 @@ function EditableAmount({
         </button>
       )}
 
-      {hint && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
+      {hint && <p className="text-2xs text-slate-400 mt-0.5">{hint}</p>}
     </div>
   );
 }

@@ -400,7 +400,7 @@ export function MortgageMixCard({
           <h4 className="text-sm font-semibold text-gray-700">מסלולי המשכנתא:</h4>
           <div className="space-y-1">
             {mix.tracks.map((track) => (
-              <div key={track.id} className="flex justify-between items-center text-sm p-2 bg-white rounded border">
+              <div key={track.id} className="flex justify-between items-center text-info p-2 bg-white rounded border">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${
                     track.type === 'fixed_unlinked' ? 'bg-blue-500' :
@@ -471,7 +471,7 @@ export function MortgageMixCard({
             </div>
           </div>
           {hasForwardTracks && (
-            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-1.5 text-2xs leading-relaxed text-slate-500">
               סך התשלומים {formatCurrency(summary.totalPaid)} כולל קרן וריבית. במסלולים משתנים הריבית
               בהמשך התקופה מחושבת לפי עקום הפורוורד.
             </p>

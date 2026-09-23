@@ -59,7 +59,7 @@ export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
         <div className="space-y-4">
           {visible.map((group) => (
             <div key={group.key} className="space-y-2">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+              <p className="flex items-center gap-1.5 text-2xs font-bold text-slate-500">
                 {group.address ? (
                   <MapPin className="h-3.5 w-3.5 text-blue-500" />
                 ) : (
@@ -81,12 +81,12 @@ export function SavedMixesWidget({ limit = 4 }: { limit?: number }) {
                       <span className="block text-sm font-semibold text-slate-900 truncate">
                         {item.mix.name}
                       </span>
-                      <span className="block text-[11px] text-slate-500 truncate">
+                      <span className="block text-2xs text-slate-500 truncate">
                         {formatShekel(item.mix.totalAmount)} · {item.mix.tracks.length} מסלולים
                       </span>
                     </span>
                     <span className="text-left shrink-0">
-                      <span className="block text-[10px] text-slate-400">החזר חודשי</span>
+                      <span className="block text-2xs text-slate-400">החזר חודשי</span>
                       <span className="block text-sm font-bold text-blue-600">
                         {formatShekel(item.summary.monthlyPayment)}
                       </span>

@@ -40,16 +40,16 @@ export function DocumentChecklist({
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <FileText className="h-3.5 w-3.5 text-indigo-500" />
-                <h4 className="text-[13px] font-bold text-slate-800">{group.title}</h4>
+                <h4 className="text-sm font-bold text-slate-800">{group.title}</h4>
                 {group.subtitle && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-500">
                     {group.subtitle}
                   </span>
                 )}
               </div>
               <span
                 className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                  'rounded-full px-2 py-0.5 text-2xs font-semibold',
                   done === group.documents.length
                     ? 'bg-emerald-50 text-emerald-700'
                     : 'bg-amber-50 text-amber-700',
@@ -69,7 +69,7 @@ export function DocumentChecklist({
                       disabled={readOnly}
                       onClick={() => toggle(doc.key)}
                       className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-right text-[13px] transition-colors',
+                        'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-right text-sm transition-colors',
                         checked ? 'text-slate-500' : 'text-slate-700',
                         !readOnly && 'hover:bg-slate-50',
                         readOnly && 'cursor-not-allowed',
@@ -87,7 +87,7 @@ export function DocumentChecklist({
                       </span>
                       <span className={cn(checked && 'line-through')}>{doc.name}</span>
                       {doc.required === false && (
-                        <span className="text-[10px] text-slate-400">(לא לכל לקוח)</span>
+                        <span className="text-2xs text-slate-400">(לא לכל לקוח)</span>
                       )}
                     </button>
                   </li>

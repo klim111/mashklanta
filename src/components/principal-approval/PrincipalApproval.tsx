@@ -58,7 +58,7 @@ function SaveStatus() {
   const { pendingCount, lastSavedAt } = useCase();
   if (pendingCount > 0) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-100">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-2xs font-medium text-amber-700 ring-1 ring-amber-100">
         <Loader2 className="h-3 w-3 animate-spin" />
         שומר…
       </span>
@@ -66,14 +66,14 @@ function SaveStatus() {
   }
   if (lastSavedAt) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-2xs font-medium text-emerald-700 ring-1 ring-emerald-100">
         <Cloud className="h-3 w-3" />
         נשמר {lastSavedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 text-2xs font-medium text-slate-500 ring-1 ring-slate-200">
       <Cloud className="h-3 w-3" />
       שמירה אוטומטית פעילה
     </span>
@@ -153,8 +153,8 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center">
         <CloudOff className="mx-auto mb-3 h-8 w-8 text-rose-400" />
-        <h2 className="text-base font-bold text-rose-900">לא ניתן לטעון את התיק</h2>
-        <p className="mt-1 text-[13px] text-rose-700">{loadError ?? 'שגיאה לא ידועה'}</p>
+        <h2 className="text-subtitle font-bold text-rose-900">לא ניתן לטעון את התיק</h2>
+        <p className="mt-1 text-sm text-rose-700">{loadError ?? 'שגיאה לא ידועה'}</p>
       </div>
     );
   }
@@ -178,19 +178,19 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             {!embedded && (
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-500">
+              <p className="text-2xs font-semibold uppercase tracking-widest text-indigo-500">
                 שלב האישור העקרוני
               </p>
             )}
             <h1
               className={cn(
                 'font-black tracking-tight text-slate-900',
-                embedded ? 'text-base' : 'mt-1 text-2xl',
+                embedded ? 'text-title' : 'mt-1 text-title',
               )}
             >
               איסוף פרטי הבקשה
             </h1>
-            <p className="mt-1 text-[13px] text-slate-500">
+            <p className="mt-1 text-sm text-slate-500">
               {data.viewer.role === 'advisor'
                 ? `תיק של ${data.client.name ?? data.client.email} · הנתונים שתזין יסומנו אצל הלקוח כ"הוזן על ידי היועץ"`
                 : 'כל שדה נשמר אוטומטית ברגע ההקלדה — אפשר לצאת ולחזור בכל שלב'}
@@ -208,9 +208,9 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
                   style={{ width: `${percent}%` }}
                 />
               </div>
-              <span className="text-[12px] font-bold text-slate-700">{percent}%</span>
+              <span className="text-xs font-bold text-slate-700">{percent}%</span>
             </div>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-2xs text-slate-400">
               {progress.filled} מתוך {progress.total} שדות חובה
             </span>
           </div>
@@ -227,7 +227,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
                 type="button"
                 onClick={() => setStep(s.id)}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all',
+                  'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-button font-semibold transition-all',
                   active
                     ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
                     : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700',
@@ -243,7 +243,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
 
       {actionError && (
         <div className="flex items-start justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 print:hidden">
-          <p className="flex items-start gap-2 text-[13px] text-rose-800">
+          <p className="flex items-start gap-2 text-sm text-rose-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {actionError}
           </p>
@@ -260,7 +260,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
       {openConflicts.length === 0 && percent === 100 && step !== 'report' && (
         <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 print:hidden">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
-          <p className="text-[13px] font-medium text-emerald-900">
+          <p className="text-sm font-medium text-emerald-900">
             כל שדות החובה מולאו — ניתן לעבור ללשונית "דוח מסכם" ולהפיק את הדוח.
           </p>
         </div>
@@ -284,7 +284,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
           disabled={stepIndex === 0}
           onClick={() => setStep(STEPS[stepIndex - 1].id)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-[13px] font-semibold transition-all',
+            'inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-button font-semibold transition-all',
             stepIndex === 0
               ? 'cursor-not-allowed border-slate-100 text-slate-300'
               : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900',
@@ -294,7 +294,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
           {stepIndex === 0 ? 'תחילת הטופס' : STEPS[stepIndex - 1].label}
         </button>
 
-        <span className="text-[11px] font-medium text-slate-400">
+        <span className="text-2xs font-medium text-slate-400">
           {stepIndex + 1} מתוך {STEPS.length}
         </span>
 
@@ -303,7 +303,7 @@ function ApprovalShell({ embedded = false }: { embedded?: boolean }) {
           disabled={stepIndex === STEPS.length - 1}
           onClick={() => setStep(STEPS[stepIndex + 1].id)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all',
+            'inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-button font-semibold transition-all',
             stepIndex === STEPS.length - 1
               ? 'cursor-not-allowed bg-slate-100 text-slate-300'
               : 'bg-slate-900 text-white shadow-lg shadow-slate-200 hover:bg-slate-800',

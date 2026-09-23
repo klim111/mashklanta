@@ -60,16 +60,16 @@ export function RecommendationCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${style.badge}`}>
+            <span className={`rounded-full px-2 py-0.5 text-2xs font-black ${style.badge}`}>
               {toneLabel[recommendation.tone]}
             </span>
             <h4 className={`text-sm font-black leading-snug ${style.title}`}>{recommendation.title}</h4>
           </div>
-          <p className={`mt-1.5 leading-relaxed ${compact ? 'text-[12px]' : 'text-sm'} ${style.text}`}>
+          <p className={`mt-1.5 leading-relaxed ${compact ? 'text-xs' : 'text-sm'} ${style.text}`}>
             {recommendation.body}
           </p>
           {recommendation.bullets && recommendation.bullets.length > 0 && (
-            <ul className={`mt-2 space-y-1 leading-relaxed ${compact ? 'text-[11px]' : 'text-xs'} ${style.text}`}>
+            <ul className={`mt-2 space-y-1 leading-relaxed ${compact ? 'text-2xs' : 'text-xs'} ${style.text}`}>
               {recommendation.bullets.map((bullet) => (
                 <li key={bullet} className="flex gap-1.5">
                   <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-current" />
@@ -156,7 +156,7 @@ function IncomeIncreaseQuestion({
                   />
                 </div>
                 {(profile.futureMonthlyIncreaseInYears ?? 0) <= 0 && (
-                  <p className="mt-2 text-[11px] text-slate-400">
+                  <p className="mt-2 text-2xs text-slate-400">
                     הזינו בעוד כמה שנים צפויה העלייה — לפי זה ייקבע אורך מסלול הגרייס המומלץ.
                   </p>
                 )}

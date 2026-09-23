@@ -141,7 +141,7 @@ export function LoanPlanningImportWizard({
         <p className="text-sm font-medium text-blue-700 bg-blue-50 inline-block px-4 py-1 rounded-full">
           הלוואה {currentIndex + 1} מתוך {loans.length}
         </p>
-        <h2 className="text-2xl font-bold text-gray-900">בוא נשלים את פרטי ההלוואות שלך</h2>
+        <h2 className="text-subtitle font-bold text-gray-900">בוא נשלים את פרטי ההלוואות שלך</h2>
         <p className="text-gray-600 text-sm">
           הזנת במסך ההכרות את ההחזר החודשי — עכשיו מלא את הריבית, התקופה ומתי נלקחה ההלוואה, אחת אחרי השנייה.
         </p>
@@ -156,7 +156,7 @@ export function LoanPlanningImportWizard({
           transition={{ duration: 0.25 }}
         >
           <Card className="p-6 shadow-md border-blue-100" dir="rtl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">{currentLoan.label}</h3>
+            <h3 className="text-subtitle font-semibold text-gray-900 mb-6 text-center">{currentLoan.label}</h3>
 
             <motion.div layout className="space-y-5">
               <motion.div layout className="rounded-lg bg-gray-50 border border-gray-200 p-4">
@@ -289,7 +289,7 @@ export function LoanPlanningImportWizard({
                   animate={{ opacity: 1 }}
                   className="rounded-lg border border-green-100 bg-green-50 py-3 px-4 space-y-2"
                 >
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span className="text-gray-700">סכום הלוואה מקורי</span>
                     <span className="font-semibold text-gray-900">
                       {formatILS(originalPrincipal)}
@@ -297,15 +297,15 @@ export function LoanPlanningImportWizard({
                   </div>
                   {ageMode === 'past' ? (
                     <>
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-info">
                         <span className="text-gray-700">חודשים שעברו</span>
                         <span className="font-semibold text-gray-900">{monthsElapsed}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-info">
                         <span className="text-gray-700">חודשים שנותרו</span>
                         <span className="font-semibold text-gray-900">{remainingMonths}</span>
                       </div>
-                      <div className="flex justify-between text-sm pt-2 border-t border-green-200">
+                      <div className="flex justify-between text-info pt-2 border-t border-green-200">
                         <span className="text-green-800 font-medium">יתרת קרן להיום</span>
                         <span className="font-bold text-green-800">
                           {formatILS(currentBalance)}
@@ -313,7 +313,7 @@ export function LoanPlanningImportWizard({
                       </div>
                     </>
                   ) : (
-                    <div className="flex justify-between text-sm pt-2 border-t border-green-200">
+                    <div className="flex justify-between text-info pt-2 border-t border-green-200">
                       <span className="text-green-800 font-medium">יתרת קרן להיום</span>
                       <span className="font-bold text-green-800">
                         {formatILS(currentBalance)}

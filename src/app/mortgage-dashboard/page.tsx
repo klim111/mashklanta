@@ -93,7 +93,7 @@ export default function MortgageDashboard() {
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
           <div className="flex items-center gap-3 text-red-600 mb-4">
             <AlertCircle className="w-6 h-6" />
-            <h2 className="text-xl font-semibold">שגיאה</h2>
+            <h2 className="text-subtitle font-semibold">שגיאה</h2>
           </div>
           <p className="text-gray-600 mb-6">{error}</p>
           <button
@@ -113,7 +113,7 @@ export default function MortgageDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="bg-white rounded-xl shadow-lg p-12 text-center">
             <Home className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">אין משכנתא פעילה</h2>
+            <h2 className="text-subtitle font-bold text-gray-900 mb-2">אין משכנתא פעילה</h2>
             <p className="text-gray-600 mb-6">
               נראה שעדיין לא הזנת פרטי משכנתא. התחל עכשיו כדי לנהל את המשכנתא שלך בצורה חכמה.
             </p>
@@ -140,7 +140,7 @@ export default function MortgageDashboard() {
                 <span>חזרה</span>
               </Link>
               <div className="h-6 w-px bg-gray-300" />
-              <h1 className="text-xl font-bold text-gray-900">דאשבורד משכנתא</h1>
+              <h1 className="text-title font-bold text-gray-900">דאשבורד משכנתא</h1>
             </div>
 
             <div className="flex items-center gap-2">

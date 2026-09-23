@@ -56,7 +56,7 @@ export function FieldShell({
       <div className="flex items-center justify-between gap-2">
         <label
           htmlFor={htmlFor}
-          className="text-[13px] font-medium text-slate-700 flex items-center gap-1.5"
+          className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
         >
           {label}
           {required && <span className="text-rose-500" aria-hidden>*</span>}
@@ -68,7 +68,7 @@ export function FieldShell({
           {provenance && (
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium',
                 provenance.includes('יועץ')
                   ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100'
                   : provenance.includes('פרופיל')
@@ -91,16 +91,16 @@ export function FieldShell({
       {children}
 
       {error ? (
-        <p className="text-[11px] text-rose-600 flex items-center gap-1">
+        <p className="text-2xs text-rose-600 flex items-center gap-1">
           <AlertCircle className="h-3 w-3 shrink-0" />
           {error}
         </p>
       ) : help ? (
-        <p className="text-[11px] text-slate-400">{help}</p>
+        <p className="text-2xs text-slate-400">{help}</p>
       ) : null}
 
       {readOnly && readOnlyReason && (
-        <p className="text-[11px] text-amber-600 flex items-center gap-1">
+        <p className="text-2xs text-amber-600 flex items-center gap-1">
           <Lock className="h-3 w-3 shrink-0" />
           {readOnlyReason}
         </p>

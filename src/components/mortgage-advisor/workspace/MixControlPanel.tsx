@@ -97,14 +97,14 @@ export function MixControlPanel({
   return (
     <div className="space-y-2 p-2">
       {locked && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-bold text-amber-900">
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
           <Lock className="h-4 w-4 shrink-0" />
           התמהיל ננעל כתמהיל הסופי למכרז מול הבנקים ואינו ניתן לשינוי.
         </div>
       )}
 
       {!fixedShareOk && (
-        <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900">
+        <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-2xs leading-relaxed text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <span>
             דרישת בנק ישראל: לפחות {MIN_FIXED_PERCENT}% מהמשכנתא בריבית קבועה —{' '}
@@ -115,11 +115,11 @@ export function MixControlPanel({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+        <p className="flex items-center gap-1.5 text-2xs font-bold text-slate-500">
           <Layers className="h-3.5 w-3.5" />
           {mix.tracks.length} מסלולים · {formatShekel(allocated)} מתוך {formatShekel(mix.totalAmount)}
         </p>
-        <p className="text-[10px] text-slate-500">
+        <p className="text-2xs text-slate-500">
           לחיצה על שורת מסלול מציגה אותו באזור הגרפים
         </p>
       </div>
@@ -155,11 +155,11 @@ export function MixControlPanel({
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
               <Plus className="h-4 w-4" />
             </span>
-            <p className="min-w-[150px] flex-1 text-[11px] leading-tight text-amber-900">
+            <p className="min-w-[150px] flex-1 text-2xs leading-tight text-amber-900">
               <span className="font-bold">הוספת מסלול</span> · {formatShekel(remaining)} טרם שובצו
             </p>
             <Select value={newType} onValueChange={(value) => setNewType(value as TrackType)}>
-              <SelectTrigger dir="rtl" className="h-7 w-[150px] bg-white text-[11px]">
+              <SelectTrigger dir="rtl" className="h-7 w-[150px] bg-white text-2xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl" className="text-right">
@@ -170,7 +170,7 @@ export function MixControlPanel({
                 ))}
               </SelectContent>
             </Select>
-            <Button size="sm" className="h-7 text-[11px]" onClick={() => onAddTrack(newType)}>
+            <Button size="sm" className="h-7 text-2xs" onClick={() => onAddTrack(newType)}>
               <Plus className="h-3.5 w-3.5 ml-1" />
               הוסף על {formatShekel(remaining)}
             </Button>
@@ -281,10 +281,10 @@ function TrackControlCard({
               style={{ backgroundColor: trackColor(track.type) }}
             />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[12px] font-bold leading-tight text-slate-900">
+              <span className="block truncate text-xs font-bold leading-tight text-slate-900">
                 {TRACK_TYPES[track.type]}
               </span>
-              <span className="block truncate text-[10px] leading-tight text-slate-500">
+              <span className="block truncate text-2xs leading-tight text-slate-500">
                 {formatShekel(track.amount)} · {track.percentage.toFixed(1)}% ·{' '}
                 {formatPercentage(effectiveRate)}
                 {rateShifted && <span className="text-amber-600"> (בתרחיש)</span>} ·{' '}
@@ -299,7 +299,7 @@ function TrackControlCard({
               <BarChart3 className="h-3.5 w-3.5" />
             </span>
           </button>
-          <div className="flex flex-wrap items-center gap-1 px-1 text-[10px] leading-none text-slate-600">
+          <div className="flex flex-wrap items-center gap-1 px-1 text-2xs leading-none text-slate-600">
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5">
               ממוצעת <b className="text-slate-900">{formatPercentage(result.averageRate)}</b>
               <InfoTip text={RATE_EXPLANATIONS.trackAverage} label="הסבר על הריבית הממוצעת" align="start" />
@@ -318,7 +318,7 @@ function TrackControlCard({
                 patchWithName({ amortizationType: value as MortgageTrack['amortizationType'] })
               }
             >
-              <SelectTrigger dir="rtl" className="h-7 text-[11px] [&>span:first-of-type]:text-right">
+              <SelectTrigger dir="rtl" className="h-7 text-2xs [&>span:first-of-type]:text-right">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl" className="text-right">
@@ -336,7 +336,7 @@ function TrackControlCard({
               value={track.type}
               onValueChange={(value) => patchWithName({ type: value as MortgageTrack['type'] })}
             >
-              <SelectTrigger dir="rtl" className="h-7 text-[11px] [&>span:first-of-type]:text-right">
+              <SelectTrigger dir="rtl" className="h-7 text-2xs [&>span:first-of-type]:text-right">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl" className="text-right">
@@ -355,7 +355,7 @@ function TrackControlCard({
                 value={String(track.variablePeriod ?? 5)}
                 onValueChange={(value) => patchWithName({ variablePeriod: Number(value) })}
               >
-                <SelectTrigger dir="rtl" className="h-7 text-[11px] [&>span:first-of-type]:text-right">
+                <SelectTrigger dir="rtl" className="h-7 text-2xs [&>span:first-of-type]:text-right">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent dir="rtl" className="text-right">
@@ -462,12 +462,12 @@ function TrackControlCard({
         {(notice || (isFixed && missingFixed > 0)) && (
           <div className="space-y-0.5 border-t border-slate-100 px-2 py-1">
             {isFixed && missingFixed > 0 && (
-              <p className="text-[10px] text-amber-700">
+              <p className="text-2xs text-amber-700">
                 חסרים {formatShekel(missingFixed)} בריבית קבועה לדרישת בנק ישראל
               </p>
             )}
             {notice && (
-              <p className="flex items-start gap-1 text-[10px] text-red-700">
+              <p className="flex items-start gap-1 text-2xs text-red-700">
                 <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                 {notice}
               </p>
@@ -493,7 +493,7 @@ function RowField({
   return (
     <label className={`${className} min-w-0 shrink-0`}>
       {label && (
-        <span className="mb-0.5 block truncate text-[9px] font-medium leading-none text-slate-500">
+        <span className="mb-0.5 block truncate text-2xs font-medium leading-none text-slate-500">
           {label}
         </span>
       )}
@@ -546,10 +546,10 @@ function TrackRowMenu({
       </PopoverTrigger>
       <PopoverContent dir="rtl" align="end" className="w-64 space-y-2 p-2.5">
         <div className="space-y-1">
-          <span className="text-[10px] font-medium text-slate-500">שם המסלול</span>
+          <span className="text-2xs font-medium text-slate-500">שם המסלול</span>
           <Input
             disabled={locked}
-            className="h-8 text-[11px]"
+            className="h-8 text-2xs"
             value={track.name}
             onChange={(event) => onUpdate({ name: event.target.value })}
             placeholder={autoTrackName(track)}
@@ -558,19 +558,19 @@ function TrackRowMenu({
 
         {isForeign && (
           <div className="space-y-1">
-            <span className="text-[10px] font-medium text-slate-500">
+            <span className="text-2xs font-medium text-slate-500">
               שער {track.type === 'dollar' ? 'דולר' : 'יורו'}
             </span>
             <NumericInput
               disabled={locked}
-              className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-[11px] shadow-sm"
+              className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-2xs shadow-sm"
               value={track.exchangeRate ?? null}
               onChange={(exchangeRate) => onUpdate({ exchangeRate: exchangeRate ?? 0 })}
             />
           </div>
         )}
 
-        <p className="text-[10px] leading-snug text-slate-400">
+        <p className="text-2xs leading-snug text-slate-400">
           {formatDuration(months)} · עד {formatShekel(maxAmount)} לשיבוץ במסלול הזה
         </p>
 
@@ -613,11 +613,11 @@ function InlineNumberBox({
       <NumericInput
         integer
         max={max}
-        className="min-w-0 flex-1 bg-transparent text-center text-[12px] font-bold text-slate-700 outline-none"
+        className="min-w-0 flex-1 bg-transparent text-center text-xs font-bold text-slate-700 outline-none"
         value={value}
         onChange={onChange}
       />
-      <span className="shrink-0 text-[10px] text-slate-400">{suffix}</span>
+      <span className="shrink-0 text-2xs text-slate-400">{suffix}</span>
     </span>
   );
 }
@@ -638,7 +638,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-2xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
     >
       <Icon className="h-3 w-3" />
       {label}

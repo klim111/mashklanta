@@ -46,7 +46,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
       >
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-3xl font-bold mb-2">המשכנתא שלך</h2>
+            <h2 className="text-title font-bold mb-2">המשכנתא שלך</h2>
             <p className="text-purple-100 flex items-center gap-2">
               <Home className="w-4 h-4" />
               {mortgage.propertyAddress}
@@ -62,7 +62,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
 
         {/* Progress Bar */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm mb-2">
+          <div className="flex justify-between text-info mb-2">
             <span>התקדמות כללית</span>
             <span>{progressPercentage}%</span>
           </div>
@@ -74,7 +74,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
               className="bg-white rounded-full h-3"
             />
           </div>
-          <div className="flex justify-between text-sm mt-2 text-purple-100">
+          <div className="flex justify-between text-info mt-2 text-purple-100">
             <span>{monthsPassed} חודשים עברו</span>
             <span>{totalMonths - monthsPassed} חודשים נותרו</span>
           </div>
@@ -110,13 +110,13 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
           className="bg-white rounded-xl shadow-lg p-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">התפלגות תשלומים</h3>
+            <h3 className="text-subtitle font-semibold text-gray-900">התפלגות תשלומים</h3>
             <PieChart className="w-5 h-5 text-gray-400" />
           </div>
           
           <div className="space-y-4">
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-info mb-1">
                 <span className="text-gray-600">קרן ששולמה</span>
                 <span className="font-semibold">₪{mortgage.totalPaidPrincipal.toLocaleString()}</span>
               </div>
@@ -129,7 +129,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
             </div>
             
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-info mb-1">
                 <span className="text-gray-600">ריבית ששולמה</span>
                 <span className="font-semibold">₪{mortgage.totalPaidInterest.toLocaleString()}</span>
               </div>
@@ -159,13 +159,13 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
           className="bg-white rounded-xl shadow-lg p-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">יתרות לתשלום</h3>
+            <h3 className="text-subtitle font-semibold text-gray-900">יתרות לתשלום</h3>
             <DollarSign className="w-5 h-5 text-gray-400" />
           </div>
           
           <div className="space-y-4">
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-info mb-1">
                 <span className="text-gray-600">קרן נותרת</span>
                 <span className="font-semibold">₪{mortgage.totalRemainingPrincipal.toLocaleString()}</span>
               </div>
@@ -178,7 +178,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
             </div>
             
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-info mb-1">
                 <span className="text-gray-600">ריבית עתידית</span>
                 <span className="font-semibold">₪{mortgage.totalRemainingInterest.toLocaleString()}</span>
               </div>
@@ -210,7 +210,7 @@ export default function MortgageOverview({ mortgage, onTrackSelect }: MortgageOv
         className="bg-white rounded-xl shadow-lg p-6"
       >
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">מסלולי המשכנתא</h3>
+          <h3 className="text-subtitle font-semibold text-gray-900">מסלולי המשכנתא</h3>
           <div className="flex gap-4 text-sm">
             <span className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full" />

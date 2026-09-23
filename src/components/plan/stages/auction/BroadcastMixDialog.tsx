@@ -166,7 +166,7 @@ export function BroadcastMixDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
             >
               <Check className="h-4 w-4" />
               סיום
@@ -176,7 +176,7 @@ export function BroadcastMixDialog({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50"
+                className="rounded-2xl border-2 border-slate-200 px-5 py-2.5 text-button font-black text-slate-600 transition-colors hover:bg-slate-50"
               >
                 חזרה לעריכה
               </button>

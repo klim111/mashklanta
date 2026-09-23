@@ -188,7 +188,7 @@ export function SigningStage({
                   <button
                     type="button"
                     onClick={() => go('verify')}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
                   >
                     להשוואת ההצעה הסופית
                     <ArrowLeft className="h-4 w-4" />
@@ -416,7 +416,7 @@ function ScreenRail({
             }`}
           >
             <span
-              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-2xs ${
                 active ? 'bg-white/20' : 'bg-slate-200 text-slate-600'
               }`}
             >

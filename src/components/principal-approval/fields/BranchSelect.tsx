@@ -82,7 +82,7 @@ export function BranchSelect({ id, bankCode, value, onChange, readOnly, error }:
           readOnly={readOnly}
           onChange={(e) => onChange(digitsOnly(e.target.value, 4) || null)}
         />
-        <p className="flex items-center gap-1 text-[11px] text-amber-600">
+        <p className="flex items-center gap-1 text-2xs text-amber-600">
           <Info className="h-3 w-3 shrink-0" />
           רשימת הסניפים של בנק זה טרם יובאה — יש להזין את מספר הסניף ידנית (npm run sync:bank-branches)
         </p>

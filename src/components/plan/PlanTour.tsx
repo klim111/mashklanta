@@ -134,7 +134,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
                       <div className="text-xs font-black text-slate-400">
                         שלב {index + 1} מתוך {PLAN_STAGES.length} · {journey.duration}
                       </div>
-                      <h2 className="text-2xl font-black leading-tight text-slate-900 md:text-3xl">
+                      <h2 className="text-title font-black leading-tight text-slate-900">
                         {journey.title}
                       </h2>
                       <p className="mt-1 text-sm font-semibold text-slate-500">{journey.tagline}</p>
@@ -164,7 +164,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
                           return (
                             <span
                               key={tool.id}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 ring-1 ring-slate-200"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-2xs font-bold text-slate-700 ring-1 ring-slate-200"
                             >
                               <ToolIcon className="h-3 w-3 text-violet-600" />
                               {tool.title}
@@ -202,7 +202,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
                     <button
                       type="button"
                       onClick={onTry}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
                     >
                       <MousePointerClick className="h-4 w-4" />
                       {canTry ? 'נסו את השלב' : 'הציצו במסך לדוגמה'}
@@ -227,11 +227,11 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
           <div className="absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-violet-600/30 blur-3xl" />
         </div>
         <div className="relative">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/80">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-2xs font-black text-white/80">
             <Sparkles className="h-3.5 w-3.5" />
             סיימתם את הסיור
           </span>
-          <h2 className="mt-3 text-2xl font-black leading-tight md:text-3xl">
+          <h2 className="mt-3 text-title font-black leading-tight">
             גישה לכל השלבים והכלים לבניית המשכנתא שלכם באמצעות פלטפורמת משכלתנא
           </h2>
           <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -246,7 +246,7 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="p-6 md:p-8">
-        <p className="mb-3 text-[11px] font-black text-slate-400">כך עובד התמחור</p>
+        <p className="mb-3 text-2xs font-black text-slate-400">כך עובד התמחור</p>
         <PricingModelStrip compact className="!grid-cols-1 sm:!grid-cols-2" />
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
@@ -264,7 +264,7 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
           </div>
           <Link
             href="/dashboard/checkout?next=plan"
-            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
           >
             קבל גישה
             <ArrowLeft className="h-4 w-4" />

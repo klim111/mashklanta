@@ -112,10 +112,10 @@ export function StateBlocksRow({
       }`}
     >
       <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
-        <p className={`text-[13px] font-bold ${current ? 'text-slate-900' : 'text-emerald-900'}`}>
+        <p className={`text-sm font-bold ${current ? 'text-slate-900' : 'text-emerald-900'}`}>
           {title}
         </p>
-        {caption && <p className="text-[11px] text-slate-500">{caption}</p>}
+        {caption && <p className="text-2xs text-slate-500">{caption}</p>}
       </div>
 
       <div className="grid grid-cols-2 items-stretch gap-2 lg:grid-cols-5">
@@ -212,13 +212,13 @@ function StateBlock({
     <div
       className={`flex flex-col items-center justify-center rounded-xl ${gradient} px-2.5 py-1.5 text-center text-white shadow-md`}
     >
-      <p className="flex items-center justify-center gap-1.5 text-[10px] leading-none text-slate-300">
+      <p className="flex items-center justify-center gap-1.5 text-2xs leading-none text-slate-300">
         <Icon className="h-3 w-3" />
         {label}
       </p>
       <p className="mt-0.5 text-base font-bold leading-tight">{value}</p>
       {hasDelta && (
-        <p className={`text-[10px] font-bold leading-tight ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
+        <p className={`text-2xs font-bold leading-tight ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
           {improved ? 'חסכתם' : 'תוספת של'} {amount}
         </p>
       )}
@@ -229,7 +229,7 @@ function StateBlock({
 /** אין שינוי — שורה אחת שמסבירה איך רואים את המצב שאחרי */
 export function NoChangeNotice({ text }: { text: string }) {
   return (
-    <p className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-[12px] text-slate-600">
+    <p className="flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-xs text-slate-600">
       <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" />
       {text}
     </p>
@@ -245,7 +245,7 @@ export function UnallocatedWarning({
   totalAmount: number;
 }) {
   return (
-    <p className="flex items-start gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-900">
+    <p className="flex items-start gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
       <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
       המסלולים מסתכמים ב-{formatCurrency(totalAmount - unallocated)} מתוך{' '}
       {formatCurrency(totalAmount)}. התוצאה שלמטה חלקית — שבצו את{' '}
@@ -308,16 +308,16 @@ export function TrackCompositionStrip({
               className="block h-2.5 w-full rounded-full"
               style={{ backgroundColor: trackColor(track.type) }}
             />
-            <span className="mt-1 block text-[13px] font-bold leading-tight text-slate-900">
+            <span className="mt-1 block text-sm font-bold leading-tight text-slate-900">
               {TRACK_TYPES[track.type]}
             </span>
-            <span className="block text-[12px] leading-tight text-slate-600">
+            <span className="block text-xs leading-tight text-slate-600">
               {formatCurrency(track.amount)} · {formatPercentage(track.interestRate)} ·{' '}
               {formatDuration(months)}
             </span>
             {clickable && (
               <span
-                className={`mt-0.5 flex items-center gap-0.5 text-[10px] font-bold ${
+                className={`mt-0.5 flex items-center gap-0.5 text-2xs font-bold ${
                   active ? 'text-violet-700' : 'text-slate-400 group-hover:text-slate-600'
                 }`}
               >

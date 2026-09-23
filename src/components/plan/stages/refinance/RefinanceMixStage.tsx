@@ -109,7 +109,7 @@ export function RefinanceMixStage({
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-black text-slate-700 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:bg-slate-50"
           >
             <ArrowRight className="h-4 w-4" />
             חזרה לתמהיל שאושר
@@ -184,7 +184,7 @@ export function RefinanceMixStage({
           <button
             type="button"
             onClick={openEditor}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-300 bg-white px-5 py-2.5 text-sm font-black text-slate-800 transition-colors hover:border-slate-900"
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-300 bg-white px-5 py-2.5 text-button font-black text-slate-800 transition-colors hover:border-slate-900"
           >
             <Pencil className="h-4 w-4" />
             פתח תמהיל נבחר לעריכה
@@ -192,7 +192,7 @@ export function RefinanceMixStage({
           <button
             type="button"
             onClick={() => setQuoteOpen(true)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-slate-700"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
           >
             <Gavel className="h-4 w-4" />
             הכנת בקשה להצעת מחיר לבנק

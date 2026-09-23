@@ -82,7 +82,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
               <Users className="w-8 h-8 text-white" />
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <h2 className="text-subtitle font-bold text-gray-900 mb-4">
               הצטרף לנבחרת היועצים
             </h2>
             
@@ -143,7 +143,7 @@ export default function AdvisorLoginModal({ onClose }: AdvisorLoginModalProps) {
             <UserCheck className="w-8 h-8 text-white" />
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="text-subtitle font-bold text-gray-900 mb-4">
             התחברות ליועצי משכנתאות
           </h2>
           

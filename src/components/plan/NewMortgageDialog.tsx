@@ -40,7 +40,7 @@ export function NewMortgageDialog({
               מתכננים משכנתא חדשה
             </span>
           </DialogTitle>
-          <DialogDescription className="text-center text-[15px]">
+          <DialogDescription className="text-center text-info">
             נתחיל מהמקום שבו אתם נמצאים — בחרו את המצב שמתאים לכם.
           </DialogDescription>
         </DialogHeader>

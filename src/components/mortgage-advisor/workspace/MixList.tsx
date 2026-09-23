@@ -211,7 +211,7 @@ export function MixList({
           </div>
         </div>
         {othersOpen && (
-          <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-500 sm:justify-start sm:text-right">
+          <p className="flex items-center justify-center gap-1.5 text-center text-2xs text-slate-500 sm:justify-start sm:text-right">
             <GitCompareArrows className="h-3.5 w-3.5" />
             לחיצה על תיבת תמהיל פותחת אותה באזור העבודה וסוגרת את הרשימה. סימון בעיגול שבצד ימין
             מוסיף את התמהיל להשוואה ומשאיר את הרשימה פתוחה.
@@ -220,7 +220,7 @@ export function MixList({
         {saveFeedback && (
           <p
             role="status"
-            className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-center text-[11px] font-semibold text-emerald-800 sm:justify-start sm:text-right"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-center text-2xs font-semibold text-emerald-800 sm:justify-start sm:text-right"
           >
             <BookmarkCheck className="h-3.5 w-3.5 shrink-0" />
             {saveFeedback.message}
@@ -228,11 +228,11 @@ export function MixList({
           </p>
         )}
         {othersOpen && others.length === 0 && (
-          <p className="text-center text-[11px] text-slate-500 sm:text-right">
+          <p className="text-center text-2xs text-slate-500 sm:text-right">
             התמהיל שבעבודה הוא היחיד השמור לנכס. צרו תמהיל נוסף כדי לטעון ולהשוות ביניהם.
           </p>
         )}
-        {nameNotice && <p className="text-[11px] font-semibold text-red-700">{nameNotice}</p>}
+        {nameNotice && <p className="text-2xs font-semibold text-red-700">{nameNotice}</p>}
       </CardHeader>
 
       <CardContent>
@@ -271,7 +271,7 @@ export function MixList({
                 {buildLabel || 'אזור העבודה'}
               </span>
               {comparedItems.length > 0 && (
-                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-2xs font-black text-white">
                   {comparedItems.length + 1} תמהילים בהשוואה
                 </span>
               )}
@@ -418,7 +418,7 @@ export function MixSliderSection({
         </span>
         <div>
           <p className="text-xs font-black text-slate-900">תמהילים להשוואה</p>
-          <p className="flex flex-wrap items-center justify-center gap-x-2 text-[10px] text-slate-600 sm:justify-start">
+          <p className="flex flex-wrap items-center justify-center gap-x-2 text-2xs text-slate-600 sm:justify-start">
             {groups.map((group) => (
               <span key={group.author} className="flex items-center gap-1">
                 <span className={`h-2 w-2 rounded-full ${AUTHOR_STYLES[group.author].dot}`} />
@@ -439,7 +439,7 @@ export function MixSliderSection({
         {groups.map((group) => (
           <div key={group.author} className="space-y-1.5">
             {groups.length > 1 && (
-              <p className="flex items-center gap-1.5 text-[11px] font-black text-slate-700">
+              <p className="flex items-center gap-1.5 text-2xs font-black text-slate-700">
                 <span className={`h-2 w-2 rounded-full ${AUTHOR_STYLES[group.author].dot}`} />
                 תמהילים ש{group.author === 'client' ? 'הלקוח בנה' : 'היועץ בנה'}
               </p>

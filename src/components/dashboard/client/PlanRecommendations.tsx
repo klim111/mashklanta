@@ -46,7 +46,7 @@ export function PlanRecommendations({
 
   return (
     <div className="mt-4 border-t border-slate-100 pt-4">
-      <p className="mb-3 text-center text-[13px] font-black text-slate-500">
+      <p className="mb-3 text-center text-sm font-black text-slate-500">
         הערות והמלצות למשכנתא שלכם
       </p>
       <div className="space-y-2">
@@ -79,21 +79,21 @@ export function PlanRecommendations({
               </span>
               <span className="min-w-0 flex-1">
                 <span
-                  className={`block text-[15px] font-black leading-snug ${
+                  className={`block text-info font-black leading-snug ${
                     done ? 'text-emerald-800 line-through' : 'text-slate-900'
                   }`}
                 >
                   {recommendation.title}
                 </span>
                 <span
-                  className={`mt-0.5 block text-[13px] font-medium leading-relaxed ${
+                  className={`mt-0.5 block text-sm font-medium leading-relaxed ${
                     done ? 'text-emerald-700/70 line-through' : 'text-slate-600'
                   }`}
                 >
                   {recommendation.hint}
                 </span>
                 {multiplePlans && (
-                  <span className="mt-1 block text-[11px] font-bold text-slate-400">
+                  <span className="mt-1 block text-2xs font-bold text-slate-400">
                     {plan.propertyAddress?.trim() || plan.name}
                   </span>
                 )}
@@ -101,7 +101,7 @@ export function PlanRecommendations({
               <button
                 type="button"
                 onClick={() => onDone(key, !done)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-black transition-colors ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-black transition-colors ${
                   done
                     ? 'border-2 border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50'
                     : 'bg-slate-900 text-white hover:bg-slate-700'

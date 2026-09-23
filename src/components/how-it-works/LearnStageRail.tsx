@@ -76,7 +76,7 @@ export function LearnStageRail({
 
                 <span
                   className={cn(
-                    'mt-2.5 rounded-full px-2 py-0.5 text-[11px] font-black',
+                    'mt-2.5 rounded-full px-2 py-0.5 text-2xs font-black',
                     isCurrent ? 'bg-white text-slate-900' : 'bg-white/20 text-white'
                   )}
                 >

@@ -123,10 +123,10 @@ function CheckoutBody() {
             <ChevronRight className="h-3.5 w-3.5" />
             האזור האישי
           </Link>
-          <h1 className="mt-3 text-3xl font-black text-white md:text-4xl">
+          <h1 className="mt-3 text-title font-black text-white">
             {renewPlanId ? 'חידוש הגישה לתהליך' : 'מסלול עצמאי / היברידי'}
           </h1>
-          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-white/70">
+          <p className="mt-2 max-w-2xl text-info leading-relaxed text-white/70">
             {renewPlanId
               ? `₪${PLATFORM_PROCESS_PRICE} לעוד ${PLATFORM_ACCESS_DAYS} יום. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
               : `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עם ${PLATFORM_ACCESS_DAYS} יום גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
@@ -144,17 +144,17 @@ function CheckoutBody() {
             <span className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
               <CheckCircle2 className="h-10 w-10 text-emerald-600" />
             </span>
-            <h2 className="text-2xl font-black text-slate-900">
+            <h2 className="text-subtitle font-black text-slate-900">
               {renewPlanId ? 'הגישה חודשה' : 'הגישה שלכם פעילה'}
             </h2>
-            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
+            <p className="mt-2 text-info leading-relaxed text-slate-500">
               התשלום בכרטיס שמסתיים ב-{done.last4} התקבל. כל השלבים וכל הכלים פתוחים בפניכם ללא
               הגבלה ל-{PLATFORM_ACCESS_DAYS} הימים הקרובים.
             </p>
             <button
               type="button"
               onClick={() => router.push(next)}
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
             >
               {renewPlanId ? 'חזרה לתהליך' : params.get('next') === 'plan' ? 'התחילו את התהליך' : 'לאזור האישי'}
               <ArrowLeft className="h-4 w-4" />
@@ -168,7 +168,7 @@ function CheckoutBody() {
               autoComplete="on"
             >
               <div className="border-b border-slate-100 px-6 py-4">
-                <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
+                <h2 className="flex items-center gap-2 text-subtitle font-black text-slate-900">
                   <CreditCard className="h-4 w-4 text-blue-600" />
                   פרטי הלקוח והתשלום
                 </h2>
@@ -276,12 +276,12 @@ function CheckoutBody() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-6 py-3.5 text-base font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-6 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
                 >
                   {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lock className="h-5 w-5" />}
                   שלמו ₪{PLATFORM_PROCESS_PRICE} ופתחו את הגישה
                 </button>
-                <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+                <p className="flex items-center justify-center gap-1.5 text-2xs text-slate-400">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   פרטי הכרטיס אינם נשמרים במערכת — רק ארבע הספרות האחרונות, לקבלה.
                 </p>
@@ -307,7 +307,7 @@ function CheckoutBody() {
                   {PLAN_JOURNEY_STAGES.map((stage, index) => (
                     <li key={stage.id} className="flex items-center gap-2.5 text-sm text-slate-700">
                       <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${stage.gradient} text-[11px] font-black text-white`}
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${stage.gradient} text-2xs font-black text-white`}
                       >
                         {index + 1}
                       </span>
@@ -324,7 +324,7 @@ function CheckoutBody() {
               {!renewPlanId && (
                 <Link
                   href="/dashboard/tour"
-                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700"
+                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-button font-bold text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700"
                 >
                   רוצים להציץ קודם? סיור בכלי, בלי תשלום
                   <ArrowLeft className="h-4 w-4" />
@@ -332,7 +332,7 @@ function CheckoutBody() {
               )}
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="mb-3 text-[11px] font-black text-slate-400">כך עובד התמחור</p>
+                <p className="mb-3 text-2xs font-black text-slate-400">כך עובד התמחור</p>
                 <PricingModelStrip compact className="!grid-cols-1" />
               </div>
             </aside>
@@ -344,7 +344,7 @@ function CheckoutBody() {
 }
 
 function FieldError({ text }: { text: string }) {
-  return <span className="mt-1 block text-[11px] font-bold text-rose-600">{text}</span>;
+  return <span className="mt-1 block text-2xs font-bold text-rose-600">{text}</span>;
 }
 
 export default function CheckoutPage() {

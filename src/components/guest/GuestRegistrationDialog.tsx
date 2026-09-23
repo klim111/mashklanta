@@ -162,13 +162,13 @@ export function GuestRegistrationDialog({
                 <DialogTitle className="text-lg font-black leading-snug text-slate-900">
                   {title}
                 </DialogTitle>
-                <DialogDescription className="mt-1 text-[13px] leading-relaxed text-slate-500">
+                <DialogDescription className="mt-1 text-sm leading-relaxed text-slate-500">
                   {description}
                 </DialogDescription>
               </div>
             </div>
 
-            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-[12px] font-bold text-blue-900">
+            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-xs font-bold text-blue-900">
               <LayoutDashboard className="h-4 w-4 shrink-0" />
               מיד לאחר ההרשמה נפתח הדאשבורד של האזור האישי, עם חמשת שלבי התהליך
             </div>
@@ -232,7 +232,7 @@ export function GuestRegistrationDialog({
             <button
               type="submit"
               disabled={busy}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-sm font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
               הרשמה והמשך לאזור האישי
@@ -240,13 +240,13 @@ export function GuestRegistrationDialog({
 
             <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-bold text-slate-400">או</span>
+              <span className="text-2xs font-bold text-slate-400">או</span>
               <span className="h-px flex-1 bg-slate-200" />
             </div>
 
             <GoogleAuthButton label="הרשמה עם Google" callbackUrl={redirectTo} />
 
-            <p className="mt-4 text-center text-[12px] text-slate-500">
+            <p className="mt-4 text-center text-xs text-slate-500">
               כבר יש לכם חשבון?{' '}
               <Link
                 href={`/auth/login?callbackUrl=${encodeURIComponent(redirectTo)}`}

@@ -42,7 +42,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
     >
 
       <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">מי לוקח את המשכנתא?</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-6">מי לוקח את המשכנתא?</h2>
         <p className="text-lg text-gray-600">בחרו את סוג הבקשה כדי שנתאים את החישוב והמסכים</p>
       </div>
 
@@ -77,7 +77,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
                   </motion.div>
 
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
 
                     משכנתא ליחיד
 
@@ -130,7 +130,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
                   <div className="flex items-center justify-center gap-2 mb-4">
 
-                    <h3 className="text-2xl font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                    <h3 className="text-subtitle font-bold text-gray-900 group-hover:text-green-600 transition-colors">
 
                       אנחנו זוג שלוקח משכנתא
 

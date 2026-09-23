@@ -240,7 +240,7 @@ export default function MortgageInfographic({
   return (
     <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-6 mb-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <h3 className="text-subtitle font-bold text-gray-900 flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-purple-600" />
           תמונת מצב כללית
         </h3>
@@ -411,7 +411,7 @@ export default function MortgageInfographic({
           </h4>
           <div className="space-y-3">
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-info mb-1">
                 <span className="text-gray-600">קרן</span>
                 <span className="font-semibold">₪{paidPrincipal.toLocaleString()}</span>
               </div>
@@ -428,7 +428,7 @@ export default function MortgageInfographic({
               </p>
             </div>
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-info mb-1">
                 <span className="text-gray-600">ריבית</span>
                 <span className="font-semibold">₪{paidInterest.toLocaleString()}</span>
               </div>

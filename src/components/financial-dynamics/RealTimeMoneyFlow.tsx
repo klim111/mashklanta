@@ -238,7 +238,7 @@ const ModernProgressBar: React.FC<{
 
           {/* Label and Value */}
           <div>
-            <h3 className="font-bold text-gray-800 text-lg">{label}</h3>
+            <h3 className="font-bold text-gray-800 text-subtitle">{label}</h3>
             {sublabel && (
               <p className="text-xs text-gray-500">{sublabel}</p>
             )}

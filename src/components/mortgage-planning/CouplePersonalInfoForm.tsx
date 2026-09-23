@@ -67,7 +67,7 @@ export function CouplePersonalInfoForm({
       className="max-w-5xl mx-auto"
     >
       <div className="text-center mb-10">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">בוא נכיר — זוג</h2>
+        <h2 className="text-title font-bold text-gray-900 mb-4">בוא נכיר — זוג</h2>
         <p className="text-lg text-gray-600 mb-4">
           {subtitle ?? 'הזינו את נתוני שני הלווים לחישוב משוקלל של יכולת ההחזר'}
         </p>
@@ -139,7 +139,7 @@ export function CouplePersonalInfoForm({
         {(userData.borrower1.monthlyIncome || userData.borrower2.monthlyIncome) && (
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="p-5">
-              <h3 className="text-lg font-bold text-blue-900 mb-3 text-center">סיכום נתונים מצרפיים</h3>
+              <h3 className="text-subtitle font-bold text-blue-900 mb-3 text-center">סיכום נתונים מצרפיים</h3>
               <motion.div layout className="grid sm:grid-cols-2 gap-3 text-sm text-blue-900">
                 <p>
                   <span className="font-semibold">סה״כ הכנסה חודשית:</span>{' '}

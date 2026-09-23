@@ -228,7 +228,7 @@ export function SelfPreApproval({
         description={copy.banksDescription}
       >
         {error && (
-          <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-[13px] font-bold text-rose-700">
+          <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm font-bold text-rose-700">
             {error}
           </p>
         )}
@@ -288,8 +288,8 @@ function BankCard({
       <header className="flex items-center gap-3">
         <BankMark info={info} />
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-black leading-tight text-slate-900">{info.bank}</p>
-          <p className="truncate text-[12px] font-bold text-slate-500">{info.fullName}</p>
+          <p className="text-info font-black leading-tight text-slate-900">{info.bank}</p>
+          <p className="truncate text-xs font-bold text-slate-500">{info.fullName}</p>
         </div>
         {approved ? (
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
@@ -298,7 +298,7 @@ function BankCard({
         )}
       </header>
 
-      <p className={`mt-2 text-[13px] font-bold ${approved ? 'text-emerald-700' : 'text-slate-500'}`}>
+      <p className={`mt-2 text-sm font-bold ${approved ? 'text-emerald-700' : 'text-slate-500'}`}>
         {approved
           ? `אישור עקרוני התקבל${uploaded ? ` · ${uploaded.fileName}` : ''}`
           : approval?.submittedAt
@@ -312,7 +312,7 @@ function BankCard({
           target="_blank"
           rel="noopener noreferrer"
           onClick={onMarkSubmitted}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-black text-white transition-opacity hover:opacity-90"
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
           style={{ backgroundColor: info.color }}
         >
           <ExternalLink className="h-3.5 w-3.5" />
@@ -334,7 +334,7 @@ function BankCard({
           type="button"
           disabled={busy}
           onClick={() => input.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
         >
           {busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -351,7 +351,7 @@ function BankCard({
             <button
               type="button"
               onClick={() => onView(uploaded)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[13px] font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-slate-700"
             >
               <Eye className="h-3.5 w-3.5" />
               צפייה

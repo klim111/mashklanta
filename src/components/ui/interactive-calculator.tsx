@@ -608,7 +608,7 @@ export default function InteractiveCalculator() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl font-bold mb-4">מחשבון משכנתא אינטראקטיבי</h2>
+          <h2 className="text-title font-bold mb-4">מחשבון משכנתא אינטראקטיבי</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             בחר את סוג המשכנתא שלך וקבל חישוב מדויק
           </p>
@@ -627,7 +627,7 @@ export default function InteractiveCalculator() {
                 <CardContent className="p-8">
                   <div className="text-center">
                     <Home className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-                    <h3 className="text-2xl font-bold mb-2">לקיחת משכנתא</h3>
+                    <h3 className="text-subtitle font-bold mb-2">לקיחת משכנתא</h3>
                     <p className="text-gray-600 mb-4">
                       חישוב משכנתא חדשה לרכישת דירה
                     </p>
@@ -642,7 +642,7 @@ export default function InteractiveCalculator() {
                 <CardContent className="p-8">
                   <div className="text-center">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4 text-green-600" />
-                    <h3 className="text-2xl font-bold mb-2">מחזר משכנתא</h3>
+                    <h3 className="text-subtitle font-bold mb-2">מחזר משכנתא</h3>
                     <p className="text-gray-600 mb-4">
                       חישוב מחזור משכנתא קיימת
                     </p>
@@ -665,7 +665,7 @@ export default function InteractiveCalculator() {
             className="mb-8"
           >
             <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold mb-4">בחר סוג דירה</h3>
+              <h3 className="text-subtitle font-bold mb-4">בחר סוג דירה</h3>
               <p className="text-gray-600">בחר את סוג הדירה שלך לקבלת חישוב מדויק</p>
             </div>
             
@@ -713,7 +713,7 @@ export default function InteractiveCalculator() {
               >
                 ← חזור לבחירה
               </Button>
-              <h3 className="text-2xl font-bold mb-2">מחזור משכנתא</h3>
+              <h3 className="text-subtitle font-bold mb-2">מחזור משכנתא</h3>
               <p className="text-gray-600">השווה בין שתי אפשרויות: הורדת תשלום חודשי או קיצור התקופה להקטנת סך הריבית</p>
             </div>
 
@@ -854,11 +854,11 @@ export default function InteractiveCalculator() {
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-info">
                       <span className="text-gray-600">תשלום חודשי (נוכחי):</span>
                       <span className="font-semibold text-blue-700">{hasRefiRequired ? formatCurrency(currentMonthlyPayment) : '—'}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-info">
                       <span className="text-gray-600">סך ריביות שנותרו:</span>
                       <span className="font-semibold text-purple-700">{hasRefiRequired ? formatCurrency(currentTotalInterest) : '—'}</span>
                     </div>
@@ -1033,7 +1033,7 @@ export default function InteractiveCalculator() {
               >
                 ← חזור לבחירה
               </Button>
-              <h3 className="text-2xl font-bold mb-2">מחשבון משכנתא - {selectedType.name}</h3>
+              <h3 className="text-subtitle font-bold mb-2">מחשבון משכנתא - {selectedType.name}</h3>
               <p className="text-gray-600">הזן את הפרטים שלך לקבלת חישוב מדויק</p>
             </div>
 
@@ -1122,7 +1122,7 @@ export default function InteractiveCalculator() {
                         propertyPriceNum < 500000 || propertyPriceNum > 5000000 ? 'border-red-300' : ''
                       }`}
                     />
-                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <div className="flex justify-between text-info text-gray-500 mt-1">
                       <span>₪500K</span>
                       <span>₪5M</span>
                     </div>
@@ -1188,12 +1188,12 @@ export default function InteractiveCalculator() {
                           }`}
                         />
                         <div className="space-y-2 mt-2">
-                          <div className="flex justify-between text-sm">
+                          <div className="flex justify-between text-info">
                             <span className="text-gray-600">הון עצמי מינימלי נדרש:</span>
                             <span className="font-medium text-blue-600">{propertyPrice ? formatCurrency(requiredDownPayment) : 'הזן ערכים'}</span>
                           </div>
                           {downPayment && propertyPrice && (
-                            <div className="flex justify-between text-sm">
+                            <div className="flex justify-between text-info">
                               <span className="text-gray-600">הון עצמי מחושב:</span>
                               <span className="font-medium text-green-600">{formatCurrency(calculatedDownPayment)}</span>
                             </div>
@@ -1355,7 +1355,7 @@ export default function InteractiveCalculator() {
                           loanTermNum < 10 || loanTermNum > selectedType.maxTerm ? 'border-red-300' : ''
                         }`}
                       />
-                      <div className="flex justify-between text-sm text-gray-500 mt-1">
+                      <div className="flex justify-between text-info text-gray-500 mt-1">
                         <span>10 שנים</span>
                         <span>{selectedType.maxTerm} שנים</span>
                       </div>
@@ -1398,7 +1398,7 @@ export default function InteractiveCalculator() {
                           monthlyIncomeNum < 8000 || monthlyIncomeNum > 50000 ? 'border-red-300' : ''
                         }`}
                       />
-                      <div className="flex justify-between text-sm text-gray-500 mt-1">
+                      <div className="flex justify-between text-info text-gray-500 mt-1">
                         <span>₪8K</span>
                         <span>₪50K</span>
                       </div>

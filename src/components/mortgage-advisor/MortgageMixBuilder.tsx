@@ -232,7 +232,7 @@ export function MortgageMixBuilder({ onSave, editingMix, onCancel, existingMixes
         <Card className="text-center py-12">
           <CardContent>
             <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+            <h3 className="text-subtitle font-semibold text-gray-600 mb-2">
               אין מסלולים בתמהיל
             </h3>
             <p className="text-gray-500 mb-6">

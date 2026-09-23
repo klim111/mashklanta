@@ -99,7 +99,7 @@ export function StageRail({
                 </motion.span>
 
                 <span
-                  className={`mt-2.5 rounded-full px-2 py-0.5 text-[11px] font-black ${
+                  className={`mt-2.5 rounded-full px-2 py-0.5 text-2xs font-black ${
                     isCurrent
                       ? 'bg-white text-slate-900'
                       : isLocked

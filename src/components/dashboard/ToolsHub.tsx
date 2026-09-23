@@ -116,11 +116,11 @@ export function ToolsHub() {
           <div className="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-cyan-500/20 blur-3xl" />
         </div>
         <div className="relative">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-black text-white/80">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-2xs font-black text-white/80">
             <Sparkles className="h-3.5 w-3.5" />
             כלים ומחשבונים
           </span>
-          <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">מרכז הכלים שלכם</h2>
+          <h2 className="mt-3 text-title font-black text-white">מרכז הכלים שלכם</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
             כל כלי פותח מסך ייעודי. לצד כל כפתור תמצאו מה אפשר לעשות איתו ולמה זה חוסך זמן וכסף
             בתהליך.
@@ -151,7 +151,7 @@ export function ToolsHub() {
                   <ArrowLeft className="h-4 w-4 opacity-80" />
                 </Link>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-black tracking-wide text-slate-400">{tool.tag}</p>
+                  <p className="text-2xs font-black tracking-wide text-slate-400">{tool.tag}</p>
                   <p className="mt-1 text-sm leading-relaxed text-slate-600">{tool.description}</p>
                   <ul className="mt-3 space-y-1.5">
                     {tool.benefits.map((benefit) => (

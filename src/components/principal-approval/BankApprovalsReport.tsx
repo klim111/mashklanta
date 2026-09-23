@@ -36,17 +36,17 @@ export function BankApprovalsReport({ approvals }: { approvals: ApprovalSummary[
   if (approvals.length === 0) {
     return (
       <section className="break-inside-avoid space-y-3">
-        <h2 className="border-r-4 border-indigo-500 pr-3 text-[15px] font-bold text-slate-900">
+        <h2 className="border-r-4 border-indigo-500 pr-3 text-subtitle font-bold text-slate-900">
           אישורים עקרוניים לפי בנק
         </h2>
-        <p className="text-[12px] text-slate-400">טרם הוגשה בקשה לאישור עקרוני</p>
+        <p className="text-xs text-slate-400">טרם הוגשה בקשה לאישור עקרוני</p>
       </section>
     );
   }
 
   return (
     <section className="break-inside-avoid space-y-4">
-      <h2 className="border-r-4 border-indigo-500 pr-3 text-[15px] font-bold text-slate-900">
+      <h2 className="border-r-4 border-indigo-500 pr-3 text-subtitle font-bold text-slate-900">
         אישורים עקרוניים לפי בנק
       </h2>
 
@@ -60,7 +60,7 @@ export function BankApprovalsReport({ approvals }: { approvals: ApprovalSummary[
               type="button"
               onClick={() => setActiveId(approval.entityId)}
               className={cn(
-                'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-all',
+                'inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-button font-semibold transition-all',
                 isActive
                   ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
                   : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700',
@@ -70,7 +70,7 @@ export function BankApprovalsReport({ approvals }: { approvals: ApprovalSummary[
               {approval.bankName || `בנק ${index + 1}`}
               <span
                 className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                  'rounded-full px-1.5 py-0.5 text-2xs font-medium',
                   isActive
                     ? 'bg-white/15 text-white'
                     : approval.approved
@@ -96,12 +96,12 @@ export function BankApprovalsReport({ approvals }: { approvals: ApprovalSummary[
       {/* Cross-bank comparison */}
       {quoted.length > 0 && bankNames.length > 0 && (
         <div className="break-inside-avoid rounded-xl border border-slate-200 bg-white p-4">
-          <h3 className="mb-3 flex items-center gap-1.5 text-[13px] font-bold text-slate-800">
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-slate-800">
             <Award className="h-3.5 w-3.5 text-amber-500" />
             ריכוז הריביות לכל מסלול — איזה בנק זול יותר
           </h3>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] border-collapse text-[12px]">
+            <table className="w-full min-w-[420px] border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
                   <th className="py-1.5 text-right font-medium">מסלול</th>
@@ -140,7 +140,7 @@ export function BankApprovalsReport({ approvals }: { approvals: ApprovalSummary[
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-[10px] text-slate-400">
+          <p className="mt-2 text-2xs text-slate-400">
             לכל בנק נלקחה הריבית הנמוכה ביותר שנקב למסלול, מבין הסלים שבהם הוא מופיע.
           </p>
         </div>
@@ -161,10 +161,10 @@ function BankPanel({ approval, hidden }: { approval: ApprovalSummary; hidden: bo
       )}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-[13px] font-bold text-slate-800">{approval.bankName ?? 'בנק'}</h3>
+        <h3 className="text-sm font-bold text-slate-800">{approval.bankName ?? 'בנק'}</h3>
         <span
           className={cn(
-            'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+            'rounded-full px-2 py-0.5 text-2xs font-semibold',
             approval.approved ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600',
           )}
         >
@@ -204,10 +204,10 @@ function BankPanel({ approval, hidden }: { approval: ApprovalSummary; hidden: bo
           const rates = approval.basketRates[basket.id] ?? {};
           return (
             <div key={basket.id} className="rounded-lg border border-slate-200 bg-white p-3">
-              <h4 className="mb-2 text-[12px] font-bold text-slate-700">{basket.name}</h4>
+              <h4 className="mb-2 text-xs font-bold text-slate-700">{basket.name}</h4>
               <ul className="space-y-1">
                 {basket.tracks.map((track) => (
-                  <li key={track.type} className="flex items-center justify-between gap-2 text-[12px]">
+                  <li key={track.type} className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-slate-500">{trackLabel(track.type)}</span>
                     <span className="font-semibold text-slate-800">
                       {rates[track.type] === undefined ? '—' : `${rates[track.type].toFixed(2)}%`}
@@ -226,8 +226,8 @@ function BankPanel({ approval, hidden }: { approval: ApprovalSummary; hidden: bo
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-dashed border-slate-200 pb-1.5">
-      <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="text-[13px] font-semibold text-slate-800">{value}</dd>
+      <dt className="text-2xs font-medium uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="text-info font-semibold text-slate-800">{value}</dd>
     </div>
   );
 }
@@ -247,7 +247,7 @@ function ValidityLine({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px]',
+        'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs',
         expired ? 'border-rose-200 bg-rose-50' : 'border-emerald-200 bg-emerald-50',
       )}
     >
@@ -255,7 +255,7 @@ function ValidityLine({
       <span className="text-slate-500">{label}:</span>
       <span className="font-bold text-slate-800">{formatDate(date)}</span>
       {daysLeft !== null && (
-        <span className={cn('text-[11px]', expired ? 'text-rose-600' : 'text-emerald-600')}>
+        <span className={cn('text-2xs', expired ? 'text-rose-600' : 'text-emerald-600')}>
           {expired ? `פג לפני ${Math.abs(daysLeft)} ימים` : `נותרו ${daysLeft} ימים`}
         </span>
       )}

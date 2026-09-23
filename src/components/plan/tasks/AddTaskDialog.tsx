@@ -218,7 +218,7 @@ export function AddTaskDialog({
                       <span className="block text-sm font-black leading-snug text-slate-900">
                         {entry.template.title}
                       </span>
-                      <span className="mt-0.5 block text-[12px] leading-snug text-slate-500">
+                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">
                         {stage ? entry.template.hint : `${journeyStageFor(entry.stage).shortTitle} · ${entry.template.hint}`}
                       </span>
                     </span>
@@ -275,7 +275,7 @@ export function AddTaskDialog({
                 ))}
               </select>
               {bank && (
-                <span className="mt-1.5 block text-[12px] font-black text-blue-700">
+                <span className="mt-1.5 block text-xs font-black text-blue-700">
                   {bankTaskTitle(chosen.template, bank)}
                 </span>
               )}
@@ -327,21 +327,21 @@ export function AddTaskDialog({
                     <span className="text-sm font-black text-slate-800">
                       {file ? file.name : 'בחרו קובץ להעלאה עכשיו — PDF או תמונה'}
                     </span>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-2xs text-slate-500">
                       {file
                         ? 'המסמך יישמר בתיק המסמכים שלכם, והמשימה תיסגר'
                         : `עד ${MAX_MB}MB · אפשר גם לשמור עכשיו ולהעלות אחר כך`}
                     </span>
                   </button>
                   {file && (
-                    <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+                    <p className="mt-2 flex items-center justify-center gap-1.5 text-2xs text-slate-400">
                       <Lock className="h-3.5 w-3.5" />
                       הקובץ נשמר באחסון פרטי ומוצג רק לכם וליועץ שמלווה אתכם
                     </p>
                   )}
                 </>
               ) : (
-                <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] font-bold text-amber-900">
+                <p className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-900">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   כדי להעלות מסמך לתיק צריך תהליך משכנתא פתוח. המשימה תישמר, ואפשר להעלות את הקובץ
                   מתוך השלב.
@@ -391,7 +391,7 @@ export function AddTaskDialog({
             {...demoId('task-submit')}
             disabled={!canSubmit || busy}
             onClick={() => void submit()}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white shadow-md transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-button font-black text-white shadow-md transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -404,7 +404,7 @@ export function AddTaskDialog({
           </button>
         </div>
 
-        <p className="mt-3 text-center text-[11px] text-slate-400">
+        <p className="mt-3 text-center text-2xs text-slate-400">
           {PLAN_STAGES.length} שלבים · כל משימה עם מועד מופיעה בלוח השנה וברשימת המשימות שלכם
         </p>
       </DialogContent>

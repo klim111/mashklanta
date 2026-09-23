@@ -86,7 +86,7 @@ export default function Home() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full justify-center px-6 py-4 text-base font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8 md:text-lg"
+                className="w-full justify-center px-6 py-4 text-cta font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8"
               >
                 <Link href="/how-it-works">למד איך זה עובד</Link>
               </Button>
@@ -100,7 +100,7 @@ export default function Home() {
             >
               <Button
                 size="lg"
-                className="w-full justify-center px-6 py-4 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg md:w-auto md:px-8 md:text-lg"
+                className="w-full justify-center px-6 py-4 text-cta font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg md:w-auto md:px-8"
                 onClick={() => {
                   const actionCardsSection = document.querySelector('[data-section="action-cards"]');
                   if (actionCardsSection) {
@@ -161,7 +161,7 @@ export default function Home() {
                       >
                         {stage.number}
                       </span>
-                      <span className="mt-1.5 text-[8px] font-bold leading-tight text-gray-800 sm:mt-3 sm:text-[11px] md:text-sm">
+                      <span className="mt-1.5 text-2xs font-bold leading-tight text-gray-800 sm:mt-3 sm:text-2xs md:text-sm">
                         {stage.shortTitle}
                       </span>
                     </li>
@@ -271,7 +271,7 @@ export default function Home() {
               <Tag className="h-4 w-4" />
               מודל התמחור
             </div>
-            <h2 className="mb-4 text-2xl font-black text-white md:text-5xl">
+            <h2 className="mb-4 text-title font-black text-white">
               משלמים על מה שלקחתם — ותמיד את המחיר הנמוך
             </h2>
             <p className="mx-auto max-w-2xl text-base text-slate-100 md:text-lg">
@@ -281,7 +281,7 @@ export default function Home() {
           </div>
           <div className="mx-auto mb-8 grid max-w-4xl gap-5 md:grid-cols-2">
             <Link href="/pricing" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 sm:p-7 md:text-right">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-500 px-3 py-0.5 text-[11px] font-black text-white">הכי נבחר</span>
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-500 px-3 py-0.5 text-2xs font-black text-white">הכי נבחר</span>
               <div className="text-sm font-bold text-cyan-200">עצמאי / היברידי</div>
               <div className="my-2 text-4xl font-black text-white">₪{PLATFORM_PROCESS_PRICE}</div>
               <div className="text-sm text-slate-100">

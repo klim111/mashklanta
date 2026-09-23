@@ -117,7 +117,7 @@ export default function CardCarousel3D({
     <div ref={containerRef} className={cn('relative w-full', className)} tabIndex={0}>
       {/* מונה והתקדמות — מה מוצג עכשיו מתוך כמה */}
       <div className="mb-3 flex items-center justify-between gap-4">
-        <span className="text-[13px] font-black text-slate-500">
+        <span className="text-sm font-black text-slate-500">
           {activeIndex + 1} מתוך {cards.length}
         </span>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
@@ -239,10 +239,10 @@ function NavButton({
     >
       <Icon className="h-5 w-5 shrink-0 text-slate-700" />
       <span className="hidden min-w-0 sm:block">
-        <span className="block text-[11px] font-bold text-slate-400">
+        <span className="block text-2xs font-bold text-slate-400">
           {side === 'prev' ? 'הקודם' : 'הבא'}
         </span>
-        <span className="block max-w-[9rem] truncate text-[13px] font-black text-slate-800">{label}</span>
+        <span className="block max-w-[9rem] truncate text-sm font-black text-slate-800">{label}</span>
       </span>
     </button>
   );
@@ -286,7 +286,7 @@ function CardFace({ card, variant }: { card: CarouselCardData; variant: 'track' 
                           {card.tag}
                         </span>
                       )}
-                      <h3 className="text-xl font-black leading-tight text-white drop-shadow-sm md:text-3xl">
+                      <h3 className="text-subtitle font-black leading-tight text-white drop-shadow-sm">
                         {card.title}
                       </h3>
                       {card.subtitle && (

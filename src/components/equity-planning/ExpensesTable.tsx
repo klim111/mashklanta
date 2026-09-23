@@ -66,14 +66,14 @@ export function ExpensesTable(props: ExpensesTableProps) {
       <header className="bg-gradient-to-l from-slate-900 via-slate-900 to-indigo-950 px-4 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-lg font-black text-white">טבלת ההוצאות</h2>
-            <p className="mt-0.5 text-[13px] font-semibold text-white/50">
+            <h2 className="text-subtitle font-black text-white">טבלת ההוצאות</h2>
+            <p className="mt-0.5 text-sm font-semibold text-white/50">
               {EQUITY_CATEGORIES.length} קטגוריות · {data.expenses.length} סעיפים
             </p>
           </div>
           <div className="text-left">
             <p className="text-2xl font-black text-white">{shekel(props.totalExpenses)}</p>
-            <p className="text-[11px] font-bold text-white/50">
+            <p className="text-2xs font-bold text-white/50">
               {props.percentageOfPrice.toFixed(1)}% ממחיר הנכס
             </p>
           </div>
@@ -82,19 +82,19 @@ export function ExpensesTable(props: ExpensesTableProps) {
         {filtered && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {selectedDate && (
-              <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-black text-white">
+              <span className="rounded-full bg-white/15 px-3 py-1 text-2xs font-black text-white">
                 מסונן ליום {new Date(selectedDate).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' })}
               </span>
             )}
             {selectedCategory && (
-              <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-black text-white">
+              <span className="rounded-full bg-white/15 px-3 py-1 text-2xs font-black text-white">
                 {EQUITY_CATEGORIES.find((category) => category.id === selectedCategory)?.name}
               </span>
             )}
             <button
               type="button"
               onClick={props.onClearFilters}
-              className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-black text-slate-900 transition-colors hover:bg-white/90"
+              className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-2xs font-black text-slate-900 transition-colors hover:bg-white/90"
             >
               <X className="h-3 w-3" />
               ביטול סינון
@@ -135,18 +135,18 @@ export function ExpensesTable(props: ExpensesTableProps) {
                   <Icon className="h-5 w-5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-black text-slate-900">
+                  <span className="block truncate text-info font-black text-slate-900">
                     {category.name}
                   </span>
-                  <span className="block truncate text-[12px] font-semibold text-slate-400">
+                  <span className="block truncate text-xs font-semibold text-slate-400">
                     {category.description}
                     {rows.length > 0 && ` · ${rows.length} סעיפים`}
                     {missing > 0 && ` · ${missing} ללא סכום`}
                   </span>
                 </span>
                 <span className="shrink-0 text-left">
-                  <span className="block text-[17px] font-black text-slate-900">{shekel(total)}</span>
-                  <span className="block text-[11px] font-bold text-slate-400">פירוט</span>
+                  <span className="block text-lg font-black text-slate-900">{shekel(total)}</span>
+                  <span className="block text-2xs font-bold text-slate-400">פירוט</span>
                 </span>
                 <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
                   <ChevronDown className="h-5 w-5 text-slate-400" />
@@ -177,7 +177,7 @@ export function ExpensesTable(props: ExpensesTableProps) {
                       ))}
 
                       {rows.length === 0 && (
-                        <p className="py-3 text-center text-[13px] font-semibold text-slate-400">
+                        <p className="py-3 text-center text-sm font-semibold text-slate-400">
                           אין סעיפים בקטגוריה זו
                         </p>
                       )}
@@ -186,7 +186,7 @@ export function ExpensesTable(props: ExpensesTableProps) {
                         <button
                           type="button"
                           onClick={() => props.onAdd(category.id)}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-[13px] font-black text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-button font-black text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900"
                         >
                           <Plus className="h-4 w-4" />
                           הוספת סעיף
@@ -197,7 +197,7 @@ export function ExpensesTable(props: ExpensesTableProps) {
                             type="button"
                             onClick={() => props.onAddPreset(category.id, preset)}
                             title={preset.notes}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800"
                           >
                             <Plus className="h-3.5 w-3.5" />
                             {preset.description}
@@ -238,33 +238,33 @@ function EquityRow({
           <Icon className="h-6 w-6" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className={`text-[16px] font-black ${tone.title}`}>הון עצמי לרכישת הדירה</p>
-          <p className={`mt-0.5 text-[13px] font-bold ${tone.note}`}>{standing.message}</p>
+          <p className={`text-base font-black ${tone.title}`}>הון עצמי לרכישת הדירה</p>
+          <p className={`mt-0.5 text-sm font-bold ${tone.note}`}>{standing.message}</p>
           {standing.motivation && (
-            <p className={`mt-1 text-[12px] font-semibold ${tone.note}`}>{standing.motivation}</p>
+            <p className={`mt-1 text-xs font-semibold ${tone.note}`}>{standing.motivation}</p>
           )}
         </div>
         <div className="grid w-full shrink-0 grid-cols-2 gap-2 sm:w-auto">
           <label className="block sm:w-40">
-            <span className={`mb-1 block text-[11px] font-bold ${tone.note}`}>סכום</span>
+            <span className={`mb-1 block text-2xs font-bold ${tone.note}`}>סכום</span>
             <FormattedNumberValueInput
               value={expense.amount}
               onValueChange={(next) => onField(expense.id, 'amount', next)}
-              className={`h-11 border-2 bg-white text-[17px] font-black ${tone.ring} ${tone.title}`}
+              className={`h-11 border-2 bg-white text-lg font-black ${tone.ring} ${tone.title}`}
             />
           </label>
           <label className="block sm:w-40">
-            <span className={`mb-1 block text-[11px] font-bold ${tone.note}`}>מועד</span>
+            <span className={`mb-1 block text-2xs font-bold ${tone.note}`}>מועד</span>
             <input
               type="date"
               value={expense.paymentDate}
               onChange={(event) => onField(expense.id, 'paymentDate', event.target.value)}
-              className={`h-11 w-full rounded-md border-2 bg-white px-2 text-[13px] font-bold ${tone.ring} ${tone.title}`}
+              className={`h-11 w-full rounded-md border-2 bg-white px-2 text-sm font-bold ${tone.ring} ${tone.title}`}
             />
           </label>
         </div>
       </div>
-      <p className={`mt-2 text-[11px] font-semibold ${tone.note}`}>
+      <p className={`mt-2 text-2xs font-semibold ${tone.note}`}>
         המינימום לפי תקנות בנק ישראל בפרופיל שנבחר: {shekel(required)}
       </p>
     </div>
@@ -307,7 +307,7 @@ function ExpenseRow({
     >
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <label className="min-w-0 flex-1">
-          <span className="mb-1 block text-[11px] font-bold text-slate-400">תיאור</span>
+          <span className="mb-1 block text-2xs font-bold text-slate-400">תיאור</span>
           <input
             value={expense.description}
             onChange={(event) => onField(expense.id, 'description', event.target.value)}
@@ -317,12 +317,12 @@ function ExpenseRow({
         </label>
 
         <label className="lg:w-44">
-          <span className="mb-1 block text-[11px] font-bold text-slate-400">סכום (₪)</span>
+          <span className="mb-1 block text-2xs font-bold text-slate-400">סכום (₪)</span>
           {brokerageOff ? (
             <button
               type="button"
               onClick={() => onToggleBroker(true)}
-              className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-purple-300 bg-purple-50 px-2 text-[12px] font-black text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-100"
+              className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-purple-300 bg-purple-50 px-2 text-xs font-black text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-100"
             >
               <Handshake className="h-4 w-4 shrink-0" />
               <span className="truncate">{BROKERAGE_TOGGLE_LABEL}</span>
@@ -339,12 +339,12 @@ function ExpenseRow({
         </label>
 
         <label className="lg:w-44">
-          <span className="mb-1 block text-[11px] font-bold text-slate-400">מועד תשלום</span>
+          <span className="mb-1 block text-2xs font-bold text-slate-400">מועד תשלום</span>
           <input
             type="date"
             value={expense.paymentDate}
             onChange={(event) => onField(expense.id, 'paymentDate', event.target.value)}
-            className={`${inputBase} text-[13px]`}
+            className={`${inputBase} text-sm`}
           />
         </label>
 
@@ -379,14 +379,14 @@ function ExpenseRow({
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {expense.notes && (
-          <span className="text-[11px] font-semibold text-slate-400">{expense.notes}</span>
+          <span className="text-2xs font-semibold text-slate-400">{expense.notes}</span>
         )}
 
         {isBrokerage && usesBroker && (
           <button
             type="button"
             onClick={() => onToggleBroker(false)}
-            className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-[11px] font-black text-purple-700 transition-colors hover:bg-purple-100"
+            className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-2xs font-black text-purple-700 transition-colors hover:bg-purple-100"
           >
             <Handshake className="h-3 w-3" />
             העסקה בעזרת מתווך · ברירת מחדל {(BROKERAGE_PERCENT * 100).toFixed(1)}% — ביטול
@@ -429,7 +429,7 @@ function SuggestionChip({ label, onClick }: { label: string; onClick: () => void
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-700 transition-colors hover:bg-blue-100"
+      className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-2xs font-black text-blue-700 transition-colors hover:bg-blue-100"
     >
       <Wand2 className="h-3 w-3" />
       {label}

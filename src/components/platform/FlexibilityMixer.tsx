@@ -111,7 +111,7 @@ export default function FlexibilityMixer() {
                 >
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="text-[11px] font-black text-gray-600">
+                <span className="text-2xs font-black text-gray-600">
                   {stage.number}/{journeyStages.length}
                 </span>
               </div>
@@ -121,7 +121,7 @@ export default function FlexibilityMixer() {
               </div>
 
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-black ${
                   withAdvisor
                     ? 'bg-violet-600 text-white'
                     : 'bg-blue-600 text-white'
@@ -178,7 +178,7 @@ export default function FlexibilityMixer() {
           </div>
           <Link
             href="/pricing#builder"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-black text-gray-900 shadow-lg transition-colors hover:bg-blue-50"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-button font-black text-gray-900 shadow-lg transition-colors hover:bg-blue-50"
           >
             בנו את החבילה המדויקת
             <ArrowUpLeft className="h-4 w-4" />

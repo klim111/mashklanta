@@ -42,11 +42,11 @@ export default function DemoLandingPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
         <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-[13px] font-black text-indigo-800">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-sm font-black text-indigo-800">
             <FlaskConical className="h-3.5 w-3.5" />
             הדגמות אינטראקטיביות · נתונים לדוגמה בלבד
           </span>
-          <h1 className="mt-4 text-3xl font-black text-slate-900 md:text-5xl">הכירו את משכלנתא מבפנים</h1>
+          <h1 className="mt-4 text-title font-black text-slate-900">הכירו את משכלנתא מבפנים</h1>
           <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
             ההדגמה מפעילה את הכלים האמיתיים מולכם — לוחצת, מקלידה ומזיזה סליידרים — ומסבירה כל
             פעולה בדרך. בכל רגע אפשר לעצור, לנסות בעצמכם ולהמשיך.
@@ -55,7 +55,7 @@ export default function DemoLandingPage() {
             <button
               type="button"
               onClick={() => demoStore.start('overview', { returnTo: '/demo' })}
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700"
               {...demoId('demo-landing-overview')}
             >
               <Play className="h-5 w-5" />
@@ -69,7 +69,7 @@ export default function DemoLandingPage() {
           if (entries.length === 0) return null;
           return (
             <section key={category} className="mt-12">
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-black text-slate-900">
+              <h2 className="mb-4 flex items-center gap-2 text-subtitle font-black text-slate-900">
                 <Compass className="h-5 w-5 text-blue-600" />
                 {DEMO_CATEGORY_LABELS[category]}
               </h2>

@@ -30,10 +30,10 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
         <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900">
           <Lock className="h-7 w-7 text-white" />
         </span>
-        <h2 id="plan-access-lock-title" className="text-2xl font-black text-slate-900">
+        <h2 id="plan-access-lock-title" className="text-subtitle font-black text-slate-900">
           {expired ? `${PLATFORM_ACCESS_DAYS} ימי הגישה הסתיימו` : 'התהליך ממתין לתשלום'}
         </h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
+        <p className="mt-2 text-info leading-relaxed text-slate-600">
           {expired
             ? `כל מה שהזנתם שמור. חדשו את הגישה לעוד ${PLATFORM_ACCESS_DAYS} יום, והכלים ייפתחו בדיוק איפה שעצרתם.`
             : `כדי להמשיך בתהליך פותחים אותו במסלול העצמאי / ההיברידי: גישה מלאה לכל השלבים והכלים ל-${PLATFORM_ACCESS_DAYS} יום.`}
@@ -41,21 +41,21 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
 
         <div className="my-5 rounded-2xl bg-slate-50 py-4">
           <div className="text-4xl font-black text-slate-900">₪{PLATFORM_PROCESS_PRICE}</div>
-          <div className="mt-0.5 text-[13px] font-bold text-slate-500">
+          <div className="mt-0.5 text-sm font-bold text-slate-500">
             לעוד {PLATFORM_ACCESS_DAYS} יום · אין חיוב חוזר
           </div>
         </div>
 
         <Link
           href={`/dashboard/checkout?planId=${encodeURIComponent(planId)}`}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
         >
           {expired ? 'חדשו את הגישה' : 'פתחו את התהליך'}
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <Link
           href="/dashboard"
-          className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-slate-500 transition-colors hover:text-slate-900"
+          className="mt-3 inline-flex items-center gap-1 text-button font-bold text-slate-500 transition-colors hover:text-slate-900"
         >
           <ChevronRight className="h-4 w-4" />
           חזרה לאזור האישי

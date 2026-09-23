@@ -59,14 +59,14 @@ export function PlanPeekDialog({
               {planHeadline(plan)}
             </span>
           </DialogTitle>
-          <DialogDescription className="text-center text-[15px]">
+          <DialogDescription className="text-center text-info">
             {planCreatedLabel(plan.createdAt)} · שלב {planStageNumber(plan.currentStage, flow)} ·{' '}
             {planStageMeta(plan.currentStage, flow).shortTitle}
           </DialogDescription>
         </DialogHeader>
 
         <section>
-          <h3 className="mb-2 flex items-center justify-center gap-2 text-[15px] font-black text-slate-800">
+          <h3 className="mb-2 flex items-center justify-center gap-2 text-info font-black text-slate-800">
             <ListChecks className="h-4 w-4 text-blue-600" />
             {flow.kind === 'REFINANCE' ? 'שלבי המיחזור' : 'חמשת השלבים'}
           </h3>
@@ -98,15 +98,15 @@ export function PlanPeekDialog({
                   >
                     {status === 'COMPLETED' ? <Check className="h-4 w-4" /> : index + 1}
                   </span>
-                  <span className="min-w-0 flex-1 text-[15px] font-black text-slate-900">
+                  <span className="min-w-0 flex-1 text-info font-black text-slate-900">
                     {meta.shortTitle}
                   </span>
                   {advisor && (
-                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[13px] font-black text-violet-700">
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-sm font-black text-violet-700">
                       היועץ מטפל
                     </span>
                   )}
-                  <span className="text-[13px] font-bold text-slate-500">{STATUS_LABELS[status]}</span>
+                  <span className="text-sm font-bold text-slate-500">{STATUS_LABELS[status]}</span>
                 </li>
               );
             })}
@@ -119,7 +119,7 @@ export function PlanPeekDialog({
           ) : (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 py-8 text-center">
               <Layers className="h-7 w-7 text-slate-300" />
-              <p className="text-[15px] font-bold text-slate-700">עדיין לא נבנה תמהיל בתהליך הזה</p>
+              <p className="text-info font-bold text-slate-700">עדיין לא נבנה תמהיל בתהליך הזה</p>
               <p className="text-sm text-slate-500">התמהיל נבנה בשלב 2, ומתומחר מול הבנקים בשלב 4.</p>
             </div>
           )}
@@ -132,7 +132,7 @@ export function PlanPeekDialog({
               onShowMix();
               onOpenChange(false);
             }}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-[15px] font-black text-white transition-colors hover:bg-blue-700"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-colors hover:bg-blue-700"
           >
             <Eye className="h-4 w-4" />
             הצג את התמהיל בדאשבורד

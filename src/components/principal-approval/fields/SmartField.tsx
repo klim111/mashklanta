@@ -214,7 +214,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
                 disabled={readOnly}
                 onClick={() => update(option.value)}
                 className={cn(
-                  'h-9 rounded-xl border px-3 text-[13px] font-medium transition-all',
+                  'h-9 rounded-xl border px-3 text-sm font-medium transition-all',
                   value === option.value
                     ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-sm'
                     : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300',

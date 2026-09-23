@@ -189,8 +189,8 @@ export function StageOverview({
 function StartStageCard({ onStart }: { onStart: () => void }) {
   return (
     <section className="flex flex-col items-center gap-3 rounded-3xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 via-white to-cyan-50 p-6 text-center shadow-sm md:p-8">
-      <h3 className="text-xl font-black text-slate-900">מוכנים? מתחילים בנכס ובעסקה</h3>
-      <p className="max-w-lg text-[15px] leading-relaxed text-slate-600">
+      <h3 className="text-subtitle font-black text-slate-900">מוכנים? מתחילים בנכס ובעסקה</h3>
+      <p className="max-w-lg text-info leading-relaxed text-slate-600">
         משם ממשיכים ללווים, להכנסות העתידיות, לתיק המסמכים ולדוח. הכול נשמר תוך כדי, ואפשר
         לחזור לכל מסך.
       </p>
@@ -199,13 +199,13 @@ function StartStageCard({ onStart }: { onStart: () => void }) {
         onClick={onStart}
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.98 }}
-        className="mt-1 inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-600 to-cyan-500 px-8 py-4 text-base font-black text-white shadow-[0_14px_36px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_18px_44px_rgba(37,99,235,0.45)]"
+        className="mt-1 inline-flex items-center gap-2.5 rounded-2xl bg-gradient-to-l from-blue-600 to-cyan-500 px-8 py-4 text-cta font-black text-white shadow-[0_14px_36px_rgba(37,99,235,0.35)] transition-shadow hover:shadow-[0_18px_44px_rgba(37,99,235,0.45)]"
       >
         <Play className="h-5 w-5" />
         התחל שלב
         <ArrowLeft className="h-5 w-5" />
       </motion.button>
-      <p className="text-[12px] text-slate-500">
+      <p className="text-xs text-slate-500">
         בכל רגע אפשר לפנות ליועץ לעזרה בשלב זה — הכפתור הצף מלווה את כל המסכים.
       </p>
     </section>
@@ -237,12 +237,12 @@ function SlideFooter({
       <button
         type="button"
         onClick={onNext}
-        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-base font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-cta font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
       >
         המשך
         <ArrowLeft className="h-4 w-4" />
       </button>
-      {autoAdvance && <p className="text-[13px] text-slate-400">המסך יתקדם מעצמו בעוד רגע</p>}
+      {autoAdvance && <p className="text-sm text-slate-400">המסך יתקדם מעצמו בעוד רגע</p>}
     </div>
   );
 }
@@ -265,7 +265,7 @@ function SlideCard({
     <section className={`rounded-3xl border-2 bg-white p-6 shadow-sm md:p-8 ${tone}`}>
       <header className="mb-6 text-center">
         {badge}
-        <h3 className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">{title}</h3>
+        <h3 className="mt-3 text-subtitle font-black text-slate-900">{title}</h3>
         {lead}
       </header>
       {children}
@@ -290,7 +290,7 @@ function SectionTitle({ icon, children, hint }: { icon: ReactNode; children: Rea
         <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900 text-white">{icon}</span>
         {children}
       </h4>
-      {hint && <p className="mx-auto mt-1 max-w-2xl text-[14px] font-medium leading-relaxed text-slate-600">{hint}</p>}
+      {hint && <p className="mx-auto mt-1 max-w-2xl text-sm font-medium leading-relaxed text-slate-600">{hint}</p>}
     </div>
   );
 }
@@ -312,12 +312,12 @@ function ActionsList({ compact = false }: { compact?: boolean }) {
             {step.icon}
           </span>
           <div>
-            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-slate-500 ring-1 ring-slate-200">
+            <span className="rounded-full bg-white px-2 py-0.5 text-2xs font-black text-slate-500 ring-1 ring-slate-200">
               {index + 1}
             </span>
-            <h4 className="mt-1 text-[15px] font-black leading-snug text-slate-900">{step.title}</h4>
+            <h4 className="mt-1 text-info font-black leading-snug text-slate-900">{step.title}</h4>
             {!compact && (
-              <p className="mt-1 text-[13px] font-medium leading-relaxed text-slate-600">{step.body}</p>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-slate-600">{step.body}</p>
             )}
           </div>
         </motion.li>
@@ -332,7 +332,7 @@ function OutputsList() {
     <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2 xl:grid-cols-3">
       {REPORT_OUTPUTS.map((item) => (
         <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-3.5">
-          <p className="flex items-center gap-2 text-[14px] font-black text-slate-900">
+          <p className="flex items-center gap-2 text-sm font-black text-slate-900">
             <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${item.accent}`}>
               {item.icon}
             </span>
@@ -414,7 +414,7 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
       badge={<Badge icon={<BadgeCheck className="h-4 w-4" />} text="התוצר של השלב" tone="bg-emerald-600" />}
       title="דוח פרופיל פיננסי"
       lead={
-        <p className="mx-auto mt-3 max-w-3xl text-[15px] font-medium leading-relaxed text-slate-600">
+        <p className="mx-auto mt-3 max-w-3xl text-info font-medium leading-relaxed text-slate-600">
           לוח בקרה אחד שאוסף את כל מה שנבנה בשלב: נתוני העסקה, פרופיל הלקוח, המדים מול מגבלות
           הרגולציה, התזרים, לוח הזמנים של התהליך, הרכב המסלולים, הסיכונים וההמלצות. ברקע דוח
           לדוגמה, ומעליו מה שכל חלק בו נותן לכם.
@@ -490,7 +490,7 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
 
 function CriticalNote() {
   return (
-    <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-[15px] font-bold leading-relaxed text-slate-800">
+    <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-info font-bold leading-relaxed text-slate-800">
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
       השלב הזה קריטי למזעור הסיכוי לסירוב או לעיכוב בתהליך, ולוודא שכל המסמכים שיוגשו יהיו
       תקינים ומלאים — ולהבנה מלאה של איך ייראה המצב הכלכלי של משק הבית שלכם אחרי לקיחת

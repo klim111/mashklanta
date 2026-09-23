@@ -109,7 +109,7 @@ export function AdvisorOffersList({
                     event.stopPropagation();
                     onBroadcast(item);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-2xl bg-violet-600 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-violet-700"
+                  className="inline-flex items-center gap-1.5 rounded-2xl bg-violet-600 px-4 py-2 text-button font-black text-white transition-colors hover:bg-violet-700"
                 >
                   <Radio className="h-4 w-4" />
                   שדר תמהיל ללקוח

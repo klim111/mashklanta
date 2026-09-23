@@ -141,7 +141,7 @@ function ChartPanel({ title, hint, children }: { title: string; hint: string; ch
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <p className="text-[11px] text-slate-500 mb-2 leading-snug">{hint}</p>
+      <p className="text-2xs text-slate-500 mb-2 leading-snug">{hint}</p>
       <ResponsiveContainer width="100%" height={250}>
         {children}
       </ResponsiveContainer>
@@ -156,7 +156,7 @@ function ChartPanel({ title, hint, children }: { title: string; hint: string; ch
 function Stat({ label, value, best }: { label: string; value: string; best?: boolean }) {
   return (
     <div className={`rounded-lg p-2 text-center ${best ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'bg-slate-50'}`}>
-      <p className="text-[10px] text-slate-500 flex items-center justify-center gap-1">
+      <p className="text-2xs text-slate-500 flex items-center justify-center gap-1">
         {best && <Award className="h-2.5 w-2.5 text-emerald-600" />}
         {label}
       </p>
@@ -196,7 +196,7 @@ function MixRow({
           <span className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: color }} />
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm text-slate-900 truncate">{mix.name}</p>
-            <p className="text-[11px] text-slate-500 truncate">
+            <p className="text-2xs text-slate-500 truncate">
               {mix.tracks.length} מסלולים · {formatCurrency(mix.totalAmount)}
             </p>
           </div>
@@ -219,7 +219,7 @@ function MixRow({
               <div key={track.id} className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-sm text-slate-800 truncate">{track.name}</span>
-                  <span className="text-[11px] text-slate-500 shrink-0">
+                  <span className="text-2xs text-slate-500 shrink-0">
                     {TRACK_TYPES[track.type]} · {formatPercentage(track.interestRate)}
                   </span>
                 </div>
@@ -267,7 +267,7 @@ function MixRow({
             );
           })}
 
-          <div className="flex items-center justify-between text-[11px] px-1">
+          <div className="flex items-center justify-between text-2xs px-1">
             <span className="text-slate-500">סך הקצאה</span>
             <span className={`font-bold ${Math.abs(allocationSum - 100) < 0.5 ? 'text-emerald-600' : 'text-amber-600'}`}>
               {allocationSum.toFixed(0)}%
@@ -353,13 +353,13 @@ function MixPie({
         </ResponsiveContainer>
         {/* center total */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[10px] text-slate-400">סך החוב</span>
+          <span className="text-2xs text-slate-400">סך החוב</span>
           <span className="text-base font-bold text-slate-900">{formatCurrency(totalDebt)}</span>
         </div>
       </div>
 
       {/* mini legend */}
-      <div className="flex items-center justify-center gap-3 mt-1 text-[10px] text-slate-500">
+      <div className="flex items-center justify-center gap-3 mt-1 text-2xs text-slate-500">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS.principal }} /> קרן
         </span>
@@ -372,7 +372,7 @@ function MixPie({
       </div>
 
       {/* dynamic caption */}
-      <p className="text-[11px] text-slate-600 text-center mt-2 leading-relaxed">
+      <p className="text-2xs text-slate-600 text-center mt-2 leading-relaxed">
         שולם <span className="font-bold text-emerald-700">{formatCurrency(paidClamped)}</span> מתוך חוב של{' '}
         <span className="font-bold text-slate-800">{formatCurrency(totalDebt)}</span>, מתוכם עבור ריבית{' '}
         <span className="font-bold text-red-600">{formatCurrency(interestPaid)}</span>
@@ -460,7 +460,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
     return (
       <div className="text-center py-12" dir="rtl">
         <BarChart3 className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-slate-600 mb-2">לא נבחרו תמהילים להשוואה</h3>
+        <h3 className="text-subtitle font-semibold text-slate-600 mb-2">לא נבחרו תמהילים להשוואה</h3>
         <p className="text-slate-500">בחרו לפחות 2 תמהילים כדי לראות השוואה גרפית מפורטת</p>
       </div>
     );
@@ -473,7 +473,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Layers className="h-6 w-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-slate-900">השוואת תמהילים ({calcs.length})</h2>
+            <h2 className="text-subtitle font-bold text-slate-900">השוואת תמהילים ({calcs.length})</h2>
           </div>
           <p className="text-slate-600 text-sm">השוואה גרפית בין התמהילים שנבחרו — כל קו מייצג תמהיל.</p>
         </div>
@@ -570,7 +570,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
           {/* Pies — centered row, principal vs interest + repayment ring */}
           <div>
             <p className="text-sm font-semibold text-slate-800">קרן מול ריבית</p>
-            <p className="text-[11px] text-slate-500 mb-2 leading-snug">
+            <p className="text-2xs text-slate-500 mb-2 leading-snug">
               חלוקת החוב בין קרן לריבית, וטבעת ירוקה לחלק שהוחזר עד השנה שנבחרה.
             </p>
           </div>
@@ -597,7 +597,7 @@ export function ComparisonPanel({ mixes, selectedIds, onClearSelection }: Compar
               max={Math.max(1, maxYears)}
               step={1}
             />
-            <div dir="ltr" className="flex justify-between text-[10px] text-slate-400 mt-1">
+            <div dir="ltr" className="flex justify-between text-2xs text-slate-400 mt-1">
               <span>תחילת התקופה</span>
               <span>{maxYears} שנים</span>
             </div>

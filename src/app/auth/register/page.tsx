@@ -155,7 +155,7 @@ function RegisterForm() {
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <h1 className="text-title font-bold text-gray-900">
               {formData.role === 'ADVISOR' ? 'הרשמה ליועצי משכנתאות' : 'הרשמה'}
             </h1>
             <p className="text-gray-600 mt-2">

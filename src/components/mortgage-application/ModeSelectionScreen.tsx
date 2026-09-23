@@ -61,7 +61,7 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
         transition={{ duration: 0.6, delay: 0.2 }}
         className="text-center mb-8 sm:mb-12"
       >
-        <h1 className="text-2xl font-semibold text-slate-800 mb-4 sm:text-4xl">
+        <h1 className="text-title font-semibold text-slate-800 mb-4">
           בואו נתחיל את המסע
         </h1>
         <p className="text-base text-slate-600 max-w-2xl sm:text-xl">
@@ -127,7 +127,7 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                 {/* Content */}
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-2xl font-semibold text-slate-800 mb-2">
+                    <h3 className="text-subtitle font-semibold text-slate-800 mb-2">
                       {mode.title}
                     </h3>
                     <p className="text-sm text-slate-500 mb-3">

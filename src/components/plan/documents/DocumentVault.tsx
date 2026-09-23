@@ -98,12 +98,12 @@ export function DocumentVault({
     <section className="rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm md:p-6">
       <header className="text-center">
         <h4 className="text-xl font-black text-slate-900">תיק המסמכים</h4>
-        <p className="mx-auto mt-1.5 max-w-3xl text-[15px] font-medium leading-relaxed text-slate-600">
+        <p className="mx-auto mt-1.5 max-w-3xl text-info font-medium leading-relaxed text-slate-600">
           הבנק אינו מסתמך על מה שהוצהר אלא מאמת אותו מול מסמכים. אלה המסמכים שיידרשו לפי הרכב
           הלווים ואופן ההעסקה שהוזנו — שלושה חודשים אחורה בכל מסמך שוטף — ואם הגדרתם את בעלות
           הנכס, גם מסמכי החתימה של אותו תרחיש.
         </p>
-        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[13px] font-black text-slate-600">
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-600">
           <Lock className="h-3.5 w-3.5" />
           הקבצים נשמרים באחסון פרטי ומוצגים רק לכם וליועץ שמלווה אתכם
         </p>
@@ -117,7 +117,7 @@ export function DocumentVault({
             key={option}
             type="button"
             onClick={() => onModeChange(option)}
-            className={`rounded-2xl border-2 px-4 py-3 text-center text-[15px] font-black transition-all ${
+            className={`rounded-2xl border-2 px-4 py-3 text-center text-info font-black transition-all ${
               mode === option
                 ? 'border-blue-500 bg-blue-50 text-slate-900'
                 : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
@@ -130,7 +130,7 @@ export function DocumentVault({
       )}
 
       {!hideModes && skipped && (
-        <p className="mt-3 rounded-2xl border-2 border-amber-200 bg-amber-50/70 px-4 py-3 text-center text-[15px] font-bold leading-relaxed text-amber-900">
+        <p className="mt-3 rounded-2xl border-2 border-amber-200 bg-amber-50/70 px-4 py-3 text-center text-info font-bold leading-relaxed text-amber-900">
           {mode === 'SELF_SUBMIT'
             ? 'סימנתם הגשה עצמאית לבנק — הרשימה כאן היא מה שצריך להביא איתכם.'
             : 'סימנתם שתעלו את המסמכים בשלב האישור העקרוני — הרשימה תחכה לכם שם.'}{' '}
@@ -139,12 +139,12 @@ export function DocumentVault({
       )}
 
       {error && (
-        <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-center text-[15px] font-bold text-rose-800">
+        <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-center text-info font-bold text-rose-800">
           {error}
         </p>
       )}
 
-      <p className="mt-4 text-center text-[15px] font-black text-slate-700">
+      <p className="mt-4 text-center text-info font-black text-slate-700">
         {uploaded} מתוך {total} מסמכים הועלו
       </p>
 
@@ -152,7 +152,7 @@ export function DocumentVault({
         <button
           type="button"
           onClick={() => openUpload(null)}
-          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-[15px] font-black text-white transition-colors hover:bg-blue-700"
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
         >
           <Upload className="h-4 w-4" />
           העלאת מסמך
@@ -160,7 +160,7 @@ export function DocumentVault({
         {documents.length > 0 && (
           <a
             href={documentsArchiveUrl(planId)}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-[15px] font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-button font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
           >
             <FolderDown className="h-4 w-4" />
             הורדת תיק המסמכים
@@ -228,8 +228,8 @@ function DocumentRow({
           <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-slate-300" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-black leading-snug text-slate-900">{doc.name}</p>
-          <p className={`text-[13px] font-bold ${uploaded ? 'text-emerald-700' : 'text-slate-500'}`}>
+          <p className="text-info font-black leading-snug text-slate-900">{doc.name}</p>
+          <p className={`text-sm font-bold ${uploaded ? 'text-emerald-700' : 'text-slate-500'}`}>
             {uploaded ? `הוגש · ${uploaded.fileName}` : 'טרם הוגש'}
           </p>
         </div>
@@ -240,7 +240,7 @@ function DocumentRow({
           type="button"
           disabled={busy}
           onClick={onUpload}
-          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
         >
           {busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -257,14 +257,14 @@ function DocumentRow({
             <button
               type="button"
               onClick={() => onView(uploaded)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-[13px] font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-slate-700"
             >
               <Eye className="h-3.5 w-3.5" />
               צפה במסמך
             </button>
             <a
               href={documentDownloadUrl(uploaded.planId, uploaded.id)}
-              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-[13px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50"
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50"
             >
               <Download className="h-3.5 w-3.5" />
               הורדה

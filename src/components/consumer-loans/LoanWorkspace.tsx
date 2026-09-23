@@ -218,10 +218,10 @@ export function LoanWorkspace() {
             <CreditCard className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-black leading-tight text-slate-900 sm:text-2xl">
+            <h1 className="text-title font-black leading-tight text-slate-900">
               ניתוח ההלוואות וכלכלת המשפחה
             </h1>
-            <p className="mt-0.5 text-[13px] leading-relaxed text-slate-600">
+            <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
               מזיזים מכוון — קרן, ריבית או תקופה — ורואים מיד מה זה עושה להחזר החודשי, לריבית
               הכוללת וליחס ההחזר שהבנק בוחן. הכול נשמר במחשב שלכם בלבד.
             </p>
@@ -282,11 +282,11 @@ export function LoanWorkspace() {
                       <Icon className="h-4 w-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-black leading-tight">
+                      <span className="block text-sm font-black leading-tight">
                         {item.label}
                         {item.id === 'compare' && selectedCount > 0 && (
                           <span
-                            className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-black ${
+                            className={`mr-1.5 rounded-full px-1.5 py-0.5 text-2xs font-black ${
                               active ? 'bg-white text-slate-900' : 'bg-blue-100 text-blue-700'
                             }`}
                           >
@@ -295,7 +295,7 @@ export function LoanWorkspace() {
                         )}
                       </span>
                       <span
-                        className={`block text-[10.5px] ${active ? 'text-white/70' : 'text-slate-400'}`}
+                        className={`block text-2xs ${active ? 'text-white/70' : 'text-slate-400'}`}
                       >
                         {item.hint}
                       </span>
@@ -404,9 +404,9 @@ function HeaderChip({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5">
       <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-      <span className="text-[10px] text-slate-500">{label}</span>
+      <span className="text-2xs text-slate-500">{label}</span>
       <span
-        className={`text-[12.5px] font-black ${emphasized ? 'text-blue-700' : 'text-slate-900'}`}
+        className={`text-xs font-black ${emphasized ? 'text-blue-700' : 'text-slate-900'}`}
       >
         {value}
       </span>
@@ -425,11 +425,11 @@ function SectionTitle({
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-2">
-      <p className="inline-flex items-center gap-1.5 text-[13px] font-black text-slate-900">
+      <p className="inline-flex items-center gap-1.5 text-sm font-black text-slate-900">
         <Icon className="h-3.5 w-3.5 text-slate-400" />
         {title}
       </p>
-      <p className="text-[10.5px] text-slate-500">{hint}</p>
+      <p className="text-2xs text-slate-500">{hint}</p>
     </div>
   );
 }
@@ -440,8 +440,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg">
         <CreditCard className="h-7 w-7" />
       </span>
-      <h2 className="text-lg font-black text-slate-900">נתחיל מההלוואות שיש לכם היום</h2>
-      <p className="mx-auto mt-2 max-w-2xl text-[13px] leading-relaxed text-slate-600">
+      <h2 className="text-subtitle font-black text-slate-900">נתחיל מההלוואות שיש לכם היום</h2>
+      <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
         הוסיפו כל התחייבות חודשית — הלוואה בנקאית, חוץ-בנקאית, כרטיס אשראי, רכב או הלוואה
         מהמשפחה. לכל אחת מזיזים קרן, ריבית ותקופה, והכלי מראה מיד את ההחזר החודשי, את הריבית
         שתשלמו עד הסוף ואת יחס ההחזר מההכנסה — היחס שקובע איזו משכנתא הבנק יאשר לכם.
@@ -451,14 +451,14 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-sm font-black text-white shadow-lg transition-all hover:shadow-xl"
+          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl"
         >
           <Plus className="h-4 w-4" />
           הוספת ההלוואה הראשונה
         </button>
         <Link
           href="/mortgage-planning?flow=affordability"
-          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-900"
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-button font-bold text-slate-700 transition-colors hover:border-slate-900"
         >
           <Import className="h-4 w-4" />
           הזנתי את ההלוואות בכלי כושר ההחזר — לייבוא משם
