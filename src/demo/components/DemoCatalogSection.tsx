@@ -21,7 +21,7 @@ export function DemoCatalogSection() {
       <div className="text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-sm font-black text-indigo-800">
           <Eye className="h-3.5 w-3.5" />
-          רוצים לראות איך זה נראה מבפנים?
+          הדגמה חיה לכל כלי
         </span>
         <h2 className="mt-3 text-title font-black text-slate-900">הכירו את הכלים של משכלנתא</h2>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 md:text-base">

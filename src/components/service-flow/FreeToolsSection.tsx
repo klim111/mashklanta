@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Calculator, CreditCard, PiggyBank, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, CreditCard, Wallet, RefreshCw, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { demoId } from '@/demo/demo-attr';
 
@@ -38,7 +38,7 @@ const FREE_TOOLS: Array<{
     href: '/equity-planning',
     title: 'כלי תכנון הון עצמי',
     description: 'מקדמה, מס רכישה, עו״ד ושיפוץ — כל הכסף שצריך להביא עד המפתח, על ציר זמן',
-    icon: PiggyBank,
+    icon: Wallet,
     gradient: 'from-emerald-500 to-teal-600',
     hover: 'hover:border-emerald-300',
   },

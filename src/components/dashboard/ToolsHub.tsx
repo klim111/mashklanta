@@ -7,7 +7,7 @@ import {
   BookOpen,
   Calculator,
   CreditCard,
-  PiggyBank,
+  Wallet,
   RefreshCw,
   Search,
   Sparkles,
@@ -20,7 +20,7 @@ const tools = [
     href: '/equity-planning',
     title: 'כלי תכנון הון עצמי',
     tag: 'מקדמה והוצאות נלוות',
-    icon: PiggyBank,
+    icon: Wallet,
     gradient: 'from-emerald-500 to-teal-600',
     description:
       'בונים לוח זמנים של כל הכסף שצריך להביא עד קבלת המפתח: מקדמה, מס רכישה, עו״ד, תיווך ושיפוץ.',

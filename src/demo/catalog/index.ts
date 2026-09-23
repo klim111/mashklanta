@@ -15,7 +15,7 @@ import {
   LayoutDashboard,
   LineChart,
   ListChecks,
-  PiggyBank,
+  Wallet,
   RefreshCw,
 } from 'lucide-react';
 import type { DemoCatalogEntry, DemoCategory } from '../types';
@@ -46,7 +46,7 @@ export const DEMO_CATALOG: DemoCatalogEntry[] = [
     id: 'equity',
     title: 'הדגמת כלי תכנון הון עצמי',
     description: 'מחיר נכס ופרופיל מימון, ההוצאות הנלוות לפי קטגוריות, ותזרים ההון העצמי עד המפתח.',
-    icon: PiggyBank,
+    icon: Wallet,
     gradient: 'from-emerald-500 to-teal-600',
     route: '/equity-planning',
     category: 'planning',

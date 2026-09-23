@@ -11,7 +11,7 @@ import {
   LayoutDashboard,
   LineChart,
   Map,
-  PiggyBank,
+  Wallet,
   RefreshCw,
   Save,
   Scale,
@@ -98,7 +98,7 @@ export const platformTools: PlatformTool[] = [
     description:
       'לוח זמנים של כל התשלומים וההוצאות הנלוות — מקדמה, מס רכישה, עו״ד ושיפוץ — עד ליום קבלת המפתח.',
     href: '/equity-planning',
-    icon: PiggyBank,
+    icon: Wallet,
     category: 'planning',
     gradient: 'from-green-600 to-emerald-700',
     stageId: 'analysis',
