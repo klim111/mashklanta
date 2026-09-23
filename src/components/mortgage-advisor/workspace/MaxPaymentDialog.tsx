@@ -217,7 +217,7 @@ function BorrowerFields({
   onChange: (form: BorrowerForm) => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
       <p className="text-xs font-semibold text-slate-700">{title}</p>
 
       <div className="grid gap-3 sm:grid-cols-2">

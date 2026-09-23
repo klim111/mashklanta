@@ -63,7 +63,7 @@ export function ExpensesTable(props: ExpensesTableProps) {
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <header className="bg-gradient-to-l from-slate-900 via-slate-900 to-indigo-950 px-4 py-4 sm:px-6">
+      <header className="bg-brand-dark px-4 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-subtitle font-black text-white">טבלת ההוצאות</h2>
@@ -160,7 +160,7 @@ export function ExpensesTable(props: ExpensesTableProps) {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="overflow-hidden bg-slate-50/60"
+                    className="overflow-hidden bg-slate-50"
                   >
                     <div className="space-y-2 px-3 py-3 sm:px-5">
                       {rows.map((expense) => (
@@ -302,7 +302,7 @@ function ExpenseRow({
   return (
     <div
       className={`rounded-2xl border bg-white p-3 transition-colors ${
-        paid ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 hover:border-slate-300'
+        paid ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
       }`}
     >
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">

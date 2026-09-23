@@ -81,9 +81,9 @@ export function PlanPeekDialog({
                   key={stage}
                   className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${
                     status === 'COMPLETED'
-                      ? 'border-emerald-200 bg-emerald-50/60'
+                      ? 'border-emerald-200 bg-emerald-50'
                       : status === 'IN_PROGRESS'
-                        ? 'border-blue-200 bg-blue-50/60'
+                        ? 'border-blue-200 bg-blue-50'
                         : 'border-slate-200 bg-white'
                   }`}
                 >

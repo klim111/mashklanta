@@ -69,7 +69,7 @@ export function StageIntro({
         )}
       </div>
 
-      <p className="mx-auto mt-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50/60 px-4 py-3 text-info leading-relaxed text-violet-950">
+      <p className="mx-auto mt-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-info leading-relaxed text-violet-950">
         <Headset className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
         <span>
           בכל שלב שבו תרגישו שאתם צריכים ייעוץ או עזרה, הכפתור{' '}
@@ -83,7 +83,7 @@ export function StageIntro({
           {...demoId('plan-stage-intro-start')}
           type="button"
           onClick={onStart}
-          className={`inline-flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-l ${journey.gradient} px-8 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110`}
+          className={`inline-flex h-12 items-center gap-2 rounded-2xl bg-blue-600 px-8 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl`}
         >
           התחילו את השלב
           <ArrowLeft className="h-5 w-5" />
@@ -105,7 +105,7 @@ function IntroList({
   items: string[];
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
       <h4 className="mb-3 flex items-center gap-2 text-info font-black text-slate-900">
         <span
           className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} shadow-md`}

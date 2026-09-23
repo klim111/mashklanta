@@ -10,16 +10,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-financial-gradient text-white shadow-lg hover:shadow-xl border-0",
+          "bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:shadow-xl border-0",
         destructive:
           "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg hover:shadow-xl",
         outline:
-          "border-2 border-financial-primary bg-white text-financial-primary shadow-md hover:bg-financial-primary hover:text-white hover:shadow-lg",
+          "border border-slate-200 bg-white text-slate-900 shadow-md hover:bg-slate-50 hover:shadow-lg",
         secondary:
           "bg-financial-gray-100 text-financial-gray-800 shadow-md hover:bg-financial-gray-200 hover:shadow-lg",
         ghost: "hover:bg-financial-gray-100 hover:text-financial-gray-900 text-financial-gray-700",
-        link: "text-financial-primary underline-offset-4 hover:underline hover:text-financial-primary-dark",
-        success: "bg-financial-success-gradient text-white shadow-lg hover:shadow-xl",
+        link: "text-blue-600 underline-offset-4 hover:underline hover:text-blue-700",
+        success: "bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 hover:shadow-xl",
         warning: "bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg hover:shadow-xl",
       },
       size: {

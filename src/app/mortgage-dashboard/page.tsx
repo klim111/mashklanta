@@ -78,10 +78,10 @@ export default function MortgageDashboard() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-gray-600">טוען נתוני משכנתא...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">טוען נתוני משכנתא...</p>
         </div>
       </div>
     );
@@ -89,16 +89,16 @@ export default function MortgageDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
           <div className="flex items-center gap-3 text-red-600 mb-4">
             <AlertCircle className="w-6 h-6" />
             <h2 className="text-subtitle font-semibold">שגיאה</h2>
           </div>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-slate-600 mb-6">{error}</p>
           <button
             onClick={loadMortgageData}
-            className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             נסה שוב
           </button>
@@ -109,16 +109,16 @@ export default function MortgageDashboard() {
 
   if (!mortgageData) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-            <Home className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-subtitle font-bold text-gray-900 mb-2">אין משכנתא פעילה</h2>
-            <p className="text-gray-600 mb-6">
+            <Home className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h2 className="text-subtitle font-bold text-slate-900 mb-2">אין משכנתא פעילה</h2>
+            <p className="text-slate-600 mb-6">
               נראה שעדיין לא הזנת פרטי משכנתא. התחל עכשיו כדי לנהל את המשכנתא שלך בצורה חכמה.
             </p>
             <Link href="/mortgage-application">
-              <button className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all">
+              <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all">
                 הוסף משכנתא
               </button>
             </Link>
@@ -129,37 +129,37 @@ export default function MortgageDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <Link href="/dashboard" className="flex items-center gap-2 text-slate-600 hover:text-slate-900">
                 <ArrowLeft className="w-5 h-5" />
                 <span>חזרה</span>
               </Link>
-              <div className="h-6 w-px bg-gray-300" />
-              <h1 className="text-title font-bold text-gray-900">דאשבורד משכנתא</h1>
+              <div className="h-6 w-px bg-slate-300" />
+              <h1 className="text-title font-bold text-slate-900">דאשבורד משכנתא</h1>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={exportMortgageData}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 title="ייצוא נתונים"
               >
                 <Download className="w-5 h-5" />
               </button>
               <button
                 onClick={() => router.push('/mortgage-advisor')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 title="ייעוץ משכנתא"
               >
                 <HelpCircle className="w-5 h-5" />
               </button>
               <button
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 title="הגדרות"
               >
                 <Settings className="w-5 h-5" />

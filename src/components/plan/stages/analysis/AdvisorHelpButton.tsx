@@ -107,7 +107,7 @@ export function AdvisorHelpButton({
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.97 }}
         aria-expanded={open}
-        className="pointer-events-auto inline-flex items-center gap-2.5 rounded-full bg-gradient-to-l from-violet-600 to-purple-600 py-3 pl-5 pr-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.4)] ring-2 ring-white transition-shadow hover:shadow-[0_14px_36px_rgba(124,58,237,0.5)]"
+        className="pointer-events-auto inline-flex items-center gap-2.5 rounded-full bg-violet-600 hover:bg-violet-700 py-3 pl-5 pr-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.4)] ring-2 ring-white transition-shadow hover:shadow-[0_14px_36px_rgba(124,58,237,0.5)]"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
           <Headset className="h-4 w-4" />

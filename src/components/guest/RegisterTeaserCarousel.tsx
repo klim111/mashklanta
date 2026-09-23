@@ -229,11 +229,11 @@ export function RegisterTeaserCarousel({
         </div>
 
         {/* הפעולות */}
-        <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:flex-row-reverse sm:items-center sm:px-7">
+        <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row-reverse sm:items-center sm:px-7">
           <button
             type="button"
             onClick={register}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl sm:flex-1"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl sm:flex-1"
           >
             הרשמה חינם ופתיחת האזור האישי
             <ArrowLeft className="h-4 w-4" />

@@ -128,12 +128,12 @@ export default function HowItWorksPage() {
 
   return (
     <div className="min-h-screen bg-white" dir="rtl">
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <NavBar />
       </div>
 
       {/* ─────────────────────────── Hero ─────────────────────────── */}
-      <section className="relative flex min-h-[92vh] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 px-4 text-white">
+      <section className="relative flex min-h-[92vh] flex-col items-center justify-center overflow-hidden bg-brand-dark px-4 text-white">
         {/* Ambient background */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-24 right-[8%] h-[26rem] w-[26rem] rounded-full bg-blue-500/20 blur-3xl animate-blob" />
@@ -250,7 +250,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ───────────────────── Sticky section nav ───────────────────── */}
-      <nav className="sticky top-14 z-40 border-b border-gray-100 bg-white/90 shadow-sm backdrop-blur md:top-[73px]">
+      <nav className="sticky top-14 z-40 border-b border-slate-100 bg-white/90 shadow-sm backdrop-blur md:top-[73px]">
         <div className="mx-auto max-w-6xl overflow-x-auto px-4">
           <ul className="flex min-w-max justify-center gap-1 py-3">
             {sectionNav.map((item) => (
@@ -259,8 +259,8 @@ export default function HowItWorksPage() {
                   href={`#${item.id}`}
                   className={`block whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold transition-all ${
                     activeSection === item.id
-                      ? 'bg-gray-900 text-white shadow-md'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   {item.label}
@@ -288,10 +288,10 @@ export default function HowItWorksPage() {
             viewport={{ once: true }}
             className="mx-auto mb-14 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               פלטפורמה אחת, שני צדדים
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               היועץ מנהל מכאן את הלקוחות שלו ומציג את תוצר העבודה. הלקוח עוקב אחרי כל שלב,
               מחשב הכל בעצמו, ומקבל גישה לאותם כלים בדיוק. אף צד לא עובד באפלה.
             </p>
@@ -310,15 +310,15 @@ export default function HowItWorksPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08 }}
-                  className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                  className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                 >
                   <div
                     className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${pillar.gradient} shadow-lg transition-transform duration-300 group-hover:scale-110`}
                   >
                     <Icon className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="mb-2 text-subtitle font-bold text-gray-900">{pillar.title}</h3>
-                  <p className="text-sm leading-relaxed text-gray-600">
+                  <h3 className="mb-2 text-subtitle font-bold text-slate-900">{pillar.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600">
                     {pillar.description}
                   </p>
                 </motion.div>
@@ -329,7 +329,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ─────────────────────────── How to start ─────────────────────────── */}
-      <section id="start" className="scroll-mt-32 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 py-20 text-white md:py-28">
+      <section id="start" className="scroll-mt-32 bg-brand-dark py-20 text-white md:py-28">
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -370,7 +370,7 @@ export default function HowItWorksPage() {
       {/* ─────────────────────────── Journey ─────────────────────────── */}
       <section
         id="journey"
-        className="scroll-mt-32 bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 py-20 md:py-28"
+        className="scroll-mt-32 bg-hero-soft py-20 md:py-28"
       >
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
@@ -383,10 +383,10 @@ export default function HowItWorksPage() {
               <Layers3 className="h-4 w-4" />
               עבודת היועץ, שלב אחר שלב
             </div>
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               חמישה שלבים. בכל אחד — אתם בוחרים
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               לחצו על כל שלב כדי לראות מה היועץ עושה בפועל, מה הערך שאתם מקבלים, ואיך
               הפלטפורמה מאפשרת לכם לבצע את אותו שלב בעצמכם.
             </p>
@@ -409,10 +409,10 @@ export default function HowItWorksPage() {
               <Wallet className="h-4 w-4" />
               מודל התמחור
             </div>
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               משלמים רק על מה שלקחתם — ותמיד את המחיר הנמוך
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               אין חבילה אחת שמתאימה לכולם. בכל שלב מחליטים מחדש — לבד, ליווי לשלב, לכמה שלבים או
               ליווי מלא. מה ששילמתם על הפלטפורמה מקוזז, והגישה אליה כלולה בכל ליווי.
             </p>
@@ -437,7 +437,7 @@ export default function HowItWorksPage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
                   className={`relative flex flex-col rounded-3xl border-2 bg-white p-7 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${
-                    plan.popular ? 'border-violet-400' : 'border-gray-200'
+                    plan.popular ? 'border-violet-400' : 'border-slate-200'
                   }`}
                 >
                   {plan.popular && (
@@ -452,27 +452,27 @@ export default function HowItWorksPage() {
                     <Icon className="h-7 w-7 text-white" />
                   </div>
 
-                  <h3 className="text-subtitle font-black text-gray-900">{plan.name}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                  <h3 className="text-subtitle font-black text-slate-900">{plan.name}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
                     {plan.tagline}
                   </p>
 
-                  <div className="my-6 border-y border-gray-100 py-5">
-                    <div className="text-4xl font-black text-gray-900">{plan.price}</div>
-                    <div className="mt-1 text-sm text-gray-600">{plan.priceNote}</div>
+                  <div className="my-6 border-y border-slate-100 py-5">
+                    <div className="text-4xl font-black text-slate-900">{plan.price}</div>
+                    <div className="mt-1 text-sm text-slate-600">{plan.priceNote}</div>
                   </div>
 
                   <ul className="mb-6 flex-1 space-y-2.5">
                     {plan.features.slice(0, 4).map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5 text-sm">
                         <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
-                        <span className="text-gray-700">{feature}</span>
+                        <span className="text-slate-700">{feature}</span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="rounded-xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-600">
-                    <strong className="text-gray-900">מתאים ל:</strong> {plan.bestFor}
+                  <div className="rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+                    <strong className="text-slate-900">מתאים ל:</strong> {plan.bestFor}
                   </div>
                 </motion.div>
               );
@@ -483,7 +483,7 @@ export default function HowItWorksPage() {
             <Button
               asChild
               size="lg"
-              className="bg-gradient-to-l from-blue-600 to-violet-600 px-8 text-base font-bold text-white shadow-xl hover:from-blue-700 hover:to-violet-700 hover:text-white"
+              className="bg-blue-600 hover:bg-blue-700 px-8 text-base font-bold text-white shadow-xl hover:text-white"
             >
               <Link href="/pricing">
                 לעמוד התמחור המלא ולמחשבון החבילה
@@ -497,7 +497,7 @@ export default function HowItWorksPage() {
       {/* ─────────────────────────── Proof ─────────────────────────── */}
       <section
         id="proof"
-        className="scroll-mt-32 bg-gradient-to-br from-gray-50 to-slate-100 py-20 md:py-28"
+        className="scroll-mt-32 bg-slate-50 py-20 md:py-28"
       >
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
@@ -510,10 +510,10 @@ export default function HowItWorksPage() {
               <ScanSearch className="h-4 w-4" />
               מדידת איכות העבודה
             </div>
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               ברירת המחדל מול התוצר האמיתי
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               זה הלב של הפלטפורמה. כל תמהיל וכל הצעה שהתקבלה מהבנק נמדדים מול נקודת הפתיחה —
               כדי שתראו במספרים מה בדיוק הרוויחה העבודה שנעשתה.
             </p>
@@ -536,10 +536,10 @@ export default function HowItWorksPage() {
               <SlidersHorizontal className="h-4 w-4" />
               ארגז הכלים המלא
             </div>
-            <h2 className="mb-5 text-title font-black text-gray-900">
+            <h2 className="mb-5 text-title font-black text-slate-900">
               {platformTools.length} כלים — כולם פתוחים בפניכם
             </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
+            <p className="text-lg leading-relaxed text-slate-600">
               אלה בדיוק הכלים שיועץ משכנתאות עובד איתם ביום-יום. במסלול העצמאי כולם זמינים
               לכם ללא הגבלה, ובמסלול עם יועץ אתם רואים כל חישוב שהוא מבצע.
             </p>
@@ -552,7 +552,7 @@ export default function HowItWorksPage() {
       {/* ─────────────────────────── After signing ─────────────────────────── */}
       <section
         id="life"
-        className="scroll-mt-32 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 py-20 text-white md:py-28"
+        className="scroll-mt-32 bg-brand-dark py-20 text-white md:py-28"
       >
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
@@ -603,7 +603,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ─────────────────────────── CTA ─────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-800 to-violet-900 py-20 text-white md:py-24">
+      <section className="relative overflow-hidden bg-brand-dark py-20 text-white md:py-24">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-20 right-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl animate-float" />
           <div className="absolute -bottom-24 left-1/4 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl animate-float-slow" />

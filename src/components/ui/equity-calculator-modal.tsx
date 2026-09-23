@@ -448,7 +448,7 @@ export default function EquityCalculatorModal({
                     <div className="text-center">
                       <Banknote className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                       <h4 className="text-xl font-semibold mb-2">מה הסכום הפנוי שיש בידך?</h4>
-                      <p className="text-gray-600">הזן את הסכום הפנוי שלך לחישוב הון עצמי</p>
+                      <p className="text-slate-600">הזן את הסכום הפנוי שלך לחישוב הון עצמי</p>
                     </div>
 
                     <Card>
@@ -463,7 +463,7 @@ export default function EquityCalculatorModal({
                               placeholder="הזן סכום"
                               className="w-full mt-2 text-lg text-center"
                             />
-                            <p className="text-sm text-gray-600 mt-2 text-center">
+                            <p className="text-sm text-slate-600 mt-2 text-center">
                               אל דאגה אם לא יהיה מספיק, נעזור לך לגייס הון נוסף
                             </p>
                           </div>
@@ -484,7 +484,7 @@ export default function EquityCalculatorModal({
                     <div className="text-center">
                       <FileText className="w-16 h-16 text-green-600 mx-auto mb-4" />
                       <h4 className="text-xl font-semibold mb-2">הוצאות רכישה</h4>
-                      <p className="text-gray-600">
+                      <p className="text-slate-600">
                         {currentTab === 'required' 
                           ? 'הזן את ההוצאות הנדרשות לרכישת הנכס' 
                           : 'הזן הוצאות נוספות (אופציונלי)'}
@@ -532,7 +532,7 @@ export default function EquityCalculatorModal({
                                     {category.tooltip && (
                                       <Tooltip>
                                         <TooltipTrigger>
-                                          <Info className="w-4 h-4 text-gray-400 ml-1" />
+                                          <Info className="w-4 h-4 text-slate-400 ml-1" />
                                         </TooltipTrigger>
                                         <TooltipContent>
                                           <p>{category.tooltip}</p>
@@ -549,7 +549,7 @@ export default function EquityCalculatorModal({
                                   className={`w-full ${category.isAutoCalculated ? 'bg-blue-50 border-blue-200' : ''}`}
                                   readOnly={category.isAutoCalculated}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-slate-500 mt-1">
                                   {category.isAutoCalculated && category.id === 'purchaseTax' 
                                     ? equityCalculation.purchaseTaxCalculation.explanation
                                     : category.description
@@ -578,7 +578,7 @@ export default function EquityCalculatorModal({
                                     {category.tooltip && (
                                       <Tooltip>
                                         <TooltipTrigger>
-                                          <Info className="w-4 h-4 text-gray-400 ml-1" />
+                                          <Info className="w-4 h-4 text-slate-400 ml-1" />
                                         </TooltipTrigger>
                                         <TooltipContent>
                                           <p>{category.tooltip}</p>
@@ -595,7 +595,7 @@ export default function EquityCalculatorModal({
                                   className={`w-full ${category.isAutoCalculated ? 'bg-blue-50 border-blue-200' : ''}`}
                                   readOnly={category.isAutoCalculated}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-slate-500 mt-1">
                                   {category.isAutoCalculated && category.id === 'purchaseTax' 
                                     ? equityCalculation.purchaseTaxCalculation.explanation
                                     : category.description
@@ -621,7 +621,7 @@ export default function EquityCalculatorModal({
                     <div className="text-center">
                       <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
                       <h4 className="text-xl font-semibold mb-2">סיכום החישוב</h4>
-                      <p className="text-gray-600">הנה הסיכום של הון עצמי זמין</p>
+                      <p className="text-slate-600">הנה הסיכום של הון עצמי זמין</p>
                       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm text-blue-800">
                           💡 <strong>טיפ:</strong> אם התוצאה חיובית, תוכל להזין את ההון העצמי למחשבון המשכנתא. 
@@ -635,7 +635,7 @@ export default function EquityCalculatorModal({
                       <Card className="border-blue-200 bg-blue-50">
                         <CardContent className="p-4 text-center">
                           <Banknote className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                          <div className="text-sm text-gray-600">הון פנוי</div>
+                          <div className="text-sm text-slate-600">הון פנוי</div>
                           <div className="text-xl font-bold text-blue-600">
                             {formatCurrency(equityCalculation.availableFunds)}
                           </div>
@@ -645,7 +645,7 @@ export default function EquityCalculatorModal({
                       <Card className="border-red-200 bg-red-50">
                         <CardContent className="p-4 text-center">
                           <TrendingDown className="w-8 h-8 text-red-600 mx-auto mb-2" />
-                          <div className="text-sm text-gray-600">סה"כ הוצאות</div>
+                          <div className="text-sm text-slate-600">סה"כ הוצאות</div>
                           <div className="text-xl font-bold text-red-600">
                             {formatCurrency(equityCalculation.totalExpenses)}
                           </div>
@@ -655,7 +655,7 @@ export default function EquityCalculatorModal({
                       <Card className={`${equityCalculation.remainingEquity >= 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
                         <CardContent className="p-4 text-center">
                           <TrendingUp className={`w-8 h-8 mx-auto mb-2 ${equityCalculation.remainingEquity >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                          <div className="text-sm text-gray-600">הון עצמי זמין</div>
+                          <div className="text-sm text-slate-600">הון עצמי זמין</div>
                           <div className={`text-xl font-bold ${equityCalculation.remainingEquity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {formatCurrency(equityCalculation.remainingEquity)}
                           </div>
@@ -748,7 +748,7 @@ export default function EquityCalculatorModal({
                              if (amount === 0) return null
                              
                              return (
-                               <div key={category.id} className="flex justify-between items-center py-2 border-b border-gray-100">
+                               <div key={category.id} className="flex justify-between items-center py-2 border-b border-slate-100">
                                  <div className="flex items-center gap-2">
                                    {category.icon}
                                    <span className="text-sm">{category.label}</span>

@@ -351,7 +351,7 @@ function BankCard({
             <button
               type="button"
               onClick={() => onView(uploaded)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               <Eye className="h-3.5 w-3.5" />
               צפייה

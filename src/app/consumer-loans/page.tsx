@@ -21,12 +21,12 @@ export const metadata: Metadata = {
 export default function ConsumerLoansPage() {
   return (
     <>
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <NavBar />
       </div>
       <Suspense
         fallback={
-          <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-500">
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
             טוען...
           </div>
         }

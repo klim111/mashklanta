@@ -68,7 +68,7 @@ export function AdvisorOffersList({
               }
             }}
             className={`cursor-pointer rounded-2xl border-2 p-3 transition-colors ${
-              featured ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200 bg-white hover:bg-slate-50'
+              featured ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white hover:bg-slate-50'
             }`}
           >
             <div className="flex flex-wrap items-center justify-center gap-2 text-center">

@@ -111,7 +111,7 @@ export function AdvisorLeadDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="mt-2 rounded-2xl bg-slate-900 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
+              className="mt-2 rounded-2xl bg-blue-600 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
             >
               סגירה
             </button>

@@ -108,7 +108,7 @@ export function GuestSaveNotice({ gate }: { gate: EquityGuestGate }) {
         </p>
       </div>
       <Link href={EQUITY_REGISTER_HREF} className="shrink-0">
-        <Button className="w-full bg-gradient-to-l from-amber-500 to-orange-600 font-black text-white hover:from-amber-600 hover:to-orange-700 sm:w-auto">
+        <Button className="w-full bg-blue-600 hover:bg-blue-700 font-black text-white sm:w-auto">
           <UserPlus className="ml-2 h-4 w-4" />
           להירשם ולשמור
         </Button>
@@ -147,7 +147,7 @@ export function EquityGuestDialog({ open, onClose }: { open: boolean; onClose: (
 
         <div className="flex min-w-0 flex-col gap-2">
           <Link href={EQUITY_REGISTER_HREF} className="block min-w-0">
-            <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               להירשם ולשמור את הערכים
               <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
             </Button>
@@ -170,7 +170,7 @@ export function EquityGuestDialog({ open, onClose }: { open: boolean; onClose: (
 
 function Benefit({ icon: Icon, text }: { icon: React.ElementType; text: string }) {
   return (
-    <li className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-2">
+    <li className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-emerald-600 shadow-sm">
         <Icon className="h-3.5 w-3.5" />
       </span>

@@ -298,10 +298,10 @@ export default function UniformMixes() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">טוען תמהילים אחידים...</p>
+          <p className="text-slate-600">טוען תמהילים אחידים...</p>
         </div>
       </div>
     );
@@ -309,15 +309,15 @@ export default function UniformMixes() {
 
   if (!userData || uniformMixes.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
-        <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+      <div className="min-h-screen bg-slate-50">
+        <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
           <NavBar />
         </div>
         
         <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
           <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-title font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
-            <p className="text-lg text-gray-600 mb-8">
+            <h1 className="text-title font-bold text-slate-900 mb-6">לא נמצאו נתונים</h1>
+            <p className="text-lg text-slate-600 mb-8">
               כדי לראות תמהילים אחידים, תחילה עליך לעבור דרך כלי תכנון המשכנתא
             </p>
             <Link href="/mortgage-planning">
@@ -333,9 +333,9 @@ export default function UniformMixes() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
       </div>
       
@@ -362,13 +362,13 @@ export default function UniformMixes() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              <h1 className="text-title font-bold text-gray-900 mb-6">
+              <h1 className="text-title font-bold text-slate-900 mb-6">
                 סלים אחידים
               </h1>
-              <p className="text-xl text-gray-600 mb-4">
+              <p className="text-xl text-slate-600 mb-4">
                 הסלים האחידים הם 3 תמהילי משכנתא שהבנק מחויב להציג ללקוח על פי הנחיית בנק ישראל
               </p>
-              <p className="text-lg text-gray-500">
+              <p className="text-lg text-slate-500">
                 התמהילים מוצגים להמחשה והשוואה בלבד — לבניית תמהיל משתלם ומותאם אישית עבורך באמצעות כלי בניית התמהילים של משכלנתא או בעזרת מומחה משכלנתא
               </p>
             </motion.div>
@@ -379,9 +379,9 @@ export default function UniformMixes() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-6 mb-8 inline-block shadow-lg"
+                className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6 mb-8 inline-block shadow-lg"
               >
-                <h3 className="text-subtitle font-semibold text-gray-900 mb-3">
+                <h3 className="text-subtitle font-semibold text-slate-900 mb-3">
                   {userData.applicationType === 'couple' ? 'הנתונים המצרפיים שלכם' : 'הנתונים שלך'}
                 </h3>
                 {selection && (
@@ -391,12 +391,12 @@ export default function UniformMixes() {
                 )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600">סוג נכס:</span>
+                    <span className="text-slate-600">סוג נכס:</span>
                     <div className="font-medium">{userData.propertyType}</div>
                   </div>
                   {(selection?.propertyPrice || userData.propertyPrice) && (
                     <div>
-                      <span className="text-gray-600">מחיר נכס:</span>
+                      <span className="text-slate-600">מחיר נכס:</span>
                       <div className="font-medium">
                         ₪{(
                           selection?.propertyPrice ??
@@ -407,7 +407,7 @@ export default function UniformMixes() {
                   )}
                   {(selection?.ownCapital || userData.ownCapital) && (
                     <div>
-                      <span className="text-gray-600">הון עצמי:</span>
+                      <span className="text-slate-600">הון עצמי:</span>
                       <div className="font-medium">
                         ₪{(
                           selection?.ownCapital ??
@@ -418,13 +418,13 @@ export default function UniformMixes() {
                   )}
                   {uniformMixes.length > 0 && (
                     <div>
-                      <span className="text-gray-600">סכום משכנתא:</span>
+                      <span className="text-slate-600">סכום משכנתא:</span>
                       <div className="font-medium text-blue-600">₪{uniformMixes[0].totalAmount.toLocaleString()}</div>
                     </div>
                   )}
                   {uniformMixes.length > 0 && (
                     <div>
-                      <span className="text-gray-600">תקופת פירעון:</span>
+                      <span className="text-slate-600">תקופת פירעון:</span>
                       <div className="font-medium text-purple-600">{uniformMixes[0].tracks[0].years} שנים</div>
                     </div>
                   )}
@@ -438,7 +438,7 @@ export default function UniformMixes() {
               The "Build custom mix" CTA below is placed first so it sits to the RIGHT of the
               rightmost uniform mix on the screen. */}
           <div className="text-center mb-6">
-            <h2 className="text-title font-bold text-gray-900">סלים אחידים</h2>
+            <h2 className="text-title font-bold text-slate-900">סלים אחידים</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {uniformMixes.map((mix, index) => {
@@ -472,10 +472,10 @@ export default function UniformMixes() {
                   transition={{ duration: 0.6, delay: 0.2 + (index * 0.1) }}
                   className="space-y-4"
                 >
-                  <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 text-center">
+                  <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg p-6 text-center">
                     <headerConfig.Icon className={`w-12 h-12 mx-auto mb-4 ${headerConfig.iconClassName}`} />
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{headerConfig.title}</h4>
-                    <p className="text-sm text-gray-600">{headerConfig.description}</p>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">{headerConfig.title}</h4>
+                    <p className="text-sm text-slate-600">{headerConfig.description}</p>
                   </div>
 
                   <MortgageMixCard
@@ -497,7 +497,7 @@ export default function UniformMixes() {
             <Link href="/custom-mix-builder">
               <Button
                 size="lg"
-                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-cta shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-cta shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Target className="w-5 h-5 ml-2" />
                 הוסף תמהיל מותאם אישית
@@ -517,7 +517,7 @@ export default function UniformMixes() {
                 <Button
                   onClick={handleContinueToAdvisor}
                   size="lg"
-                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-cta shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="px-8 py-4 bg-violet-600 hover:bg-violet-700 text-white text-cta shadow-lg hover:shadow-xl transition-all duration-300"
                   disabled={uniformMixes.length === 0}
                 >
                   <Calculator className="w-5 h-5 ml-2" />
@@ -528,7 +528,7 @@ export default function UniformMixes() {
                   <Button
                     variant="outline"
                     size="lg"
-                    className="px-8 py-4 text-cta border-2 border-gray-300 hover:border-gray-400"
+                    className="px-8 py-4 text-cta border-2 border-slate-300 hover:border-slate-400"
                   >
                     <ArrowLeft className="w-5 h-5 ml-2" />
                     חזור לתכנון

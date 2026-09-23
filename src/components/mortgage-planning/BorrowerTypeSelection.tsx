@@ -42,8 +42,8 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
     >
 
       <div className="text-center mb-12">
-        <h2 className="text-title font-bold text-gray-900 mb-6">מי לוקח את המשכנתא?</h2>
-        <p className="text-lg text-gray-600">בחרו את סוג הבקשה כדי שנתאים את החישוב והמסכים</p>
+        <h2 className="text-title font-bold text-slate-900 mb-6">מי לוקח את המשכנתא?</h2>
+        <p className="text-lg text-slate-600">בחרו את סוג הבקשה כדי שנתאים את החישוב והמסכים</p>
       </div>
 
 
@@ -65,7 +65,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
           >
 
-            <Card className="h-full border border-gray-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[320px]">
+            <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[320px]">
 
               <CardContent className="p-8 text-center h-full flex flex-col justify-between">
 
@@ -77,13 +77,13 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
                   </motion.div>
 
-                  <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+                  <h3 className="text-subtitle font-bold text-slate-900 mb-4 group-hover:text-blue-600 transition-colors">
 
                     משכנתא ליחיד
 
                   </h3>
 
-                  <p className="text-gray-600 text-lg leading-relaxed">הזנת פרטים אישיים עבור לווה יחיד</p>
+                  <p className="text-slate-600 text-lg leading-relaxed">הזנת פרטים אישיים עבור לווה יחיד</p>
 
                 </div>
 
@@ -116,7 +116,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
           >
 
-            <Card className="h-full border border-gray-200 hover:border-green-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[320px]">
+            <Card className="h-full border border-slate-200 hover:border-green-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[320px]">
 
               <CardContent className="p-8 text-center h-full flex flex-col justify-between">
 
@@ -130,7 +130,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
                   <div className="flex items-center justify-center gap-2 mb-4">
 
-                    <h3 className="text-subtitle font-bold text-gray-900 group-hover:text-green-600 transition-colors">
+                    <h3 className="text-subtitle font-bold text-slate-900 group-hover:text-green-600 transition-colors">
 
                       אנחנו זוג שלוקח משכנתא
 
@@ -170,7 +170,7 @@ export function BorrowerTypeSelection({ onSelect, onBack }: BorrowerTypeSelectio
 
                   </div>
 
-                  <p className="text-gray-600 text-lg leading-relaxed">
+                  <p className="text-slate-600 text-lg leading-relaxed">
 
                     הזנת נתונים לשני הלווים וחישוב משוקלל של יכולת ההחזר
 

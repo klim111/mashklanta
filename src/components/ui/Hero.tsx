@@ -70,7 +70,7 @@ export default function MortgageIntro() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="inline-flex items-center gap-3 bg-white shadow-lg border border-gray-200 text-financial-primary px-6 py-3 rounded-full text-sm font-semibold mb-8"
+            className="inline-flex items-center gap-3 bg-white shadow-lg border border-slate-200 text-financial-primary px-6 py-3 rounded-full text-sm font-semibold mb-8"
           >
             <FaShieldAlt className="animate-pulse-financial" />
             <span>הפלטפורמה המתקדמת ביותר בישראל</span>
@@ -187,7 +187,7 @@ export default function MortgageIntro() {
               transition={{ duration: 0.5 }}
               className="max-w-4xl mx-auto mt-8"
             >
-              <div className={`card-financial ${OPTIONS.find((opt) => opt.key === selected)?.bgColor} border-2 border-gray-100 shadow-2xl`}>
+              <div className={`card-financial ${OPTIONS.find((opt) => opt.key === selected)?.bgColor} border-2 border-slate-100 shadow-2xl`}>
                 <motion.div 
                   className="flex items-center gap-4 mb-6"
                   initial={{ opacity: 0, x: -20 }}
@@ -244,7 +244,7 @@ export default function MortgageIntro() {
                         </div>
                         <div>
                           <Label htmlFor="service-hero" className="text-financial-gray-700 font-semibold">בחר תוכנית</Label>
-                          <select id="service-hero" className="w-full p-3 border-2 border-gray-200 rounded-lg mt-1 bg-white">
+                          <select id="service-hero" className="w-full p-3 border-2 border-slate-200 rounded-lg mt-1 bg-white">
                             <option value="">בחר תוכנית...</option>
                             <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
                             <option value="hybrid">ייעוץ היברידי - ₪199</option>
@@ -319,7 +319,7 @@ export default function MortgageIntro() {
                   </div>
                   <div>
                     <Label htmlFor="service-hero-main" className="text-financial-gray-700 font-semibold">בחר תוכנית</Label>
-                    <select id="service-hero-main" className="w-full p-3 border-2 border-gray-200 rounded-lg mt-1 bg-white">
+                    <select id="service-hero-main" className="w-full p-3 border-2 border-slate-200 rounded-lg mt-1 bg-white">
                       <option value="">בחר תוכנית...</option>
                       <option value="full">ייעוץ מלא עם בינה מלאכותית - ₪399</option>
                       <option value="hybrid">ייעוץ היברידי - ₪199</option>

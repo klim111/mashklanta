@@ -186,14 +186,14 @@ export function LoanPortfolioDashboard({
             const tone =
               insight.tone === 'alert'
                 ? {
-                    wrap: 'border-rose-200 bg-rose-50/60',
+                    wrap: 'border-rose-200 bg-rose-50',
                     icon: 'bg-rose-100 text-rose-600',
                     title: 'text-rose-900',
                     Icon: TriangleAlert,
                   }
                 : insight.tone === 'opportunity'
                   ? {
-                      wrap: 'border-emerald-200 bg-emerald-50/60',
+                      wrap: 'border-emerald-200 bg-emerald-50',
                       icon: 'bg-emerald-100 text-emerald-600',
                       title: 'text-emerald-900',
                       Icon: Lightbulb,

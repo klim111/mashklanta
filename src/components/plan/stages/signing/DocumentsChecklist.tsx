@@ -80,7 +80,7 @@ export function DocumentsChecklist({
               onClick={() => onToggle(key)}
               className={`flex w-full items-start gap-3.5 rounded-2xl border-2 p-4 transition-all ${
                 checked
-                  ? 'border-emerald-300 bg-emerald-50/60'
+                  ? 'border-emerald-300 bg-emerald-50'
                   : 'border-slate-200 bg-white hover:-translate-x-0.5 hover:border-slate-300 hover:shadow-sm'
               }`}
             >

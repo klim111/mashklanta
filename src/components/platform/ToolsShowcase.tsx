@@ -40,7 +40,7 @@ export default function ToolsShowcase() {
               type="button"
               onClick={() => setFilter(f.id)}
               className={`relative z-0 overflow-hidden rounded-full px-5 py-2.5 text-sm font-bold transition-colors ${
-                selected ? 'text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                selected ? 'text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               {selected && (
@@ -74,7 +74,7 @@ export default function ToolsShowcase() {
                 transition={{ duration: 0.28, delay: Math.min(index * 0.03, 0.25) }}
               >
                 <Link href={tool.href} className="group block h-full">
-                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-2xl">
+                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-2xl">
                     <div
                       className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${tool.gradient} opacity-0 transition-opacity group-hover:opacity-100`}
                     />
@@ -91,10 +91,10 @@ export default function ToolsShowcase() {
                       <Icon className="h-6 w-6 text-white" />
                     </div>
 
-                    <h3 className="mb-2 text-subtitle font-bold text-gray-900 transition-colors group-hover:text-blue-700">
+                    <h3 className="mb-2 text-subtitle font-bold text-slate-900 transition-colors group-hover:text-blue-700">
                       {tool.title}
                     </h3>
-                    <p className="mb-4 flex-1 text-sm leading-relaxed text-gray-600">
+                    <p className="mb-4 flex-1 text-sm leading-relaxed text-slate-600">
                       {tool.description}
                     </p>
 

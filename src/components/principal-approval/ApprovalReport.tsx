@@ -191,7 +191,7 @@ export function ApprovalReport() {
         <button
           type="button"
           onClick={printReport}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-2.5 text-button font-semibold text-white shadow-lg shadow-indigo-200 transition-all hover:shadow-xl"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-button font-semibold text-white shadow-lg shadow-indigo-200 transition-all hover:shadow-xl"
         >
           <Download className="h-4 w-4" />
           הורדת הדוח כ-PDF
@@ -242,7 +242,7 @@ export function ApprovalReport() {
             const age = yearsSince(values.birthDate as string);
             const name = [values.firstName, values.lastName].filter(Boolean).join(' ');
             return (
-              <div key={borrower.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50/50 p-4">
+              <div key={borrower.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50 p-4">
                 <h3 className="mb-3 text-sm font-bold text-slate-800">
                   לווה {index + 1}
                   {name && ` · ${name}`}
@@ -258,7 +258,7 @@ export function ApprovalReport() {
                       <h4 className="mb-2 text-xs font-bold text-slate-700">הכנסה {incomeIndex + 1}</h4>
                       <DataGrid fields={INCOME_FIELDS} values={incomeValues} peopleLabels={peopleLabels} />
                       {previous.map((prev, prevIndex) => (
-                        <div key={prev.id} className="mt-3 rounded-lg bg-amber-50/60 p-3">
+                        <div key={prev.id} className="mt-3 rounded-lg bg-amber-50 p-3">
                           <h5 className="mb-2 text-2xs font-bold text-amber-800">
                             מקום עבודה קודם {prevIndex + 1}
                           </h5>
@@ -284,7 +284,7 @@ export function ApprovalReport() {
           <div className="space-y-2">
             {accounts.length === 0 && <p className="text-xs text-slate-400">לא הוזנו חשבונות</p>}
             {accounts.map((account, index) => (
-              <div key={account.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50/50 p-4">
+              <div key={account.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50 p-4">
                 <h3 className="mb-2 text-sm font-bold text-slate-800">חשבון {index + 1}</h3>
                 <DataGrid
                   fields={BANK_ACCOUNT_FIELDS}
@@ -344,7 +344,7 @@ export function ApprovalReport() {
               const values = valuesOf('guarantor', guarantor.id);
               const name = [values.firstName, values.lastName].filter(Boolean).join(' ');
               return (
-                <div key={guarantor.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50/50 p-4">
+                <div key={guarantor.id} className="break-inside-avoid rounded-xl border border-slate-150 bg-slate-50 p-4">
                   <h3 className="mb-3 text-sm font-bold text-slate-800">
                     ערב {index + 1}
                     {name && ` · ${name}`}

@@ -98,7 +98,7 @@ function CheckoutBody() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
-      <header className="relative overflow-hidden bg-slate-950">
+      <header className="relative overflow-hidden bg-brand-dark">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/30 blur-3xl" />
           <div className="absolute -left-20 bottom-0 h-80 w-80 rounded-full bg-violet-600/25 blur-3xl" />
@@ -137,7 +137,7 @@ function CheckoutBody() {
             <button
               type="button"
               onClick={() => router.push(next)}
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
             >
               לאזור האישי — התחילו לתכנן
               <ArrowLeft className="h-4 w-4" />
@@ -259,7 +259,7 @@ function CheckoutBody() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-6 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
                 >
                   {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lock className="h-5 w-5" />}
                   שלמו ₪{PLATFORM_MONTHLY_PRICE} ופתחו את הגישה

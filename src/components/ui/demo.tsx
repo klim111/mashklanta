@@ -128,7 +128,7 @@ export default function Demo() {
           <div className="grid grid-cols-2 gap-4">
             {step.content.fields.map((field: any, index: number) => (
               <div key={index} className="bg-blue-50 p-3 rounded-lg">
-                <div className="text-sm text-gray-600">{field.label}</div>
+                <div className="text-sm text-slate-600">{field.label}</div>
                 <div className="font-semibold text-blue-800">{field.value}</div>
               </div>
             ))}
@@ -140,7 +140,7 @@ export default function Demo() {
           <div className="grid grid-cols-2 gap-4">
             {step.content.results.map((result: any, index: number) => (
               <div key={index} className="bg-green-50 p-3 rounded-lg">
-                <div className="text-sm text-gray-600">{result.label}</div>
+                <div className="text-sm text-slate-600">{result.label}</div>
                 <div className={`font-semibold ${
                   result.status === 'excellent' ? 'text-green-800' : 'text-blue-800'
                 }`}>
@@ -155,14 +155,14 @@ export default function Demo() {
         return (
           <div className="space-y-3">
             {step.content.portfolio.map((item: any, index: number) => (
-              <div key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+              <div key={index} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg">
                 <div>
                   <div className="font-semibold">{item.name}</div>
-                  <div className="text-sm text-gray-600">{item.rate}</div>
+                  <div className="text-sm text-slate-600">{item.rate}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-semibold">{item.amount}</div>
-                  <div className="text-sm text-gray-600">{item.percentage}%</div>
+                  <div className="text-sm text-slate-600">{item.percentage}%</div>
                 </div>
               </div>
             ))}
@@ -173,19 +173,19 @@ export default function Demo() {
         return (
           <div className="space-y-3">
             {step.content.banks.map((bank: any, index: number) => (
-              <div key={index} className="bg-gray-50 p-3 rounded-lg">
+              <div key={index} className="bg-slate-50 p-3 rounded-lg">
                 <div className="font-semibold mb-2">{bank.name}</div>
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   <div>
-                    <div className="text-gray-600">תשלום חודשי</div>
+                    <div className="text-slate-600">תשלום חודשי</div>
                     <div className="font-semibold">{bank.monthlyPayment}</div>
                   </div>
                   <div>
-                    <div className="text-gray-600">עלות כוללת</div>
+                    <div className="text-slate-600">עלות כוללת</div>
                     <div className="font-semibold">{bank.totalCost}</div>
                   </div>
                   <div>
-                    <div className="text-gray-600">חיסכון</div>
+                    <div className="text-slate-600">חיסכון</div>
                     <div className="font-semibold text-green-600">{bank.savings}</div>
                   </div>
                 </div>
@@ -212,7 +212,7 @@ export default function Demo() {
   }
 
   return (
-    <section id="demo-section" className="py-16 px-4 bg-gray-50">
+    <section id="demo-section" className="py-16 px-4 bg-slate-50">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -222,7 +222,7 @@ export default function Demo() {
           className="text-center mb-12"
         >
           <h2 className="text-title font-bold mb-4">איך המערכת עובדת?</h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             צפה בדמו אינטראקטיבי של תהליך המשכנתא החכם שלנו
           </p>
         </motion.div>
@@ -248,7 +248,7 @@ export default function Demo() {
                       className={`flex items-center space-x-3 space-x-reverse p-3 rounded-lg transition-all ${
                         currentStep === index 
                           ? 'bg-blue-100 border-2 border-blue-300' 
-                          : 'bg-gray-50'
+                          : 'bg-slate-50'
                       }`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -256,7 +256,7 @@ export default function Demo() {
                           ? 'bg-green-500 text-white' 
                           : currentStep === index 
                             ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-300 text-gray-600'
+                            : 'bg-slate-300 text-slate-600'
                       }`}>
                         {currentStep > index ? (
                           <CheckCircle className="w-4 h-4" />
@@ -266,7 +266,7 @@ export default function Demo() {
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold">{step.title}</div>
-                        <div className="text-sm text-gray-600">{step.description}</div>
+                        <div className="text-sm text-slate-600">{step.description}</div>
                       </div>
                     </motion.div>
                   ))}
@@ -312,7 +312,7 @@ export default function Demo() {
                             <h3 className="text-subtitle font-semibold">
                               {demoSteps[currentStep].title}
                             </h3>
-                            <p className="text-gray-600">
+                            <p className="text-slate-600">
                               {demoSteps[currentStep].description}
                             </p>
                           </div>
@@ -337,19 +337,19 @@ export default function Demo() {
         >
           <div className="text-center">
             <div className="text-3xl font-bold text-blue-600 mb-2">5 דקות</div>
-            <div className="text-gray-600">זמן ממוצע לתהליך</div>
+            <div className="text-slate-600">זמן ממוצע לתהליך</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-green-600 mb-2">₪180K</div>
-            <div className="text-gray-600">חיסכון ממוצע</div>
+            <div className="text-slate-600">חיסכון ממוצע</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-purple-600 mb-2">98%</div>
-            <div className="text-gray-600">דיוק בהמלצות</div>
+            <div className="text-slate-600">דיוק בהמלצות</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-orange-600 mb-2">24/7</div>
-            <div className="text-gray-600">זמינות המערכת</div>
+            <div className="text-slate-600">זמינות המערכת</div>
           </div>
         </motion.div>
       </div>

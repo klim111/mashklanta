@@ -217,11 +217,11 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-slate-100 bg-slate-50/70 px-5 py-3">
+        <div className="flex justify-end border-t border-slate-100 bg-slate-50 px-5 py-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-slate-900 px-5 py-2 text-button font-black text-white transition-colors hover:bg-slate-700"
+            className="rounded-xl bg-blue-600 px-5 py-2 text-button font-black text-white transition-colors hover:bg-blue-700"
           >
             סגירה
           </button>

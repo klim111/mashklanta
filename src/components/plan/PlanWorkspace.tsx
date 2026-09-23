@@ -257,7 +257,7 @@ export function PlanWorkspace({
         <p className="mt-2 text-sm text-slate-500">{error}</p>
         <Link
           href="/dashboard"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-bold text-white"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-bold text-white"
         >
           חזרה לאזור האישי
           <ChevronLeft className="h-4 w-4" />
@@ -409,7 +409,7 @@ export function PlanWorkspace({
                       <button
                         type="button"
                         onClick={() => selectStage(next)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-button font-black text-white transition-all hover:bg-slate-700"
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-all hover:bg-blue-700"
                       >
                         המשיכו לשלב הבא
                         <ArrowLeft className="h-4 w-4" />
@@ -421,7 +421,7 @@ export function PlanWorkspace({
                         onClick={() => void onComplete()}
                         className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-black text-white transition-all ${
                           canComplete
-                            ? `bg-gradient-to-l ${journey.gradient} shadow-lg hover:shadow-xl hover:brightness-110`
+                            ? 'bg-emerald-600 shadow-lg hover:bg-emerald-700 hover:shadow-xl'
                             : 'cursor-not-allowed bg-slate-200 text-slate-400'
                         }`}
                       >
@@ -474,7 +474,7 @@ export function PlanWorkspace({
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
       {/* כותרת התהליך ופס השלבים */}
-      <header className="relative overflow-hidden bg-slate-950" {...demoId('plan-header')}>
+      <header className="relative overflow-hidden bg-brand-dark" {...demoId('plan-header')}>
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-blue-600/25 blur-3xl" />
           <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
@@ -848,7 +848,7 @@ export function PlanWorkspace({
         {!tour && <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-button font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
         >
           <LayoutDashboard className="h-5 w-5" />
           חזרה לדאשבורד
@@ -885,7 +885,7 @@ function PrerequisiteNotice({
 }) {
   const names = stages.map((item) => `«${planStageMeta(item, flow).shortTitle}»`).join(' ו');
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3">
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
       <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
       <p className="min-w-0 flex-1 text-info leading-relaxed text-amber-950">
         <span className="font-black">

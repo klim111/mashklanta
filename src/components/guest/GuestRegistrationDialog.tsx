@@ -168,7 +168,7 @@ export function GuestRegistrationDialog({
               </div>
             </div>
 
-            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-xs font-bold text-blue-900">
+            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-xs font-bold text-blue-900">
               <LayoutDashboard className="h-4 w-4 shrink-0" />
               מיד לאחר ההרשמה נפתח הדאשבורד של האזור האישי, עם חמשת שלבי התהליך
             </div>
@@ -232,7 +232,7 @@ export function GuestRegistrationDialog({
             <button
               type="submit"
               disabled={busy}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
               הרשמה והמשך לאזור האישי

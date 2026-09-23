@@ -305,7 +305,7 @@ export function AnalysisStage({
 
               {/* חשבון משותף: הבנק מוצג פעם אחת, כבלוק המשתרע על פני שני הלווים */}
               {couple && profile.bankAccountMode === 'JOINT' && (
-                <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-4">
+                <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
                   <BankChooser
                     title="הבנק של החשבון המשותף"
                     bank={profile.primaryBank}
@@ -434,7 +434,7 @@ export function AnalysisStage({
 
               {couple &&
                 [...profile.borrowerLoans, ...profile.partnerLoans].some((loan) => loan.shared) && (
-                  <div className="mt-4 space-y-2.5 rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-4">
+                  <div className="mt-4 space-y-2.5 rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
                     <p className="text-xs font-black text-blue-900">הלוואות משותפות</p>
                     {[...profile.borrowerLoans, ...profile.partnerLoans]
                       .filter((loan) => loan.shared)
@@ -722,7 +722,7 @@ function ScreenFooter({
             className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-black text-white transition-all ${
               nextDisabled
                 ? 'cursor-not-allowed bg-slate-200 text-slate-400'
-                : 'bg-slate-900 hover:bg-slate-700'
+                : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
             {nextLabel}
@@ -1140,7 +1140,7 @@ function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId
             <button
               type="button"
               onClick={goToPlanner}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-orange-600 to-amber-600 px-4 py-2 text-xs font-black text-white shadow-md transition-all hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-black text-white shadow-md transition-all hover:brightness-110"
             >
               לכלי תכנון ההלוואות הצרכניות
               <ArrowUpLeft className="h-3.5 w-3.5" />
@@ -1358,7 +1358,7 @@ function PropertyPanel({
           והוא נקבע בכלי המיחזור. במקום אזור ההון העצמי מוצג מה שהבנק כן בוחן.
         */}
         {refinanceBoxShown && (
-          <div className="mx-auto max-w-xl space-y-1 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
+          <div className="mx-auto max-w-xl space-y-1 rounded-3xl border-2 border-slate-200 bg-slate-50 p-5 text-center">
             {importantNotes.length > 0 && <div className="mb-2 flex justify-center">{notesButton}</div>}
             <p className="text-sm font-black text-slate-800">במיחזור אין צורך בהון עצמי</p>
             <p className="text-xs font-medium leading-relaxed text-slate-600">
@@ -1370,7 +1370,7 @@ function PropertyPanel({
 
         {/* ההון העצמי — נדרש מול זמין, אחרי שנקבע מחיר הנכס */}
         {equityBoxShown && (
-          <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50/60 p-5 text-center">
+          <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50 p-5 text-center">
             {importantNotes.length > 0 && <div className="flex justify-center">{notesButton}</div>}
             <div>
               <span className="block text-sm font-bold text-slate-600">הון עצמי מינימלי נדרש</span>
@@ -1608,7 +1608,7 @@ function FutureIncomePanel({
         {answer === true && (
           <>
         {/* כסף חד-פעמי — אזור בצבע אחד, כי הוא הופך לפירעון מוקדם */}
-        <section className="rounded-3xl border-2 border-blue-200 bg-blue-50/40 p-5">
+        <section className="rounded-3xl border-2 border-blue-200 bg-blue-50 p-5">
           <header className="mb-4 text-center">
             <h4 className="flex items-center justify-center gap-2 text-lg font-black text-blue-900">
               <Banknote className="h-5 w-5" />
@@ -1692,7 +1692,7 @@ function FutureIncomePanel({
         </section>
 
         {/* גידול בהכנסה החודשית — אזור בצבע אחר, כי הוא משנה תקציב ולא יתרה */}
-        <section className="rounded-3xl border-2 border-emerald-200 bg-emerald-50/40 p-5">
+        <section className="rounded-3xl border-2 border-emerald-200 bg-emerald-50 p-5">
           <header className="mb-4 text-center">
             <h4 className="flex items-center justify-center gap-2 text-lg font-black text-emerald-900">
               <TrendingUp className="h-5 w-5" />
