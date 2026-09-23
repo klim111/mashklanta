@@ -321,7 +321,7 @@ export default function UnifiedMortgageOverview({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowScheduleCalendar(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-900"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-button text-gray-900"
               >
                 <CalendarDays className="w-4 h-4 text-gray-700" />
                 {scheduleFilterDate ? format(scheduleFilterDate, 'MM/yyyy', { locale: he }) : 'סנן לפי תאריך'}
@@ -515,7 +515,7 @@ export default function UnifiedMortgageOverview({
         <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-6 text-white">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">המשכנתא שלך</h2>
+              <h2 className="text-subtitle font-bold mb-1">המשכנתא שלך</h2>
               <p className="text-purple-100 flex items-center gap-2 text-sm">
                 <Home className="w-4 h-4" />
                 {mortgage.propertyAddress}
@@ -526,7 +526,7 @@ export default function UnifiedMortgageOverview({
             <div className="flex items-center gap-2">
               <button
                 onClick={jumpToToday}
-                className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors text-sm font-medium"
+                className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors text-button font-medium"
               >
                 היום
               </button>
@@ -551,7 +551,7 @@ export default function UnifiedMortgageOverview({
               </button>
 
               <div className="text-center">
-                <h3 className="text-lg font-bold">
+                <h3 className="text-subtitle font-bold">
                   {format(selectedDate, 'MMMM yyyy', { locale: he })}
                 </h3>
                 <p className="text-xs text-purple-200">
@@ -822,7 +822,7 @@ export default function UnifiedMortgageOverview({
         <div className="bg-gray-50 p-6">
           {/* Actions on Mortgage Section */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">פעולות על המשכנתא</h3>
+            <h3 className="text-subtitle font-semibold text-gray-900 mb-4">פעולות על המשכנתא</h3>
             <div className="flex items-center justify-center gap-4">
               <button
                 onClick={() => setShowEarlyRepaymentSimulation(true)}
@@ -846,7 +846,7 @@ export default function UnifiedMortgageOverview({
           {/* Detailed Tracks Section */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">פירוט מסלולי המשכנתא</h3>
+              <h3 className="text-subtitle font-semibold text-gray-900">פירוט מסלולי המשכנתא</h3>
               <span className="text-sm text-gray-600">
                 {mortgage.tracks.filter(t => !calculateDynamicValues(t).isCompleted).length} מסלולים פעילים
               </span>
@@ -1051,7 +1051,7 @@ export default function UnifiedMortgageOverview({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
+                <h3 className="text-subtitle font-semibold">
                   {showScheduleCalendar ? 'בחר חודש לסינון' : 'בחר תאריך'}
                 </h3>
                 <button

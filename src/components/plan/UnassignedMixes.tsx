@@ -30,7 +30,7 @@ export function UnassignedMixesSection({
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-      <h2 className="mb-4 flex items-center justify-center gap-2 text-center text-xl font-black text-slate-900">
+      <h2 className="mb-4 flex items-center justify-center gap-2 text-center text-subtitle font-black text-slate-900">
         <Layers className="h-5 w-5 text-violet-600" />
         תמהילים ללא שיוך לנכס
         <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-black text-slate-600">
@@ -177,7 +177,7 @@ function UnassignedMixCard({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <div className="text-[13px] font-bold text-slate-500">{label}</div>
+      <div className="text-sm font-bold text-slate-500">{label}</div>
       <div className="text-lg font-black tabular-nums text-slate-900">{value}</div>
     </div>
   );

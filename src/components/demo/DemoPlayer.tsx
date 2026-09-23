@@ -89,15 +89,15 @@ export function DemoPlayer({
       >
         {/* כותרת הנגן */}
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
-          <span className="flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-[11px] font-black text-rose-300">
+          <span className="flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-2xs font-black text-rose-300">
             <Circle className="h-2 w-2 fill-current" />
             הדגמה חיה
           </span>
           <div className="min-w-0 flex-1">
-            <DialogTitle className="truncate text-[15px] font-black text-white sm:text-lg">
+            <DialogTitle className="truncate text-info font-black text-white sm:text-lg">
               {track.title}
             </DialogTitle>
-            <DialogDescription className="truncate text-[11.5px] text-white/50">
+            <DialogDescription className="truncate text-2xs text-white/50">
               המסכים האמיתיים של הפלטפורמה — סצנה {index + 1} מתוך {track.scenes.length}
             </DialogDescription>
           </div>
@@ -138,15 +138,15 @@ export function DemoPlayer({
               >
                 {scene.badge && (
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l ${track.gradient} px-3 py-1 text-[11px] font-black text-white`}
+                    className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l ${track.gradient} px-3 py-1 text-2xs font-black text-white`}
                   >
                     {scene.badge}
                   </span>
                 )}
-                <h3 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl">
+                <h3 className="mt-2 text-subtitle font-black leading-tight text-white">
                   {scene.title}
                 </h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-white/60">{scene.subtitle}</p>
+                <p className="mt-1 text-sm leading-relaxed text-white/60">{scene.subtitle}</p>
 
                 <ul className="mt-3 space-y-2">
                   {scene.points.map((point) => (
@@ -155,7 +155,7 @@ export function DemoPlayer({
                       className="flex items-start gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2"
                     >
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                      <span className="text-[12.5px] leading-relaxed text-white/80">{point}</span>
+                      <span className="text-xs leading-relaxed text-white/80">{point}</span>
                     </li>
                   ))}
                 </ul>
@@ -231,7 +231,7 @@ export function DemoPlayer({
                   key={item.id}
                   type="button"
                   onClick={() => onTrackChange(item.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-black transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black transition-colors ${
                     active
                       ? 'bg-white text-slate-900'
                       : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
@@ -247,7 +247,7 @@ export function DemoPlayer({
           <Link
             href="/#start"
             onClick={() => onOpenChange(false)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-blue-600 to-violet-600 px-5 py-2.5 text-[13px] font-black text-white shadow-lg transition-all hover:shadow-xl sm:mr-auto"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-blue-600 to-violet-600 px-5 py-2.5 text-button font-black text-white shadow-lg transition-all hover:shadow-xl sm:mr-auto"
           >
             להתחיל עכשיו — הכלים חינם
             <ArrowLeft className="h-4 w-4" />

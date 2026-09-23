@@ -65,21 +65,21 @@ export function FundingSection() {
             {reconciliation.valid ? <CheckCircle2 className="h-4 w-4" /> : <Scale className="h-4 w-4" />}
           </span>
           <div>
-            <p className="text-[13px] font-bold text-slate-800">
+            <p className="text-sm font-bold text-slate-800">
               סך מקורות המימון: {formatCurrency(reconciliation.sum)}
             </p>
-            <p className="text-[12px] text-slate-500">
+            <p className="text-xs text-slate-500">
               הון עצמי שהוזן: {declaredEquity === null ? '— טרם הוזן' : formatCurrency(declaredEquity)}
             </p>
           </div>
         </div>
 
         {reconciliation.valid ? (
-          <span className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-white">
+          <span className="rounded-full bg-emerald-500 px-3 py-1 text-2xs font-semibold text-white">
             הסכומים תואמים
           </span>
         ) : (
-          <p className="flex items-center gap-1.5 text-[12px] font-medium text-amber-800">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800">
             <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
             {reconciliation.error}
           </p>
@@ -96,7 +96,7 @@ export function FundingSection() {
               title={`מקור מימון ${index + 1}`}
               badge={
                 typeLabel ? (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-medium text-slate-600">
                     {typeLabel}
                     {values.amount ? ` · ${formatCurrency(values.amount as number)}` : ''}
                   </span>

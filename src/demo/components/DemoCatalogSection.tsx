@@ -19,11 +19,11 @@ export function DemoCatalogSection() {
   return (
     <div dir="rtl" {...demoId('home-tool-demos')}>
       <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-[13px] font-black text-indigo-800">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-sm font-black text-indigo-800">
           <Eye className="h-3.5 w-3.5" />
           רוצים לראות איך זה נראה מבפנים?
         </span>
-        <h2 className="mt-3 text-3xl font-black text-slate-900 md:text-4xl">הכירו את הכלים של משכלנתא</h2>
+        <h2 className="mt-3 text-title font-black text-slate-900">הכירו את הכלים של משכלנתא</h2>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 md:text-base">
           בחרו כלי — וההדגמה תפעיל אותו מולכם על נתונים לדוגמה: איפה מזינים, מה כל שדה אומר, איך
           מזיזים את הסליידרים ומה התוצאות מספרות. בכל רגע אפשר לעצור ולנסות בעצמכם.
@@ -65,7 +65,7 @@ export function DemoCatalogSection() {
       <div className="mt-5 flex justify-center">
         <Link
           href="/demo"
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-button font-bold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700"
         >
           לכל ההדגמות
           <ArrowLeft className="h-4 w-4" />

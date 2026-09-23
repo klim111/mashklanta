@@ -46,7 +46,7 @@ export function SnapshotDialog({ result, month, onMonthChange, onClose }: Snapsh
             <div className="space-y-4">
               {/* גרירה מהירה על ציר הזמן בלי לצאת מהחלונית */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-[11px] text-slate-500">
+                <div className="flex justify-between text-2xs text-slate-500">
                   <span>תחילת המשכנתא</span>
                   <span>סוף התקופה</span>
                 </div>
@@ -134,12 +134,12 @@ export function SnapshotDialog({ result, month, onMonthChange, onClose }: Snapsh
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-slate-900 truncate">{track.name}</p>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-2xs text-slate-500">
                           {TRACK_TYPES[track.type]} · {formatPercentage(track.annualRate)}
                         </p>
                       </div>
                       {track.closed ? (
-                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px]">
+                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-2xs">
                           נסגר
                         </Badge>
                       ) : (
@@ -185,12 +185,12 @@ function SnapshotStat({
 
   return (
     <div className={`rounded-xl border p-2.5 ${toneClass}`}>
-      <div className={`flex items-center gap-1.5 text-[10px] ${subtle}`}>
+      <div className={`flex items-center gap-1.5 text-2xs ${subtle}`}>
         {icon}
         {label}
       </div>
       <p className={`text-base font-bold mt-0.5 ${tone === 'dark' ? 'text-white' : 'text-slate-900'}`}>{value}</p>
-      {hint && <p className={`text-[10px] mt-0.5 ${subtle}`}>{hint}</p>}
+      {hint && <p className={`text-2xs mt-0.5 ${subtle}`}>{hint}</p>}
     </div>
   );
 }
@@ -198,7 +198,7 @@ function SnapshotStat({
 function ProgressRow({ label, percent, color }: { label: string; percent: number; color: string }) {
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-[11px]">
+      <div className="flex justify-between text-2xs">
         <span className="text-slate-600">{label}</span>
         <span className="font-semibold text-slate-800">{percent.toFixed(1)}%</span>
       </div>
@@ -212,8 +212,8 @@ function ProgressRow({ label, percent, color }: { label: string; percent: number
 function TrackCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center hidden sm:block min-w-[76px]">
-      <p className="text-[9px] text-slate-400">{label}</p>
-      <p className="text-[11px] font-bold text-slate-800">{value}</p>
+      <p className="text-2xs text-slate-400">{label}</p>
+      <p className="text-2xs font-bold text-slate-800">{value}</p>
     </div>
   );
 }

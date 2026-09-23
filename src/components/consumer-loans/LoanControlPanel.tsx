@@ -94,8 +94,8 @@ export function LoanControlPanel({
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm">
             <Plus className="h-4 w-4" />
           </span>
-          <span className="text-[13px] font-black">הוספת הלוואה</span>
-          <span className="text-[11px]">בנקאית, אשראי, רכב או כל התחייבות חודשית אחרת</span>
+          <span className="text-sm font-black">הוספת הלוואה</span>
+          <span className="text-2xs">בנקאית, אשראי, רכב או כל התחייבות חודשית אחרת</span>
         </button>
       </div>
     </div>
@@ -150,18 +150,18 @@ function LoanControlCard({
             value={loan.name}
             onChange={(event) => onUpdate({ ...loan, name: event.target.value })}
             aria-label="שם ההלוואה"
-            className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-[13px] font-black text-slate-900 outline-none transition-colors hover:border-slate-200 focus:border-blue-400 focus:bg-white"
+            className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-black text-slate-900 outline-none transition-colors hover:border-slate-200 focus:border-blue-400 focus:bg-white"
           />
           <Select
             value={category}
             onValueChange={(value) => onUpdate({ ...loan, category: value as LoanCategory })}
           >
-            <SelectTrigger className="mt-1 h-7 w-full border-slate-200 text-[11px]">
+            <SelectTrigger className="mt-1 h-7 w-full border-slate-200 text-2xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {(Object.keys(LOAN_CATEGORY_LABELS) as LoanCategory[]).map((key) => (
-                <SelectItem key={key} value={key} className="text-[12px]">
+                <SelectItem key={key} value={key} className="text-xs">
                   {LOAN_CATEGORY_LABELS[key]}
                 </SelectItem>
               ))}
@@ -205,7 +205,7 @@ function LoanControlCard({
           <FormattedNumberValueInput
             value={loan.principal}
             onValueChange={(value) => onUpdate({ ...loan, principal: Math.max(0, value) })}
-            className="h-7 w-24 text-[12px]"
+            className="h-7 w-24 text-xs"
             aria-label="קרן ההלוואה"
           />
         }
@@ -262,7 +262,7 @@ function LoanControlCard({
       <button
         type="button"
         onClick={() => onShowAmortization(loan)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-1.5 text-[12px] font-bold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900"
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900"
       >
         <Table2 className="h-3.5 w-3.5" />
         לוח סילוקין ופירעון מוקדם
@@ -282,10 +282,10 @@ function Figure({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] text-slate-500">{label}</p>
+      <p className="text-2xs text-slate-500">{label}</p>
       <p
         className={`truncate font-bold leading-tight ${
-          emphasized ? 'text-[14px] text-blue-700' : 'text-[12px] text-slate-900'
+          emphasized ? 'text-sm text-blue-700' : 'text-xs text-slate-900'
         }`}
       >
         {value}
@@ -315,13 +315,13 @@ function ControlRow({
     <div>
       <div className="mb-1 flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-        <span className="text-[11px] font-bold text-slate-600">{label}</span>
-        <span className="mr-auto text-[12px] font-black text-slate-900">{display}</span>
+        <span className="text-2xs font-bold text-slate-600">{label}</span>
+        <span className="mr-auto text-xs font-black text-slate-900">{display}</span>
         {input}
       </div>
       <div dir="ltr">
         {slider}
-        <div className="mt-0.5 flex justify-between text-[9px] text-slate-400" dir="ltr">
+        <div className="mt-0.5 flex justify-between text-2xs text-slate-400" dir="ltr">
           <span>{min}</span>
           <span>{max}</span>
         </div>

@@ -126,7 +126,7 @@ export default function Testimonials() {
             <span>המלצות לקוחות</span>
           </motion.div>
           
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+          <h2 className="text-title font-bold mb-6 text-gray-900">
             מה הלקוחות שלנו אומרים
           </h2>
           
@@ -260,7 +260,7 @@ export default function Testimonials() {
                 <span>המספרים מדברים בעד עצמם</span>
               </motion.div>
               
-              <h3 className="text-3xl font-bold mb-6 text-gray-900">
+              <h3 className="text-subtitle font-bold mb-6 text-gray-900">
                 התוצאות שלנו
               </h3>
             </CardHeader>

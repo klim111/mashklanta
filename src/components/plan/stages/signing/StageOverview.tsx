@@ -131,11 +131,11 @@ export function StageOverview({
               <span className="text-lg font-black text-slate-900">
                 בצעו את השלב לבד באמצעות משכלנתא
               </span>
-              <span className="text-[15px] font-medium leading-snug text-slate-600">
+              <span className="text-info font-medium leading-snug text-slate-600">
                 בוחרים את תרחיש הרכישה, מקבלים את רשימת המסמכים של הבנק ומאמתים מולה את ההצעה
                 הסופית
               </span>
-              <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-blue-700">
+              <span className="mt-1 inline-flex items-center gap-1.5 text-info font-black text-blue-700">
                 בואו נתחיל
                 <ArrowLeft className="h-4 w-4" />
               </span>
@@ -153,11 +153,11 @@ export function StageOverview({
                 <span className="text-lg font-black text-slate-900">
                   תנו ליועץ משכלנתא לעשות לכם את העבודה
                 </span>
-                <span className="text-[15px] font-medium leading-snug text-slate-600">
+                <span className="text-info font-medium leading-snug text-slate-600">
                   ליווי עד החתימה והעברת הכסף, כולל פגישה מקוונת אחת עם הבנקאי — בקשה חינמית,
                   התשלום בהמשך
                 </span>
-                <span className="mt-1 inline-flex items-center gap-1.5 text-[15px] font-black text-violet-700">
+                <span className="mt-1 inline-flex items-center gap-1.5 text-info font-black text-violet-700">
                   איך זה עובד?
                   <ArrowLeft className="h-4 w-4" />
                 </span>
@@ -187,12 +187,12 @@ function SlideFooter({ slide, onNext }: { slide: Slide; onNext: () => void }) {
       <button
         type="button"
         onClick={onNext}
-        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-base font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-8 py-3.5 text-cta font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
       >
         המשך
         <ArrowLeft className="h-4 w-4" />
       </button>
-      <p className="text-[13px] text-slate-400">המסך יתקדם מעצמו בעוד רגע</p>
+      <p className="text-sm text-slate-400">המסך יתקדם מעצמו בעוד רגע</p>
     </div>
   );
 }
@@ -215,7 +215,7 @@ function SlideCard({
     <section className={`rounded-3xl border-2 bg-white p-6 shadow-sm md:p-8 ${tone}`}>
       <header className="mb-6 text-center">
         {badge}
-        <h3 className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">{title}</h3>
+        <h3 className="mt-3 text-subtitle font-black text-slate-900">{title}</h3>
         {lead}
       </header>
       {children}
@@ -274,7 +274,7 @@ function IntroSlide({ compact = false }: { compact?: boolean }) {
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white">
               {point.icon}
             </span>
-            <span className="text-[15px] font-semibold leading-relaxed text-slate-700">{point.text}</span>
+            <span className="text-info font-semibold leading-relaxed text-slate-700">{point.text}</span>
           </li>
         ))}
       </ul>
@@ -312,7 +312,7 @@ function ProcessSlide({ compact = false }: { compact?: boolean }) {
       title="שלושה חלקים, בסדר הזה"
       lead={
         !compact ? (
-          <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
+          <p className="mx-auto mt-3 max-w-2xl text-info font-medium leading-relaxed text-slate-600">
             הראשון קובע מה נדרש, השני אוסף אותו, והשלישי מוודא שמה שנחתם הוא מה שסוכם.
           </p>
         ) : undefined
@@ -329,11 +329,11 @@ function ProcessSlide({ compact = false }: { compact?: boolean }) {
             >
               {step.icon}
             </span>
-            <span className="rounded-full bg-white px-3 py-0.5 text-[13px] font-black text-slate-500 ring-1 ring-slate-200">
+            <span className="rounded-full bg-white px-3 py-0.5 text-sm font-black text-slate-500 ring-1 ring-slate-200">
               חלק {index + 1}
             </span>
             <h4 className="text-lg font-black leading-snug text-slate-900">{step.title}</h4>
-            <p className="text-[15px] font-medium leading-relaxed text-slate-600">{step.body}</p>
+            <p className="text-info font-medium leading-relaxed text-slate-600">{step.body}</p>
           </li>
         ))}
       </ol>
@@ -373,7 +373,7 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
       title="תיק חתימה מוכן, בלי הפתעות"
       lead={
         !compact ? (
-          <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
+          <p className="mx-auto mt-3 max-w-2xl text-info font-medium leading-relaxed text-slate-600">
             מגיעים לבנק עם כל מה שנדרש ביד, ועם המספרים שמולם בודקים כל שורה בהצעה הסופית.
           </p>
         ) : undefined
@@ -382,18 +382,18 @@ function OutputSlide({ compact = false }: { compact?: boolean }) {
       <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2">
         {items.map((item) => (
           <li key={item.title} className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/40 p-4">
-            <p className="flex items-center gap-2 text-[15px] font-black text-slate-900">
+            <p className="flex items-center gap-2 text-info font-black text-slate-900">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
                 {item.icon}
               </span>
               {item.title}
             </p>
-            <p className="mt-2 text-[15px] font-medium leading-relaxed text-slate-600">{item.body}</p>
+            <p className="mt-2 text-info font-medium leading-relaxed text-slate-600">{item.body}</p>
           </li>
         ))}
       </ul>
 
-      <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-[15px] font-bold leading-relaxed text-slate-800">
+      <p className="mx-auto mt-5 flex max-w-3xl items-start gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 text-info font-bold leading-relaxed text-slate-800">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
         בין ההצעה שזכתה במכרז לבין המסמך שאתם חותמים עליו יכולים להשתנות פרטים. כאן מוודאים
         שהתנאים שסוכמו הם בדיוק התנאים שנחתמו — לפני החתימה, לא אחריה.
@@ -445,10 +445,10 @@ function AdvisorIntro({
     <motion.section {...reveal} className="rounded-3xl border-2 border-violet-300 bg-white p-6 shadow-sm md:p-8">
       <header className="mb-6 text-center">
         <Badge icon={<Sparkles className="h-4 w-4" />} text="ליווי יועץ משכלנתא" tone="bg-violet-600" />
-        <h3 className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">
+        <h3 className="mt-3 text-subtitle font-black text-slate-900">
           איך היועץ מטפל בשלב הזה
         </h3>
-        <p className="mx-auto mt-3 max-w-2xl text-[15px] font-medium leading-relaxed text-slate-600">
+        <p className="mx-auto mt-3 max-w-2xl text-info font-medium leading-relaxed text-slate-600">
           זו בקשה חינמית. היועץ יחזור אליכם לתיאום, והתשלום מסודר מולו בהמשך — רק אם תחליטו
           להמשיך.
         </p>
@@ -457,13 +457,13 @@ function AdvisorIntro({
       <ul className="mx-auto grid max-w-4xl gap-3 md:grid-cols-2">
         {points.map((point) => (
           <li key={point.title} className="rounded-2xl border-2 border-violet-200 bg-violet-50/40 p-4">
-            <p className="flex items-center gap-2 text-[15px] font-black text-slate-900">
+            <p className="flex items-center gap-2 text-info font-black text-slate-900">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
                 {point.icon}
               </span>
               {point.title}
             </p>
-            <p className="mt-2 text-[15px] font-medium leading-relaxed text-slate-600">{point.body}</p>
+            <p className="mt-2 text-info font-medium leading-relaxed text-slate-600">{point.body}</p>
           </li>
         ))}
       </ul>
@@ -473,7 +473,7 @@ function AdvisorIntro({
           type="button"
           disabled={busy}
           onClick={onConfirm}
-          className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-8 py-3.5 text-base font-black text-white shadow-lg shadow-violet-600/25 transition-transform hover:-translate-y-0.5 hover:bg-violet-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-8 py-3.5 text-cta font-black text-white shadow-lg shadow-violet-600/25 transition-transform hover:-translate-y-0.5 hover:bg-violet-700 disabled:opacity-60"
         >
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
           העבירו פנייה ליועץ
@@ -481,7 +481,7 @@ function AdvisorIntro({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3.5 text-base font-black text-slate-700 transition-colors hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3.5 text-cta font-black text-slate-700 transition-colors hover:bg-slate-50"
         >
           <ArrowRight className="h-4 w-4" />
           חזרה

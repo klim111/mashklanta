@@ -49,7 +49,7 @@ export function BorrowerFieldsColumn({
           : 'border-gray-200'
       )}
     >
-      <h3 className="text-lg font-bold text-gray-900 text-center">{title}</h3>
+      <h3 className="text-subtitle font-bold text-gray-900 text-center">{title}</h3>
 
       <motion.div layout>
         <Label className="text-right block mb-2 font-medium">גיל</Label>

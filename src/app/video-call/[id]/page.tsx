@@ -546,7 +546,7 @@ export default function VideoCallClient({ params }: PageProps) {
                         <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                           <Phone className="w-10 h-10" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">מתחבר לשרת...</h3>
+                        <h3 className="text-subtitle font-semibold mb-2">מתחבר לשרת...</h3>
                         <p className="text-gray-300">ממתין לחיבור</p>
                       </div>
                     </div>
@@ -557,7 +557,7 @@ export default function VideoCallClient({ params }: PageProps) {
                         <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Phone className="w-10 h-10" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">ממתין ליועץ...</h3>
+                        <h3 className="text-subtitle font-semibold mb-2">ממתין ליועץ...</h3>
                         <p className="text-gray-300">השיחה תתחיל ברגע שהיועץ יתחבר</p>
                       </div>
                     </div>
@@ -589,7 +589,7 @@ export default function VideoCallClient({ params }: PageProps) {
                 <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                   <Video className="w-10 h-10" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">מתחבר...</h3>
+                <h3 className="text-subtitle font-semibold mb-2">מתחבר...</h3>
                 <p className="text-gray-300">מאפשר גישה למצלמה ומיקרופון</p>
               </div>
             </div>

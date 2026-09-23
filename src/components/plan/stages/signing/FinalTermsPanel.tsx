@@ -113,7 +113,7 @@ export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: stri
               <Layers className="h-3.5 w-3.5 text-slate-400" />
               {computed.mix.name || 'התמהיל שנבנה'}
             </span>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-500">
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-2xs font-bold text-slate-500">
               {picked?.source === 'quote'
                 ? 'הריביות התקבלו מהבנק'
                 : 'התמהיל הסופי שננעל בשלב בניית התמהיל'}
@@ -122,7 +122,7 @@ export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: stri
 
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full min-w-[560px] text-right text-sm">
-              <thead className="bg-slate-50 text-[11px] font-black text-slate-500">
+              <thead className="bg-slate-50 text-2xs font-black text-slate-500">
                 <tr>
                   <th className="px-4 py-2.5">מסלול</th>
                   <th className="px-4 py-2.5">סכום</th>
@@ -142,7 +142,7 @@ export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: stri
                   >
                     <td className="px-4 py-3">
                       <div className="font-black text-slate-900">{result.track.name}</div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-2xs text-slate-400">
                         {formatTrackTypeWithAmortization(result.track)}
                       </div>
                     </td>

@@ -90,7 +90,7 @@ export function InfoTip({
           role="tooltip"
           dir="rtl"
           onClick={(event) => event.stopPropagation()}
-          className={`absolute top-full z-40 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-2 text-right text-[11px] font-normal leading-relaxed text-slate-700 shadow-lg ${position}`}
+          className={`absolute top-full z-40 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-2 text-right text-2xs font-normal leading-relaxed text-slate-700 shadow-lg ${position}`}
         >
           {text}
         </span>

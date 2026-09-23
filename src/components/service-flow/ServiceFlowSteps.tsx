@@ -69,7 +69,7 @@ export function ServiceFlowSteps({ tone = 'light' }: { tone?: 'light' | 'dark' }
           >
             {step.number}
           </span>
-          <h3 className="text-xl font-black">{step.title}</h3>
+          <h3 className="text-subtitle font-black">{step.title}</h3>
           <p className={`mt-2 text-sm leading-relaxed ${dark ? 'text-white/70' : 'text-gray-600'}`}>
             {step.description}
           </p>
@@ -80,7 +80,7 @@ export function ServiceFlowSteps({ tone = 'light' }: { tone?: 'light' | 'dark' }
                 return (
                   <span
                     key={chip.label}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black ${
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-2xs font-black ${
                       dark ? 'bg-white/15 text-white' : chip.tone
                     }`}
                   >

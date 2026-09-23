@@ -119,7 +119,7 @@ export function GuidanceRequestDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="mt-6 rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white transition-colors hover:bg-slate-700"
+              className="mt-6 rounded-xl bg-slate-900 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
             >
               סגירה
             </button>
@@ -223,7 +223,7 @@ export function GuidanceRequestDialog({
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-violet-600 to-fuchsia-600 px-6 py-2.5 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 שליחת הבקשה ליועץ

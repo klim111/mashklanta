@@ -44,7 +44,7 @@ export function LoanDetailsSection() {
 
         {propertyCity && employerCities.length > 0 && (
           <p
-            className={`mt-4 flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] ${
+            className={`mt-4 flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs ${
               cityMatch ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'
             }`}
           >

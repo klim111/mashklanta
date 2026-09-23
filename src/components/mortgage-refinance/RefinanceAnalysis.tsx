@@ -140,18 +140,18 @@ function StateBox({
   const improved = (delta ?? 0) < 0;
   return (
     <div className={`rounded-xl ${gradient} text-white px-3 py-2 shadow-md text-center w-full sm:w-48`}>
-      <div className="flex items-center justify-center gap-1.5 text-slate-300 text-[10px]">
+      <div className="flex items-center justify-center gap-1.5 text-slate-300 text-2xs">
         <Icon className="h-3 w-3" />
         {label}
       </div>
       <p className="text-lg font-bold leading-tight">{value}</p>
       {hasDelta ? (
-        <p className={`text-[10px] font-bold ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
+        <p className={`text-2xs font-bold ${improved ? 'text-emerald-300' : 'text-red-300'}`}>
           {improved ? '−' : '+'}
           {formatCurrency(Math.abs(delta as number))} {improved ? 'חיסכון' : 'תוספת'}
         </p>
       ) : (
-        <p className="text-[10px] text-slate-400">{caption}</p>
+        <p className="text-2xs text-slate-400">{caption}</p>
       )}
     </div>
   );
@@ -180,7 +180,7 @@ function RiskMeter({ score }: { score: number }) {
           style={{ borderColor: RISK_META[level].bar, right: `calc(${Math.min(100, Math.max(0, score))}% - 7px)` }}
         />
       </div>
-      <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+      <div className="flex justify-between text-2xs text-slate-400 mt-1">
         <span>יציב · עלות גבוהה</span>
         <span>תנודתי · חסכוני</span>
       </div>
@@ -298,7 +298,7 @@ function CurrentStateAnalysis({
       {/* single graph: volatility band (diverging) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3">
         <p className="text-sm font-semibold text-slate-800">תנודתיות ההחזר החודשי</p>
-        <p className="text-[11px] text-slate-500 mb-2 leading-snug">
+        <p className="text-2xs text-slate-500 mb-2 leading-snug">
           טווח ההחזר החודשי הצפוי לאורך הזמן — מתרחב ככל שהתמהיל תנודתי יותר. קצב החזר הקרן מוצג בגרף "יתרת קרן" שלמעלה.
         </p>
         <ResponsiveContainer width="100%" height={230}>
@@ -695,7 +695,7 @@ export function RefinanceAnalysis({
               פאנל השליטה
             </p>
             <div className="flex items-center gap-2">
-              <p className="hidden text-[10px] text-slate-500 sm:block">
+              <p className="hidden text-2xs text-slate-500 sm:block">
                 כל שינוי מתעדכן מיד בדאשבורד שמתחת
               </p>
               <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 text-slate-500">
@@ -708,7 +708,7 @@ export function RefinanceAnalysis({
           {/* מטרת המיחזור והיקפו — הבחירה כאן מעדכנת את ההמלצות בכל מסלול */}
           <div className="grid gap-2 lg:grid-cols-2">
             <div className="space-y-1.5">
-              <p className="text-[11px] font-bold text-slate-500">מה המטרה שלכם במיחזור?</p>
+              <p className="text-2xs font-bold text-slate-500">מה המטרה שלכם במיחזור?</p>
               <div className="grid grid-cols-2 gap-2">
                 <ChoiceButton
                   demoKey="refi-goal-reduce_payment"
@@ -730,7 +730,7 @@ export function RefinanceAnalysis({
             </div>
 
             <div className="space-y-1.5">
-              <p className="text-[11px] font-bold text-slate-500">מה ממחזרים?</p>
+              <p className="text-2xs font-bold text-slate-500">מה ממחזרים?</p>
               <div className="grid grid-cols-2 gap-2">
                 <ChoiceButton
                   demoKey="refi-scope-whole"
@@ -755,7 +755,7 @@ export function RefinanceAnalysis({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <GoalGuidanceStrip goal={goal} scope={scope} />
             {goalSwitched && goal === 'reduce_payment' && (
-              <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">
+              <span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-2xs font-bold text-amber-800">
                 הארכתם תקופה — המטרה עברה להקטנת ההחזר החודשי
               </span>
             )}
@@ -1003,10 +1003,10 @@ function ChoiceButton({
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">
-        <span className={`block text-[12px] font-bold leading-tight ${active ? 'text-blue-900' : 'text-slate-800'}`}>
+        <span className={`block text-xs font-bold leading-tight ${active ? 'text-blue-900' : 'text-slate-800'}`}>
           {title}
         </span>
-        <span className="block text-[10px] leading-tight text-slate-500">{hint}</span>
+        <span className="block text-2xs leading-tight text-slate-500">{hint}</span>
       </span>
     </button>
   );
@@ -1030,7 +1030,7 @@ function GoalProgressChip({
 }) {
   if (!changed) {
     return (
-      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs font-bold text-slate-500">
         טרם בוצע שינוי בפאנל
       </span>
     );
@@ -1043,7 +1043,7 @@ function GoalProgressChip({
       : 'border-slate-200 bg-slate-50 text-slate-600';
 
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${tone}`}>
+    <span className={`rounded-full border px-2.5 py-1 text-2xs font-bold ${tone}`}>
       {label}: {delta < 0 ? '−' : '+'}
       {formatCurrency(Math.abs(delta))}
       {Math.abs(tradeoff) > 1 && (

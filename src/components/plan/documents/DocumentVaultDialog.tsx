@@ -152,7 +152,7 @@ export function DocumentVaultDialog({
                     key={row.stage}
                     className={`rounded-xl px-3 py-2 ${row.relevant ? 'bg-white/10' : 'bg-white/5 opacity-60'}`}
                   >
-                    <p className="flex items-center justify-between text-[11px] font-black">
+                    <p className="flex items-center justify-between text-2xs font-black">
                       <span className="truncate">
                         {index + 1}. {journey.shortTitle}
                       </span>
@@ -176,11 +176,11 @@ export function DocumentVaultDialog({
                 {...demoId('vault-full-list')}
                 type="button"
                 onClick={() => setShowList((current) => !current)}
-                className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+                className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-button font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
               >
                 <ListChecks className="h-4 w-4 text-blue-600" />
                 רשימת המסמכים המלאה
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600">
                   {submitted.length}/{requirements.length}
                 </span>
               </button>
@@ -228,7 +228,7 @@ export function DocumentVaultDialog({
               {!demo && documents.length > 0 && (
                 <a
                   href={documentsArchiveUrl(planId)}
-                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+                  className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-button font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
                 >
                   <FolderDown className="h-4 w-4" />
                   הורדת תיק המסמכים
@@ -237,7 +237,7 @@ export function DocumentVaultDialog({
               <button
                 type="button"
                 onClick={() => openUpload(null)}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-button font-black text-white shadow-sm transition-colors hover:bg-emerald-700"
               >
                 <Upload className="h-4 w-4" />
                 העלאת מסמך
@@ -275,7 +275,7 @@ export function DocumentVaultDialog({
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-black text-slate-900">{document.name}</p>
-                    <p className="truncate text-[12px] text-slate-500">
+                    <p className="truncate text-xs text-slate-500">
                       {document.fileName} · {formatDate(document.uploadedAt)}
                     </p>
                   </div>
@@ -284,14 +284,14 @@ export function DocumentVaultDialog({
                       <button
                         type="button"
                         onClick={() => setViewing(document)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-[12px] font-black text-white hover:bg-slate-700"
+                        className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black text-white hover:bg-slate-700"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         צפייה
                       </button>
                       <a
                         href={documentDownloadUrl(planId, document.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
                       >
                         <Download className="h-3.5 w-3.5" />
                         הורדה
@@ -313,14 +313,14 @@ export function DocumentVaultDialog({
           )}
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-            <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <p className="flex items-center gap-1.5 text-2xs text-slate-400">
               <Lock className="h-3.5 w-3.5" />
               הקבצים באחסון פרטי — לכם וליועץ שמלווה אתכם בלבד
             </p>
             {!demo && (
               <Link
                 href={`/dashboard/plans/${planId}?stage=ANALYSIS`}
-                className="inline-flex items-center gap-1 text-[12px] font-black text-blue-600 hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-black text-blue-600 hover:underline"
               >
                 לרשימת המסמכים שהבנק דורש
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -359,10 +359,10 @@ function RequirementList({
 
   return (
     <section>
-      <p className="mb-2 flex items-center justify-center gap-1.5 text-[13px] font-black text-slate-600">
+      <p className="mb-2 flex items-center justify-center gap-1.5 text-sm font-black text-slate-600">
         {icon}
         {title}
-        <span className="rounded-full bg-white px-2 text-[11px] text-slate-500">{rows.length}</span>
+        <span className="rounded-full bg-white px-2 text-2xs text-slate-500">{rows.length}</span>
       </p>
       <ul className="space-y-1.5">
         {rows.map((row, index) => (
@@ -373,8 +373,8 @@ function RequirementList({
               onClick={() => onPick(row.key)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
             >
-              <span className="block text-[13px] font-black text-slate-900">{row.name}</span>
-              <span className="block text-[11px] font-medium text-slate-500">{row.note}</span>
+              <span className="block text-sm font-black text-slate-900">{row.name}</span>
+              <span className="block text-2xs font-medium text-slate-500">{row.note}</span>
             </button>
           </li>
         ))}

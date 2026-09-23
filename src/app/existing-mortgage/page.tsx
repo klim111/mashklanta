@@ -20,7 +20,7 @@ export default function ExistingMortgagePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-gray-900 mb-6">
           פעולות על משכנתא קיימת
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -43,7 +43,7 @@ export default function ExistingMortgagePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <RefreshCw className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
                 מיחזור משכנתא קיימת
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -71,7 +71,7 @@ export default function ExistingMortgagePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <TrendingUp className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors">
                 גרירת משכנתא
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -109,7 +109,7 @@ export default function ExistingMortgagePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-gray-900 mb-6">
           מיחזור משכנתא קיימת
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -132,7 +132,7 @@ export default function ExistingMortgagePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Banknote className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-purple-600 transition-colors">
                 הקטן את התשלום החודשי
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -160,7 +160,7 @@ export default function ExistingMortgagePage() {
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Clock className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4 group-hover:text-orange-600 transition-colors">
                 לקצר את תקופת המשכנתא
               </h3>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
@@ -197,7 +197,7 @@ export default function ExistingMortgagePage() {
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+        <h1 className="text-title font-bold text-gray-900 mb-6">
           גרירת משכנתא
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -209,7 +209,7 @@ export default function ExistingMortgagePage() {
         <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center shadow-lg">
           <TrendingUp className="w-10 h-10 text-white" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-4">
+        <h3 className="text-subtitle font-bold text-gray-900 mb-4">
           תהליך גרירת משכנתא
         </h3>
         <p className="text-gray-600 text-lg leading-relaxed mb-8">
@@ -230,7 +230,7 @@ export default function ExistingMortgagePage() {
         <Link href="/mortgage-advisor">
           <Button
             size="lg"
-            className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-lg"
+            className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-cta"
           >
             <Target className="w-5 h-5 ml-2" />
             התחל תהליך גרירת משכנתא
@@ -271,7 +271,7 @@ export default function ExistingMortgagePage() {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              <h1 className="text-title font-bold text-gray-900 mb-6">
                 {refinanceOption === 'reduce-payment' ? 'הקטן את התשלום החודשי' : 'לקצר את תקופת המשכנתא'}
               </h1>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -293,7 +293,7 @@ export default function ExistingMortgagePage() {
                 )}
               </div>
               
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              <h3 className="text-subtitle font-bold text-gray-900 mb-4">
                 {refinanceOption === 'reduce-payment' ? 'מיחזור להקטנת תשלום חודשי' : 'מיחזור לקיצור תקופה'}
               </h3>
               

@@ -40,11 +40,11 @@ export function VaultButton({
           type="button"
           onClick={() => setOpen(true)}
           {...demoId('vault-button')}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-black text-slate-900 shadow-lg ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-button font-black text-slate-900 shadow-lg ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
         >
           <FolderOpen className="h-4 w-4 text-emerald-600" />
           תיק המסמכים
-          <span className="rounded-full bg-slate-100 px-1.5 text-[11px] text-slate-600">{progress.overall.percent}%</span>
+          <span className="rounded-full bg-slate-100 px-1.5 text-2xs text-slate-600">{progress.overall.percent}%</span>
         </button>
         {dialog}
       </>
@@ -64,13 +64,13 @@ export function VaultButton({
         }`}
       >
         <span className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-[14px] font-black text-white">
+          <span className="flex items-center gap-2 text-sm font-black text-white">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-400/20 text-emerald-200">
               <FolderOpen className="h-4 w-4" />
             </span>
             תיק המסמכים
           </span>
-          <span className="text-[13px] font-black text-white/80">
+          <span className="text-sm font-black text-white/80">
             {progress.overall.done}/{progress.overall.total} · {progress.overall.percent}%
           </span>
         </span>
@@ -81,7 +81,7 @@ export function VaultButton({
           <span className="mt-2 grid gap-1.5 sm:grid-cols-3">
             {relevant.map((row) => (
               <span key={row.stage} className="block">
-                <span className="flex items-center justify-between text-[10px] font-bold text-white/60">
+                <span className="flex items-center justify-between text-2xs font-bold text-white/60">
                   <span className="truncate">{journeyStageFor(row.stage).shortTitle}</span>
                   <span>
                     {row.done}/{row.total}

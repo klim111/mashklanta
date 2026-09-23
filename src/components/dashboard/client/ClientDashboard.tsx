@@ -182,7 +182,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
       const base =
         tone === 'sidebar'
           ? 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-base font-bold transition-colors'
-          : 'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[15px] font-bold transition-colors';
+          : 'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-info font-bold transition-colors';
       const state = active
         ? 'bg-white text-slate-900 shadow-lg'
         : 'text-white/70 hover:bg-white/10 hover:text-white';
@@ -301,8 +301,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               {section === 'overview' ? (
                 <>
                   <p className="text-sm font-bold text-slate-500">{DATE_FORMAT.format(new Date())}</p>
-                  <h1 className="mt-1 text-3xl font-black text-slate-900 md:text-4xl">שלום, {firstName}</h1>
-                  <p className="mx-auto mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+                  <h1 className="mt-1 text-title font-black text-slate-900">שלום, {firstName}</h1>
+                  <p className="mx-auto mt-2 max-w-2xl text-info leading-relaxed text-slate-600">
                     {meta.description}
                   </p>
                 </>
@@ -316,8 +316,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                     <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
                     חזרה לסקירה
                   </button>
-                  <h1 className="mt-1 text-3xl font-black text-slate-900 md:text-4xl">{meta.title}</h1>
-                  <p className="mx-auto mt-2 max-w-2xl text-[15px] leading-relaxed text-slate-600">
+                  <h1 className="mt-1 text-title font-black text-slate-900">{meta.title}</h1>
+                  <p className="mx-auto mt-2 max-w-2xl text-info leading-relaxed text-slate-600">
                     {meta.description}
                   </p>
                 </>
@@ -404,7 +404,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           <button
             type="button"
             onClick={() => navigate('overview')}
-            className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-[15px] font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
+            className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-button font-black text-white shadow-xl shadow-slate-900/30 transition-transform hover:-translate-y-0.5"
           >
             <LayoutDashboard className="h-5 w-5" />
             חזרה לדאשבורד

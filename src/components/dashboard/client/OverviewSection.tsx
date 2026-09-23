@@ -178,7 +178,7 @@ export function OverviewSection({
       <div className="space-y-3">
         <MiniCalendar events={events} onSelect={(day) => onNavigate('agenda', day)} />
         <div className="space-y-2 border-t border-slate-100 pt-3">
-          <p className="text-center text-[13px] font-black text-slate-500">הקרוב ביומן</p>
+          <p className="text-center text-sm font-black text-slate-500">הקרוב ביומן</p>
           {upcoming.length === 0 ? (
             <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-center text-sm text-slate-500">
               אין פגישות או מועדים קרובים
@@ -192,14 +192,14 @@ export function OverviewSection({
                 className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right transition-colors hover:border-blue-300"
               >
                 <span className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 text-slate-800">
-                  <span className="text-[11px] font-bold leading-none text-slate-500">
+                  <span className="text-2xs font-bold leading-none text-slate-500">
                     {shortDayLabel(event.at)}
                   </span>
                   <span className="mt-0.5 text-sm font-black leading-none">{formatTime(event.at)}</span>
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-black text-slate-900">{event.title}</span>
-                  <span className="block truncate text-[13px] text-slate-500">{event.subtitle}</span>
+                  <span className="block truncate text-info font-black text-slate-900">{event.title}</span>
+                  <span className="block truncate text-sm text-slate-500">{event.subtitle}</span>
                 </span>
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${eventTone(event).dot}`} />
               </button>
@@ -282,7 +282,7 @@ export function OverviewSection({
         </button>
       }
     >
-      <p className="mb-3 text-center text-[15px] font-bold text-slate-600">
+      <p className="mb-3 text-center text-info font-bold text-slate-600">
         {detailPlan.propertyAddress || detailPlan.name} · {planCreatedLabel(detailPlan.createdAt)}
       </p>
       <PlanMixDetail mix={detailMix} planId={detailPlan.id} />
@@ -339,12 +339,12 @@ export function OverviewSection({
                       {notice.done ? <Check className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-black text-slate-900">
+                      <span className="block text-info font-black text-slate-900">
                         {notice.done
                           ? `היועץ סיים לטפל בשלב ${notice.stageNumber} · ${notice.stageTitle}`
                           : `היועץ מטפל בשלב ${notice.stageNumber} · ${notice.stageTitle}`}
                       </span>
-                      <span className="block text-[13px] font-medium text-slate-600">
+                      <span className="block text-sm font-medium text-slate-600">
                         {notice.done
                           ? `אתם עכשיו בשלב ${notice.currentStageNumber} · ${notice.currentStageTitle}`
                           : 'אין מה לעשות מצדכם עכשיו. כשהיועץ יסיים או יקבע פגישה, זה יופיע כאן.'}
@@ -379,7 +379,7 @@ export function OverviewSection({
           {/* משכנתאות שהסתיימו — רק כשיש כאלה */}
           {completed.length > 0 && (
             <div className="mt-4 border-t border-slate-100 pt-4">
-              <p className="mb-2 flex items-center gap-1.5 text-[13px] font-black text-slate-500">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-black text-slate-500">
                 <Check className="h-4 w-4 text-emerald-600" />
                 משכנתאות שלקחתי ({completed.length})
               </p>
@@ -388,12 +388,12 @@ export function OverviewSection({
                   <Link
                     key={plan.id}
                     href={`/dashboard/plans/${plan.id}`}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-2.5 text-[15px] transition-colors hover:border-emerald-400"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-2.5 text-info transition-colors hover:border-emerald-400"
                   >
                     <span className="min-w-0 truncate font-black text-slate-900">
                       {plan.propertyAddress || plan.name}
                     </span>
-                    <span className="shrink-0 text-[13px] font-bold text-emerald-800">
+                    <span className="shrink-0 text-sm font-bold text-emerald-800">
                       {plan.data.SIGNING.bank ? `בנק ${plan.data.SIGNING.bank} · ` : ''}לצפייה
                     </span>
                   </Link>
@@ -412,7 +412,7 @@ export function OverviewSection({
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-slate-700"
               >
                 <Plus className="h-5 w-5" />
                 משכנתא נוספת — מה תרצו לעשות?
@@ -515,9 +515,9 @@ function KpiTile({
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[13px] font-bold text-slate-500">{label}</span>
+        <span className="block truncate text-sm font-bold text-slate-500">{label}</span>
         <span className="block truncate text-2xl font-black leading-tight text-slate-900">{value}</span>
-        <span className="block truncate text-[13px] text-slate-500">{hint}</span>
+        <span className="block truncate text-sm text-slate-500">{hint}</span>
       </span>
     </button>
   );
@@ -543,11 +543,11 @@ function PlanStatusRow({
           <MapPin className="h-5 w-5 shrink-0 text-slate-400" />
           <span className="truncate">{summary.label}</span>
         </p>
-        <span className={`rounded-full bg-gradient-to-l ${journey.gradient} px-3 py-1 text-[13px] font-black text-white`}>
+        <span className={`rounded-full bg-gradient-to-l ${journey.gradient} px-3 py-1 text-sm font-black text-white`}>
           שלב {summary.stageNumber} · {journey.shortTitle}
         </span>
       </div>
-      <p className="mt-0.5 text-[13px] text-slate-500">{planCreatedLabel(summary.createdAt)}</p>
+      <p className="mt-0.5 text-sm text-slate-500">{planCreatedLabel(summary.createdAt)}</p>
 
       <ol
         className="mt-4 grid gap-1"
@@ -570,7 +570,7 @@ function PlanStatusRow({
               >
                 {status === 'COMPLETED' ? <Check className="h-4 w-4" /> : index + 1}
               </span>
-              <span className={`text-[13px] font-bold leading-tight ${current ? 'text-slate-900' : 'text-slate-500'}`}>
+              <span className={`text-sm font-bold leading-tight ${current ? 'text-slate-900' : 'text-slate-500'}`}>
                 {summary.stageTitles[index]}
               </span>
             </li>
@@ -589,14 +589,14 @@ function PlanStatusRow({
         <button
           type="button"
           onClick={onPeek}
-          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-[15px] font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
         >
           <Eye className="h-4 w-4" />
           להציץ בפרטים
         </button>
         <Link
           href={summary.href}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[15px] font-black text-white ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-info font-black text-white ${
             summary.advisorStage ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-900 hover:bg-slate-700'
           }`}
         >
@@ -631,7 +631,7 @@ function QuickAction({
   badge?: number;
 }) {
   const className =
-    'flex min-h-[60px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right text-[15px] font-bold text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40';
+    'flex min-h-[60px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right text-info font-bold text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40';
   const body = (
     <>
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
@@ -639,7 +639,7 @@ function QuickAction({
       </span>
       <span className="min-w-0 flex-1 leading-snug">{label}</span>
       {typeof badge === 'number' && badge > 0 && (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[13px] font-black text-amber-800">{badge}</span>
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-black text-amber-800">{badge}</span>
       )}
     </>
   );

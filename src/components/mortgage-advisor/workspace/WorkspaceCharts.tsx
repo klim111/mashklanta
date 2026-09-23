@@ -230,12 +230,12 @@ export function WorkspaceCharts({
             <LineChartIcon className="h-4 w-4 text-blue-600" />
             ניתוח גרפי
             {focusTrack && (
-              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-800">
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-800">
                 {TRACK_TYPES[focusTrack.track.type]}
               </span>
             )}
           </CardTitle>
-          <span className="text-[11px] text-slate-500 flex items-center gap-1">
+          <span className="text-2xs text-slate-500 flex items-center gap-1">
             <MousePointerClick className="h-3.5 w-3.5" />
             {focusTrack
               ? 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
@@ -611,11 +611,11 @@ function TrackFocusCharts({
       {/* הביאורים של המסלול — אותם הסברים שהיו בתוך המסלול, כאן לצד הגרפים */}
       <div className="space-y-2 lg:col-span-3">
         {showsRateChangeNote(data.type) && track.monthlyPayment > 0.01 && (
-          <p className="text-[11px] leading-snug text-slate-500">{CURRENT_RATE_PAYMENT_NOTE}</p>
+          <p className="text-2xs leading-snug text-slate-500">{CURRENT_RATE_PAYMENT_NOTE}</p>
         )}
 
         {isGrace && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-relaxed text-amber-900">
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-2xs leading-relaxed text-amber-900">
             {data.amortizationType === 'full_grace' ? (
               <>
                 בגרייס מלא אין החזר חודשי. הריבית נצברת וצוברת ריבית בעצמה, ובסוף התקופה נפרעים
@@ -633,14 +633,14 @@ function TrackFocusCharts({
         )}
 
         {track.totalIndexation > 1 && (
-          <p className="rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-[11px] leading-relaxed text-violet-800">
+          <p className="rounded-lg border border-violet-200 bg-violet-50 p-2.5 text-2xs leading-relaxed text-violet-800">
             לפי תחזית האינפלציה של בנק ישראל הקרן גדלה ב-{formatShekel(track.totalIndexation)} לאורך
             התקופה. הקרן מוגנת מירידת מדד ולא תקטן מתחת לסכום המקורי.
           </p>
         )}
 
         {data.type === 'variable_unlinked' && (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-[11px] leading-relaxed text-emerald-900">
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-2xs leading-relaxed text-emerald-900">
             הריבית מתעדכנת כל {data.variablePeriod ?? 5} שנים לפי הפורוורד לאותה תקופה מעקום
             התשואות השקלי של בנק ישראל, עם המרווח שצוטט מהבנק. בתחנות היציאה יש פטור מעמלת פירעון
             מוקדם.
@@ -648,14 +648,14 @@ function TrackFocusCharts({
         )}
 
         {data.type === 'prime' && track.schedule.length > 12 && (
-          <p className="rounded-lg border border-orange-200 bg-orange-50 p-2.5 text-[11px] leading-relaxed text-orange-900">
+          <p className="rounded-lg border border-orange-200 bg-orange-50 p-2.5 text-2xs leading-relaxed text-orange-900">
             ההחזרים וסך הריבית מחושבים לפי צפי הפריים שנגזר מעקום התשואות השקלי של בנק ישראל. חודש
             ראשון: {formatPercentage(track.schedule[0].annualRate)}, בסוף התקופה:{' '}
             {formatPercentage(track.schedule[track.schedule.length - 1].annualRate)}.
           </p>
         )}
 
-        <p className="text-[10px] text-slate-400">
+        <p className="text-2xs text-slate-400">
           לוח סילוקין: {AMORTIZATION_TYPES[data.amortizationType || 'spitzer']}
         </p>
       </div>
@@ -666,7 +666,7 @@ function TrackFocusCharts({
 function TrackStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-2 text-center">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-2xs text-slate-400">{label}</p>
       <p className="text-xs font-bold text-slate-800">{value}</p>
     </div>
   );
@@ -684,7 +684,7 @@ function ChartPanel({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-sm font-semibold text-slate-800">{title}</p>
-      <p className="text-[11px] text-slate-500 mb-2 leading-snug">{hint}</p>
+      <p className="text-2xs text-slate-500 mb-2 leading-snug">{hint}</p>
       <ResponsiveContainer width="100%" height={230}>
         {children}
       </ResponsiveContainer>

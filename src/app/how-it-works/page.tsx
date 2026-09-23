@@ -161,7 +161,7 @@ export default function HowItWorksPage() {
             איך הפלטפורמה עובדת
           </div>
 
-          <h1 className="mb-6 text-3xl font-black leading-[1.15] text-white sm:text-4xl md:text-6xl lg:text-7xl">
+          <h1 className="mb-6 text-title font-black leading-[1.15] text-white">
             כל מה שיועץ משכנתאות עושה —
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-violet-200 bg-clip-text text-transparent">
@@ -288,7 +288,7 @@ export default function HowItWorksPage() {
             viewport={{ once: true }}
             className="mx-auto mb-14 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               פלטפורמה אחת, שני צדדים
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -317,7 +317,7 @@ export default function HowItWorksPage() {
                   >
                     <Icon className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="mb-2 text-lg font-bold text-gray-900">{pillar.title}</h3>
+                  <h3 className="mb-2 text-subtitle font-bold text-gray-900">{pillar.title}</h3>
                   <p className="text-sm leading-relaxed text-gray-600">
                     {pillar.description}
                   </p>
@@ -341,7 +341,7 @@ export default function HowItWorksPage() {
               <Compass className="h-4 w-4" />
               איך מתחילים
             </div>
-            <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-white">
               שתי שאלות, ואתם בדרך
             </h2>
             <p className="text-lg leading-relaxed text-slate-100">
@@ -383,7 +383,7 @@ export default function HowItWorksPage() {
               <Layers3 className="h-4 w-4" />
               עבודת היועץ, שלב אחר שלב
             </div>
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               חמישה שלבים. בכל אחד — אתם בוחרים
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -409,7 +409,7 @@ export default function HowItWorksPage() {
               <Wallet className="h-4 w-4" />
               מודל התמחור
             </div>
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               משלמים רק על מה שלקחתם — ותמיד את המחיר הנמוך
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -452,7 +452,7 @@ export default function HowItWorksPage() {
                     <Icon className="h-7 w-7 text-white" />
                   </div>
 
-                  <h3 className="text-2xl font-black text-gray-900">{plan.name}</h3>
+                  <h3 className="text-subtitle font-black text-gray-900">{plan.name}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">
                     {plan.tagline}
                   </p>
@@ -510,7 +510,7 @@ export default function HowItWorksPage() {
               <ScanSearch className="h-4 w-4" />
               מדידת איכות העבודה
             </div>
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               ברירת המחדל מול התוצר האמיתי
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -536,7 +536,7 @@ export default function HowItWorksPage() {
               <SlidersHorizontal className="h-4 w-4" />
               ארגז הכלים המלא
             </div>
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               {platformTools.length} כלים — כולם פתוחים בפניכם
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -565,7 +565,7 @@ export default function HowItWorksPage() {
               <ShieldCheck className="h-4 w-4" />
               המשכנתא לא נגמרת בחתימה
             </div>
-            <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-white">
               מעקב, תחזיות ותכנון — גם אחרי שהבנק חתם
             </h2>
             <p className="text-lg leading-relaxed text-slate-100">
@@ -587,7 +587,7 @@ export default function HowItWorksPage() {
                   href={item.href}
                   className="group flex h-full flex-col rounded-2xl border border-white/15 bg-white/5 p-6 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 hover:shadow-2xl"
                 >
-                  <h3 className="mb-2 text-xl font-black text-white">{item.title}</h3>
+                  <h3 className="mb-2 text-subtitle font-black text-white">{item.title}</h3>
                   <p className="mb-4 flex-1 text-sm leading-relaxed text-slate-100">
                     {item.description}
                   </p>
@@ -615,7 +615,7 @@ export default function HowItWorksPage() {
           viewport={{ once: true }}
           className="relative mx-auto max-w-3xl px-4 text-center"
         >
-          <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+          <h2 className="mb-5 text-title font-black text-white">
             מוכנים להתחיל?
           </h2>
           <p className="mb-10 text-lg leading-relaxed text-slate-100">

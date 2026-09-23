@@ -102,7 +102,7 @@ export function GoogleAuthButton({
         type="button"
         disabled={loading}
         onClick={() => void startGoogleSignIn()}
-        className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-800 transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-button font-medium text-gray-800 transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-5 w-5 animate-spin text-gray-500" /> : <GoogleMark />}
         {label}

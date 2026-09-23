@@ -153,7 +153,7 @@ export function MortgageEntry({
     return (
       <>
         <div className="rounded-2xl bg-white/5 p-3">
-          <p className="mb-2.5 px-1 text-center text-[13px] font-black text-white/70">
+          <p className="mb-2.5 px-1 text-center text-sm font-black text-white/70">
             {hasPlans ? 'מתכננים משכנתא נוספת?' : 'מה תרצו לעשות?'}
           </p>
           <div className="space-y-2">
@@ -180,13 +180,13 @@ export function MortgageEntry({
                   >
                     <Icon className="h-4 w-4 text-white" />
                   </span>
-                  <span className="text-[15px] font-black leading-snug">{GOAL_LABELS[goal].title}</span>
+                  <span className="text-info font-black leading-snug">{GOAL_LABELS[goal].title}</span>
                 </button>
               );
             })}
           </div>
           {access.active && (
-            <p className="mt-2.5 flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-200">
+            <p className="mt-2.5 flex items-center justify-center gap-1 text-2xs font-bold text-emerald-200">
               <BadgeCheck className="h-3.5 w-3.5" />
               הגישה המלאה פעילה
             </p>
@@ -211,7 +211,7 @@ export function MortgageEntry({
         </div>
         <div className="relative">
           <div className="mb-6 flex justify-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[13px] font-black text-white/80 backdrop-blur">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm font-black text-white/80 backdrop-blur">
               {access.active ? (
                 <>
                   <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />

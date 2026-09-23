@@ -372,7 +372,7 @@ export function AnalysisStage({
                       כל אחד בנפרד
                     </button>
                   </div>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                  <p className="mt-1.5 text-2xs leading-relaxed text-slate-400">
                     קובע אם תדפיס עובר ושב, אישור ניהול חשבון ודוח יתרות יופיעו כמסמכים משותפים או
                     לכל לווה בנפרד.
                   </p>
@@ -675,7 +675,7 @@ function ScreenRail({
             }`}
           >
             <span
-              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-2xs ${
                 active ? 'bg-white/20' : 'bg-slate-200 text-slate-600'
               }`}
             >
@@ -709,7 +709,7 @@ function ScreenFooter({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-white hover:text-slate-900"
+        className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-button font-bold text-slate-500 transition-colors hover:bg-white hover:text-slate-900"
       >
         <ChevronRight className="h-4 w-4" />
         {backLabel}
@@ -729,7 +729,7 @@ function ScreenFooter({
             {nextLabel}
             <ArrowLeft className="h-4 w-4" />
           </button>
-          {nextHint && <span className="max-w-xs text-[11px] text-slate-400">{nextHint}</span>}
+          {nextHint && <span className="max-w-xs text-2xs text-slate-400">{nextHint}</span>}
         </div>
       )}
     </div>
@@ -850,7 +850,7 @@ function BankChooser({
               key={item}
               type="button"
               onClick={() => onBank(selected ? null : item)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all ${
+              className={`rounded-full border px-2.5 py-1 text-2xs font-bold transition-all ${
                 selected
                   ? 'border-blue-500 bg-blue-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
@@ -866,7 +866,7 @@ function BankChooser({
         <motion.p
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-3 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-right text-[11px] leading-relaxed text-blue-900"
+          className="mt-3 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-right text-2xs leading-relaxed text-blue-900"
         >
           <Landmark className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
           <span>
@@ -934,7 +934,7 @@ function BorrowerWorkCard({
             );
           })}
         </div>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+        <p className="mt-1.5 text-2xs leading-relaxed text-slate-400">
           קובע אילו מסמכים הבנק ידרוש בשלב האישור העקרוני.
         </p>
       </div>
@@ -1012,7 +1012,7 @@ function BorrowerWorkCard({
                 )}
               </div>
               {allowShared && onToggleShared && (
-                <label className="flex cursor-pointer items-center gap-2 text-[11px] font-bold text-slate-500">
+                <label className="flex cursor-pointer items-center gap-2 text-2xs font-bold text-slate-500">
                   <input
                     type="checkbox"
                     checked={Boolean(loan.shared)}
@@ -1086,7 +1086,7 @@ function SharedLoanRow({
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
-      <label className="mt-2 flex cursor-pointer items-center gap-2 text-[11px] font-bold text-blue-800">
+      <label className="mt-2 flex cursor-pointer items-center gap-2 text-2xs font-bold text-blue-800">
         <input
           type="checkbox"
           checked
@@ -1379,7 +1379,7 @@ function PropertyPanel({
                 <button
                   type="button"
                   onClick={onNeedEquityHelp}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-violet-700"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-violet-700"
                 >
                   <HeartHandshake className="h-4 w-4" />
                   קבלו עזרה מיועצי משכלנתא לגייס הון עצמי
@@ -1411,7 +1411,7 @@ function PropertyPanel({
               years={profile.years}
               onChange={(years) => patch({ years })}
             />
-            <p className="mt-1.5 text-center text-[11px] text-slate-400">
+            <p className="mt-1.5 text-center text-2xs text-slate-400">
               להערכת ההחזר בלבד — בתמהיל עצמו לכל מסלול תקופה משלו. אפשר לבחור כל מספר חודשים בין 48
               ל-360.
             </p>
@@ -1595,7 +1595,7 @@ function FutureIncomePanel({
             <button
               type="button"
               onClick={addLumpSum}
-              className="inline-flex items-center gap-2 rounded-2xl border-2 border-blue-300 bg-white px-5 py-2.5 text-sm font-black text-blue-800 transition-colors hover:bg-blue-50"
+              className="inline-flex items-center gap-2 rounded-2xl border-2 border-blue-300 bg-white px-5 py-2.5 text-button font-black text-blue-800 transition-colors hover:bg-blue-50"
             >
               <Plus className="h-4 w-4" />
               הוספת הכנסה צפויה

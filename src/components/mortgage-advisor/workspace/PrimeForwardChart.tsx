@@ -209,7 +209,7 @@ export function ForwardRateChart({
         <TrendingUp className={`h-4 w-4 ${kind === 'prime' ? 'text-orange-600' : 'text-emerald-600'}`} />
         {copy.title}
       </p>
-      <p className={`text-[11px] ${copy.body} mb-2 leading-snug`}>{copy.description}</p>
+      <p className={`text-2xs ${copy.body} mb-2 leading-snug`}>{copy.description}</p>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={grid} />

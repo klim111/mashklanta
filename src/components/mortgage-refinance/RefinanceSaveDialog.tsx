@@ -107,7 +107,7 @@ export function RefinanceSaveDialog({
         </DialogHeader>
 
         <div className="space-y-2.5">
-          <div className="flex flex-wrap items-center gap-2 text-[12px] font-bold text-slate-600">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1">
               <Building2 className="h-3.5 w-3.5 text-blue-600" />
               {currentMix.bank ?? 'המשכנתא הנוכחית'}
@@ -185,7 +185,7 @@ export function RefinanceSaveDialog({
               {context === 'tool' && outcome.href ? (
                 <Link
                   href={outcome.href}
-                  className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-slate-700"
+                  className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
                 >
                   המשך לביצוע המיחזור
                   <ArrowLeft className="h-4 w-4" />

@@ -58,7 +58,7 @@ function ToolCard({
             {tool.title}
             <ArrowUpLeft className="h-3.5 w-3.5 text-slate-300 transition-transform group-hover:-translate-y-0.5 group-hover:text-blue-500" />
           </span>
-          <span className="mt-1 block text-[11px] leading-relaxed text-slate-500 line-clamp-2">
+          <span className="mt-1 block text-2xs leading-relaxed text-slate-500 line-clamp-2">
             {tool.description}
           </span>
         </span>
@@ -103,7 +103,7 @@ export function StageTools({
 
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-bold text-slate-400">כלים נוספים:</span>
+        <span className="text-2xs font-bold text-slate-400">כלים נוספים:</span>
         {extras.map(({ tool, hint }) => (
           <Link
             key={tool.id}
@@ -144,7 +144,7 @@ export function StageTools({
           <Lightbulb className="h-4 w-4 text-amber-500" />
           כלים שכדאי לשקול
         </h4>
-        <p className="mb-3 text-[11px] leading-relaxed text-slate-500">
+        <p className="mb-3 text-2xs leading-relaxed text-slate-500">
           לא חובה למעבר לשלב הבא — אבל לפי מה שהזנתם, אלה יכולים לשנות את התוצאה.
         </p>
 
@@ -176,13 +176,13 @@ export function StageTools({
                     </span>
                     <span className="flex-1 text-sm font-bold text-slate-900">{tool.title}</span>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${tone.badge}`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-black ${tone.badge}`}
                     >
                       <Sparkles className="h-3 w-3" />
                       מומלץ לכם
                     </span>
                   </span>
-                  <span className={`mt-2 block text-[11px] leading-relaxed ${tone.text}`}>
+                  <span className={`mt-2 block text-2xs leading-relaxed ${tone.text}`}>
                     {hint.reason}
                   </span>
                 </Link>

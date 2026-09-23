@@ -76,7 +76,7 @@ export function MonthCalendar({
         </button>
       </div>
 
-      <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-bold text-slate-400">
+      <div className="mb-1 grid grid-cols-7 text-center text-2xs font-bold text-slate-400">
         {WEEKDAYS.map((day) => (
           <span key={day}>{day}</span>
         ))}
@@ -97,7 +97,7 @@ export function MonthCalendar({
               onClick={() => onSelect(key)}
               data-demo-id={demoKey && inMonth ? `${demoKey}-day-${date.getDate()}` : undefined}
               title={marker ? `${marker.count} תשלומים · ₪${Math.round(marker.amount).toLocaleString('he-IL')}` : undefined}
-              className={`relative flex flex-col items-center justify-center rounded-xl border text-[13px] font-bold transition-all ${
+              className={`relative flex flex-col items-center justify-center rounded-xl border text-sm font-bold transition-all ${
                 compact ? 'h-9' : 'h-11'
               } ${
                 isSelected
@@ -117,7 +117,7 @@ export function MonthCalendar({
                 />
               )}
               {marker && marker.count > 1 && (
-                <span className="absolute -left-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-none text-white">
+                <span className="absolute -left-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-2xs font-black leading-none text-white">
                   {marker.count}
                 </span>
               )}

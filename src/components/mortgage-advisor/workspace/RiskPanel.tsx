@@ -69,7 +69,7 @@ export function RiskPanel({
               סרגל ניתוח סיכונים
             </CardTitle>
             {scenarioActive && (
-              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">
+              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-2xs">
                 תרחיש פעיל — הגרפים משווים לבסיס
               </Badge>
             )}
@@ -106,7 +106,7 @@ export function RiskPanel({
 
       <CardContent>
         {rateTypes.length === 0 && !hasIndexed ? (
-          <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+          <p className="text-2xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
             כל המסלולים בתמהיל קבועים ולא צמודים — התמהיל מוגן משינויי ריבית ומדד.
           </p>
         ) : (

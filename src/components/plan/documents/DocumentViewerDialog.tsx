@@ -41,7 +41,7 @@ export function DocumentViewerDialog({
               {document.name}
             </span>
           </DialogTitle>
-          <DialogDescription className="text-center text-[15px]">
+          <DialogDescription className="text-center text-info">
             {document.fileName} · {Math.max(1, Math.round(document.size / 1024))}KB
           </DialogDescription>
         </DialogHeader>
@@ -58,12 +58,12 @@ export function DocumentViewerDialog({
             */
             <object data={src} type={document.contentType} className="h-[65vh] w-full">
               <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                <p className="text-[15px] font-bold text-slate-700">
+                <p className="text-info font-bold text-slate-700">
                   הדפדפן חוסם תצוגה מקדימה של הקובץ הזה.
                 </p>
                 <a
                   href={downloadHref}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-button font-black text-white transition-colors hover:bg-slate-700"
                 >
                   <Download className="h-4 w-4" />
                   הורדת המסמך
@@ -76,7 +76,7 @@ export function DocumentViewerDialog({
         <div className="flex flex-wrap items-center justify-center gap-3">
           <a
             href={downloadHref}
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 text-[15px] font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-6 py-3 text-button font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
           >
             <Download className="h-4 w-4" />
             הורדת המסמך
@@ -84,7 +84,7 @@ export function DocumentViewerDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-2xl bg-slate-900 px-8 py-3 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+            className="rounded-2xl bg-slate-900 px-8 py-3 text-button font-black text-white transition-colors hover:bg-slate-700"
           >
             סגירה וחזרה לשלב
           </button>

@@ -116,7 +116,7 @@ export default function JourneyExplorer() {
                 <div className="mb-1 text-sm font-bold text-gray-600">
                   שלב {stage.number} מתוך {journeyStages.length}
                 </div>
-                <h3 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
+                <h3 className="text-subtitle font-black text-gray-900 leading-tight">
                   {stage.title}
                 </h3>
                 <p className="mt-2 text-gray-600">{stage.tagline}</p>
@@ -244,7 +244,7 @@ export default function JourneyExplorer() {
                             transition={{ delay: 0.08 * i }}
                             className="flex items-start gap-3"
                           >
-                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-black text-white">
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-2xs font-black text-white">
                               {i + 1}
                             </span>
                             <span className="text-gray-700 leading-relaxed">{step}</span>

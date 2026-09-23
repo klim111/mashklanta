@@ -78,7 +78,7 @@ export default function MortgageIntro() {
           </motion.div>
 
           {/* Main Headline - Based on the Hebrew text from image */}
-          <h1 className="text-5xl md:text-7xl font-black mb-6 text-financial-gradient leading-tight">
+          <h1 className="text-title font-black mb-6 text-financial-gradient leading-tight">
             המזכיר הראשון שלך בעולם המשכנתאות
           </h1>
           
@@ -161,7 +161,7 @@ export default function MortgageIntro() {
               <Button
                 onClick={() => setSelected(opt.key)}
                 variant={selected === opt.key ? "default" : "outline"}
-                className={`text-base px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-xl border-2 font-semibold ${
+                className={`text-cta px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-xl border-2 font-semibold ${
                   selected === opt.key 
                     ? `${opt.color} text-white border-0 shadow-lg` 
                     : 'hover:border-blue-400 hover:bg-blue-50 bg-white'
@@ -195,7 +195,7 @@ export default function MortgageIntro() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                 >
                   {OPTIONS.find((opt) => opt.key === selected)?.icon}
-                  <h2 className="text-3xl font-bold text-financial-gray-900">המסלול המתאים לך</h2>
+                  <h2 className="text-title font-bold text-financial-gray-900">המסלול המתאים לך</h2>
                 </motion.div>
                 
                 <motion.p 

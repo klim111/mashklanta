@@ -42,10 +42,10 @@ export function BasketRatesEditor({
           <div key={basket.id} className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="mb-3">
               <div className="flex items-center justify-between gap-2">
-                <h4 className="text-[13px] font-bold text-slate-800">{basket.name}</h4>
+                <h4 className="text-sm font-bold text-slate-800">{basket.name}</h4>
                 <span
                   className={cn(
-                    'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                    'rounded-full px-2 py-0.5 text-2xs font-semibold',
                     filled === basket.tracks.length
                       ? 'bg-emerald-50 text-emerald-700'
                       : 'bg-slate-100 text-slate-500',
@@ -54,15 +54,15 @@ export function BasketRatesEditor({
                   {filled}/{basket.tracks.length}
                 </span>
               </div>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">{basket.description}</p>
+              <p className="mt-0.5 text-2xs leading-relaxed text-slate-400">{basket.description}</p>
             </div>
 
             <div className="space-y-2">
               {basket.tracks.map((track) => (
                 <div key={track.type} className="flex items-center justify-between gap-2">
-                  <label className="text-[12px] text-slate-600">
+                  <label className="text-xs text-slate-600">
                     {TRACK_TYPES[track.type] ?? track.type}
-                    <span className="mr-1 text-[10px] text-slate-400">
+                    <span className="mr-1 text-2xs text-slate-400">
                       {Math.round(track.share * 100)}%
                     </span>
                   </label>

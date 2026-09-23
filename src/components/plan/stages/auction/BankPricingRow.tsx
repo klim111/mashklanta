@@ -90,7 +90,7 @@ export function BankPricingRow({
               {bank}
               {count > 0 ? (
                 <span
-                  className={`inline-flex items-center gap-0.5 rounded-full px-1.5 text-[11px] font-black ${
+                  className={`inline-flex items-center gap-0.5 rounded-full px-1.5 text-2xs font-black ${
                     active ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
                   }`}
                 >
@@ -108,7 +108,7 @@ export function BankPricingRow({
           <button
             type="button"
             onClick={() => setShowAll((current) => !current)}
-            className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-300 px-4 py-2.5 text-sm font-black text-slate-500 transition-colors hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-300 px-4 py-2.5 text-button font-black text-slate-500 transition-colors hover:bg-slate-50"
           >
             {showAll ? 'הצג רק בנקים עם אישור' : `בנק אחר (${rest.length})`}
           </button>

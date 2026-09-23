@@ -77,7 +77,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
             <DialogTitle className="text-base font-black text-slate-900">
               לוח סילוקין · {loan.name}
             </DialogTitle>
-            <DialogDescription className="text-[12px] text-slate-500">
+            <DialogDescription className="text-xs text-slate-500">
               {formatILS(loan.principal)} · {loan.apr.toFixed(2)}% · {loan.months} חודשים
             </DialogDescription>
           </div>
@@ -113,7 +113,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
 
           {/* פירעון מוקדם */}
           <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-            <label className="flex items-center gap-2 text-[12px] font-bold text-slate-700">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
               <input
                 type="checkbox"
                 checked={prepayEnabled}
@@ -129,19 +129,19 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
             {prepayEnabled && (
               <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
                 <div>
-                  <p className="mb-1 text-[11px] font-bold text-slate-600">סכום הפירעון</p>
+                  <p className="mb-1 text-2xs font-bold text-slate-600">סכום הפירעון</p>
                   <FormattedNumberValueInput
                     value={prepayAmount || ''}
                     onValueChange={setPrepayAmount}
                     placeholder="0"
                     aria-label="סכום הפירעון המוקדם"
-                    className="h-8 w-32 text-[12px]"
+                    className="h-8 w-32 text-xs"
                   />
                 </div>
                 <div>
                   <div className="mb-1 flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-600">חודש הפירעון</span>
-                    <span className="mr-auto text-[12px] font-black text-slate-900">
+                    <span className="text-2xs font-bold text-slate-600">חודש הפירעון</span>
+                    <span className="mr-auto text-xs font-black text-slate-900">
                       חודש {prepayMonth}
                     </span>
                   </div>
@@ -162,7 +162,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
 
           {/* הגרף */}
           <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-            <p className="mb-1 text-[12px] font-bold text-slate-800">ירידת הקרן והריבית המצטברת</p>
+            <p className="mb-1 text-xs font-bold text-slate-800">ירידת הקרן והריבית המצטברת</p>
             <AmortChart
               loan={loan}
               prepay={active ? { amount: prepayAmount, month: prepayMonth } : undefined}
@@ -173,19 +173,19 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
           {/* הטבלה */}
           <div className="overflow-hidden rounded-xl border border-slate-200">
             <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-2.5 py-2">
-              <p className="text-[12px] font-bold text-slate-800">טבלת התשלומים</p>
+              <p className="text-xs font-bold text-slate-800">טבלת התשלומים</p>
               <button
                 type="button"
                 onClick={exportToCSV}
-                className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900"
+                className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-2xs font-bold text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900"
               >
                 <Download className="h-3.5 w-3.5" />
                 ייצוא ל-CSV
               </button>
             </div>
             <div className="max-h-72 overflow-auto">
-              <table className="w-full text-[11.5px]">
-                <thead className="sticky top-0 bg-white text-[10px] font-bold text-slate-500 shadow-sm">
+              <table className="w-full text-2xs">
+                <thead className="sticky top-0 bg-white text-2xs font-bold text-slate-500 shadow-sm">
                   <tr>
                     <th className="p-2 text-right">חודש</th>
                     <th className="p-2 text-right">יתרה בתחילת חודש</th>
@@ -221,7 +221,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-slate-900 px-5 py-2 text-[13px] font-black text-white transition-colors hover:bg-slate-700"
+            className="rounded-xl bg-slate-900 px-5 py-2 text-button font-black text-white transition-colors hover:bg-slate-700"
           >
             סגירה
           </button>
@@ -248,19 +248,19 @@ function Figure({
   const improved = (delta ?? 0) < 0;
   return (
     <div className="min-w-0">
-      <p className="flex items-center gap-1 text-[10px] text-slate-500">
+      <p className="flex items-center gap-1 text-2xs text-slate-500">
         <Icon className="h-3 w-3 text-slate-400" />
         {label}
       </p>
       <p
         className={`truncate font-bold leading-tight ${
-          emphasized ? 'text-[15px] text-blue-700' : 'text-[13px] text-slate-900'
+          emphasized ? 'text-info text-blue-700' : 'text-sm text-slate-900'
         }`}
       >
         {value}
       </p>
       {hasDelta && (
-        <p className={`text-[10px] font-bold ${improved ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <p className={`text-2xs font-bold ${improved ? 'text-emerald-600' : 'text-rose-600'}`}>
           {improved ? '−' : '+'}
           {formatILS(Math.abs(delta as number))}
         </p>

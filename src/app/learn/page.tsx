@@ -96,7 +96,7 @@ export default function LearnPage() {
             <GraduationCap className="w-4 h-4" />
             מרכז למידה — משכלתנא
           </div>
-          <h1 className="mb-6 text-3xl font-black leading-[1.15] text-white sm:text-4xl md:text-6xl">
+          <h1 className="mb-6 text-title font-black leading-[1.15] text-white">
             להבין משכנתא
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-violet-200 bg-clip-text text-transparent">
@@ -232,7 +232,7 @@ export default function LearnPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
+            <h2 className="text-title font-black text-white mb-4">
               מוכנים ליישם את מה שלמדתם?
             </h2>
             <p className="text-slate-100 mb-8 text-lg leading-relaxed">

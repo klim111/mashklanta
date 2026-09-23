@@ -89,7 +89,7 @@ function VerifyEmailContent() {
             </motion.div>
 
             {/* Title */}
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-title font-bold text-gray-900 mb-2">
               {status === 'loading' && 'מאמת את כתובת המייל...'}
               {status === 'success' && 'אימות הושלם בהצלחה!'}
               {status === 'error' && 'אימות נכשל'}

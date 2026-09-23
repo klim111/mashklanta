@@ -111,8 +111,8 @@ export function MixResultRow({
     <div className={`space-y-2 rounded-xl border p-2.5 ${tones[tone]}`}>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(150px,1.2fr)_repeat(5,1fr)] lg:items-center">
         <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-          <p className={`text-[13px] font-bold leading-tight ${titleTones[tone]}`}>{title}</p>
-          {subtitle && <p className="text-[10px] text-slate-500">{subtitle}</p>}
+          <p className={`text-sm font-bold leading-tight ${titleTones[tone]}`}>{title}</p>
+          {subtitle && <p className="text-2xs text-slate-500">{subtitle}</p>}
         </div>
 
         <Cell
@@ -193,19 +193,19 @@ function Cell({
 
   return (
     <div className="min-w-0">
-      <p className="flex items-center gap-1 text-[10px] text-slate-500 lg:hidden">
+      <p className="flex items-center gap-1 text-2xs text-slate-500 lg:hidden">
         <Icon className="h-3 w-3 text-slate-400" />
         {label}
       </p>
       <p
         className={`truncate font-bold leading-tight ${
-          emphasized ? 'text-[15px] text-blue-700' : 'text-[13px] text-slate-900'
+          emphasized ? 'text-info text-blue-700' : 'text-sm text-slate-900'
         }`}
       >
         {value}
       </p>
       {deltaText && (
-        <p className={`text-[10px] font-bold ${improved ? 'text-emerald-600' : 'text-red-600'}`}>
+        <p className={`text-2xs font-bold ${improved ? 'text-emerald-600' : 'text-red-600'}`}>
           {deltaText}
         </p>
       )}
@@ -219,7 +219,7 @@ export function MixRowsHeader() {
     <div className="hidden lg:grid lg:grid-cols-[minmax(150px,1.2fr)_repeat(5,1fr)] lg:gap-2 lg:px-2.5">
       <span />
       {['החזר חודשי', 'סך ריבית', 'סך תשלום', 'ריבית ממוצעת', 'תקופה'].map((label) => (
-        <span key={label} className="text-[10px] font-bold text-slate-400">
+        <span key={label} className="text-2xs font-bold text-slate-400">
           {label}
         </span>
       ))}
@@ -319,8 +319,8 @@ function ChartsBlock({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <p className="text-[12px] font-bold text-slate-800">{title}</p>
-        <p className="text-[10px] text-slate-500">{hint}</p>
+        <p className="text-xs font-bold text-slate-800">{title}</p>
+        <p className="text-2xs text-slate-500">{hint}</p>
       </div>
       <AnalysisCharts
         lineData={lineData}

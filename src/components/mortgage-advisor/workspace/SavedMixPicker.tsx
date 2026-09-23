@@ -61,7 +61,7 @@ export function SavedMixPicker({
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+            <p className="flex items-center gap-1.5 text-2xs font-semibold text-slate-600">
               <Home className="h-3.5 w-3.5 text-slate-400" />
               {items.length} תמהילים
             </p>

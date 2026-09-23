@@ -27,8 +27,8 @@ export function SectionHeader({
           </span>
         )}
         <div>
-          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>}
+          <h2 className="text-subtitle font-bold text-slate-900">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -43,7 +43,7 @@ export function SectionHeader({
                 style={{ width: `${Math.round(ratio * 100)}%` }}
               />
             </div>
-            <span className="text-[11px] font-medium text-slate-400">
+            <span className="text-2xs font-medium text-slate-400">
               {progress!.filled}/{progress!.total}
             </span>
           </div>
@@ -88,7 +88,7 @@ export function EntityCard({
           <button
             type="button"
             onClick={onRemove}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-2xs font-medium text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
           >
             <Trash2 className="h-3 w-3" />
             {removeLabel}
@@ -116,7 +116,7 @@ export function AddButton({
       disabled={disabled}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 px-3 py-2',
-        'text-[13px] font-semibold text-indigo-600 transition-all hover:border-indigo-300 hover:bg-indigo-50',
+        'text-button font-semibold text-indigo-600 transition-all hover:border-indigo-300 hover:bg-indigo-50',
         'disabled:cursor-not-allowed disabled:opacity-40',
       )}
     >

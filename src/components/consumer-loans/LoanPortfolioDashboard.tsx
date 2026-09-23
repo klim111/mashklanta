@@ -66,8 +66,8 @@ export function LoanPortfolioDashboard({
       <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-2.5">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(130px,1fr)_repeat(5,1fr)] lg:items-center">
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-            <p className="text-[13px] font-bold leading-tight text-slate-900">התיק שלכם היום</p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-sm font-bold leading-tight text-slate-900">התיק שלכם היום</p>
+            <p className="text-2xs text-slate-500">
               {stats.count} הלוואות · מתעדכן עם כל תזוזה בפאנל
             </p>
           </div>
@@ -108,7 +108,7 @@ export function LoanPortfolioDashboard({
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
               {loans.map((loan) => (
-                <span key={loan.id} className="flex items-center gap-1 text-[10px] text-slate-500">
+                <span key={loan.id} className="flex items-center gap-1 text-2xs text-slate-500">
                   <span
                     className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: loanColor(loan) }}
@@ -124,7 +124,7 @@ export function LoanPortfolioDashboard({
       {/* יחס ההחזר מההכנסה */}
       <div className="rounded-xl border border-slate-200 bg-white p-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[12px] font-bold text-slate-700">
+          <p className="text-xs font-bold text-slate-700">
             הכנסה חודשית פנויה של משק הבית
             <span className="font-normal text-slate-400"> (רשות)</span>
           </p>
@@ -133,11 +133,11 @@ export function LoanPortfolioDashboard({
             onValueChange={onMonthlyIncomeChange}
             placeholder="0"
             aria-label="הכנסה חודשית פנויה"
-            className="h-8 w-32 text-[12px]"
+            className="h-8 w-32 text-xs"
           />
           {ratio ? (
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black ${
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-2xs font-black ${
                 ratio.status === 'risk'
                   ? 'bg-rose-50 text-rose-700'
                   : ratio.status === 'watch'
@@ -148,7 +148,7 @@ export function LoanPortfolioDashboard({
               יחס החזר {Math.round(ratio.ratio * 100)}%
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1 text-2xs text-slate-400">
               <Info className="h-3 w-3" />
               הזינו הכנסה כדי לראות את יחס ההחזר שהבנק בוחן
             </span>
@@ -171,7 +171,7 @@ export function LoanPortfolioDashboard({
               {/* הרף שבנק ישראל מגביל בו את יחס ההחזר הכולל */}
               <span className="absolute inset-y-0 right-1/2 w-px bg-slate-400" />
             </div>
-            <p className="mt-1 text-[10px] text-slate-500">
+            <p className="mt-1 text-2xs text-slate-500">
               הקו באמצע הוא 50% — התקרה שבנק ישראל מגביל בה את יחס ההחזר הכולל, כולל המשכנתא
               העתידית שלכם.
             </p>
@@ -213,10 +213,10 @@ export function LoanPortfolioDashboard({
                   <Icon className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0">
-                  <p className={`text-[12.5px] font-black leading-snug ${tone.title}`}>
+                  <p className={`text-xs font-black leading-snug ${tone.title}`}>
                     {insight.title}
                   </p>
-                  <p className="mt-0.5 text-[11.5px] leading-relaxed text-slate-600">
+                  <p className="mt-0.5 text-2xs leading-relaxed text-slate-600">
                     {insight.detail}
                   </p>
                 </div>
@@ -230,8 +230,8 @@ export function LoanPortfolioDashboard({
       {series.length > 1 && (
         <div className="rounded-xl border border-slate-200 bg-white p-2.5">
           <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
-            <p className="text-[12px] font-bold text-slate-800">החוב לאורך הזמן</p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-xs font-bold text-slate-800">החוב לאורך הזמן</p>
+            <p className="text-2xs text-slate-500">
               יתרת החוב יורדת, הריבית המצטברת עולה — וההחזר החודשי קטן בכל פעם שהלוואה נגמרת
             </p>
           </div>
@@ -295,7 +295,7 @@ export function LoanPortfolioDashboard({
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-1 text-[10px] text-slate-400">
+          <p className="mt-1 text-2xs text-slate-400">
             הציר האופקי: שנים מהיום · הסולם הימני: ההחזר החודשי
           </p>
         </div>
@@ -323,9 +323,9 @@ function PortfolioTooltip({
   if (!active || !payload || payload.length === 0) return null;
   return (
     <div dir="rtl" className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md">
-      <p className="mb-1 text-[11px] font-black text-slate-900">שנה {label}</p>
+      <p className="mb-1 text-2xs font-black text-slate-900">שנה {label}</p>
       {payload.map((entry) => (
-        <div key={String(entry.dataKey)} className="flex items-center gap-1.5 text-[11px]">
+        <div key={String(entry.dataKey)} className="flex items-center gap-1.5 text-2xs">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
           <span className="text-slate-600">
             {entry.name}: <strong className="text-slate-900">{formatILS(entry.value ?? 0)}</strong>
@@ -349,13 +349,13 @@ function Cell({
 }) {
   return (
     <div className="min-w-0">
-      <p className="flex items-center gap-1 text-[10px] text-slate-500">
+      <p className="flex items-center gap-1 text-2xs text-slate-500">
         <Icon className="h-3 w-3 text-slate-400" />
         {label}
       </p>
       <p
         className={`truncate font-bold leading-tight ${
-          emphasized ? 'text-[15px] text-blue-700' : 'text-[13px] text-slate-900'
+          emphasized ? 'text-info text-blue-700' : 'text-sm text-slate-900'
         }`}
       >
         {value}

@@ -32,7 +32,7 @@ export function StageLockedPreview({
             צריך לסגור קודם את מה שעדיין לא הושלם.
           </p>
           <div className="mt-3 rounded-2xl border border-amber-100 bg-white/80 p-3">
-            <div className="text-[11px] font-black text-slate-500">מה הכלי בשלב הזה יודע לעשות</div>
+            <div className="text-2xs font-black text-slate-500">מה הכלי בשלב הזה יודע לעשות</div>
             <p className="mt-1 text-xs leading-relaxed text-slate-600">{journey.summary}</p>
             <ul className="mt-2 space-y-1">
               {journey.steps.map((step) => (
@@ -52,7 +52,7 @@ export function StageLockedPreview({
                     onClick={() => onSelectStage(item)}
                     className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-950 transition-colors hover:border-amber-400 hover:bg-amber-50"
                   >
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[10px] font-black">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-2xs font-black">
                       {stageIndex(item, flow) + 1}
                     </span>
                     {info.shortTitle} — טרם הושלם

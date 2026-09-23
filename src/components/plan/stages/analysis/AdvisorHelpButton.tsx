@@ -58,7 +58,7 @@ export function AdvisorHelpButton({
           >
             <div className="flex items-start justify-between gap-3 bg-gradient-to-l from-violet-600 to-purple-600 px-5 py-4 text-white">
               <div>
-                <p className="text-[11px] font-bold text-white/80">{stageLabel}</p>
+                <p className="text-2xs font-bold text-white/80">{stageLabel}</p>
                 <h4 className="mt-0.5 text-base font-black leading-snug">{title}</h4>
               </div>
               <button
@@ -77,7 +77,7 @@ export function AdvisorHelpButton({
                   type="button"
                   disabled={busy || sent}
                   onClick={request}
-                  className="flex w-full items-center justify-between gap-2 rounded-2xl bg-violet-600 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-violet-700 disabled:opacity-70"
+                  className="flex w-full items-center justify-between gap-2 rounded-2xl bg-violet-600 px-4 py-3 text-button font-black text-white transition-colors hover:bg-violet-700 disabled:opacity-70"
                 >
                   {sent ? 'הבקשה נשלחה — היועץ יחזור אליכם' : 'העבירו פנייה ליועץ'}
                   {busy ? (

@@ -97,7 +97,7 @@ export function GoalsPanel({
             maxLabel={formatShekel(CAP.max)}
           />
         ) : (
-          <p className="text-[11px] text-slate-500">
+          <p className="text-2xs text-slate-500">
             הזינו תקרת החזר חודשי כדי שהמטרות יעבדו בתוך המסגרת שהלקוח יכול לעמוד בה.
           </p>
         )}
@@ -113,7 +113,7 @@ export function GoalsPanel({
             ) : (
               <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
             )}
-            <div className="text-[11px] leading-relaxed">
+            <div className="text-2xs leading-relaxed">
               <p className={capStatus.withinCap ? 'text-emerald-800' : 'text-red-800'}>
                 ההחזר ההתחלתי {formatShekel(result.summary.monthlyPayment)}
                 {capStatus.withinCap
@@ -148,9 +148,9 @@ export function GoalsPanel({
                   <Wand2 className="h-3.5 w-3.5 text-blue-600" />
                   {GOAL_LABELS[goal]}
                 </p>
-                <p className="text-[10px] text-slate-500 leading-snug mt-1">{GOAL_DESCRIPTIONS[goal]}</p>
+                <p className="text-2xs text-slate-500 leading-snug mt-1">{GOAL_DESCRIPTIONS[goal]}</p>
                 {hovered === goal && preview && (
-                  <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-600 space-y-0.5">
+                  <div className="mt-2 pt-2 border-t border-slate-100 text-2xs text-slate-600 space-y-0.5">
                     {preview.feasible ? (
                       <>
                         <p>החזר חודשי: {formatShekel(preview.after.monthlyPayment)}</p>
@@ -173,22 +173,22 @@ export function GoalsPanel({
               הוחל: {GOAL_LABELS[lastOptimization.goal]}
             </p>
             {lastOptimization.changes.length === 0 ? (
-              <p className="text-[11px] text-blue-800">התמהיל כבר עמד במטרה — לא נדרש שינוי.</p>
+              <p className="text-2xs text-blue-800">התמהיל כבר עמד במטרה — לא נדרש שינוי.</p>
             ) : (
-              <ul className="text-[11px] text-blue-800 space-y-0.5 list-disc pr-4">
+              <ul className="text-2xs text-blue-800 space-y-0.5 list-disc pr-4">
                 {lastOptimization.changes.map((change) => (
                   <li key={change}>{change}</li>
                 ))}
               </ul>
             )}
-            <p className="text-[11px] text-blue-900 pt-1">
+            <p className="text-2xs text-blue-900 pt-1">
               החזר חודשי {formatShekel(lastOptimization.before.monthlyPayment)} →{' '}
               {formatShekel(lastOptimization.after.monthlyPayment)} · סך ריבית{' '}
               {formatShekel(lastOptimization.before.totalInterest)} →{' '}
               {formatShekel(lastOptimization.after.totalInterest)}
             </p>
             {!lastOptimization.feasible && (
-              <p className="text-[11px] text-red-700 flex items-center gap-1">
+              <p className="text-2xs text-red-700 flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 גם לאחר השינוי ההחזר חורג מהתקרה. שקלו להקטין את סכום המשכנתא או להאריך תקופה.
               </p>

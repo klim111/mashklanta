@@ -154,7 +154,7 @@ export default function InteractiveTimeline() {
                   isRight ? "ml-auto" : "mr-auto"
                 }`}
               >
-                <h3 className="text-xl font-bold mb-2">
+                <h3 className="text-subtitle font-bold mb-2">
                   שלב {index + 1}: {step.title}
                 </h3>
                 <p className="mb-4">{step.content}</p>

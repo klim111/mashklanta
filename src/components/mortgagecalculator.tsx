@@ -84,7 +84,7 @@ export default function MortgageCalculator() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold text-center">מחשבון משכנתא - לוח שפיצר</h1>
+      <h1 className="text-title font-bold text-center">מחשבון משכנתא - לוח שפיצר</h1>
       <div className="flex justify-center flex-wrap gap-2">
         {["דירה יחידה", "דירה חליפית", "דירה נוספת", "לכל מטרה"].map((type) => (
           <Button
@@ -160,7 +160,7 @@ export default function MortgageCalculator() {
             transition={{ duration: 0.4 }}
             className="mt-6 bg-gray-100 p-4 rounded-lg shadow-md"
           >
-            <h2 className="text-xl font-semibold mb-2">לוח סילוקין</h2>
+            <h2 className="text-subtitle font-semibold mb-2">לוח סילוקין</h2>
             <div className="overflow-auto max-h-[400px] border rounded">
               <table className="table-auto w-full text-sm">
                 <thead>

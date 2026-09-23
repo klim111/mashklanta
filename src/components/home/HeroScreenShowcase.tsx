@@ -76,7 +76,7 @@ export function HeroScreenShowcase() {
 
           <div className="mt-2 text-center">
             <p className="text-lg font-black text-slate-900 md:text-xl">{item.title}</p>
-            <p className="mt-0.5 text-[13px] text-slate-600 md:text-sm">{item.hint}</p>
+            <p className="mt-0.5 text-sm text-slate-600 md:text-sm">{item.hint}</p>
           </div>
         </motion.div>
       </AnimatePresence>

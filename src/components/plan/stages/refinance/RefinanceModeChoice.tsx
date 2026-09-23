@@ -42,7 +42,7 @@ export function RefinanceModeChoice({
             התמהיל שבחרתם מקטין את ההחזר החודשי ב-{formatShekel(saving)}
           </span>
         )}
-        <h3 className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">איך תרצו לבצע את המיחזור?</h3>
+        <h3 className="mt-2 text-subtitle font-black text-slate-900">איך תרצו לבצע את המיחזור?</h3>
         <p className="mx-auto mt-2 max-w-3xl text-sm font-medium leading-relaxed text-slate-600 md:text-base">
           התמהיל למיחזור נשמר. עכשיו צריך להחליט מול מי מבצעים אותו: הבנק שבו המשכנתא מנוהלת היום
           ({refinance.bank}), או בנק אחר. ההבדל הוא במסמכים, בזמן ובבדיקות שהבנק יעשה — ולכן גם

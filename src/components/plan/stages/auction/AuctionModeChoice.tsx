@@ -21,7 +21,7 @@ export function AuctionModeChoice({
   return (
     <section className="rounded-3xl border-2 border-slate-200 bg-white p-6 shadow-sm md:p-8">
       <header className="mb-6 text-center">
-        <h3 className="text-xl font-black text-slate-900 md:text-2xl">
+        <h3 className="text-subtitle font-black text-slate-900">
           איך תרצו לעבור את מכרז הריביות?
         </h3>
         <p className="mx-auto mt-2 max-w-2xl text-sm font-medium leading-relaxed text-slate-600 md:text-base">

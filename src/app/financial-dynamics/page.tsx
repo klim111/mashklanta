@@ -474,7 +474,7 @@ export default function FinancialDynamicsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2 min-h-14 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <Activity className="w-5 h-5 shrink-0 text-indigo-600" />
-              <h1 className="truncate text-base font-bold text-gray-900 sm:text-lg">דינמיקה פיננסית</h1>
+              <h1 className="truncate text-title font-bold text-gray-900">דינמיקה פיננסית</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -524,7 +524,7 @@ export default function FinancialDynamicsPage() {
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">הגדרות סימולציה</h2>
+                    <h2 className="text-subtitle font-bold text-gray-900">הגדרות סימולציה</h2>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
@@ -928,15 +928,15 @@ export default function FinancialDynamicsPage() {
                   חיסכון + נכסים - חוב
                 </p>
                 <div className="mt-4 space-y-1">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span>חיסכון</span>
                     <span className="font-medium">₪{currentState.savings.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span>נכסים</span>
                     <span className="font-medium">₪{currentState.assets.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span>חוב</span>
                     <span className="font-medium text-red-600">-₪{currentState.debt.toLocaleString()}</span>
                   </div>

@@ -485,7 +485,7 @@ export default function AdvancedMortgageJourney({
                 <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
                   <Navigation className="w-6 h-6 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h2 className="text-subtitle font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   מפת המסע שלך
                 </h2>
               </div>
@@ -725,7 +725,7 @@ export default function AdvancedMortgageJourney({
                         <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-4">
                           <Rocket className="w-10 h-10 text-white" />
                         </div>
-                        <h1 className="text-4xl font-bold mb-2">ברוכים הבאים למסע המשכנתא</h1>
+                        <h1 className="text-title font-bold mb-2">ברוכים הבאים למסע המשכנתא</h1>
                         <p className="text-lg text-white/90">נלווה אותך צעד אחר צעד עד לקבלת המשכנתא המושלמת</p>
                       </motion.div>
                     </div>
@@ -800,7 +800,7 @@ export default function AdvancedMortgageJourney({
                       <CardHeader className="border-b">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900">פרטי השלב</h3>
+                            <h3 className="text-subtitle font-bold text-gray-900">פרטי השלב</h3>
                             {selectedStepData && (
                               <p className="text-sm text-gray-600 mt-1">{selectedStepData.title}</p>
                             )}
@@ -922,7 +922,7 @@ export default function AdvancedMortgageJourney({
                         <CardHeader className="border-b">
                           <div className="flex items-center gap-2">
                             <FolderOpen className="w-5 h-5 text-blue-600" />
-                            <h3 className="text-xl font-bold text-gray-900">מסמכים נדרשים</h3>
+                            <h3 className="text-subtitle font-bold text-gray-900">מסמכים נדרשים</h3>
                           </div>
                           <p className="text-sm text-gray-600 mt-1">
                             {selectedStepData.documents.filter(d => d.status === 'ready').length} מתוך {selectedStepData.documents.length} מסמכים מוכנים
@@ -1022,7 +1022,7 @@ export default function AdvancedMortgageJourney({
                   <ChevronRight className="w-4 h-4" />
                 </Button>
                 <div className="text-center">
-                  <h3 className="text-lg font-bold text-gray-800">לוח זמנים</h3>
+                  <h3 className="text-subtitle font-bold text-gray-800">לוח זמנים</h3>
                   <p className="text-sm text-gray-600">
                     {visibleDays[3]?.monthName} {visibleDays[3]?.year}
                   </p>

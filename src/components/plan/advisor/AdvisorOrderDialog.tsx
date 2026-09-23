@@ -180,7 +180,7 @@ export function AdvisorOrderDialog({
 
               <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
                 <label className="space-y-1 sm:col-span-2">
-                  <span className="text-[11px] font-bold text-slate-600">שם בעל הכרטיס</span>
+                  <span className="text-2xs font-bold text-slate-600">שם בעל הכרטיס</span>
                   <input
                     className={inputClass}
                     value={payerName}
@@ -191,7 +191,7 @@ export function AdvisorOrderDialog({
                 </label>
 
                 <label className="space-y-1 sm:col-span-2">
-                  <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
+                  <span className="flex items-center gap-1 text-2xs font-bold text-slate-600">
                     <CreditCard className="h-3.5 w-3.5" />
                     מספר כרטיס
                   </span>
@@ -207,7 +207,7 @@ export function AdvisorOrderDialog({
                 </label>
 
                 <label className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-600">תוקף</span>
+                  <span className="text-2xs font-bold text-slate-600">תוקף</span>
                   <input
                     className={inputClass}
                     dir="ltr"
@@ -220,7 +220,7 @@ export function AdvisorOrderDialog({
                 </label>
 
                 <label className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-600">CVV</span>
+                  <span className="text-2xs font-bold text-slate-600">CVV</span>
                   <input
                     className={inputClass}
                     dir="ltr"
@@ -235,7 +235,7 @@ export function AdvisorOrderDialog({
 
               <TermsBox accepted={terms} onChange={setTerms} amount={order.amount} />
 
-              <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+              <p className="flex items-center justify-center gap-1.5 text-2xs text-slate-500">
                 <Lock className="h-3.5 w-3.5" />
                 התשלום מועבר בתקן מאובטח. פרטי הכרטיס אינם נשמרים בפלטפורמה.
               </p>
@@ -273,16 +273,16 @@ export function AdvisorOrderDialog({
               <div className="text-sm">
                 <span className="font-black text-slate-900">{formatOrderPrice(quote.total)}</span>
                 {quote.saving > 0 && (
-                  <span className="mr-2 text-[11px] font-bold text-emerald-700">
+                  <span className="mr-2 text-2xs font-bold text-emerald-700">
                     חיסכון {formatOrderPrice(quote.saving)} — תמיד המחיר הנמוך
                   </span>
                 )}
                 {quote.platformCredit > 0 && (
-                  <span className="mr-2 text-[11px] font-bold text-emerald-700">
+                  <span className="mr-2 text-2xs font-bold text-emerald-700">
                     קוזזו {formatOrderPrice(quote.platformCredit)} ששולמו על הגישה לפלטפורמה
                   </span>
                 )}
-                <span className="mr-2 text-[11px] text-slate-500">
+                <span className="mr-2 text-2xs text-slate-500">
                   כולל גישה מלאה לפלטפורמה ({formatOrderPrice(PLATFORM_MONTHLY_PRICE)} לחודש) ללא
                   תוספת
                 </span>
@@ -334,7 +334,7 @@ export function AdvisorOrderDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="mr-auto rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-black text-white transition-colors hover:bg-slate-700"
+              className="mr-auto rounded-xl bg-slate-900 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-slate-700"
             >
               חזרה לתהליך
             </button>
@@ -406,11 +406,11 @@ function StageChooser({
               </span>
 
               <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-500">
+                <div className="text-2xs font-bold text-slate-500">
                   שלב {planStageNumber(stage)} · {journey.duration}
                 </div>
                 <div className="text-sm font-black text-slate-900">{journey.title}</div>
-                <p className="text-[11px] leading-snug text-slate-600">
+                <p className="text-2xs leading-snug text-slate-600">
                   {journey.valueHeadline} — {journey.tagline}
                 </p>
               </div>
@@ -420,7 +420,7 @@ function StageChooser({
                   <div className="text-lg font-black text-slate-900">
                     {formatOrderPrice(ADVISOR_STAGE_PRICE[stage])}
                   </div>
-                  <div className="text-[10px] font-semibold text-slate-500">
+                  <div className="text-2xs font-semibold text-slate-500">
                     {done ? 'כבר הוזמן' : 'עם יועץ'}
                   </div>
                 </div>
@@ -447,7 +447,7 @@ function StageChooser({
 function OrderSummary({ stages, amount }: { stages: PlanStageId[]; amount: number }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="mb-2 text-[11px] font-black text-slate-500">מה הזמנתם</div>
+      <div className="mb-2 text-2xs font-black text-slate-500">מה הזמנתם</div>
       <ul className="space-y-1">
         {stages.map((stage) => {
           const journey = journeyStageFor(stage);
@@ -463,7 +463,7 @@ function OrderSummary({ stages, amount }: { stages: PlanStageId[]; amount: numbe
           );
         })}
       </ul>
-      <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-2 text-sm">
+      <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-2 text-info">
         <span className="font-black text-slate-900">סך הכול לתשלום</span>
         <span className="font-black tabular-nums text-slate-900">{formatOrderPrice(amount)}</span>
       </div>
@@ -482,8 +482,8 @@ function TermsBox({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="mb-2 text-[11px] font-black text-slate-600">תנאי ההתקשרות</div>
-      <div className="max-h-32 space-y-1.5 overflow-y-auto rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600">
+      <div className="mb-2 text-2xs font-black text-slate-600">תנאי ההתקשרות</div>
+      <div className="max-h-32 space-y-1.5 overflow-y-auto rounded-xl bg-slate-50 p-3 text-2xs leading-relaxed text-slate-600">
         <p>
           הליווי ניתן על ידי יועץ משכנתאות מורשה מטעם הפלטפורמה, ומתייחס לשלבים שנבחרו בלבד.
           שלבים שלא הוזמנו נשארים באחריות הלקוח.

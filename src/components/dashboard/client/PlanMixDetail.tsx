@@ -74,7 +74,7 @@ export function PlanMixDetail({ mix, planId }: { mix: PlanMix; planId: string })
         </span>
         {mix.bank && (
           <span
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[13px] font-black text-white"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-black text-white"
             style={{ backgroundColor: tone.dot }}
           >
             <Building2 className="h-3.5 w-3.5" />
@@ -100,7 +100,7 @@ export function PlanMixDetail({ mix, planId }: { mix: PlanMix; planId: string })
       <div className="mt-4 flex justify-center">
         <Link
           href={`/dashboard/plans/${planId}?stage=${mix.priced ? 'SIGNING' : 'MIX'}`}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-[15px] font-black text-white transition-colors hover:bg-slate-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-info font-black text-white transition-colors hover:bg-slate-700"
         >
           {mix.priced ? 'לשלב החתימה' : 'לעריכת התמהיל'}
           <ArrowLeft className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function PlanMixDetail({ mix, planId }: { mix: PlanMix; planId: string })
 function MixStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
-      <p className="text-[13px] font-bold text-slate-500">{label}</p>
+      <p className="text-sm font-bold text-slate-500">{label}</p>
       <p className="mt-0.5 text-lg font-black tabular-nums text-slate-900">{value}</p>
     </div>
   );

@@ -131,7 +131,7 @@ export default function PackageBuilder() {
                   >
                     ₪{stage.advisorPrice.toLocaleString('he-IL')}
                   </span>
-                  <span className="block text-[11px] font-semibold text-gray-600">
+                  <span className="block text-2xs font-semibold text-gray-600">
                     מחיר השלב
                   </span>
                 </span>
@@ -236,7 +236,7 @@ export default function PackageBuilder() {
 
           <div className="space-y-3 px-6 py-5">
             {selected.length > 0 && (
-              <div className="flex items-baseline justify-between text-sm">
+              <div className="flex items-baseline justify-between text-info">
                 <span className="text-gray-600">
                   ליווי יועץ ({selected.length} שלבים)
                 </span>
@@ -246,7 +246,7 @@ export default function PackageBuilder() {
               </div>
             )}
 
-            <div className="flex items-baseline justify-between text-sm">
+            <div className="flex items-baseline justify-between text-info">
               <span className="text-gray-600">
                 גישה לפלטפורמה{withAdvisor ? '' : ` × ${months} חודשים`}
               </span>
@@ -256,7 +256,7 @@ export default function PackageBuilder() {
             </div>
 
             {credit > 0 && (
-              <div className="flex items-baseline justify-between text-sm">
+              <div className="flex items-baseline justify-between text-info">
                 <span className="text-gray-600">קיזוז גישה ששולמה ({paidMonths} חודשים)</span>
                 <span className="font-bold text-emerald-700">−₪{credit.toLocaleString('he-IL')}</span>
               </div>

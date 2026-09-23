@@ -43,7 +43,7 @@ export function FamilyEconomyHeaderButton({ onContact }: { onContact: () => void
     <button
       type="button"
       onClick={onContact}
-      className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-black text-white ring-1 ring-inset ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
+      className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-button font-black text-white ring-1 ring-inset ring-white/20 backdrop-blur transition-colors hover:bg-white/20"
     >
       <HeartHandshake className="h-4 w-4" />
       פנה ליועץ כלכלת המשפחה

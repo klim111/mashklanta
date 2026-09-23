@@ -78,7 +78,7 @@ export default function PricingPage() {
             מודל התמחור
           </div>
 
-          <h1 className="mb-6 text-4xl font-black leading-[1.15] text-white md:text-6xl">
+          <h1 className="mb-6 text-title font-black leading-[1.15] text-white">
             משלמים על מה שלקחתם,
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-fuchsia-200 bg-clip-text text-transparent">
@@ -125,7 +125,7 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mx-auto mb-14 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               שלושה מסלולים, מעבר חופשי ביניהם
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -161,7 +161,7 @@ export default function PricingPage() {
                     <Icon className="h-7 w-7 text-white" />
                   </div>
 
-                  <h3 className="text-2xl font-black text-gray-900">{plan.name}</h3>
+                  <h3 className="text-subtitle font-black text-gray-900">{plan.name}</h3>
                   <p className="mt-1.5 min-h-[3rem] text-sm leading-relaxed text-gray-600">
                     {plan.tagline}
                   </p>
@@ -217,7 +217,7 @@ export default function PricingPage() {
               <BadgeCheck className="h-4 w-4" />
               חמישה עקרונות
             </div>
-            <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-white">
               כך עובד התמחור — בכל מקום באותו נוסח
             </h2>
             <p className="text-lg leading-relaxed text-slate-100">
@@ -229,7 +229,7 @@ export default function PricingPage() {
           <PricingModelStrip tone="dark" />
 
           <div className="mt-16">
-            <h3 className="mb-6 text-center text-2xl font-black text-white">ואיך מתחילים</h3>
+            <h3 className="mb-6 text-center text-subtitle font-black text-white">ואיך מתחילים</h3>
             <ServiceFlowSteps tone="dark" />
           </div>
         </div>
@@ -251,7 +251,7 @@ export default function PricingPage() {
               <Calculator className="h-4 w-4" />
               מחשבון החבילה
             </div>
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               סמנו מה היועץ יעשה — ותראו מחיר מיד
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -311,7 +311,7 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mx-auto mb-12 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="mb-5 text-title font-black text-gray-900">
               מחירון השלבים
             </h2>
             <p className="text-lg leading-relaxed text-gray-600">
@@ -343,7 +343,7 @@ export default function PricingPage() {
                       <div className="text-xs font-bold text-gray-600">
                         שלב {stage.number} · {stage.duration}
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900">{stage.title}</h3>
+                      <h3 className="text-subtitle font-bold text-gray-900">{stage.title}</h3>
                       <p className="mt-1 text-sm leading-relaxed text-gray-600">
                         {stage.valueHeadline} — {stage.tagline}
                       </p>
@@ -396,7 +396,7 @@ export default function PricingPage() {
               <BadgeCheck className="h-4 w-4" />
               השוואה מלאה
             </div>
-            <h2 className="text-3xl font-black text-gray-900 md:text-5xl">
+            <h2 className="text-title font-black text-gray-900">
               מה כלול בכל מסלול
             </h2>
           </motion.div>
@@ -456,7 +456,7 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mb-12 text-center"
           >
-            <h2 className="text-3xl font-black text-gray-900 md:text-5xl">שאלות נפוצות</h2>
+            <h2 className="text-title font-black text-gray-900">שאלות נפוצות</h2>
           </motion.div>
 
           <Accordion type="single" collapsible className="w-full">
@@ -492,7 +492,7 @@ export default function PricingPage() {
           className="relative mx-auto max-w-3xl px-4 text-center"
         >
           <Sparkles className="mx-auto mb-5 h-10 w-10 text-blue-100" />
-          <h2 className="mb-5 text-3xl font-black text-white md:text-5xl">
+          <h2 className="mb-5 text-title font-black text-white">
             מתחילים בסיור — משלמים רק כשמחליטים
           </h2>
           <p className="mb-10 text-lg leading-relaxed text-slate-100">

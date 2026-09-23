@@ -160,7 +160,7 @@ export function RegisterTeaserCarousel({
           >
             <X className="h-4 w-4" />
           </button>
-          <p className="flex items-center gap-1.5 text-[11px] font-bold text-white/80">
+          <p className="flex items-center gap-1.5 text-2xs font-bold text-white/80">
             <Sparkles className="h-3.5 w-3.5" />
             הכלי שאתם עובדים איתו הוא ההתחלה
           </p>
@@ -173,7 +173,7 @@ export function RegisterTeaserCarousel({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.3 }}
-                className="mt-0.5 block text-[15px] font-bold text-white/95 sm:text-base"
+                className="mt-0.5 block text-info font-bold text-white/95 sm:text-base"
               >
                 {slide.benefit}
               </motion.span>
@@ -199,13 +199,13 @@ export function RegisterTeaserCarousel({
 
               <div className="min-w-0">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l ${slide.gradient} px-2.5 py-1 text-[11px] font-black text-white`}
+                  className={`inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l ${slide.gradient} px-2.5 py-1 text-2xs font-black text-white`}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {slide.kicker}
                 </span>
                 <h3 className="mt-2 text-base font-black text-slate-900">{slide.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
                   {slide.description}
                 </p>
               </div>
@@ -233,7 +233,7 @@ export function RegisterTeaserCarousel({
           <button
             type="button"
             onClick={register}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-sm font-black text-white shadow-lg transition-all hover:shadow-xl sm:flex-1"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-violet-600 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl sm:flex-1"
           >
             הרשמה חינם ופתיחת האזור האישי
             <ArrowLeft className="h-4 w-4" />
@@ -241,7 +241,7 @@ export function RegisterTeaserCarousel({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+            className="rounded-2xl px-4 py-2.5 text-button font-bold text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
           >
             אמשיך לשחק עם הכלי
           </button>
@@ -265,7 +265,7 @@ function MockScreen({ variant, gradient }: { variant: MockVariant; gradient: str
         <span className="h-2 w-2 rounded-full bg-white/70" />
         <span className="h-2 w-2 rounded-full bg-white/50" />
         <span className="h-2 w-2 rounded-full bg-white/30" />
-        <span className="mr-auto text-[9px] font-bold text-white/90">משכלנתא · האזור האישי</span>
+        <span className="mr-auto text-2xs font-bold text-white/90">משכלנתא · האזור האישי</span>
       </div>
 
       <div className="space-y-2 p-3">
@@ -349,10 +349,10 @@ function MockTile({
         gradient ? 'border-transparent bg-slate-900 text-white' : 'border-slate-200 bg-slate-50'
       }`}
     >
-      <p className={`text-[8px] font-bold ${gradient ? 'text-white/70' : 'text-slate-400'}`}>
+      <p className={`text-2xs font-bold ${gradient ? 'text-white/70' : 'text-slate-400'}`}>
         {label}
       </p>
-      <p className={`text-[11px] font-black ${gradient ? 'text-white' : 'text-slate-800'}`}>
+      <p className={`text-2xs font-black ${gradient ? 'text-white' : 'text-slate-800'}`}>
         {value}
       </p>
     </div>
@@ -398,13 +398,13 @@ function MockChecklist({ items }: { items: string[] }) {
           className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-1.5 py-1"
         >
           <span
-            className={`flex h-3 w-3 items-center justify-center rounded-full text-[7px] font-black text-white ${
+            className={`flex h-3 w-3 items-center justify-center rounded-full text-2xs font-black text-white ${
               itemIndex === items.length - 1 ? 'bg-slate-300' : 'bg-emerald-500'
             }`}
           >
             ✓
           </span>
-          <span className="text-[9px] font-bold text-slate-600">{item}</span>
+          <span className="text-2xs font-bold text-slate-600">{item}</span>
         </div>
       ))}
     </div>

@@ -217,7 +217,7 @@ export function ServiceChooser({
                     }`}
                   >
                     {service === 'HYBRID' && (
-                      <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-3 py-0.5 text-[11px] font-black text-white shadow">
+                      <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-3 py-0.5 text-2xs font-black text-white shadow">
                         הכי נבחר
                       </span>
                     )}
@@ -232,7 +232,7 @@ export function ServiceChooser({
                       <span className="block text-lg font-black">
                         {selfOpen ? 'הגישה שלכם פעילה' : meta.price}
                       </span>
-                      <span className={`block text-[11px] ${muted}`}>
+                      <span className={`block text-2xs ${muted}`}>
                         {selfOpen ? 'הכלי המלא פתוח, בלי הגבלות' : meta.priceNote}
                       </span>
                     </span>
@@ -277,7 +277,7 @@ export function ServiceChooser({
 
       {showPricing && (
         <div className="mt-8">
-          <p className={`mb-3 text-center text-[11px] font-black uppercase tracking-wide ${muted}`}>
+          <p className={`mb-3 text-center text-2xs font-black uppercase tracking-wide ${muted}`}>
             כך עובד התמחור
           </p>
           <PricingModelStrip compact tone={tone} />

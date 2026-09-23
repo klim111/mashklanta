@@ -37,11 +37,11 @@ export function PlatformDemoSection() {
 
       <div className="relative mx-auto max-w-6xl">
         <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1 text-[13px] font-black text-white">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1 text-sm font-black text-white">
             <MonitorPlay className="h-3.5 w-3.5" />
             הדגמה · המסכים האמיתיים של המערכת
           </span>
-          <h2 className="mt-3 text-2xl font-black text-slate-900 md:text-4xl">
+          <h2 className="mt-3 text-title font-black text-slate-900">
             רוצים לראות איך זה נראה מבפנים?
           </h2>
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 md:text-base">
@@ -97,7 +97,7 @@ export function PlatformDemoSection() {
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="text-[13px] font-bold leading-relaxed text-slate-700">
+                <span className="text-sm font-bold leading-relaxed text-slate-700">
                   {promise.text}
                 </span>
               </div>

@@ -127,12 +127,12 @@ function Bucket({
   return (
     <section>
       <header className="mb-2 flex flex-wrap items-center justify-center gap-2">
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-black ${TONES[tone]}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-black ${TONES[tone]}`}>
           {icon}
           {title}
-          <span className="rounded-full bg-white/70 px-1.5 text-[11px]">{tasks.length}</span>
+          <span className="rounded-full bg-white/70 px-1.5 text-2xs">{tasks.length}</span>
         </span>
-        <span className="text-[13px] font-medium text-slate-500">{hint}</span>
+        <span className="text-sm font-medium text-slate-500">{hint}</span>
       </header>
       <div className={grid}>
         {tasks.map((task) => (

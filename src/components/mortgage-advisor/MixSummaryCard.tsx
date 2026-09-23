@@ -103,7 +103,7 @@ export function MixSummaryCard({
           </div>
 
           <div className="space-y-1">
-            <p className="text-[11px] font-semibold text-slate-600">מסלולים</p>
+            <p className="text-2xs font-semibold text-slate-600">מסלולים</p>
             {(tracksDetail?.tracks ?? []).map((t) => (
               <div
                 key={t.track.id}
@@ -114,10 +114,10 @@ export function MixSummaryCard({
                   style={{ backgroundColor: trackColor(t.track.type) }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold text-slate-800 truncate">
+                  <p className="text-2xs font-semibold text-slate-800 truncate">
                     {formatTrackTypeWithAmortization(t.track)}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-2xs text-slate-500">
                     {formatShekel(t.track.amount)} · {t.track.percentage.toFixed(1)}% ·{' '}
                     {formatPercentage(t.track.interestRate)} · {formatDuration(t.months)}
                     {t.months < Math.round(t.track.years * 12) - 0.5
@@ -126,19 +126,19 @@ export function MixSummaryCard({
                   </p>
                 </div>
                 <div className="text-left shrink-0">
-                  <p className="text-[10px] text-slate-400">החזר</p>
-                  <p className="text-[11px] font-bold text-slate-800">
+                  <p className="text-2xs text-slate-400">החזר</p>
+                  <p className="text-2xs font-bold text-slate-800">
                     {t.monthlyPayment > 0.01 ? formatShekel(t.monthlyPayment) : 'אין'}
                   </p>
                   {t.schedule.some((row) => row.prepayment > 1) &&
                     t.monthlyPayment - t.lastMonthlyPayment > 1 &&
                     t.lastMonthlyPayment > 0.01 && (
-                    <p className="text-[9px] text-slate-500">
+                    <p className="text-2xs text-slate-500">
                       יורד ל-{formatShekel(t.lastMonthlyPayment)}
                     </p>
                   )}
                   {t.schedule.some((row) => row.prepayment > 1) && (
-                    <p className="text-[9px] text-emerald-700">
+                    <p className="text-2xs text-emerald-700">
                       ריבית עד הפרעון:{' '}
                       {formatShekel(
                         t.schedule.find((row) => row.prepayment > 1)?.cumulativeInterest ?? 0
@@ -146,7 +146,7 @@ export function MixSummaryCard({
                     </p>
                   )}
                   {t.balloonPayment > 1 && (
-                    <p className="text-[9px] text-amber-700">
+                    <p className="text-2xs text-amber-700">
                       בלון {formatShekel(t.balloonPayment)}
                     </p>
                   )}
@@ -157,11 +157,11 @@ export function MixSummaryCard({
 
           {mix.events.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[11px] font-semibold text-slate-600">שינויים מתוכננים</p>
+              <p className="text-2xs font-semibold text-slate-600">שינויים מתוכננים</p>
               {mix.events.map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 p-2 text-[10px] text-slate-600"
+                  className="flex items-center gap-2 rounded-lg bg-white border border-slate-200 p-2 text-2xs text-slate-600"
                 >
                   {event.kind === 'prepayment' ? (
                     <>
@@ -199,7 +199,7 @@ export function MixSummaryCard({
               </Button>
             )}
             {savedAt && (
-              <span className="text-[10px] text-slate-400 mr-auto">
+              <span className="text-2xs text-slate-400 mr-auto">
                 נשמר {new Date(savedAt).toLocaleDateString('he-IL')}
               </span>
             )}
@@ -230,7 +230,7 @@ function DetailStat({
 }) {
   return (
     <div className="rounded-lg bg-white border border-slate-200 p-2">
-      <p className="text-[10px] text-slate-400 flex items-center gap-1">
+      <p className="text-2xs text-slate-400 flex items-center gap-1">
         {icon}
         {label}
       </p>

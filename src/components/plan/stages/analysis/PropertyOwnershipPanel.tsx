@@ -30,7 +30,7 @@ export function PropertyOwnershipPanel({
   return (
     <section className="rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm md:p-6">
       <header className="mb-5 text-center">
-        <h3 className="text-xl font-black text-slate-900 md:text-2xl">בעלות הנכס ורישום הזכויות</h3>
+        <h3 className="text-subtitle font-black text-slate-900">בעלות הנכס ורישום הזכויות</h3>
         <p className="mx-auto mt-2 max-w-3xl text-sm font-medium leading-relaxed text-slate-600 md:text-base">
           מילוי הפרטים האלה מגדיר את רשימת המסמכים המינימלית שהבנק ידרוש בשלב החתימה על תיק
           המשכנתא. טיפול באיסוף המסמכים כבר מהשלב הראשון מקצר משמעותית את הזמנים בשלב החתימה
@@ -42,7 +42,7 @@ export function PropertyOwnershipPanel({
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
-          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-rose-500 to-pink-600 px-6 py-3 text-[15px] font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:brightness-110"
+          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-rose-500 to-pink-600 px-6 py-3 text-button font-black text-white shadow-lg transition-transform hover:-translate-y-0.5 hover:brightness-110"
         >
           <ScrollText className="h-5 w-5" />
           הגדרת בעלות הנכס
@@ -50,12 +50,12 @@ export function PropertyOwnershipPanel({
         </button>
 
         {scenario && deal && (
-          <p className="inline-flex flex-wrap items-center justify-center gap-2 text-[13px] font-bold text-slate-600">
-            <span className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-black text-white">
+          <p className="inline-flex flex-wrap items-center justify-center gap-2 text-sm font-bold text-slate-600">
+            <span className="rounded-full bg-slate-900 px-3 py-1 text-2xs font-black text-white">
               {deal.short}
             </span>
             {registry && (
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-600">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-2xs font-black text-slate-600">
                 {registry.title}
               </span>
             )}
@@ -67,7 +67,7 @@ export function PropertyOwnershipPanel({
         )}
 
         {!scenario && (
-          <p className="inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-400">
+          <p className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-400">
             <Info className="h-4 w-4" />
             לא חובה עכשיו — אפשר להשלים בשלב החתימה
           </p>

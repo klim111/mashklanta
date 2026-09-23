@@ -51,7 +51,7 @@ const MortgageTermsTable: React.FC<MortgageTermsTableProps> = ({ terms, extracte
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border border-gray-200">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">תנאי משכנתא שזוהו מהצעה</h2>
+        <h2 className="text-subtitle font-bold text-gray-900">תנאי משכנתא שזוהו מהצעה</h2>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleDownloadJson} className="flex items-center gap-2">
             <Download className="w-4 h-4" />

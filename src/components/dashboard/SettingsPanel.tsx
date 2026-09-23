@@ -110,7 +110,7 @@ export function SettingsPanel() {
   return (
     <div dir="rtl" className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-        <h2 className="text-2xl font-black text-slate-900">הגדרות החשבון והפרופיל</h2>
+        <h2 className="text-subtitle font-black text-slate-900">הגדרות החשבון והפרופיל</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
           כאן נשמרים פרטי הלווים וההון העצמי — בלי פרטי נכס. כל ערך שתשמרו ייטען כברירת מחדל
           בפתיחת משכנתא חדשה, וניתן יהיה לשנות אותו רק לאותה משכנתא.
@@ -249,7 +249,7 @@ export function SettingsPanel() {
             {...demoId('settings-save')}
             onClick={() => void save()}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white hover:bg-slate-700 disabled:opacity-70"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-button font-black text-white hover:bg-slate-700 disabled:opacity-70"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             שמירת ההגדרות
@@ -339,7 +339,7 @@ function BorrowerBlock({
               key={item}
               type="button"
               onClick={() => onBank(bank === item ? null : item)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+              className={`rounded-full border px-2.5 py-1 text-2xs font-bold ${
                 bank === item
                   ? 'border-blue-500 bg-blue-600 text-white'
                   : 'border-slate-200 bg-white text-slate-600'

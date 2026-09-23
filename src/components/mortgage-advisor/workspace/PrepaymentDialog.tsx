@@ -249,7 +249,7 @@ export function PrepaymentDialog({
                   onValueChange={(value) => setAmount(Math.max(0, value))}
                 />
               </div>
-              <p className="text-[11px] text-slate-500 pb-2">
+              <p className="text-2xs text-slate-500 pb-2">
                 מקסימום {trackId ? 'במסלול' : 'ביתרת החוב'}: {formatShekel(maxBalance)}
               </p>
             </div>
@@ -269,7 +269,7 @@ export function PrepaymentDialog({
 
           {leftover > 0 && trackId && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
-              <p className="text-[12px] leading-relaxed text-amber-950">
+              <p className="text-xs leading-relaxed text-amber-950">
                 ישנם עוד {formatShekel(leftover)} — בחרו איזו תוכנית תרצו לפרוע איתו. הפרעון למסלול
                 הנוכחי יישמר עד {formatShekel(appliedAmount)}.
               </p>
@@ -281,7 +281,7 @@ export function PrepaymentDialog({
                   <SelectContent>
                     {otherTracks.length > 0 && (
                       <SelectGroup>
-                        <SelectLabel className="pr-3 text-right text-[11px] font-black text-slate-700">
+                        <SelectLabel className="pr-3 text-right text-2xs font-black text-slate-700">
                           {mix.name || 'התמהיל הנוכחי'}
                         </SelectLabel>
                         {otherTracks.map((track) => (
@@ -293,7 +293,7 @@ export function PrepaymentDialog({
                     )}
                     {leftoverOptions.map((item) => (
                       <SelectGroup key={item.mix.id}>
-                        <SelectLabel className="pr-3 text-right text-[11px] font-black text-slate-700">
+                        <SelectLabel className="pr-3 text-right text-2xs font-black text-slate-700">
                           {item.mix.name || 'תמהיל ללא שם'}
                         </SelectLabel>
                         {item.mix.tracks.map((track) => (
@@ -306,13 +306,13 @@ export function PrepaymentDialog({
                   </SelectContent>
                 </Select>
               ) : (
-                <p className="text-[11px] text-amber-800">אין מסלול נוסף פתוח בתמהיל הזה לייעוד היתרה.</p>
+                <p className="text-2xs text-amber-800">אין מסלול נוסף פתוח בתמהיל הזה לייעוד היתרה.</p>
               )}
             </div>
           )}
 
           {queued.length > 0 && (
-            <ul className="space-y-1 text-[11px] text-slate-600">
+            <ul className="space-y-1 text-2xs text-slate-600">
               {queued.map((item) => {
                 const name = mix.tracks.find((track) => track.id === item.trackId)?.name ?? item.trackId;
                 return (
@@ -338,7 +338,7 @@ export function PrepaymentDialog({
               maxLabel="סוף התקופה"
             />
             <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 space-y-1">
-              <p className="text-[12px] leading-relaxed text-violet-950">
+              <p className="text-xs leading-relaxed text-violet-950">
                 עד לנקודת זמן זאת תשולם ריבית של{' '}
                 <span className="font-black">{formatShekel(untilPoint.interest)}</span>
                 {untilPoint.linked && (
@@ -350,7 +350,7 @@ export function PrepaymentDialog({
                 .
               </p>
               {untilPoint.linked && (
-                <p className="text-[12px] leading-relaxed text-violet-950">
+                <p className="text-xs leading-relaxed text-violet-950">
                   עד לנקודת זמן זאת צפויה הקרן{' '}
                   {untilPoint.indexation >= 0 ? 'להתייקר' : 'להוזיל'} ב-{' '}
                   <span className="font-black">{formatShekel(Math.abs(untilPoint.indexation))}</span>
@@ -368,7 +368,7 @@ export function PrepaymentDialog({
                   key={option}
                   type="button"
                   onClick={() => setMode(option)}
-                  className={`text-right rounded-xl border p-2.5 text-[11px] leading-snug transition-colors ${
+                  className={`text-right rounded-xl border p-2.5 text-2xs leading-snug transition-colors ${
                     mode === option
                       ? 'border-blue-500 bg-blue-50 text-blue-900 font-semibold'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
@@ -416,7 +416,7 @@ export function PrepaymentDialog({
                 )}
               </div>
               {mode === 'reduce_payment' && (
-                <p className="text-[10px] text-emerald-800 leading-relaxed">
+                <p className="text-2xs text-emerald-800 leading-relaxed">
                   אורך ההלוואה לא משתנה. רק ההחזר החודשי קטן.
                 </p>
               )}
@@ -438,7 +438,7 @@ export function PrepaymentDialog({
 function PreviewStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="rounded-lg bg-white border border-emerald-200 p-2 text-center">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-2xs text-slate-400">{label}</p>
       <p className={`text-xs font-bold ${highlight ? 'text-emerald-700' : 'text-slate-800'}`}>{value}</p>
     </div>
   );

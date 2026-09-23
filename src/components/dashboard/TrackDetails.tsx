@@ -136,7 +136,7 @@ export default function TrackDetails({
           </div>
           
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-900">{track.name}</h2>
+            <h2 className="text-subtitle font-bold text-gray-900">{track.name}</h2>
             <p className="text-gray-600 mt-1">{trackInfo.label}</p>
             {trackInfo.description && (
               <p className="text-sm text-gray-500 mt-1">{trackInfo.description}</p>
@@ -152,7 +152,7 @@ export default function TrackDetails({
 
         {/* Progress Bar */}
         <div className="mt-6">
-          <div className="flex justify-between text-sm mb-2">
+          <div className="flex justify-between text-info mb-2">
             <span className="text-gray-600">התקדמות</span>
             <span className="font-semibold">{progressPercentage}%</span>
           </div>
@@ -164,7 +164,7 @@ export default function TrackDetails({
               className={`bg-gradient-to-r from-${trackInfo.color}-500 to-${trackInfo.color}-600 rounded-full h-3`}
             />
           </div>
-          <div className="flex justify-between text-sm mt-2 text-gray-500">
+          <div className="flex justify-between text-info mt-2 text-gray-500">
             <span>{paidPayments.length} תשלומים שולמו</span>
             <span>{upcomingPayments.length} תשלומים נותרו</span>
           </div>
@@ -259,7 +259,7 @@ export default function TrackDetails({
           transition={{ delay: 0.4 }}
           className="bg-white rounded-xl shadow-lg p-6"
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">תשלומים עד כה</h3>
+          <h3 className="text-subtitle font-semibold text-gray-900 mb-4">תשלומים עד כה</h3>
           
           <div className="space-y-4">
             <div>
@@ -305,7 +305,7 @@ export default function TrackDetails({
           transition={{ delay: 0.5 }}
           className="bg-white rounded-xl shadow-lg p-6"
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">תשלומים עתידיים</h3>
+          <h3 className="text-subtitle font-semibold text-gray-900 mb-4">תשלומים עתידיים</h3>
           
           <div className="space-y-4">
             <div>
@@ -353,7 +353,7 @@ export default function TrackDetails({
         transition={{ delay: 0.6 }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">לוח סילוקין</h3>
+          <h3 className="text-subtitle font-semibold text-gray-900">לוח סילוקין</h3>
           <button
             onClick={() => setShowFullSchedule(!showFullSchedule)}
             className="flex items-center gap-2 text-purple-600 hover:text-purple-700 transition-colors"

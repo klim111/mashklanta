@@ -144,7 +144,7 @@ export default function Features() {
             <span>הפונקציות שלנו</span>
           </motion.div>
           
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+          <h2 className="text-title font-bold mb-6 text-gray-900">
             טכנולוגיה מתקדמת בשירות המשכנתא שלך
           </h2>
           
@@ -337,7 +337,7 @@ export default function Features() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button 
-                    className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-cta px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     <Target className="mr-2" />
                     צפה בדמו
@@ -350,7 +350,7 @@ export default function Features() {
                 >
                   <Button 
                     variant="outline"
-                    className="text-lg px-8 py-4 rounded-xl border-2 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 hover:scale-105"
+                    className="text-cta px-8 py-4 rounded-xl border-2 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 hover:scale-105"
                   >
                     <TrendingUp className="mr-2" />
                     התחל עכשיו

@@ -15,7 +15,7 @@ export default function Footer() {
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">מ</span>
               </div>
-              <h3 className="text-xl font-bold text-white">משכלתנא</h3>
+              <h3 className="text-subtitle font-bold text-white">משכלתנא</h3>
             </div>
             <p className="text-gray-300 leading-relaxed">
               הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לך למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
