@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { PLAN_STAGES } from '@/lib/mortgage-plan';
 import type { PlanStageId } from '@/lib/mortgage-plan';
-import { PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { STAGE_GUIDE, stageGuideTools } from '@/data/platform/stageGuide';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
@@ -235,8 +235,8 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
             גישה לכל השלבים והכלים לבניית המשכנתא שלכם באמצעות פלטפורמת משכלתנא
           </h2>
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <span className="text-5xl font-black">₪{PLATFORM_MONTHLY_PRICE}</span>
-            <span className="pb-2 text-sm font-bold text-white/70">לחודש · עד לסיום התהליך</span>
+            <span className="text-5xl font-black">₪{PLATFORM_PROCESS_PRICE}</span>
+            <span className="pb-2 text-sm font-bold text-white/70">לתהליך משכנתא · {PLATFORM_ACCESS_DAYS} יום גישה מלאה</span>
           </div>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
             חמשת השלבים, כל הכלים והמחשבונים, שמירה אוטומטית בחשבון — בלי הגבלות. ואם באמצע הדרך

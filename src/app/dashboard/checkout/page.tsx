@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import { PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { formatCardNumber, formatExpiry, validateCheckout } from '@/lib/platform-access';
 import type { CheckoutInput } from '@/lib/platform-access';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
@@ -30,6 +30,8 @@ function CheckoutBody() {
   const router = useRouter();
   const params = useSearchParams();
   const { data: session } = useSession();
+  /** חידוש הגישה לתהליך שננעל אחרי 35 יום */
+  const renewPlanId = params.get('planId');
 
   const [form, setForm] = useState<CheckoutInput>({
     holderName: '',
@@ -73,7 +75,7 @@ function CheckoutBody() {
       const response = await fetch('/api/platform/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...(renewPlanId ? { planId: renewPlanId } : {}) }),
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
@@ -91,7 +93,17 @@ function CheckoutBody() {
     }
   };
 
-  const next = params.get('next') === 'plan' ? '/dashboard?goal=NEW_MORTGAGE&service=SELF' : '/dashboard';
+  /*
+    לאן ממשיכים אחרי התשלום: חידוש — חזרה לתהליך שננעל; תהליך חדש — לדאשבורד
+    עם המטרה שנבחרה, ומשם התהליך נפתח מיד בשלב הראשון.
+  */
+  const goalParam = params.get('goal');
+  const goal = goalParam === 'REFINANCE' ? 'REFINANCE' : 'NEW_MORTGAGE';
+  const next = renewPlanId
+    ? `/dashboard/plans/${renewPlanId}`
+    : params.get('next') === 'plan'
+      ? `/dashboard?goal=${goal}&service=SELF`
+      : '/dashboard';
 
   const fieldClass = (field: Field) =>
     `${inputClass} ${errors[field] ? 'border-rose-300 focus:border-rose-400' : 'border-slate-200 focus:border-blue-400'}`;
@@ -111,10 +123,13 @@ function CheckoutBody() {
             <ChevronRight className="h-3.5 w-3.5" />
             האזור האישי
           </Link>
-          <h1 className="mt-3 text-3xl font-black text-white md:text-4xl">רכישת גישה לפלטפורמה</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
-            ₪{PLATFORM_MONTHLY_PRICE} לחודש, עד לסיום התהליך. כל חמשת השלבים וכל הכלים נפתחים מיד
-            אחרי התשלום — ואם תבקשו ליווי בהמשך, מה ששילמתם מקוזז ממחיר הייעוץ.
+          <h1 className="mt-3 text-3xl font-black text-white md:text-4xl">
+            {renewPlanId ? 'חידוש הגישה לתהליך' : 'מסלול עצמאי / היברידי'}
+          </h1>
+          <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-white/70">
+            {renewPlanId
+              ? `₪${PLATFORM_PROCESS_PRICE} לעוד ${PLATFORM_ACCESS_DAYS} יום. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
+              : `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עם ${PLATFORM_ACCESS_DAYS} יום גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
           </p>
         </div>
       </header>
@@ -129,17 +144,19 @@ function CheckoutBody() {
             <span className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
               <CheckCircle2 className="h-10 w-10 text-emerald-600" />
             </span>
-            <h2 className="text-2xl font-black text-slate-900">הגישה שלכם פעילה</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              התשלום בכרטיס שמסתיים ב-{done.last4} התקבל. מעכשיו כל חמשת השלבים וכל הכלים פתוחים
-              בפניכם ללא הגבלה, וההזמנה שולמה עד לסיום התהליך.
+            <h2 className="text-2xl font-black text-slate-900">
+              {renewPlanId ? 'הגישה חודשה' : 'הגישה שלכם פעילה'}
+            </h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-slate-500">
+              התשלום בכרטיס שמסתיים ב-{done.last4} התקבל. כל השלבים וכל הכלים פתוחים בפניכם ללא
+              הגבלה ל-{PLATFORM_ACCESS_DAYS} הימים הקרובים.
             </p>
             <button
               type="button"
               onClick={() => router.push(next)}
               className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-7 py-3.5 text-base font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
             >
-              לאזור האישי — התחילו לתכנן
+              {renewPlanId ? 'חזרה לתהליך' : params.get('next') === 'plan' ? 'התחילו את התהליך' : 'לאזור האישי'}
               <ArrowLeft className="h-4 w-4" />
             </button>
           </motion.div>
@@ -262,7 +279,7 @@ function CheckoutBody() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-500 to-violet-600 px-6 py-3.5 text-base font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
                 >
                   {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lock className="h-5 w-5" />}
-                  שלמו ₪{PLATFORM_MONTHLY_PRICE} ופתחו את הגישה
+                  שלמו ₪{PLATFORM_PROCESS_PRICE} ופתחו את הגישה
                 </button>
                 <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
                   <ShieldCheck className="h-3.5 w-3.5" />
@@ -276,13 +293,15 @@ function CheckoutBody() {
                 <div className="bg-gradient-to-l from-blue-600 via-indigo-600 to-violet-600 px-6 py-5 text-white">
                   <div className="flex items-center gap-2 text-sm font-bold">
                     <Sparkles className="h-4 w-4" />
-                    גישה מלאה לפלטפורמה
+                    גישה מלאה לתהליך משכנתא
                   </div>
                   <div className="mt-1 text-4xl font-black">
-                    ₪{PLATFORM_MONTHLY_PRICE}
-                    <span className="text-base font-bold text-white/70"> / חודש</span>
+                    ₪{PLATFORM_PROCESS_PRICE}
+                    <span className="text-base font-bold text-white/70"> / תהליך</span>
                   </div>
-                  <div className="text-sm text-white/80">עד לסיום התהליך · אפשר להפסיק בכל חודש</div>
+                  <div className="text-sm text-white/80">
+                    {PLATFORM_ACCESS_DAYS} יום גישה מלאה · אין חיוב חוזר, מחדשים רק אם צריך
+                  </div>
                 </div>
                 <ul className="space-y-2 px-6 py-5">
                   {PLAN_JOURNEY_STAGES.map((stage, index) => (
@@ -301,6 +320,16 @@ function CheckoutBody() {
                   </li>
                 </ul>
               </div>
+
+              {!renewPlanId && (
+                <Link
+                  href="/dashboard/tour"
+                  className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700"
+                >
+                  רוצים להציץ קודם? סיור בכלי, בלי תשלום
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              )}
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="mb-3 text-[11px] font-black text-slate-400">כך עובד התמחור</p>

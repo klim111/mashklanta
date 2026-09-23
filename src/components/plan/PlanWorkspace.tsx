@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -42,6 +43,9 @@ import type {
 } from '@/lib/mortgage-plan';
 import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import { usePlan } from './usePlan';
+import { PlanAccessLock } from './PlanAccessLock';
+import { PlanCompletedDialog } from './PlanCompletedDialog';
+import { processLocked } from '@/lib/process-access';
 import type { PlanView, SaveState } from './usePlan';
 import { PlanTour, TOUR_FREE_CHANGES, tourAllowsTry } from './PlanTour';
 import { StageTasksPanel } from './tasks/StageTasksPanel';
@@ -100,9 +104,13 @@ export function PlanWorkspace({
     blocked,
     updateStage: rawUpdateStage,
     completeStage,
+    markSigned,
     goToStage,
     rename,
   } = usePlan(planId);
+  const router = useRouter();
+  /** הברכה אחרי "חתמתי על המשכנתא בבנק" */
+  const [celebrate, setCelebrate] = useState(false);
 
   // ─────────────────────────── הסיור ───────────────────────────
   const [tourOpen, setTourOpen] = useState(tour);
@@ -298,6 +306,8 @@ export function PlanWorkspace({
   const canComplete = !isPreview && stageIsComplete(stage, plan.data);
   const missing = missingForStage(stage, plan.data);
   const isDone = statuses[stage] === 'COMPLETED';
+  /** התהליך הסתיים ב"חתמתי על המשכנתא בבנק" */
+  const planSigned = plan.status === 'COMPLETED';
   const previous = previousPlanStage(stage, flow);
   const next = nextPlanStage(stage, flow);
   const save = saveLabels[saveState];
@@ -444,7 +454,7 @@ export function PlanWorkspace({
                     ) : (
                       <button
                         type="button"
-                        disabled={!canComplete || completing}
+                        disabled={!canComplete || completing || (!next && planSigned)}
                         onClick={() => void onComplete()}
                         className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-black text-white transition-all ${
                           canComplete
@@ -457,7 +467,11 @@ export function PlanWorkspace({
                         ) : (
                           <Check className="h-4 w-4" />
                         )}
-                        {next ? 'סגרו את השלב והמשיכו' : 'סיימו את התהליך'}
+                        {next
+                          ? 'סגרו את השלב והמשיכו'
+                          : planSigned
+                            ? 'המשכנתא נחתמה'
+                            : 'חתמתי על המשכנתא בבנק'}
                       </button>
                     )}
 
@@ -483,6 +497,13 @@ export function PlanWorkspace({
 
   const onComplete = async () => {
     setCompleting(true);
+    // בשלב האחרון הסגירה היא "חתמתי על המשכנתא בבנק" — סיום התהליך כולו
+    if (!next) {
+      const signed = await markSigned();
+      setCompleting(false);
+      if (signed) setCelebrate(true);
+      return;
+    }
     await completeStage(stage);
     setViewingStage(null);
     setCompleting(false);
@@ -607,6 +628,14 @@ export function PlanWorkspace({
                   )}
                   {save.label}
                 </span>
+                {plan.access?.state === 'ACTIVE' && plan.access.daysLeft !== null && plan.access.daysLeft <= 7 && (
+                  <Link
+                    href={`/dashboard/checkout?planId=${encodeURIComponent(plan.id)}`}
+                    className="rounded-full bg-amber-400/20 px-3 py-1 font-bold text-amber-100 ring-1 ring-amber-300/40 transition-colors hover:bg-amber-400/30"
+                  >
+                    הגישה פתוחה עוד {plan.access.daysLeft} {plan.access.daysLeft === 1 ? 'יום' : 'ימים'} · חידוש
+                  </Link>
+                )}
               </div>
               )}
             </div>
@@ -916,6 +945,21 @@ export function PlanWorkspace({
           חזרה לדאשבורד
         </Link>
       </div>
+
+      {/* עברו 35 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
+      {!tour && !peek && plan.access && processLocked(plan.access) && (
+        <PlanAccessLock planId={plan.id} access={plan.access} />
+      )}
+
+      <PlanCompletedDialog
+        open={celebrate}
+        refinance={isRefinance}
+        bank={plan.data.SIGNING.bank || refinance?.bank || null}
+        onDone={() => {
+          setCelebrate(false);
+          router.push('/dashboard');
+        }}
+      />
 
       <AnimatePresence>
         {tour && tourOpen && (

@@ -11,7 +11,7 @@ import { PLAN_STAGES } from './mortgage-plan';
 import type { PlanStageId } from './mortgage-plan';
 import { journeyStages } from '@/data/platform/journey';
 import { STAGE_JOURNEY_ID } from './mortgage-plan';
-import { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE } from '@/data/platform/pricing';
+import { FULL_SERVICE_PRICE, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
 
 const journeyPrice = new Map(journeyStages.map((stage) => [stage.id, stage.advisorPrice]));
 
@@ -86,7 +86,7 @@ export function quoteOrder(stages: readonly PlanStageId[], platformCredit = 0): 
     total: base - credit,
     saving: listPrice - base,
     fullService,
-    platformMonthlyIncluded: unique.length > 0 ? PLATFORM_MONTHLY_PRICE : 0,
+    platformMonthlyIncluded: unique.length > 0 ? PLATFORM_PROCESS_PRICE : 0,
     platformCredit: credit,
   };
 }

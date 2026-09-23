@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FULL_SERVICE_PRICE,
-  PLATFORM_MONTHLY_PRICE,
+  PLATFORM_PROCESS_PRICE,
   STAGES_TOTAL_PRICE,
   platformMonthsSince,
   quoteAdvisory,
@@ -26,20 +26,20 @@ describe('quoteAdvisory', () => {
     expect(quote.total).toBe(FULL_SERVICE_PRICE);
   });
 
-  it('חודשי פלטפורמה ששולמו מקוזזים ממחיר הליווי', () => {
-    const quote = quoteAdvisory({ stageIds: ['auction'], platformMonthsPaid: 3 });
+  it('מה ששולם על הגישה לפלטפורמה מקוזז ממחיר הליווי', () => {
+    const quote = quoteAdvisory({ stageIds: ['auction'], platformPaid: 2 * PLATFORM_PROCESS_PRICE });
     const auction = journeyStages.find((stage) => stage.id === 'auction')!;
-    expect(quote.platformCredit).toBe(3 * PLATFORM_MONTHLY_PRICE);
-    expect(quote.total).toBe(auction.advisorPrice - 3 * PLATFORM_MONTHLY_PRICE);
+    expect(quote.platformCredit).toBe(2 * PLATFORM_PROCESS_PRICE);
+    expect(quote.total).toBe(auction.advisorPrice - 2 * PLATFORM_PROCESS_PRICE);
   });
 
   it('הקיזוז לעולם אינו מוריד את המחיר מתחת לאפס', () => {
-    const quote = quoteAdvisory({ stageIds: ['signing'], platformMonthsPaid: 1000 });
+    const quote = quoteAdvisory({ stageIds: ['signing'], platformPaid: 100000 });
     expect(quote.total).toBe(0);
   });
 
   it('בלי שלבים אין ליווי ואין קיזוז', () => {
-    const quote = quoteAdvisory({ stageIds: [], platformMonthsPaid: 4 });
+    const quote = quoteAdvisory({ stageIds: [], platformPaid: 4 * PLATFORM_PROCESS_PRICE });
     expect(quote.total).toBe(0);
     expect(quote.platformIncluded).toBe(false);
   });

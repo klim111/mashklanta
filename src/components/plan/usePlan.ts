@@ -10,6 +10,7 @@ import type {
   PlanStatus,
   RefinanceMode,
 } from '@/lib/mortgage-plan';
+import type { ProcessAccess } from '@/lib/process-access';
 import { DEMO_ADDRESS, DEMO_MORTGAGE, DEMO_PLAN_ID, DEMO_PROPERTY_VALUE, demoPlanData, isDemoPlan } from '@/lib/demo-plan';
 
 export { DEMO_PLAN_ID, isDemoPlan };
@@ -66,6 +67,11 @@ export interface PlanView {
     completedAt: string | null;
   }>;
   data: PlanData;
+  /**
+   * הגישה לכלים בתהליך — 35 יום מכל תשלום. חסר בתהליכי הדגמה, ואז הכלים
+   * פתוחים.
+   */
+  access?: ProcessAccess;
 }
 
 /** תיקון תהליך שהתקבל מהשרת, כך שכל שדה שהטופס נוגע בו קיים ומהסוג הנכון */
@@ -337,6 +343,31 @@ export function usePlan(planId: string) {
     [flush, demo]
   );
 
+  /**
+   * "חתמתי על המשכנתא בבנק" — סגירת השלב האחרון וסיום התהליך. מחזיר האם
+   * התהליך סומן כמושלם.
+   */
+  const markSigned = useCallback(async (): Promise<boolean> => {
+    if (demo) {
+      setPlan((current) =>
+        current
+          ? { ...current, status: 'COMPLETED', progress: 100, completedAt: new Date().toISOString() }
+          : current
+      );
+      return true;
+    }
+    await flush();
+    const response = await fetch(`/api/plans/${planId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signed: true }),
+    });
+    if (!response.ok) return false;
+    setPlan(await readPlan(response));
+    setBlocked(null);
+    return true;
+  }, [demo, flush, planId]);
+
   /** סגירת השלב ומעבר לשלב הבא */
   const completeStage = useCallback(
     async (stage: PlanStageId) => {
@@ -420,6 +451,7 @@ export function usePlan(planId: string) {
     blocked,
     updateStage,
     completeStage,
+    markSigned,
     goToStage,
     rename,
     flush,

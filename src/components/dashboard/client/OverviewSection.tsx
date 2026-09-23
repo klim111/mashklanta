@@ -394,7 +394,9 @@ export function OverviewSection({
                       {plan.propertyAddress || plan.name}
                     </span>
                     <span className="shrink-0 text-[13px] font-bold text-emerald-800">
-                      {plan.data.SIGNING.bank ? `בנק ${plan.data.SIGNING.bank} · ` : ''}לצפייה
+                      התהליך הסתיים
+                      {plan.completedAt ? ` · ${formatDate(plan.completedAt)}` : ''}
+                      {plan.data.SIGNING.bank ? ` · בנק ${plan.data.SIGNING.bank}` : ''}
                     </span>
                   </Link>
                 ))}

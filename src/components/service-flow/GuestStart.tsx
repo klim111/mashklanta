@@ -38,7 +38,7 @@ export function GuestStart({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
         tone={tone}
         onSelf={onSelf}
         onAdvisor={(goal, service) => setRequest({ goal, service })}
-        subtitle="בחרו את המטרה, ומיד אחריה — כמה עזרה תרצו בדרך. במסלול העצמאי נפתח לכם חשבון וסיור בכלי; בליווי או בייעוץ יועץ חוזר אליכם."
+        subtitle="בחרו את המטרה, ומיד אחריה — כמה עזרה תרצו בדרך. במסלול העצמאי / ההיברידי נפתח לכם חשבון והתהליך מתחיל מיד; בליווי או בייעוץ יועץ חוזר אליכם."
       />
 
       {request && (

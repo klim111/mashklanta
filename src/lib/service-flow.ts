@@ -11,6 +11,7 @@
  */
 
 import { journeyStages } from '@/data/platform/journey';
+import { PROCESS_ACCESS_DAYS, PROCESS_PRICE } from './process-access';
 
 // ─────────────────────────────── מה רוצים לעשות ───────────────────────────────
 
@@ -45,14 +46,20 @@ export function isMortgageGoal(value: unknown): value is MortgageGoal {
 export const SERVICE_TYPES = ['SELF', 'HYBRID', 'FULL', 'GUIDANCE'] as const;
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
-/** שלושת המסלולים שהלקוח בוחר ביניהם אחרי שבחר משכנתא חדשה או מיחזור */
-export const SERVICE_CHOICES = ['SELF', 'HYBRID', 'FULL'] as const;
+/**
+ * שני המסלולים שהלקוח שעדיין לא שילם בוחר ביניהם אחרי שבחר משכנתא חדשה או
+ * מיחזור: עצמאי / היברידי (מתחילים לבד, ובכל שלב אפשר להעביר ליועץ) וליווי מלא.
+ * `HYBRID` נשאר סוג שירות — כך מסומנת בקשת ליווי שנשלחת מתוך שלב — אבל אינו
+ * מסלול נפרד לבחירה.
+ */
+export const SERVICE_CHOICES = ['SELF', 'FULL'] as const;
 export type ServiceChoice = (typeof SERVICE_CHOICES)[number];
 
 export const SERVICE_LABELS: Record<ServiceType, { title: string; description: string }> = {
   SELF: {
-    title: 'מסלול עצמאי',
-    description: 'לתכנן הכל לבד באמצעות משכלתנא',
+    title: 'עצמאי / היברידי',
+    description:
+      'מתחילים לבד עם הכלים של משכלנתא, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא',
   },
   HYBRID: {
     title: 'ליווי משולב',
@@ -92,8 +99,11 @@ export function leadTopicFor(goal: MortgageGoal, service: ServiceType): string {
 
 // ─────────────────────────────── חוקי התמחור ───────────────────────────────
 
-/** גישה מלאה לפלטפורמה, לחודש, עד לסיום התהליך */
-export const PLATFORM_MONTHLY_PRICE = 49;
+/** המסלול העצמאי / ההיברידי — לתהליך משכנתא אחד, לתקופת הגישה */
+export const PLATFORM_PROCESS_PRICE = PROCESS_PRICE;
+
+/** כמה ימים הכלים פתוחים מכל תשלום על תהליך */
+export const PLATFORM_ACCESS_DAYS = PROCESS_ACCESS_DAYS;
 
 /** ליווי מלא — חמשת השלבים יחד */
 export const FULL_SERVICE_PRICE = 6000;
@@ -108,9 +118,8 @@ export const STAGES_TOTAL_PRICE = journeyStages.reduce((sum, stage) => sum + sta
 export const PRICING_PRINCIPLES: Array<{ id: string; title: string; description: string }> = [
   {
     id: 'platform',
-    title: `גישה לפלטפורמה — ₪${PLATFORM_MONTHLY_PRICE} לחודש`,
-    description:
-      'כל חמשת השלבים וכל הכלים פתוחים בלי הגבלה, עד לסיום התהליך. אפשר להפסיק בכל חודש.',
+    title: `גישה לפלטפורמה — ₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
+    description: `כל השלבים וכל הכלים פתוחים בלי הגבלה ל-${PLATFORM_ACCESS_DAYS} יום. צריכים עוד זמן? מחדשים באותו מחיר.`,
   },
   {
     id: 'credit',
@@ -141,8 +150,8 @@ export const PRICING_PRINCIPLES: Array<{ id: string; title: string; description:
 export interface AdvisoryQuoteInput {
   /** מזהי השלבים (מ-journeyStages) שהיועץ יבצע */
   stageIds: string[];
-  /** כמה חודשי גישה לפלטפורמה כבר שולמו לפני ההזמנה */
-  platformMonthsPaid?: number;
+  /** כמה כבר שולם על הגישה לפלטפורמה לפני ההזמנה, בשקלים */
+  platformPaid?: number;
 }
 
 export interface AdvisoryQuote {
@@ -163,10 +172,10 @@ export interface AdvisoryQuote {
 /**
  * הצעת מחיר לליווי, לפי חוקי התמחור:
  *  1. שלבים בנפרד או ליווי מלא — הנמוך מביניהם.
- *  2. חודשי פלטפורמה ששולמו מקוזזים מהמחיר, ולא יורדים מתחת לאפס.
+ *  2. מה ששולם על הגישה לפלטפורמה מקוזז מהמחיר, ולא יורד מתחת לאפס.
  *  3. הגישה לפלטפורמה כלולה בכל הזמנה.
  */
-export function quoteAdvisory({ stageIds, platformMonthsPaid = 0 }: AdvisoryQuoteInput): AdvisoryQuote {
+export function quoteAdvisory({ stageIds, platformPaid = 0 }: AdvisoryQuoteInput): AdvisoryQuote {
   const chosen = new Set(stageIds);
   const stagesPrice = journeyStages
     .filter((stage) => chosen.has(stage.id))
@@ -185,7 +194,7 @@ export function quoteAdvisory({ stageIds, platformMonthsPaid = 0 }: AdvisoryQuot
 
   const bundleApplied = FULL_SERVICE_PRICE < stagesPrice;
   const advisoryPrice = bundleApplied ? FULL_SERVICE_PRICE : stagesPrice;
-  const paid = Math.max(0, Math.floor(platformMonthsPaid)) * PLATFORM_MONTHLY_PRICE;
+  const paid = Math.max(0, Math.floor(platformPaid));
   const platformCredit = Math.min(paid, advisoryPrice);
 
   return {
@@ -198,7 +207,10 @@ export function quoteAdvisory({ stageIds, platformMonthsPaid = 0 }: AdvisoryQuot
   };
 }
 
-/** כמה חודשי גישה לפלטפורמה חלפו מאז הרכישה — לצורך הקיזוז */
+/**
+ * כמה חודשי מנוי חלפו מאז הרכישה — רק למנויים החודשיים מלפני המעבר לתשלום
+ * לתהליך, לצורך הקיזוז שלהם
+ */
 export function platformMonthsSince(since: Date | string | null | undefined, now = new Date()): number {
   if (!since) return 0;
   const start = new Date(since);

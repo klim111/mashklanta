@@ -27,7 +27,10 @@ import { journeyStages, stagesTotalPrice } from '@/data/platform/journey';
 import {
   BUNDLE_SAVING,
   FULL_SERVICE_PRICE,
-  PLATFORM_MONTHLY_PRICE,
+  PLATFORM_ACCESS_DAYS,
+  PLATFORM_PROCESS_PRICE,
+  TRACKS_HEADLINE,
+  TRACKS_INTRO,
   comparisonRows,
   pricingFaq,
   pricingPlans,
@@ -87,8 +90,8 @@ export default function PricingPage() {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
-            גישה לפלטפורמה ב-₪{PLATFORM_MONTHLY_PRICE} לחודש. כל שלב עם יועץ מתומחר בנפרד, מה ששילמתם
-            על הפלטפורמה מקוזז מהליווי, והגישה המלאה כלולה בכל הזמנת ליווי.
+            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, ל-{PLATFORM_ACCESS_DAYS} יום. כל שלב עם
+            יועץ מתומחר בנפרד, מה ששילמתם על הפלטפורמה מקוזז מהליווי, והגישה המלאה כלולה בכל הזמנת ליווי.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3">
@@ -116,7 +119,7 @@ export default function PricingPage() {
         </motion.div>
       </section>
 
-      {/* ─────────────────────── Three plans ─────────────────────── */}
+      {/* ─────────────────────── Two tracks ─────────────────────── */}
       <section className="bg-white py-20 md:py-28">
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
@@ -125,15 +128,11 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mx-auto mb-14 max-w-3xl text-center"
           >
-            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">
-              שלושה מסלולים, מעבר חופשי ביניהם
-            </h2>
-            <p className="text-lg leading-relaxed text-gray-600">
-              רוב הלקוחות מתחילים לבד ומצרפים יועץ בשלב שבו זה באמת משתלם — התמהיל וההתמחרות.
-            </p>
+            <h2 className="mb-5 text-3xl font-black text-gray-900 md:text-5xl">{TRACKS_HEADLINE}</h2>
+            <p className="text-lg leading-relaxed text-gray-600">{TRACKS_INTRO}</p>
           </motion.div>
 
-          <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2 md:items-start">
             {pricingPlans.map((plan, i) => {
               const Icon = plan.icon;
               return (
@@ -404,13 +403,12 @@ export default function PricingPage() {
           <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
             <div className="overflow-x-auto overscroll-x-contain">
               <p className="mb-2 px-4 pt-3 text-center text-xs text-gray-500 md:hidden">גללו הצידה לצפייה בהשוואה המלאה</p>
-              <table className="w-full min-w-[560px] text-right">
+              <table className="w-full min-w-[460px] text-right">
                 <thead>
                   <tr className="bg-gray-900 text-white">
                     <th className="px-6 py-4 text-sm font-bold">יכולת</th>
-                    <th className="px-4 py-4 text-center text-sm font-bold">עצמאי</th>
                     <th className="bg-violet-700 px-4 py-4 text-center text-sm font-bold">
-                      היברידי
+                      עצמאי / היברידי
                     </th>
                     <th className="px-4 py-4 text-center text-sm font-bold">ליווי מלא</th>
                   </tr>
@@ -424,11 +422,8 @@ export default function PricingPage() {
                       }`}
                     >
                       <td className="px-6 py-4 text-sm text-gray-800">{row.capability}</td>
-                      <td className="px-4 py-4 text-center">
-                        <CellValue value={row.self} />
-                      </td>
                       <td className="bg-violet-50/60 px-4 py-4 text-center">
-                        <CellValue value={row.hybrid} />
+                        <CellValue value={row.self} />
                       </td>
                       <td className="px-4 py-4 text-center">
                         <CellValue value={row.full} />
@@ -441,8 +436,8 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-6 text-center text-sm text-gray-600">
-            הגישה לפלטפורמה בסך ₪{PLATFORM_MONTHLY_PRICE} לחודש נגבית עד לסיום התהליך וניתנת להפסקה
-            בכל עת. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה ששולם עליה מקוזז.
+            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא אחד ל-{PLATFORM_ACCESS_DAYS} יום, וניתנת
+            לחידוש באותו מחיר. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה ששולם עליה מקוזז.
           </p>
         </div>
       </section>

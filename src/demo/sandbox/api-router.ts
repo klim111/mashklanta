@@ -213,6 +213,11 @@ export class DemoApiRouter {
         if (method === 'PATCH') {
           const body = await this.body(init, input);
           if (typeof body.name === 'string') plan.name = body.name;
+          if (body.signed === true) {
+            plan.status = 'COMPLETED';
+            plan.progress = 100;
+            plan.completedAt = nowIso();
+          }
           if (typeof body.currentStage === 'string' && (PLAN_STAGES as readonly string[]).includes(body.currentStage)) {
             plan.currentStage = body.currentStage as PlanStageId;
           }

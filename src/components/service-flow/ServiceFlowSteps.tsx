@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, Bot, Compass, Handshake, Home, RefreshCw, UserCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { FULL_SERVICE_PRICE, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 
 type Chip = { icon: LucideIcon; label: string; tone: string };
 
@@ -21,10 +21,9 @@ const STEPS: Array<{ number: number; title: string; description: string; chips: 
   {
     number: 2,
     title: 'כמה עזרה תרצו?',
-    description: 'לבד עם כל הכלים, ליווי משולב בשלבים שתבחרו, או ליווי מלא עד לחתימה.',
+    description: 'מתחילים לבד עם כל הכלים ומעבירים ליועץ כל שלב שתרצו, או ליווי מלא עד לחתימה.',
     chips: [
-      { icon: Bot, label: `עצמאי · ₪${PLATFORM_MONTHLY_PRICE}/חודש`, tone: 'bg-blue-100 text-blue-700' },
-      { icon: Handshake, label: 'משולב · לפי שלב', tone: 'bg-violet-100 text-violet-700' },
+      { icon: Bot, label: `עצמאי / היברידי · ₪${PLATFORM_PROCESS_PRICE} לתהליך`, tone: 'bg-blue-100 text-blue-700' },
       { icon: UserCheck, label: `מלא · ₪${FULL_SERVICE_PRICE.toLocaleString('he-IL')}`, tone: 'bg-amber-100 text-amber-800' },
     ],
   },

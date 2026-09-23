@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { deletePlan, getPlanForUser, renamePlan, setCurrentStage, updatePlanDeal } from '@/lib/mortgage-plans';
+import {
+  deletePlan,
+  getPlanForUser,
+  markPlanSigned,
+  renamePlan,
+  setCurrentStage,
+  updatePlanDeal,
+} from '@/lib/mortgage-plans';
 import { isPlanStage, planStageNumber } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 
@@ -20,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
   return NextResponse.json(plan);
 }
 
-/** שינוי שם התהליך או מעבר לשלב שכבר נפתח */
+/** שינוי שם התהליך, מעבר לשלב שכבר נפתח, או סיום התהליך בחתימה */
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const session = await getServerAuth();
   const userId = session?.user?.id;
@@ -28,6 +35,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
   const body = await req.json().catch(() => null);
+
+  // "חתמתי על המשכנתא בבנק" — סיום התהליך מהשלב האחרון
+  if (body?.signed === true) {
+    const result = await markPlanSigned(userId, id);
+    if (!result.ok && result.reason === 'incomplete') {
+      return NextResponse.json({ error: 'Stage incomplete' }, { status: 409 });
+    }
+    if (!result.ok) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(result.plan);
+  }
 
   if (typeof body?.name === 'string') {
     const plan = await renamePlan(userId, id, body.name);

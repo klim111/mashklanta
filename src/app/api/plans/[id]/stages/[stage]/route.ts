@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { saveStage } from '@/lib/mortgage-plans';
+import { planLockedFor, saveStage } from '@/lib/mortgage-plans';
 import { isPlanStage } from '@/lib/mortgage-plan';
 
 interface RouteContext {
@@ -22,6 +22,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  }
+
+  // עברו 35 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש
+  if (await planLockedFor(userId, id)) {
+    return NextResponse.json({ error: 'Payment required' }, { status: 402 });
   }
 
   const result = await saveStage({

@@ -9,7 +9,6 @@ import type { LucideIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { GOAL_LABELS, isServiceType } from '@/lib/service-flow';
 import type { MortgageGoal, ServiceType } from '@/lib/service-flow';
-import { NewMortgageDialog } from '@/components/plan/NewMortgageDialog';
 import { ServiceChooser } from './ServiceChooser';
 import { GuidanceRequestDialog } from './GuidanceRequestDialog';
 import { usePlatformAccess } from './usePlatformAccess';
@@ -54,10 +53,11 @@ export function readEntryQuery(): { goal: FlowGoal | null; service: ServiceType 
 /**
  * "מה תרצו לעשות?" — נקודת הכניסה באזור האישי.
  *
- * הבחירה: משכנתא חדשה / מיחזור / ייעוץ, ואחריה לבד / ליווי משולב / ליווי מלא.
- * המסלול העצמאי בלי גישה פותח את הסיור בכלי; עם גישה — את שאלת "איפה אתם
- * בתהליך" שפותחת תהליך. כל בחירה בליווי או בייעוץ הופכת לבקשה שמגיעה ליועצים,
- * עם הערה רשות של הלקוח.
+ * הבחירה: משכנתא חדשה / מיחזור / ייעוץ. מי ששילם על הגישה נכנס מיד לתהליך:
+ * משכנתא חדשה נפתחת בשלב הראשון (בניית הפרופיל), ומיחזור בכלי המיחזור — השלב
+ * הראשון שלו. מי שעוד לא שילם בוחר בין עצמאי / היברידי (מסך התשלום, ומשם ישר
+ * לתהליך) לבין ליווי מלא. כל בחירה בליווי או בייעוץ הופכת לבקשה שמגיעה
+ * ליועצים, עם הערה רשות של הלקוח.
  */
 export function MortgageEntry({
   variant,
@@ -74,7 +74,6 @@ export function MortgageEntry({
   const { access, ready: accessReady } = usePlatformAccess();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogGoal, setDialogGoal] = useState<FlowGoal | null>(initialGoal);
-  const [situationOpen, setSituationOpen] = useState(false);
   const [request, setRequest] = useState<{ goal: MortgageGoal; service: ServiceType } | null>(null);
   const autoHandled = useRef(false);
 
@@ -86,12 +85,16 @@ export function MortgageEntry({
 
   const onSelf = (goal: FlowGoal) => {
     setOpen(false);
+    // עוד לא שולם — ₪49 לתהליך, ומשם חוזרים לכאן והתהליך נפתח
+    if (!access.active) {
+      router.push(`/dashboard/checkout?next=plan&goal=${goal}`);
+      return;
+    }
     if (goal === 'REFINANCE') {
       router.push('/mortgage-refinance');
       return;
     }
-    if (access.active) setSituationOpen(true);
-    else router.push('/dashboard/tour');
+    onStart();
   };
 
   const onAdvisor = (goal: MortgageGoal, service: ServiceType) => {
@@ -122,14 +125,6 @@ export function MortgageEntry({
           />
         </DialogContent>
       </Dialog>
-
-      <NewMortgageDialog
-        open={situationOpen}
-        onOpenChange={setSituationOpen}
-        onStart={onStart}
-        busy={busy}
-        hasPlans={hasPlans}
-      />
 
       {request && (
         <GuidanceRequestDialog
@@ -170,6 +165,11 @@ export function MortgageEntry({
                       setRequest({ goal, service: 'GUIDANCE' });
                       return;
                     }
+                    // שילמו כבר — התהליך נפתח ישר, בלי מסך המסלולים
+                    if (access.active) {
+                      onSelf(goal);
+                      return;
+                    }
                     setDialogGoal(goal);
                     setDialogOpen(true);
                   }}
@@ -188,7 +188,7 @@ export function MortgageEntry({
           {access.active && (
             <p className="mt-2.5 flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-200">
               <BadgeCheck className="h-3.5 w-3.5" />
-              הגישה המלאה פעילה
+              התשלום התקבל · התהליך ייפתח מיד
             </p>
           )}
         </div>
@@ -215,7 +215,7 @@ export function MortgageEntry({
               {access.active ? (
                 <>
                   <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
-                  הגישה המלאה לפלטפורמה פעילה — כל חמשת השלבים פתוחים
+                  התשלום התקבל. בחרו משכנתא חדשה או מיחזור, והתהליך נפתח מיד
                 </>
               ) : (
                 <>

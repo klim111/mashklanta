@@ -7,7 +7,7 @@ import { ArrowUpLeft, UserCheck, Wand2 } from 'lucide-react';
 import { journeyStages } from '@/data/platform/journey';
 import {
   FULL_SERVICE_PRICE,
-  PLATFORM_MONTHLY_PRICE,
+  PLATFORM_PROCESS_PRICE,
 } from '@/data/platform/pricing';
 import AnimatedNumber from './AnimatedNumber';
 
@@ -167,8 +167,8 @@ export default function FlexibilityMixer() {
               )}
               {!isFull && (
                 <span className="text-lg font-black text-cyan-200">
-                  {advisorStages.length > 0 ? '+' : ''} ₪{PLATFORM_MONTHLY_PRICE}
-                  <span className="mr-1 text-sm font-semibold text-slate-200">לחודש</span>
+                  {advisorStages.length > 0 ? '+' : ''} ₪{PLATFORM_PROCESS_PRICE}
+                  <span className="mr-1 text-sm font-semibold text-slate-200">לתהליך</span>
                 </span>
               )}
               {isFull && (

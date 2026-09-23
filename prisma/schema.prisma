@@ -139,8 +139,9 @@ model User {
   /**
    * /**
    * /**
-   * מתי הלקוח רכש גישה מלאה לפלטפורמה. ריק — עדיין לא רכש, וכלי התכנון נפתח
-   * אצלו במצב סיור בלבד. חודשי הגישה ששולמו מקוזזים מכל הזמנת ליווי.
+   * מתי הלקוח רכש מנוי חודשי לפלטפורמה — המודל שקדם לתשלום לתהליך. נשמר
+   * למנויים הקיימים בלבד: התהליכים שלהם מלפני המעבר נשארים פתוחים. תשלום חדש
+   * נרשם ב-PlatformPayment ונקשר לתהליך שהוא פותח.
    */
   platformAccessAt DateTime?
   platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
@@ -504,6 +505,11 @@ model MortgagePlan {
   monthlyPayment  Float?
 
   completedAt DateTime?
+
+  /**
+   * התשלומים שפתחו את התהליך — התשלום הראשון והחידושים אחריו
+   */
+  platformPayments PlatformPayment[]
 
   stages        MortgagePlanStage[]
   mixes         MortgageMix[]
@@ -1195,9 +1201,17 @@ model PlatformPayment {
   cardLast4    String
   status       String @default("PAID")
 
+  /**
+   * התהליך שהתשלום פותח. ריק — תשלום שעוד לא נקשר לתהליך, והוא נקשר לתהליך
+   * הבא שנפתח. כל תשלום פותח תהליך אחד ל-35 יום (src/lib/process-access.ts).
+   */
+  planId String?
+  plan   MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([planId])
 }
 
 // ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────

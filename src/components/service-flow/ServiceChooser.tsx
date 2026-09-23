@@ -7,7 +7,6 @@ import {
   Bot,
   ChevronRight,
   Compass,
-  Handshake,
   Home,
   Loader2,
   RefreshCw,
@@ -17,11 +16,13 @@ import type { LucideIcon } from 'lucide-react';
 import {
   FULL_SERVICE_PRICE,
   GOAL_LABELS,
-  PLATFORM_MONTHLY_PRICE,
+  PLATFORM_ACCESS_DAYS,
+  PLATFORM_PROCESS_PRICE,
   SERVICE_CHOICES,
   SERVICE_LABELS,
 } from '@/lib/service-flow';
 import type { MortgageGoal, ServiceChoice, ServiceType } from '@/lib/service-flow';
+import { TRACKS_HEADLINE, TRACKS_INTRO } from '@/data/platform/pricing';
 import { PricingModelStrip } from './PricingModelStrip';
 
 /** מטרה שממנה ממשיכים לבחירת סוג השירות — ייעוץ נשלח ישירות ליועץ */
@@ -36,15 +37,9 @@ const GOAL_META: Record<MortgageGoal, { icon: LucideIcon; gradient: string; ring
 const SERVICE_META: Record<ServiceChoice, { icon: LucideIcon; gradient: string; price: string; priceNote: string }> = {
   SELF: {
     icon: Bot,
-    gradient: 'from-blue-500 to-cyan-500',
-    price: `₪${PLATFORM_MONTHLY_PRICE} לחודש`,
-    priceNote: 'עד לסיום התהליך · מקוזז אם תבקשו ליווי',
-  },
-  HYBRID: {
-    icon: Handshake,
-    gradient: 'from-violet-500 to-purple-600',
-    price: 'לפי שלב',
-    priceNote: 'הגישה לפלטפורמה כלולה · תמיד המחיר הנמוך',
+    gradient: 'from-blue-500 to-violet-600',
+    price: `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
+    priceNote: `${PLATFORM_ACCESS_DAYS} יום גישה מלאה לכל הכלים · מקוזז אם תבקשו ליווי`,
   },
   FULL: {
     icon: UserCheck,
@@ -58,7 +53,10 @@ export interface ServiceChooserProps {
   /** כותרת המסך הראשון */
   title?: string;
   subtitle?: string;
-  /** האם המשתמש כבר רכש גישה — משנה את הכיתוב במסלול העצמאי */
+  /**
+   * האם יש למשתמש גישה ששולמה ועוד לא פתחה תהליך. אז אין מה לבחור: בחירת
+   * משכנתא חדשה או מיחזור פותחת את התהליך מיד, בלי מסך המסלולים.
+   */
   hasAccess?: boolean;
   /** פתיחה ישירה במסך סוג השירות, למשל אחרי חזרה מההרשמה */
   initialGoal?: FlowGoal | null;
@@ -75,9 +73,10 @@ export interface ServiceChooserProps {
 /**
  * "מה תרצו לעשות?" — נקודת הכניסה של הלקוח.
  *
- * מסך ראשון: משכנתא חדשה / מיחזור / ייעוץ. מסך שני (לחדשה ולמיחזור): לבד,
- * ליווי משולב או ליווי מלא, עם כפתור חזרה. אותו רכיב משמש גם בעמוד הבית לאורחים
- * וגם באזור האישי — ההבדל הוא רק מה קורה אחרי הבחירה.
+ * מסך ראשון: משכנתא חדשה / מיחזור / ייעוץ. מסך שני (לחדשה ולמיחזור), רק למי
+ * שעוד לא שילם: עצמאי / היברידי או ליווי מלא, עם כפתור חזרה. מי שכבר שילם
+ * נכנס מהמסך הראשון ישר לתהליך. אותו רכיב משמש גם בעמוד הבית לאורחים וגם
+ * באזור האישי — ההבדל הוא רק מה קורה אחרי הבחירה.
  */
 export function ServiceChooser({
   title = 'מה תרצו לעשות?',
@@ -106,6 +105,11 @@ export function ServiceChooser({
   const chooseGoal = (next: MortgageGoal) => {
     if (next === 'ADVICE') {
       onAdvisor('ADVICE', 'GUIDANCE');
+      return;
+    }
+    // שילמו כבר — אין מסלול לבחור, התהליך נפתח ישר בשלב הראשון
+    if (hasAccess) {
+      onSelf(next);
       return;
     }
     setGoal(next);
@@ -164,7 +168,11 @@ export function ServiceChooser({
                         dark ? 'text-cyan-200' : 'text-blue-600'
                       }`}
                     >
-                      {item === 'ADVICE' ? 'שלחו בקשה ליועץ' : 'המשיכו לבחירת סוג השירות'}
+                      {item === 'ADVICE'
+                        ? 'שלחו בקשה ליועץ'
+                        : hasAccess
+                          ? 'התחילו את התהליך'
+                          : 'המשיכו לבחירת המסלול'}
                       <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                     </span>
                   </motion.button>
@@ -188,19 +196,19 @@ export function ServiceChooser({
               >
                 {GOAL_LABELS[goal].title}
               </span>
-              <h2 className={`text-3xl font-black md:text-4xl ${heading}`}>איך תרצו לעשות את זה?</h2>
-              <p className={`max-w-xl text-sm leading-relaxed md:text-base ${muted}`}>
-                שלושה מסלולים, מעבר חופשי ביניהם. התחלתם לבד וביקשתם ליווי באמצע? מה ששילמתם על
-                הפלטפורמה מקוזז — ותמיד תשלמו את המחיר הנמוך.
-              </p>
+              <h2 className={`max-w-2xl text-2xl font-black leading-snug md:text-3xl ${heading}`}>
+                {TRACKS_HEADLINE}
+              </h2>
+              <p className={`max-w-2xl text-[15px] leading-relaxed ${muted}`}>{TRACKS_INTRO}</p>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mx-auto mt-8 grid max-w-3xl gap-4 md:grid-cols-2">
               {SERVICE_CHOICES.map((service, index) => {
                 const meta = SERVICE_META[service];
                 const Icon = meta.icon;
                 const labels = SERVICE_LABELS[service];
                 const selfOpen = service === 'SELF' && hasAccess;
+                const featured = service === 'SELF';
                 return (
                   <motion.button
                     key={service}
@@ -213,10 +221,10 @@ export function ServiceChooser({
                     whileHover={{ y: -4 }}
                     whileTap={{ scale: 0.98 }}
                     className={`group relative flex h-full flex-col rounded-3xl border-2 p-6 text-right shadow-md transition-all disabled:opacity-60 ${card} ${
-                      service === 'HYBRID' ? (dark ? 'border-violet-300/50' : 'border-violet-300') : ''
+                      featured ? (dark ? 'border-violet-300/50' : 'border-violet-300') : ''
                     }`}
                   >
-                    {service === 'HYBRID' && (
+                    {featured && (
                       <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-3 py-0.5 text-[11px] font-black text-white shadow">
                         הכי נבחר
                       </span>
@@ -227,7 +235,7 @@ export function ServiceChooser({
                       <Icon className="h-7 w-7 text-white" />
                     </span>
                     <span className="text-xl font-black">{labels.title}</span>
-                    <span className={`mt-1.5 flex-1 text-sm leading-relaxed ${muted}`}>{labels.description}</span>
+                    <span className={`mt-1.5 flex-1 text-[15px] leading-relaxed ${muted}`}>{labels.description}</span>
                     <span className={`mt-4 border-t pt-4 ${dark ? 'border-white/10' : 'border-slate-100'}`}>
                       <span className="block text-lg font-black">
                         {selfOpen ? 'הגישה שלכם פעילה' : meta.price}
@@ -248,7 +256,7 @@ export function ServiceChooser({
                           {service === 'SELF'
                             ? selfOpen
                               ? 'פתחו את כלי התכנון'
-                              : 'התחילו בסיור בכלי'
+                              : 'מתחילים לבד'
                             : 'שלחו בקשת ליווי'}
                           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                         </>
@@ -268,7 +276,7 @@ export function ServiceChooser({
                 }`}
               >
                 <ChevronRight className="h-4 w-4" />
-                חזור לבחירת סוג שירות
+                חזרה לבחירת המטרה
               </button>
             </div>
           </motion.section>

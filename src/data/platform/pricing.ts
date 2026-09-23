@@ -1,8 +1,9 @@
-import { Bot, Handshake, UserCheck, type LucideIcon } from 'lucide-react';
+import { Bot, UserCheck, type LucideIcon } from 'lucide-react';
 import { journeyStages, stagesTotalPrice } from './journey';
 import {
   FULL_SERVICE_PRICE,
-  PLATFORM_MONTHLY_PRICE,
+  PLATFORM_ACCESS_DAYS,
+  PLATFORM_PROCESS_PRICE,
   PRICING_PRINCIPLES,
 } from '@/lib/service-flow';
 
@@ -10,12 +11,22 @@ import {
  * המחירים עצמם וחוקי התמחור יושבים ב-`src/lib/service-flow.ts`, כי גם השרת
  * צריך אותם. כאן רק התוכן השיווקי שנבנה מעליהם.
  */
-export { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE, PRICING_PRINCIPLES };
+export { FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE, PRICING_PRINCIPLES };
 
 /** How much the bundle saves compared to buying every stage separately */
 export const BUNDLE_SAVING = stagesTotalPrice - FULL_SERVICE_PRICE;
 
-export type PlanId = 'self' | 'hybrid' | 'full';
+/**
+ * הכותרת והפסקה שמעל שני המסלולים — במקום "שלושה מסלולים". אותו נוסח
+ * באזור האישי, בעמוד הבית ובעמוד התמחור.
+ */
+export const TRACKS_HEADLINE = 'אתם מחליטים כמה ליווי צריך. אנחנו דואגים שזה לא יעלה הון';
+export const TRACKS_INTRO =
+  'במשכלנתא אפשר לתכנן לבד, להיעזר ביועץ רק בשלב שבו צריך, או לקבל ליווי מלא עד החתימה, ולעבור ביניהם בכל רגע. ' +
+  'הכלים החכמים שלנו ושיטת עבודה מסודרת הופכים את התהליך לפשוט וזורם יותר, וזה מה שמאפשר לנו לתת ליווי מקצועי ברמה הגבוהה ביותר במחיר נמוך בהרבה. ' +
+  'המטרה שלנו פשוטה: שתגיעו לבנק חזקים, מבינים ובטוחים, בלי שהמשכנתא תקרע לכם את הכיס עוד לפני שהתחילה.';
+
+export type PlanId = 'self' | 'full';
 
 export type PricingPlan = {
   id: PlanId;
@@ -36,47 +47,26 @@ export type PricingPlan = {
 export const pricingPlans: PricingPlan[] = [
   {
     id: 'self',
-    name: 'עצמאי',
-    tagline: 'לתכנן הכל לבד באמצעות משכלתנא — עם כל הכלים של היועץ',
-    price: `₪${PLATFORM_MONTHLY_PRICE}`,
-    priceNote: 'לחודש, עד לסיום התהליך · מקוזז אם תבקשו ליווי',
+    name: 'עצמאי / היברידי',
+    tagline: 'מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא',
+    price: `₪${PLATFORM_PROCESS_PRICE}`,
+    priceNote: `לתהליך משכנתא · ${PLATFORM_ACCESS_DAYS} יום גישה מלאה · מקוזז אם תבקשו ליווי`,
     icon: Bot,
     gradient: 'from-blue-500 to-cyan-500',
     ring: 'ring-blue-200',
+    popular: true,
     features: [
       'גישה מלאה לכל הכלים והמחשבונים בפלטפורמה',
       'בונה תמהיל, סלים אחידים ולוחות סילוקין מלאים',
       'חישוב IRR, סימולציות ריבית ופירעון מוקדם',
       'תיק מסמכים דיגיטלי וצ׳ק־ליסט לפי סטטוס תעסוקתי',
-      'מעקב שלבים ותחזיות לאורך חיי המשכנתא',
-      'ללא התחייבות — ניתן לבטל בכל חודש',
-      'החלטתם באמצע להיעזר ביועץ? מה ששילמתם מקוזז ממחיר הליווי',
+      'בכל שלב: כפתור "פנו ליועץ משכלנתא" שמעביר אליו את השלב, עם כל מה שכבר הזנתם',
+      'תמחור שקוף לכל שלב שהיועץ לוקח, ותמיד המחיר הנמוך מבין האופציות',
+      `צריכים יותר מ-${PLATFORM_ACCESS_DAYS} יום? מחדשים באותו מחיר`,
     ],
-    bestFor: 'למי שמבין מספרים, יש לו זמן ורוצה לנהל את התהליך בעצמו',
-    ctaLabel: 'התחילו חודש ראשון',
+    bestFor: 'לרוב הלקוחות: בונים לבד ומצרפים יועץ בשלב שבו זה באמת משתלם',
+    ctaLabel: 'מתחילים לבד',
     ctaHref: '/auth/register',
-  },
-  {
-    id: 'hybrid',
-    name: 'ליווי משולב',
-    tagline: 'מבצעים חלק מהתהליך עצמאית ומקבלים עזרה בשלבים שתבחרו',
-    price: 'לפי שלב',
-    priceNote: `החל מ-₪${journeyStages[4].advisorPrice.toLocaleString('he-IL')} לשלב · הגישה לפלטפורמה כלולה`,
-    icon: Handshake,
-    gradient: 'from-violet-500 to-purple-600',
-    ring: 'ring-violet-300',
-    popular: true,
-    features: [
-      'כל מה שכלול במסלול העצמאי — הגישה לפלטפורמה כלולה במחיר',
-      'בחירה חופשית של השלבים שהיועץ יבצע עבורכם — שלב אחד או כמה',
-      'תמחור שקוף לכל שלב, ותמיד המחיר הנמוך מבין כל האופציות',
-      'אפשר להוסיף שלב באמצע התהליך, בלי להתחיל מחדש',
-      'שיחות וידאו ישירות עם היועץ מתוך הפלטפורמה',
-      'השוואה מלאה בין מה שהשגתם לבד למה שהיועץ השיג',
-    ],
-    bestFor: 'לרוב הלקוחות — בונים תמהיל לבד ומשאירים את ההתמחרות ליועץ',
-    ctaLabel: 'בנו את החבילה שלכם',
-    ctaHref: '/pricing#builder',
   },
   {
     id: 'full',
@@ -89,7 +79,7 @@ export const pricingPlans: PricingPlan[] = [
     ring: 'ring-amber-200',
     features: [
       'כל חמשת השלבים מבוצעים על ידי יועץ מלווה',
-      'גישה לפלטפורמה ללא תשלום חודשי נוסף',
+      'גישה מלאה לפלטפורמה ללא תשלום נוסף, עד לסיום התהליך',
       'ניהול מלא של מכרז הריביות מול כל הבנקים',
       'ליווי אישי לפגישת החתימות בבנק',
       'שקיפות מלאה — רואים כל צעד שהיועץ מבצע',
@@ -104,27 +94,24 @@ export const pricingPlans: PricingPlan[] = [
 export type ComparisonRow = {
   capability: string;
   self: boolean | string;
-  hybrid: boolean | string;
   full: boolean | string;
 };
 
 export const comparisonRows: ComparisonRow[] = [
-  { capability: 'כלים, מחשבונים וסימולציות', self: true, hybrid: true, full: true },
-  { capability: 'בניית תמהיל ולוח סילוקין מלא', self: true, hybrid: true, full: true },
-  { capability: 'תיק מסמכים דיגיטלי ומעקב שלבים', self: true, hybrid: true, full: true },
-  { capability: 'מעקב אחרי המשכנתא לאחר החתימה', self: true, hybrid: true, full: true },
-  { capability: 'ניתוח חיתומי מקדים על ידי יועץ', self: false, hybrid: 'לפי בחירה', full: true },
-  { capability: 'בניית תמהיל על ידי יועץ', self: false, hybrid: 'לפי בחירה', full: true },
-  { capability: 'הגשה מקבילה למספר בנקים', self: 'עצמאית', hybrid: 'לפי בחירה', full: true },
-  { capability: 'ניהול מכרז ריביות מול הבנקים', self: false, hybrid: 'לפי בחירה', full: true },
-  { capability: 'ליווי אישי לפגישת החתימות', self: false, hybrid: 'לפי בחירה', full: true },
-  { capability: 'השוואה בין ברירת המחדל לתוצר היועץ', self: false, hybrid: true, full: true },
-  { capability: 'גישה לפלטפורמה כלולה במחיר', self: 'זה המחיר', hybrid: true, full: true },
-  { capability: 'קיזוז מה ששולם על הפלטפורמה', self: 'כשמצטרפים ליווי', hybrid: true, full: true },
+  { capability: 'כלים, מחשבונים וסימולציות', self: true, full: true },
+  { capability: 'בניית תמהיל ולוח סילוקין מלא', self: true, full: true },
+  { capability: 'תיק מסמכים דיגיטלי ומעקב שלבים', self: true, full: true },
+  { capability: 'מעקב אחרי המשכנתא לאחר החתימה', self: true, full: true },
+  { capability: 'ניתוח חיתומי מקדים על ידי יועץ', self: 'בכל שלב שתבחרו', full: true },
+  { capability: 'בניית תמהיל על ידי יועץ', self: 'בכל שלב שתבחרו', full: true },
+  { capability: 'הגשה מקבילה למספר בנקים', self: 'עצמאית או עם יועץ', full: true },
+  { capability: 'ניהול מכרז ריביות מול הבנקים', self: 'בכל שלב שתבחרו', full: true },
+  { capability: 'ליווי אישי לפגישת החתימות', self: 'בכל שלב שתבחרו', full: true },
+  { capability: 'השוואה בין ברירת המחדל לתוצר היועץ', self: true, full: true },
+  { capability: 'קיזוז מה ששולם על הפלטפורמה', self: 'כשמצרפים יועץ', full: true },
   {
     capability: 'עלות',
-    self: `₪${PLATFORM_MONTHLY_PRICE} לחודש`,
-    hybrid: 'לפי שלב · הנמוך מבין האופציות',
+    self: `₪${PLATFORM_PROCESS_PRICE} לתהליך · ${PLATFORM_ACCESS_DAYS} יום`,
     full: `₪${FULL_SERVICE_PRICE.toLocaleString('he-IL')}`,
   },
 ];
@@ -133,12 +120,12 @@ export const pricingFaq: { question: string; answer: string }[] = [
   {
     question: 'מה קורה אם התחלתי לבד ובאמצע הבנתי שאני צריך יועץ?',
     answer:
-      `זה בדיוק המודל. כל שלב נרכש בנפרד ובכל רגע, גם אחרי שהתחלתם — ומה ששילמתם עד אז על הגישה לפלטפורמה (₪${PLATFORM_MONTHLY_PRICE} לחודש) מקוזז ממחיר הליווי. כל הנתונים שהזנתם עוברים ליועץ כמו שהם — הוא ממשיך מהנקודה שבה עצרתם ולא מתחילים מאפס.`,
+      `זה בדיוק המודל. בכל שלב יש כפתור "פנו ליועץ משכלנתא", והשלב עובר אליו — גם אחרי שהתחלתם. מה ששילמתם על הגישה לפלטפורמה (₪${PLATFORM_PROCESS_PRICE}) מקוזז ממחיר הליווי. כל הנתונים שהזנתם עוברים ליועץ כמו שהם — הוא ממשיך מהנקודה שבה עצרתם ולא מתחילים מאפס.`,
   },
   {
-    question: 'עד מתי משלמים על הגישה לפלטפורמה?',
+    question: 'כמה עולה הגישה לפלטפורמה ולכמה זמן?',
     answer:
-      `הגישה בסך ₪${PLATFORM_MONTHLY_PRICE} נגבית מדי חודש עד לסיום התהליך, וניתן להפסיק אותה בכל עת. בכל הזמנת ליווי — לשלב בודד, לכמה שלבים או ליווי מלא — הגישה המלאה לפלטפורמה כלולה במחיר ואין תשלום חודשי נוסף.`,
+      `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא אחד (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים ל-${PLATFORM_ACCESS_DAYS} יום. לא הספקתם? מחדשים לעוד ${PLATFORM_ACCESS_DAYS} יום באותו מחיר. תהליך נוסף, אחרי שהקודם הסתיים, נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
   },
   {
     question: 'איך נקבע המחיר כשמשלבים שלבים לבד ושלבים עם יועץ?',
@@ -158,7 +145,7 @@ export const pricingFaq: { question: string; answer: string }[] = [
   {
     question: 'האם יש התחייבות או דמי ביטול?',
     answer:
-      'אין התחייבות על המנוי החודשי. שלב שנרכש ולא בוצע מזוכה במלואו. שלב שהחל בביצוע מחויב יחסית לעבודה שכבר נעשתה.',
+      'אין מנוי ואין חיוב חוזר: משלמים פעם אחת על התהליך, ומחדשים רק אם צריך. שלב ליווי שנרכש ולא בוצע מזוכה במלואו. שלב שהחל בביצוע מחויב יחסית לעבודה שכבר נעשתה.',
   },
   {
     question: 'איך אני יודע שהריבית שהיועץ השיג באמת טובה?',

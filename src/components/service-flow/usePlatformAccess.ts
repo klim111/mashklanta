@@ -1,24 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 
 export interface PlatformAccess {
+  /** יש גישה פנויה לפתיחת תהליך משכנתא — שולם ועוד לא נקשר לתהליך */
   active: boolean;
   since: string | null;
-  monthsPaid: number;
-  monthlyPrice: number;
+  /** מה ששולם על הגישה הפנויה — מקוזז אם יוזמן ליווי */
+  paid: number;
+  price: number;
+  accessDays: number;
+  passExpiresAt: string | null;
 }
 
 const NO_ACCESS: PlatformAccess = {
   active: false,
   since: null,
-  monthsPaid: 0,
-  monthlyPrice: PLATFORM_MONTHLY_PRICE,
+  paid: 0,
+  price: PLATFORM_PROCESS_PRICE,
+  accessDays: PLATFORM_ACCESS_DAYS,
+  passExpiresAt: null,
 };
 
 /**
- * האם למשתמש המחובר יש גישה מלאה לפלטפורמה.
+ * האם למשתמש המחובר יש גישה פנויה לפתיחת תהליך משכנתא.
  *
  * נקרא מהשרת ולא מה-session, כי הרכישה מתבצעת באמצע ההתחברות והטוקן לא
  * מתעדכן — בסיס הנתונים הוא מקור האמת היחיד לשאלה "שילם או לא".
@@ -35,8 +41,10 @@ export function usePlatformAccess() {
       setAccess({
         active: Boolean(body.active),
         since: typeof body.since === 'string' ? body.since : null,
-        monthsPaid: typeof body.monthsPaid === 'number' ? body.monthsPaid : 0,
-        monthlyPrice: typeof body.monthlyPrice === 'number' ? body.monthlyPrice : PLATFORM_MONTHLY_PRICE,
+        paid: typeof body.paid === 'number' ? body.paid : 0,
+        price: typeof body.price === 'number' ? body.price : PLATFORM_PROCESS_PRICE,
+        accessDays: typeof body.accessDays === 'number' ? body.accessDays : PLATFORM_ACCESS_DAYS,
+        passExpiresAt: typeof body.passExpiresAt === 'string' ? body.passExpiresAt : null,
       });
     } catch {
       setAccess(NO_ACCESS);

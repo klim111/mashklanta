@@ -14,7 +14,7 @@ import { HeroScreenShowcase } from '@/components/home/HeroScreenShowcase';
 import { PlatformDemoSection } from '@/components/home/PlatformDemoSection';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
-import { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
 import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
 import { demoId } from '@/demo/demo-attr';
@@ -275,21 +275,18 @@ export default function Home() {
               משלמים על מה שלקחתם — ותמיד את המחיר הנמוך
             </h2>
             <p className="mx-auto max-w-2xl text-base text-slate-100 md:text-lg">
-              גישה לפלטפורמה ב-₪{PLATFORM_MONTHLY_PRICE} לחודש. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
+              גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
               המלאה כלולה בכל הזמנת ליווי — לשלב אחד או לכל הדרך.
             </p>
           </div>
-          <div className="mb-8 grid gap-5 md:grid-cols-3">
-            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
-              <div className="text-sm font-bold text-cyan-200">מסלול עצמאי</div>
-              <div className="my-2 text-4xl font-black text-white">₪{PLATFORM_MONTHLY_PRICE}</div>
-              <div className="text-sm text-slate-100">לחודש, עד לסיום התהליך — כל השלבים והכלים פתוחים</div>
-            </Link>
-            <Link href="/pricing#builder" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 sm:p-7 md:text-right">
+          <div className="mx-auto mb-8 grid max-w-4xl gap-5 md:grid-cols-2">
+            <Link href="/pricing" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 sm:p-7 md:text-right">
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-500 px-3 py-0.5 text-[11px] font-black text-white">הכי נבחר</span>
-              <div className="text-sm font-bold text-violet-200">ליווי משולב</div>
-              <div className="my-2 text-4xl font-black text-white">לפי שלב</div>
-              <div className="text-sm text-slate-100">עוזרים בשלבים שתבחרו — הגישה לפלטפורמה כלולה</div>
+              <div className="text-sm font-bold text-cyan-200">עצמאי / היברידי</div>
+              <div className="my-2 text-4xl font-black text-white">₪{PLATFORM_PROCESS_PRICE}</div>
+              <div className="text-sm text-slate-100">
+                לתהליך משכנתא, {PLATFORM_ACCESS_DAYS} יום גישה מלאה. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים ליועץ משכלנתא
+              </div>
             </Link>
             <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
               <div className="text-sm font-bold text-amber-200">ליווי מלא</div>

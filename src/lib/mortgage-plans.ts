@@ -3,6 +3,7 @@ import { prisma } from './db';
 import {
   PLAN_STAGES,
   analysisFromPlanning,
+  flowStages,
   emptyPlanData,
   nextPlanStage,
   parseRefinanceMixData,
@@ -25,6 +26,8 @@ import type {
   RefinanceMode,
 } from './mortgage-plan';
 import { saveMix } from './mixes';
+import { openPass, processAccess, processLocked } from './process-access';
+import type { ProcessAccess } from './process-access';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { decryptFinancials } from './client-financials';
@@ -60,6 +63,9 @@ const planSelect = {
   createdAt: true,
   updatedAt: true,
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
+  platformPayments: { select: { createdAt: true, amountAgorot: true } },
+  advisorOrders: { select: { status: true } },
+  owner: { select: { role: true, platformAccessAt: true } },
 } satisfies Prisma.MortgagePlanSelect;
 
 type PlanRow = Prisma.MortgagePlanGetPayload<{ select: typeof planSelect }>;
@@ -91,6 +97,20 @@ export interface PlanView {
   stages: PlanStageView[];
   /** נתוני כל השלבים יחד, כפי שהטפסים והחישובים צורכים אותם */
   data: PlanData;
+  /** הגישה לכלים בתהליך: 35 יום מכל תשלום, ללא הגבלה בליווי ששולם */
+  access: ProcessAccess;
+}
+
+function accessOf(row: PlanRow): ProcessAccess {
+  return processAccess({
+    planStatus: row.status,
+    planCreatedAt: row.createdAt,
+    payments: row.platformPayments,
+    // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ)
+    hasPaidAdvisory: row.clientId !== null || row.advisorOrders.some((order) => order.status === 'PAID'),
+    ownerIsAdvisor: row.owner.role === 'ADVISOR',
+    ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
+  });
 }
 
 /**
@@ -138,6 +158,7 @@ function toView(row: PlanRow): PlanView {
       };
     }),
     data,
+    access: accessOf(row),
   };
 }
 
@@ -233,8 +254,33 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
     select: planSelect,
   });
 
+  await bindOpenPass(userId, row.id);
   await refreshPlan(row.id);
   return (await getPlanForUser(userId, row.id)) ?? toView(row);
+}
+
+/**
+ * קשירת תשלום פנוי לתהליך שנפתח עכשיו. כל תשלום פותח תהליך אחד, ולכן תהליך
+ * שנפתח בלי תשלום פנוי נשאר בלי גישה עד שישולם עליו.
+ */
+async function bindOpenPass(userId: string, planId: string): Promise<void> {
+  const unbound = await prisma.platformPayment.findMany({
+    where: { userId, planId: null, status: 'PAID' },
+    select: { id: true, createdAt: true },
+  });
+  const pass = openPass(unbound);
+  if (!pass) return;
+  await prisma.platformPayment.update({ where: { id: pass.id }, data: { planId } });
+}
+
+/**
+ * האם הכלים בתהליך נעולים בפני המשתמש: עברו 35 יום מהתשלום האחרון, או
+ * שהתהליך נפתח בלי תשלום. יועץ שמלווה את הלקוח אינו ננעל לעולם.
+ */
+export async function planLockedFor(userId: string, planId: string): Promise<boolean> {
+  const row = await prisma.mortgagePlan.findUnique({ where: { id: planId }, select: planSelect });
+  if (!row || row.ownerId !== userId) return false;
+  return processLocked(accessOf(row));
 }
 
 function money(value: number | null): string {
@@ -692,8 +738,46 @@ export async function createRefinancePlan(
     data: { dataJson: mix as unknown as Prisma.InputJsonValue },
   });
 
+  await bindOpenPass(userId, row.id);
   await refreshPlan(row.id);
   return getPlanForUser(userId, row.id);
+}
+
+/**
+ * "חתמתי על המשכנתא בבנק" — סיום התהליך.
+ *
+ * נקרא מהשלב האחרון של התהליך, אחרי שכל הבדיקות בו סומנו. השלב נסגר, והתהליך
+ * מסומן כמשכנתא שהתהליך שלה הסתיים — גם אם שלב קודם נשאר פתוח, כי החתימה
+ * בבנק היא הסוף בפועל. מכאן תהליך נוסף דורש תשלום נפרד.
+ */
+export async function markPlanSigned(
+  userId: string,
+  planId: string
+): Promise<{ ok: true; plan: PlanView } | { ok: false; reason: 'not_found' | 'incomplete' }> {
+  const row = await prisma.mortgagePlan.findFirst({
+    where: { id: planId, ownerId: userId },
+    select: { id: true },
+  });
+  if (!row) return { ok: false, reason: 'not_found' };
+
+  const data = await loadData(planId);
+  const stages = flowStages(planFlowOf(data));
+  const last = stages[stages.length - 1];
+  if (!stageIsComplete(last, data)) return { ok: false, reason: 'incomplete' };
+
+  const now = new Date();
+  await prisma.mortgagePlanStage.updateMany({
+    where: { planId, stage: last, status: { not: 'COMPLETED' } },
+    data: { status: 'COMPLETED', completedAt: now },
+  });
+  await refreshPlan(planId);
+  await prisma.mortgagePlan.update({
+    where: { id: planId },
+    data: { status: 'COMPLETED', completedAt: now, progress: 100, currentStage: last },
+  });
+
+  const plan = await getPlanForUser(userId, planId);
+  return plan ? { ok: true, plan } : { ok: false, reason: 'not_found' };
 }
 
 /**
@@ -722,18 +806,24 @@ async function refreshPlan(planId: string): Promise<void> {
 
   const progress = planProgress(statuses, planFlowOf(data));
   const snapshot = planSnapshot(data);
-  const done = progress === 100;
+  const current = await prisma.mortgagePlan.findUnique({
+    where: { id: planId },
+    select: { status: true, completedAt: true },
+  });
+  // תהליך שהסתיים בחתימה נשאר מסומן כמושלם, גם כשעורכים בו משהו אחר כך
+  const signed = current?.status === 'COMPLETED';
+  const done = signed || progress === 100;
 
   await prisma.mortgagePlan.update({
     where: { id: planId },
     data: {
-      progress,
+      progress: signed ? 100 : progress,
       propertyValue: snapshot.propertyValue,
       propertyAddress: snapshot.propertyAddress,
       mortgageAmount: snapshot.mortgageAmount,
       monthlyPayment: snapshot.monthlyPayment,
       status: done ? 'COMPLETED' : 'IN_PROGRESS',
-      completedAt: done ? new Date() : null,
+      completedAt: done ? (current?.completedAt ?? new Date()) : null,
     },
   });
 }

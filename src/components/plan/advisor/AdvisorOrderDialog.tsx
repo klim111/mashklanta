@@ -29,7 +29,7 @@ import {
   toggleStage,
 } from '@/lib/advisor-orders';
 import type { AdvisorOrder } from '@/lib/advisor-orders';
-import { PLATFORM_MONTHLY_PRICE } from '@/data/platform/pricing';
+import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
 import type { PaymentDetails } from './useAdvisorOrders';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
@@ -92,7 +92,7 @@ export function AdvisorOrderDialog({
   }, [open, stage]);
 
   const { access } = usePlatformAccess();
-  const platformCredit = access.monthsPaid * access.monthlyPrice;
+  const platformCredit = access.paid;
   const quote = useMemo(() => quoteOrder(selected, platformCredit), [selected, platformCredit]);
 
   const digits = cardNumber.replace(/\D/g, '');
@@ -283,7 +283,7 @@ export function AdvisorOrderDialog({
                   </span>
                 )}
                 <span className="mr-2 text-[11px] text-slate-500">
-                  כולל גישה מלאה לפלטפורמה ({formatOrderPrice(PLATFORM_MONTHLY_PRICE)} לחודש) ללא
+                  כולל גישה מלאה לפלטפורמה ({formatOrderPrice(PLATFORM_PROCESS_PRICE)} ל-{PLATFORM_ACCESS_DAYS} יום) ללא
                   תוספת
                 </span>
               </div>

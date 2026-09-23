@@ -22,7 +22,7 @@ import {
   demoPlanData,
   demoSavedMix,
 } from '@/lib/demo-plan';
-import { PLATFORM_MONTHLY_PRICE } from '@/lib/service-flow';
+import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 
 export { DEMO_PLAN_ID, DEMO_ADDRESS, DEMO_MORTGAGE, DEMO_PROPERTY_VALUE };
 
@@ -220,7 +220,9 @@ export function demoPlatformAccess() {
   return {
     active: true,
     since: daysFromNow(-20),
-    monthsPaid: 1,
-    monthlyPrice: PLATFORM_MONTHLY_PRICE,
+    paid: PLATFORM_PROCESS_PRICE,
+    price: PLATFORM_PROCESS_PRICE,
+    accessDays: PLATFORM_ACCESS_DAYS,
+    passExpiresAt: daysFromNow(15),
   };
 }

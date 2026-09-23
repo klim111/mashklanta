@@ -5,7 +5,7 @@ import { PLAN_STAGES } from './mortgage-plan';
 import type { AdvisorOrder, AdvisorOrderStatus } from './advisor-orders';
 import type { PlanStageId } from './mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
-import { PLATFORM_MONTHLY_PRICE, platformMonthsSince } from './service-flow';
+import { PLATFORM_PROCESS_PRICE, platformMonthsSince } from './service-flow';
 
 /**
  * שכבת הגישה להזמנות הליווי.
@@ -89,12 +89,20 @@ export async function createOrder(
   const plan = await planForUser(userId, planId);
   if (!plan) return null;
 
-  // חודשי הגישה לפלטפורמה שכבר שולמו מקוזזים ממחיר הליווי
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { platformAccessAt: true },
+  // מה ששולם על הגישה לתהליך הזה מקוזז ממחיר הליווי. מנוי חודשי מלפני
+  // המעבר לתשלום לתהליך — לפי מספר החודשים ששולמו
+  const payments = await prisma.platformPayment.aggregate({
+    where: { planId, userId, status: 'PAID' },
+    _sum: { amountAgorot: true },
   });
-  const credit = platformMonthsSince(user?.platformAccessAt) * PLATFORM_MONTHLY_PRICE;
+  let credit = (payments._sum.amountAgorot ?? 0) / 100;
+  if (credit === 0) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { platformAccessAt: true },
+    });
+    credit = platformMonthsSince(user?.platformAccessAt) * PLATFORM_PROCESS_PRICE;
+  }
   const quote = quoteOrder(stages, credit);
   if (quote.stages.length === 0) return null;
 

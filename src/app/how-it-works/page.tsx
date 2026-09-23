@@ -30,7 +30,7 @@ import { journeyStages } from '@/data/platform/journey';
 import { platformTools } from '@/data/platform/tools';
 import {
   FULL_SERVICE_PRICE,
-  PLATFORM_MONTHLY_PRICE,
+  PLATFORM_PROCESS_PRICE,
   pricingPlans,
 } from '@/data/platform/pricing';
 import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
@@ -218,7 +218,7 @@ export default function HowItWorksPage() {
             {[
               { value: journeyStages.length, suffix: '', label: 'שלבים לבחירה' },
               { value: platformTools.length, suffix: '', label: 'כלים בפלטפורמה' },
-              { value: PLATFORM_MONTHLY_PRICE, prefix: '₪', label: 'לחודש — גישה מלאה לפלטפורמה' },
+              { value: PLATFORM_PROCESS_PRICE, prefix: '₪', label: 'לתהליך משכנתא — גישה מלאה לפלטפורמה' },
               { value: FULL_SERVICE_PRICE, prefix: '₪', label: 'ליווי מלא מקצה לקצה' },
             ].map((stat, i) => (
               <motion.div
@@ -426,7 +426,7 @@ export default function HowItWorksPage() {
             <FlexibilityMixer />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
             {pricingPlans.map((plan, i) => {
               const Icon = plan.icon;
               return (

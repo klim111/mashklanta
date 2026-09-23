@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLAN_STAGES } from './mortgage-plan';
 import type { PlanStageId } from './mortgage-plan';
-import { FULL_SERVICE_PRICE, PLATFORM_MONTHLY_PRICE } from '@/data/platform/pricing';
+import { FULL_SERVICE_PRICE, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
 import {
   ADVISOR_STAGE_PRICE,
   ALL_STAGES_PRICE,
@@ -67,7 +67,7 @@ describe('מחיר ההזמנה', () => {
   });
 
   it('כל הזמנה כוללת את הגישה לפלטפורמה', () => {
-    expect(quoteOrder(['SIGNING']).platformMonthlyIncluded).toBe(PLATFORM_MONTHLY_PRICE);
+    expect(quoteOrder(['SIGNING']).platformMonthlyIncluded).toBe(PLATFORM_PROCESS_PRICE);
     expect(quoteOrder([]).platformMonthlyIncluded).toBe(0);
     expect(quoteOrder([]).total).toBe(0);
   });

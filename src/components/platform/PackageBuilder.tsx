@@ -7,7 +7,7 @@ import { Check, Coins, PartyPopper, Receipt, Scale, Sparkles, Wand2 } from 'luci
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
-import { PLATFORM_MONTHLY_PRICE } from '@/data/platform/pricing';
+import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
 import { quoteAdvisory } from '@/lib/service-flow';
 import AnimatedNumber from './AnimatedNumber';
 
@@ -19,9 +19,10 @@ const presets: { id: string; label: string; stages: string[] }[] = [
 
 export default function PackageBuilder() {
   const [selected, setSelected] = useState<string[]>(['mix', 'auction']);
-  const [months, setMonths] = useState(4);
-  /** חודשי גישה לפלטפורמה שכבר שולמו לפני שמזמינים ליווי — מקוזזים מהמחיר */
-  const [paidMonths, setPaidMonths] = useState(0);
+  /** כמה תקופות גישה (35 יום כל אחת) התהליך צפוי לקחת במסלול העצמאי */
+  const [periods, setPeriods] = useState(2);
+  /** תקופות גישה שכבר שולמו לפני שמזמינים ליווי — מקוזזות מהמחיר */
+  const [paidPeriods, setPaidPeriods] = useState(0);
 
   const toggle = (id: string) =>
     setSelected((prev) =>
@@ -32,10 +33,10 @@ export default function PackageBuilder() {
 
   const { advisorCost, platformCost, total, isFullBundle, rawStagesCost, credit, bundleApplied } =
     useMemo(() => {
-      const quote = quoteAdvisory({ stageIds: selected, platformMonthsPaid: paidMonths });
+      const quote = quoteAdvisory({ stageIds: selected, platformPaid: paidPeriods * PLATFORM_PROCESS_PRICE });
       const isFullBundle = selected.length === journeyStages.length;
-      // כל הזמנת ליווי כוללת גישה לפלטפורמה; רק במסלול העצמאי משלמים עליה לפי חודשים
-      const platformCost = withAdvisor ? 0 : months * PLATFORM_MONTHLY_PRICE;
+      // כל הזמנת ליווי כוללת גישה לפלטפורמה; רק במסלול העצמאי משלמים עליה, לכל תקופת גישה
+      const platformCost = withAdvisor ? 0 : periods * PLATFORM_PROCESS_PRICE;
       return {
         rawStagesCost: quote.stagesPrice,
         advisorCost: quote.advisoryPrice,
@@ -45,7 +46,7 @@ export default function PackageBuilder() {
         total: withAdvisor ? quote.total : platformCost,
         isFullBundle,
       };
-    }, [selected, months, paidMonths, withAdvisor]);
+    }, [selected, periods, paidPeriods, withAdvisor]);
 
   const activePreset = presets.find(
     (p) =>
@@ -140,7 +141,7 @@ export default function PackageBuilder() {
           })}
         </div>
 
-        {/* Months slider */}
+        {/* Access periods slider */}
         <div
           className={`mt-6 rounded-2xl border-2 p-5 transition-all ${
             withAdvisor ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'
@@ -150,7 +151,7 @@ export default function PackageBuilder() {
             <div>
               <div className="font-bold text-gray-900">גישה לפלטפורמה</div>
               <div className="text-sm text-gray-700">
-                ₪{PLATFORM_MONTHLY_PRICE} לחודש, עד לסיום התהליך
+                ₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, ל-{PLATFORM_ACCESS_DAYS} יום. אפשר לחדש באותו מחיר
               </div>
             </div>
             <div className="text-left">
@@ -159,23 +160,23 @@ export default function PackageBuilder() {
                   כלול בכל ליווי
                 </span>
               ) : (
-                <span className="text-lg font-black text-gray-900">{months} חודשים</span>
+                <span className="text-lg font-black text-gray-900">{periods * PLATFORM_ACCESS_DAYS} יום</span>
               )}
             </div>
           </div>
           {!withAdvisor && (
             <>
               <Slider
-                value={[months]}
-                onValueChange={([v]) => setMonths(v)}
+                value={[periods]}
+                onValueChange={([v]) => setPeriods(v)}
                 min={1}
-                max={12}
+                max={6}
                 step={1}
-                aria-label="מספר חודשי שימוש בפלטפורמה"
+                aria-label="כמה זמן ייקח התהליך"
               />
               <div className="mt-2 flex justify-between text-xs text-gray-600">
-                <span>12 חודשים</span>
-                <span>חודש אחד</span>
+                <span>{6 * PLATFORM_ACCESS_DAYS} יום</span>
+                <span>{PLATFORM_ACCESS_DAYS} יום</span>
               </div>
             </>
           )}
@@ -191,23 +192,23 @@ export default function PackageBuilder() {
                   כבר שילמתם על הגישה לפלטפורמה?
                 </div>
                 <div className="text-sm text-gray-700">
-                  התחלתם לבד ועכשיו מזמינים ליווי — כל חודש ששולם מקוזז מהמחיר
+                  התחלתם לבד ועכשיו מזמינים ליווי — כל תשלום על הגישה מקוזז מהמחיר
                 </div>
               </div>
               <span className="text-lg font-black text-gray-900">
-                {paidMonths === 0 ? 'עדיין לא' : `${paidMonths} חודשים`}
+                {paidPeriods === 0 ? 'עדיין לא' : `₪${paidPeriods * PLATFORM_PROCESS_PRICE}`}
               </span>
             </div>
             <Slider
-              value={[paidMonths]}
-              onValueChange={([v]) => setPaidMonths(v)}
+              value={[paidPeriods]}
+              onValueChange={([v]) => setPaidPeriods(v)}
               min={0}
-              max={12}
+              max={6}
               step={1}
-              aria-label="חודשי גישה לפלטפורמה ששולמו"
+              aria-label="תשלומי גישה לפלטפורמה ששולמו"
             />
             <div className="mt-2 flex justify-between text-xs text-gray-600">
-              <span>12 חודשים</span>
+              <span>₪{6 * PLATFORM_PROCESS_PRICE}</span>
               <span>0</span>
             </div>
           </div>
@@ -248,7 +249,7 @@ export default function PackageBuilder() {
 
             <div className="flex items-baseline justify-between text-sm">
               <span className="text-gray-600">
-                גישה לפלטפורמה{withAdvisor ? '' : ` × ${months} חודשים`}
+                גישה לפלטפורמה{withAdvisor ? '' : ` · ${periods * PLATFORM_ACCESS_DAYS} יום`}
               </span>
               <span className="font-bold text-gray-900">
                 {withAdvisor ? 'כלולה' : `₪${platformCost.toLocaleString('he-IL')}`}
@@ -257,7 +258,7 @@ export default function PackageBuilder() {
 
             {credit > 0 && (
               <div className="flex items-baseline justify-between text-sm">
-                <span className="text-gray-600">קיזוז גישה ששולמה ({paidMonths} חודשים)</span>
+                <span className="text-gray-600">קיזוז גישה ששולמה</span>
                 <span className="font-bold text-emerald-700">−₪{credit.toLocaleString('he-IL')}</span>
               </div>
             )}
