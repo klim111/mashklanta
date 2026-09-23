@@ -888,7 +888,10 @@ function PrerequisiteNotice({
     <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3">
       <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
       <p className="min-w-0 flex-1 text-info leading-relaxed text-amber-950">
-        <span className="font-black">השלימו מילוי פרטים בשלב {names}.</span> עד אז השדות שנשענים
+        <span className="font-black">
+          השלימו מילוי פרטים {stages.length > 1 ? 'בשלבים' : 'בשלב'} {names}.
+        </span>{' '}
+        עד אז השדות שנשענים
         עליהם מוצגים כאן ריקים — אבל אפשר לעבוד בשלב הזה כבר עכשיו.
       </p>
       <div className="flex flex-wrap gap-2">
