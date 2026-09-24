@@ -198,13 +198,15 @@ export function trimQuotedReply(text: string): string {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   const markers = [
     /^On .+ wrote:\s*$/i,
-    /^בתאריך .+(כתב|כתבה|נכתב).*:\s*$/,
+    /^בתאריך .+(כתב|כתבה|נכתב|מאת).*:\s*$/,
     /^-{2,}\s*Original Message\s*-{2,}/i,
     /^-{2,}\s*הודעה מקורית\s*-{2,}/,
     /^From: .+/i,
     /^מאת: .+/,
   ];
-  const cut = lines.findIndex((line) => markers.some((pattern) => pattern.test(line.trim())));
+  // ג'ימייל בעברית עוטף את שורת הציטוט בתווי כיווניות, שמסתירים ממנה את ההתחלה
+  const plain = (line: string) => line.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
+  const cut = lines.findIndex((line) => markers.some((pattern) => pattern.test(plain(line))));
   const kept = (cut > 0 ? lines.slice(0, cut) : lines).filter((line) => !line.startsWith('>'));
   const result = kept.join('\n').trim();
   return result || text.trim();

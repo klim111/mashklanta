@@ -407,12 +407,54 @@ function toEmailView(row: EmailRow, viewer: ConversationRole): ConversationEmail
 }
 
 /** המיילים של השיחה, מהחדש לישן. `unread` נשאר כפי שהיה לפני הפתיחה, כדי שיודגש פעם אחת */
+const NO_TEXT = '(המייל הגיע בלי תוכן טקסט)';
+
+function inboundText(body: string): string {
+  return trimQuotedReply(body || NO_TEXT).slice(0, MAX_EMAIL_LENGTH);
+}
+
+/**
+ * גוף המייל הנכנס מ-Resend — ה-webhook מביא רק את פרטי המעטפה. `null` כשלא
+ * הצליח; הסיבה נכתבת ללוג, כי מפתח API עם הרשאת שליחה בלבד נכשל כאן בשקט.
+ */
+async function fetchInboundText(emailId: string): Promise<string | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error('[conversation] inbound email body: RESEND_API_KEY is not set');
+    return null;
+  }
+  const resend = new Resend(apiKey);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await resend.emails.receiving.get(emailId);
+    if (data) return data.text?.trim() || (data.html ? htmlToText(data.html) : '');
+    console.error(`[conversation] inbound email body ${emailId}: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`);
+    // רק "לא נמצא" שווה ניסיון נוסף — מייל שהתקבל הרגע עוד בעיבוד
+    if (error?.name !== 'not_found') break;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+  return null;
+}
+
+/** מיילים נכנסים שהתוכן שלהם לא נטען כשהגיעו — ניסיון נוסף, כמה בכל פעם */
+async function backfillInboundText(rows: { id: string; direction: string; text: string; providerId: string | null }[]) {
+  const missing = rows
+    .filter((row) => row.direction === 'INBOUND' && (row.text === '' || row.text === NO_TEXT) && row.providerId?.startsWith('in:'))
+    .slice(0, 3);
+  for (const row of missing) {
+    const body = await fetchInboundText(row.providerId!.slice(3));
+    if (body === null) continue;
+    row.text = inboundText(body);
+    await prisma.conversationEmail.update({ where: { id: row.id }, data: { text: row.text } });
+  }
+}
+
 export async function listConversationEmails(access: ConversationAccess): Promise<ConversationEmailView[]> {
   const rows = await prisma.conversationEmail.findMany({
     where: { clientUserId: access.clientUserId },
     orderBy: { createdAt: 'desc' },
     take: 200,
   });
+  await backfillInboundText(rows);
   const views = rows.map((row) => toEmailView(row, access.viewerRole));
   if (views.some((view) => view.unread)) {
     await prisma.conversationEmail.updateMany({
@@ -543,12 +585,9 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
   const existing = await prisma.conversationEmail.findUnique({ where: { providerId }, select: { id: true } });
   if (existing) return 'skipped';
 
-  let text = '';
-  const apiKey = process.env.RESEND_API_KEY;
-  if (apiKey) {
-    const { data } = await new Resend(apiKey).emails.receiving.get(event.emailId);
-    text = data?.text?.trim() || (data?.html ? htmlToText(data.html) : '');
-  }
+  // כשהתוכן לא נטען (מפתח בלי הרשאה, או ש-Resend עוד לא סיים לעבד), המייל נשמר
+  // בלי תוכן ונטען שוב כשפותחים את טאב המיילים
+  const body = await fetchInboundText(event.emailId);
 
   const contacts = await conversationContacts(owner.id);
   const from = parseAddress(event.from);
@@ -567,7 +606,7 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
       toAddresses: visible(event.to),
       ccAddresses: visible(event.cc),
       subject: cleanSubject(event.subject) || '(ללא נושא)',
-      text: trimQuotedReply(text || '(המייל הגיע בלי תוכן טקסט)').slice(0, MAX_EMAIL_LENGTH),
+      text: body === null ? '' : inboundText(body),
       bank: bankFor([event.from], contacts),
       providerId,
       messageId: event.messageId,

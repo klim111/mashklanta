@@ -97,6 +97,11 @@ describe('content', () => {
     expect(trimQuotedReply(text)).toBe('תודה, קיבלתי.');
   });
 
+  it('cuts a Hebrew Gmail quote header wrapped in direction marks', () => {
+    const text = 'מעולה, תודה\n\n\u202bבתאריך יום ה׳, 24 בספט׳ 2026 ב-7:40 מאת \u202aIgor\u202c\u200f <\u202ax@gmail.com\u202c\u200f>:\u202c\n> שלום';
+    expect(trimQuotedReply(text)).toBe('מעולה, תודה');
+  });
+
   it('keeps a forwarded bank email whole', () => {
     const text = 'מצורף\n---------- Forwarded message ---------\nFrom: Bank <x@bank.co.il>\nהאישור שלכם';
     expect(trimQuotedReply(text)).toBe(text);

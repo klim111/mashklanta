@@ -8,6 +8,8 @@ import { useConversationEmails } from './useConversation';
 import type { EmailDraft } from './useConversation';
 import { accentFor } from './ConversationWindow';
 
+const PENDING_TEXT = 'תוכן המייל עוד נטען…';
+
 const WHEN = new Intl.DateTimeFormat('he-IL', {
   day: 'numeric',
   month: 'short',
@@ -214,7 +216,7 @@ function EmailCard({
         <p className={`mt-1 truncate text-sm ${email.unread ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>
           {email.subject}
         </p>
-        {!open && <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{email.text}</p>}
+        {!open && <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{email.text || PENDING_TEXT}</p>}
       </button>
 
       {open && (
@@ -223,7 +225,7 @@ function EmailCard({
             מאת {from} · אל {to}
             {email.ccAddresses.length > 0 && ` · העתק: ${email.ccAddresses.map((address) => nameOf(address, contacts)).join(', ')}`}
           </p>
-          <p className="mt-2 whitespace-pre-wrap break-words text-info leading-relaxed text-slate-800">{email.text}</p>
+          <p className="mt-2 whitespace-pre-wrap break-words text-info leading-relaxed text-slate-800">{email.text || PENDING_TEXT}</p>
           <button
             type="button"
             onClick={onReply}
