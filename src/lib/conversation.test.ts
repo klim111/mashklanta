@@ -12,6 +12,8 @@ import {
   senderAddress,
   senderDisplayName,
   trimQuotedReply,
+  inboundAttachments,
+  storedAttachments,
 } from './conversation';
 import type { ConversationContact } from './conversation';
 
@@ -105,5 +107,26 @@ describe('content', () => {
   it('keeps a forwarded bank email whole', () => {
     const text = 'מצורף\n---------- Forwarded message ---------\nFrom: Bank <x@bank.co.il>\nהאישור שלכם';
     expect(trimQuotedReply(text)).toBe(text);
+  });
+});
+
+describe('attachments', () => {
+  it('keeps documents and drops images embedded in the email body', () => {
+    const list = inboundAttachments([
+      { id: 'a1', filename: 'אישור.pdf', size: 1000, content_type: 'application/pdf', content_id: null, content_disposition: 'attachment' },
+      { id: 'a2', filename: 'logo.png', size: 200, content_type: 'image/png', content_id: 'logo@x', content_disposition: 'inline' },
+      { id: 'a3', filename: null, size: 50, content_type: 'IMAGE/JPEG; name=x', content_id: null, content_disposition: 'attachment' },
+    ]);
+    expect(list).toEqual([
+      { id: 'a1', fileName: 'אישור.pdf', contentType: 'application/pdf', size: 1000 },
+      { id: 'a3', fileName: 'קובץ מצורף', contentType: 'image/jpeg', size: 50 },
+    ]);
+  });
+
+  it('reads only well-formed stored attachments', () => {
+    expect(storedAttachments(null)).toEqual([]);
+    expect(storedAttachments([{ id: 'a1', fileName: 'x.pdf', contentType: 'application/pdf', size: 3 }, { id: 5 }])).toEqual([
+      { id: 'a1', fileName: 'x.pdf', contentType: 'application/pdf', size: 3 },
+    ]);
   });
 });

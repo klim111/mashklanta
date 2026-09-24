@@ -51,6 +51,7 @@ import type { PlanView, SaveState } from './usePlan';
 import { PlanTour, TOUR_FREE_CHANGES, tourAllowsTry } from './PlanTour';
 import { StageTasksPanel } from './tasks/StageTasksPanel';
 import { VaultButton } from './documents/VaultButton';
+import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import { StageRail } from './StageRail';
 import { StageIntro } from './StageIntro';
@@ -864,8 +865,8 @@ export function PlanWorkspace({
       </main>
 
       {/*
-        הכפתורים הצפים של הפינה הימנית — תיק המסמכים למעלה והחזרה לדאשבורד
-        מתחתיו, בעמודה אחת. הפינה השמאלית שמורה לכפתור «פנו ליועץ» של השלב,
+        הכפתורים הצפים של הפינה הימנית — תיק המסמכים למעלה, ההתכתבות עם היועץ
+        והחזרה לדאשבורד מתחתיו, בעמודה אחת. הפינה השמאלית שמורה לכפתור «פנו ליועץ» של השלב,
         וכך השניים אינם עולים זה על זה.
       */}
       {/*
@@ -889,6 +890,8 @@ export function PlanWorkspace({
 
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5">
         {!tour && <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />}
+        {/* ההתכתבות עם היועץ — בין תיק המסמכים לחזרה לדאשבורד */}
+        {!tour && <ConversationDockSlot />}
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"

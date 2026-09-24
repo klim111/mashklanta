@@ -182,6 +182,55 @@ export async function recordPlanDocument(
 }
 
 /**
+ * שמירת קובץ שהגיע מהשרת עצמו — למשל קובץ שצורף למייל — בתיק של התהליך.
+ *
+ * כאן הקובץ לא עבר דרך הדפדפן, ולכן השרת כותב אותו ל-Blob בעצמו. מי שקורא
+ * לפונקציה כבר בדק שמותר לו; כאן נבדק רק שהתהליך שייך ללקוח ושהקובץ מסוג
+ * ובגודל שהתיק מקבל.
+ */
+export async function storeFileInPlan(
+  ownerId: string,
+  planId: string,
+  input: { key: string; name: string; fileName: string; contentType: string; bytes: Uint8Array }
+): Promise<PlanDocumentView | null> {
+  const plan = await prisma.mortgagePlan.findFirst({
+    where: { id: planId, ownerId },
+    select: { id: true, clientId: true },
+  });
+  if (!plan) return null;
+  if (!isAllowedDocumentType(input.contentType) || input.bytes.byteLength > MAX_DOCUMENT_BYTES) return null;
+
+  const safeKey = input.key.replace(/[^a-zA-Z0-9_-]/g, '-');
+  const blob = await put(`${planDocumentPrefix(planId)}${safeKey}`, Buffer.from(input.bytes), {
+    access: 'private',
+    contentType: input.contentType,
+    addRandomSuffix: true,
+  });
+
+  const existing = await prisma.planDocument.findUnique({
+    where: { planId_key: { planId, key: input.key } },
+    select: { id: true, blobPath: true },
+  });
+  const data = {
+    planId,
+    ownerId,
+    clientId: plan.clientId,
+    key: input.key,
+    name: input.name,
+    fileName: input.fileName,
+    contentType: input.contentType,
+    size: input.bytes.byteLength,
+    blobPath: blob.pathname,
+    uploadedAt: new Date(),
+  };
+  const row = existing
+    ? await prisma.planDocument.update({ where: { id: existing.id }, data, select: documentSelect })
+    : await prisma.planDocument.create({ data, select: documentSelect });
+  if (existing && existing.blobPath !== blob.pathname) await del(existing.blobPath).catch(() => undefined);
+  return toView(row);
+}
+
+/**
  * תרגום כשל לתשובה שאפשר לפעול לפיה.
  *
  * שני הכשלים הצפויים בפריסה חדשה הם טבלה שטרם נוצרה וטוקן אחסון שלא הוגדר,

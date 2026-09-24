@@ -1,6 +1,8 @@
 import { randomBytes } from 'crypto';
 import { Resend } from 'resend';
+import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
+import { MAX_DOCUMENT_BYTES, isAllowedDocumentType, storeFileInPlan } from './plan-documents';
 import { canonicalSiteOrigin } from './auth-url';
 import { sendEmail } from './email';
 import { parseStageData } from './mortgage-plan';
@@ -8,6 +10,9 @@ import {
   MAX_CHAT_LENGTH,
   MAX_EMAIL_LENGTH,
   allowedRecipients,
+  attachmentDocumentKey,
+  inboundAttachments,
+  storedAttachments,
   bankFor,
   bankerContacts,
   carbonCopies,
@@ -25,6 +30,8 @@ import {
 } from './conversation';
 import type {
   AdvisorInboxRow,
+  AttachmentFolder,
+  StoredAttachment,
   ChatMessageView,
   ConversationContact,
   ConversationEmailView,
@@ -384,12 +391,17 @@ type EmailRow = {
   subject: string;
   text: string;
   bank: string | null;
+  attachments: Prisma.JsonValue | null;
   createdAt: Date;
   readByClientAt: Date | null;
   readByAdvisorAt: Date | null;
 };
 
-function toEmailView(row: EmailRow, viewer: ConversationRole): ConversationEmailView {
+function toEmailView(
+  row: EmailRow,
+  viewer: ConversationRole,
+  saved: ReadonlyMap<string, string> = new Map()
+): ConversationEmailView {
   return {
     id: row.id,
     direction: row.direction,
@@ -403,10 +415,14 @@ function toEmailView(row: EmailRow, viewer: ConversationRole): ConversationEmail
     bank: row.bank,
     createdAt: row.createdAt.toISOString(),
     unread: viewer === 'CLIENT' ? !row.readByClientAt : !row.readByAdvisorAt,
+    attachments: storedAttachments(row.attachments).map((item) => ({
+      ...item,
+      savable: isAllowedDocumentType(item.contentType) && item.size <= MAX_DOCUMENT_BYTES,
+      savedToPlanId: saved.get(attachmentDocumentKey(item.id)) ?? null,
+    })),
   };
 }
 
-/** המיילים של השיחה, מהחדש לישן. `unread` נשאר כפי שהיה לפני הפתיחה, כדי שיודגש פעם אחת */
 const NO_TEXT = '(המייל הגיע בלי תוכן טקסט)';
 
 function inboundText(body: string): string {
@@ -414,10 +430,13 @@ function inboundText(body: string): string {
 }
 
 /**
- * גוף המייל הנכנס מ-Resend — ה-webhook מביא רק את פרטי המעטפה. `null` כשלא
- * הצליח; הסיבה נכתבת ללוג, כי מפתח API עם הרשאת שליחה בלבד נכשל כאן בשקט.
+ * גוף המייל הנכנס והקבצים שצורפו אליו, מ-Resend — ה-webhook מביא רק את פרטי
+ * המעטפה. `null` כשלא הצליח; הסיבה נכתבת ללוג, כי מפתח API עם הרשאת שליחה
+ * בלבד נכשל כאן בשקט.
  */
-async function fetchInboundText(emailId: string): Promise<string | null> {
+async function fetchInboundContent(
+  emailId: string
+): Promise<{ text: string; attachments: StoredAttachment[] } | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.error('[conversation] inbound email body: RESEND_API_KEY is not set');
@@ -426,7 +445,12 @@ async function fetchInboundText(emailId: string): Promise<string | null> {
   const resend = new Resend(apiKey);
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data, error } = await resend.emails.receiving.get(emailId);
-    if (data) return data.text?.trim() || (data.html ? htmlToText(data.html) : '');
+    if (data) {
+      return {
+        text: data.text?.trim() || (data.html ? htmlToText(data.html) : ''),
+        attachments: inboundAttachments(data.attachments ?? []),
+      };
+    }
     console.error(`[conversation] inbound email body ${emailId}: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`);
     // רק "לא נמצא" שווה ניסיון נוסף — מייל שהתקבל הרגע עוד בעיבוד
     if (error?.name !== 'not_found') break;
@@ -435,27 +459,53 @@ async function fetchInboundText(emailId: string): Promise<string | null> {
   return null;
 }
 
-/** מיילים נכנסים שהתוכן שלהם לא נטען כשהגיעו — ניסיון נוסף, כמה בכל פעם */
-async function backfillInboundText(rows: { id: string; direction: string; text: string; providerId: string | null }[]) {
+/**
+ * מיילים נכנסים שהתוכן שלהם לא נטען כשהגיעו — ניסיון נוסף, כמה בכל פעם.
+ * `attachments` ריק (null) במייל נכנס פירושו שהתוכן עוד לא נמשך.
+ */
+async function backfillInboundContent(rows: (EmailRow & { providerId: string | null })[]) {
   const missing = rows
-    .filter((row) => row.direction === 'INBOUND' && (row.text === '' || row.text === NO_TEXT) && row.providerId?.startsWith('in:'))
+    .filter(
+      (row) =>
+        row.direction === 'INBOUND' &&
+        row.providerId?.startsWith('in:') &&
+        (row.text === '' || row.text === NO_TEXT || row.attachments === null)
+    )
     .slice(0, 3);
   for (const row of missing) {
-    const body = await fetchInboundText(row.providerId!.slice(3));
-    if (body === null) continue;
-    row.text = inboundText(body);
-    await prisma.conversationEmail.update({ where: { id: row.id }, data: { text: row.text } });
+    const content = await fetchInboundContent(row.providerId!.slice(3));
+    if (!content) continue;
+    row.text = inboundText(content.text);
+    row.attachments = content.attachments as unknown as Prisma.JsonValue;
+    await prisma.conversationEmail.update({
+      where: { id: row.id },
+      data: { text: row.text, attachments: content.attachments as unknown as Prisma.InputJsonValue },
+    });
   }
 }
 
+/** הקבצים המצורפים שכבר נשמרו בתיק, לפי המפתח שלהם בתיק ← התהליך */
+async function savedAttachmentPlans(clientUserId: string, rows: EmailRow[]): Promise<Map<string, string>> {
+  const keys = rows.flatMap((row) => storedAttachments(row.attachments).map((item) => attachmentDocumentKey(item.id)));
+  if (keys.length === 0) return new Map();
+  const docs = await prisma.planDocument.findMany({
+    where: { ownerId: clientUserId, key: { in: keys } },
+    orderBy: { uploadedAt: 'asc' },
+    select: { key: true, planId: true },
+  });
+  return new Map(docs.map((doc) => [doc.key, doc.planId]));
+}
+
+/** המיילים של השיחה, מהחדש לישן. `unread` נשאר כפי שהיה לפני הפתיחה, כדי שיודגש פעם אחת */
 export async function listConversationEmails(access: ConversationAccess): Promise<ConversationEmailView[]> {
   const rows = await prisma.conversationEmail.findMany({
     where: { clientUserId: access.clientUserId },
     orderBy: { createdAt: 'desc' },
     take: 200,
   });
-  await backfillInboundText(rows);
-  const views = rows.map((row) => toEmailView(row, access.viewerRole));
+  await backfillInboundContent(rows);
+  const saved = await savedAttachmentPlans(access.clientUserId, rows);
+  const views = rows.map((row) => toEmailView(row, access.viewerRole, saved));
   if (views.some((view) => view.unread)) {
     await prisma.conversationEmail.updateMany({
       where: {
@@ -466,6 +516,110 @@ export async function listConversationEmails(access: ConversationAccess): Promis
     });
   }
   return views;
+}
+
+// ─────────────────────────── קבצים מצורפים ───────────────────────────
+
+/**
+ * תיקי המסמכים שאפשר לשמור אליהם קובץ מצורף: התהליכים הפתוחים של הלקוח.
+ * הלקוח שומר לתיק שלו; יועץ — רק כשהוא היועץ המלווה, לא כשהלקוח עוד לא שויך.
+ */
+export async function attachmentFolders(access: ConversationAccess): Promise<AttachmentFolder[]> {
+  const plans = await prisma.mortgagePlan.findMany({
+    where: {
+      ownerId: access.clientUserId,
+      status: 'IN_PROGRESS',
+      ...(access.viewerRole === 'ADVISOR' ? { client: { advisorId: access.viewerId } } : {}),
+    },
+    orderBy: { updatedAt: 'desc' },
+    select: { id: true, name: true },
+  });
+  return plans.map((plan) => ({ planId: plan.id, name: plan.name }));
+}
+
+async function attachmentOf(access: ConversationAccess, emailId: string, attachmentId: string) {
+  const row = await prisma.conversationEmail.findFirst({
+    where: { id: emailId, clientUserId: access.clientUserId, direction: 'INBOUND' },
+    select: { providerId: true, attachments: true },
+  });
+  if (!row?.providerId?.startsWith('in:')) return null;
+  const attachment = storedAttachments(row.attachments).find((item) => item.id === attachmentId);
+  if (!attachment) return null;
+  return { providerEmailId: row.providerId.slice(3), attachment };
+}
+
+/**
+ * קישור זמני לקובץ אצל Resend. הקובץ נשאר אצלם, והקישור לא יוצא לדפדפן —
+ * חוץ מקובץ גדול מדי להזרמה דרך השרת (ראו `MAX_STREAMED_ATTACHMENT_BYTES`).
+ */
+export async function attachmentLink(
+  access: ConversationAccess,
+  emailId: string,
+  attachmentId: string
+): Promise<{ url: string; attachment: StoredAttachment } | null> {
+  const found = await attachmentOf(access, emailId, attachmentId);
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!found || !apiKey) return null;
+  const { data, error } = await new Resend(apiKey).emails.receiving.attachments.get({
+    emailId: found.providerEmailId,
+    id: attachmentId,
+  });
+  if (!data?.download_url) {
+    console.error(`[conversation] attachment ${attachmentId}: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`);
+    return null;
+  }
+  return { url: data.download_url, attachment: found.attachment };
+}
+
+/** הקובץ עצמו, נמשך בשרת — לצפייה דרך הפלטפורמה ולשמירה בתיק */
+export async function readAttachment(
+  access: ConversationAccess,
+  emailId: string,
+  attachmentId: string
+): Promise<{ bytes: Uint8Array; attachment: StoredAttachment } | null> {
+  const link = await attachmentLink(access, emailId, attachmentId);
+  if (!link) return null;
+  const response = await fetch(link.url, { cache: 'no-store' });
+  if (!response.ok) return null;
+  return { bytes: new Uint8Array(await response.arrayBuffer()), attachment: link.attachment };
+}
+
+export type SaveAttachmentResult =
+  | { ok: true; planId: string; documentId: string }
+  | { ok: false; status: number; error: string };
+
+/** שמירת קובץ מצורף בתיק המסמכים של אחד התהליכים הפתוחים */
+export async function saveAttachmentToPlan(
+  access: ConversationAccess,
+  emailId: string,
+  attachmentId: string,
+  planId: unknown
+): Promise<SaveAttachmentResult> {
+  const folders = await attachmentFolders(access);
+  const folder = folders.find((item) => item.planId === planId) ?? (folders.length === 1 ? folders[0] : null);
+  if (!folder) {
+    return {
+      ok: false,
+      status: folders.length ? 400 : 409,
+      error: folders.length ? 'בחרו לאיזה תהליך לשמור' : 'אין תהליך פתוח שאפשר לשמור בתיק שלו',
+    };
+  }
+
+  const file = await readAttachment(access, emailId, attachmentId);
+  if (!file) return { ok: false, status: 404, error: 'הקובץ לא נמצא אצל ספק המיילים' };
+  if (!isAllowedDocumentType(file.attachment.contentType)) {
+    return { ok: false, status: 415, error: 'אפשר לשמור בתיק רק PDF או תמונה' };
+  }
+
+  const doc = await storeFileInPlan(access.clientUserId, folder.planId, {
+    key: attachmentDocumentKey(attachmentId),
+    name: file.attachment.fileName.replace(/\.[a-z0-9]{2,5}$/i, '') || 'קובץ מהמייל',
+    fileName: file.attachment.fileName,
+    contentType: file.attachment.contentType,
+    bytes: file.bytes,
+  });
+  if (!doc) return { ok: false, status: 413, error: 'הקובץ גדול מדי לתיק המסמכים (עד 15MB)' };
+  return { ok: true, planId: folder.planId, documentId: doc.id };
 }
 
 /** המפתח של הכתובת האישית, ונוצר בפעם הראשונה שצריך אותו */
@@ -587,7 +741,7 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
 
   // כשהתוכן לא נטען (מפתח בלי הרשאה, או ש-Resend עוד לא סיים לעבד), המייל נשמר
   // בלי תוכן ונטען שוב כשפותחים את טאב המיילים
-  const body = await fetchInboundText(event.emailId);
+  const content = await fetchInboundContent(event.emailId);
 
   const contacts = await conversationContacts(owner.id);
   const from = parseAddress(event.from);
@@ -606,7 +760,8 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
       toAddresses: visible(event.to),
       ccAddresses: visible(event.cc),
       subject: cleanSubject(event.subject) || '(ללא נושא)',
-      text: body === null ? '' : inboundText(body),
+      text: content ? inboundText(content.text) : '',
+      ...(content ? { attachments: content.attachments as unknown as Prisma.InputJsonValue } : {}),
       bank: bankFor([event.from], contacts),
       providerId,
       messageId: event.messageId,

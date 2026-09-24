@@ -2,24 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import {
+  attachmentFolders,
   conversationContacts,
   listConversationEmails,
   resolveConversationAccess,
   sendConversationEmail,
 } from '@/lib/conversation-store';
 
-/** טאב המיילים: המיילים של השיחה, והנמענים שמותר לשלוח אליהם */
+/** טאב המיילים: המיילים של השיחה, הנמענים שמותר לשלוח אליהם, והתיקים לשמירת קבצים מצורפים */
 export async function GET(req: NextRequest) {
   const session = await getServerAuth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const access = await resolveConversationAccess(session.user, req.nextUrl.searchParams.get('clientUserId'));
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const [emails, contacts] = await Promise.all([
+  const [emails, contacts, folders] = await Promise.all([
     listConversationEmails(access),
     conversationContacts(access.clientUserId),
+    attachmentFolders(access),
   ]);
-  return NextResponse.json({ emails, contacts });
+  return NextResponse.json({ emails, contacts, folders });
 }
 
 /** שליחת מייל מהשיחה — לבנקאי, ליועץ או ללקוח בלבד */

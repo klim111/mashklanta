@@ -6,6 +6,7 @@ import { attachNumericCaretFix } from '@/lib/caret';
 import { useDemoRequest } from '@/demo/store';
 import { demoSession } from '@/demo/data/demo-session';
 import { DemoHost } from '@/demo/DemoHost';
+import { ClientConversationProvider } from '@/components/conversation/ClientChatDock';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -23,7 +24,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       session={demo ? demoSession() : undefined}
       refetchOnWindowFocus={!demo}
     >
-      <DemoHost>{children}</DemoHost>
+      <ClientConversationProvider>
+        <DemoHost>{children}</DemoHost>
+      </ClientConversationProvider>
     </SessionProvider>
   );
 }

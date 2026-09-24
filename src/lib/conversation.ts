@@ -33,6 +33,28 @@ export interface ConversationEmailView {
   createdAt: string;
   /** מייל נכנס שהצד שמסתכל עדיין לא פתח */
   unread: boolean;
+  attachments: EmailAttachmentView[];
+}
+
+/** קובץ שצורף למייל, כפי שנשמר עם המייל */
+export interface StoredAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+}
+
+export interface EmailAttachmentView extends StoredAttachment {
+  /** PDF או תמונה בגודל שהתיק מקבל — אפשר לשמור בתיק ולצפות בפלטפורמה */
+  savable: boolean;
+  /** התהליך שבתיק שלו הקובץ כבר נשמר */
+  savedToPlanId: string | null;
+}
+
+/** תיק מסמכים שאפשר לשמור אליו — תהליך פתוח של הלקוח */
+export interface AttachmentFolder {
+  planId: string;
+  name: string;
 }
 
 export type ContactKind = 'BANKER' | 'ADVISOR' | 'CLIENT';
@@ -277,4 +299,56 @@ export function carbonCopies(
 export function bankFor(addresses: readonly string[], contacts: readonly ConversationContact[]): string | null {
   const emails = new Set(addresses.map((raw) => parseAddress(raw).email));
   return contacts.find((contact) => contact.kind === 'BANKER' && emails.has(contact.email))?.bank ?? null;
+}
+
+/**
+ * הקבצים המצורפים של מייל נכנס, בלי התמונות שמשובצות בגוף המייל (חתימות,
+ * לוגו) — אלה חלק מהעיצוב של המייל ולא מסמך שנשלח.
+ */
+export function inboundAttachments(
+  list: readonly {
+    id: string;
+    filename: string | null;
+    size: number;
+    content_type: string;
+    content_id: string | null;
+    content_disposition: string | null;
+  }[]
+): StoredAttachment[] {
+  return list
+    .filter((item) => !(item.content_disposition === 'inline' && item.content_id && item.content_type.startsWith('image/')))
+    .map((item) => ({
+      id: item.id,
+      fileName: (item.filename || '').replace(/[\r\n"\\/]/g, ' ').trim() || 'קובץ מצורף',
+      contentType: (item.content_type || 'application/octet-stream').split(';')[0].trim().toLowerCase(),
+      size: Math.max(0, item.size || 0),
+    }));
+}
+
+/** הקבצים שנשמרו עם המייל, מתוך עמודת ה-JSON — מה שלא בצורה הנכונה מדולג */
+export function storedAttachments(value: unknown): StoredAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const row = item as Partial<StoredAttachment> | null;
+    if (!row || typeof row.id !== 'string' || typeof row.fileName !== 'string') return [];
+    return [
+      {
+        id: row.id,
+        fileName: row.fileName,
+        contentType: typeof row.contentType === 'string' ? row.contentType : 'application/octet-stream',
+        size: typeof row.size === 'number' ? row.size : 0,
+      },
+    ];
+  });
+}
+
+/**
+ * קובץ גדול מזה לא עובר דרך השרת (לפונקציה ב-Vercel יש מגבלה על גודל
+ * התשובה), ולכן נפתח ישר מהקישור הזמני של ספק המיילים ולא בתצוגה המקדימה
+ */
+export const MAX_STREAMED_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+/** המפתח של קובץ מצורף בתיק המסמכים — אותו קובץ נשמר פעם אחת בכל תהליך */
+export function attachmentDocumentKey(attachmentId: string): string {
+  return `email:${attachmentId}`;
 }

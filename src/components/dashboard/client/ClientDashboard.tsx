@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signOut } from 'next-auth/react';
@@ -37,8 +37,7 @@ import { ExpensesSection } from './ExpensesSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
-import { ClientChatDock } from '@/components/conversation/ClientChatDock';
-import type { ConversationMode } from '@/components/conversation/ConversationWindow';
+import { ConversationDockSlot, useClientConversation } from '@/components/conversation/ClientChatDock';
 
 interface SectionMeta {
   id: DashboardSection;
@@ -140,15 +139,17 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const [entryOpen, setEntryOpen] = useState(false);
   const [entryGoal, setEntryGoal] = useState<'NEW_MORTGAGE' | 'REFINANCE' | null>(null);
   const [entryService, setEntryService] = useState<ServiceType | null>(null);
-  /** ההתכתבות עם היועץ — סגורה, מוקטנת לשורה או פתוחה כחלון מלא */
-  const [chatMode, setChatMode] = useState<ConversationMode>('closed');
-  const [chatUnread, setChatUnread] = useState(0);
+  /** ההתכתבות עם היועץ — השורה המוקטנת והחלון יושבים בשורש האפליקציה, בכל המסכים */
+  const conversation = useClientConversation();
+  const chatUnread = conversation?.unread ?? 0;
+  const openChat = useRef(conversation?.open);
+  openChat.current = conversation?.open;
 
   useEffect(() => {
     const fromHash = () => {
       // הקישור מהתראת המייל על הודעה חדשה — `/dashboard#chat` — פותח את השיחה
       if (window.location.hash === '#chat') {
-        setChatMode('open');
+        openChat.current?.();
         window.history.replaceState(null, '', window.location.pathname);
         return;
       }
@@ -192,7 +193,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const chatButton = (tone: 'sidebar' | 'bar') => (
     <button
       type="button"
-      onClick={() => setChatMode((mode) => (mode === 'open' ? 'bar' : 'open'))}
+      onClick={() => conversation?.toggle()}
+      title={chatUnread > 0 ? `${chatUnread} הודעות ומיילים שעוד לא נקראו` : undefined}
       className={
         tone === 'sidebar'
           ? 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-base font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white'
@@ -201,8 +203,14 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
     >
       <MessageCircle className="h-5 w-5 shrink-0" />
       <span className="min-w-0 flex-1 truncate text-right">התכתבות עם היועץ</span>
+      {/* מה שהגיע ועוד לא נקרא — גלוי כאן גם כשחלון ההתכתבות לא נפתח */}
       {chatUnread > 0 && (
-        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-black text-white">{chatUnread}</span>
+        <span className="relative flex shrink-0">
+          <span className="absolute inset-0 animate-ping rounded-full bg-rose-500/60" />
+          <span className="relative min-w-[1.5rem] rounded-full bg-rose-500 px-2 py-0.5 text-center text-xs font-black text-white">
+            {chatUnread > 99 ? '99+' : chatUnread}
+          </span>
+        </span>
       )}
     </button>
   );
@@ -441,19 +449,24 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         {/* עברו 30 הימים ויש תהליך שלא הסתיים — הצעה לרכוש חבילת גישה נוספת */}
         {data.ready && <AccessExpiredNotice plans={data.plansState.plans} />}
 
-        {/* חזרה לדאשבורד המלא — זמינה תמיד, גם אחרי גלילה, מכל אזור שנכנסים אליו */}
-        {section !== 'overview' && (
-          <button
-            type="button"
-            onClick={() => navigate('overview')}
-            className={`fixed left-5 z-40 inline-flex ${chatMode === 'bar' ? 'bottom-20' : 'bottom-5'} items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5`}
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            חזרה לדאשבורד
-          </button>
-        )}
-
-        <ClientChatDock mode={chatMode} onMode={setChatMode} onSummary={setChatUnread} />
+        {/*
+          הכפתורים הצפים של הפינה הימנית: שורת ההתכתבות, ומתחתיה החזרה לדאשבורד
+          המלא — זמינה תמיד, גם אחרי גלילה, מכל אזור שנכנסים אליו
+        */}
+        {/* במסך רחב תפריט הצד תופס את הקצה הימני — העמודה יושבת משמאלו */}
+        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden lg:right-[calc(272px+1.25rem)]">
+          <ConversationDockSlot />
+          {section !== 'overview' && (
+            <button
+              type="button"
+              onClick={() => navigate('overview')}
+              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
+            >
+              <LayoutDashboard className="h-5 w-5" />
+              חזרה לדאשבורד
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

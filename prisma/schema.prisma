@@ -1425,6 +1425,11 @@ model ConversationEmail {
    */
   providerId      String?           @unique
   messageId       String?
+  /**
+   * הקבצים שצורפו למייל נכנס: [{ id, fileName, contentType, size }]. הקבצים
+   * עצמם נשארים אצל ספק המיילים ונמשכים בכל צפייה
+   */
+  attachments     Json?
   readByClientAt  DateTime?
   readByAdvisorAt DateTime?
   createdAt       DateTime          @default(now())

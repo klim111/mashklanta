@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Copy, Info, Loader2, Mail, PenLine, Reply, Send, X } from 'lucide-react';
-import type { ConversationContact, ConversationEmailView, ConversationRole } from '@/lib/conversation';
+import { ArrowDownLeft, ArrowUpRight, Copy, Info, Loader2, Mail, Paperclip, PenLine, Reply, Send, X } from 'lucide-react';
+import type { AttachmentFolder, ConversationContact, ConversationEmailView, ConversationRole } from '@/lib/conversation';
 import { MAX_EMAIL_LENGTH, MAX_SUBJECT_LENGTH } from '@/lib/conversation';
 import { useConversationEmails } from './useConversation';
 import type { EmailDraft } from './useConversation';
 import { accentFor } from './ConversationWindow';
+import { EmailAttachments } from './EmailAttachments';
 
 const PENDING_TEXT = 'תוכן המייל עוד נטען…';
 
@@ -41,7 +42,10 @@ export function EmailsPane({
   mailboxAddress: string | null;
   receivesEmail: boolean;
 }) {
-  const { emails, contacts, ready, sending, error, setError, send } = useConversationEmails(clientUserId, true);
+  const { emails, contacts, folders, ready, sending, error, setError, send, saveAttachment } = useConversationEmails(
+    clientUserId,
+    true
+  );
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const accent = accentFor(role);
@@ -129,6 +133,9 @@ export function EmailsPane({
               open={expanded === email.id}
               onToggle={() => setExpanded((current) => (current === email.id ? null : email.id))}
               onReply={() => reply(email)}
+              folders={folders}
+              clientUserId={clientUserId}
+              onSaveAttachment={(attachmentId, planId) => saveAttachment(email.id, attachmentId, planId)}
             />
           ))
         )}
@@ -181,12 +188,18 @@ function EmailCard({
   open,
   onToggle,
   onReply,
+  folders,
+  clientUserId,
+  onSaveAttachment,
 }: {
   email: ConversationEmailView;
   contacts: readonly ConversationContact[];
   open: boolean;
   onToggle: () => void;
   onReply: () => void;
+  folders: readonly AttachmentFolder[];
+  clientUserId?: string | null;
+  onSaveAttachment: (attachmentId: string, planId: string | null) => Promise<string | null>;
 }) {
   const inbound = email.direction === 'INBOUND';
   const from = email.fromName || nameOf(email.fromAddress, contacts);
@@ -206,6 +219,12 @@ function EmailCard({
           <p className="min-w-0 flex-1 truncate text-sm font-black text-slate-900">
             {inbound ? from : `אל ${to}`}
           </p>
+          {email.attachments.length > 0 && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-2xs font-bold text-slate-500" title="קבצים מצורפים">
+              <Paperclip className="h-3.5 w-3.5" />
+              {email.attachments.length}
+            </span>
+          )}
           {email.bank && (
             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-bold text-slate-600">
               {email.bank}
@@ -226,6 +245,13 @@ function EmailCard({
             {email.ccAddresses.length > 0 && ` · העתק: ${email.ccAddresses.map((address) => nameOf(address, contacts)).join(', ')}`}
           </p>
           <p className="mt-2 whitespace-pre-wrap break-words text-info leading-relaxed text-slate-800">{email.text || PENDING_TEXT}</p>
+          <EmailAttachments
+            emailId={email.id}
+            attachments={email.attachments}
+            folders={folders}
+            clientUserId={clientUserId}
+            onSave={onSaveAttachment}
+          />
           <button
             type="button"
             onClick={onReply}
