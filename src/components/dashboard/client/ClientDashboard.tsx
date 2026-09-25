@@ -28,6 +28,7 @@ import { VaultButton } from '@/components/plan/documents/VaultButton';
 import type { ServiceType } from '@/lib/service-flow';
 import { BankRateRequests } from '@/components/dashboard/BankRateRequests';
 import { ToolsHub } from '@/components/dashboard/ToolsHub';
+import { SiteLegalStrip } from '@/components/legal/SiteLegalStrip';
 import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 import { AccessExpiredNotice } from './AccessExpiredNotice';
 import { AdvisorCta } from './AdvisorCta';
@@ -326,7 +327,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           </nav>
         </header>
 
-        <main className="flex-1 px-4 py-5 pb-24 sm:px-6 xl:px-8" {...demoId('dash-main')}>
+        <main className="flex-1 px-4 py-5 pb-10 sm:px-6 xl:px-8" {...demoId('dash-main')}>
           <div className="mx-auto max-w-[1400px]">
             {/* במסך צר אין תפריט צד — שאלת הפתיחה יושבת מעל התוכן */}
             {vaultPlan && (
@@ -420,6 +421,9 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             </motion.div>
           </div>
         </main>
+
+        {/* פרטי הקשר והמסמכים המשפטיים. הריווח התחתון משאיר מקום לחלונית הצ׳אט הצפה */}
+        <SiteLegalStrip className="pb-24" />
 
         {/*
           המשך הבחירה שהגיעה בכתובת. הרכיב נשאר מורכב גם אחרי שהחלון נסגר, כי

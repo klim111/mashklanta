@@ -514,7 +514,14 @@ function TermsBox({
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
         />
         <span className="text-xs font-semibold text-slate-700">
-          קראתי ואני מאשר/ת את תנאי ההתקשרות ואת מדיניות הפרטיות
+          קראתי ואני מאשר/ת את תנאי ההתקשרות,{' '}
+          <a href="/terms" target="_blank" rel="noopener" className="text-blue-600 underline">
+            תנאי השימוש
+          </a>{' '}
+          ו
+          <a href="/privacy" target="_blank" rel="noopener" className="text-blue-600 underline">
+            מדיניות הפרטיות
+          </a>
         </span>
       </label>
     </div>

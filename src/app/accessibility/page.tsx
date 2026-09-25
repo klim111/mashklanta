@@ -1,6 +1,7 @@
 import { Accessibility, Mail, Phone } from 'lucide-react';
 import NavBar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
+import { SITE_CONTACT } from '@/lib/site-contact';
 
 /**
  * הצהרת הנגישות, לפי תקנה 35 לתקנות שוויון זכויות לאנשים עם מוגבלות
@@ -9,9 +10,6 @@ import Footer from '@/components/ui/footer';
  * כשמשנים משהו מהותי בנגישות האתר — מעדכנים כאן גם את תאריך העדכון.
  */
 const UPDATED_AT = '25 בספטמבר 2026';
-const CONTACT_PHONE = '050-8822207';
-const CONTACT_PHONE_HREF = 'tel:+972508822207';
-const CONTACT_EMAIL = 'mashkalanta@gmail.com';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -137,15 +135,15 @@ export default function AccessibilityStatementPage() {
                 <li className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-blue-600" aria-hidden="true" />
                   <span>טלפון:</span>
-                  <a href={CONTACT_PHONE_HREF} dir="ltr" className="font-bold text-blue-700 underline underline-offset-4">
-                    {CONTACT_PHONE}
+                  <a href={SITE_CONTACT.phoneHref} dir="ltr" className="font-bold text-blue-700 underline underline-offset-4">
+                    {SITE_CONTACT.phone}
                   </a>
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-blue-600" aria-hidden="true" />
                   <span>אימייל:</span>
-                  <a href={`mailto:${CONTACT_EMAIL}`} dir="ltr" className="font-bold text-blue-700 underline underline-offset-4">
-                    {CONTACT_EMAIL}
+                  <a href={SITE_CONTACT.emailHref} dir="ltr" className="font-bold text-blue-700 underline underline-offset-4">
+                    {SITE_CONTACT.email}
                   </a>
                 </li>
               </ul>
