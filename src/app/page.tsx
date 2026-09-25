@@ -218,7 +218,7 @@ export default function Home() {
       >
         <div className="max-w-6xl mx-auto">
           {/* הכלים החינמיים — תכנון וניתוח מקדים, לפני שבוחרים איך להתקדם */}
-          <div className="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-free-tools')}>
+          <div id="free-tools" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur-sm sm:p-6 md:p-10" {...demoId('home-free-tools')}>
             <FreeToolsSection />
           </div>
 

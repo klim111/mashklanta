@@ -378,12 +378,14 @@ export function FamilyEconomyFloatingCta({ context }: { context?: AdvisorLeadCon
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
           aria-expanded={open}
-          className="pointer-events-auto inline-flex items-center gap-2.5 rounded-full bg-gradient-to-l from-emerald-600 to-teal-600 py-3 pl-5 pr-4 text-[13px] font-black text-white shadow-[0_12px_30px_rgba(5,150,105,0.4)] ring-2 ring-white transition-shadow hover:shadow-[0_14px_36px_rgba(5,150,105,0.5)] sm:text-sm"
+          aria-label="פנה ליועץ כלכלת המשפחה של משכלנתא"
+          className="pointer-events-auto inline-flex items-center gap-2.5 rounded-full bg-gradient-to-l from-emerald-600 to-teal-600 p-2 text-[13px] sm:py-3 sm:pl-5 sm:pr-4 font-black text-white shadow-[0_12px_30px_rgba(5,150,105,0.4)] ring-2 ring-white transition-shadow hover:shadow-[0_14px_36px_rgba(5,150,105,0.5)] sm:text-sm"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
             <HeartHandshake className="h-4 w-4" />
           </span>
-          פנה ליועץ כלכלת המשפחה של משכלנתא
+          {/* בטלפון הכפתור עגול, כדי שלא יסתיר את תוכן הכלי */}
+          <span className="sr-only sm:not-sr-only">פנה ליועץ כלכלת המשפחה של משכלנתא</span>
         </motion.button>
       </div>
 

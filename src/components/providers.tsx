@@ -8,6 +8,7 @@ import { attachNumericCaretFix } from '@/lib/caret';
 import { useDemoRequest } from '@/demo/store';
 import { demoSession } from '@/demo/data/demo-session';
 import { DemoHost } from '@/demo/DemoHost';
+import { PhoneGate } from '@/components/device/PhoneGate';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -29,7 +30,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       refetchOnWindowFocus={!demo}
     >
       <MotionConfig reducedMotion={stopMotion ? 'always' : 'user'}>
-        <DemoHost>{children}</DemoHost>
+        <DemoHost>
+          <PhoneGate>{children}</PhoneGate>
+        </DemoHost>
       </MotionConfig>
     </SessionProvider>
   );

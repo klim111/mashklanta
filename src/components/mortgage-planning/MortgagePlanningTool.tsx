@@ -489,7 +489,7 @@ export function MortgagePlanningContent({
             onClick={() => handlePropertyTypeSelect(item.type)}
             {...demoId(`mp-property-${index}`)}
           >
-            <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[280px]">
+            <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl md:min-h-[280px]">
               <CardContent className="p-6 text-center h-full flex flex-col justify-between">
                 <div>
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg ${
@@ -543,7 +543,7 @@ export function MortgagePlanningContent({
           className="group cursor-pointer"
           onClick={() => handleCalculationTypeSelect('תחשב מה אני יכול להרשות לעצמי')}
         >
-          <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[400px]">
+          <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl md:min-h-[400px]">
             <CardContent className="p-8 text-center h-full flex flex-col justify-between">
               <div>
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -570,7 +570,7 @@ export function MortgagePlanningContent({
           className="group cursor-pointer"
           onClick={() => handleCalculationTypeSelect('תחשב משכנתא לנכס קיים')}
         >
-          <Card className="h-full border border-slate-200 hover:border-green-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[400px]">
+          <Card className="h-full border border-slate-200 hover:border-green-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl md:min-h-[400px]">
             <CardContent className="p-8 text-center h-full flex flex-col justify-between">
               <div>
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -597,7 +597,7 @@ export function MortgagePlanningContent({
           className="group cursor-pointer"
           onClick={() => setCurrentStep('offer-analysis')}
         >
-          <Card className="h-full border border-slate-200 hover:border-purple-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl min-h-[400px]">
+          <Card className="h-full border border-slate-200 hover:border-purple-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl md:min-h-[400px]">
             <CardContent className="p-8 text-center h-full flex flex-col justify-between">
               <div>
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
