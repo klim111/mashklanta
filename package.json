@@ -45,6 +45,7 @@
     "@react-spring/web": "^10.0.1",
     "@types/nodemailer": "^6.4.17",
     "@types/pg": "^8.15.5",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
