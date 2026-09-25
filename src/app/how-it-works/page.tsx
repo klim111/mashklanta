@@ -28,11 +28,7 @@ import FlexibilityMixer from '@/components/platform/FlexibilityMixer';
 import AnimatedNumber from '@/components/platform/AnimatedNumber';
 import { journeyStages } from '@/data/platform/journey';
 import { platformTools } from '@/data/platform/tools';
-import {
-  FULL_SERVICE_PRICE,
-  PLATFORM_PROCESS_PRICE,
-  pricingPlans,
-} from '@/data/platform/pricing';
+import { PLATFORM_PROCESS_PRICE, pricingPlans } from '@/data/platform/pricing';
 import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 
@@ -219,7 +215,7 @@ export default function HowItWorksPage() {
               { value: journeyStages.length, suffix: '', label: 'שלבים לבחירה' },
               { value: platformTools.length, suffix: '', label: 'כלים בפלטפורמה' },
               { value: PLATFORM_PROCESS_PRICE, prefix: '₪', label: 'לתהליך משכנתא — גישה מלאה לפלטפורמה' },
-              { value: FULL_SERVICE_PRICE, prefix: '₪', label: 'ליווי מלא מקצה לקצה' },
+              { value: 100, suffix: '%', label: 'מדמי הפלטפורמה מקוזזים כשמזמינים ליווי' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -229,7 +225,7 @@ export default function HowItWorksPage() {
                 className="rounded-2xl border border-white/15 bg-white/5 px-4 py-4 backdrop-blur"
               >
                 <div className="text-2xl font-black text-white md:text-3xl">
-                  <AnimatedNumber value={stat.value} prefix={stat.prefix} />
+                  <AnimatedNumber value={stat.value} prefix={stat.prefix} suffix={stat.suffix} />
                 </div>
                 <div className="mt-1 text-xs text-slate-100 md:text-sm">{stat.label}</div>
               </motion.div>
@@ -410,11 +406,11 @@ export default function HowItWorksPage() {
               מודל התמחור
             </div>
             <h2 className="mb-5 text-title font-black text-slate-900">
-              משלמים רק על מה שלקחתם — ותמיד את המחיר הנמוך
+              משלמים רק על מה שלקחתם — ותמיד מתחת לממוצע בשוק
             </h2>
             <p className="text-lg leading-relaxed text-slate-600">
-              אין חבילה אחת שמתאימה לכולם. בכל שלב מחליטים מחדש — לבד, ליווי לשלב, לכמה שלבים או
-              ליווי מלא. מה ששילמתם על הפלטפורמה מקוזז, והגישה אליה כלולה בכל ליווי.
+              אין חבילה אחת שמתאימה לכולם. בכל שלב מחליטים מחדש — לבד, או עם יועץ משלב אחד ועד כל
+              שלבי התכנון. מה ששילמתם על הפלטפורמה מקוזז, והגישה אליה כלולה בכל ליווי.
             </p>
           </motion.div>
 
@@ -458,7 +454,13 @@ export default function HowItWorksPage() {
                   </p>
 
                   <div className="my-6 border-y border-slate-100 py-5">
-                    <div className="text-4xl font-black text-slate-900">{plan.price}</div>
+                    <div
+                      className={`font-black text-slate-900 ${
+                        plan.id === 'full' ? 'text-subtitle leading-snug' : 'text-4xl'
+                      }`}
+                    >
+                      {plan.price}
+                    </div>
                     <div className="mt-1 text-sm text-slate-600">{plan.priceNote}</div>
                   </div>
 
@@ -486,7 +488,7 @@ export default function HowItWorksPage() {
               className="bg-blue-600 hover:bg-blue-700 px-8 text-base font-bold text-white shadow-xl hover:text-white"
             >
               <Link href="/pricing">
-                לעמוד התמחור המלא ולמחשבון החבילה
+                לעמוד התמחור המלא
                 <ArrowUpLeft className="mr-2 h-5 w-5" />
               </Link>
             </Button>

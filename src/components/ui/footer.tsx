@@ -53,8 +53,8 @@ export default function Footer() {
             <h4 className="text-lg font-semibold text-white">השירותים שלנו</h4>
             <ul className="space-y-2 text-slate-300">
               <li><a href="/pricing" className="hover:text-white transition-colors">מסלול עצמאי</a></li>
-              <li><a href="/pricing#builder" className="hover:text-white transition-colors">מסלול היברידי</a></li>
-              <li><a href="/pricing" className="hover:text-white transition-colors">ליווי מלא</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">מסלול היברידי</a></li>
+              <li><a href="/pricing#advisory" className="hover:text-white transition-colors">מסלול בליווי</a></li>
               <li><a href="/custom-mix-builder" className="hover:text-white transition-colors">בניית תמהילים</a></li>
               <li><a href="/mortgage-advisor" className="hover:text-white transition-colors">השוואת הצעות</a></li>
             </ul>

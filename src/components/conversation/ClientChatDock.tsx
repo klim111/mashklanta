@@ -14,11 +14,14 @@ export function ClientChatDock({
   mode,
   onMode,
   onSummary,
+  anchor = 'left',
 }: {
   mode: ConversationMode;
   onMode: (mode: ConversationMode) => void;
   /** מספר ההודעות והמיילים שממתינים — לתג שבתפריט */
   onSummary?: (unread: number) => void;
+  /** בשלבי המשכנתא החלון נפתח מעל כפתור הפעולות שבפינה הימנית */
+  anchor?: 'left' | 'above-actions';
 }) {
   const { summary, refresh } = useConversationSummary(null, true, mode === 'open' ? 10000 : 30000);
   const unread = (summary?.unreadChat ?? 0) + (summary?.unreadEmails ?? 0);
@@ -48,6 +51,7 @@ export function ClientChatDock({
       unreadEmails={summary?.unreadEmails}
       mailboxAddress={summary?.mailboxAddress ?? null}
       receivesEmail={summary?.receivesEmail ?? false}
+      anchor={anchor}
     />
   );
 }
