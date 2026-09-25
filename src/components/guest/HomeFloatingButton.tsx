@@ -23,12 +23,14 @@ export function HomeFloatingButton({
   return (
     <Link
       href={href}
-      className={`fixed bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5 print:hidden ${
+      aria-label={label}
+      className={`fixed bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5 print:hidden ${
         side === 'right' ? 'right-5' : 'left-5'
       }`}
     >
       <Home className="h-5 w-5" />
-      {label}
+      {/* בטלפון הכפתור עגול, כדי שלא יסתיר את תוכן הכלי */}
+      <span className="sr-only sm:not-sr-only">{label}</span>
     </Link>
   );
 }
