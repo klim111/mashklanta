@@ -132,7 +132,7 @@ export default function AccessibilityStatementPage() {
               טכנולוגיה מסייעת השתמשתם. אנחנו משתדלים לענות תוך 5 ימי עסקים.
             </p>
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <p className="font-bold text-slate-900">רכז הנגישות של משכלנתא</p>
+              <p className="font-bold text-slate-900">רכז הנגישות של משכלנתא: איגור לבדינסקי</p>
               <ul className="mt-2 space-y-2">
                 <li className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-blue-600" aria-hidden="true" />
