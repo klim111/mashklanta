@@ -48,6 +48,7 @@ export function ConversationWindow({
   unreadEmails = 0,
   mailboxAddress = null,
   receivesEmail = false,
+  anchor = 'left',
   children,
 }: {
   role: ConversationRole;
@@ -61,6 +62,11 @@ export function ConversationWindow({
   unreadEmails?: number;
   mailboxAddress?: string | null;
   receivesEmail?: boolean;
+  /**
+   * איפה החלון יושב: `left` — הפינה השמאלית התחתונה; `above-actions` — בפינה
+   * הימנית, מעל כפתור הפעולות העגול של שלבי המשכנתא, שממנו הוא נפתח.
+   */
+  anchor?: 'left' | 'above-actions';
   /** תוכן במקום הטאבים — רשימת השיחות אצל היועץ */
   children?: ReactNode;
 }) {
@@ -68,12 +74,13 @@ export function ConversationWindow({
   const accent = accentFor(role);
   const open = mode === 'open';
   const unread = unreadChat + unreadEmails;
+  const aboveActions = anchor === 'above-actions';
 
   if (!open) {
     return (
       <div
         dir="rtl"
-        className="fixed bottom-4 left-4 z-50 flex w-[min(340px,calc(100vw-2rem))] text-right items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-slate-900/15"
+        className={`fixed z-50 flex w-[min(340px,calc(100vw-2rem))] ${aboveActions ? 'bottom-28 right-5' : 'bottom-4 left-4'} text-right items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-slate-900/15`}
       >
         <button
           type="button"
@@ -111,7 +118,11 @@ export function ConversationWindow({
       dir="rtl"
       role="dialog"
       aria-label={title}
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:bottom-4 sm:left-4 sm:h-[min(640px,calc(100vh-2rem))] sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20"
+      className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20 ${
+        aboveActions
+          ? 'sm:bottom-28 sm:right-5 sm:h-[min(620px,calc(100vh-8.5rem))]'
+          : 'sm:bottom-4 sm:left-4 sm:h-[min(640px,calc(100vh-2rem))]'
+      }`}
     >
       <header className={`flex items-center gap-2 px-3 py-2.5 text-white ${role === 'ADVISOR' ? 'bg-violet-700' : 'bg-brand-dark'}`}>
         {onBack && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUpLeft, CheckCircle2, Headset, Loader2, X } from 'lucide-react';
@@ -33,6 +33,17 @@ export function AdvisorHelpButton({
 }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  const [hover, setHover] = useState(false);
+  // התווית פרושה בכניסה לשלב ונאספת לעיגול אחרי כמה שניות. בטלפון נשאר עיגול
+  // בלבד מההתחלה, כי אין שם שוליים שבהם התווית לא תסתיר דבר.
+  const [intro, setIntro] = useState(false);
+  useEffect(() => {
+    if (!window.matchMedia('(min-width: 640px)').matches) return;
+    setIntro(true);
+    const timer = window.setTimeout(() => setIntro(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const showLabel = !open && (intro || hover);
 
   const request = () => {
     onRequestAdvisor?.();
@@ -101,18 +112,39 @@ export function AdvisorHelpButton({
         )}
       </AnimatePresence>
 
+      {/*
+        עיגול סגול קטן, כדי שלא יעלה על כפתורי השלב. התווית נפרשת לידו כשנכנסים
+        לשלב (ונאספת אחרי כמה שניות), במעבר עכבר ובמיקוד מקלדת.
+      */}
       <motion.button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.97 }}
+        onHoverStart={() => setHover(true)}
+        onHoverEnd={() => setHover(false)}
+        onFocus={() => setHover(true)}
+        onBlur={() => setHover(false)}
+        whileTap={{ scale: 0.95 }}
         aria-expanded={open}
-        className="pointer-events-auto inline-flex items-center gap-2.5 rounded-full bg-violet-600 hover:bg-violet-700 py-3 pl-5 pr-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(124,58,237,0.4)] ring-2 ring-white transition-shadow hover:shadow-[0_14px_36px_rgba(124,58,237,0.5)]"
+        aria-label="פנו ליועץ לעזרה בשלב זה"
+        className="pointer-events-auto inline-flex h-14 items-center rounded-full bg-violet-600 p-1.5 text-white shadow-[0_12px_30px_rgba(124,58,237,0.4)] ring-2 ring-white transition-colors hover:bg-violet-700"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-          <Headset className="h-4 w-4" />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+          <Headset className="h-5 w-5" />
         </span>
-        פנו ליועץ לעזרה בשלב זה
+        <AnimatePresence initial={false}>
+          {showLabel && (
+            <motion.span
+              key="label"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 'auto', opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              <span className="block pl-4 pr-2.5 text-button font-black">פנו ליועץ</span>
+            </motion.span>
+          )}
+        </AnimatePresence>
       </motion.button>
     </div>
   );
