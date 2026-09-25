@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { SessionProvider } from 'next-auth/react';
+import { MotionConfig } from 'framer-motion';
+import { useA11yPrefs } from '@/components/a11y/a11yStore';
 import { attachNumericCaretFix } from '@/lib/caret';
 import { useDemoRequest } from '@/demo/store';
 import { demoSession } from '@/demo/data/demo-session';
@@ -17,13 +19,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
    */
   const demo = useDemoRequest();
 
+  // "עצירת אנימציות" בתפריט הנגישות עוצרת גם את האנימציות של framer-motion
+  const { stopMotion } = useA11yPrefs();
+
   return (
     <SessionProvider
       key={demo ? 'demo' : 'live'}
       session={demo ? demoSession() : undefined}
       refetchOnWindowFocus={!demo}
     >
-      <DemoHost>{children}</DemoHost>
+      <MotionConfig reducedMotion={stopMotion ? 'always' : 'user'}>
+        <DemoHost>{children}</DemoHost>
+      </MotionConfig>
     </SessionProvider>
   );
 }

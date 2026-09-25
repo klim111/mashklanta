@@ -940,7 +940,7 @@ textarea:focus,
 select:focus {
   outline: none !important;
   border-color: var(--financial-primary) !important;
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35) !important;
 }
 
 /* Ensure placeholders are visible */
@@ -1065,4 +1065,75 @@ input[type="number"]::placeholder {
 @page {
   size: A4;
   margin: 12mm 10mm;
+}
+
+/* ===================================================================
+   נגישות — מיקוד מקלדת גלוי ותפריט הנגישות
+   המחלקות a11y-* נוספות לאלמנט ה-html מתוך src/components/a11y
+   =================================================================== */
+
+/* מסגרת מיקוד ברורה לכל רכיב שמגיעים אליו במקלדת (IS 5568 / WCAG 2.4.7) */
+:focus-visible {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px;
+}
+
+/* גודל טקסט: רוב הגדלים בפלטפורמה ב-rem, ולכן גדלים יחד עם השורש */
+html.a11y-text-1 { font-size: 112.5%; }
+html.a11y-text-2 { font-size: 125%; }
+html.a11y-text-3 { font-size: 150%; }
+
+/* מסננים על שורש המסמך לא שוברים רכיבים במיקום fixed */
+html.a11y-contrast { filter: contrast(1.45); }
+html.a11y-grayscale { filter: grayscale(1); }
+html.a11y-contrast.a11y-grayscale { filter: contrast(1.45) grayscale(1); }
+html.a11y-invert { filter: invert(1) hue-rotate(180deg); background: #fff; }
+html.a11y-invert.a11y-grayscale { filter: invert(1) hue-rotate(180deg) grayscale(1); }
+/* תמונות וסרטונים נשארים בצבעיהם האמיתיים בניגודיות הפוכה */
+html.a11y-invert img,
+html.a11y-invert video,
+html.a11y-invert picture {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html.a11y-links a {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px;
+}
+html.a11y-links a:not([data-a11y-ui]) {
+  outline: 2px dashed #f59e0b;
+  outline-offset: 2px;
+}
+
+html.a11y-readable body,
+html.a11y-readable body *:not(svg):not(svg *) {
+  font-family: Arial, 'Segoe UI', Tahoma, sans-serif !important;
+}
+
+/* ריווח טקסט לפי WCAG 1.4.12 */
+html.a11y-spacing body *:not(svg):not(svg *) {
+  line-height: 1.6 !important;
+  letter-spacing: 0.05em !important;
+  word-spacing: 0.16em !important;
+}
+html.a11y-spacing p { margin-bottom: 1em; }
+
+html.a11y-stop-motion *,
+html.a11y-stop-motion *::before,
+html.a11y-stop-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.a11y-big-cursor,
+html.a11y-big-cursor * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l14 11.5-6.2.8 3.7 7.3-2.9 1.4-3.6-7.4L4 20z' fill='%23000' stroke='%23fff' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 8 4, auto !important;
+}
+html.a11y-big-cursor a,
+html.a11y-big-cursor button,
+html.a11y-big-cursor [role='button'] {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Cpath d='M9 11V4.5a1.5 1.5 0 013 0V10l.5-.1V8.5a1.5 1.5 0 013 0V10l.4-.1a1.5 1.5 0 013 .4V16a6 6 0 01-6 6h-1a6 6 0 01-4.9-2.5L4 14.8a1.5 1.5 0 012.3-1.9L9 15z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 18 4, pointer !important;
 }

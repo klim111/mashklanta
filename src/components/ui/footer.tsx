@@ -21,17 +21,17 @@ export default function Footer() {
               הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לך למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
             </p>
             <div className="flex space-x-4 space-x-reverse">
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500">
-                <Facebook className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="פייסבוק">
+                <Facebook className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500">
-                <Instagram className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="אינסטגרם">
+                <Instagram className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500">
-                <Linkedin className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="לינקדאין">
+                <Linkedin className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500">
-                <Twitter className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="טוויטר">
+                <Twitter className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -100,6 +100,7 @@ export default function Footer() {
               <a href="#" className="hover:text-white transition-colors">תנאי שימוש</a>
               <a href="#" className="hover:text-white transition-colors">מדיניות פרטיות</a>
               <a href="#" className="hover:text-white transition-colors">מדיניות עוגיות</a>
+              <a href="/accessibility" className="hover:text-white transition-colors">הצהרת נגישות</a>
             </div>
           </div>
         </motion.div>
