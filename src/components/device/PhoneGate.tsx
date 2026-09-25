@@ -25,6 +25,11 @@ const PHONE_READY_PATHS = [
   '/equity-planning',
   '/consumer-loans',
   '/learn',
+  // מסמכים משפטיים — ההרשמה והתשלום מקשרים אליהם, והם חייבים להיפתח בכל מכשיר
+  '/privacy',
+  '/terms',
+  '/accessibility',
+  '/accessibility-statement',
 ];
 
 /** מסכי הפלטפורמה שאחרי ההתחברות — חסומים בטלפון גם בלי לבדוק את ה-session */
