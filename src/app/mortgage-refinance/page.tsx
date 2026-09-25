@@ -283,10 +283,11 @@ export default function MortgageRefinancePage() {
       {signedIn && (
         <Link
           href="/dashboard"
-          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
+          aria-label="חזרה לדאשבורד"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
         >
           <LayoutDashboard className="h-5 w-5" />
-          חזרה לדאשבורד
+          <span className="sr-only sm:not-sr-only">חזרה לדאשבורד</span>
         </Link>
       )}
     </div>
