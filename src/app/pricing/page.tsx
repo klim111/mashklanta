@@ -9,10 +9,16 @@ import {
   Check,
   Compass,
   Minus,
+  Coins,
+  Layers3,
+  Scale,
   Sparkles,
   Tag,
+  TrendingDown,
+  UserCheck,
   Wallet,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import NavBar from '@/components/ui/navbar';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import Footer from '@/components/ui/footer';
@@ -23,11 +29,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import PackageBuilder from '@/components/platform/PackageBuilder';
-import { journeyStages, stagesTotalPrice } from '@/data/platform/journey';
+import { journeyStages } from '@/data/platform/journey';
 import {
-  BUNDLE_SAVING,
-  FULL_SERVICE_PRICE,
+  ADVISORY_TRACK,
   PLATFORM_ACCESS_DAYS,
   PLATFORM_PROCESS_PRICE,
   TRACKS_HEADLINE,
@@ -38,6 +42,30 @@ import {
 } from '@/data/platform/pricing';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
+
+/** מה קובע את מחיר המסלול בליווי — במקום מחירון קבוע */
+const ADVISORY_PRICE_FACTORS: Array<{ icon: LucideIcon; title: string; description: string }> = [
+  {
+    icon: Layers3,
+    title: 'השלבים שתבחרו',
+    description: 'משלב 1 בלבד, כמה שלבים או כל שלבי תכנון המשכנתא. משלמים רק על מה שהיועץ עושה.',
+  },
+  {
+    icon: Scale,
+    title: 'מורכבות התיק',
+    description: 'סוג העסקה, מספר הלווים, מקורות ההכנסה והבטחונות. המחיר הסופי מותאם לתיק שלכם.',
+  },
+  {
+    icon: TrendingDown,
+    title: 'תמיד מתחת לממוצע בשוק',
+    description: 'הטכנולוגיה המתקדמת של משכלנתא חוסכת ליועץ זמן עבודה, והחיסכון עובר אליכם.',
+  },
+  {
+    icon: Coins,
+    title: 'דמי הפלטפורמה מקוזזים',
+    description: 'מה ששילמתם על הפלטפורמה תמיד מקוזז ממחיר הליווי, כשמזמינים לפחות שלב אחד.',
+  },
+];
 
 function CellValue({ value }: { value: boolean | string }) {
   if (value === true) {
@@ -86,13 +114,14 @@ export default function PricingPage() {
             משלמים על מה שלקחתם,
             <br />
             <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-fuchsia-200 bg-clip-text text-transparent">
-              ותמיד את המחיר הנמוך
+              ותמיד מתחת לממוצע בשוק
             </span>
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
-            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. כל שלב עם
-            יועץ מתומחר בנפרד, מה ששילמתם על הפלטפורמה מקוזז מהליווי, והגישה המלאה כלולה בכל הזמנת ליווי.
+            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. רוצים יועץ?
+            במסלול בליווי המחיר נקבע לפי השלבים ומורכבות התיק, מה ששילמתם על הפלטפורמה מקוזז, והגישה המלאה
+            כלולה.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3">
@@ -101,9 +130,9 @@ export default function PricingPage() {
               size="lg"
               className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
             >
-              <a href="#builder">
+              <a href="#advisory">
                 <Calculator className="ml-2 h-5 w-5" />
-                בנו את החבילה שלכם
+                איך נקבע מחיר הליווי
               </a>
             </Button>
             <Button
@@ -167,7 +196,13 @@ export default function PricingPage() {
                   </p>
 
                   <div className="my-6 border-y border-slate-100 py-5">
-                    <div className="text-4xl font-black text-slate-900">{plan.price}</div>
+                    <div
+                      className={`font-black text-slate-900 ${
+                        plan.id === 'full' ? 'text-subtitle leading-snug' : 'text-4xl'
+                      }`}
+                    >
+                      {plan.price}
+                    </div>
                     <div className="mt-1 text-sm text-slate-600">{plan.priceNote}</div>
                   </div>
 
@@ -235,11 +270,8 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ─────────────────────── Stage pricing ─────────────────────── */}
-      <section
-        id="builder"
-        className="scroll-mt-24 bg-hero-soft py-20 md:py-28"
-      >
+      {/* ─────────────────────── Advisory track pricing ─────────────────────── */}
+      <section id="advisory" className="scroll-mt-24 bg-hero-soft py-20 md:py-28">
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -247,57 +279,43 @@ export default function PricingPage() {
             viewport={{ once: true }}
             className="mx-auto mb-12 max-w-3xl text-center"
           >
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-700">
-              <Calculator className="h-4 w-4" />
-              מחשבון החבילה
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-2 text-sm font-bold text-violet-700">
+              <UserCheck className="h-4 w-4" />
+              {ADVISORY_TRACK.title}
             </div>
-            <h2 className="mb-5 text-title font-black text-slate-900">
-              סמנו מה היועץ יעשה — ותראו מחיר מיד
-            </h2>
+            <h2 className="mb-5 text-title font-black text-slate-900">איך נקבע מחיר הליווי</h2>
             <p className="text-lg leading-relaxed text-slate-600">
-              כל שלב שלא סימנתם הוא שלב שאתם מבצעים בעצמכם בפלטפורמה. סימנתם שלב אחד לפחות?
-              הגישה לפלטפורמה כלולה, מה שכבר שילמתם עליה מקוזז, ואם ליווי מלא יוצא זול יותר —
-              זה המחיר שתשלמו.
+              אין מחירון אחד שמתאים לכל תיק. אפשר לקחת יועץ משכנתאות מקצועי לשלב 1 בלבד, לכמה שלבים
+              או לכל שלבי תכנון המשכנתא, ויועץ משכלנתא חוזר אליכם עם הצעת מחיר לפני שמתחילים.
             </p>
           </motion.div>
 
-          <PackageBuilder />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ADVISORY_PRICE_FACTORS.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md"
+                >
+                  <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mb-1.5 text-button font-black text-slate-900">{item.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600">{item.description}</p>
+                </motion.div>
+              );
+            })}
+          </div>
 
-          {/* Price anchors */}
-          <div className="mt-12 grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                label: 'סכום חמשת השלבים בנפרד',
-                value: `₪${stagesTotalPrice.toLocaleString('he-IL')}`,
-                note: 'כשרוכשים אותם אחד־אחד',
-                tone: 'text-slate-900',
-              },
-              {
-                label: 'מחיר חבילת הליווי המלא',
-                value: `₪${FULL_SERVICE_PRICE.toLocaleString('he-IL')}`,
-                note: 'כולל מנוי לפלטפורמה',
-                tone: 'text-blue-700',
-              },
-              {
-                label: 'החיסכון בחבילה',
-                value: `₪${BUNDLE_SAVING.toLocaleString('he-IL')}`,
-                note: `כ-${Math.round((BUNDLE_SAVING / stagesTotalPrice) * 100)}% הנחה`,
-                tone: 'text-emerald-700',
-              },
-            ].map((item, i) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-md"
-              >
-                <div className="text-sm font-semibold text-slate-600">{item.label}</div>
-                <div className={`my-1.5 text-3xl font-black ${item.tone}`}>{item.value}</div>
-                <div className="text-xs text-slate-600">{item.note}</div>
-              </motion.div>
-            ))}
+          <div className="mt-10 text-center">
+            <Button asChild size="lg" className="bg-blue-600 px-8 text-base font-bold text-white hover:bg-blue-700 hover:text-white">
+              <Link href="/#start">בקשו הצעת מחיר לליווי</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -312,10 +330,10 @@ export default function PricingPage() {
             className="mx-auto mb-12 max-w-3xl text-center"
           >
             <h2 className="mb-5 text-title font-black text-slate-900">
-              מחירון השלבים
+              מה כלול בכל שלב
             </h2>
             <p className="text-lg leading-relaxed text-slate-600">
-              מה כלול בכל שלב, כמה הוא עולה עם יועץ, ומה מקבלים במקומו כשעושים אותו לבד.
+              חמשת שלבי התכנון. כל אחד מהם אפשר לעשות לבד עם הכלים, או להעביר ליועץ במסלול בליווי.
             </p>
           </motion.div>
 
@@ -363,13 +381,11 @@ export default function PricingPage() {
 
                     <div className="flex flex-row items-center gap-6 md:flex-col md:items-end md:gap-2">
                       <div className="text-right md:text-left">
-                        <div className="text-2xl font-black text-slate-900">
-                          ₪{stage.advisorPrice.toLocaleString('he-IL')}
-                        </div>
+                        <div className="text-sm font-black text-violet-700">לפי מורכבות התיק</div>
                         <div className="text-xs font-semibold text-slate-600">עם יועץ</div>
                       </div>
                       <div className="text-right md:text-left">
-                        <div className="text-sm font-black text-blue-700">כלול במנוי</div>
+                        <div className="text-sm font-black text-blue-700">כלול בגישה</div>
                         <div className="text-xs font-semibold text-slate-600">
                           בביצוע עצמי
                         </div>
@@ -411,7 +427,7 @@ export default function PricingPage() {
                     <th className="bg-violet-700 px-4 py-4 text-center text-sm font-bold">
                       עצמאי / היברידי
                     </th>
-                    <th className="px-4 py-4 text-center text-sm font-bold">ליווי מלא</th>
+                    <th className="px-4 py-4 text-center text-sm font-bold">{ADVISORY_TRACK.title}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -438,7 +454,7 @@ export default function PricingPage() {
 
           <p className="mt-6 text-center text-sm text-slate-600">
             הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא עד {PLATFORM_ACCESS_DAYS} יום, ואם צריך
-            עוד זמן, אפשר לרכוש חבילה נוספת באותו מחיר. בכל הזמנת ליווי — לשלב בודד או ליווי מלא — הגישה כלולה, ומה
+            עוד זמן, אפשר לרכוש חבילה נוספת באותו מחיר. בכל הזמנת ליווי — משלב בודד ועד כל השלבים — הגישה כלולה, ומה
             ששולם עליה מקוזז.
           </p>
           <PlatformBillingNotes className="mx-auto mt-8 max-w-5xl" />

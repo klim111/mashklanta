@@ -5,11 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowUpLeft, UserCheck, Wand2 } from 'lucide-react';
 import { journeyStages } from '@/data/platform/journey';
-import {
-  FULL_SERVICE_PRICE,
-  PLATFORM_PROCESS_PRICE,
-} from '@/data/platform/pricing';
-import AnimatedNumber from './AnimatedNumber';
+import { ADVISORY_TRACK, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
 
 const RECOMMENDED = ['mix', 'auction'];
 
@@ -21,23 +17,19 @@ export default function FlexibilityMixer() {
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
 
-  const { advisorCost, isFull, selfCount } = useMemo(() => {
-    const raw = journeyStages
-      .filter((s) => advisorStages.includes(s.id))
-      .reduce((sum, s) => sum + s.advisorPrice, 0);
-    const isFull = advisorStages.length === journeyStages.length;
-    return {
-      advisorCost: isFull ? FULL_SERVICE_PRICE : raw,
-      isFull,
+  const { isFull, selfCount } = useMemo(
+    () => ({
+      isFull: advisorStages.length === journeyStages.length,
       selfCount: journeyStages.length - advisorStages.length,
-    };
-  }, [advisorStages]);
+    }),
+    [advisorStages]
+  );
 
   const headline =
     advisorStages.length === 0
       ? 'אתם עושים הכל לבד'
       : isFull
-        ? 'היועץ מלווה מקצה לקצה'
+        ? 'היועץ מלווה בכל שלבי התכנון'
         : `${advisorStages.length} שלבים עם יועץ · ${selfCount} לבד`;
 
   return (
@@ -77,7 +69,7 @@ export default function FlexibilityMixer() {
               isFull ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            ליווי מלא
+            כל השלבים
           </button>
         </div>
       </div>
@@ -141,11 +133,7 @@ export default function FlexibilityMixer() {
               </span>
 
               <div className="mt-3 text-xs font-semibold text-slate-700">
-                {withAdvisor ? (
-                  <>₪{stage.advisorPrice.toLocaleString('he-IL')}</>
-                ) : (
-                  <>כלול במנוי</>
-                )}
+                {withAdvisor ? <>לפי מורכבות התיק</> : <>כלול בגישה</>}
               </div>
             </motion.button>
           );
@@ -156,31 +144,17 @@ export default function FlexibilityMixer() {
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-sm font-bold text-white">{headline}</div>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {advisorStages.length > 0 && (
-                <span className="text-3xl font-black text-white">
-                  <AnimatedNumber value={advisorCost} prefix="₪" live duration={500} />
-                </span>
-              )}
-              {advisorStages.length > 0 && !isFull && (
-                <span className="text-sm text-slate-200">ליועץ</span>
-              )}
-              {!isFull && (
-                <span className="text-lg font-black text-cyan-200">
-                  {advisorStages.length > 0 ? '+' : ''} ₪{PLATFORM_PROCESS_PRICE}
-                  <span className="mr-1 text-sm font-semibold text-slate-200">לתהליך</span>
-                </span>
-              )}
-              {isFull && (
-                <span className="text-sm font-semibold text-emerald-200">כולל גישה לפלטפורמה</span>
-              )}
+            <div className="mt-1 text-sm leading-relaxed text-slate-200">
+              {advisorStages.length === 0
+                ? `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא, גישה מלאה לכל הכלים`
+                : `${ADVISORY_TRACK.priceNote}. ${ADVISORY_TRACK.credit}.`}
             </div>
           </div>
           <Link
-            href="/pricing#builder"
+            href="/pricing#advisory"
             className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-button font-black text-slate-900 shadow-lg transition-colors hover:bg-blue-50"
           >
-            בנו את החבילה המדויקת
+            איך נקבע מחיר הליווי
             <ArrowUpLeft className="h-4 w-4" />
           </Link>
         </div>

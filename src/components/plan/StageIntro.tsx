@@ -72,8 +72,8 @@ export function StageIntro({
       <p className="mx-auto mt-5 flex max-w-4xl items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-info leading-relaxed text-violet-950">
         <Headset className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
         <span>
-          בכל שלב שבו תרגישו שאתם צריכים ייעוץ או עזרה, הכפתור{' '}
-          <span className="font-black">«פנו ליועץ לעזרה בשלב זה»</span> זמין לכם בפינת המסך. יועץ
+          בכל שלב שבו תרגישו שאתם צריכים ייעוץ או עזרה, הכפתור הסגול{' '}
+          <span className="font-black">«פנו ליועץ»</span> זמין לכם בפינה השמאלית של המסך. יועץ
           משכלנתא ייכנס לתמונה עם כל מה שכבר הזנתם.
         </span>
       </p>
