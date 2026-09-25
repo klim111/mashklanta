@@ -1,8 +1,10 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Phone, Mail, MapPin, Clock, Facebook, Instagram, Linkedin, Twitter } from "lucide-react"
+import Link from "next/link"
+import { Phone, Mail, Facebook, Instagram, Linkedin, Twitter } from "lucide-react"
 import { Button } from "./button"
+import { SITE_CONTACT } from "@/lib/site-contact"
 
 export default function Footer() {
   return (
@@ -15,7 +17,7 @@ export default function Footer() {
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">מ</span>
               </div>
-              <h3 className="text-subtitle font-bold text-white">משכלתנא</h3>
+              <h3 className="text-subtitle font-bold text-white">משכלנתא</h3>
             </div>
             <p className="text-slate-300 leading-relaxed">
               הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לך למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
@@ -54,7 +56,7 @@ export default function Footer() {
             <ul className="space-y-2 text-slate-300">
               <li><a href="/pricing" className="hover:text-white transition-colors">מסלול עצמאי</a></li>
               <li><a href="/pricing#builder" className="hover:text-white transition-colors">מסלול היברידי</a></li>
-              <li><a href="/pricing" className="hover:text-white transition-colors">ליווי מלא</a></li>
+              <li><a href="/pricing" className="hover:text-white transition-colors">מסלול בליווי</a></li>
               <li><a href="/custom-mix-builder" className="hover:text-white transition-colors">בניית תמהילים</a></li>
               <li><a href="/mortgage-advisor" className="hover:text-white transition-colors">השוואת הצעות</a></li>
             </ul>
@@ -64,22 +66,22 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-white">צור קשר</h4>
             <div className="space-y-3 text-slate-300">
-              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
-                <Phone className="w-4 h-4 text-blue-500" />
-                <span>03-1234567</span>
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
-                <Mail className="w-4 h-4 text-blue-500" />
-                <span>info@mashkalanta.co.il</span>
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
-                <MapPin className="w-4 h-4 text-blue-500" />
-                <span>תל אביב, ישראל</span>
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse hover:text-white transition-colors">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span>א-ה: 9:00-18:00</span>
-              </div>
+              <a
+                href={SITE_CONTACT.phoneHref}
+                className="flex items-center gap-2 hover:text-white transition-colors"
+                aria-label={`טלפון: ${SITE_CONTACT.phone}`}
+              >
+                <Phone className="w-4 h-4 shrink-0 text-blue-500" aria-hidden="true" />
+                <span dir="ltr">{SITE_CONTACT.phone}</span>
+              </a>
+              <a
+                href={SITE_CONTACT.emailHref}
+                className="flex items-center gap-2 hover:text-white transition-colors"
+                aria-label={`אימייל: ${SITE_CONTACT.email}`}
+              >
+                <Mail className="w-4 h-4 shrink-0 text-blue-500" aria-hidden="true" />
+                <span dir="ltr" className="break-all">{SITE_CONTACT.email}</span>
+              </a>
             </div>
           </div>
         </div>
@@ -94,12 +96,12 @@ export default function Footer() {
         >
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-slate-400 text-sm">
-              © 2024 משכלתנא. כל הזכויות שמורות.
+              © {new Date().getFullYear()} משכלנתא. כל הזכויות שמורות.
             </div>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 sm:gap-x-6 text-sm text-slate-400">
-              <a href="#" className="hover:text-white transition-colors">תנאי שימוש</a>
-              <a href="#" className="hover:text-white transition-colors">מדיניות פרטיות</a>
-              <a href="#" className="hover:text-white transition-colors">מדיניות עוגיות</a>
+              <Link href="/terms" className="hover:text-white transition-colors">תנאי שימוש</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">מדיניות פרטיות</Link>
+              <Link href="/privacy#cookies" className="hover:text-white transition-colors">מדיניות עוגיות</Link>
             </div>
           </div>
         </motion.div>
