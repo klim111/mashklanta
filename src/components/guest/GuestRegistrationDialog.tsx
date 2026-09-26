@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
 import { PasswordField } from '@/components/auth/PasswordField';
+import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
 
 /**
@@ -53,6 +54,7 @@ export function GuestRegistrationDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const emailStatus = useEmailExists(email);
 
   // כל פתיחה מתחילה נקייה, כדי שלא יוצג אישור של הרשמה קודמת
   useEffect(() => {
@@ -72,6 +74,10 @@ export function GuestRegistrationDialog({
     }
     if (!email.includes('@')) {
       setError('כתובת המייל אינה תקינה');
+      return;
+    }
+    if (emailStatus.exists) {
+      setError('כבר קיים משתמש עם המייל הזה');
       return;
     }
     const problem = passwordProblem(password);
@@ -109,6 +115,11 @@ export function GuestRegistrationDialog({
         body = await response.json().catch(() => null);
       }
 
+      if (body?.code === 'email-exists') {
+        emailStatus.markExists();
+        setError('כבר קיים משתמש עם המייל הזה');
+        return;
+      }
       if (!response.ok) {
         setError(body?.error ?? 'ההרשמה נכשלה. נסו שוב.');
         return;
@@ -186,6 +197,7 @@ export function GuestRegistrationDialog({
                 />
               </span>
             </label>
+            {emailStatus.exists && <EmailExistsNotice email={email} callbackUrl={redirectTo} />}
 
             <div className="mt-3 text-xs font-bold text-slate-600">
               סיסמה

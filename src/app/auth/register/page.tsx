@@ -8,6 +8,7 @@ import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { PasswordField } from '@/components/auth/PasswordField';
+import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
 
 /** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
@@ -29,6 +30,8 @@ function RegisterForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const emailStatus = useEmailExists(formData.email);
+  const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
 
   useEffect(() => {
     const oauthError = authErrorMessage(searchParams.get('error'));
@@ -53,6 +56,10 @@ function RegisterForm() {
     }
     if (!formData.email.includes('@')) {
       setError('כתובת המייל אינה תקינה');
+      return false;
+    }
+    if (emailStatus.exists) {
+      setError('כבר קיים משתמש עם המייל הזה');
       return false;
     }
     const problem = passwordProblem(formData.password);
@@ -89,19 +96,22 @@ function RegisterForm() {
           username: formData.username,
           email: formData.email,
           password: formData.password,
-          callbackUrl: safeCallbackUrl(searchParams.get('callbackUrl')),
+          callbackUrl,
         }),
       });
 
       const payload = await response.text();
-      let data: { error?: string } = {};
+      let data: { error?: string; code?: string } = {};
       try {
         data = payload ? JSON.parse(payload) : {};
       } catch {
         data = { error: 'השרת לא החזיר תשובה תקינה. נסו שוב.' };
       }
 
-      if (!response.ok) {
+      if (data.code === 'email-exists') {
+        emailStatus.markExists();
+        setError('כבר קיים משתמש עם המייל הזה');
+      } else if (!response.ok) {
         setError(data.error || 'אירעה שגיאה בהרשמה');
       } else {
         /*
@@ -222,6 +232,7 @@ function RegisterForm() {
                 />
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
+              {emailStatus.exists && <EmailExistsNotice email={formData.email} callbackUrl={callbackUrl} />}
             </div>
 
             <div>
@@ -319,6 +330,14 @@ function RegisterForm() {
                 className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
                 התחבר
+              </Link>
+            </p>
+            <p className="mt-2">
+              <Link
+                href={`/auth/forgot-password${formData.email.includes('@') ? `?email=${encodeURIComponent(formData.email.trim())}` : ''}`}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                שכחתי סיסמה
               </Link>
             </p>
           </div>

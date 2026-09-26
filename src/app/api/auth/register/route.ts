@@ -65,6 +65,12 @@ export async function POST(request: NextRequest) {
       requestOrigin: request.nextUrl.origin,
     });
 
+    if (result.status === 'exists') {
+      return NextResponse.json(
+        { error: 'כבר קיים משתמש עם המייל הזה. התחברו, או בחרו סיסמה חדשה אם שכחתם אותה.', code: 'email-exists' },
+        { status: 409 }
+      );
+    }
     if (result.status === 'cooldown') {
       return NextResponse.json(
         { error: 'כבר שלחנו קישור לכתובת הזו לפני רגע. בדקו את תיבת המייל, או נסו שוב בעוד דקה.' },
