@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AUTHORIZATION_FORMS,
   AUTHORIZATION_TASK_KEY,
   authorizationBankSlug,
   authorizationDocumentKey,
@@ -10,7 +9,6 @@ import {
 } from './authorization-letters';
 import { buildCalendarEvents, buildClientTasks, EMPTY_AGENDA_INPUT } from './client-agenda';
 import type { ClientTaskView } from './client-tasks';
-import { PRE_APPROVAL_BANKS } from '@/components/plan/stages/preapproval/banks';
 
 const NOW = new Date(2026, 8, 23, 14, 30);
 
@@ -23,9 +21,6 @@ describe('authorization letter keys', () => {
     expect(authorizationBankSlug('b1:payslips')).toBeNull();
   });
 
-  it('has a form slot for every bank in the approval-in-principle list', () => {
-    expect(Object.keys(AUTHORIZATION_FORMS).sort()).toEqual(PRE_APPROVAL_BANKS.map((bank) => bank.slug).sort());
-  });
 });
 
 describe('authorizationTaskSpec', () => {

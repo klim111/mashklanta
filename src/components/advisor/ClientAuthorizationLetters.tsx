@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { authorizationDocumentKey } from '@/lib/authorization-letters';
 import type { AuthorizationLettersView } from '@/lib/authorization-letter-store';
-import { PRE_APPROVAL_BANKS } from '@/components/plan/stages/preapproval/banks';
+import { AUTHORIZATION_BANKS } from '@/lib/authorization-forms';
 import { BankMark } from '@/components/plan/stages/preapproval/BankMark';
 import { SectionCard } from './ui';
 
@@ -111,8 +111,9 @@ export function SendAuthorizationButton({
               שליחת כתבי הסמכה ל{clientName}
             </DialogTitle>
             <DialogDescription className="text-right leading-relaxed">
-              הלקוח יקבל משימה שפותחת חלון עם הטפסים של כל הבנקים. הוא מוריד, חותם ומעלה כתב הסמכה לכל בנק
-              שיבחר, וכל כתב חתום מופיע אצלכם בתיק המסמכים שלו, בלשונית &quot;כתבי הסמכה חתומים&quot;.
+              הלקוח יקבל משימה שפותחת חלון עם הטפסים של כל הבנקים. הוא מקליד את הפרטים פעם אחת, חותם על המסך
+              ומפיק כתב מלא וחתום לכל בנק שיבחר. פרטי היועץ נלקחים מההגדרות שלכם. כל כתב חתום מופיע אצלכם בתיק
+              המסמכים שלו, בלשונית &quot;כתבי הסמכה חתומים&quot;.
             </DialogDescription>
           </DialogHeader>
 
@@ -165,7 +166,7 @@ export function SendAuthorizationButton({
 export function ClientAuthorizationLetters({ clientId, clientName }: { clientId: string; clientName: string }) {
   const { view, ready } = useAuthorizationLetters(clientId);
   const letters = new Map((view?.letters ?? []).map((letter) => [letter.key, letter]));
-  const signed = PRE_APPROVAL_BANKS.filter((info) => letters.has(authorizationDocumentKey(info.slug))).length;
+  const signed = AUTHORIZATION_BANKS.filter((info) => letters.has(authorizationDocumentKey(info.slug))).length;
   const request = view?.request ?? null;
 
   return (
@@ -199,7 +200,7 @@ export function ClientAuthorizationLetters({ clientId, clientName }: { clientId:
             )}
             <span dir="rtl" className="text-slate-400">·</span>
             <span>
-              {signed} מתוך {PRE_APPROVAL_BANKS.length} בנקים
+              {signed} מתוך {AUTHORIZATION_BANKS.length} בנקים
             </span>
             {view && !view.planId && (
               <span dir="rtl" className="text-2xs text-slate-500">ללקוח עדיין אין תהליך משכנתא, ולכן אי אפשר לשלוח עדיין.</span>
@@ -207,7 +208,7 @@ export function ClientAuthorizationLetters({ clientId, clientName }: { clientId:
           </p>
 
           <div dir="rtl" className="space-y-2">
-            {PRE_APPROVAL_BANKS.map((info) => {
+            {AUTHORIZATION_BANKS.map((info) => {
               const letter = letters.get(authorizationDocumentKey(info.slug)) ?? null;
               return (
                 <div dir="rtl"
