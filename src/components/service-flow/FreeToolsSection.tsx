@@ -28,7 +28,7 @@ const FREE_TOOLS: Array<{
     id: 'refinance',
     href: '/mortgage-refinance',
     title: 'בדיקת מיחזור',
-    description: 'מזינים את המשכנתא הקיימת ובודקים אם אפשר לשפר החזר, ריבית או תקופה',
+    description: 'בוחרים מטרה, מזינים את המשכנתא הקיימת, והמערכת בודקת מול ממוצעי בנק ישראל אם יש מקום לשיפור',
     icon: RefreshCw,
     gradient: 'from-violet-500 to-purple-600',
     hover: 'hover:border-violet-300',
