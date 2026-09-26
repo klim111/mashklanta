@@ -58,6 +58,9 @@ const OVERLAY_CSS = `
   #promo-end b span { color: #60a5fa; }
   #promo-end p { font-size: 40px; font-weight: 700; color: #cbd5e1; margin: 0; }
   #promo-end em { font-style: normal; margin-top: 18px; padding: 14px 34px; border-radius: 18px; background: #2563eb; font-size: 34px; font-weight: 800; }
+  #promo-cursor { position: absolute; top: 0; left: 0; width: 26px; height: 30px; display: none; transition: transform 380ms cubic-bezier(.3,.7,.2,1);
+    filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35)); }
+  #promo-cursor.is-on { display: block; }
   @keyframes promo-in { from { opacity: 0; transform: translate(-50%, 18px); } to { opacity: 1; transform: translate(-50%, 0); } }
   @keyframes promo-fade { from { opacity: 0; } to { opacity: 1; } }
 `;
@@ -72,6 +75,7 @@ function overlayScript(css) {
     layer.id = 'promo-layer';
     layer.innerHTML =
       '<div id="promo-tag">הדגמה · כל הנתונים לדוגמה</div><div id="promo-caption"></div>' +
+      '<svg id="promo-cursor" viewBox="0 0 26 30" fill="none"><path d="M3 2l19 12.5-8.2 1.6 4.8 9.6-3.6 1.8-4.8-9.7L3 23.5z" fill="#0f172a" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>' +
       '<div id="promo-end"><b>משכל<span>נתא</span></b><p>כל המשכנתא שלכם, בפלטפורמה אחת</p><em>הכלים פתוחים לכולם, בחינם</em></div>';
     document.body.appendChild(layer);
     const box = layer.querySelector('#promo-caption');
@@ -91,6 +95,146 @@ function overlayScript(css) {
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
   else install();
+}
+
+
+/** צילום עמוד: screencast של CDP, כל פריים עם חותמת זמן (שניות, שעון קיר) */
+async function startCapture(context, page, prefix) {
+  const cdp = await context.newCDPSession(page);
+  const frames = [];
+  cdp.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
+    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => undefined);
+    const file = join(WORK, 'frames', `${prefix}${String(frames.length).padStart(6, '0')}.jpg`);
+    writeFileSync(file, Buffer.from(data, 'base64'));
+    frames.push({ file, t: metadata.timestamp });
+  });
+  await cdp.send('Page.startScreencast', {
+    format: 'jpeg',
+    quality: 90,
+    maxWidth: VIEWPORT.width * SCALE,
+    maxHeight: VIEWPORT.height * SCALE,
+    everyNthFrame: 1,
+  });
+  return { frames, stop: () => cdp.send('Page.stopScreencast') };
+}
+
+/**
+ * ציר הזמן של קטע: הפעולות מואצות פי SPEED, ההחזקות (זמן הקריאה) לא.
+ * holdRanges — בשניות מתחילת הקטע (הפריים הראשון). מחזיר את הפריימים עם משך
+ * לכל אחד, ופונקציה שממפה זמן בקטע לזמן בסרטון.
+ */
+function timeline(frames, holdRanges, last) {
+  const inHold = (t) => holdRanges.some(([a, b]) => t >= a && t < b);
+  const RES = 0.01;
+  const table = [0];
+  for (let x = 0; x < last + 1; x += RES) table.push(table[table.length - 1] + RES * (inHold(x) ? 1 : 1 / SPEED));
+  const remap = (t) => {
+    const i = Math.min(table.length - 2, Math.max(0, Math.floor(t / RES)));
+    return table[i] + (table[i + 1] - table[i]) * (t / RES - i);
+  };
+  const t0 = frames[0].t;
+  const entries = [];
+  let clock = 0;
+  frames.forEach((frame, i) => {
+    const b = (frames[i + 1]?.t ?? t0 + last) - t0;
+    const duration = Math.max(0.001, remap(b) - clock);
+    clock += duration;
+    entries.push({ file: frame.file, duration });
+  });
+  return { entries, remap, total: clock };
+}
+
+/**
+ * בדיקת המיחזור לאורחים. בהדגמה המשתמש "מחובר" ומקבל את כלי המיחזור המלא,
+ * ולכן הבדיקה המהירה — מה שמבקר בדף הבית באמת רואה — מוקלטת כאן בנפרד,
+ * בדפדפן בלי הדגמה, ומשתלבת בסרטון לפני ההלוואות הצרכניות.
+ */
+async function recordGuestRefinance(browser, market) {
+  const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: SCALE, locale: 'he-IL', timezoneId: 'Asia/Jerusalem' });
+  await context.route('**/api/boi/mortgage-market', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: market })
+  );
+  await context.addInitScript(`(${overlayScript.toString()})(${JSON.stringify(OVERLAY_CSS)})`);
+  const page = await context.newPage();
+  await page.goto(BASE_URL + '/mortgage-refinance', { waitUntil: 'load' });
+  await page.getByText('הקטנת ההחזר החודשי').first().waitFor();
+  await page.waitForTimeout(1500);
+
+  const caption = (text) =>
+    page.evaluate((value) => {
+      const box = document.getElementById('promo-caption');
+      box.textContent = value;
+      box.classList.remove('is-in');
+      void box.offsetWidth;
+      box.classList.add('is-in');
+    }, text);
+  const pointAt = async (locator) => {
+    await locator.scrollIntoViewIfNeeded();
+    const box = await locator.boundingBox();
+    if (!box) return;
+    await page.evaluate(
+      ({ x, y }) => {
+        const cursor = document.getElementById('promo-cursor');
+        cursor.classList.add('is-on');
+        cursor.style.transform = `translate(${x}px, ${y}px)`;
+      },
+      { x: box.x + box.width * 0.55, y: box.y + box.height * 0.6 }
+    );
+    await page.waitForTimeout(420);
+  };
+  const click = async (locator) => {
+    await pointAt(locator);
+    await locator.click();
+    await page.waitForTimeout(250);
+  };
+  const type = async (locator, text) => {
+    await click(locator);
+    await locator.pressSequentially(text, { delay: 45 });
+  };
+
+  await page.evaluate(() => {
+    document.getElementById('promo-cursor').style.transform = 'translate(640px, 420px)';
+  });
+  const capture = await startCapture(context, page, 'refi-');
+  const start = Date.now() / 1000;
+  const holds = [];
+  const steps = [];
+  const hold = async (ms) => {
+    const a = Date.now() / 1000;
+    await page.waitForTimeout(ms);
+    holds.push([a, Date.now() / 1000]);
+  };
+
+  steps.push({ t: Date.now() / 1000, caption: 'בדיקת מיחזור: בוחרים מטרה ומזינים את המשכנתא של היום' });
+  await caption(steps[0].caption);
+  await hold(1400);
+  await click(page.getByText('הקטנת ההחזר החודשי').first());
+  await page.getByText('המסלולים במשכנתא היום').waitFor();
+  await page.waitForTimeout(400);
+
+  const selects = page.locator('select');
+  await pointAt(selects.nth(0));
+  await selects.nth(0).selectOption({ label: 'קבועה לא צמודה' });
+  await type(page.getByPlaceholder('₪').nth(0), '620000');
+  await type(page.getByPlaceholder('4.5').nth(0), '5.9');
+  await click(page.getByRole('button', { name: 'הוספת מסלול' }));
+  await type(page.getByPlaceholder('₪').nth(1), '380000');
+  await type(page.getByPlaceholder('4.5').nth(1), '6.4');
+  await hold(500);
+  await click(page.getByRole('button', { name: /בדיקת אפשרויות המיחזור/ }));
+
+  steps.push({ t: Date.now() / 1000, caption: 'ורואים מיד כמה אפשר לחסוך, מול הריביות של בנק ישראל' });
+  await caption(steps[1].caption);
+  await page.evaluate(() => document.getElementById('promo-cursor').classList.remove('is-on'));
+  await page.waitForTimeout(700);
+  await hold(2200);
+  await page.evaluate(() => window.scrollBy({ top: 360, behavior: 'smooth' }));
+  await page.waitForTimeout(700);
+  await hold(1400);
+  const end = Date.now() / 1000;
+  await capture.stop();
+  await context.close();
+  return { frames: capture.frames, holds, steps, start, end };
 }
 
 async function main() {
@@ -122,18 +266,6 @@ async function main() {
   await page.goto(BASE_URL + '/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
 
-  // צילום: screencast של CDP, כל פריים עם חותמת זמן
-  const cdp = await context.newCDPSession(page);
-  const frames = [];
-  let recording = false;
-  cdp.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
-    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => undefined);
-    if (!recording) return;
-    const file = join(WORK, 'frames', `${String(frames.length).padStart(6, '0')}.jpg`);
-    writeFileSync(file, Buffer.from(data, 'base64'));
-    frames.push({ file, t: metadata.timestamp });
-  });
-
   // מתחילים את ההדגמה מדף הבית, כמו הכפתור
   await page.evaluate(() => {
     window.sessionStorage.setItem(
@@ -146,14 +278,8 @@ async function main() {
   await page.waitForSelector('.mk-demo-bar__counter', { state: 'attached', timeout: 60_000 });
   await page.waitForTimeout(2500);
 
-  recording = true;
-  await cdp.send('Page.startScreencast', {
-    format: 'jpeg',
-    quality: 90,
-    maxWidth: VIEWPORT.width * SCALE,
-    maxHeight: VIEWPORT.height * SCALE,
-    everyNthFrame: 1,
-  });
+  const capture = await startCapture(context, page, 'main-');
+  const frames = capture.frames;
   const started = Date.now();
   await page.waitForTimeout(300);
   await page.evaluate(() => document.querySelector('.mk-demo-bar .mk-demo-control.is-primary')?.click());
@@ -189,16 +315,18 @@ async function main() {
   });
   const endAt = (Date.now() - started) / 1000;
   await page.waitForTimeout(3500);
-  await cdp.send('Page.stopScreencast');
-  recording = false;
+  await capture.stop();
   const total = (Date.now() - started) / 1000;
+  await context.close();
+
+  const refi = await recordGuestRefinance(browser, market);
   await browser.close();
 
   // ─── קצב: הפעולות (הקלדה, לחיצות, ניווט) מואצות, זמן הקריאה של כל כתובית נשמר ───
-  // משך ההחזקה של כל צעד נקרא מקובץ התסריט, לפי הסדר
-  const holds = [...readFileSync(join(root, 'src/demo/catalog/flows/promo.ts'), 'utf8').matchAll(/duration:\s*(\d+)/g)].map(
-    (match) => Number(match[1]) / 1000
-  );
+  // משך ההחזקה ומזהה של כל צעד נקראים מקובץ התסריט, לפי הסדר
+  const script = readFileSync(join(root, 'src/demo/catalog/flows/promo.ts'), 'utf8');
+  const holds = [...script.matchAll(/duration:\s*(\d+)/g)].map((match) => Number(match[1]) / 1000);
+  const stepIds = [...script.matchAll(/^ {6}id: '([^']+)'/gm)].map((match) => match[1]);
   const t0 = frames[0].t;
   const offset = t0 - started / 1000; // שעון הקיר של הצעדים → ציר הזמן של הצילום
   const starts = steps.map((step) => step.t - offset);
@@ -209,27 +337,34 @@ async function main() {
     const next = starts[i + 1] ?? endCard;
     holdRanges.push([Math.max(start, next - (holds[i] ?? 0)), next]);
   });
-  const inHold = (t) => holdRanges.some(([a, b]) => t >= a && t < b);
-  // זמן בסרטון הסופי: שנייה של החזקה = שנייה, שנייה של פעולה = 1/SPEED. טבלה ברזולוציה של 10ms
-  const RES = 0.01;
-  const table = [0];
-  for (let x = 0; x < last + 1; x += RES) table.push(table[table.length - 1] + RES * (inHold(x) ? 1 : 1 / SPEED));
-  const remap = (t) => {
-    const i = Math.min(table.length - 2, Math.max(0, Math.floor(t / RES)));
-    return table[i] + (table[i + 1] - table[i]) * (t / RES - i);
-  };
-  const lines = [];
+  const main = timeline(frames, holdRanges, last);
+
+  // בדיקת המיחזור לאורחים — ציר זמן משלה
+  const r0 = refi.frames[0].t;
+  const refiLine = timeline(
+    refi.frames,
+    refi.holds.map(([a, b]) => [a - r0, b - r0]),
+    refi.end - r0
+  );
+
+  // שילוב: לפני הצעד של ההלוואות הצרכניות
+  const spliceStep = stepIds.indexOf('loans');
+  const spliceAt = main.remap(starts[spliceStep]);
+  const entries = [];
   let clock = 0;
-  frames.forEach((frame, i) => {
-    const a = frame.t - t0;
-    const b = (frames[i + 1]?.t ?? t0 + last) - t0;
-    const target = remap(b);
-    const duration = Math.max(0.001, target - clock);
-    clock += duration;
-    lines.push(`file '${frame.file}'`, `duration ${duration.toFixed(4)}`);
-    void a;
-  });
-  lines.push(`file '${frames[frames.length - 1].file}'`);
+  let spliced = false;
+  for (const entry of main.entries) {
+    if (!spliced && clock >= spliceAt - 0.001) {
+      entries.push(...refiLine.entries);
+      clock += refiLine.total;
+      spliced = true;
+    }
+    entries.push(entry);
+    clock += entry.duration;
+  }
+  const shift = (t) => (t >= spliceAt - 0.001 ? t + refiLine.total : t);
+  const lines = entries.flatMap((entry) => [`file '${entry.file}'`, `duration ${entry.duration.toFixed(4)}`]);
+  lines.push(`file '${entries[entries.length - 1].file}'`);
   writeFileSync(join(WORK, 'frames.txt'), lines.join('\n'));
 
   const video = join(OUT_DIR, 'mashkalanta-promo.mp4');
@@ -253,8 +388,17 @@ async function main() {
 
   // כתוביות (לקוראי מסך ולנגישות), על ציר הזמן של הסרטון הסופי
   const vtt = ['WEBVTT', ''];
-  const cues = starts.map((start, i) => ({ start: remap(start), end: remap(starts[i + 1] ?? endCard), text: steps[i].caption }));
-  cues.push({ start: remap(endCard), end: clock, text: 'משכלנתא: כל המשכנתא שלכם, בפלטפורמה אחת' });
+  const cues = starts.map((start, i) => ({
+    start: shift(main.remap(start)),
+    end: i + 1 === spliceStep ? spliceAt : shift(main.remap(starts[i + 1] ?? endCard)),
+    text: steps[i].caption,
+  }));
+  refi.steps.forEach((step, i) => {
+    const next = refi.steps[i + 1]?.t ?? refi.end;
+    cues.push({ start: spliceAt + refiLine.remap(step.t - r0), end: spliceAt + refiLine.remap(next - r0), text: step.caption });
+  });
+  cues.push({ start: shift(main.remap(endCard)), end: clock, text: 'משכלנתא: כל המשכנתא שלכם, בפלטפורמה אחת' });
+  cues.sort((a, b) => a.start - b.start);
   const stamp = (s) => {
     const ms = Math.max(0, Math.round(s * 1000));
     const h = String(Math.floor(ms / 3_600_000)).padStart(2, '0');
@@ -265,7 +409,7 @@ async function main() {
   cues.forEach((cue, i) => vtt.push(String(i + 1), `${stamp(cue.start)} --> ${stamp(cue.end)}`, cue.text, ''));
   writeFileSync(join(OUT_DIR, 'mashkalanta-promo.he.vtt'), vtt.join('\n'));
   writeFileSync(join(WORK, 'cues.json'), JSON.stringify({ total: clock, cues }, null, 1));
-  console.log(`נוצר ${video} · ${clock.toFixed(1)} שניות · ${frames.length} פריימים`);
+  console.log(`נוצר ${video} · ${clock.toFixed(1)} שניות · ${entries.length} פריימים`);
 }
 
 main().catch((error) => {

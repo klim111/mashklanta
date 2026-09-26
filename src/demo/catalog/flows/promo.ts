@@ -3,7 +3,6 @@ import { DEMO_INPUTS } from '../../data/demo-data';
 
 const a = DEMO_INPUTS.affordability;
 const e = DEMO_INPUTS.equity;
-const r = DEMO_INPUTS.refinance;
 
 /**
  * סרטון התדמית של דף הבית — "מה זה משכלנתא? (סרטון)".
@@ -110,33 +109,8 @@ const flow: DemoFlow = {
       duration: 1800,
     },
 
-    // ─── בדיקת מיחזור ───
-    {
-      id: 'refinance',
-      caption: 'בדיקת מיחזור: מזינים את המשכנתא של היום',
-      route: '/mortgage-refinance',
-      actions: [
-        { type: 'select', target: 'refi-bank', option: 'לאומי', key: 'bank' },
-        { type: 'type', target: 'refi-total', value: r.totalAmount, key: 'totalAmount' },
-        { type: 'click', target: 'refi-add-track' },
-        { type: 'type', target: 'track-rate', value: 5.9, key: 'currentRate', instant: true },
-        { type: 'click', target: 'track-save' },
-        { type: 'click', target: 'refi-summarize' },
-      ],
-      duration: 900,
-    },
-    {
-      id: 'refinance-result',
-      caption: 'ורואים מיד כמה אפשר לחסוך',
-      actions: [
-        { type: 'scroll', target: 'refi-panel' },
-        { type: 'click', target: 'refi-goal-reduce_payment', optional: true },
-        { type: 'slider', target: 'refi-rate-0', value: 4.3, key: 'refiRate' },
-        { type: 'scroll', target: 'refi-results' },
-      ],
-      target: 'refi-results',
-      duration: 1800,
-    },
+    // ─── בדיקת מיחזור: מוקלטת בנפרד כאורח (scripts/promo-video), כי בהדגמה המשתמש מחובר
+    //     ומקבל את הכלי המלא. ההקלטה משתלבת כאן, לפני ההלוואות הצרכניות ───
 
     // ─── הלוואות צרכניות ───
     {
