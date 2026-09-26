@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Banknote, Home, Landmark, Percent } from 'lucide-react';
 import {
   Bar,
@@ -120,15 +119,9 @@ function TooltipCard({ title, rows }: { title: string; rows: { label: string; va
   );
 }
 
-function RateCard({ item, index }: { item: MortgageMarketSnapshot['rates'][number]; index: number }) {
+function RateCard({ item }: { item: MortgageMarketSnapshot['rates'][number] }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.06 }}
-      className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md"
-    >
+    <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md">
       <span className="absolute inset-y-0 right-0 w-1.5" style={{ backgroundColor: RATE_COLORS[item.key] }} />
       <p className="text-info font-bold text-slate-200">{item.label}</p>
       {item.rate !== null ? (
@@ -154,7 +147,7 @@ function RateCard({ item, index }: { item: MortgageMarketSnapshot['rates'][numbe
         {item.anchorDetail && <p className="text-2xs text-slate-400">{item.anchorDetail}</p>}
         {item.asOf && <p className="text-2xs text-slate-400">{formatPeriod(item.asOf)}</p>}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -171,7 +164,7 @@ function KpiTile({
 }) {
   return (
     <div className="rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur-md">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
+      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
         <Icon className="h-5 w-5 text-white" />
       </div>
       <p className="text-sm font-semibold text-slate-300">{label}</p>
@@ -195,7 +188,7 @@ function YearsChart({ years, latestMonth }: { years: YearStat[]; latestMonth: st
         כל המערכת הבנקאית, הלוואות חדשות לדיור (ללא מחזורים)
         {partial && ` · *${partial.year}: ינואר עד ${formatPeriod(latestMonth).split(' ')[0]}`}
       </p>
-      <div className="mt-4 h-[260px] w-full" dir="ltr">
+      <div className="mt-4 h-[260px] w-full [&_svg]:[direction:ltr]" dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="18%">
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
@@ -204,8 +197,8 @@ function YearsChart({ years, latestMonth }: { years: YearStat[]; latestMonth: st
               tick={AXIS_TICK}
               tickLine={false}
               axisLine={false}
-              width={44}
-              tickFormatter={(value: number) => `${Math.round(value / 1000)}K`}
+              width={52}
+              tickFormatter={(value: number) => (value === 0 ? '0' : `${Math.round(value / 1000)}K`)}
             />
             <Tooltip
               cursor={{ fill: 'rgba(37,99,235,0.06)' }}
@@ -266,7 +259,7 @@ function RatesTrendChart({ data }: { data: MortgageMarketSnapshot['rateHistory']
     <div className="rounded-3xl border border-white/10 bg-white p-4 text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.5)] md:p-6">
       <h3 className="text-info font-black text-slate-900">ריבית ממוצעת לפי מסלול</h3>
       <p className="mt-1 text-sm text-slate-500">הלוואות חדשות לדיור, שלוש השנים האחרונות</p>
-      <div className="mt-4 h-[260px] w-full" dir="ltr">
+      <div className="mt-4 h-[260px] w-full [&_svg]:[direction:ltr]" dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke={GRID_STROKE} vertical={false} />
@@ -282,7 +275,7 @@ function RatesTrendChart({ data }: { data: MortgageMarketSnapshot['rateHistory']
               tick={AXIS_TICK}
               tickLine={false}
               axisLine={false}
-              width={44}
+              width={52}
               domain={['auto', 'auto']}
               tickFormatter={(value: number) => `${value.toFixed(1)}%`}
             />
@@ -377,12 +370,7 @@ export default function MortgageMarketDashboard() {
       </div>
 
       <div className="relative mx-auto max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-10 text-center"
-        >
+        <div className="mb-10 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
             <Landmark className="h-4 w-4 text-blue-200" />
             נתוני בנק ישראל
@@ -392,7 +380,7 @@ export default function MortgageMarketDashboard() {
             הריביות הממוצעות על משכנתאות חדשות לפי מסלול, העוגנים שלהן, והיקף המשכנתאות במשק
             {data ? ` · נכון ל${formatPeriod(data.latestMonth)}` : ''}
           </p>
-        </motion.div>
+        </div>
 
         {state.status === 'loading' && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true">
@@ -412,8 +400,8 @@ export default function MortgageMarketDashboard() {
         {data && (
           <>
             <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {data.rates.map((item, index) => (
-                <RateCard key={item.key} item={item} index={index} />
+              {data.rates.map((item) => (
+                <RateCard key={item.key} item={item} />
               ))}
             </div>
 
