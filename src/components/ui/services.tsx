@@ -137,7 +137,7 @@ export default function Services() {
             <Star className="w-4 h-4" />
           </motion.div>
           
-          <h2 className="text-4xl md:text-6xl font-black mb-6 text-financial-gradient">
+          <h2 className="text-title font-black mb-6 text-financial-gradient">
             למה לבחור במשכלתנא?
           </h2>
           
@@ -214,7 +214,7 @@ export default function Services() {
                               <content.icon className="w-8 h-8 text-white" />
                             </div>
                             <div>
-                              <h3 className="text-3xl font-bold text-financial-gray-900 mb-2">
+                              <h3 className="text-subtitle font-bold text-financial-gray-900 mb-2">
                                 {content.title}
                               </h3>
                               <div className="flex items-center gap-2">

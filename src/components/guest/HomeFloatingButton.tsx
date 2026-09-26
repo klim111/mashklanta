@@ -1,0 +1,36 @@
+'use client';
+
+import Link from 'next/link';
+import { Home } from 'lucide-react';
+
+/**
+ * כפתור צף לחזרה לעמוד הבית.
+ *
+ * הכלים הפתוחים (כושר החזר, מיחזור, הלוואות) הם מסכים ארוכים, ומי שנכנס אליהם
+ * מעמוד הבית נשאר בלי דרך חזרה אחרי גלילה. הכפתור נשאר בפינה בכל מסך של הכלי,
+ * באותו פורמט של כפתורי הניווט הצפים של המשתמש הרשום ("חזרה לדאשבורד").
+ */
+export function HomeFloatingButton({
+  href = '/',
+  label = 'חזרה לדף הבית',
+  side = 'right',
+}: {
+  href?: string;
+  label?: string;
+  /** צד המסך. ברירת המחדל ימין — הצד שבו אין את כפתור הפנייה ליועץ */
+  side?: 'right' | 'left';
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className={`fixed bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5 print:hidden ${
+        side === 'right' ? 'right-5' : 'left-5'
+      }`}
+    >
+      <Home className="h-5 w-5" />
+      {/* בטלפון הכפתור עגול, כדי שלא יסתיר את תוכן הכלי */}
+      <span className="sr-only sm:not-sr-only">{label}</span>
+    </Link>
+  );
+}

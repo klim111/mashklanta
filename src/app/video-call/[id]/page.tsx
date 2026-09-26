@@ -484,26 +484,26 @@ export default function VideoCallClient({ params }: PageProps) {
 
   if (!callId) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white">
         <span>טוען שיחה...</span>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-900 text-white">
+    <div className="flex min-h-screen bg-slate-900 text-white">
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-800 bg-gray-850 p-4">
+        <header className="flex items-center justify-between border-b border-slate-800 bg-slate-850 p-4">
             <div className="flex items-center gap-4">
             <div className="flex flex-col">
-              <span className="text-xs text-gray-400">שיחת וידאו</span>
+              <span className="text-xs text-slate-400">שיחת וידאו</span>
               <span className="text-lg font-semibold">משכלתנא</span>
             </div>
             <Badge variant={callState.advisorConnected ? 'default' : 'secondary'}>
               {callState.advisorConnected ? 'יועץ מחובר' : 'ממתין ליועץ'}
             </Badge>
             {callState.isConnected && (
-              <span className="text-sm text-gray-300">{formatDuration(callState.callDuration)}</span>
+              <span className="text-sm text-slate-300">{formatDuration(callState.callDuration)}</span>
             )}
             </div>
             
@@ -536,7 +536,7 @@ export default function VideoCallClient({ params }: PageProps) {
                     key="local-preview"
                   />
                   {!callState.isVideoOn && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/70 z-10">
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/70 z-10">
                       <VideoOff className="h-16 w-16 text-white" />
                     </div>
                   )}
@@ -546,8 +546,8 @@ export default function VideoCallClient({ params }: PageProps) {
                         <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                           <Phone className="w-10 h-10" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">מתחבר לשרת...</h3>
-                        <p className="text-gray-300">ממתין לחיבור</p>
+                        <h3 className="text-subtitle font-semibold mb-2">מתחבר לשרת...</h3>
+                        <p className="text-slate-300">ממתין לחיבור</p>
                       </div>
                     </div>
                   )}
@@ -557,8 +557,8 @@ export default function VideoCallClient({ params }: PageProps) {
                         <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Phone className="w-10 h-10" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">ממתין ליועץ...</h3>
-                        <p className="text-gray-300">השיחה תתחיל ברגע שהיועץ יתחבר</p>
+                        <h3 className="text-subtitle font-semibold mb-2">ממתין ליועץ...</h3>
+                        <p className="text-slate-300">השיחה תתחיל ברגע שהיועץ יתחבר</p>
                       </div>
                     </div>
                   )}
@@ -567,14 +567,14 @@ export default function VideoCallClient({ params }: PageProps) {
               
               {/* Local Video - Small preview when connected */}
               {callState.isConnected && (
-                <div className="absolute bottom-4 left-4 flex w-72 flex-col gap-2 rounded-xl bg-gray-900/80 p-4 backdrop-blur">
-                  <div className="flex items-center gap-2 text-sm text-gray-300">
+                <div className="absolute bottom-4 left-4 flex w-72 flex-col gap-2 rounded-xl bg-slate-900/80 p-4 backdrop-blur">
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
                     <User className="h-4 w-4" /> אתה
                   </div>
-                  <div className="aspect-video overflow-hidden rounded-lg border border-gray-800">
+                  <div className="aspect-video overflow-hidden rounded-lg border border-slate-800">
                     <video ref={localVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
                     {!callState.isVideoOn && (
-                      <div className="flex h-full w-full items-center justify-center bg-gray-900/70">
+                      <div className="flex h-full w-full items-center justify-center bg-slate-900/70">
                         <VideoOff className="h-8 w-8" />
                       </div>
                     )}
@@ -589,8 +589,8 @@ export default function VideoCallClient({ params }: PageProps) {
                 <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                   <Video className="w-10 h-10" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">מתחבר...</h3>
-                <p className="text-gray-300">מאפשר גישה למצלמה ומיקרופון</p>
+                <h3 className="text-subtitle font-semibold mb-2">מתחבר...</h3>
+                <p className="text-slate-300">מאפשר גישה למצלמה ומיקרופון</p>
               </div>
             </div>
           )}
@@ -627,30 +627,30 @@ export default function VideoCallClient({ params }: PageProps) {
         </div>
             </div>
 
-      <aside className="flex w-80 flex-col border-l border-gray-800 bg-gray-900">
-        <div className="flex items-center gap-2 border-b border-gray-800 p-4">
+      <aside className="flex w-80 flex-col border-l border-slate-800 bg-slate-900">
+        <div className="flex items-center gap-2 border-b border-slate-800 p-4">
           <User className="h-4 w-4" /> צ'אט
           </div>
           
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {chatMessages.map((message) => (
             <div key={message.id} className="space-y-1">
-              <div className="flex items-center gap-2 text-xs text-gray-400">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
                 <span>{message.sender}</span>
                 <span>{message.timestamp.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-              <div className="rounded-lg bg-gray-800 p-2 text-sm text-gray-100">{message.message}</div>
+              <div className="rounded-lg bg-slate-800 p-2 text-sm text-slate-100">{message.message}</div>
               </div>
             ))}
 
           {chatMessages.length === 0 && (
-            <div className="flex h-full items-center justify-center text-sm text-gray-500">
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
               אין הודעות עדיין
             </div>
           )}
           </div>
           
-        <div className="border-t border-gray-800 p-4">
+        <div className="border-t border-slate-800 p-4">
           <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -658,7 +658,7 @@ export default function VideoCallClient({ params }: PageProps) {
               onChange={(event) => setNewMessage(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && sendMessage()}
               placeholder="כתוב הודעה..."
-              className="flex-1 rounded-lg border border-gray-700 bg-gray-850 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 rounded-lg border border-slate-700 bg-slate-850 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <Button size="icon" onClick={sendMessage}>
               <Check className="h-4 w-4" />

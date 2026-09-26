@@ -7,7 +7,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
 import { Label } from '@/components/ui/label';
+import { formatMoneyFields, parseFormattedNumberInput } from '@/lib/currency';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import NavBar from '@/components/ui/navbar';
@@ -94,7 +96,10 @@ export default function CustomMixBuilder() {
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        setUserData(parsedData.userData);
+        setUserData(formatMoneyFields(parsedData.userData));
+        if (parsedData.profile) {
+          setProfile((prev) => ({ ...prev, ...formatMoneyFields(parsedData.profile) }));
+        }
       } catch (error) {
         console.error('Error loading saved data:', error);
       }
@@ -111,16 +116,16 @@ export default function CustomMixBuilder() {
     if (!userData) return;
 
     // Calculate monthly sensitivity
-    const monthlyIncome = parseFloat(userData.monthlyIncome) || 0;
-    const monthlyLoanPayment = parseFloat(userData.monthlyLoanPayment) || 0;
-    const allowanceAmount = profile.hasAllowances ? parseFloat(profile.allowanceAmount) || 0 : 0;
+    const monthlyIncome = parseFormattedNumberInput(userData.monthlyIncome);
+    const monthlyLoanPayment = parseFormattedNumberInput(userData.monthlyLoanPayment);
+    const allowanceAmount = profile.hasAllowances ? parseFormattedNumberInput(profile.allowanceAmount) : 0;
     
     const totalIncome = monthlyIncome + allowanceAmount;
     const freeIncome = totalIncome - monthlyLoanPayment;
     
     // Calculate estimated mortgage payment (rough estimate)
-    const propertyPrice = parseFloat(userData.propertyPrice) || 0;
-    const ownCapital = parseFloat(userData.ownCapital) || 0;
+    const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+    const ownCapital = parseFormattedNumberInput(userData.ownCapital);
     const loanAmount = propertyPrice - ownCapital;
     const estimatedMonthlyPayment = loanAmount * 0.005; // Rough estimate 0.5% per month
     
@@ -169,8 +174,8 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">בוא נכיר אותך יותר לעומק</h2>
-        <p className="text-lg text-gray-600">פרטים אישיים שיעזרו לנו לבנות עבורך תמהיל מושלם</p>
+        <h2 className="text-title font-bold text-slate-900 mb-4">בוא נכיר אותך יותר לעומק</h2>
+        <p className="text-lg text-slate-600">פרטים אישיים שיעזרו לנו לבנות עבורך תמהיל מושלם</p>
       </div>
 
       <div className="space-y-6">
@@ -263,8 +268,8 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">מצבך הכלכלי המפורט</h2>
-        <p className="text-lg text-gray-600">פרטים נוספים על ההכנסות והיציבות הכלכלית שלך</p>
+        <h2 className="text-title font-bold text-slate-900 mb-4">מצבך הכלכלי המפורט</h2>
+        <p className="text-lg text-slate-600">פרטים נוספים על ההכנסות והיציבות הכלכלית שלך</p>
       </div>
 
       <div className="space-y-6">
@@ -300,8 +305,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם יש לך קצבאות או הכנסות נוספות?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם יש לך קצבאות או הכנסות נוספות?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.hasAllowances ? "default" : "outline"}
@@ -329,11 +334,10 @@ export default function CustomMixBuilder() {
                 <Label htmlFor="allowanceAmount" className="text-base font-medium mb-2 block">
                   סכום הקצבאות/הכנסות נוספות חודשיות
                 </Label>
-                <Input
+                <FormattedNumberInput
                   id="allowanceAmount"
-                  type="number"
                   value={profile.allowanceAmount}
-                  onChange={(e) => updateProfile({ allowanceAmount: e.target.value })}
+                  onValueChange={(value) => updateProfile({ allowanceAmount: value })}
                   placeholder="₪"
                   className="text-right"
                 />
@@ -350,8 +354,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם אתה צופה סכום חד-פעמי בעתיד?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם אתה צופה סכום חד-פעמי בעתיד?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.expectsLumpSum ? "default" : "outline"}
@@ -381,17 +385,16 @@ export default function CustomMixBuilder() {
                   <Label htmlFor="expectedLumpSum" className="text-base font-medium mb-2 block">
                     סכום משוער
                   </Label>
-                  <Input
+                  <FormattedNumberInput
                     id="expectedLumpSum"
-                    type="number"
                     value={profile.expectedLumpSum}
-                    onChange={(e) => updateProfile({ expectedLumpSum: e.target.value })}
+                    onValueChange={(value) => updateProfile({ expectedLumpSum: value })}
                     placeholder="₪"
                     className="text-right"
                   />
                 </div>
 
-                <div>
+                <motion.div>
                   <Label className="text-base font-medium mb-2 block">מתי אתה צופה לקבל את הסכום?</Label>
                   <Select value={profile.lumpSumTimeframe} onValueChange={(value) => updateProfile({ lumpSumTimeframe: value })}>
                     <SelectTrigger>
@@ -404,7 +407,7 @@ export default function CustomMixBuilder() {
                       <SelectItem value="10-plus-years">מעל 10 שנים</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </motion.div>
               </motion.div>
             )}
           </CardContent>
@@ -440,8 +443,8 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">תוכניות לעתיד</h2>
-        <p className="text-lg text-gray-600">שינויים צפויים שישפיעו על המשכנתא שלך</p>
+        <h2 className="text-title font-bold text-slate-900 mb-4">תוכניות לעתיד</h2>
+        <p className="text-lg text-slate-600">שינויים צפויים שישפיעו על המשכנתא שלך</p>
       </div>
 
       <div className="space-y-6">
@@ -453,8 +456,8 @@ export default function CustomMixBuilder() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Label className="text-base font-medium">האם יש תוכניות להרחבת המשפחה?</Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Label className="text-base font-medium sm:flex-1">האם יש תוכניות להרחבת המשפחה?</Label>
               <div className="flex gap-2">
                 <Button
                   variant={profile.plansFamilyExpansion ? "default" : "outline"}
@@ -543,8 +546,8 @@ export default function CustomMixBuilder() {
       className="max-w-2xl mx-auto"
     >
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">העדפות אישיות</h2>
-        <p className="text-lg text-gray-600">איך אתה מרגיש לגבי סיכונים ויציבות פיננסית</p>
+        <h2 className="text-title font-bold text-slate-900 mb-4">העדפות אישיות</h2>
+        <p className="text-lg text-slate-600">איך אתה מרגיש לגבי סיכונים ויציבות פיננסית</p>
       </div>
 
       <div className="space-y-6">
@@ -569,7 +572,7 @@ export default function CustomMixBuilder() {
                   step={1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-info text-slate-600">
                   <span>מוכן לסיכון (חיסכון אפשרי)</span>
                   <span className="font-bold text-lg text-blue-600">{profile.prioritizeStability}</span>
                   <span>יציבות מקסימלית</span>
@@ -600,7 +603,7 @@ export default function CustomMixBuilder() {
                   step={1}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-info text-slate-600">
                   <span>מעדיף קביעות</span>
                   <span className="font-bold text-lg text-green-600">{profile.comfortableWithRateChanges}</span>
                   <span>נוח עם שינויים</span>
@@ -655,8 +658,8 @@ export default function CustomMixBuilder() {
   const renderDashboard = () => {
     if (!userData) return null;
 
-    const propertyPrice = parseFloat(userData.propertyPrice) || 0;
-    const ownCapital = parseFloat(userData.ownCapital) || 0;
+    const propertyPrice = parseFormattedNumberInput(userData.propertyPrice);
+    const ownCapital = parseFormattedNumberInput(userData.ownCapital);
     const loanAmount = propertyPrice - ownCapital;
     const ltvRatio = propertyPrice > 0 ? ((loanAmount / propertyPrice) * 100) : 0;
 
@@ -669,23 +672,23 @@ export default function CustomMixBuilder() {
       >
         {/* Header Summary */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">הפרופיל הפיננסי שלך</h1>
-          <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-6 shadow-lg">
+          <h1 className="text-title font-bold text-slate-900 mb-4">הפרופיל הפיננסי שלך</h1>
+          <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6 shadow-lg">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-sm text-gray-600">סוג נכס</div>
+                <div className="text-sm text-slate-600">סוג נכס</div>
                 <div className="font-bold text-lg">{userData.propertyType}</div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600">סכום משכנתא</div>
+                <div className="text-sm text-slate-600">סכום משכנתא</div>
                 <div className="font-bold text-lg text-blue-600">₪{loanAmount.toLocaleString()}</div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600">אחוז מימון</div>
+                <div className="text-sm text-slate-600">אחוז מימון</div>
                 <div className="font-bold text-lg text-purple-600">{ltvRatio.toFixed(1)}%</div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600">גיל</div>
+                <div className="text-sm text-slate-600">גיל</div>
                 <div className="font-bold text-lg">{userData.age} שנים</div>
               </div>
             </div>
@@ -707,13 +710,13 @@ export default function CustomMixBuilder() {
                 <div className="text-4xl font-bold text-orange-600 mb-2">
                   {riskProfile.monthlySensitivity}%
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                <div className="w-full bg-slate-200 rounded-full h-3 mb-4">
                   <div 
                     className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${riskProfile.monthlySensitivity}%` }}
                   />
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-slate-600">
                   {riskProfile.monthlySensitivity < 30 ? 'רגישות נמוכה - מרווח נוח' :
                    riskProfile.monthlySensitivity < 70 ? 'רגישות בינונית - זהירות מומלצת' :
                    'רגישות גבוהה - דרוש ביטחון מקסימלי'}
@@ -735,13 +738,13 @@ export default function CustomMixBuilder() {
                 <div className="text-4xl font-bold text-green-600 mb-2">
                   {riskProfile.futureFlexibility}%
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                <div className="w-full bg-slate-200 rounded-full h-3 mb-4">
                   <div 
                     className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${riskProfile.futureFlexibility}%` }}
                   />
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-slate-600">
                   {riskProfile.futureFlexibility < 30 ? 'גמישות נמוכה - מצב קשיח' :
                    riskProfile.futureFlexibility < 70 ? 'גמישות בינונית - אפשרויות מוגבלות' :
                    'גמישות גבוהה - מרחב תמרון רחב'}
@@ -763,7 +766,7 @@ export default function CustomMixBuilder() {
                 <div className="text-4xl font-bold text-blue-600 mb-2">
                   {riskProfile.riskTolerance}%
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                <div className="w-full bg-slate-200 rounded-full h-3 mb-4">
                   <div 
                     className="bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${riskProfile.riskTolerance}%` }}
@@ -787,7 +790,7 @@ export default function CustomMixBuilder() {
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">פרטים אישיים</h4>
+                <h4 className="font-semibold text-slate-900 mb-2">פרטים אישיים</h4>
                 <div className="space-y-1 text-sm">
                   <div>מצב משפחתי: <span className="font-medium">{profile.maritalStatus}</span></div>
                   <div>מספר ילדים: <span className="font-medium">{profile.numChildren}</span></div>
@@ -796,18 +799,18 @@ export default function CustomMixBuilder() {
               </div>
               
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">מצב תעסוקתי</h4>
+                <h4 className="font-semibold text-slate-900 mb-2">מצב תעסוקתי</h4>
                 <div className="space-y-1 text-sm">
                   <div>ותק: <span className="font-medium">{profile.employmentYears} שנים</span></div>
-                  <div>הכנסות נוספות: <span className="font-medium">{profile.hasAllowances ? `₪${parseFloat(profile.allowanceAmount || '0').toLocaleString()}` : 'אין'}</span></div>
+                  <div>הכנסות נוספות: <span className="font-medium">{profile.hasAllowances ? `₪${parseFormattedNumberInput(profile.allowanceAmount).toLocaleString()}` : 'אין'}</span></div>
                 </div>
               </div>
               
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">תוכניות עתיד</h4>
+                <h4 className="font-semibold text-slate-900 mb-2">תוכניות עתיד</h4>
                 <div className="space-y-1 text-sm">
                   <div>הרחבת משפחה: <span className="font-medium">{profile.plansFamilyExpansion ? `כן (${profile.expectedNewChildren} ילדים)` : 'לא'}</span></div>
-                  <div>סכום חד-פעמי: <span className="font-medium">{profile.expectsLumpSum ? `₪${parseFloat(profile.expectedLumpSum || '0').toLocaleString()}` : 'לא צפוי'}</span></div>
+                  <div>סכום חד-פעמי: <span className="font-medium">{profile.expectsLumpSum ? `₪${parseFormattedNumberInput(profile.expectedLumpSum).toLocaleString()}` : 'לא צפוי'}</span></div>
                 </div>
               </div>
             </div>
@@ -817,7 +820,7 @@ export default function CustomMixBuilder() {
         {/* Action Buttons */}
         <div className="text-center space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-            <h3 className="text-xl font-bold text-green-900 mb-3">
+            <h3 className="text-subtitle font-bold text-green-900 mb-3">
               הפרופיל שלך מוכן!
             </h3>
             <p className="text-green-800 mb-6">
@@ -827,7 +830,7 @@ export default function CustomMixBuilder() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-cta shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Target className="w-5 h-5 ml-2" />
                 בנה תמהיל מותאם אישית
@@ -837,7 +840,7 @@ export default function CustomMixBuilder() {
                 variant="outline"
                 size="lg"
                 onClick={() => setCurrentStep('risk')}
-                className="px-8 py-4 text-lg border-2 border-gray-300 hover:border-gray-400"
+                className="px-8 py-4 text-cta border-2 border-slate-300 hover:border-slate-400"
               >
                 <ArrowLeft className="w-5 h-5 ml-2" />
                 ערוך העדפות
@@ -851,10 +854,10 @@ export default function CustomMixBuilder() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">טוען כלי בניית תמהיל מותאם אישית...</p>
+          <p className="text-slate-600">טוען כלי בניית תמהיל מותאם אישית...</p>
         </div>
       </div>
     );
@@ -862,15 +865,15 @@ export default function CustomMixBuilder() {
 
   if (!userData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
-        <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+      <div className="min-h-screen bg-slate-50">
+        <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
           <NavBar />
         </div>
         
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
           <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">לא נמצאו נתונים</h1>
-            <p className="text-lg text-gray-600 mb-8">
+            <h1 className="text-title font-bold text-slate-900 mb-6">לא נמצאו נתונים</h1>
+            <p className="text-lg text-slate-600 mb-8">
               כדי לבנות תמהיל מותאם אישית, תחילה עליך לעבור דרך כלי תכנון המשכנתא
             </p>
             <Link href="/mortgage-planning">
@@ -886,13 +889,13 @@ export default function CustomMixBuilder() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
       </div>
       
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {currentStep === 'personal' && renderPersonalStep()}
         {currentStep === 'financial' && renderFinancialStep()}
         {currentStep === 'future' && renderFutureStep()}

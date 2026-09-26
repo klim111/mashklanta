@@ -144,11 +144,11 @@ export default function Features() {
             <span>הפונקציות שלנו</span>
           </motion.div>
           
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+          <h2 className="text-title font-bold mb-6 text-slate-900">
             טכנולוגיה מתקדמת בשירות המשכנתא שלך
           </h2>
           
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
             פלטפורמה מתקדמת שמשלבת טכנולוגיה חדישה עם ניסיון מקצועי 
             כדי להביא לך את הפתרון הטוב ביותר למשכנתא
           </p>
@@ -189,7 +189,7 @@ export default function Features() {
                   <CardTitle className="text-2xl font-bold mb-4">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center">
-                  <p className="text-gray-600 leading-relaxed mb-6">
+                  <p className="text-slate-600 leading-relaxed mb-6">
                     {feature.description}
                   </p>
                   
@@ -202,9 +202,9 @@ export default function Features() {
                         transition={{ duration: 0.3 }}
                         className="mt-6"
                       >
-                        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200">
-                          <h4 className="font-semibold text-gray-800 mb-3">פרטים נוספים:</h4>
-                          <ul className="space-y-2 text-sm text-gray-600">
+                        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-slate-200">
+                          <h4 className="font-semibold text-slate-800 mb-3">פרטים נוספים:</h4>
+                          <ul className="space-y-2 text-sm text-slate-600">
                             {feature.details.map((detail, detailIndex) => (
                               <motion.li
                                 key={detailIndex}
@@ -247,7 +247,7 @@ export default function Features() {
           viewport={{ once: true }}
           className="mt-20"
         >
-          <Card className="max-w-5xl mx-auto p-8 bg-gray-50 border-2 border-gray-200 shadow-2xl">
+          <Card className="max-w-5xl mx-auto p-8 bg-slate-50 border-2 border-slate-200 shadow-2xl">
             <CardHeader className="text-center">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -260,18 +260,18 @@ export default function Features() {
                 <span>דמו המערכת</span>
               </motion.div>
               
-              <CardTitle className="text-3xl font-bold mb-4 text-gray-900">
+              <CardTitle className="text-3xl font-bold mb-4 text-slate-900">
                 נסה את המערכת עכשיו
               </CardTitle>
               
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
                 צפה בדמו של המערכת שלנו ובדוק איך היא עובדת
               </p>
             </CardHeader>
             
             <CardContent className="text-center">
               <motion.div
-                className="bg-white rounded-2xl p-8 mb-8 border-2 border-gray-200 shadow-lg"
+                className="bg-white rounded-2xl p-8 mb-8 border-2 border-slate-200 shadow-lg"
                 whileHover={{ scale: 1.02 }}
                 transition={{ duration: 0.3 }}
               >
@@ -289,7 +289,7 @@ export default function Features() {
                     }}
                     className="w-6 h-6 bg-blue-600 rounded-full"
                   />
-                  <span className="text-gray-600 font-medium">טוען דמו אינטראקטיבי...</span>
+                  <span className="text-slate-600 font-medium">טוען דמו אינטראקטיבי...</span>
                   <motion.div
                     animate={{ 
                       scale: [1, 1.1, 1],
@@ -319,7 +319,7 @@ export default function Features() {
                       className="text-center"
                     >
                       <item.icon className={`w-8 h-8 mx-auto mb-2 ${item.color}`} />
-                      <p className="text-sm text-gray-600">{item.label}</p>
+                      <p className="text-sm text-slate-600">{item.label}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -337,7 +337,7 @@ export default function Features() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button 
-                    className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-cta px-8 py-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   >
                     <Target className="mr-2" />
                     צפה בדמו
@@ -350,7 +350,7 @@ export default function Features() {
                 >
                   <Button 
                     variant="outline"
-                    className="text-lg px-8 py-4 rounded-xl border-2 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 hover:scale-105"
+                    className="text-cta px-8 py-4 rounded-xl border-2 hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 hover:scale-105"
                   >
                     <TrendingUp className="mr-2" />
                     התחל עכשיו

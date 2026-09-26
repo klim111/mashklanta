@@ -1,0 +1,807 @@
+import { describe, expect, it } from 'vitest';
+import {
+  PLAN_STAGES,
+  accountBanks,
+  describeMonths,
+  analysisFromPlanning,
+  analyzeProfile,
+  clampDealMortgage,
+  clampPlanYears,
+  dealMaxMortgage,
+  emptyPlanData,
+  flowStages,
+  missingForStage,
+  monthsToYears,
+  nextPlanStage,
+  parseRefinanceMixData,
+  planFlowOf,
+  planStageNumber,
+  profileRequirements,
+  mortgageFromLtvPercent,
+  mortgageFromProperty,
+  maxPropertyForEquity,
+  parseStageData,
+  planProgress,
+  planSnapshot,
+  preApprovalDocumentGroups,
+  preApprovalDocuments,
+  suggestedPreApprovalBank,
+  stageHints,
+  stageIsComplete,
+  unfinishedPrerequisites,
+  yearsToMonths,
+} from './mortgage-plan';
+import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
+import { defaultMortgagePlanningUserData } from './mortgage-affordability';
+
+/** פרופיל שלם שאפשר לסגור איתו את שלב הניתוח */
+function profile(): PlanData {
+  const data = emptyPlanData();
+  data.ANALYSIS = {
+    ...data.ANALYSIS,
+    intent: 'HAS_PROPERTY',
+    household: 'COUPLE',
+    age: 34,
+    partnerAge: 33,
+    income: 18_000,
+    partnerIncome: 12_000,
+    employmentType: 'SALARIED',
+    partnerEmploymentType: 'SELF_EMPLOYED',
+    expenses: 8_000,
+    existingLoans: 2_000,
+    equity: 700_000,
+    dealType: 'first_home',
+    propertyValue: 2_400_000,
+    years: 25,
+  };
+  return data;
+}
+
+describe('סדר השלבים', () => {
+  it('בניית התמהיל באה לפני האישור העקרוני, ואחריהם מכרז הריביות', () => {
+    expect(PLAN_STAGES).toEqual(['ANALYSIS', 'MIX', 'APPLICATIONS', 'AUCTION', 'SIGNING']);
+  });
+
+  it('שלבים קודמים שטרם נסגרו הם אלה שצריך להשלים לפני עבודה בשלב', () => {
+    const statuses = {
+      ANALYSIS: 'IN_PROGRESS',
+      APPLICATIONS: 'PENDING',
+      MIX: 'PENDING',
+      AUCTION: 'PENDING',
+      SIGNING: 'PENDING',
+    } as const;
+    expect(unfinishedPrerequisites('ANALYSIS', statuses)).toEqual([]);
+    expect(unfinishedPrerequisites('MIX', statuses)).toEqual(['ANALYSIS']);
+    expect(unfinishedPrerequisites('APPLICATIONS', statuses)).toEqual(['ANALYSIS', 'MIX']);
+  });
+});
+
+describe('תקופת המשכנתא בחודשים', () => {
+  it('חותכת לתחום 48–360 חודשים ושומרת כל חודש ביניים', () => {
+    expect(clampPlanYears(999)).toBe(30);
+    expect(clampPlanYears(2)).toBe(4);
+    expect(yearsToMonths(25)).toBe(300);
+    expect(monthsToYears(246)).toBe(20.5);
+    expect(clampPlanYears(20.5)).toBe(20.5);
+    expect(parseStageData('ANALYSIS', { years: 246 / 12 }).years).toBe(20.5);
+  });
+});
+
+describe('ניתוח הפרופיל הפיננסי', () => {
+  it('סכום המשכנתא ואחוז המימון נגזרים משווי הנכס וההון העצמי', () => {
+    const result = analyzeProfile(profile().ANALYSIS);
+
+    expect(result.totalIncome).toBe(30_000);
+    expect(result.requiredLoan).toBe(1_700_000);
+    expect(result.ltv).toBeCloseTo((1_700_000 / 2_400_000) * 100, 5);
+    expect(result.maxLtv).toBe(75);
+  });
+
+  it('הכנסת בן הזוג נספרת רק כשהלווים הם זוג', () => {
+    const single = { ...profile().ANALYSIS, household: 'SINGLE' as const };
+    expect(analyzeProfile(single).totalIncome).toBe(18_000);
+  });
+
+  it('חוסר בהון עצמי מזוהה מול תקרת המימון של סוג העסקה', () => {
+    // דירה שנייה מוגבלת ל-50% מימון, ולכן אותו הון עצמי כבר אינו מספיק
+    const second = { ...profile().ANALYSIS, dealType: 'second_home' as const };
+    const result = analyzeProfile(second);
+
+    expect(result.maxLtv).toBe(50);
+    expect(result.equityGap).toBe(2_400_000 * 0.5 - 700_000);
+    expect(result.requiredLoan).toBe(1_200_000);
+    expect(result.ltv).toBeCloseTo(50, 5);
+  });
+
+  it('יחס ההחזר נמדד אחרי ניכוי ההלוואות הקיימות', () => {
+    const result = analyzeProfile(profile().ANALYSIS);
+    const base = 30_000 - 2_000;
+
+    expect(result.repaymentRatio).toBeCloseTo((result.estimatedMonthlyPayment / base) * 100, 5);
+  });
+
+  it('תקרת ההחזר היא 40% מההכנסה הפנויה של היחיד או של סכום ההכנסות הפנויות של הזוג', () => {
+    const couple = analyzeProfile(profile().ANALYSIS);
+    expect(couple.disposableIncome).toBe(20_000);
+    expect(couple.maxMonthlyPayment).toBeCloseTo(20_000 * 0.4, 5);
+
+    const single = analyzeProfile({ ...profile().ANALYSIS, household: 'SINGLE' });
+    expect(single.disposableIncome).toBe(8_000);
+    expect(single.maxMonthlyPayment).toBeCloseTo(8_000 * 0.4, 5);
+  });
+
+  it('בלי נתונים אין מה לחשב, ולא נופלים על חלוקה באפס', () => {
+    const result = analyzeProfile(emptyPlanData().ANALYSIS);
+
+    expect(result.hasInputs).toBe(false);
+    expect(result.ltv).toBeNull();
+    expect(result.repaymentRatio).toBeNull();
+    expect(result.estimatedMonthlyPayment).toBe(0);
+  });
+});
+
+describe('סגירת שלבים', () => {
+  it('שלב הפרופיל נסגר רק כשיש נכס, הכנסה, הון עצמי ופרטי הלווים', () => {
+    expect(stageIsComplete('ANALYSIS', emptyPlanData())).toBe(false);
+    expect(stageIsComplete('ANALYSIS', profile())).toBe(true);
+  });
+
+  it('בלי בחירת נקודת פתיחה אין מה לבדוק הלאה', () => {
+    expect(missingForStage('ANALYSIS', emptyPlanData())).toEqual(['בחירת נקודת הפתיחה']);
+  });
+
+  it('בדיקת היתכנות אינה סוגרת את השלב — צריך נכס כדי להגיש לבנק', () => {
+    const data = profile();
+    data.ANALYSIS.intent = 'FEASIBILITY';
+
+    expect(stageIsComplete('ANALYSIS', data)).toBe(false);
+    expect(missingForStage('ANALYSIS', data)[0]).toMatch(/היתכנות/);
+  });
+
+  it('מה שחסר לסגירת השלב מדווח ללקוח', () => {
+    const data = profile();
+    data.ANALYSIS.propertyValue = null;
+    data.ANALYSIS.partnerEmploymentType = null;
+
+    expect(missingForStage('ANALYSIS', data)).toEqual([
+      'מחיר הנכס',
+      'אופן ההעסקה של לווה 2',
+    ]);
+    expect(missingForStage('ANALYSIS', profile())).toEqual([]);
+  });
+
+  it('שלב התמחור נסגר בבחירת התמהיל המתומחר שהולכים איתו לחתימה', () => {
+    const data = profile();
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+    // אין לפני השלב שאלה אם לתמחר לבד או עם יועץ — מה שחסר הוא רק הבחירה עצמה
+    expect(missingForStage('AUCTION', data)).toEqual([
+      'בחירת התמהיל המתומחר שהולכים איתו לחתימה',
+    ]);
+
+    data.AUCTION = {
+      ...data.AUCTION,
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: null,
+        bank: 'דיסקונט',
+        name: 'התמהיל הסופי · ריביות דיסקונט',
+        monthlyPayment: 7_100,
+        averageRate: 4.2,
+        totalInterest: 590_000,
+        totalPaid: 1_590_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    };
+
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
+  });
+
+  it('ההחזר של התמהיל שנבחר לחתימה הוא מה שמוצג על כרטיס התהליך', () => {
+    const data = profile();
+    data.AUCTION = {
+      ...data.AUCTION,
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: null,
+        bank: 'דיסקונט',
+        name: 'התמהיל הסופי · ריביות דיסקונט',
+        monthlyPayment: 7_100,
+        averageRate: 4.2,
+        totalInterest: 590_000,
+        totalPaid: 1_590_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    };
+
+    expect(planSnapshot(data).monthlyPayment).toBe(7_100);
+  });
+
+  it('שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו', () => {
+    const data = profile();
+    data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי' };
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(false);
+    expect(missingForStage('APPLICATIONS', data)).toEqual(['סימון שהאישור העקרוני התקבל']);
+
+    data.APPLICATIONS.approved = true;
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+  });
+
+  it('פרטים שחסרים בפרופיל חוסמים את הגשת הבקשה לאישור עקרוני', () => {
+    const data = profile();
+    data.ANALYSIS.partnerEmploymentType = null;
+    data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי', approved: true };
+
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(false);
+    expect(missingForStage('APPLICATIONS', data)[0]).toMatch(/אופן ההעסקה של לווה 2/);
+  });
+
+  it('לכל לווה תעודת זהות והמסמך שמוכיח את ההכנסה לפי אופן ההעסקה שלו', () => {
+    const data = profile();
+    const groups = preApprovalDocumentGroups(data);
+    const b1 = groups.find((group) => group.id === 'b1');
+    const b2 = groups.find((group) => group.id === 'b2');
+
+    expect(b1?.documents.some((doc) => doc.key === 'b1:id_card')).toBe(true);
+    expect(b2?.documents.some((doc) => doc.key === 'b2:id_card')).toBe(true);
+    expect(b1?.documents.some((doc) => doc.key === 'b1:payslips')).toBe(true);
+    expect(b2?.documents.some((doc) => doc.key === 'b2:profit_report')).toBe(true);
+    // מסמכי שכיר אינם נדרשים מהעצמאי, ולהיפך
+    expect(b2?.documents.some((doc) => doc.key.endsWith('payslips'))).toBe(false);
+    expect(b1?.documents.some((doc) => doc.key.endsWith('profit_report'))).toBe(false);
+  });
+
+  it('מסמכי הנכס והעסקה הם רובריקה נפרדת', () => {
+    const property = preApprovalDocumentGroups(profile()).find((group) => group.id === 'property');
+    expect(property?.documents.map((doc) => doc.key)).toEqual(['sale_contract', 'appraisal']);
+  });
+
+  it('דוח יתרת הלוואה נדרש רק מלווה שיש לו הלוואות', () => {
+    const data = profile();
+    data.ANALYSIS.borrowerLoans = [{ id: 'l1', monthlyPayment: 1_500 }];
+    data.ANALYSIS.partnerLoans = [];
+    const groups = preApprovalDocumentGroups(data);
+
+    expect(groups.find((g) => g.id === 'b1')?.documents.some((d) => d.key === 'b1:loans_report')).toBe(
+      true
+    );
+    expect(groups.find((g) => g.id === 'b2')?.documents.some((d) => d.key === 'b2:loans_report')).toBe(
+      false
+    );
+  });
+
+  it('ליחיד יש רשימה אחת, ובלי אופן העסקה נשארים רק זהות וחשבון', () => {
+    const data = profile();
+    data.ANALYSIS.household = 'SINGLE';
+    data.ANALYSIS.employmentType = null;
+    data.ANALYSIS.borrowerLoans = [];
+    const groups = preApprovalDocumentGroups(data);
+
+    expect(groups.map((group) => group.id)).toEqual(['b1', 'property']);
+    expect(groups[0].documents.map((doc) => doc.key)).toEqual([
+      'b1:id_card',
+      'b1:bank_statements',
+      'b1:account_management',
+    ]);
+  });
+
+  it('חשבון משותף מרכז את מסמכי החשבון פעם אחת', () => {
+    const data = profile();
+    data.ANALYSIS.bankAccountMode = 'JOINT';
+    const household = preApprovalDocumentGroups(data).find((group) => group.id === 'household');
+
+    expect(household?.documents.map((doc) => doc.key)).toEqual([
+      'bank_statements',
+      'account_management',
+    ]);
+    expect(preApprovalDocuments(data).some((doc) => doc.key === 'b1:bank_statements')).toBe(false);
+  });
+
+  it('חשבונות נפרדים דורשים תדפיס עו"ש ואישור ניהול חשבון לכל לווה', () => {
+    const data = profile();
+    data.ANALYSIS.bankAccountMode = 'SEPARATE';
+    const groups = preApprovalDocumentGroups(data);
+
+    expect(groups.some((group) => group.id === 'household')).toBe(false);
+    expect(groups.find((g) => g.id === 'b1')?.documents.map((doc) => doc.key)).toEqual(
+      expect.arrayContaining(['b1:bank_statements', 'b1:account_management'])
+    );
+    expect(groups.find((g) => g.id === 'b2')?.documents.map((doc) => doc.key)).toEqual(
+      expect.arrayContaining(['b2:bank_statements', 'b2:account_management'])
+    );
+  });
+
+  it('שלב המכרז נסגר רק כשנבחרה הצעה זוכה', () => {
+    const data = profile();
+    data.AUCTION.offers = [
+      { id: 'o1', bank: 'מזרחי', round: 1, monthlyPayment: 8_100, averageRate: 4.4, totalPaid: 2_430_000, note: '' },
+    ];
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+
+    data.AUCTION.winnerOfferId = 'o1';
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
+  });
+
+  it('ההתקדמות היא שיעור השלבים שנסגרו', () => {
+    const statuses = {} as Record<PlanStageId, PlanStageStatus>;
+    PLAN_STAGES.forEach((stage) => {
+      statuses[stage] = 'PENDING';
+    });
+
+    expect(planProgress(statuses)).toBe(0);
+    statuses.ANALYSIS = 'COMPLETED';
+    statuses.MIX = 'COMPLETED';
+    expect(planProgress(statuses)).toBe(40);
+
+    PLAN_STAGES.forEach((stage) => {
+      statuses[stage] = 'COMPLETED';
+    });
+    expect(planProgress(statuses)).toBe(100);
+  });
+});
+
+describe('תמונת המצב של התהליך', () => {
+  it('התנאים שנחתמו גוברים על ההצעה ועל התמהיל המתוכנן', () => {
+    const data = profile();
+    data.MIX = { ...data.MIX, totalAmount: 1_700_000, monthlyPayment: 8_400 };
+    data.AUCTION.offers = [
+      { id: 'o1', bank: 'לאומי', round: 1, monthlyPayment: 8_200, averageRate: 4.3, totalPaid: 2_460_000, note: '' },
+    ];
+    data.AUCTION.winnerOfferId = 'o1';
+
+    expect(planSnapshot(data).monthlyPayment).toBe(8_200);
+
+    data.SIGNING = { ...data.SIGNING, finalMonthlyPayment: 8_250, finalAmount: 1_690_000 };
+    const snapshot = planSnapshot(data);
+    expect(snapshot.monthlyPayment).toBe(8_250);
+    expect(snapshot.mortgageAmount).toBe(1_690_000);
+  });
+
+  it('כתובת הנכס ושווי הנכס מגיעים מהתמהיל אחרי שהוזנו בכלי התכנון', () => {
+    const data = profile();
+    data.ANALYSIS.propertyAddress = '';
+    data.ANALYSIS.propertyValue = null;
+    data.MIX = {
+      ...data.MIX,
+      totalAmount: 1_200_000,
+      propertyAddress: 'הרצל 10, תל אביב',
+      propertyValue: 2_000_000,
+    };
+
+    const snapshot = planSnapshot(data);
+    expect(snapshot.propertyAddress).toBe('הרצל 10, תל אביב');
+    expect(snapshot.propertyValue).toBe(2_000_000);
+    expect(snapshot.mortgageAmount).toBe(1_200_000);
+  });
+
+  it('בלי הצעה או תמהיל, הכרטיס מציג את ההערכה משלב הניתוח', () => {
+    const data = profile();
+    const snapshot = planSnapshot(data);
+
+    expect(snapshot.mortgageAmount).toBe(1_700_000);
+    expect(snapshot.monthlyPayment).toBeCloseTo(
+      analyzeProfile(data.ANALYSIS).estimatedMonthlyPayment,
+      5
+    );
+  });
+});
+
+describe('ניקוי נתונים שהגיעו מבחוץ', () => {
+  it('ערכים פגומים הופכים לשדות ריקים במקום להפיל את הטופס', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      income: 'לא מספר',
+      propertyValue: '2,400,000',
+      dealType: 'unknown_deal',
+      years: 999,
+      household: 'OTHER',
+    });
+
+    expect(parsed.income).toBeNull();
+    expect(parsed.propertyValue).toBe(2_400_000);
+    expect(parsed.dealType).toBeNull();
+    expect(parsed.years).toBe(30);
+    expect(parsed.household).toBe('SINGLE');
+  });
+
+  it('הצעה בלי בנק נזרקת, ובחירת זוכה שאינו קיים מתאפסת', () => {
+    const parsed = parseStageData('AUCTION', {
+      offers: [{ id: 'o1', bank: 'לאומי' }, { monthlyPayment: 7_000 }, null],
+      winnerOfferId: 'missing',
+    });
+
+    expect(parsed.offers).toHaveLength(1);
+    expect(parsed.offers[0].round).toBe(1);
+    expect(parsed.winnerOfferId).toBeNull();
+  });
+
+  it('מסך השאלה הישן נקרא כמסך ההסבר, ומסך לא מוכר נופל לברירת המחדל', () => {
+    expect(parseStageData('ANALYSIS', { profileScreen: 'intent' }).profileScreen).toBe('overview');
+    expect(parseStageData('ANALYSIS', { profileScreen: 'report' }).profileScreen).toBe('report');
+    expect(parseStageData('ANALYSIS', { profileScreen: 'nope' }).profileScreen).toBe('overview');
+    expect(parseStageData('ANALYSIS', {}).profileScreen).toBe('overview');
+  });
+
+  it('הדרך שנבחרה לשלב התמחור נקראת, וערך לא מוכר נופל ל-null', () => {
+    expect(parseStageData('AUCTION', { mode: 'self' }).mode).toBe('self');
+    expect(parseStageData('AUCTION', { mode: 'advisor' }).mode).toBe('advisor');
+    expect(parseStageData('AUCTION', { mode: 'whatever' }).mode).toBeNull();
+    expect(parseStageData('AUCTION', {}).mode).toBeNull();
+  });
+
+  it('התמהיל שנבחר לחתימה נקרא עם הבנק והמספרים שלו', () => {
+    const parsed = parseStageData('AUCTION', {
+      offers: [],
+      signedMix: {
+        mixKey: 'mix-quoted-1',
+        mixRecordId: 'rec-9',
+        bank: 'מזרחי',
+        name: 'התמהיל הסופי · ריביות מזרחי',
+        monthlyPayment: 7_400,
+        averageRate: 4.31,
+        totalInterest: 620_000,
+        totalPaid: 1_620_000,
+        months: 300,
+        chosenAt: '2026-09-12T10:00:00.000Z',
+      },
+    });
+
+    expect(parsed.signedMix?.mixKey).toBe('mix-quoted-1');
+    expect(parsed.signedMix?.bank).toBe('מזרחי');
+    expect(parsed.signedMix?.monthlyPayment).toBe(7_400);
+    expect(parsed.signedMix?.chosenAt).toBe('2026-09-12T10:00:00.000Z');
+  });
+
+  it('בחירה בלי מזהה תמהיל או בלי בנק נקראת כאילו עוד לא נבחר דבר', () => {
+    expect(parseStageData('AUCTION', { signedMix: { bank: 'לאומי' } }).signedMix).toBeNull();
+    expect(parseStageData('AUCTION', { signedMix: { mixKey: 'mix-1' } }).signedMix).toBeNull();
+    expect(parseStageData('AUCTION', {}).signedMix).toBeNull();
+  });
+
+  it('סימוני מסמכים שאינם בקטלוג אינם נשמרים', () => {
+    const parsed = parseStageData('APPLICATIONS', {
+      bank: 'לאומי',
+      documents: {
+        'b1:payslips': true,
+        'b2:profit_report': true,
+        made_up_key: true,
+        bank_statements: false,
+      },
+    });
+
+    expect(parsed.documents).toEqual({ 'b1:payslips': true, 'b2:profit_report': true });
+  });
+
+  it('סל אחיד שאינו בקטלוג נזרק, וריביות של מסלולים זרים אינן נשמרות', () => {
+    const parsed = parseStageData('APPLICATIONS', {
+      bank: 'מזרחי',
+      requestedAmount: 1_500_000,
+      baskets: [
+        { basketId: 'fixed', rates: { fixed_unlinked: 4.7, prime: 5.2 } },
+        { basketId: 'made_up_basket', rates: { prime: 5 } },
+      ],
+    });
+
+    expect(parsed.baskets).toHaveLength(1);
+    expect(parsed.baskets[0].rates).toEqual({ fixed_unlinked: 4.7 });
+  });
+
+  it('תהליך מהמבנה הישן ממשיך עם הבנק שכבר אישר את הבקשה', () => {
+    const parsed = parseStageData('APPLICATIONS', {
+      banks: [
+        { id: 'a', bank: 'דיסקונט', status: 'REJECTED' },
+        { id: 'b', bank: 'הפועלים', status: 'APPROVED' },
+      ],
+    });
+
+    expect(parsed.bank).toBe('הפועלים');
+    expect(parsed.approved).toBe(true);
+  });
+});
+
+describe('הצעת כלים לפי הנתונים', () => {
+  it('החזר על הלוואות קיימות מעלה את מתכנן ההלוואות הצרכניות', () => {
+    const hints = stageHints('ANALYSIS', profile());
+    expect(hints.some((hint) => hint.toolId === 'consumer-loans')).toBe(true);
+  });
+
+  it('בלי הלוואות קיימות הכלי אינו מוצע', () => {
+    const data = profile();
+    data.ANALYSIS.existingLoans = null;
+    const hints = stageHints('ANALYSIS', data);
+    expect(hints.some((hint) => hint.toolId === 'consumer-loans')).toBe(false);
+  });
+
+  it('חוסר בהון עצמי מסמן את תכנון ההון העצמי כאזהרה', () => {
+    const data = profile();
+    data.ANALYSIS.dealType = 'second_home';
+    const equity = stageHints('ANALYSIS', data).find((hint) => hint.toolId === 'equity');
+
+    expect(equity?.tone).toBe('warning');
+  });
+
+  it('גם כשההון מספיק, תכנון ההון העצמי מוצע כי יש הוצאות נלוות מעבר למקדמה', () => {
+    const hints = stageHints('ANALYSIS', profile());
+    const equity = hints.find((hint) => hint.toolId === 'equity');
+
+    expect(equity?.tone).toBe('info');
+  });
+});
+
+describe('גזירה מכלי בניית הפרופיל', () => {
+  it('הכנסה, הון עצמי וסוג עסקה נגזרים מהשדות של הכלי הקיים', () => {
+    const planning = defaultMortgagePlanningUserData();
+    planning.applicationType = 'individual';
+    planning.propertyType = 'דירה ראשונה';
+    planning.monthlyIncome = '18000';
+    planning.ownCapital = '700000';
+    planning.age = '34';
+
+    const analysis = analysisFromPlanning(planning, 'profile-complete');
+    const data = emptyPlanData();
+    data.ANALYSIS = analysis;
+
+    expect(analysis.income).toBe(18_000);
+    expect(analysis.equity).toBe(700_000);
+    expect(analysis.dealType).toBe('first_home');
+    expect(analysis.propertyValue).toBeNull();
+    // בלי נכס ובלי אופן העסקה עוד אין מה להגיש לבנק
+    expect(stageIsComplete('ANALYSIS', data)).toBe(false);
+  });
+
+  it('מה שהלקוח ערך בטופס הפרופיל גובר על הנתונים שהגיעו מהכלי', () => {
+    const planning = defaultMortgagePlanningUserData();
+    planning.applicationType = 'individual';
+    planning.propertyType = 'דירה ראשונה';
+    planning.monthlyIncome = '18000';
+    planning.ownCapital = '700000';
+    planning.age = '34';
+
+    const edited = parseStageData('ANALYSIS', {
+      ...analysisFromPlanning(planning, 'personal-info'),
+      intent: 'HAS_PROPERTY',
+      income: 21_000,
+      propertyValue: 2_400_000,
+      employmentType: 'SALARIED',
+    });
+
+    expect(edited.income).toBe(21_000);
+    expect(edited.equity).toBe(700_000);
+    expect(edited.propertyValue).toBe(2_400_000);
+    expect(stageIsComplete('ANALYSIS', { ...emptyPlanData(), ANALYSIS: edited })).toBe(true);
+  });
+
+  it('סכום המשכנתא הוא מחיר הנכס פחות ההון העצמי, בתוך תקרת סוג העסקה', () => {
+    const data = profile().ANALYSIS;
+
+    expect(analyzeProfile(data).requiredLoan).toBe(1_700_000);
+    expect(analyzeProfile({ ...data, mortgageAmount: 1_500_000 }).requiredLoan).toBe(1_700_000);
+
+    const cheaper = analyzeProfile({ ...data, propertyValue: 2_000_000 });
+    expect(cheaper.requiredLoan).toBe(1_300_000);
+    expect(cheaper.ltv).toBeCloseTo(65, 5);
+  });
+
+  it('סכום המשכנתא נחתך לתקרת המימון של סוג העסקה', () => {
+    expect(dealMaxMortgage(2_400_000, 'first_home')).toBe(1_800_000);
+    expect(clampDealMortgage(2_000_000, 2_400_000, 'first_home')).toBe(1_800_000);
+    expect(mortgageFromProperty(2_400_000, 700_000, 'first_home')).toBe(1_700_000);
+    expect(mortgageFromProperty(2_400_000, null, 'first_home')).toBe(1_800_000);
+    expect(mortgageFromLtvPercent(2_400_000, 60, 'first_home')).toBe(1_440_000);
+    expect(mortgageFromLtvPercent(2_400_000, 90, 'first_home')).toBe(1_800_000);
+    expect(maxPropertyForEquity(700_000, 'first_home')).toBe(2_800_000);
+  });
+
+  it('מחיר הנכס נשמר כפי שהוזן, גם כשההון העצמי אינו מספיק לו', () => {
+    // הון עצמי נמוך הוא פער שמוצג במסך הנכס, ולא סיבה לשנות מחיר שהלקוח הקליד
+    const parsed = parseStageData('ANALYSIS', {
+      ...profile().ANALYSIS,
+      propertyValue: 3_500_000,
+      equity: 700_000,
+    });
+    expect(parsed.propertyValue).toBe(3_500_000);
+    expect(parsed.mortgageAmount).toBe(2_625_000);
+  });
+
+  it('הלוואות לפי לווה נסכמות להחזר החודשי הקיים', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      intent: 'HAS_PROPERTY',
+      household: 'COUPLE',
+      borrowerLoans: [
+        { id: 'a', monthlyPayment: 1_200 },
+        { id: 'b', monthlyPayment: 800 },
+      ],
+      partnerLoans: [{ id: 'c', monthlyPayment: 500 }],
+    });
+
+    expect(parsed.existingLoans).toBe(2_500);
+    expect(parsed.borrowerLoans).toHaveLength(2);
+    expect(parsed.partnerLoans).toHaveLength(1);
+  });
+
+  it('הלוואה משותפת וחשבון בנק נשמרים בפרופיל', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      household: 'COUPLE',
+      bankAccountMode: 'SEPARATE',
+      borrowerLoans: [{ id: 'a', monthlyPayment: 1_000, shared: true }],
+    });
+
+    expect(parsed.bankAccountMode).toBe('SEPARATE');
+    expect(parsed.borrowerLoans[0].shared).toBe(true);
+  });
+
+  it('מצב משולב גוזר את המשכנתא מאחוז המימון שהוזן', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      ...profile().ANALYSIS,
+      targetLtvPercent: 60,
+    });
+
+    expect(parsed.targetLtvPercent).toBe(60);
+    expect(parsed.mortgageAmount).toBe(1_440_000);
+    expect(analyzeProfile(parsed).requiredLoan).toBe(1_440_000);
+    expect(analyzeProfile(parsed).ltv).toBeCloseTo(60, 5);
+  });
+
+  it('הבנק של החשבון הראשי נשמר ומוצע לאישור עקרוני לפי ההכנסה העיקרית', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      household: 'COUPLE',
+      income: 10_000,
+      partnerIncome: 18_000,
+      primaryBank: 'לאומי',
+      partnerPrimaryBank: 'הפועלים',
+    });
+
+    expect(parsed.primaryBank).toBe('לאומי');
+    expect(parsed.partnerPrimaryBank).toBe('הפועלים');
+    expect(suggestedPreApprovalBank(parsed)).toEqual({ bank: 'הפועלים', source: 'partner' });
+  });
+});
+
+describe('שדות הפרופיל להמלצות ולתת-שלב המסמכים', () => {
+  it('חודשי ההלוואה שנותרו ותשובת ההכנסה נשמרים, ותת-שלב המסמכים הוא מסך תקף', () => {
+    const parsed = parseStageData('ANALYSIS', {
+      expectsIncomeIncrease: true,
+      profileScreen: 'documents',
+      borrowerLoans: [{ id: 'a', monthlyPayment: 900, remainingMonths: 30.4 }],
+    });
+
+    expect(parsed.expectsIncomeIncrease).toBe(true);
+    expect(parsed.profileScreen).toBe('documents');
+    expect(parsed.borrowerLoans[0].remainingMonths).toBe(30);
+    expect(parseStageData('ANALYSIS', { expectsIncomeIncrease: 'yes' }).expectsIncomeIncrease).toBeNull();
+    expect(parseStageData('ANALYSIS', {}).expectsIncomeIncrease).toBeNull();
+  });
+
+  it('תיאור תקופות בעברית, והבנקים של החשבונות בלי כפילויות', () => {
+    expect(describeMonths(18)).toBe('18 חודשים');
+    expect(describeMonths(24)).toBe('שנתיים');
+    expect(describeMonths(36)).toBe('3 שנים');
+    expect(describeMonths(40)).toBe('3 שנים ו-4 חודשים');
+    expect(describeMonths(12)).toBe('שנה');
+
+    const data = profile().ANALYSIS;
+    data.primaryBank = 'לאומי';
+    data.partnerPrimaryBank = 'לאומי';
+    expect(accountBanks(data)).toEqual(['לאומי']);
+    data.partnerPrimaryBank = 'הפועלים';
+    expect(accountBanks(data)).toEqual(['לאומי', 'הפועלים']);
+    expect(accountBanks({ ...data, household: 'SINGLE' })).toEqual(['לאומי']);
+  });
+});
+
+describe('תהליך מיחזור', () => {
+  const refinance = {
+    bank: 'לאומי',
+    goal: 'reduce_payment',
+    scope: 'whole',
+    selectedTrackId: null,
+    currentMix: {
+      id: 'current',
+      name: 'המשכנתא הנוכחית',
+      bank: 'לאומי',
+      totalAmount: 900_000,
+      tracks: [
+        { id: 't1', name: 'קבועה', type: 'fixed_unlinked', amount: 900_000, interestRate: 5.2, years: 18, endDate: '2044-03-01', paymentDay: 10 },
+      ],
+    },
+    refinancedMix: {
+      id: 'refi',
+      name: 'התמהיל למיחזור',
+      bank: 'לאומי',
+      totalAmount: 900_000,
+      tracks: [{ id: 't1', name: 'קבועה', type: 'fixed_unlinked', amount: 900_000, interestRate: 4.1, years: 18 }],
+    },
+    current: { monthlyPayment: 6_300, totalInterest: 460_000, totalPaid: 1_360_000, averageRate: 5.2, months: 216 },
+    refinanced: { monthlyPayment: 5_800, totalInterest: 350_000, totalPaid: 1_250_000, averageRate: 4.1, months: 216 },
+    mode: null,
+    savedAt: '2026-09-19T00:00:00.000Z',
+  };
+
+  it('נתוני המיחזור נקראים בחזרה מהשלב, ומסלול בלי סכום נזרק', () => {
+    const parsed = parseStageData('MIX', {
+      mixKey: 'refi',
+      refinance: {
+        ...refinance,
+        refinancedMix: { ...refinance.refinancedMix, tracks: [...refinance.refinancedMix.tracks, { id: 'bad', type: 'prime' }] },
+      },
+    });
+    expect(parsed.refinance?.bank).toBe('לאומי');
+    expect(parsed.refinance?.currentMix.tracks[0].endDate).toBe('2044-03-01');
+    expect(parsed.refinance?.refinancedMix.tracks).toHaveLength(1);
+    expect(parsed.refinance?.mode).toBeNull();
+    expect(planFlowOf({ MIX: parsed })).toEqual({ kind: 'REFINANCE', refinanceMode: null });
+  });
+
+  it('בלי בנק או בלי תמהיל למיחזור התהליך הוא משכנתא חדשה', () => {
+    expect(parseStageData('MIX', { refinance: { ...refinance, bank: '' } }).refinance).toBeNull();
+    expect(parseStageData('MIX', { refinance: { ...refinance, refinancedMix: null } }).refinance).toBeNull();
+    expect(planFlowOf(emptyPlanData())).toEqual({ kind: 'NEW', refinanceMode: null });
+  });
+
+  it('סדר השלבים נקבע לפי סוג המיחזור', () => {
+    const data = emptyPlanData();
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+
+    expect(flowStages(planFlowOf(data))).toEqual(['MIX', 'ANALYSIS', 'APPLICATIONS', 'AUCTION', 'SIGNING']);
+
+    data.MIX.refinance!.mode = 'INTERNAL';
+    const internal = planFlowOf(data);
+    expect(flowStages(internal)).toEqual(['MIX', 'APPLICATIONS', 'AUCTION']);
+    expect(nextPlanStage('MIX', internal)).toBe('APPLICATIONS');
+    expect(nextPlanStage('AUCTION', internal)).toBeNull();
+    expect(planStageNumber('AUCTION', internal)).toBe(3);
+
+    data.MIX.refinance!.mode = 'EXTERNAL';
+    const external = planFlowOf(data);
+    expect(nextPlanStage('MIX', external)).toBe('ANALYSIS');
+    expect(unfinishedPrerequisites('APPLICATIONS', {
+      MIX: 'COMPLETED', ANALYSIS: 'IN_PROGRESS', APPLICATIONS: 'PENDING', AUCTION: 'PENDING', SIGNING: 'PENDING',
+    }, external)).toEqual(['ANALYSIS']);
+  });
+
+  it('שלב התמהיל במיחזור נסגר רק אחרי הבחירה בין פנימי לחיצוני', () => {
+    const data = emptyPlanData();
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+    expect(stageIsComplete('MIX', data)).toBe(false);
+    expect(missingForStage('MIX', data)).toContain('בחירה בין מיחזור פנימי למיחזור חיצוני');
+
+    data.MIX.refinance!.mode = 'INTERNAL';
+    expect(stageIsComplete('MIX', data)).toBe(true);
+  });
+
+  it('שלב ההגשה לבנק במיחזור נסגר בלי מסמך ובלי פרופיל מלא', () => {
+    const data = emptyPlanData();
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: { ...parseRefinanceMixData(refinance)!, mode: 'INTERNAL' } };
+
+    // ההגשה מתבצעת מול הבנק ישירות, ולכן ההמשך פתוח מיד — בשני סוגי המיחזור
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+    expect(missingForStage('APPLICATIONS', data)).toEqual([]);
+
+    data.MIX.refinance!.mode = 'EXTERNAL';
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
+
+    // במשכנתא חדשה התנאים נשארו כשהיו
+    const fresh = profile();
+    expect(stageIsComplete('APPLICATIONS', fresh)).toBe(false);
+  });
+
+  it('במיחזור לא נדרש הון עצמי, והפרופיל נסגר בלעדיו', () => {
+    const data = profile();
+    data.ANALYSIS = { ...data.ANALYSIS, equity: null };
+    expect(stageIsComplete('ANALYSIS', data)).toBe(false);
+    expect(missingForStage('ANALYSIS', data)).toContain('ההון העצמי לעסקה');
+
+    data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };
+    expect(profileRequirements(data.ANALYSIS, { requireEquity: false }).some((item) => item.key === 'equity')).toBe(false);
+    expect(stageIsComplete('ANALYSIS', data)).toBe(true);
+    expect(missingForStage('ANALYSIS', data)).toEqual([]);
+  });
+
+  it('ההתקדמות במיחזור פנימי נמדדת מתוך שלושה שלבים', () => {
+    const statuses = {
+      MIX: 'COMPLETED', ANALYSIS: 'PENDING', APPLICATIONS: 'PENDING', AUCTION: 'PENDING', SIGNING: 'PENDING',
+    } as const;
+    expect(planProgress(statuses, { kind: 'REFINANCE', refinanceMode: 'INTERNAL' })).toBe(33);
+    expect(planProgress(statuses)).toBe(20);
+  });
+});

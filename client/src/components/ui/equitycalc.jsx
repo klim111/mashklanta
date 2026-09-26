@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatNumberInput, parseFormattedNumberInput } from "@/lib/currency";
 
 export default function CapitalPlanningCalculator() {
   const [propertyPrice, setPropertyPrice] = useState("");
@@ -22,7 +23,7 @@ export default function CapitalPlanningCalculator() {
 
   const handleAmountChange = (index, value) => {
     const updated = [...expenses];
-    updated[index].amount = value;
+    updated[index].amount = formatNumberInput(value);
     setExpenses(updated);
   };
 
@@ -33,12 +34,11 @@ export default function CapitalPlanningCalculator() {
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => {
-    const num = parseFloat(exp.amount);
-    return sum + (isNaN(num) ? 0 : num);
+    return sum + parseFormattedNumberInput(exp.amount);
   }, 0);
 
-  const numericPrice = parseFloat(propertyPrice) || 0;
-  const numericEquity = parseFloat(equity) || 0;
+  const numericPrice = parseFormattedNumberInput(propertyPrice);
+  const numericEquity = parseFormattedNumberInput(equity);
 
   const getMinEquity = () => {
     let minEquityPercent = 0.5;
@@ -85,9 +85,10 @@ export default function CapitalPlanningCalculator() {
           <Input
             className="text-right"
             placeholder="₪"
+            type="text"
+            inputMode="numeric"
             value={propertyPrice}
-            type="number"
-            onChange={(e) => setPropertyPrice(e.target.value)}
+            onChange={(e) => setPropertyPrice(formatNumberInput(e.target.value))}
           />
         </div>
 
@@ -96,9 +97,10 @@ export default function CapitalPlanningCalculator() {
           <Input
             className="text-right"
             placeholder="₪"
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={equity}
-            onChange={(e) => setEquity(e.target.value)}
+            onChange={(e) => setEquity(formatNumberInput(e.target.value))}
           />
           {propertyPrice && selectedType && minEquity > 0 && (
             <p className="text-sm mt-1 text-gray-600 text-right">
@@ -138,7 +140,8 @@ export default function CapitalPlanningCalculator() {
                 </td>
                 <td className="border border-gray-300 p-2">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="text-right"
                     value={row.amount}
                     onChange={(e) => handleAmountChange(index, e.target.value)}

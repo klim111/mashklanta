@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Button } from "@/components/ui/button";
+import { parseFormattedNumberInput } from "@/lib/currency";
 
 interface PaymentSchedule {
   month: number;
@@ -25,7 +27,7 @@ export default function MortgageCalculator() {
   const [selectedType, setSelectedType] = useState("");
 
   useEffect(() => {
-    const principal = parseFloat(loanAmount);
+    const principal = parseFormattedNumberInput(loanAmount);
     const annualInterestRate = parseFloat(interestRate) / 100;
     const numberOfPayments = parseInt(loanTermYears) * 12;
     const monthlyInterestRate = annualInterestRate / 12;
@@ -45,7 +47,7 @@ export default function MortgageCalculator() {
   }, [loanAmount, interestRate, loanTermYears]);
 
   const calculateSchedule = () => {
-    const principal = parseFloat(loanAmount);
+    const principal = parseFormattedNumberInput(loanAmount);
     const annualInterestRate = parseFloat(interestRate) / 100;
     const numberOfPayments = parseInt(loanTermYears) * 12;
     const monthlyInterestRate = annualInterestRate / 12;
@@ -82,7 +84,7 @@ export default function MortgageCalculator() {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold text-center">מחשבון משכנתא - לוח שפיצר</h1>
+      <h1 className="text-title font-bold text-center">מחשבון משכנתא - לוח שפיצר</h1>
       <div className="flex justify-center flex-wrap gap-2">
         {["דירה יחידה", "דירה חליפית", "דירה נוספת", "לכל מטרה"].map((type) => (
           <Button
@@ -97,17 +99,11 @@ export default function MortgageCalculator() {
       <div className="flex flex-row-reverse gap-3">
         <div className="w-full md:w-1/3">
           <label className="block mb-1 text-right">סכום הלוואה</label>
-          <Input
+          <FormattedNumberInput
             className="text-right"
-            type="text"
-            value={Number(loanAmount).toLocaleString()}
+            value={loanAmount}
+            onValueChange={setLoanAmount}
             placeholder="₪"
-            onChange={(e) => {
-              const rawValue = e.target.value.replace(/,/g, '');
-              if (!isNaN(Number(rawValue))) {
-                setLoanAmount(rawValue);
-              }
-            }}
           />
         </div>
         <div className="w-full md:w-1/3">
@@ -162,13 +158,13 @@ export default function MortgageCalculator() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -100 }}
             transition={{ duration: 0.4 }}
-            className="mt-6 bg-gray-100 p-4 rounded-lg shadow-md"
+            className="mt-6 bg-slate-100 p-4 rounded-lg shadow-md"
           >
-            <h2 className="text-xl font-semibold mb-2">לוח סילוקין</h2>
+            <h2 className="text-subtitle font-semibold mb-2">לוח סילוקין</h2>
             <div className="overflow-auto max-h-[400px] border rounded">
               <table className="table-auto w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-300">
+                  <tr className="bg-slate-300">
                     <th className="px-2 py-1">חודש</th>
                     <th className="px-2 py-1">קרן</th>
                     <th className="px-2 py-1">ריבית</th>
@@ -178,7 +174,7 @@ export default function MortgageCalculator() {
                 </thead>
                 <tbody>
                   {schedule.map((payment, index) => (
-                    <tr key={index} className="even:bg-white odd:bg-gray-200">
+                    <tr key={index} className="even:bg-white odd:bg-slate-200">
                       <td className="px-2 py-1">{payment.month}</td>
                       <td className="px-2 py-1">
                         {payment.principal.toFixed(2)}

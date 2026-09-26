@@ -1,95 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/db';
-import { sendEmail, emailTemplates } from '@/lib/email';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import crypto from 'crypto';
+import { normalizeEmail, normalizeUsername } from '@/lib/find-user-by-login';
+import {
+  REGISTRATION_DEVICE_COOKIE,
+  VERIFICATION_TTL_MINUTES,
+  generateToken,
+  startRegistration,
+  usernameTaken,
+} from '@/lib/registration';
 
-// Validation schema
+export const maxDuration = 30;
+
+/**
+ * הרשמת לקוח חדש. לא יוצרת משתמש — רק הרשמה ממתינה ומייל עם קישור אימות.
+ * המשתמש נוצר ומחובר רק כשהקישור מאושר (ראו src/lib/registration.ts).
+ *
+ * ההרשמה פתוחה ללקוחות בלבד: שדה role, אם נשלח, מתעלמים ממנו.
+ */
 const registerSchema = z.object({
-  email: z.string().email('כתובת מייל לא תקינה'),
-  password: z.string().min(8, 'הסיסמה חייבת להכיל לפחות 8 תווים'),
-  name: z.string().min(2, 'השם חייב להכיל לפחות 2 תווים'),
-  role: z.enum(['CLIENT', 'ADVISOR']).optional().default('CLIENT'),
+  email: z.string().trim().email('כתובת מייל לא תקינה').max(254),
+  username: z
+    .string()
+    .trim()
+    .min(3, 'שם המשתמש חייב להכיל לפחות 3 תווים')
+    .max(32, 'שם המשתמש ארוך מדי')
+    .regex(/^[a-zA-Z0-9._֐-׿-]+$/, 'שם המשתמש יכול להכיל אותיות, מספרים, נקודה, מקף וקו תחתון'),
+  // bcrypt מתעלם מכל מה שמעבר ל-72 בתים, ולכן גם זה הגבול העליון
+  password: z
+    .string()
+    .min(8, 'הסיסמה חייבת להכיל לפחות 8 תווים')
+    .refine((value) => Buffer.byteLength(value, 'utf8') <= 72, 'הסיסמה ארוכה מדי'),
+  name: z.string().trim().min(2, 'השם חייב להכיל לפחות 2 תווים').max(80),
+  callbackUrl: z.string().optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    
-    // Validate input
-    const validationResult = registerSchema.safeParse(body);
-    if (!validationResult.success) {
-      return NextResponse.json(
-        { error: validationResult.error.errors[0].message },
-        { status: 400 }
-      );
+    const body = await request.json().catch(() => null);
+    const validation = registerSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error.errors[0].message }, { status: 400 });
     }
 
-    const { email, password, name, role } = validationResult.data;
+    const { password, name, callbackUrl } = validation.data;
+    const email = normalizeEmail(validation.data.email);
+    const username = normalizeUsername(validation.data.username);
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    if (await usernameTaken(username, email)) {
+      return NextResponse.json({ error: 'שם המשתמש הזה כבר תפוס' }, { status: 400 });
+    }
+
+    // עוגייה שמזהה את הדפדפן הזה: אישור הקישור מכאן לא ידרוש שוב את הסיסמה
+    const deviceToken = request.cookies.get(REGISTRATION_DEVICE_COOKIE)?.value || generateToken();
+
+    const result = await startRegistration({
+      email,
+      name,
+      username,
+      password,
+      callbackUrl,
+      deviceToken,
+      requestOrigin: request.nextUrl.origin,
     });
 
-    if (existingUser) {
+    if (result.status === 'cooldown') {
       return NextResponse.json(
-        { error: 'משתמש עם כתובת מייל זו כבר קיים' },
-        { status: 400 }
+        { error: 'כבר שלחנו קישור לכתובת הזו לפני רגע. בדקו את תיבת המייל, או נסו שוב בעוד דקה.' },
+        { status: 429 }
+      );
+    }
+    if (result.status === 'limit') {
+      return NextResponse.json(
+        { error: 'נשלחו יותר מדי קישורים לכתובת הזו. נסו שוב בעוד שעה.' },
+        { status: 429 }
+      );
+    }
+    if (result.status === 'email-failed') {
+      return NextResponse.json(
+        { error: 'לא הצלחנו לשלוח את מייל האימות. נסו שוב בעוד רגע.' },
+        { status: 502 }
       );
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
+    const response = NextResponse.json(
+      {
+        message: 'שלחנו לכם מייל עם קישור לאישור ההרשמה.',
         email,
-        name,
-        hashedPassword,
-        role,
+        ttlMinutes: VERIFICATION_TTL_MINUTES,
       },
-    });
-
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    // Store verification token
-    await prisma.verificationToken.create({
-      data: {
-        identifier: email,
-        token: verificationToken,
-        expires,
-      },
-    });
-
-    // Create verification URL
-    const verificationUrl = `${process.env.NEXTAUTH_URL || process.env.APP_URL}/auth/verify?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-
-    // Send welcome email with verification link
-    const emailTemplate = emailTemplates.welcomeEmail(name, verificationUrl);
-    await sendEmail({
-      to: email,
-      subject: emailTemplate.subject,
-      html: emailTemplate.html,
-      text: emailTemplate.text,
-    });
-
-    return NextResponse.json(
-      { 
-        message: 'ההרשמה הושלמה בהצלחה! נשלח אליך מייל עם קישור לאימות',
-        userId: user.id,
-      },
-      { status: 201 }
+      { status: 202 }
     );
+    response.cookies.set(REGISTRATION_DEVICE_COOKIE, deviceToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: request.nextUrl.protocol === 'https:',
+      path: '/',
+      maxAge: 24 * 60 * 60,
+    });
+    return response;
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'אירעה שגיאה בתהליך ההרשמה' },
-      { status: 500 }
-    );
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return NextResponse.json({ error: 'לא ניתן להתחבר למסד הנתונים. נסו שוב בעוד רגע.' }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'אירעה שגיאה בתהליך ההרשמה' }, { status: 500 });
   }
 }

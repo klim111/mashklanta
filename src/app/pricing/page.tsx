@@ -1,0 +1,541 @@
+'use client';
+
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+  ArrowUpLeft,
+  BadgeCheck,
+  Calculator,
+  Check,
+  Compass,
+  Minus,
+  Coins,
+  Layers3,
+  Scale,
+  Sparkles,
+  Tag,
+  TrendingDown,
+  UserCheck,
+  Wallet,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import NavBar from '@/components/ui/navbar';
+import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
+import Footer from '@/components/ui/footer';
+import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { journeyStages } from '@/data/platform/journey';
+import {
+  ADVISORY_TRACK,
+  PLATFORM_ACCESS_DAYS,
+  PLATFORM_PROCESS_PRICE,
+  TRACKS_HEADLINE,
+  TRACKS_INTRO,
+  comparisonRows,
+  pricingFaq,
+  pricingPlans,
+} from '@/data/platform/pricing';
+import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
+import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
+
+/** מה קובע את מחיר המסלול בליווי — במקום מחירון קבוע */
+const ADVISORY_PRICE_FACTORS: Array<{ icon: LucideIcon; title: string; description: string }> = [
+  {
+    icon: Layers3,
+    title: 'השלבים שתבחרו',
+    description: 'משלב 1 בלבד, כמה שלבים או כל שלבי תכנון המשכנתא. משלמים רק על מה שהיועץ עושה.',
+  },
+  {
+    icon: Scale,
+    title: 'מורכבות התיק',
+    description: 'סוג העסקה, מספר הלווים, מקורות ההכנסה והבטחונות. המחיר הסופי מותאם לתיק שלכם.',
+  },
+  {
+    icon: TrendingDown,
+    title: 'תמיד מתחת לממוצע בשוק',
+    description: 'הטכנולוגיה המתקדמת של משכלנתא חוסכת ליועץ זמן עבודה, והחיסכון עובר אליכם.',
+  },
+  {
+    icon: Coins,
+    title: 'דמי הפלטפורמה מקוזזים',
+    description: 'מה ששילמתם על הפלטפורמה תמיד מקוזז ממחיר הליווי, כשמזמינים לפחות שלב אחד.',
+  },
+];
+
+function CellValue({ value }: { value: boolean | string }) {
+  if (value === true) {
+    return (
+      <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
+        <Check className="h-4 w-4 text-emerald-600" />
+      </span>
+    );
+  }
+  if (value === false) {
+    return (
+      <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-slate-100">
+        <Minus className="h-4 w-4 text-slate-400" />
+      </span>
+    );
+  }
+  return <span className="text-sm font-semibold text-slate-700">{value}</span>;
+}
+
+export default function PricingPage() {
+  return (
+    <div className="min-h-screen bg-white" dir="rtl">
+      <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 shadow-sm backdrop-blur-md">
+        <NavBar />
+      </div>
+
+      {/* ─────────────────────────── Hero ─────────────────────────── */}
+      <section className="relative overflow-hidden bg-brand-dark px-4 py-24 text-white md:py-32">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 right-[10%] h-96 w-96 rounded-full bg-violet-500/25 blur-3xl animate-blob" />
+          <div className="absolute -bottom-24 left-[10%] h-96 w-96 rounded-full bg-blue-500/25 blur-3xl animate-blob [animation-delay:3s]" />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+          className="relative mx-auto max-w-4xl text-center"
+        >
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <Tag className="h-4 w-4" />
+            מודל התמחור
+          </div>
+
+          <h1 className="mb-6 text-title font-black leading-[1.15] text-white">
+            משלמים על מה שלקחתם,
+            <br />
+            <span className="bg-gradient-to-l from-cyan-200 via-sky-100 to-fuchsia-200 bg-clip-text text-transparent">
+              ותמיד מתחת לממוצע בשוק
+            </span>
+          </h1>
+
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
+            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. רוצים יועץ?
+            במסלול בליווי המחיר נקבע לפי השלבים ומורכבות התיק, מה ששילמתם על הפלטפורמה מקוזז, והגישה המלאה
+            כלולה.
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
+            >
+              <a href="#advisory">
+                <Calculator className="ml-2 h-5 w-5" />
+                איך נקבע מחיר הליווי
+              </a>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
+            >
+              <Link href="/how-it-works">
+                <Compass className="ml-2 h-5 w-5" />
+                איך זה עובד
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ─────────────────────── Two tracks ─────────────────────── */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-14 max-w-3xl text-center"
+          >
+            <h2 className="mb-5 text-title font-black text-slate-900">{TRACKS_HEADLINE}</h2>
+            <p className="text-lg leading-relaxed text-slate-600">{TRACKS_INTRO}</p>
+          </motion.div>
+
+          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2 md:items-start">
+            {pricingPlans.map((plan, i) => {
+              const Icon = plan.icon;
+              return (
+                <motion.div
+                  key={plan.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className={`relative flex h-full flex-col rounded-3xl border-2 bg-white p-5 shadow-lg transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl sm:p-8 ${
+                    plan.popular
+                      ? 'border-violet-400 lg:-mt-4 lg:pb-12 lg:shadow-2xl'
+                      : 'border-slate-200'
+                  }`}
+                >
+                  {plan.popular && (
+                    <span className="absolute -top-3.5 right-8 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-4 py-1 text-xs font-black text-white shadow-lg">
+                      הכי נבחר
+                    </span>
+                  )}
+
+                  <div
+                    className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${plan.gradient} shadow-lg`}
+                  >
+                    <Icon className="h-7 w-7 text-white" />
+                  </div>
+
+                  <h3 className="text-subtitle font-black text-slate-900">{plan.name}</h3>
+                  <p className="mt-1.5 min-h-[3rem] text-sm leading-relaxed text-slate-600">
+                    {plan.tagline}
+                  </p>
+
+                  <div className="my-6 border-y border-slate-100 py-5">
+                    <div
+                      className={`font-black text-slate-900 ${
+                        plan.id === 'full' ? 'text-subtitle leading-snug' : 'text-4xl'
+                      }`}
+                    >
+                      {plan.price}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">{plan.priceNote}</div>
+                  </div>
+
+                  <ul className="mb-7 flex-1 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                        <span className="text-sm leading-relaxed text-slate-700">
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mb-5 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+                    <strong className="text-slate-900">מתאים ל:</strong> {plan.bestFor}
+                  </div>
+
+                  <Button
+                    asChild
+                    size="lg"
+                    className={`w-full text-base font-bold shadow-lg ${
+                      plan.popular
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:text-white'
+                        : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <Link href={plan.ctaHref}>{plan.ctaLabel}</Link>
+                  </Button>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────── Principles ─────────────────────── */}
+      <section className="bg-brand-dark py-20 text-white md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-12 max-w-3xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur">
+              <BadgeCheck className="h-4 w-4" />
+              חמישה עקרונות
+            </div>
+            <h2 className="mb-5 text-title font-black text-white">
+              כך עובד התמחור — בכל מקום באותו נוסח
+            </h2>
+            <p className="text-lg leading-relaxed text-slate-100">
+              אותם חמישה עקרונות מלווים אתכם באזור האישי, בסיור בכלי ובכל הזמנת ליווי. אין אותיות
+              קטנות.
+            </p>
+          </motion.div>
+
+          <PricingModelStrip tone="dark" />
+
+          <div className="mt-16">
+            <h3 className="mb-6 text-center text-subtitle font-black text-white">ואיך מתחילים</h3>
+            <ServiceFlowSteps tone="dark" />
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────── Advisory track pricing ─────────────────────── */}
+      <section id="advisory" className="scroll-mt-24 bg-hero-soft py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-12 max-w-3xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-2 text-sm font-bold text-violet-700">
+              <UserCheck className="h-4 w-4" />
+              {ADVISORY_TRACK.title}
+            </div>
+            <h2 className="mb-5 text-title font-black text-slate-900">איך נקבע מחיר הליווי</h2>
+            <p className="text-lg leading-relaxed text-slate-600">
+              אין מחירון אחד שמתאים לכל תיק. אפשר לקחת יועץ משכנתאות מקצועי לשלב 1 בלבד, לכמה שלבים
+              או לכל שלבי תכנון המשכנתא, ויועץ משכלנתא חוזר אליכם עם הצעת מחיר לפני שמתחילים.
+            </p>
+          </motion.div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ADVISORY_PRICE_FACTORS.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={item.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md"
+                >
+                  <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mb-1.5 text-button font-black text-slate-900">{item.title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600">{item.description}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="mt-10 text-center">
+            <Button asChild size="lg" className="bg-blue-600 px-8 text-base font-bold text-white hover:bg-blue-700 hover:text-white">
+              <Link href="/#start">בקשו הצעת מחיר לליווי</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────── Stage price list ─────────────────────── */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="mx-auto max-w-5xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-12 max-w-3xl text-center"
+          >
+            <h2 className="mb-5 text-title font-black text-slate-900">
+              מה כלול בכל שלב
+            </h2>
+            <p className="text-lg leading-relaxed text-slate-600">
+              חמשת שלבי התכנון. כל אחד מהם אפשר לעשות לבד עם הכלים, או להעביר ליועץ במסלול בליווי.
+            </p>
+          </motion.div>
+
+          <div className="space-y-4">
+            {journeyStages.map((stage, i) => {
+              const Icon = stage.icon;
+              return (
+                <motion.div
+                  key={stage.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06 }}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md transition-shadow hover:shadow-xl"
+                >
+                  <div className={`h-1 w-full bg-gradient-to-l ${stage.gradient}`} />
+                  <div className="grid gap-5 p-6 md:grid-cols-[auto_1fr_auto] md:items-center">
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${stage.gradient} shadow-lg`}
+                    >
+                      <Icon className="h-7 w-7 text-white" />
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-bold text-slate-600">
+                        שלב {stage.number} · {stage.duration}
+                      </div>
+                      <h3 className="text-subtitle font-bold text-slate-900">{stage.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                        {stage.valueHeadline} — {stage.tagline}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {stage.tools.map((tool) => (
+                          <Link
+                            key={tool.href + tool.label}
+                            href={tool.href}
+                            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-blue-100 hover:text-blue-700"
+                          >
+                            {tool.label}
+                            <ArrowUpLeft className="h-3 w-3" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-row items-center gap-6 md:flex-col md:items-end md:gap-2">
+                      <div className="text-right md:text-left">
+                        <div className="text-sm font-black text-violet-700">לפי מורכבות התיק</div>
+                        <div className="text-xs font-semibold text-slate-600">עם יועץ</div>
+                      </div>
+                      <div className="text-right md:text-left">
+                        <div className="text-sm font-black text-blue-700">כלול בגישה</div>
+                        <div className="text-xs font-semibold text-slate-600">
+                          בביצוע עצמי
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────── Comparison table ─────────────────────── */}
+      <section className="bg-slate-50 py-20 md:py-28">
+        <div className="mx-auto max-w-5xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mx-auto mb-12 max-w-3xl text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-2 text-sm font-bold text-violet-700">
+              <BadgeCheck className="h-4 w-4" />
+              השוואה מלאה
+            </div>
+            <h2 className="text-title font-black text-slate-900">
+              מה כלול בכל מסלול
+            </h2>
+          </motion.div>
+
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="overflow-x-auto overscroll-x-contain">
+              <p className="mb-2 px-4 pt-3 text-center text-xs text-slate-500 md:hidden">גללו הצידה לצפייה בהשוואה המלאה</p>
+              <table className="w-full min-w-[460px] text-right">
+                <thead>
+                  <tr className="bg-slate-900 text-white">
+                    <th className="px-6 py-4 text-sm font-bold">יכולת</th>
+                    <th className="bg-violet-700 px-4 py-4 text-center text-sm font-bold">
+                      עצמאי / היברידי
+                    </th>
+                    <th className="px-4 py-4 text-center text-sm font-bold">{ADVISORY_TRACK.title}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonRows.map((row, i) => (
+                    <tr
+                      key={row.capability}
+                      className={`border-t border-slate-100 ${
+                        i === comparisonRows.length - 1 ? 'bg-slate-50 font-bold' : ''
+                      }`}
+                    >
+                      <td className="px-6 py-4 text-sm text-slate-800">{row.capability}</td>
+                      <td className="bg-violet-50 px-4 py-4 text-center">
+                        <CellValue value={row.self} />
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <CellValue value={row.full} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-sm text-slate-600">
+            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא עד {PLATFORM_ACCESS_DAYS} יום, ואם צריך
+            עוד זמן, אפשר לרכוש חבילה נוספת באותו מחיר. בכל הזמנת ליווי — משלב בודד ועד כל השלבים — הגישה כלולה, ומה
+            ששולם עליה מקוזז.
+          </p>
+          <PlatformBillingNotes className="mx-auto mt-8 max-w-5xl" />
+        </div>
+      </section>
+
+      {/* ─────────────────────────── FAQ ─────────────────────────── */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="mx-auto max-w-3xl px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12 text-center"
+          >
+            <h2 className="text-title font-black text-slate-900">שאלות נפוצות</h2>
+          </motion.div>
+
+          <Accordion type="single" collapsible className="w-full">
+            {pricingFaq.map((item, i) => (
+              <AccordionItem
+                key={item.question}
+                value={`faq-${i}`}
+                className="border-b border-slate-200"
+              >
+                <AccordionTrigger className="gap-4 text-right text-base font-bold text-slate-900 hover:no-underline">
+                  {item.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-base leading-relaxed text-slate-600">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      {/* ─────────────────────────── CTA ─────────────────────────── */}
+      <section className="relative overflow-hidden bg-brand-dark py-20 text-white md:py-24">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-20 right-1/4 h-72 w-72 rounded-full bg-white/10 blur-3xl animate-float" />
+          <div className="absolute -bottom-24 left-1/4 h-80 w-80 rounded-full bg-violet-400/20 blur-3xl animate-float-slow" />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="relative mx-auto max-w-3xl px-4 text-center"
+        >
+          <Sparkles className="mx-auto mb-5 h-10 w-10 text-blue-100" />
+          <h2 className="mb-5 text-title font-black text-white">
+            מתחילים בסיור — משלמים רק כשמחליטים
+          </h2>
+          <p className="mb-10 text-lg leading-relaxed text-slate-100">
+            בחרו מה תרצו לעשות, עברו על חמשת השלבים בסיור בכלי, וראו כמה שווה כל שלב לפני שאתם
+            מחליטים על מי להשאיר אותו.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button
+              asChild
+              size="lg"
+              className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
+            >
+              <Link href="/#start">
+                <Wallet className="ml-2 h-5 w-5" />
+                מה תרצו לעשות?
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
+            >
+              <Link href="/custom-mix-builder">נסו את בונה התמהיל</Link>
+            </Button>
+          </div>
+        </motion.div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}

@@ -1,0 +1,492 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  ChevronDown,
+  Copy,
+  GitCompareArrows,
+  Layers,
+  Plus,
+  BookmarkCheck,
+  Save,
+  SquarePen,
+  Trash2,
+} from 'lucide-react';
+import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
+import type { SavedMix } from '../savedMixes';
+import { UNIFORM_BASKETS } from '@/lib/mortgage-plan';
+import { MixRow } from './MixRow';
+import { AUTHOR_STYLES, MixStripCard } from './MixStripCard';
+import type { MixAuthor, MixOrigin } from './MixStripCard';
+import { formatShekel } from './primitives';
+import { RateRequestDialog } from '../rateRequest/RateRequestDialog';
+import { BankQuoteDialog } from '../bankQuote/BankQuoteDialog';
+import { demoId } from '@/demo/demo-attr';
+
+interface MixListProps {
+  /** התמהיל שבניתוח, מהמצב החי שלו */
+  activeResult: MixResult;
+  /** שאר התמהילים לאותו נכס */
+  others: SavedMix[];
+  comparedIds: string[];
+  address?: string;
+  expanded: boolean;
+  /** תרחיש ריבית או מדד פעיל — הנתונים בשורה מוצגים לפי התרחיש */
+  scenarioActive?: boolean;
+  /** פעולות התמהיל כולו, מוצגות בשורה של התמהיל שבניתוח */
+  activeActions?: React.ReactNode;
+  /** פירוט התמהיל שבניתוח לעריכה */
+  editor: React.ReactNode;
+  /** מה שמוצג במקום הפאנל כשעוד לא נבחר תמהיל לניתוח */
+  editorPlaceholder?: React.ReactNode;
+  onToggleExpanded: () => void;
+  onActivate: (item: SavedMix) => void;
+  onToggleCompare: (id: string) => void;
+  onRenameActive: (name: string) => boolean | void;
+  onRename: (id: string, name: string) => boolean | void;
+  /** הסרה מהעמוד בלבד — התמהיל נשאר בתמהילים השמורים */
+  onDismiss: (id: string) => void;
+  onDuplicate: (item: SavedMix) => void;
+  onDuplicateActive: () => void;
+  /** תמהיל ששוכפל או נשמר כחדש ומחכה לשם — שדה השם נפתח ריק */
+  pendingRenameId?: string | null;
+  onCreateForProperty: () => void;
+  /**
+   * כיתוב אזור העבודה כשנבנה בו תמהיל חדש שטרם כוסה במלואו — למשל "בנה תמהיל
+   * ראשון להשוואה". בלעדיו מוצג הכיתוב הרגיל של אזור העבודה.
+   */
+  buildLabel?: string | null;
+  /** כשיש שינויים שלא נשמרו — כפתור שמירה כתמהיל חדש בשורת אזור העבודה */
+  onSaveAsNew?: () => void;
+  saveDirty?: boolean;
+  flashSave?: boolean;
+  /**
+   * שמירת התמהיל שבעבודה כמו שהוא (ללקוח, שאין לו את דיאלוג השמירה של היועץ).
+   * אחרי השמירה מוצגת הודעה, וכפתור הטעינה מודגש פעם אחת.
+   */
+  onSaveCurrent?: () => void;
+  /** מספר התמהילים השמורים לנכס, כולל זה שבעבודה */
+  savedCount?: number;
+  /** ההודעה שמוצגת אחרי שמירה ("התמהיל נשמר"), ואם להנפיש את כפתור הטעינה */
+  saveFeedback?: { message: string; nudge: boolean } | null;
+  /** מזהי הסלים האחידים שנשמרו מהאישור העקרוני */
+  uniformMixIds?: string[];
+  nameNotice?: string | null;
+  /** ההכנסה הפנויה מהשלב הראשון — מוצגת במכתב הבקשה לבנקים */
+  disposableIncome?: number;
+  /**
+   * שמירת תמהיל שהריביות בו התקבלו מבנק. בלעדיה אין הזנת ריביות — התמהיל של
+   * הבנק נשמר כתמהיל רגיל לנכס, ולכן השמירה נעשית באותו מקום כמו כל שמירה.
+   */
+  /** בחירת תמהיל כתמהיל הסופי — ממשיך לשלב 4 */
+  onSelectAsFinal?: (mixId: string) => void;
+  /** התמהיל שבעבודה הוא התמהיל הסופי להגשה לבנקים, ונעול לשינויים */
+  activeFinal?: boolean;
+  /** פתיחת התמהיל הסופי חזרה לעריכה */
+  onReopenFinal?: () => void;
+  /** המסלול שבמיקוד באזור הגרפים — לחיצה על מסלול בפס של התמהיל שבעבודה */
+  focusTrackId?: string | null;
+  onFocusTrack?: (trackId: string | null) => void;
+  onSaveBankQuote?: (quoted: WorkspaceMix) => Promise<void> | void;
+  /** פתיחת התמהיל שהתקבל מהבנק באזור העבודה */
+  onOpenBankQuote?: (quoted: WorkspaceMix) => void;
+}
+
+function isBankDefaultMix(mix: WorkspaceMix, preferredIds: string[]): boolean {
+  if (preferredIds.includes(mix.id)) return true;
+  if (mix.id.startsWith('uniform-mix-')) return true;
+  return UNIFORM_BASKETS.some(
+    (basket) => mix.name === basket.shortName || mix.name.startsWith(`${basket.shortName} ·`)
+  );
+}
+
+/**
+ * כל התמהילים של הנכס. התמהיל שבעבודה בראש; הסלים האחידים והתמהילים המותאמים
+ * מוצגים כסרגל אופקי, והמסומנים להשוואה — עד שלושה — כשורות מלאות מתחת.
+ */
+export function MixList({
+  activeResult,
+  others,
+  comparedIds,
+  address,
+  expanded,
+  scenarioActive = false,
+  activeActions,
+  editor,
+  editorPlaceholder,
+  onToggleExpanded,
+  onActivate,
+  onToggleCompare,
+  onRenameActive,
+  onRename,
+  onDismiss,
+  onDuplicate,
+  onDuplicateActive,
+  pendingRenameId,
+  onCreateForProperty,
+  buildLabel,
+  onSaveAsNew,
+  saveDirty = false,
+  flashSave = false,
+  onSaveCurrent,
+  savedCount = 0,
+  saveFeedback = null,
+  uniformMixIds = [],
+  nameNotice,
+  disposableIncome,
+  onSaveBankQuote,
+  onOpenBankQuote,
+  onSelectAsFinal,
+  activeFinal = false,
+  onReopenFinal,
+  focusTrackId = null,
+  onFocusTrack,
+}: MixListProps) {
+  /** התמהיל שממנו מפיקים עכשיו מכתב בקשת ריביות לבנקים */
+  const [quoteTarget, setQuoteTarget] = useState<{
+    mix: WorkspaceMix;
+    summary: MixSummary;
+  } | null>(null);
+
+  /** התמהיל שעליו מזינים עכשיו את הריביות שהתקבלו מבנק */
+  const [quoteEntryMix, setQuoteEntryMix] = useState<WorkspaceMix | null>(null);
+
+  /**
+   * רשימת שאר התמהילים של הנכס נפתחת לפי דרישה, מעל אזור העבודה, ונסגרת ברגע
+   * שנבחר תמהיל. קודם היא ישבה בתוך הזרימה בין פאנל השליטה לדאשבורד ודחפה את
+   * הדאשבורד אל מחוץ למסך — וזה בדיוק מה שהכלי הזה צריך שיישאר גלוי יחד.
+   */
+  const [othersOpen, setOthersOpen] = useState(false);
+
+  const scope = address?.trim()
+    ? `לנכס ב${address.trim()}`
+    : `למשכנתא בסך ${formatShekel(activeResult.mix.totalAmount)}`;
+
+  const originOf = (item: SavedMix): MixOrigin =>
+    item.mix.quote ? 'quote' : isBankDefaultMix(item.mix, uniformMixIds) ? 'bank' : 'custom';
+
+  /** שמות התמהילים לנכס, כדי שהצעה חדשה תקבל שם ייחודי */
+  const takenNames = [activeResult.mix.name, ...others.map((item) => item.mix.name)];
+  const enterQuote = onSaveBankQuote ? (target: WorkspaceMix) => setQuoteEntryMix(target) : undefined;
+  const comparedItems = others.filter((item) => comparedIds.includes(item.mix.id));
+
+  return (
+    <Card className="border-slate-200 shadow-sm">
+      <CardHeader className="pb-2">
+        <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-right">
+          <CardTitle className="flex items-center justify-center gap-2 text-base sm:justify-start">
+            <Layers className="h-4 w-4 text-blue-600" />
+            תמהילים {scope}
+            <span className="text-xs font-normal text-slate-500">{others.length + 1}</span>
+          </CardTitle>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+            {onSaveCurrent && (
+              <Button
+                size="sm"
+                className={`h-10 w-full text-xs sm:h-8 sm:w-auto ${
+                  saveDirty && flashSave ? 'save-flash' : ''
+                }`}
+                onClick={onSaveCurrent}
+                disabled={Boolean(activeResult.mix.locked)}
+                title="שמירת התמהיל שבעבודה — אחרי השמירה אפשר לטעון אותו ולהשוות אליו"
+              >
+                <Save className="h-3.5 w-3.5 ml-1" />
+                שמור תמהיל
+              </Button>
+            )}
+            {(others.length > 0 || savedCount > 0) && (
+              <Button
+                size="sm"
+                variant={othersOpen ? 'default' : 'outline'}
+                className={`h-10 w-full text-xs sm:h-8 sm:w-auto ${
+                  saveFeedback?.nudge ? 'load-nudge' : ''
+                }`}
+                onClick={() => setOthersOpen((open) => !open)}
+                {...demoId('ws-others-toggle')}
+              >
+                <Layers className="h-3.5 w-3.5 ml-1" />
+                {othersOpen
+                  ? 'סגור את רשימת התמהילים'
+                  : `טען תמהיל · ${Math.max(others.length, savedCount)}`}
+                <ChevronDown
+                  className={`mr-1 h-3.5 w-3.5 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
+                />
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="h-10 w-full text-xs sm:h-8 sm:w-auto" onClick={onCreateForProperty}>
+              <Plus className="h-3.5 w-3.5 ml-1" />
+              תמהיל נוסף לנכס הזה
+            </Button>
+          </div>
+        </div>
+        {othersOpen && (
+          <p className="flex items-center justify-center gap-1.5 text-center text-2xs text-slate-500 sm:justify-start sm:text-right">
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            לחיצה על תיבת תמהיל פותחת אותה באזור העבודה וסוגרת את הרשימה. סימון בעיגול שבצד ימין
+            מוסיף את התמהיל להשוואה ומשאיר את הרשימה פתוחה.
+          </p>
+        )}
+        {saveFeedback && (
+          <p
+            role="status"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-center text-2xs font-semibold text-emerald-800 sm:justify-start sm:text-right"
+          >
+            <BookmarkCheck className="h-3.5 w-3.5 shrink-0" />
+            {saveFeedback.message}
+            <span className="font-normal text-emerald-700">· התמהיל זמין לטעינה והשוואה</span>
+          </p>
+        )}
+        {othersOpen && others.length === 0 && (
+          <p className="text-center text-2xs text-slate-500 sm:text-right">
+            התמהיל שבעבודה הוא היחיד השמור לנכס. צרו תמהיל נוסף כדי לטעון ולהשוות ביניהם.
+          </p>
+        )}
+        {nameNotice && <p className="text-2xs font-semibold text-red-700">{nameNotice}</p>}
+      </CardHeader>
+
+      <CardContent>
+        <div className="space-y-3">
+          {othersOpen && others.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-2">
+              <MixSliderSection
+                items={others}
+                originOf={originOf}
+                comparedIds={comparedIds}
+                onActivate={(item) => {
+                  setOthersOpen(false);
+                  onActivate(item);
+                }}
+                onToggleCompare={onToggleCompare}
+                onRequestQuote={(item) => setQuoteTarget({ mix: item.mix, summary: item.summary })}
+                onEnterQuote={enterQuote && ((item: SavedMix) => enterQuote(item.mix))}
+              />
+            </div>
+          )}
+
+          <section
+            className={`rounded-2xl border-2 p-2 shadow-sm ${
+              activeFinal
+                ? 'border-emerald-500 bg-gradient-to-b from-emerald-50 to-white'
+                : 'border-blue-400 bg-gradient-to-b from-blue-50 to-white'
+            }`}
+          >
+            {/* כותרת אזור העבודה בשורה אחת — ההסבר עבר ל-title כדי לפנות גובה */}
+            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span
+                className="flex items-center gap-1.5 text-xs font-black text-blue-900"
+                title={
+                  buildLabel
+                    ? 'הוסיפו מסלול אחרי מסלול עד שכל סכום המשכנתא משובץ — ואז התמהיל נשמר אוטומטית'
+                    : comparedItems.length > 0
+                      ? 'הטבלה והגרפים שמתחת מציגים את כל התמהילים שבאזור העבודה'
+                      : 'התמהיל שנפתח לניתוח ולעריכה'
+                }
+              >
+                <SquarePen className="h-3.5 w-3.5 text-blue-600" />
+                {buildLabel || 'אזור העבודה'}
+              </span>
+              {comparedItems.length > 0 && (
+                <span className="rounded-full bg-blue-600 px-2 py-0.5 text-2xs font-black text-white">
+                  {comparedItems.length + 1} תמהילים בהשוואה
+                </span>
+              )}
+              {saveDirty && onSaveAsNew && (
+                <Button
+                  size="sm"
+                  className={`h-8 text-xs sm:ms-auto ${flashSave ? 'save-flash' : ''}`}
+                  onClick={onSaveAsNew}
+                >
+                  <Save className="h-3.5 w-3.5 ml-1" />
+                  שמור מצב נוכחי כתמהיל
+                </Button>
+              )}
+            </div>
+            <div {...demoId('ws-active-mix')}>
+            <MixRow
+              key={activeResult.mix.id}
+              mix={activeResult.mix}
+              summary={activeResult.summary}
+              result={activeResult}
+              active
+              selected
+              selectionLocked
+              onToggleSelect={() => undefined}
+              expanded={expanded}
+              showExpandIcon
+              onClick={pendingRenameId === activeResult.mix.id ? undefined : onToggleExpanded}
+              onRename={onRenameActive}
+              startRenaming={pendingRenameId === activeResult.mix.id}
+              requireName={pendingRenameId === activeResult.mix.id}
+              namePlaceholder="תנו שם לתמהיל החדש"
+              hint={
+                pendingRenameId === activeResult.mix.id
+                  ? 'תנו שם לתמהיל כדי להמשיך לערוך אותו'
+                  : 'לחצו לעריכת המסלולים'
+              }
+              note={scenarioActive ? 'תרחיש פעיל' : undefined}
+              onRequestQuote={() =>
+                setQuoteTarget({ mix: activeResult.mix, summary: activeResult.summary })
+              }
+              onSelectAsFinal={onSelectAsFinal && (() => onSelectAsFinal(activeResult.mix.id))}
+              final={activeFinal}
+              stackActions
+              onReopenFinal={onReopenFinal}
+              focusTrackId={focusTrackId}
+              onFocusTrack={onFocusTrack}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={onDuplicateActive}
+                    title="שכפול התמהיל"
+                    className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 sm:p-1.5"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDismiss(activeResult.mix.id)}
+                    title="הסרה מאזור העבודה — התמהיל יישמר בתמהילים השמורים"
+                    className="rounded-md p-2.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 sm:p-1.5"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  {activeActions}
+                </>
+              }
+            />
+            </div>
+            {expanded ? (
+              <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
+                {editor}
+              </div>
+            ) : (
+              editorPlaceholder && <div className="mt-2">{editorPlaceholder}</div>
+            )}
+
+            {/*
+              התמהילים שסומנו להשוואה אינם מוצגים כאן יותר. הם מוזנים ישירות
+              ללשונית ההשוואה שבאזור הגרפים, ששם גם בוחרים אותם — כך אזור
+              העבודה נשאר התמהיל שעורכים, והדאשבורד נשאר על המסך.
+            */}
+          </section>
+
+        </div>
+      </CardContent>
+
+      {/* מכתב בקשת הריביות לבנקים — נפתח מכל כרטיסייה ומכל שורת תמהיל */}
+      {quoteTarget && (
+        <RateRequestDialog
+          open
+          onOpenChange={(next) => !next && setQuoteTarget(null)}
+          mix={quoteTarget.mix}
+          summary={quoteTarget.summary}
+          disposableIncome={disposableIncome}
+        />
+      )}
+
+      {/* הזנת הריביות שהבנק החזיר — נשמרת כתמהיל נפרד לאותו נכס */}
+      {quoteEntryMix && onSaveBankQuote && (
+        <BankQuoteDialog
+          open
+          onOpenChange={(next) => !next && setQuoteEntryMix(null)}
+          mix={quoteEntryMix}
+          takenNames={takenNames}
+          onSave={onSaveBankQuote}
+          onOpenSaved={onOpenBankQuote}
+        />
+      )}
+    </Card>
+  );
+}
+
+/**
+ * כל התמהילים של הנכס, מופרדים לפי מי שבנה אותם.
+ *
+ * ההפרדה הזו היא הראשונה שהעין צריכה לתפוס: תמהיל שהלקוח בנה לעצמו ותמהיל
+ * שהיועץ הציע לו הם שני דברים שונים, גם כשהם לאותה עסקה. בתוך כל קבוצה נשמרת
+ * ההבחנה בין ברירת המחדל של הבנק לתמהיל שנבנה בכלי, על הכרטיס עצמו.
+ */
+export function MixSliderSection({
+  items,
+  originOf,
+  comparedIds,
+  onActivate,
+  onToggleCompare,
+  onRequestQuote,
+  onEnterQuote,
+}: {
+  items: SavedMix[];
+  originOf: (item: SavedMix) => MixOrigin;
+  comparedIds: string[];
+  onActivate: (item: SavedMix) => void;
+  onToggleCompare: (id: string) => void;
+  onRequestQuote: (item: SavedMix) => void;
+  onEnterQuote?: (item: SavedMix) => void;
+}) {
+  const authorOf = (item: SavedMix): MixAuthor => (item.ownerIsAdvisor ? 'advisor' : 'client');
+  const groups = (['client', 'advisor'] as const)
+    .map((author) => ({ author, items: items.filter((item) => authorOf(item) === author) }))
+    .filter((group) => group.items.length > 0);
+  const quoteCount = items.filter((item) => originOf(item) === 'quote').length;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+      <div className="mb-2.5 flex flex-col items-center gap-1 text-center sm:flex-row sm:items-center sm:gap-2 sm:text-right">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-white">
+          <GitCompareArrows className="h-3.5 w-3.5" />
+        </span>
+        <div>
+          <p className="text-xs font-black text-slate-900">תמהילים להשוואה</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-2 text-2xs text-slate-600 sm:justify-start">
+            {groups.map((group) => (
+              <span key={group.author} className="flex items-center gap-1">
+                <span className={`h-2 w-2 rounded-full ${AUTHOR_STYLES[group.author].dot}`} />
+                {group.items.length} {AUTHOR_STYLES[group.author].label}
+              </span>
+            ))}
+            {quoteCount > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                {quoteCount} עם ריביות שהתקבלו מבנק
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {groups.map((group) => (
+          <div key={group.author} className="space-y-1.5">
+            {groups.length > 1 && (
+              <p className="flex items-center gap-1.5 text-2xs font-black text-slate-700">
+                <span className={`h-2 w-2 rounded-full ${AUTHOR_STYLES[group.author].dot}`} />
+                תמהילים ש{group.author === 'client' ? 'הלקוח בנה' : 'היועץ בנה'}
+              </p>
+            )}
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:snap-x sm:snap-mandatory sm:justify-start sm:overflow-x-auto sm:pb-1 sm:[scrollbar-width:thin]">
+              {group.items.map((item, index) => (
+                <div key={item.mix.id} {...demoId(`ws-saved-mix-${index}`)}>
+                <MixStripCard
+                  key={item.mix.id}
+                  mix={item.mix}
+                  summary={item.summary}
+                  origin={originOf(item)}
+                  author={group.author}
+                  selected={comparedIds.includes(item.mix.id)}
+                  onToggleSelect={() => onToggleCompare(item.mix.id)}
+                  onActivate={() => onActivate(item)}
+                  onRequestQuote={() => onRequestQuote(item)}
+                  onEnterQuote={onEnterQuote && (() => onEnterQuote(item))}
+                />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

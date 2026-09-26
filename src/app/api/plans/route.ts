@@ -1,0 +1,88 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerAuth } from '@/lib/auth';
+import {
+  canOpenAnotherPlan,
+  createPlan,
+  createPlanFromMix,
+  createRefinancePlan,
+  listPlansForUser,
+} from '@/lib/mortgage-plans';
+import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
+import { assignMixDeal, getMixForUser } from '@/lib/mixes';
+import { sanitizeMix } from '@/components/mortgage-advisor/engine';
+import { rateLimit } from '@/lib/rate-limit';
+
+/** תהליכי תכנון המשכנתא של המשתמש — הפעילים והמושלמים */
+export async function GET() {
+  const session = await getServerAuth();
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  return NextResponse.json(await listPlansForUser(userId));
+}
+
+/** פתיחת תהליך חדש */
+export async function POST(req: NextRequest) {
+  const session = await getServerAuth();
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const name = typeof body?.name === 'string' ? body.name : undefined;
+
+  const limited = await rateLimit(`plans:create:${userId}`, { limit: 8, windowSeconds: 3600 });
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { error: 'Too many plans' },
+      { status: 429, headers: { 'Retry-After': String(limited.resetInSeconds) } }
+    );
+  }
+
+  // עד שני תהליכים פתוחים במקביל. תהליך שנמחק או הסתיים מפנה מקום
+  if (!(await canOpenAnotherPlan(userId))) {
+    return NextResponse.json(
+      {
+        error: `אפשר לנהל עד ${MAX_OPEN_PROCESSES} תהליכים פתוחים במקביל. כדי לפתוח תהליך חדש, סיימו או מחקו אחד מהתהליכים הפתוחים.`,
+        reason: 'max-open',
+      },
+      { status: 409 }
+    );
+  }
+
+  // תהליך מיחזור — נפתח מכלי המיחזור עם התמהיל שנבנה בו
+  if (body?.refinance && typeof body.refinance === 'object') {
+    const mix = sanitizeMix(body.mix);
+    if (!mix) return NextResponse.json({ error: 'Invalid mix' }, { status: 400 });
+    const plan = await createRefinancePlan(userId, { refinance: body.refinance, mix });
+    if (!plan) return NextResponse.json({ error: 'Invalid refinance data' }, { status: 400 });
+    return NextResponse.json(plan, { status: 201 });
+  }
+
+  if (typeof body?.fromMixId === 'string') {
+    const mix = await getMixForUser(userId, body.fromMixId);
+    if (!mix) return NextResponse.json({ error: 'Mix not found' }, { status: 404 });
+    const propertyAddress = typeof body.propertyAddress === 'string' ? body.propertyAddress.trim() : '';
+    const propertyValue =
+      typeof body.propertyValue === 'number' && Number.isFinite(body.propertyValue)
+        ? body.propertyValue
+        : mix.mix.propertyValue ?? null;
+    const mortgageAmount =
+      typeof body.mortgageAmount === 'number' && Number.isFinite(body.mortgageAmount)
+        ? body.mortgageAmount
+        : mix.mix.totalAmount || null;
+    const plan = await createPlanFromMix(userId, mix, {
+      propertyAddress: propertyAddress || mix.mix.propertyAddress?.trim() || '',
+      propertyValue,
+      mortgageAmount,
+    });
+    await assignMixDeal(userId, body.fromMixId, {
+      planId: plan.id,
+      propertyAddress: plan.propertyAddress ?? propertyAddress,
+      propertyValue: plan.propertyValue ?? propertyValue,
+      totalAmount: plan.mortgageAmount ?? mortgageAmount ?? undefined,
+    });
+    return NextResponse.json(plan, { status: 201 });
+  }
+
+  return NextResponse.json(await createPlan(userId, name), { status: 201 });
+}

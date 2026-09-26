@@ -75,9 +75,9 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case 'completed': return 'bg-green-500 border-green-500 text-white';
     case 'in_progress': return 'bg-blue-500 border-blue-500 text-white animate-pulse';
-    case 'pending': return 'bg-gray-300 border-gray-300 text-gray-600';
+    case 'pending': return 'bg-slate-300 border-slate-300 text-slate-600';
     case 'blocked': return 'bg-red-500 border-red-500 text-white';
-    default: return 'bg-gray-300 border-gray-300 text-gray-600';
+    default: return 'bg-slate-300 border-slate-300 text-slate-600';
   }
 };
 
@@ -127,7 +127,7 @@ export default function MortgageJourneyMap({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       {/* כותרת ומד התקדמות כללי */}
       <div className="max-w-7xl mx-auto mb-8">
         <motion.div
@@ -135,10 +135,10 @@ export default function MortgageJourneyMap({
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-6"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-title font-bold text-slate-900 mb-2">
             🗺️ מפת המסע למשכנתא
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-slate-600">
             עקוב אחר התקדמותך בכל שלבי תהליך המשכנתא
           </p>
         </motion.div>
@@ -147,12 +147,12 @@ export default function MortgageJourneyMap({
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8"
+          className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 mb-8"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">התקדמות כללית</h3>
-              <p className="text-gray-600">
+              <h3 className="text-subtitle font-bold text-slate-900">התקדמות כללית</h3>
+              <p className="text-slate-600">
                 {Math.round(overallProgress)}% הושלמו מתוך {stepsWithDates.length} שלבים
               </p>
             </div>
@@ -160,7 +160,7 @@ export default function MortgageJourneyMap({
               {Math.round(overallProgress)}%
             </div>
           </div>
-          <Progress value={overallProgress} className="h-3 bg-gray-200" />
+          <Progress value={overallProgress} className="h-3 bg-slate-200" />
         </motion.div>
       </div>
 
@@ -309,7 +309,7 @@ export default function MortgageJourneyMap({
                         ? 'border-blue-400 bg-gradient-to-br from-blue-50/90 to-cyan-50/90 shadow-blue-200/50 shadow-lg ring-2 ring-blue-300/30'
                         : step.status === 'blocked'
                         ? 'border-red-400 bg-gradient-to-br from-red-50/90 to-pink-50/90 shadow-red-200/50'
-                        : 'border-gray-200 bg-gradient-to-br from-white/90 to-gray-50/90'
+                        : 'border-slate-200 bg-gradient-to-br from-white/90 to-slate-50/90'
                     } hover:scale-105 hover:-translate-y-2 group`}
                     onClick={() => handleStepClick(step)}
                   >
@@ -352,14 +352,14 @@ export default function MortgageJourneyMap({
                         </Badge>
                       </div>
                       
-                      <CardTitle className="text-lg font-bold text-gray-900 leading-tight">
+                      <CardTitle className="text-lg font-bold text-slate-900 leading-tight">
                         {step.title}
                       </CardTitle>
                     </CardHeader>
 
                     <CardContent className="pt-0">
                       {/* זמן משוער */}
-                      <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
+                      <div className="flex items-center gap-2 mb-3 text-sm text-slate-600">
                         <Clock className="w-4 h-4" />
                         <span>
                           {step.durationAvgDays < 1 
@@ -372,7 +372,7 @@ export default function MortgageJourneyMap({
                       {/* תאריכים עם לוח שנה מיני */}
                       {step.startDate && (
                         <div className="mb-3">
-                          <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 mb-2 text-sm text-slate-600">
                             <Calendar className="w-4 h-4" />
                             <span className="font-medium">
                               {step.startDate.toLocaleDateString('he-IL')}
@@ -381,11 +381,11 @@ export default function MortgageJourneyMap({
                           </div>
                           
                           {/* מיני לוח שנה ויזואלי */}
-                          <div className="bg-white/50 rounded-lg p-2 border border-gray-200/50">
+                          <div className="bg-white/50 rounded-lg p-2 border border-slate-200/50">
                             <div className="grid grid-cols-7 gap-1 text-xs">
                               {/* כותרות ימים */}
                               {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map((day, i) => (
-                                <div key={i} className="text-center text-gray-400 font-semibold py-1">
+                                <div key={i} className="text-center text-slate-400 font-semibold py-1">
                                   {day}
                                 </div>
                               ))}
@@ -406,7 +406,7 @@ export default function MortgageJourneyMap({
                                         ? 'bg-blue-500 text-white font-bold'
                                         : isInRange
                                         ? 'bg-blue-100 text-blue-700'
-                                        : 'text-gray-600'
+                                        : 'text-slate-600'
                                     }`}
                                   >
                                     {dayNum <= 31 ? dayNum : ''}
@@ -420,7 +420,7 @@ export default function MortgageJourneyMap({
 
                       {/* מסמכים נדרשים */}
                       {step.documents.length > 0 && (
-                        <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 mb-3 text-sm text-slate-600">
                           <FileText className="w-4 h-4" />
                           <span>{step.documents.length} מסמכים</span>
                         </div>
@@ -437,7 +437,7 @@ export default function MortgageJourneyMap({
                               ? 'bg-blue-100 text-blue-800 border-blue-300'
                               : step.status === 'blocked'
                               ? 'bg-red-100 text-red-800 border-red-300'
-                              : 'bg-gray-100 text-gray-600 border-gray-300'
+                              : 'bg-slate-100 text-slate-600 border-slate-300'
                           }
                         >
                           {step.status === 'completed' && '✅ הושלם'}
@@ -544,13 +544,13 @@ export default function MortgageJourneyMap({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-gray-900">
+                <h3 className="text-subtitle font-bold text-slate-900">
                   {selectedStep.title}
                 </h3>
                 <Button 
                   variant="ghost" 
                   onClick={() => setSelectedStep(null)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-slate-500 hover:text-slate-700"
                 >
                   ✕
                 </Button>
@@ -558,8 +558,8 @@ export default function MortgageJourneyMap({
 
               <div className="space-y-4">
                 {/* פרטי השלב */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700">{selectedStep.notes}</p>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-slate-700">{selectedStep.notes}</p>
                 </div>
 
                 {/* זמנים */}
@@ -584,15 +584,15 @@ export default function MortgageJourneyMap({
                 {/* מסמכים נדרשים */}
                 {selectedStep.documents.length > 0 && (
                   <div>
-                    <h4 className="font-bold text-gray-900 mb-3">מסמכים נדרשים:</h4>
+                    <h4 className="font-bold text-slate-900 mb-3">מסמכים נדרשים:</h4>
                     <div className="space-y-2">
                       {selectedStep.documents.map((doc, index) => (
                         <div 
                           key={index}
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                          className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
                         >
-                          <FileText className="w-5 h-5 text-gray-600" />
-                          <span className="flex-1 text-gray-800">{doc.name}</span>
+                          <FileText className="w-5 h-5 text-slate-600" />
+                          <span className="flex-1 text-slate-800">{doc.name}</span>
                           {doc.optional && (
                             <Badge variant="outline" className="text-xs">
                               אופציונלי

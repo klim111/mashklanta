@@ -5,30 +5,35 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { authErrorMessage } from '@/lib/auth-errors';
+
+/** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
+function safeCallbackUrl(value: string | null): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
+  return value;
+}
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'CLIENT' as 'CLIENT' | 'ADVISOR',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if role is specified in URL
   useEffect(() => {
-    const role = searchParams.get('role');
-    if (role === 'ADVISOR') {
-      setFormData(prev => ({ ...prev, role: 'ADVISOR' }));
-    }
+    const oauthError = authErrorMessage(searchParams.get('error'));
+    if (oauthError) setError(oauthError);
   }, [searchParams]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
@@ -38,6 +43,10 @@ function RegisterForm() {
   const validateForm = () => {
     if (formData.name.length < 2) {
       setError('השם חייב להכיל לפחות 2 תווים');
+      return false;
+    }
+    if (formData.username.trim().length < 3) {
+      setError('שם המשתמש חייב להכיל לפחות 3 תווים');
       return false;
     }
     if (!formData.email.includes('@')) {
@@ -74,25 +83,31 @@ function RegisterForm() {
         },
         body: JSON.stringify({
           name: formData.name,
+          username: formData.username,
           email: formData.email,
           password: formData.password,
-          role: formData.role,
+          callbackUrl: safeCallbackUrl(searchParams.get('callbackUrl')),
         }),
       });
 
-      const data = await response.json();
+      const payload = await response.text();
+      let data: { error?: string } = {};
+      try {
+        data = payload ? JSON.parse(payload) : {};
+      } catch {
+        data = { error: 'השרת לא החזיר תשובה תקינה. נסו שוב.' };
+      }
 
       if (!response.ok) {
         setError(data.error || 'אירעה שגיאה בהרשמה');
       } else {
-        setSuccess('ההרשמה הושלמה בהצלחה! נשלח אליך מייל עם קישור לאימות');
-        setTimeout(() => {
-          if (formData.role === 'ADVISOR') {
-            router.push('/auth/login?advisor=true');
-          } else {
-            router.push('/auth/login');
-          }
-        }, 3000);
+        /*
+          החשבון עוד לא נפתח: הוא נוצר, והאזור האישי נפתח, רק אחרי שהלקוח
+          יאשר את הקישור שנשלח אליו במייל. הבחירה שעשה בעמוד הבית שמורה עם
+          ההרשמה וממתינה לו אחרי האישור.
+        */
+        setSuccess('שלחנו לכם מייל לאישור ההרשמה');
+        router.push(`/auth/check-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
       }
     } catch (error) {
       setError('אירעה שגיאה בהרשמה');
@@ -102,30 +117,23 @@ function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
                 <Home className="w-8 h-8 text-white" />
               </div>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {formData.role === 'ADVISOR' ? 'הרשמה ליועצי משכנתאות' : 'הרשמה'}
-            </h1>
-            <p className="text-gray-600 mt-2">
-              {formData.role === 'ADVISOR' 
-                ? 'הצטרף לנבחרת היועצים של משכנתא' 
-                : 'צור חשבון חדש ב-Nadlanium'
-              }
-            </p>
+            <h1 className="text-title font-bold text-slate-900">הרשמה</h1>
+            <p className="text-slate-600 mt-2">פתיחת חשבון לקוח במשכלנתא. נשלח לכם מייל לאישור הכתובת.</p>
           </div>
 
           {/* Success Message */}
@@ -154,27 +162,8 @@ function RegisterForm() {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Role Selection - only show if not pre-selected */}
-            {!searchParams.get('role') && (
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-                  סוג משתמש
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                >
-                  <option value="CLIENT">לקוח</option>
-                  <option value="ADVISOR">יועץ משכנתאות</option>
-                </select>
-              </div>
-            )}
-
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
                 שם מלא
               </label>
               <div className="relative">
@@ -185,15 +174,36 @@ function RegisterForm() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="ישראל ישראלי"
                 />
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
+                שם משתמש
+              </label>
+              <div className="relative">
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  minLength={3}
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="למשל israel92"
+                />
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 כתובת מייל
               </label>
               <div className="relative">
@@ -204,16 +214,15 @@ function RegisterForm() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="your@email.com"
-                  dir="ltr"
                 />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 סיסמה
               </label>
               <div className="relative">
@@ -224,15 +233,15 @@ function RegisterForm() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="לפחות 8 תווים"
                 />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
                 אימות סיסמה
               </label>
               <div className="relative">
@@ -243,17 +252,17 @@ function RegisterForm() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="הקלד שוב את הסיסמה"
                 />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading || !!success}
-              className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -263,43 +272,48 @@ function RegisterForm() {
               ) : success ? (
                 <>
                   <CheckCircle className="w-5 h-5" />
-                  נרשמת בהצלחה!
+                  נשלח מייל לאישור
                 </>
               ) : (
-                formData.role === 'ADVISOR' ? 'הצטרף לנבחרת היועצים' : 'הירשם'
+                'הירשם'
               )}
             </button>
           </form>
 
           {/* Terms */}
-          <p className="text-xs text-gray-500 text-center mt-6">
+          <p className="text-xs text-slate-500 text-center mt-6">
             בהרשמתך אתה מסכים ל
-            <Link href="/terms" className="text-purple-600 hover:text-purple-700">
+            <Link href="/terms" className="text-blue-600 hover:text-blue-700">
               תנאי השימוש
             </Link>
             {' '}ול
-            <Link href="/privacy" className="text-purple-600 hover:text-purple-700">
+            <Link href="/privacy" className="text-blue-600 hover:text-blue-700">
               מדיניות הפרטיות
             </Link>
           </p>
 
-          {/* Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-slate-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">או</span>
+              <span className="px-4 bg-white text-slate-500">או</span>
             </div>
+          </div>
+          <div className="mb-6">
+            <GoogleAuthButton
+              label="הרשמה עם Google"
+              callbackUrl={safeCallbackUrl(searchParams.get('callbackUrl')) ?? '/dashboard'}
+            />
           </div>
 
           {/* Login Link */}
           <div className="text-center">
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               כבר יש לך חשבון?{' '}
               <Link
                 href="/auth/login"
-                className="font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
                 התחבר
               </Link>
@@ -311,7 +325,7 @@ function RegisterForm() {
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-gray-600 hover:text-gray-800 transition-colors inline-flex items-center gap-2"
+            className="text-slate-600 hover:text-slate-800 transition-colors inline-flex items-center gap-2"
           >
             <Home className="w-4 h-4" />
             חזרה לדף הבית
@@ -325,11 +339,11 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">טוען...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-slate-600">טוען...</p>
           </div>
         </div>
       </div>
