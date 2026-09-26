@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { normalizeEmail, normalizeUsername } from '@/lib/find-user-by-login';
+import { passwordProblem } from '@/lib/password-policy';
 import {
   REGISTRATION_DEVICE_COOKIE,
   VERIFICATION_TTL_MINUTES,
@@ -26,11 +27,11 @@ const registerSchema = z.object({
     .min(3, 'שם המשתמש חייב להכיל לפחות 3 תווים')
     .max(32, 'שם המשתמש ארוך מדי')
     .regex(/^[a-zA-Z0-9._֐-׿-]+$/, 'שם המשתמש יכול להכיל אותיות, מספרים, נקודה, מקף וקו תחתון'),
-  // bcrypt מתעלם מכל מה שמעבר ל-72 בתים, ולכן גם זה הגבול העליון
-  password: z
-    .string()
-    .min(8, 'הסיסמה חייבת להכיל לפחות 8 תווים')
-    .refine((value) => Buffer.byteLength(value, 'utf8') <= 72, 'הסיסמה ארוכה מדי'),
+  // 8 תווים, אות, ספרה וסימן, ועד 72 בתים (ראו src/lib/password-policy.ts)
+  password: z.string().superRefine((value, ctx) => {
+    const problem = passwordProblem(value);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+  }),
   name: z.string().trim().min(2, 'השם חייב להכיל לפחות 2 תווים').max(80),
   callbackUrl: z.string().optional().nullable(),
 });
@@ -64,6 +65,12 @@ export async function POST(request: NextRequest) {
       requestOrigin: request.nextUrl.origin,
     });
 
+    if (result.status === 'exists') {
+      return NextResponse.json(
+        { error: 'כבר קיים משתמש עם המייל הזה. התחברו, או בחרו סיסמה חדשה אם שכחתם אותה.', code: 'email-exists' },
+        { status: 409 }
+      );
+    }
     if (result.status === 'cooldown') {
       return NextResponse.json(
         { error: 'כבר שלחנו קישור לכתובת הזו לפני רגע. בדקו את תיבת המייל, או נסו שוב בעוד דקה.' },

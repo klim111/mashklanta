@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { parseClientProfile, profileToJson } from '@/lib/client-profile';
 import type { ClientProfile } from '@/lib/client-profile';
 import { normalizeUsername } from '@/lib/find-user-by-login';
+import { passwordProblem } from '@/lib/password-policy';
 
 function toResponse(
   user: { name: string | null; email: string | null; username: string | null; profileJson: unknown }
@@ -80,8 +81,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (typeof body.password === 'string' && body.password.length > 0) {
-    if (body.password.length < 8) {
-      return NextResponse.json({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים' }, { status: 400 });
+    const problem = passwordProblem(body.password);
+    if (problem) {
+      return NextResponse.json({ error: problem }, { status: 400 });
     }
     data.hashedPassword = await bcrypt.hash(body.password, 12);
   }

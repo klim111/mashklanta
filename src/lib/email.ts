@@ -169,25 +169,6 @@ ${verificationUrl}
     };
   },
 
-  /** נשלח כשמנסים להירשם עם מייל שכבר רשום — במקום לחשוף זאת בטופס */
-  accountExistsEmail: ({ loginUrl }: { loginUrl: string }) => ({
-    subject: `כבר יש לכם חשבון ב${appName()}`,
-    html: authEmailShell(
-      'ניסיון הרשמה עם המייל שלכם',
-      `<p style="margin:0 0 12px;">שלום,</p>
-       <p style="margin:0 0 20px;">מישהו ניסה עכשיו להירשם עם כתובת המייל הזו, אבל כבר קיים עבורה חשבון. לא נפתח חשבון חדש.</p>
-       <div style="text-align:center;margin:0 0 20px;">
-         <a href="${loginUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">כניסה לחשבון</a>
-       </div>
-       <p style="margin:0;color:#475569;font-size:14px;">אם זה לא הייתם אתם, אין צורך לעשות דבר. החשבון שלכם לא השתנה.</p>`
-    ),
-    text: `מישהו ניסה עכשיו להירשם עם כתובת המייל הזו, אבל כבר קיים עבורה חשבון. לא נפתח חשבון חדש.
-
-לכניסה: ${loginUrl}
-
-אם זה לא הייתם אתם, אין צורך לעשות דבר.`,
-  }),
-
   welcomeEmail: (name: string, verificationUrl: string) => ({
     subject: `ברוכים הבאים ל-${process.env.PUBLIC_APP_NAME || 'משכלנתא'}!`,
     html: `
@@ -303,65 +284,37 @@ ${verificationUrl}
     `
   }),
 
-  passwordResetEmail: (name: string, resetUrl: string) => ({
-    subject: 'איפוס סיסמה - משכלנתא',
-    html: `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="he">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            direction: rtl;
-          }
-          .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 40px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          }
-          .button {
-            display: inline-block;
-            padding: 14px 30px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            margin: 20px 0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>איפוס סיסמה</h2>
-          <p>שלום ${name || 'משתמש יקר'},</p>
-          <p>קיבלנו בקשה לאיפוס הסיסמה שלך. לחץ על הכפתור למטה כדי ליצור סיסמה חדשה:</p>
-          <div style="text-align: center;">
-            <a href="${resetUrl}" class="button">איפוס סיסמה</a>
-          </div>
-          <p>הקישור תקף לשעה אחת בלבד.</p>
-          <p>אם לא ביקשת לאפס את הסיסמה, אנא התעלם מהודעה זו.</p>
-        </div>
-      </body>
-      </html>
-    `,
-    text: `
-      איפוס סיסמה - משכלנתא
-      
-      שלום ${name || 'משתמש יקר'},
-      
-      קיבלנו בקשה לאיפוס הסיסמה שלך. השתמש בקישור הבא:
-      ${resetUrl}
-      
-      הקישור תקף לשעה אחת בלבד.
-      
-      אם לא ביקשת לאפס את הסיסמה, אנא התעלם מהודעה זו.
-    `
-  })
+  /** קישור לבחירת סיסמה חדשה, מעמוד "שכחתי סיסמה" */
+  passwordResetEmail: ({
+    name,
+    resetUrl,
+    ttlMinutes,
+  }: {
+    name: string | null;
+    resetUrl: string;
+    ttlMinutes: number;
+  }) => {
+    const greeting = name ? `שלום ${escapeHtml(name)},` : 'שלום,';
+    return {
+      subject: `בחירת סיסמה חדשה ל${appName()}`,
+      html: authEmailShell(
+        'בחירת סיסמה חדשה',
+        `<p style="margin:0 0 12px;">${greeting}</p>
+         <p style="margin:0 0 20px;">התקבלה בקשה לאפס את הסיסמה של החשבון שלכם. לבחירת סיסמה חדשה:</p>
+         <div style="text-align:center;margin:0 0 20px;">
+           <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">בחירת סיסמה חדשה</a>
+         </div>
+         <p style="margin:0 0 12px;color:#475569;font-size:14px;">הקישור תקף ל-${ttlMinutes} דקות ולשימוש אחד בלבד.</p>
+         <p style="margin:0;color:#475569;font-size:14px;"><strong>לא ביקשתם?</strong> אין צורך לעשות דבר. הסיסמה הנוכחית שלכם לא השתנתה.</p>`
+      ),
+      text: `${name ? `שלום ${name},` : 'שלום,'}
+
+התקבלה בקשה לאפס את הסיסמה של החשבון שלכם ב${appName()}.
+
+לבחירת סיסמה חדשה (תקף ל-${ttlMinutes} דקות, לשימוש אחד):
+${resetUrl}
+
+לא ביקשתם? אין צורך לעשות דבר. הסיסמה הנוכחית שלכם לא השתנתה.`,
+    };
+  },
 };
