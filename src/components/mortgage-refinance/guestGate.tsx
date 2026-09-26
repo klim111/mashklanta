@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,32 @@ import { ArrowLeft, Layers, Lock, Save, Sparkles, TrendingDown } from 'lucide-re
  * ריבית, תקופה, סכום, סוג מסלול או לוח סילוקין, בכל מסלול שהוא. גרירה של אותו
  * סליידר נחשבת שינוי אחד, כדי שלא תתבזבז באמצע התנועה. מהשינוי הרביעי נפתחת
  * ההזמנה להרשמה, והשינוי לא מוחל.
+ *
+ * האורח מגיע לכלי המלא ממסך ההצצה של בדיקת המיחזור המהירה, והשינויים נספרים
+ * לכל דפדפן (localStorage): רענון או כניסה חוזרת אינם מאפסים אותם.
  */
+
+export const GUEST_TRIES_KEY = 'mashkalanta:refinance-preview-tries';
+export const GUEST_TRIES_EVENT = 'mashkalanta:refinance-preview-tries-changed';
+
+/** כמה שינויים כבר נוצלו בדפדפן הזה */
+export function readGuestTries(): string[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(GUEST_TRIES_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeGuestTries(touched: string[]) {
+  try {
+    window.localStorage.setItem(GUEST_TRIES_KEY, JSON.stringify(touched));
+  } catch {
+    // אחסון חסום — הספירה נשארת בזיכרון של הדף
+  }
+  window.dispatchEvent(new Event(GUEST_TRIES_EVENT));
+}
 
 /** מספר השינויים הפתוחים למשתמש שאינו רשום */
 export const GUEST_CHANGE_ALLOWANCE = 3;
@@ -41,13 +66,19 @@ export function useRefinanceGuestGate(
   const [touched, setTouched] = useState<string[]>([]);
   const [promptOpen, setPromptOpen] = useState(false);
 
+  useEffect(() => {
+    if (limited) setTouched(readGuestTries());
+  }, [limited]);
+
   const allow = useCallback(
     (controlKey: string) => {
       if (!limited) return true;
       // בקרה שכבר נגעו בה ממשיכה לעבוד — גרירה אחת אינה שלושה שינויים
       if (touched.includes(controlKey)) return true;
       if (touched.length < allowance) {
-        setTouched((prev) => (prev.includes(controlKey) ? prev : [...prev, controlKey]));
+        const next = touched.includes(controlKey) ? touched : [...touched, controlKey];
+        setTouched(next);
+        writeGuestTries(next);
         return true;
       }
       setPromptOpen(true);

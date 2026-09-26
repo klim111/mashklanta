@@ -9,7 +9,13 @@ import type { PreApprovalBankInfo } from './banks';
  * הסמל מצויר כאן ואינו נטען מהאתר של הבנק — כך המסך אינו תלוי בקובץ חיצוני
  * שיכול להשתנות או להיחסם, והוא נראה אותו דבר בכל גודל מסך.
  */
-export function BankMark({ info, size = 44 }: { info: PreApprovalBankInfo; size?: number }) {
+export function BankMark({
+  info,
+  size = 44,
+}: {
+  info: Pick<PreApprovalBankInfo, 'color' | 'initials'>;
+  size?: number;
+}) {
   return (
     <span
       aria-hidden

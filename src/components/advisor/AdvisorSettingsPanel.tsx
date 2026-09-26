@@ -14,6 +14,7 @@ import { anchorForTrack, defaultRateFor, roundRate } from '@/lib/rate-anchors';
 import { useMarketRates } from '@/hooks/use-market-rates';
 import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
 import { SectionCard } from './ui';
+import { AdvisorFormDetailsCard } from './AdvisorFormDetailsCard';
 import { useAdvisorSettings } from './useAdvisorCrm';
 
 type TrackType = keyof typeof TRACK_TYPES;
@@ -203,6 +204,8 @@ export function AdvisorSettingsPanel({
           )}
         </div>
       </SectionCard>
+
+      <AdvisorFormDetailsCard />
 
       <SectionCard
         title="ריביות ברירת מחדל"

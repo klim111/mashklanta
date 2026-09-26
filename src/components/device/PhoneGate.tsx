@@ -105,7 +105,7 @@ function PhoneNoticeBanner() {
 }
 
 /** המסך שמוצג בטלפון במקום הלוח ושלבי המשכנתא */
-function PhoneBlockedScreen({ signedIn }: { signedIn: boolean }) {
+export function PhoneBlockedScreen({ signedIn }: { signedIn: boolean }) {
   const [copied, setCopied] = useState(false);
 
   const shareLink = async () => {
