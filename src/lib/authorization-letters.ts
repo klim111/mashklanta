@@ -32,23 +32,6 @@ export function authorizationBankSlug(key: string): string | null {
   return isAuthorizationDocumentKey(key) ? key.slice(DOCUMENT_KEY_PREFIX.length) || null : null;
 }
 
-/**
- * הטופס הריק של כל בנק, להורדה. הקבצים יושבים ב-public/forms/authorization,
- * וכל עוד טופס לא הוסף הכתובת ריקה והחלון אומר שהטופס יתווסף בקרוב.
- */
-export const AUTHORIZATION_FORMS: Record<string, string | null> = {
-  leumi: null,
-  hapoalim: null,
-  mizrahi: null,
-  mercantile: null,
-  discount: null,
-  fibi: null,
-};
-
-export function authorizationFormUrl(bankSlug: string): string | null {
-  return AUTHORIZATION_FORMS[bankSlug] ?? null;
-}
-
 /** שם המסמך בתיק */
 export function authorizationDocumentName(bankName: string): string {
   return `כתב הסמכה חתום ליועץ · ${bankName}`;
