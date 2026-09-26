@@ -5,7 +5,7 @@ import { ArrowLeft, Tag } from 'lucide-react';
 import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
-import Statistic from '@/components/ui/statistic';
+import MortgageMarketDashboard from '@/components/home/MortgageMarketDashboard';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
@@ -288,7 +288,7 @@ export default function Home() {
         </div>
       </motion.section>
 
-      {/* Statistics Section */}
+      {/* שוק המשכנתאות — נתוני בנק ישראל */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -296,7 +296,7 @@ export default function Home() {
           viewport={{ once: true, margin: "-100px" }}
         className="bg-white"
         >
-          <Statistic />
+          <MortgageMarketDashboard />
         </motion.section>
 
         {/* Footer */}
