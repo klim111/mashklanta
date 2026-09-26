@@ -12,7 +12,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -157,7 +157,7 @@ function LoginForm() {
 
             <div className="flex items-center justify-between">
               <Link
-                href="/auth/forgot-password"
+                href={`/auth/forgot-password${email.includes('@') ? `?email=${encodeURIComponent(email.trim())}` : ''}`}
                 className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
               >
                 שכחת סיסמה?
@@ -312,6 +312,9 @@ function AdvisorLogin() {
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             כניסה כיועץ
           </button>
+          <Link href="/auth/forgot-password" className="block text-center text-sm text-violet-700 hover:underline">
+            שכחתי סיסמה
+          </Link>
         </form>
       )}
     </div>
