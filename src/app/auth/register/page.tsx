@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
+import { PasswordField } from '@/components/auth/PasswordField';
+import { passwordProblem } from '@/lib/password-policy';
 
 /** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
 function safeCallbackUrl(value: string | null): string | null {
@@ -53,8 +55,9 @@ function RegisterForm() {
       setError('כתובת המייל אינה תקינה');
       return false;
     }
-    if (formData.password.length < 8) {
-      setError('הסיסמה חייבת להכיל לפחות 8 תווים');
+    const problem = passwordProblem(formData.password);
+    if (problem) {
+      setError(problem);
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -225,19 +228,17 @@ function RegisterForm() {
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 סיסמה
               </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="לפחות 8 תווים"
-                />
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              </div>
+              <PasswordField
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={(password) => setFormData((prev) => ({ ...prev, password }))}
+                onUseSuggestion={(password) =>
+                  setFormData((prev) => ({ ...prev, confirmPassword: password }))
+                }
+                required
+                inputClassName="rounded-lg py-3 text-base"
+              />
             </div>
 
             <div>
@@ -249,6 +250,8 @@ function RegisterForm() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
+                  dir="ltr"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required

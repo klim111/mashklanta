@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, LayoutDashboard, Loader2, Lock, Mail, Sparkles, User } from 'lucide-react';
+import { AlertCircle, ArrowLeft, LayoutDashboard, Loader2, Mail, Sparkles, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
+import { PasswordField } from '@/components/auth/PasswordField';
+import { passwordProblem } from '@/lib/password-policy';
 
 /**
  * ההרשמה שנפתחת מתוך הכלים הפתוחים.
@@ -72,8 +74,9 @@ export function GuestRegistrationDialog({
       setError('כתובת המייל אינה תקינה');
       return;
     }
-    if (password.length < 8) {
-      setError('הסיסמה חייבת להכיל לפחות 8 תווים');
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
       return;
     }
 
@@ -184,22 +187,12 @@ export function GuestRegistrationDialog({
               </span>
             </label>
 
-            <label className="mt-3 block text-xs font-bold text-slate-600">
-              סיסמה <span className="font-normal text-slate-400">(8 תווים לפחות)</span>
-              <span className="relative mt-1 block">
-                <Lock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className={`${inputClass} pr-9`}
-                  placeholder="בחרו סיסמה"
-                  autoComplete="new-password"
-                  dir="ltr"
-                />
-              </span>
-            </label>
+            <div className="mt-3 text-xs font-bold text-slate-600">
+              סיסמה
+              <div className="mt-1 font-normal">
+                <PasswordField value={password} onChange={setPassword} required />
+              </div>
+            </div>
 
             {error && (
               <p className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">

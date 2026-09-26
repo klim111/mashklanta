@@ -18,6 +18,8 @@ import {
 import type { EmploymentType, ProfileLoan } from '@/lib/mortgage-plan';
 import { NumberField, SegmentedField, TextField } from '@/components/plan/ui';
 import { demoId } from '@/demo/demo-attr';
+import { PasswordField } from '@/components/auth/PasswordField';
+import { passwordProblem } from '@/lib/password-policy';
 
 function newLoan(): ProfileLoan {
   return {
@@ -81,6 +83,12 @@ export function SettingsPanel() {
   };
 
   const save = async () => {
+    const problem = password ? passwordProblem(password) : null;
+    if (problem) {
+      setError(problem);
+      setMessage(null);
+      return;
+    }
     setSaving(true);
     setMessage(null);
     setError(null);
@@ -136,13 +144,7 @@ export function SettingsPanel() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold text-slate-600">סיסמה חדשה</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="השאירו ריק כדי לא לשנות"
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-              />
+              <PasswordField value={password} onChange={setPassword} optional placeholder="סיסמה חדשה" />
             </div>
           </div>
         </section>
