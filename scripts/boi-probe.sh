@@ -1,36 +1,26 @@
-B=https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2
-for DF in BIR_MRTG_99 BMB_99; do
-echo "######## $DF"
-curl -sS -m 120 -A 'Mozilla/5.0' "$B/data/dataflow/BOI.STATISTICS/$DF/1.0?lastNObservations=1&format=csv" -o $DF.csv
-echo "rows=$(wc -l < $DF.csv)"; head -1 $DF.csv
-curl -sS -m 120 -A 'Mozilla/5.0' "$B/structure/dataflow/BOI.STATISTICS/$DF/latest?references=all&detail=full" -o $DF.xml
-echo "xml size $(wc -c < $DF.xml)"
-python3 - "$DF" <<'PY'
-import csv,re,sys,collections
-df=sys.argv[1]
-t=open(df+'.xml',encoding='utf-8',errors='ignore').read()
-# codelists
-cls={}
-for m in re.finditer(r'<str:Codelist[^>]*id="([^"]+)"(.*?)</str:Codelist>',t,re.S):
-    codes={}
-    for c in re.finditer(r'<str:Code[^>]*id="([^"]+)"(.*?)</str:Code>',m.group(2),re.S):
-        he=re.search(r'<com:Name xml:lang="he">([^<]*)<',c.group(2)); en=re.search(r'<com:Name xml:lang="en">([^<]*)<',c.group(2))
-        codes[c.group(1)]=(he.group(1) if he else '')+' | '+(en.group(1) if en else '')
-    cls[m.group(1)]=codes
-rows=list(csv.DictReader(open(df+'.csv',encoding='utf-8')))
-dims=[k for k in rows[0].keys() if k not in('SERIES_CODE','TIME_PERIOD','OBS_VALUE','RELEASE_STATUS','CONF_STATUS','PUB_WEBSITE','UNIT_MULT','DATA_SOURCE','TIME_COLLECT')] if rows else []
-print('DIMS',dims)
-used=collections.defaultdict(set)
+B=https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS
+echo "== filter test"
+time curl -sS -m 120 -A 'Mozilla/5.0' -o f1.csv -w '%{http_code}\n' "$B/BIR_MRTG_99/1.0?c%5BSERIES_CODE%5D=BNK_99034_LR_BIR_MRTG_63&format=csv"; wc -l f1.csv; head -3 f1.csv; tail -2 f1.csv
+time curl -sS -m 120 -A 'Mozilla/5.0' -o f2.csv -w '%{http_code}\n' "$B/BIR_MRTG_99/1.0?c%5BBS_ITEM%5D=A2C&c%5BPTI%5D=P01&c%5BLTV%5D=L0&format=csv"; wc -l f2.csv
+time curl -sS -m 180 -A 'Mozilla/5.0' -o all.csv -w '%{http_code}\n' "$B/BIR_MRTG_99/1.0?format=csv"; wc -lc all.csv
+python3 <<'PY'
+import csv,collections
+rows=list(csv.DictReader(open('all.csv',encoding='utf-8')))
+by=collections.defaultdict(list)
+meta={}
 for r in rows:
-    for d in dims: used[d].add(r[d])
-def label(v):
-    for cl in cls.values():
-        if v in cl: return cl[v]
-    return ''
-for d in dims:
-    print('DIM',d)
-    for v in sorted(used[d]): print('   ',v,'=',label(v))
-for r in rows:
-    print('S',r['SERIES_CODE'],r.get('FREQ'),r['TIME_PERIOD'],r['OBS_VALUE'],'|',' '.join(r[d] for d in dims if d!='FREQ'))
+    by[r['SERIES_CODE']].append((r['TIME_PERIOD'],r['OBS_VALUE']))
+    meta[r['SERIES_CODE']]=r
+keydims=['BIR_COVERAGE','INDEXATION_TYPE','IR_FV_TYPE','DATA_TYPE','BS_ITEM','LTV','PTI','PROPERTY_VALUE']
+for s,obs in sorted(by.items(), key=lambda kv:[meta[kv[0]][d] for d in keydims]):
+    m=meta[s]
+    if m['BS_ITEM'] not in('A2C','A2CX2') or m['LTV']!='L0' or m['PTI']!='P01' or m['PROPERTY_VALUE'] not in('A',''): continue
+    obs.sort(); nonempty=[o for o in obs if o[1]!='']
+    print(s,' '.join(m[d] for d in keydims),'first',nonempty[0] if nonempty else None,'last',nonempty[-3:] if nonempty else None,'n',len(obs),'lastperiod',obs[-1][0])
+for code in ['BNK_99034_LR_BIR_MRTG_63','BNK_99034_LR_BIR_MRTG_897','BNK_99034_LR_BIR_MRTG_52','BNK_99034_LR_BIR_MRTG_896','BNK_99034_LR_BIR_MRTG_31','BNK_99034_LR_BIR_MRTG_32']:
+    yr=collections.defaultdict(lambda:[0,0])
+    for p,v in by.get(code,[]):
+        if v=='': continue
+        yr[p[:4]][0]+=float(v); yr[p[:4]][1]+=1
+    print('YEARLY',code,{y:(round(a),n) for y,(a,n) in sorted(yr.items())})
 PY
-done
