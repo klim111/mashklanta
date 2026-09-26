@@ -6,6 +6,7 @@ import { ArrowRight, ChevronDown, ChevronUp, Mail, MessageCircle, X } from 'luci
 import type { ConversationRole } from '@/lib/conversation';
 import { ChatPane } from './ChatPane';
 import { EmailsPane } from './EmailsPane';
+import { demoId } from '@/demo/demo-attr';
 
 export type ConversationMode = 'closed' | 'bar' | 'open';
 type Tab = 'chat' | 'emails';
@@ -168,6 +169,7 @@ export function ConversationWindow({
                   key={item.id}
                   type="button"
                   onClick={() => setTab(item.id)}
+                  {...demoId(`conv-tab-${item.id}`)}
                   className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-t-xl px-3 py-2 text-button font-black transition-colors ${
                     active ? `bg-white ${accent.text} shadow-[0_-1px_0_0_#e2e8f0]` : 'text-slate-500 hover:text-slate-900'
                   }`}

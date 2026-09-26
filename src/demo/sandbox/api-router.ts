@@ -10,10 +10,17 @@
  * ומועברים לשרת כרגיל — הם אינם נוגעים בשום לקוח.
  */
 
-import { PLAN_STAGES, emptyPlanData, stageIndex } from '@/lib/mortgage-plan';
+import { PLAN_STAGES, emptyPlanData, flowStages, stageIndex } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import type { PlanDocumentView } from '@/lib/plan-documents';
-import { demoDocuments, demoPlanData } from '@/lib/demo-plan';
+import {
+  DEMO_REFINANCE_ADDRESS,
+  DEMO_REFINANCE_AMOUNT,
+  DEMO_REFINANCE_PLAN_ID,
+  demoDocuments,
+  demoPlanData,
+  demoRefinancePlanData,
+} from '@/lib/demo-plan';
 import type { ClientTaskView } from '@/lib/client-tasks';
 import type { AdvisorMeetingView } from '@/lib/advisor-crm';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
@@ -100,11 +107,39 @@ function basePlan(): DemoPlanRecord {
   };
 }
 
+/** תהליך המיחזור לדוגמה — מיחזור חיצוני, אחרי התמהיל והפרופיל, באמצע הבקשות לבנקים */
+function refinancePlan(): DemoPlanRecord {
+  const now = nowIso();
+  const data = demoRefinancePlanData();
+  const stages = flowStages({ kind: 'REFINANCE', refinanceMode: 'EXTERNAL' });
+  const current = stages.indexOf('APPLICATIONS');
+  return {
+    id: DEMO_REFINANCE_PLAN_ID,
+    name: 'מיחזור המשכנתא ברמת גן',
+    status: 'IN_PROGRESS',
+    currentStage: 'APPLICATIONS',
+    progress: 40,
+    propertyValue: null,
+    propertyAddress: DEMO_REFINANCE_ADDRESS,
+    mortgageAmount: DEMO_REFINANCE_AMOUNT,
+    monthlyPayment: Math.round(data.MIX.monthlyPayment ?? 0),
+    completedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    stages: PLAN_STAGES.map((stage) => {
+      const index = stages.indexOf(stage);
+      const done = index >= 0 && index < current;
+      return { stage, status: (done ? 'COMPLETED' : 'IN_PROGRESS') as PlanStageStatus, data: null, completedAt: done ? now : null };
+    }),
+    data,
+  };
+}
+
 /**
  * מצב "השרת" — נוצר מחדש בכל כניסה להדגמה, כדי שכל הדגמה תתחיל מאותה נקודה.
  */
 export class DemoApiRouter {
-  private plans: DemoPlanRecord[] = [basePlan()];
+  private plans: DemoPlanRecord[] = [basePlan(), refinancePlan()];
   private tasks: ClientTaskView[] = demoClientTasks();
   private meetings: AdvisorMeetingView[] = demoMeetings();
   private mixes: SavedMix[] = demoMixes();

@@ -17,6 +17,7 @@ import {
   ListChecks,
   Wallet,
   RefreshCw,
+  Clapperboard,
 } from 'lucide-react';
 import type { DemoCatalogEntry, DemoCategory } from '../types';
 
@@ -145,6 +146,19 @@ export const DEMO_CATALOG: DemoCatalogEntry[] = [
     minutes: 4,
     featured: true,
     load: () => import('./flows/documents'),
+  },
+  {
+    // התסריט של סרטון התדמית בדף הבית (scripts/promo-video). לא מוצג בכרטיסים ולא במסך /demo
+    id: 'promo',
+    title: 'מה זה משכלנתא? (סרטון)',
+    description: 'התסריט שממנו מוקלט סרטון התדמית שמתחת לאנימציה בדף הבית.',
+    icon: Clapperboard,
+    gradient: 'from-blue-600 to-indigo-700',
+    route: '/',
+    category: 'overview',
+    order: 99,
+    minutes: 2,
+    load: () => import('./flows/promo'),
   },
 ];
 

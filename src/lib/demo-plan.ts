@@ -162,3 +162,84 @@ export function demoPlanData(): PlanData {
 
   return data;
 }
+
+// ───────────────────────────── תהליך מיחזור לדוגמה ─────────────────────────────
+
+/** תהליך מיחזור לדוגמה — לצד המשכנתא החדשה, כדי שההדגמה תראה גם תהליך מיחזור */
+export const DEMO_REFINANCE_PLAN_ID = 'demo-refi';
+export const DEMO_REFINANCE_ADDRESS = 'רחוב הדקל 8, רמת גן';
+export const DEMO_REFINANCE_AMOUNT = 980_000;
+
+function refinanceSnapshot(id: string, name: string, tracks: ReturnType<typeof createTrack>[]) {
+  const mix = createWorkspaceMix({ id, name, totalAmount: DEMO_REFINANCE_AMOUNT, tracks });
+  const summary = computeMix(mix).summary;
+  return {
+    snapshot: { id, name, bank: 'בנק לאומי', totalAmount: DEMO_REFINANCE_AMOUNT, tracks },
+    figures: {
+      monthlyPayment: summary.monthlyPayment,
+      totalInterest: summary.totalInterest,
+      totalPaid: summary.totalPaid,
+      averageRate: summary.averageRate,
+      months: summary.months,
+    },
+  };
+}
+
+/** נתוני תהליך המיחזור לדוגמה: המשכנתא הנוכחית, התמהיל למיחזור, ומיחזור חיצוני */
+export function demoRefinancePlanData(): PlanData {
+  const data = emptyPlanData();
+  const current = refinanceSnapshot('demo-refi-current', 'המשכנתא הנוכחית - בנק לאומי', [
+    createTrack({ type: 'fixed_unlinked', amount: DEMO_REFINANCE_AMOUNT * 0.5, years: 22, interestRate: 5.9 }),
+    createTrack({ type: 'prime', amount: DEMO_REFINANCE_AMOUNT * 0.5, years: 22, interestRate: 6.1 }),
+  ]);
+  const refinanced = refinanceSnapshot('demo-refi-mix', 'תמהיל למיחזור · בנק לאומי', [
+    createTrack({ type: 'fixed_unlinked', amount: DEMO_REFINANCE_AMOUNT * 0.5, years: 25, interestRate: 4.7 }),
+    createTrack({ type: 'prime', amount: DEMO_REFINANCE_AMOUNT * 0.5, years: 25, interestRate: 5.2 }),
+  ]);
+
+  data.ANALYSIS = {
+    ...data.ANALYSIS,
+    household: 'COUPLE',
+    bankAccountMode: 'JOINT',
+    age: 41,
+    partnerAge: 39,
+    income: 21_000,
+    partnerIncome: 15_000,
+    employmentType: 'SALARIED',
+    partnerEmploymentType: 'SALARIED',
+    expenses: 10_000,
+    propertyAddress: DEMO_REFINANCE_ADDRESS,
+    mortgageAmount: DEMO_REFINANCE_AMOUNT,
+    years: 25,
+    primaryBank: 'לאומי',
+  };
+
+  data.MIX = {
+    ...data.MIX,
+    mixKey: refinanced.snapshot.id,
+    mixName: refinanced.snapshot.name,
+    totalAmount: DEMO_REFINANCE_AMOUNT,
+    monthlyPayment: refinanced.figures.monthlyPayment,
+    averageRate: refinanced.figures.averageRate,
+    totalInterest: refinanced.figures.totalInterest,
+    totalPaid: refinanced.figures.totalPaid,
+    months: refinanced.figures.months,
+    propertyAddress: DEMO_REFINANCE_ADDRESS,
+    isFinal: true,
+    finalLocked: true,
+    refinance: {
+      bank: 'בנק לאומי',
+      goal: 'reduce_payment',
+      scope: 'whole',
+      selectedTrackId: null,
+      currentMix: current.snapshot,
+      refinancedMix: refinanced.snapshot,
+      current: current.figures,
+      refinanced: refinanced.figures,
+      mode: 'EXTERNAL',
+      savedAt: daysFromNow(-12),
+    },
+  };
+
+  return data;
+}

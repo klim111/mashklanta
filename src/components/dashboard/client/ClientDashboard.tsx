@@ -194,6 +194,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
     <button
       type="button"
       onClick={() => setChatMode((mode) => (mode === 'open' ? 'bar' : 'open'))}
+      {...(tone === 'sidebar' ? demoId('dash-chat') : {})}
       className={
         tone === 'sidebar'
           ? 'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-base font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white'

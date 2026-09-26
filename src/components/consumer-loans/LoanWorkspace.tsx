@@ -20,6 +20,7 @@ import { HomeFloatingButton } from '@/components/guest/HomeFloatingButton';
 import type { Loan, LoanPlannerState, OptimizationInput } from './types';
 import { portfolioStats, savingsPotential } from './loanInsights';
 import { LoanControlPanel } from './LoanControlPanel';
+import { demoId } from '@/demo/demo-attr';
 import { LoanPortfolioDashboard } from './LoanPortfolioDashboard';
 import { LoanComparison, type CompareView } from './LoanComparison';
 import { LoanStrategyPanel } from './LoanStrategyPanel';
@@ -335,6 +336,7 @@ export function LoanWorkspace() {
                         title="דאשבורד התיק"
                         hint="המצב הכולל, יחס ההחזר, התובנות והגרפים"
                       />
+                      <div {...demoId('loans-dashboard')}>
                       <LoanPortfolioDashboard
                         loans={state.loans}
                         stats={stats}
@@ -345,6 +347,7 @@ export function LoanWorkspace() {
                         selectedIds={state.selectedForComparison}
                         onToggleSelect={toggleSelect}
                       />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -451,6 +454,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <button
           type="button"
           onClick={onAdd}
+          {...demoId('loans-add-first')}
           className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl"
         >
           <Plus className="h-4 w-4" />

@@ -13,6 +13,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { demoId } from '@/demo/demo-attr';
 import {
   Select,
   SelectContent,
@@ -72,9 +73,10 @@ export function LoanControlPanel({
   return (
     <div className="space-y-2.5">
       <div className={`grid gap-2.5 ${columns}`}>
-        {loans.map((loan) => (
+        {loans.map((loan, index) => (
           <LoanControlCard
             key={loan.id}
+            index={index}
             loan={loan}
             selected={selectedIds.includes(loan.id)}
             onUpdate={onUpdate}
@@ -89,6 +91,7 @@ export function LoanControlPanel({
         <button
           type="button"
           onClick={onAdd}
+          {...demoId('loans-add')}
           className="flex min-h-[140px] flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-white/60 p-4 text-slate-500 transition-colors hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm">
@@ -103,6 +106,7 @@ export function LoanControlPanel({
 }
 
 function LoanControlCard({
+  index,
   loan,
   selected,
   onUpdate,
@@ -111,6 +115,7 @@ function LoanControlCard({
   onToggleSelect,
   onShowAmortization,
 }: {
+  index: number;
   loan: Loan;
   selected: boolean;
   onUpdate: (loan: Loan) => void;
@@ -150,6 +155,7 @@ function LoanControlCard({
             value={loan.name}
             onChange={(event) => onUpdate({ ...loan, name: event.target.value })}
             aria-label="שם ההלוואה"
+            {...demoId(`loan-${index}-name`)}
             className="w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm font-black text-slate-900 outline-none transition-colors hover:border-slate-200 focus:border-blue-400 focus:bg-white"
           />
           <Select
@@ -207,6 +213,7 @@ function LoanControlCard({
             onValueChange={(value) => onUpdate({ ...loan, principal: Math.max(0, value) })}
             className="h-7 w-24 text-xs"
             aria-label="קרן ההלוואה"
+            {...demoId(`loan-${index}-principal`)}
           />
         }
         slider={
@@ -230,6 +237,7 @@ function LoanControlCard({
         slider={
           <Slider
             dir="ltr"
+            {...demoId(`loan-${index}-apr`)}
             value={[Math.min(Math.max(loan.apr, APR_MIN), APR_MAX)]}
             onValueChange={([value]) => onUpdate({ ...loan, apr: value })}
             min={APR_MIN}
@@ -248,6 +256,7 @@ function LoanControlCard({
         slider={
           <Slider
             dir="ltr"
+            {...demoId(`loan-${index}-months`)}
             value={[Math.min(Math.max(loan.months, MONTHS_MIN), MONTHS_MAX)]}
             onValueChange={([value]) => onUpdate({ ...loan, months: Math.round(value) })}
             min={MONTHS_MIN}

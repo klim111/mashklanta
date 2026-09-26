@@ -6,6 +6,7 @@ import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import MortgageMarketDashboard from '@/components/home/MortgageMarketDashboard';
+import { HeroPromoVideo } from '@/components/home/HeroPromoVideo';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
@@ -14,7 +15,6 @@ import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { ADVISORY_TRACK, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
-import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
 import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
 import { demoId } from '@/demo/demo-attr';
 
@@ -68,9 +68,9 @@ export default function Home() {
           {/* Animation content will be handled by the carousel below */}
         </div>
 
-        {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — לחיצה מחליפה את האנימציה בהדגמה חיה */}
+        {/* מתחת לאנימציה: סרטון התדמית — סיור מהיר בפלטפורמה, מוקלט מהממשק האמיתי עם נתונים לדוגמה */}
         <div className="relative z-10 flex items-center justify-center px-5 pt-4 md:pt-0">
-          <HeroDemoButton className="w-full md:w-auto" />
+          <HeroPromoVideo className="w-full md:w-auto" />
         </div>
 
         {/* Buttons Section - Bottom */}
@@ -295,6 +295,7 @@ export default function Home() {
         transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true, margin: "-100px" }}
         className="bg-white"
+        {...demoId('home-market')}
         >
           <MortgageMarketDashboard />
         </motion.section>
