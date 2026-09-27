@@ -12,7 +12,6 @@ import {
   ChevronRight,
   Cloud,
   CloudOff,
-  LayoutDashboard,
   Loader2,
   PartyPopper,
   Pencil,
@@ -51,7 +50,7 @@ import type { PlanView, SaveState } from './usePlan';
 import { PlanTour, TOUR_FREE_CHANGES, tourAllowsTry } from './PlanTour';
 import { StageTasksPanel } from './tasks/StageTasksPanel';
 import { VaultButton } from './documents/VaultButton';
-import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
+import { StageActionsMenu } from './StageActionsMenu';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import { StageRail } from './StageRail';
 import { StageIntro } from './StageIntro';
@@ -634,7 +633,7 @@ export function PlanWorkspace({
       </header>
 
       <main
-        className={`mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 ${lookOnly ? 'cursor-pointer' : ''}`}
+        className={`mx-auto max-w-7xl px-4 pt-8 pb-32 sm:px-6 lg:px-8 ${lookOnly ? 'cursor-pointer' : ''}`}
         onClickCapture={
           lookOnly
             ? (event) => {
@@ -865,9 +864,8 @@ export function PlanWorkspace({
       </main>
 
       {/*
-        הכפתורים הצפים של הפינה הימנית — תיק המסמכים למעלה, ההתכתבות עם היועץ
-        והחזרה לדאשבורד מתחתיו, בעמודה אחת. הפינה השמאלית שמורה לכפתור «פנו ליועץ» של השלב,
-        וכך השניים אינם עולים זה על זה.
+        הפינה הימנית שמורה לכפתור הפעולות העגול, והשמאלית לכפתור «פנו ליועץ»
+        של השלב — וכך השניים אינם עולים זה על זה.
       */}
       {/*
         פנייה ליועץ — בכל מסך, בכל שלב ובכל סוג תהליך. זו הדרך היחידה להביא
@@ -888,18 +886,8 @@ export function PlanWorkspace({
         />
       )}
 
-      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5">
-        {!tour && <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="compact" />}
-        {/* ההתכתבות עם היועץ — בין תיק המסמכים לחזרה לדאשבורד */}
-        {!tour && <ConversationDockSlot />}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
-        >
-          <LayoutDashboard className="h-5 w-5" />
-          חזרה לדאשבורד
-        </Link>
-      </div>
+      {/* תיק המסמכים, ההתכתבות והחזרה לדאשבורד — תחת כפתור פעולות עגול אחד */}
+      <StageActionsMenu planId={plan.id} data={plan.data} stage={stage} tour={tour} />
 
       {/* עברו 30 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
       {!tour && plan.access && processLocked(plan.access) && (

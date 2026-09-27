@@ -21,6 +21,11 @@ interface ClientConversationApi {
   open: () => void;
   toggle: () => void;
   registerSlot: (element: HTMLElement) => () => void;
+  /**
+   * מסך שמחזיק את ההתכתבות בתוך תפריט משלו (כפתור הפעולות של שלבי המשכנתא):
+   * השורה המוקטנת לא מוצגת, והחלון המלא נפתח מעל התפריט
+   */
+  registerActionsHost: () => () => void;
 }
 
 const ClientConversationContext = createContext<ClientConversationApi | null>(null);
@@ -35,7 +40,8 @@ const HIDDEN_PREFIXES = ['/advisor', '/auth', '/video-call'];
  * גלויה בפינה הימנית התחתונה, או חלון מלא. מסך שיש לו עמודת כפתורים צפים
  * (תיק המסמכים, חזרה לדאשבורד) מסמן בה מקום עם `ConversationDockSlot`, והשורה
  * נכנסת לשם — כך השלושה אינם עולים זה על זה. במסך בלי עמודה כזו השורה יושבת
- * בפינה בעצמה.
+ * בפינה בעצמה. בשלבי המשכנתא ההתכתבות היא פריט בכפתור הפעולות העגול
+ * (`registerActionsHost`), ואין שורה.
  */
 export function ClientConversationProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -67,6 +73,13 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
 
   const slot = slots[slots.length - 1] ?? null;
 
+  const [actionsHosts, setActionsHosts] = useState(0);
+  const registerActionsHost = useCallback(() => {
+    setActionsHosts((count) => count + 1);
+    return () => setActionsHosts((count) => count - 1);
+  }, []);
+  const inActionsMenu = actionsHosts > 0;
+
   /*
     החלון המלא נפתח מעל העמודה שבה השורה יושבת — כך בדאשבורד הוא לא מכסה את
     תפריט הצד. במסך צר החלון תופס את כל המסך, ואין הזזה
@@ -87,8 +100,9 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       open: openWindow,
       toggle: () => (mode === 'open' ? setMode('bar') : openWindow()),
       registerSlot,
+      registerActionsHost,
     }),
-    [enabled, mode, unread, summary, registerSlot, openWindow]
+    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow]
   );
 
   const dock = enabled ? (
@@ -101,6 +115,7 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       mode={mode}
       onMode={(next) => (next === 'open' ? openWindow() : setMode('bar'))}
       offset={offset}
+      anchor={inActionsMenu ? 'above-actions' : 'corner'}
       unreadChat={mode === 'open' ? 0 : summary?.unreadChat}
       unreadEmails={summary?.unreadEmails}
       mailboxAddress={summary?.mailboxAddress ?? null}
@@ -114,7 +129,7 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       {dock &&
         (mode === 'open' ? (
           dock
-        ) : slot ? (
+        ) : inActionsMenu ? null : slot ? (
           createPortal(dock, slot)
         ) : (
           <div className="fixed bottom-5 right-5 z-40 print:hidden">{dock}</div>

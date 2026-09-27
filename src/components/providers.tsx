@@ -2,10 +2,13 @@
 
 import { useEffect } from 'react';
 import { SessionProvider } from 'next-auth/react';
+import { MotionConfig } from 'framer-motion';
+import { useA11yPrefs } from '@/components/a11y/a11yStore';
 import { attachNumericCaretFix } from '@/lib/caret';
 import { useDemoRequest } from '@/demo/store';
 import { demoSession } from '@/demo/data/demo-session';
 import { DemoHost } from '@/demo/DemoHost';
+import { PhoneGate } from '@/components/device/PhoneGate';
 import { ClientConversationProvider } from '@/components/conversation/ClientChatDock';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -18,15 +21,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
    */
   const demo = useDemoRequest();
 
+  // "עצירת אנימציות" בתפריט הנגישות עוצרת גם את האנימציות של framer-motion
+  const { stopMotion } = useA11yPrefs();
+
   return (
     <SessionProvider
       key={demo ? 'demo' : 'live'}
       session={demo ? demoSession() : undefined}
       refetchOnWindowFocus={!demo}
     >
-      <ClientConversationProvider>
-        <DemoHost>{children}</DemoHost>
-      </ClientConversationProvider>
+      <MotionConfig reducedMotion={stopMotion ? 'always' : 'user'}>
+        <DemoHost>
+          <PhoneGate>
+            {/* ההתכתבות עם היועץ — בתוך PhoneGate, כך שלא תופיע מעל מסך החסימה בטלפון */}
+            <ClientConversationProvider>{children}</ClientConversationProvider>
+          </PhoneGate>
+        </DemoHost>
+      </MotionConfig>
     </SessionProvider>
   );
 }

@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { useA11yPrefs } from '@/components/a11y/a11yStore';
 
 /**
  * ההזמנה להרשמה שנפתחת מתוך הכלים הפתוחים.
@@ -120,13 +121,16 @@ export function RegisterTeaserCarousel({
 }) {
   const [index, setIndex] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { stopMotion } = useA11yPrefs();
 
-  // הקרוסלה מתחלפת מעצמה כל שתי שניות, וחוזרת להתחלה בכל פתיחה מחדש
+  // הקרוסלה מתחלפת מעצמה כל שתי שניות, וחוזרת להתחלה בכל פתיחה מחדש.
+  // מי שביקש "עצירת אנימציות" בתפריט הנגישות מקבל אותה עומדת
   useEffect(() => {
     if (!open) {
       setIndex(0);
       return;
     }
+    if (stopMotion) return;
     timer.current = setInterval(() => {
       setIndex((current) => (current + 1) % SLIDES.length);
     }, AUTO_ADVANCE_MS);
@@ -134,7 +138,7 @@ export function RegisterTeaserCarousel({
       if (timer.current) clearInterval(timer.current);
       timer.current = null;
     };
-  }, [open]);
+  }, [open, stopMotion]);
 
   const register = useCallback(() => {
     onOpenChange(false);

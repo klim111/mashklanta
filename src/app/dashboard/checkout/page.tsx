@@ -286,6 +286,17 @@ function CheckoutBody() {
                   <ShieldCheck className="h-3.5 w-3.5" />
                   פרטי הכרטיס אינם נשמרים במערכת — רק ארבע הספרות האחרונות, לקבלה.
                 </p>
+                <p className="text-center text-2xs text-slate-400">
+                  בתשלום אתם מאשרים את{' '}
+                  <Link href="/terms" target="_blank" className="text-blue-600 hover:underline">
+                    תנאי השימוש
+                  </Link>{' '}
+                  ואת{' '}
+                  <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+                    מדיניות הפרטיות
+                  </Link>
+                  .
+                </p>
               </div>
             </form>
 

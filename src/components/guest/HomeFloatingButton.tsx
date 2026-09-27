@@ -21,15 +21,6 @@ export function HomeFloatingButton({
   /** צד המסך. ברירת המחדל ימין — הצד שבו אין את כפתור הפנייה ליועץ */
   side?: 'right' | 'left';
 }) {
-  const link = (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
-    >
-      <Home className="h-5 w-5" />
-      {label}
-    </Link>
-  );
   return (
     <div
       className={`fixed bottom-5 z-40 flex flex-col gap-2.5 print:hidden ${
@@ -38,7 +29,15 @@ export function HomeFloatingButton({
     >
       {/* למשתמש מחובר — שורת ההתכתבות עם היועץ, מעל הכפתור ובאותה פינה */}
       {side === 'right' && <ConversationDockSlot />}
-      {link}
+      <Link
+        href={href}
+        aria-label={label}
+        className="inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5 sm:px-5 sm:py-3"
+      >
+        <Home className="h-5 w-5" />
+        {/* בטלפון הכפתור עגול, כדי שלא יסתיר את תוכן הכלי */}
+        <span className="sr-only sm:not-sr-only">{label}</span>
+      </Link>
     </div>
   );
 }

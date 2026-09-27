@@ -123,17 +123,6 @@ async function deliverVerification(
   return result.success;
 }
 
-/** פעם בדקה לכל מייל, בזיכרון התהליך — מונע הצפת מיילים "כבר יש לך חשבון" */
-const accountNoticeSentAt = new Map<string, number>();
-
-async function notifyExistingAccount(email: string, requestOrigin?: string | null) {
-  const last = accountNoticeSentAt.get(email) ?? 0;
-  if (Date.now() - last < RESEND_COOLDOWN_SECONDS * 1000) return;
-  accountNoticeSentAt.set(email, Date.now());
-  const template = emailTemplates.accountExistsEmail({ loginUrl: `${siteOrigin(requestOrigin)}/auth/login` });
-  await sendEmail({ to: email, subject: template.subject, html: template.html, text: template.text }).catch(() => {});
-}
-
 async function emailHasAccount(email: string) {
   return prisma.user.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
@@ -175,8 +164,9 @@ type PendingInput = {
 };
 
 export type StartResult =
-  /** נשלח קישור (או שהמייל כבר רשום ונשלחה הודעה מתאימה) — התשובה ללקוח זהה בשני המקרים */
   | { status: 'sent' }
+  /** כבר קיים משתמש עם המייל — הטופס מציע כניסה או בחירת סיסמה חדשה */
+  | { status: 'exists' }
   | { status: 'cooldown' }
   | { status: 'limit' }
   | { status: 'email-failed' };
@@ -184,9 +174,8 @@ export type StartResult =
 /**
  * פתיחת הרשמה ממתינה ושליחת קישור האימות.
  *
- * אם המייל כבר רשום, לא נוצרת הרשמה — בעל המייל מקבל הודעה שכבר יש לו חשבון,
- * והתשובה לדפדפן זהה להרשמה רגילה. כך אי אפשר לברר דרך טופס ההרשמה אילו
- * כתובות רשומות במערכת.
+ * אם המייל כבר רשום, לא נוצרת הרשמה והטופס אומר זאת ללקוח, עם הצעה להתחבר
+ * או לבחור סיסמה חדשה (לבקשת בעל האתר, 2026-09-26).
  */
 export async function startRegistration(input: PendingInput): Promise<StartResult> {
   const email = normalizeEmail(input.email);
@@ -197,10 +186,7 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
     .deleteMany({ where: { expires: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } })
     .catch(() => {});
 
-  if (await emailHasAccount(email)) {
-    await notifyExistingAccount(email, input.requestOrigin);
-    return { status: 'sent' };
-  }
+  if (await emailHasAccount(email)) return { status: 'exists' };
 
   const existing = await prisma.pendingRegistration.findUnique({ where: { email } });
   const decision = sendDecision(existing, now);

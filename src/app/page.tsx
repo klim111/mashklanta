@@ -5,7 +5,7 @@ import { ArrowLeft, Tag } from 'lucide-react';
 import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
-import Statistic from '@/components/ui/statistic';
+import MortgageMarketDashboard from '@/components/home/MortgageMarketDashboard';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
@@ -13,7 +13,7 @@ import { GuestStart } from '@/components/service-flow/GuestStart';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
-import { FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { ADVISORY_TRACK, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
 import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
 import { demoId } from '@/demo/demo-attr';
@@ -218,7 +218,7 @@ export default function Home() {
       >
         <div className="max-w-6xl mx-auto">
           {/* הכלים החינמיים — תכנון וניתוח מקדים, לפני שבוחרים איך להתקדם */}
-          <div className="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-free-tools')}>
+          <div id="free-tools" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur-sm sm:p-6 md:p-10" {...demoId('home-free-tools')}>
             <FreeToolsSection />
           </div>
 
@@ -254,11 +254,11 @@ export default function Home() {
               מודל התמחור
             </div>
             <h2 className="mb-4 text-title font-black text-white">
-              משלמים על מה שלקחתם — ותמיד את המחיר הנמוך
+              משלמים על מה שלקחתם — ותמיד מתחת לממוצע בשוק
             </h2>
             <p className="mx-auto max-w-2xl text-base text-slate-100 md:text-lg">
               גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
-              המלאה כלולה בכל הזמנת ליווי — לשלב אחד או לכל הדרך.
+              המלאה כלולה בכל הזמנת ליווי — לשלב אחד או לכל שלבי התכנון.
             </p>
           </div>
           <div className="mx-auto mb-8 grid max-w-4xl gap-5 md:grid-cols-2">
@@ -271,22 +271,24 @@ export default function Home() {
               </div>
             </Link>
             <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
-              <div className="text-sm font-bold text-amber-200">ליווי מלא</div>
-              <div className="my-2 text-4xl font-black text-white">₪{FULL_SERVICE_PRICE.toLocaleString('he-IL')}</div>
-              <div className="text-sm text-slate-100">עד לחתימה הסופית, כולל גישה מלאה לפלטפורמה</div>
+              <div className="text-sm font-bold text-amber-200">{ADVISORY_TRACK.title}</div>
+              <div className="my-2 text-subtitle font-black leading-snug text-white sm:my-3.5">{ADVISORY_TRACK.priceLabel}</div>
+              <div className="text-sm text-slate-100">
+                {ADVISORY_TRACK.tagline}. {ADVISORY_TRACK.cheaper}, ומה ששילמתם על הפלטפורמה מקוזז.
+              </div>
             </Link>
           </div>
           <PlatformBillingNotes tone="dark" className="mx-auto mb-8 max-w-4xl" />
           <PricingModelStrip compact tone="dark" className="mb-10" />
           <div className="text-center">
             <Button asChild size="lg" className="w-full bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900 sm:w-auto">
-              <Link href="/pricing">למודל התמחור המלא ולמחשבון החבילה</Link>
+              <Link href="/pricing">למודל התמחור המלא</Link>
             </Button>
           </div>
         </div>
       </motion.section>
 
-      {/* Statistics Section */}
+      {/* שוק המשכנתאות — נתוני בנק ישראל */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -294,7 +296,7 @@ export default function Home() {
           viewport={{ once: true, margin: "-100px" }}
         className="bg-white"
         >
-          <Statistic />
+          <MortgageMarketDashboard />
         </motion.section>
 
         {/* Footer */}

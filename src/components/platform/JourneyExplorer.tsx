@@ -127,11 +127,11 @@ export default function JourneyExplorer() {
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
                     <UserCheck className="h-3.5 w-3.5" />
-                    עם יועץ · ₪{stage.advisorPrice.toLocaleString('he-IL')}
+                    עם יועץ · לפי מורכבות התיק
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
                     <Wand2 className="h-3.5 w-3.5" />
-                    לבד · כלול במנוי
+                    לבד · כלול בגישה
                   </span>
                 </div>
               </div>

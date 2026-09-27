@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  FULL_SERVICE_PRICE,
+  ADVISORY_TRACK,
   GOAL_LABELS,
   PLATFORM_ACCESS_DAYS,
   PLATFORM_PROCESS_PRICE,
@@ -44,8 +44,8 @@ const SERVICE_META: Record<ServiceChoice, { icon: LucideIcon; gradient: string; 
   FULL: {
     icon: UserCheck,
     gradient: 'from-amber-500 to-orange-600',
-    price: `₪${FULL_SERVICE_PRICE.toLocaleString('he-IL')}`,
-    priceNote: 'עד לחתימה · הגישה לפלטפורמה כלולה',
+    price: ADVISORY_TRACK.priceLabel,
+    priceNote: 'משלב אחד ועד כל השלבים · תמיד מתחת לממוצע בשוק · דמי הפלטפורמה מקוזזים',
   },
 };
 
@@ -62,7 +62,7 @@ export interface ServiceChooserProps {
   initialGoal?: FlowGoal | null;
   /** המסלול העצמאי — פותח את הכלי (או את הסיור) */
   onSelf: (goal: FlowGoal) => void;
-  /** כל בחירה שדורשת יועץ — ליווי משולב, ליווי מלא או ייעוץ */
+  /** כל בחירה שדורשת יועץ — מסלול בליווי או ייעוץ */
   onAdvisor: (goal: MortgageGoal, service: ServiceType) => void;
   busy?: boolean;
   tone?: 'light' | 'dark';
@@ -74,7 +74,7 @@ export interface ServiceChooserProps {
  * "מה תרצו לעשות?" — נקודת הכניסה של הלקוח.
  *
  * מסך ראשון: משכנתא חדשה / מיחזור / ייעוץ. מסך שני (לחדשה ולמיחזור), רק למי
- * שעוד לא שילם: עצמאי / היברידי או ליווי מלא, עם כפתור חזרה. מי שכבר שילם
+ * שעוד לא שילם: עצמאי / היברידי או מסלול בליווי, עם כפתור חזרה. מי שכבר שילם
  * נכנס מהמסך הראשון ישר לתהליך. אותו רכיב משמש גם בעמוד הבית לאורחים וגם
  * באזור האישי — ההבדל הוא רק מה קורה אחרי הבחירה.
  */

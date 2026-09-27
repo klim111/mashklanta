@@ -51,6 +51,7 @@ export function ConversationWindow({
   side = 'left',
   docked = false,
   offset = 0,
+  anchor = 'corner',
   children,
 }: {
   role: ConversationRole;
@@ -73,6 +74,11 @@ export function ConversationWindow({
   docked?: boolean;
   /** מרחק החלון המלא מהקצה, במסך רחב — כדי לא לכסות תפריט צד */
   offset?: number;
+  /**
+   * `above-actions` — החלון המלא נפתח בפינה הימנית, מעל כפתור הפעולות העגול
+   * של שלבי המשכנתא, שממנו הוא נפתח
+   */
+  anchor?: 'corner' | 'above-actions';
   /** תוכן במקום הטאבים — רשימת השיחות אצל היועץ */
   children?: ReactNode;
 }) {
@@ -145,10 +151,12 @@ export function ConversationWindow({
       dir="rtl"
       role="dialog"
       aria-label={title}
-      style={offset ? { [side]: offset } : undefined}
-      className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:bottom-4 ${
-        side === 'right' ? 'sm:right-4' : 'sm:left-4'
-      } sm:h-[min(640px,calc(100vh-2rem))] sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20 print:hidden`}
+      style={offset && anchor === 'corner' ? { [side]: offset } : undefined}
+      className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20 print:hidden ${
+        anchor === 'above-actions'
+          ? 'sm:bottom-28 sm:right-5 sm:h-[min(620px,calc(100vh-8.5rem))]'
+          : `sm:bottom-4 sm:h-[min(640px,calc(100vh-2rem))] ${side === 'right' ? 'sm:right-4' : 'sm:left-4'}`
+      }`}
     >
       <header className={`flex items-center gap-2 px-3 py-2.5 text-white ${role === 'ADVISOR' ? 'bg-violet-700' : 'bg-brand-dark'}`}>
         {onBack && (

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, LayoutDashboard, Upload, Target, Banknote, Clock } from 'lucide-react';
 import type { MortgageMix } from '@/components/mortgage-advisor/types';
@@ -19,6 +20,10 @@ import { AdvisorHelpButton } from '@/components/plan/stages/analysis/AdvisorHelp
 import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
 import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
 import { saveRefinanceAsNewPlan } from '@/components/mortgage-refinance/refinancePlan';
+import { RefinanceCheck } from '@/components/refinance-check/RefinanceCheck';
+import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePreviewBar';
+import { draftAsMix, loadDraft } from '@/components/refinance-check/refinanceCheckStore';
+import { PhoneBlockedScreen, useIsPhone } from '@/components/device/PhoneGate';
 
 type RefinanceStep = 'tracks' | 'goal';
 
@@ -30,12 +35,58 @@ const EMPTY_MIX: MortgageMix = {
   createdAt: new Date(),
 };
 
+/**
+ * מיחזור משכנתא.
+ *
+ * משתמש רשום (וכל הדגמה) מקבל את כלי המיחזור המלא, בלי שינוי. אורח מקבל את
+ * בדיקת המיחזור המהירה; ממנה הוא יכול לפתוח את מסך ההצצה (`?view=preview`) —
+ * הכלי המלא עם המסלולים שהזין ו-3 שינויים לדפדפן.
+ */
 export default function MortgageRefinancePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+      <RefinanceEntry />
+    </Suspense>
+  );
+}
+
+function RefinanceEntry() {
+  const { status } = useSession();
+  const view = useSearchParams().get('view');
+  const isPhone = useIsPhone();
+
+  if (status === 'loading') return <div className="min-h-screen bg-slate-50" />;
+  if (status === 'authenticated') return <FullRefinanceTool />;
+
+  if (view === 'preview') {
+    // הדאשבורד והשלבים אינם מותאמים לטלפון, ולכן גם ההצצה אליהם
+    if (isPhone) return <PhoneBlockedScreen signedIn={false} />;
+    return <PreviewTool />;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
+        <NavBar />
+      </div>
+      <RefinanceCheck />
+    </div>
+  );
+}
+
+function PreviewTool() {
+  const [mix, setMix] = useState<MortgageMix | null | undefined>(undefined);
+  useEffect(() => setMix(draftAsMix(loadDraft())), []);
+  if (mix === undefined) return <div className="min-h-screen bg-slate-50" />;
+  return <FullRefinanceTool initialMix={mix ?? undefined} banner={<RefinancePreviewBar />} />;
+}
+
+function FullRefinanceTool({ initialMix, banner }: { initialMix?: MortgageMix; banner?: ReactNode } = {}) {
   const { data: session, status } = useSession();
   /** הכלי פתוח לכולם. למשתמש שאינו רשום הוא מוגבל לבדיקה אחת */
   const isGuest = status !== 'loading' && !session;
   const { market } = useMarketRates();
-  const [currentMix, setCurrentMix] = useState<MortgageMix>(EMPTY_MIX);
+  const [currentMix, setCurrentMix] = useState<MortgageMix>(initialMix ?? EMPTY_MIX);
   const [currentStep, setCurrentStep] = useState<RefinanceStep>('tracks');
   const [inputMethod, setInputMethod] = useState<'scan' | 'manual'>('manual');
   const [showScenarioAnalysis, setShowScenarioAnalysis] = useState<MortgageMix | null>(null);
@@ -256,6 +307,7 @@ export default function MortgageRefinancePage() {
       </div>
 
       <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
+        {banner && <div className="mb-8">{banner}</div>}
         {currentStep === 'goal' && renderRefinanceGoalSelection()}
         {currentStep === 'tracks' && inputMethod === 'scan' && renderScanUpload()}
         {currentStep === 'tracks' && inputMethod === 'manual' && renderManualInput()}
@@ -286,10 +338,11 @@ export default function MortgageRefinancePage() {
           <ConversationDockSlot />
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
+            aria-label="חזרה לדאשבורד"
+            className="inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
           >
             <LayoutDashboard className="h-5 w-5" />
-            חזרה לדאשבורד
+            <span className="sr-only sm:not-sr-only">חזרה לדאשבורד</span>
           </Link>
         </div>
       )}
