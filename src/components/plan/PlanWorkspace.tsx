@@ -287,6 +287,12 @@ export function PlanWorkspace({
   const internalRefinance = isRefinance && flow.refinanceMode === 'INTERNAL';
   /** מיחזור שעדיין לא נבחר בו בין פנימי לחיצוני — קודם המסך שמסביר את ההבדל */
   const modePending = isRefinance && refinance !== null && flow.refinanceMode === null;
+  /**
+   * מיחזור שנפתח מהאזור האישי ועדיין לא נשמר בו תמהיל. שלבי המיחזור נקבעים רק
+   * אחרי הבחירה בין פנימי לחיצוני, ולכן עד אז מוצג רק שלב התמהיל — בלי סרגל
+   * של שלבים שעוד לא ידועים.
+   */
+  const refinanceMixPending = isRefinance && refinance === null;
 
   const stage = viewingStage ?? plan.currentStage;
   /*
@@ -619,7 +625,7 @@ export function PlanWorkspace({
           </div>
 
           {/* עד שנבחר סוג המיחזור לא ידוע אילו שלבים יהיו — הסרגל מחכה לבחירה */}
-          {!modePending && (
+          {!modePending && !refinanceMixPending && (
             <StageRail current={stage} statuses={statuses} onSelect={selectStage} flow={flow} />
           )}
 
@@ -698,7 +704,9 @@ export function PlanWorkspace({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-black text-slate-400">
-                      שלב {index + 1} מתוך {stages.length}
+                      {refinanceMixPending
+                        ? 'שלב 1 במיחזור · אחריו בוחרים מיחזור פנימי או חיצוני'
+                        : `שלב ${index + 1} מתוך ${stages.length}`}
                     </span>
                     {isDone && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-2xs font-black text-emerald-700">

@@ -762,7 +762,9 @@ export interface PlanStatusSummary {
 export function summarizePlan(plan: AgendaPlan, advisorStages: PlanStageId[] = []): PlanStatusSummary {
   const byStage = new Map(plan.stages.map((row) => [row.stage, row.status]));
   const flow = planFlowOf(plan.data);
-  const order = [...flowStages(flow)];
+  // מיחזור שעוד לא נבחר בו פנימי או חיצוני: השלבים שאחרי התמהיל עוד לא ידועים
+  const order: PlanStageId[] =
+    flow.kind === 'REFINANCE' && flow.refinanceMode === null ? ['MIX'] : [...flowStages(flow)];
   const stages = order.map((stage) => byStage.get(stage) ?? 'PENDING');
   return {
     id: plan.id,
