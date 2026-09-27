@@ -76,6 +76,7 @@ export function MortgageEntry({
   const [dialogGoal, setDialogGoal] = useState<FlowGoal | null>(initialGoal);
   const [request, setRequest] = useState<{ goal: MortgageGoal; service: ServiceType } | null>(null);
   const [limitOpen, setLimitOpen] = useState(false);
+  const [refinanceBusy, setRefinanceBusy] = useState(false);
   const autoHandled = useRef(false);
 
   const isOpen = variant === 'dialog' ? Boolean(open) : dialogOpen;
@@ -96,11 +97,35 @@ export function MortgageEntry({
       router.push(`/dashboard/checkout?next=plan&goal=${goal}`);
       return;
     }
+    // מיחזור — תהליך עם שלבי המיחזור נפתח מיד, ושלב התמהיל (כלי המיחזור) ראשון
     if (goal === 'REFINANCE') {
-      router.push('/mortgage-refinance');
+      void startRefinance();
       return;
     }
     onStart();
+  };
+
+  const startRefinance = async () => {
+    setRefinanceBusy(true);
+    try {
+      const res = await fetch('/api/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'REFINANCE' }),
+      });
+      if (res.status === 409) {
+        setLimitOpen(true);
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const plan = (await res.json()) as { id: string };
+      router.push(`/dashboard/plans/${plan.id}`);
+    } catch {
+      // בלי חיבור — הכלי עצמו עדיין פתוח, והשמירה בו פותחת את התהליך
+      router.push('/mortgage-refinance');
+    } finally {
+      setRefinanceBusy(false);
+    }
   };
 
   const onAdvisor = (goal: MortgageGoal, service: ServiceType) => {
@@ -125,7 +150,7 @@ export function MortgageEntry({
           <ServiceChooser
             hasAccess={access.active}
             initialGoal={variant === 'dialog' ? initialGoal : dialogGoal}
-            busy={busy}
+            busy={busy || refinanceBusy}
             onSelf={onSelf}
             onAdvisor={onAdvisor}
           />
@@ -184,7 +209,7 @@ export function MortgageEntry({
                 <button
                   key={goal}
                   type="button"
-                  disabled={busy}
+                  disabled={busy || refinanceBusy}
                   onClick={() => {
                     if (goal === 'ADVICE') {
                       setRequest({ goal, service: 'GUIDANCE' });
@@ -254,7 +279,7 @@ export function MortgageEntry({
             tone="dark"
             hasAccess={access.active}
             initialGoal={initialGoal}
-            busy={busy}
+            busy={busy || refinanceBusy}
             onSelf={onSelf}
             onAdvisor={onAdvisor}
           />
