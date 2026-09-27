@@ -1,0 +1,365 @@
+/* ───────────── שכבת ההדגמה ───────────── */
+
+.mk-demo-ui {
+  position: fixed;
+  inset: 0;
+  /* מעל חלונית ההסבר של driver.js (1e9) — הפקדים תמיד לחיצים */
+  z-index: 1000000010;
+  pointer-events: none;
+  font-family: inherit;
+}
+/* driver.js מכבה pointer-events לכל הדף בזמן הארה (.driver-active *) — הפקדים של ההדגמה נשארים לחיצים */
+.mk-demo-ui > *,
+.mk-demo-ui > * *,
+body.driver-active .mk-demo-ui > *,
+body.driver-active .mk-demo-ui > * * {
+  pointer-events: auto;
+}
+.mk-demo-cursor,
+.mk-demo-cursor *,
+body.driver-active .mk-demo-cursor,
+body.driver-active .mk-demo-cursor * {
+  pointer-events: none;
+}
+
+/* הסמן הווירטואלי */
+.mk-demo-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000000010;
+  opacity: 0;
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
+  will-change: transform;
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.35));
+}
+.mk-demo-cursor.is-visible {
+  opacity: 1;
+}
+.mk-demo-cursor svg {
+  display: block;
+  transform: translate(-3px, -2px);
+  transition: transform 120ms ease;
+}
+.mk-demo-cursor.is-pressing svg {
+  transform: translate(-3px, -2px) scale(0.86);
+}
+.mk-demo-cursor__ring {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  border: 2px solid rgba(37, 99, 235, 0.85);
+  background: rgba(37, 99, 235, 0.18);
+  opacity: 0;
+  transform: scale(0.4);
+}
+.mk-demo-cursor.is-pressing .mk-demo-cursor__ring {
+  animation: mk-demo-ring 420ms ease-out;
+}
+@keyframes mk-demo-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+/* התג הקבוע */
+.mk-demo-badge {
+  position: fixed;
+  top: 72px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25);
+  z-index: 1000000005;
+}
+
+/* הסרגל התחתון */
+.mk-demo-bar {
+  position: fixed;
+  right: 12px;
+  left: 12px;
+  bottom: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  overflow: hidden;
+  z-index: 1000000005;
+  backdrop-filter: blur(10px);
+}
+@media (min-width: 900px) {
+  .mk-demo-bar {
+    right: 50%;
+    left: auto;
+    transform: translateX(50%);
+    width: min(1080px, calc(100vw - 32px));
+  }
+}
+.mk-demo-bar__progress {
+  height: 4px;
+  background: #e2e8f0;
+}
+.mk-demo-bar__progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(270deg, #2563eb, #7c3aed);
+  transition: width 400ms ease;
+}
+.mk-demo-bar__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px 14px 12px;
+}
+@media (min-width: 900px) {
+  .mk-demo-bar__body {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+  }
+}
+.mk-demo-bar__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mk-demo-bar__title {
+  font-weight: 900;
+  font-size: 13px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.mk-demo-bar__counter {
+  font-size: 11px;
+  font-weight: 800;
+  color: #2563eb;
+  background: #dbeafe;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+.mk-demo-bar__caption {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #0f172a;
+  min-height: 24px;
+}
+.mk-demo-bar__step-title {
+  display: inline-block;
+  margin-left: 8px;
+  font-weight: 900;
+  color: #4338ca;
+}
+.mk-demo-bar__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mk-demo-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  transition: all 150ms ease;
+}
+.mk-demo-control:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.mk-demo-control:disabled {
+  opacity: 0.4;
+}
+.mk-demo-control.is-primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.mk-demo-control.is-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+.mk-demo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+.mk-demo-button:hover {
+  background: #f1f5f9;
+}
+.mk-demo-button.is-primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.mk-demo-button.is-primary:hover {
+  background: #1d4ed8;
+}
+.mk-demo-button.is-try {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+}
+.mk-demo-button.is-danger {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* מצב ההתנסות */
+.mk-demo-tryit {
+  position: fixed;
+  right: 12px;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  box-shadow: 0 18px 50px rgba(120, 53, 15, 0.25);
+  z-index: 1000000005;
+}
+@media (min-width: 900px) {
+  .mk-demo-tryit {
+    right: 50%;
+    left: auto;
+    transform: translateX(50%);
+    width: min(900px, calc(100vw - 32px));
+  }
+}
+.mk-demo-tryit__text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.mk-demo-tryit__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* מסך הסיום */
+.mk-demo-end {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000000006;
+}
+.mk-demo-end__card {
+  width: min(560px, 100%);
+  border-radius: 24px;
+  background: #fff;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.4);
+}
+.mk-demo-end__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #fff;
+}
+
+/* ───────────── driver.js — חלונית ההסבר בעברית ───────────── */
+.driver-popover.mk-demo-popover {
+  direction: rtl;
+  text-align: right;
+  border-radius: 16px;
+  padding: 14px 16px;
+  max-width: 340px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+  font-family: inherit;
+}
+.driver-popover.mk-demo-popover .driver-popover-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #1e1b4b;
+}
+.driver-popover.mk-demo-popover .driver-popover-description {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #334155;
+  margin-top: 4px;
+}
+.driver-popover.mk-demo-popover .driver-popover-footer {
+  display: none;
+}
+.driver-popover.mk-demo-popover .driver-popover-close-btn {
+  display: none;
+}
+.driver-active .driver-active-element {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.55), 0 0 0 8px rgba(37, 99, 235, 0.18);
+  border-radius: 10px;
+}
+
+/* בזמן הדגמה הקרוסלה של דף הבית נעצרת — ההדגמה היא האנימציה */
+body.mk-demo-active .animate-carousel-slide-1,
+body.mk-demo-active .animate-carousel-slide-2,
+body.mk-demo-active .animate-carousel-slide-3,
+body.mk-demo-active .animate-carousel-slide-4 {
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+/* במסך צר עמוד שגולש לרוחב מקטין את ה-viewport ומעלים את הסרגל — בזמן הדגמה נועלים גלישה אופקית */
+body.mk-demo-active {
+  overflow-x: hidden;
+}
+@media (max-width: 640px) {
+  .mk-demo-badge {
+    top: 60px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+}

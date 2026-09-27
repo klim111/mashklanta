@@ -117,7 +117,7 @@ export function JourneyMap({ sections, activeSection, onSectionClick }: JourneyM
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-slate-800">מפת המסע</h2>
+          <h2 className="text-subtitle font-semibold text-slate-800">מפת המסע</h2>
           <p className="text-sm text-slate-600">
             {zoomLevel === 'main' && 'השלבים העיקריים'}
             {zoomLevel === 'sub' && 'תתי-שלבים'}

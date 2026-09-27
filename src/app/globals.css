@@ -2,6 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* הבזק חד-פעמי שמסב את תשומת הלב לכפתור השמירה כשנוצר שינוי שלא נשמר */
+@keyframes save-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.save-flash {
+  animation: save-flash 0.9s ease-out 1;
+}
+
+/* הדגשה חד-פעמית של כפתור "טען תמהיל" אחרי שמירה: זוהר כחול ותזוזה קלה */
+@keyframes load-nudge {
+  0% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
+  60% {
+    transform: translateX(-3px);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+  }
+  80% {
+    transform: translateX(3px);
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
+  100% {
+    transform: translateX(0);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+.load-nudge {
+  animation: load-nudge 1.4s ease-in-out 1;
+  border-color: rgb(37 99 235) !important;
+  color: rgb(29 78 216) !important;
+  background-color: rgb(239 246 255) !important;
+}
+
 /* Financial Dynamics Animations */
 @keyframes pulse-glow {
   0%, 100% {
@@ -96,36 +147,59 @@
   animation: float-slow 10s ease-in-out infinite 1s;
 }
 
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(28px, -18px) scale(1.08);
+  }
+  66% {
+    transform: translate(-22px, 16px) scale(0.94);
+  }
+}
+
+.animate-blob {
+  animation: blob 12s ease-in-out infinite;
+}
+
 /* Financial Graphics Carousel */
+/* פס ההתקדמות של נגן ההדגמה — סצנה אחת, מקצה לקצה */
+@keyframes demo-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/*
+ * קרוסלת הראש: שלושה מסכים מתחלפים — פשטות ושקיפות, ניווט לאורך השלבים
+ * ותמהיל אופטימלי. כל מסך מוצג כארבע שניות מתוך מחזור של 12.
+ */
 @keyframes carousel-slide {
-  0%, 22% { 
-    opacity: 1; 
-    transform: scale(1); 
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
   }
-  25%, 97% { 
-    opacity: 0; 
-    transform: scale(0.98); 
+  3%, 30% {
+    opacity: 1;
+    transform: scale(1);
   }
-  100% { 
-    opacity: 1; 
-    transform: scale(1); 
+  33%, 100% {
+    opacity: 0;
+    transform: scale(0.98);
   }
 }
 
 .animate-carousel-slide-1 {
-  animation: carousel-slide 16s ease-in-out infinite;
+  animation: carousel-slide 12s ease-in-out infinite;
 }
 
 .animate-carousel-slide-2 {
-  animation: carousel-slide 16s ease-in-out infinite 4s;
+  animation: carousel-slide 12s ease-in-out infinite 4s;
 }
 
 .animate-carousel-slide-3 {
-  animation: carousel-slide 16s ease-in-out infinite 8s;
-}
-
-.animate-carousel-slide-4 {
-  animation: carousel-slide 16s ease-in-out infinite 12s;
+  animation: carousel-slide 12s ease-in-out infinite 8s;
 }
 
 /* Financial Elements Animation */
@@ -162,6 +236,30 @@
 
 .animate-draw-line {
   animation: draw-line 3s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Typography tokens: one font and one type scale for every client screen.
+   Tailwind exposes the sizes as text-title, text-subtitle, text-cta,
+   text-button, text-info and text-2xs (tailwind.config.js), so a size is
+   changed here and nowhere else. --font-assistant is set on <html> by
+   next/font in app/layout.tsx.
+--------------------------------------------------------------------------- */
+:root {
+  --font-app: var(--font-assistant), 'Assistant', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* כותרת ראשית של מסך */
+  --text-title: clamp(1.625rem, 1.25rem + 1.5vw, 2.25rem);
+  /* תת-כותרת: כותרת של אזור או כרטיס */
+  --text-subtitle: 1.25rem;
+  /* כפתור קריאה לפעולה */
+  --text-cta: 1.0625rem;
+  /* כפתור רגיל */
+  --text-button: 0.9375rem;
+  /* שורת מידע: תווית וערך */
+  --text-info: 0.9375rem;
+  /* תגיות ותוויות זעירות: הגודל המינימלי בפלטפורמה. בעברית פחות מ-12px קשה לקריאה */
+  --text-2xs: 0.75rem;
 }
 
 /* Professional Financial Design System */
@@ -201,7 +299,7 @@
   --bg-dark: #0f172a;
   
   /* Professional Typography */
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app);
   line-height: 1.6;
   font-weight: 400;
   color-scheme: light;
@@ -218,7 +316,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app);
   direction: rtl;
   background: var(--bg-primary);
   color: var(--financial-gray-800);
@@ -227,7 +325,7 @@ body {
 
 /* Professional Typography Scale */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app);
   font-weight: 700;
   direction: rtl;
   color: var(--financial-gray-900);
@@ -236,19 +334,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-size: var(--text-title);
   font-weight: 800;
   color: var(--financial-primary);
 }
 
 h2 {
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: var(--text-subtitle);
   font-weight: 700;
   color: var(--financial-primary);
 }
 
 h3 {
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--financial-gray-800);
 }
@@ -261,7 +359,7 @@ h3 {
   padding: 1rem 2rem;
   border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--text-button);
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -285,7 +383,7 @@ h3 {
   padding: 1rem 2rem;
   border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--text-button);
   transition: all 0.2s ease;
 }
 
@@ -603,11 +701,20 @@ html {
   font-weight: 600;
 }
 
-/* Hebrew text styling */
-p, span, div {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+/* Hebrew text styling — only apply to elements without an explicit dir attribute,
+   so any `dir="ltr"` (e.g. on slider scales) is honored instead of being overridden. */
+p:not([dir]), span:not([dir]), div:not([dir]) {
+  font-family: var(--font-app);
   direction: rtl;
   text-align: center;
+}
+
+/* Make sure explicit direction attributes always win over the default RTL above. */
+[dir="ltr"] {
+  direction: ltr;
+}
+[dir="rtl"] {
+  direction: rtl;
 }
 
 /* Custom Animations */
@@ -805,6 +912,10 @@ html {
   body {
     @apply bg-background text-foreground font-sans;
   }
+  /* כפתור בלי גודל מפורש מקבל את גודל הכפתור המשותף */
+  button {
+    font-size: var(--text-button);
+  }
 }
 
 /* Enhanced Input Styling */
@@ -829,7 +940,7 @@ textarea:focus,
 select:focus {
   outline: none !important;
   border-color: var(--financial-primary) !important;
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35) !important;
 }
 
 /* Ensure placeholders are visible */
@@ -878,9 +989,156 @@ input[type="number"]::placeholder {
 }
 
 /* Professional Print Styles */
+/* מכתב בקשת הריביות מודפס בצבעים שלו, ולכן שורש ההדפסה שלו מוחרג מכאן */
 @media print {
-  * {
+  body > *:not(.rr-print-root),
+  body > *:not(.rr-print-root) * {
     background: white !important;
     color: black !important;
   }
-} 
+}
+
+/* ---------------------------------------------------------------------------
+   Principal approval report — print / save-as-PDF stylesheet
+
+   Scoped to `body.printing-approval-report`, which the report sets only while
+   its own print dialog is open. Without that scope the "hide everything else"
+   rule would also blank out the rate-request letter (.rr-print-root), which
+   prints through the same global stylesheet.
+--------------------------------------------------------------------------- */
+@media print {
+  body.printing-approval-report {
+    background: #fff !important;
+  }
+
+  /* Hide everything that is not the report sheet. */
+  body.printing-approval-report * {
+    visibility: hidden;
+  }
+
+  body.printing-approval-report #approval-report,
+  body.printing-approval-report #approval-report * {
+    visibility: visible;
+  }
+
+  body.printing-approval-report #approval-report {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    font-size: 11px;
+  }
+
+  body.printing-approval-report .print\:hidden,
+  body.printing-approval-report nav {
+    display: none !important;
+  }
+
+  #approval-report .break-inside-avoid,
+  #approval-report section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #approval-report h1 {
+    font-size: 18px;
+  }
+
+  #approval-report h2 {
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  /* Keep the tinted panels readable in print. */
+  #approval-report .bg-slate-50\/50,
+  #approval-report .bg-slate-50,
+  #approval-report .bg-amber-50\/60 {
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm 10mm;
+}
+
+/* המסמכים המשפטיים (/privacy, /terms) — טקסט רציף מיושר לימין, לא למרכז */
+.legal-doc.legal-doc :is(p, div, span, h1, h2, h3, li) {
+  text-align: right;
+}
+
+/* ===================================================================
+   נגישות — מיקוד מקלדת גלוי ותפריט הנגישות
+   המחלקות a11y-* נוספות לאלמנט ה-html מתוך src/components/a11y
+   =================================================================== */
+
+/* מסגרת מיקוד ברורה לכל רכיב שמגיעים אליו במקלדת (IS 5568 / WCAG 2.4.7) */
+:focus-visible {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px;
+}
+
+/* גודל טקסט: רוב הגדלים בפלטפורמה ב-rem, ולכן גדלים יחד עם השורש */
+html.a11y-text-1 { font-size: 112.5%; }
+html.a11y-text-2 { font-size: 125%; }
+html.a11y-text-3 { font-size: 150%; }
+
+/* מסננים על שורש המסמך לא שוברים רכיבים במיקום fixed */
+html.a11y-contrast { filter: contrast(1.45); }
+html.a11y-grayscale { filter: grayscale(1); }
+html.a11y-contrast.a11y-grayscale { filter: contrast(1.45) grayscale(1); }
+html.a11y-invert { filter: invert(1) hue-rotate(180deg); background: #fff; }
+html.a11y-invert.a11y-grayscale { filter: invert(1) hue-rotate(180deg) grayscale(1); }
+/* תמונות וסרטונים נשארים בצבעיהם האמיתיים בניגודיות הפוכה */
+html.a11y-invert img,
+html.a11y-invert video,
+html.a11y-invert picture {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html.a11y-links a {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px;
+}
+html.a11y-links a:not([data-a11y-ui]) {
+  outline: 2px dashed #f59e0b;
+  outline-offset: 2px;
+}
+
+html.a11y-readable body,
+html.a11y-readable body *:not(svg):not(svg *) {
+  font-family: Arial, 'Segoe UI', Tahoma, sans-serif !important;
+}
+
+/* ריווח טקסט לפי WCAG 1.4.12 */
+html.a11y-spacing body *:not(svg):not(svg *) {
+  line-height: 1.6 !important;
+  letter-spacing: 0.05em !important;
+  word-spacing: 0.16em !important;
+}
+html.a11y-spacing p { margin-bottom: 1em; }
+
+html.a11y-stop-motion *,
+html.a11y-stop-motion *::before,
+html.a11y-stop-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.a11y-big-cursor,
+html.a11y-big-cursor * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l14 11.5-6.2.8 3.7 7.3-2.9 1.4-3.6-7.4L4 20z' fill='%23000' stroke='%23fff' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 8 4, auto !important;
+}
+html.a11y-big-cursor a,
+html.a11y-big-cursor button,
+html.a11y-big-cursor [role='button'] {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Cpath d='M9 11V4.5a1.5 1.5 0 013 0V10l.5-.1V8.5a1.5 1.5 0 013 0V10l.4-.1a1.5 1.5 0 013 .4V16a6 6 0 01-6 6h-1a6 6 0 01-4.9-2.5L4 14.8a1.5 1.5 0 012.3-1.9L9 15z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 18 4, pointer !important;
+}

@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { FormattedNumberInput } from '@/components/ui/formatted-number-input';
+import { formatNumberInput, parseFormattedNumberInput } from '@/lib/currency';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import RealTimeMoneyFlow from '@/components/financial-dynamics/RealTimeMoneyFlow';
+import NavBar from '@/components/ui/navbar';
 
 // Types
 interface FinancialParams {
@@ -40,6 +43,14 @@ interface FinancialParams {
   allocToAssets: number;
   maxMonths?: number;
 }
+
+const MONEY_PARAM_KEYS: (keyof FinancialParams)[] = [
+  'liquid0', 'debt0', 'savings0', 'assets0', 'incomeMonthly', 'expenseMonthly',
+  'allocToDebt', 'allocToSavings', 'allocToAssets',
+];
+const RATE_PARAM_KEYS: (keyof FinancialParams)[] = [
+  'debtRateAPR', 'savingsRateAPR', 'assetsGrowthAPR',
+];
 
 interface TimelineState {
   month: number;
@@ -297,14 +308,14 @@ const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmoun
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className={`relative bg-white rounded-2xl shadow-lg border-2 ${highlight ? 'border-blue-400' : 'border-gray-200'} p-4 h-48`}
+      className={`relative bg-white rounded-2xl shadow-lg border-2 ${highlight ? 'border-blue-400' : 'border-slate-200'} p-4 h-48`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
             <Icon className="w-4 h-4 text-white" />
           </div>
-          <h3 className="font-semibold text-gray-800">{title}</h3>
+          <h3 className="font-semibold text-slate-800">{title}</h3>
         </div>
         {trend !== undefined && trend !== 0 && (
           <Badge variant={trend > 0 ? "default" : "destructive"} className="text-xs">
@@ -314,7 +325,7 @@ const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmoun
         )}
       </div>
       
-      <div className="relative h-24 bg-gray-100 rounded-xl overflow-hidden">
+      <div className="relative h-24 bg-slate-100 rounded-xl overflow-hidden">
         <motion.div
           className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${color} opacity-80`}
           initial={{ height: 0 }}
@@ -322,7 +333,7 @@ const MoneyContainer: React.FC<MoneyContainerProps> = ({ title, amount, maxAmoun
           transition={{ duration: 0.5, ease: "easeOut" }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold text-gray-800">
+          <span className="text-2xl font-bold text-slate-800">
             ₪{amount.toLocaleString()}
           </span>
         </div>
@@ -393,7 +404,12 @@ export default function FinancialDynamicsPage() {
 
   // Handlers
   const handleParamChange = useCallback((key: keyof FinancialParams, value: string) => {
-    setParams(prev => ({ ...prev, [key]: parseFloat(value) || 0 }));
+    const parsed = RATE_PARAM_KEYS.includes(key)
+      ? parseFloat(value) || 0
+      : MONEY_PARAM_KEYS.includes(key)
+        ? parseFormattedNumberInput(value)
+        : parseFloat(value) || 0;
+    setParams(prev => ({ ...prev, [key]: parsed }));
     setCurrentMonth(0); // Reset timeline when params change
   }, []);
 
@@ -449,33 +465,26 @@ export default function FinancialDynamicsPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
-      {/* Header */}
-      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+    <div className="min-h-screen bg-slate-50" dir="rtl">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
+      </div>
+      <div className="border-b border-slate-200 bg-white/90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ChevronLeft className="w-4 h-4" />
-                  חזרה
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2">
-                <Activity className="w-6 h-6 text-indigo-600" />
-                <h1 className="text-xl font-bold text-gray-900">דינמיקה פיננסית</h1>
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 min-h-14 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Activity className="w-5 h-5 shrink-0 text-indigo-600" />
+              <h1 className="truncate text-title font-bold text-slate-900">דינמיקה פיננסית</h1>
             </div>
-            
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExport}
-                className="gap-2"
+                className="gap-1.5 px-2 sm:gap-2 sm:px-3"
               >
                 <Download className="w-4 h-4" />
-                ייצוא
+                <span className="hidden sm:inline">ייצוא</span>
               </Button>
               <Button
                 variant="outline"
@@ -511,17 +520,17 @@ export default function FinancialDynamicsPage() {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed right-0 top-16 bottom-0 w-96 bg-white shadow-2xl z-50 overflow-y-auto border-l border-gray-200"
+                className="fixed inset-y-0 right-0 top-16 z-50 w-full max-w-md overflow-y-auto border-l border-slate-200 bg-white shadow-2xl sm:w-96"
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">הגדרות סימולציה</h2>
+                    <h2 className="text-subtitle font-bold text-slate-900">הגדרות סימולציה</h2>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSettingsPanelOpen(false)}
-                        className="rounded-full hover:bg-gray-100"
+                        className="rounded-full hover:bg-slate-100"
                         title="סגור"
                       >
                         <ChevronLeft className="w-5 h-5" />
@@ -530,7 +539,7 @@ export default function FinancialDynamicsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => setSettingsPanelOpen(false)}
-                        className="rounded-full hover:bg-gray-100 text-gray-500"
+                        className="rounded-full hover:bg-slate-100 text-slate-500"
                         title="סגור"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -556,44 +565,40 @@ export default function FinancialDynamicsPage() {
                   <TabsContent value="initial" className="space-y-3">
                     <div>
                       <Label htmlFor="liquid0">כסף נזיל</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="liquid0"
-                        type="number"
-                        value={params.liquid0}
-                        onChange={(e) => handleParamChange('liquid0', e.target.value)}
+                        value={params.liquid0 ? formatNumberInput(String(params.liquid0)) : ''}
+                        onValueChange={(v) => handleParamChange('liquid0', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="debt0">חוב התחלתי</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="debt0"
-                        type="number"
-                        value={params.debt0}
-                        onChange={(e) => handleParamChange('debt0', e.target.value)}
+                        value={params.debt0 ? formatNumberInput(String(params.debt0)) : ''}
+                        onValueChange={(v) => handleParamChange('debt0', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="savings0">חיסכון התחלתי</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="savings0"
-                        type="number"
-                        value={params.savings0}
-                        onChange={(e) => handleParamChange('savings0', e.target.value)}
+                        value={params.savings0 ? formatNumberInput(String(params.savings0)) : ''}
+                        onValueChange={(v) => handleParamChange('savings0', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="assets0">נכסים התחלתיים</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="assets0"
-                        type="number"
-                        value={params.assets0}
-                        onChange={(e) => handleParamChange('assets0', e.target.value)}
+                        value={params.assets0 ? formatNumberInput(String(params.assets0)) : ''}
+                        onValueChange={(v) => handleParamChange('assets0', v)}
                         className="text-left"
                         dir="ltr"
                       />
@@ -603,55 +608,50 @@ export default function FinancialDynamicsPage() {
                   <TabsContent value="flow" className="space-y-3">
                     <div>
                       <Label htmlFor="income">הכנסה חודשית</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="income"
-                        type="number"
-                        value={params.incomeMonthly}
-                        onChange={(e) => handleParamChange('incomeMonthly', e.target.value)}
+                        value={params.incomeMonthly ? formatNumberInput(String(params.incomeMonthly)) : ''}
+                        onValueChange={(v) => handleParamChange('incomeMonthly', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="expense">הוצאות חודשיות</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="expense"
-                        type="number"
-                        value={params.expenseMonthly}
-                        onChange={(e) => handleParamChange('expenseMonthly', e.target.value)}
+                        value={params.expenseMonthly ? formatNumberInput(String(params.expenseMonthly)) : ''}
+                        onValueChange={(v) => handleParamChange('expenseMonthly', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="allocDebt">הקצאה לחוב</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="allocDebt"
-                        type="number"
-                        value={params.allocToDebt}
-                        onChange={(e) => handleParamChange('allocToDebt', e.target.value)}
+                        value={params.allocToDebt ? formatNumberInput(String(params.allocToDebt)) : ''}
+                        onValueChange={(v) => handleParamChange('allocToDebt', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="allocSavings">הקצאה לחיסכון</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="allocSavings"
-                        type="number"
-                        value={params.allocToSavings}
-                        onChange={(e) => handleParamChange('allocToSavings', e.target.value)}
+                        value={params.allocToSavings ? formatNumberInput(String(params.allocToSavings)) : ''}
+                        onValueChange={(v) => handleParamChange('allocToSavings', v)}
                         className="text-left"
                         dir="ltr"
                       />
                     </div>
                     <div>
                       <Label htmlFor="allocAssets">הקצאה לנכסים</Label>
-                      <Input
+                      <FormattedNumberInput
                         id="allocAssets"
-                        type="number"
-                        value={params.allocToAssets}
-                        onChange={(e) => handleParamChange('allocToAssets', e.target.value)}
+                        value={params.allocToAssets ? formatNumberInput(String(params.allocToAssets)) : ''}
+                        onValueChange={(v) => handleParamChange('allocToAssets', v)}
                         className="text-left"
                         dir="ltr"
                       />
@@ -715,7 +715,7 @@ export default function FinancialDynamicsPage() {
                     step={1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-gray-500">
+                  <div className="flex justify-between text-xs text-slate-500">
                     <span>התחלה</span>
                     <span>{Math.floor((timeline.length - 1) / 12)} שנים</span>
                   </div>
@@ -762,7 +762,7 @@ export default function FinancialDynamicsPage() {
                     step={0.5}
                     className="w-full"
                   />
-                  <div className="text-center text-xs text-gray-500 mt-1">
+                  <div className="text-center text-xs text-slate-500 mt-1">
                     x{playSpeed}
                   </div>
                 </div>
@@ -788,7 +788,7 @@ export default function FinancialDynamicsPage() {
                       onChange={(e) => setSavingsPaymentDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
                       className="text-center font-bold"
                     />
-                    <p className="text-xs text-gray-500 mt-1">יום 1-31 בכל חודש</p>
+                    <p className="text-xs text-slate-500 mt-1">יום 1-31 בכל חודש</p>
                   </div>
                   
                   <div>
@@ -802,11 +802,11 @@ export default function FinancialDynamicsPage() {
                       onChange={(e) => setDebtPaymentDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
                       className="text-center font-bold"
                     />
-                    <p className="text-xs text-gray-500 mt-1">יום 1-31 בכל חודש</p>
+                    <p className="text-xs text-slate-500 mt-1">יום 1-31 בכל חודש</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-green-500" />
                     <span className="text-sm">חיסכון: יום {savingsPaymentDay}</span>
@@ -924,19 +924,19 @@ export default function FinancialDynamicsPage() {
                 <div className="text-3xl font-bold text-green-600">
                   ₪{currentState.wealth.toLocaleString()}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   חיסכון + נכסים - חוב
                 </p>
                 <div className="mt-4 space-y-1">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span>חיסכון</span>
                     <span className="font-medium">₪{currentState.savings.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span>נכסים</span>
                     <span className="font-medium">₪{currentState.assets.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-info">
                     <span>חוב</span>
                     <span className="font-medium text-red-600">-₪{currentState.debt.toLocaleString()}</span>
                   </div>
@@ -952,7 +952,7 @@ export default function FinancialDynamicsPage() {
                 <div className="text-3xl font-bold text-red-600">
                   ₪{currentState.lost.toLocaleString()}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   ריבית ששולמה על חובות
                 </p>
                 <Alert className="mt-4">
@@ -971,7 +971,7 @@ export default function FinancialDynamicsPage() {
                 <div className={`text-3xl font-bold ${currentState.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   ₪{currentState.netCashFlow.toLocaleString()}
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-600 mt-2">
                   הכנסה - הוצאות
                 </p>
               </CardContent>

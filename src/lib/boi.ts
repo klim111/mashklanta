@@ -1,44 +1,55 @@
+import { fallbackMarketRates, type MarketRatesSnapshot } from './market-rates';
+import { getSharedMarketRates } from './market-rates-store';
+import { defaultRateFor } from './rate-anchors';
+
 export type RatesQuery = { from?: string; to?: string };
 
-function buildFallbackRates(asOfDate?: string) {
-  const asOf = asOfDate || new Date().toISOString().slice(0, 10);
-  // Conservative placeholders to avoid over-promising if real API is unavailable
-  // The UI will map relevant keys per track id
-  return {
-    prime: 6.0,
-    fixed_unlinked: 3.8,
-    fixed_cpi: 4.2,
-    gov_bonds: 3.5,
-    gov_bonds_cpi: 3.7,
-    asOf,
-    source: "fallback",
-  } as const;
+export interface BoiRatesPayload {
+  /** ריבית הפריים במשק — ריבית בנק ישראל + 1.5% */
+  prime: number;
+  /** ריבית בנק ישראל עצמה */
+  boi: number;
+  /** קל"צ — ריבית קבועה לא צמודה, מצוטטת על ידי הבנק ולא נגזרת מעוגן */
+  fixed_unlinked: number;
+  /** ק"צ — ריבית קבועה צמודה, מצוטטת על ידי הבנק */
+  fixed_cpi: number;
+  /** מל"צ 5 — עקום אפס נומינלי ל-5 שנים + מרווח */
+  gov_bonds: number;
+  /** מ"צ 5 — עקום אפס ריאלי ל-5 שנים + מרווח */
+  gov_bonds_cpi: number;
+  asOf: string;
+  source: MarketRatesSnapshot['source'];
 }
 
-export async function fetchBoiRates({ from, to }: RatesQuery): Promise<any> {
-  const base = process.env.BOI_RATES_URL;
-  const asOf = to || from || new Date().toISOString().slice(0, 10);
+/**
+ * ריביות המסלולים לפי הנתונים החיים של בנק ישראל.
+ *
+ * כל ריבית נבנית מעוגן שנמשך מבנק ישראל ומהמרווח הבנקאי הטיפוסי של אותו מסלול,
+ * ולכן היא זזה עם השוק במקום להישאר על ערך שנכתב בקוד.
+ */
+export function ratesFromSnapshot(snapshot: MarketRatesSnapshot): BoiRatesPayload {
+  return {
+    prime: snapshot.primeRate,
+    boi: snapshot.boiRate,
+    fixed_unlinked: defaultRateFor('fixed_unlinked', snapshot),
+    fixed_cpi: defaultRateFor('fixed_linked', snapshot),
+    gov_bonds: defaultRateFor('variable_unlinked', snapshot, { variablePeriod: 5 }),
+    gov_bonds_cpi: defaultRateFor('variable_linked', snapshot, { variablePeriod: 5 }),
+    asOf: snapshot.boiRateAsOf || snapshot.fetchedAt.slice(0, 10),
+    source: snapshot.source,
+  };
+}
 
-  if (!base) {
-    return buildFallbackRates(asOf);
-  }
-
+/**
+ * הריביות העדכניות של בנק ישראל.
+ *
+ * `from`/`to` נשמרים לתאימות לאחור עם קוראים קיימים; הנתונים עצמם הם תמיד
+ * העדכניים ביותר שפורסמו, כי ריבית שמוצגת בכלי חישוב חייבת להיות ריבית היום.
+ */
+export async function fetchBoiRates(_query: RatesQuery = {}): Promise<BoiRatesPayload> {
   try {
-    const url = new URL(base);
-    if (from) url.searchParams.set("from", from);
-    if (to) url.searchParams.set("to", to);
-
-    const res = await fetch(url.toString(), {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      // fall back instead of throwing to avoid 502 to clients
-      return buildFallbackRates(asOf);
-    }
-    return await res.json();
+    return ratesFromSnapshot(await getSharedMarketRates());
   } catch {
-    // Network/parse error – return safe fallback
-    return buildFallbackRates(asOf);
+    return ratesFromSnapshot(fallbackMarketRates());
   }
 }

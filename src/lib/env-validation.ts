@@ -16,6 +16,9 @@ export function validateEnvVariables() {
     TURN_REALM: process.env.TURN_REALM,
     TURN_STATIC_AUTH_SECRET: process.env.TURN_STATIC_AUTH_SECRET,
     TURN_URL: process.env.TURN_URL,
+
+    // Field-level encryption for sensitive client data
+    FIELD_ENCRYPTION_KEY: process.env.FIELD_ENCRYPTION_KEY,
   };
 
   // Optional but recommended
@@ -42,6 +45,15 @@ export function validateEnvVariables() {
     
     if (validUrls.length === 0) {
       errors.push('TURN_URL must start with "turn:" or "turns:" (e.g., turn:example.com:3478)');
+    }
+  }
+
+  // A wrong-length key fails only when a client record is first read or written,
+  // which can be long after deploy — so it is checked up front
+  if (required.FIELD_ENCRYPTION_KEY) {
+    const keyBytes = Buffer.from(required.FIELD_ENCRYPTION_KEY, 'base64').length;
+    if (keyBytes !== 32) {
+      errors.push(`FIELD_ENCRYPTION_KEY must decode to 32 bytes, got ${keyBytes}`);
     }
   }
 

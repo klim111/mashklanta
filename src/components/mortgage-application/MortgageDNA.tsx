@@ -206,7 +206,7 @@ export function MortgageDNA({ onProfileComplete }: MortgageDNAProps) {
         <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
           <Dna className="w-8 h-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">
+        <h2 className="text-subtitle font-bold text-slate-800 mb-2">
           בואו נכיר את ההעדפות שלכם
         </h2>
         <p className="text-slate-600">
@@ -251,7 +251,7 @@ export function MortgageDNA({ onProfileComplete }: MortgageDNAProps) {
         >
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-semibold text-slate-800 mb-3">
+              <h3 className="text-subtitle font-semibold text-slate-800 mb-3">
                 {currentQ?.question}
               </h3>
               <div className="flex items-start gap-2 text-sm text-slate-600">

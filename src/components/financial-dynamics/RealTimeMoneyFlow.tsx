@@ -110,7 +110,7 @@ const ModernProgressBar: React.FC<{
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5 }}
       onClick={onClick}
-      className={`relative ${layerStyles[layer || 'middle']} bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl overflow-hidden border-2 ${isSelected ? 'border-blue-500' : 'border-gray-200'} shadow-sm hover:shadow-md transition-all duration-300 ${onClick ? 'cursor-pointer' : ''}`}
+      className={`relative ${layerStyles[layer || 'middle']} bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl overflow-hidden border-2 ${isSelected ? 'border-blue-500' : 'border-slate-200'} shadow-sm hover:shadow-md transition-all duration-300 ${onClick ? 'cursor-pointer' : ''}`}
       whileHover={onClick ? { scale: 1.02 } : {}}
       whileTap={onClick ? { scale: 0.98 } : {}}
     >
@@ -238,9 +238,9 @@ const ModernProgressBar: React.FC<{
 
           {/* Label and Value */}
           <div>
-            <h3 className="font-bold text-gray-800 text-lg">{label}</h3>
+            <h3 className="font-bold text-slate-800 text-subtitle">{label}</h3>
             {sublabel && (
-              <p className="text-xs text-gray-500">{sublabel}</p>
+              <p className="text-xs text-slate-500">{sublabel}</p>
             )}
           </div>
         </div>
@@ -253,10 +253,10 @@ const ModernProgressBar: React.FC<{
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
-          <div className="text-2xl font-bold text-gray-900">
+          <div className="text-2xl font-bold text-slate-900">
             ₪{value.toLocaleString()}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-slate-500">
             {percentage.toFixed(1)}%
           </div>
         </motion.div>
@@ -1007,15 +1007,15 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                               e.stopPropagation();
                               setDebtDetailOpen(false);
                             }}
-                            className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-gray-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
+                            className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-slate-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
                             title="סגור פירוט"
                           >
-                            <span className="text-gray-600">סגור</span>
+                            <span className="text-slate-600">סגור</span>
                             <motion.div
                               animate={{ rotate: 180 }}
                               transition={{ duration: 0.2 }}
                             >
-                              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                               </svg>
                             </motion.div>
@@ -1055,15 +1055,15 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                               e.stopPropagation();
                               setSavingsDetailOpen(false);
                             }}
-                            className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-gray-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
+                            className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-slate-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
                             title="סגור פירוט"
                           >
-                            <span className="text-gray-600">סגור</span>
+                            <span className="text-slate-600">סגור</span>
                             <motion.div
                               animate={{ rotate: 180 }}
                               transition={{ duration: 0.2 }}
                             >
-                              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                               </svg>
                             </motion.div>
@@ -1103,15 +1103,15 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                               e.stopPropagation();
                               setAssetsDetailOpen(false);
                             }}
-                            className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-gray-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
+                            className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-slate-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
                             title="סגור פירוט"
                           >
-                            <span className="text-gray-600">סגור</span>
+                            <span className="text-slate-600">סגור</span>
                             <motion.div
                               animate={{ rotate: 180 }}
                               transition={{ duration: 0.2 }}
                             >
-                              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                               </svg>
                             </motion.div>
@@ -1151,15 +1151,15 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                             e.stopPropagation();
                             setSavingsDetailOpen(!savingsDetailOpen);
                           }}
-                          className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-gray-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
+                          className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-slate-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
                           title={savingsDetailOpen ? "סגור פירוט" : "פתח פירוט"}
                         >
-                          <span className="text-gray-600">פירוט</span>
+                          <span className="text-slate-600">פירוט</span>
                           <motion.div
                             animate={{ rotate: savingsDetailOpen ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </motion.div>
@@ -1174,7 +1174,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                           className={`flex items-center gap-1 px-2 py-1 border rounded-full shadow-sm transition-all duration-200 text-xs ${
                             costsRowOpen && activeCostsType === 'savings' 
                               ? 'bg-green-100 border-green-300 text-green-700' 
-                              : 'bg-white/90 border-gray-300 text-gray-600 hover:bg-white'
+                              : 'bg-white/90 border-slate-300 text-slate-600 hover:bg-white'
                           }`}
                           title={costsRowOpen && activeCostsType === 'savings' ? "סגור עלויות" : "פתח עלויות"}
                         >
@@ -1220,15 +1220,15 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                             e.stopPropagation();
                             setAssetsDetailOpen(!assetsDetailOpen);
                           }}
-                          className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-gray-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
+                          className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-slate-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
                           title={assetsDetailOpen ? "סגור פירוט" : "פתח פירוט"}
                         >
-                          <span className="text-gray-600">פירוט</span>
+                          <span className="text-slate-600">פירוט</span>
                           <motion.div
                             animate={{ rotate: assetsDetailOpen ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </motion.div>
@@ -1243,7 +1243,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                           className={`flex items-center gap-1 px-2 py-1 border rounded-full shadow-sm transition-all duration-200 text-xs ${
                             costsRowOpen && activeCostsType === 'assets' 
                               ? 'bg-purple-100 border-purple-300 text-purple-700' 
-                              : 'bg-white/90 border-gray-300 text-gray-600 hover:bg-white'
+                              : 'bg-white/90 border-slate-300 text-slate-600 hover:bg-white'
                           }`}
                           title={costsRowOpen && activeCostsType === 'assets' ? "סגור עלויות" : "פתח עלויות"}
                         >
@@ -1289,15 +1289,15 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                             e.stopPropagation();
                             setDebtDetailOpen(!debtDetailOpen);
                           }}
-                          className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-gray-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
+                          className="flex items-center gap-1 px-2 py-1 bg-white/90 border border-slate-300 rounded-full hover:bg-white shadow-sm transition-all duration-200 text-xs"
                           title={debtDetailOpen ? "סגור פירוט" : "פתח פירוט"}
                         >
-                          <span className="text-gray-600">פירוט</span>
+                          <span className="text-slate-600">פירוט</span>
                           <motion.div
                             animate={{ rotate: debtDetailOpen ? 180 : 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </motion.div>
@@ -1312,7 +1312,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                           className={`flex items-center gap-1 px-2 py-1 border rounded-full shadow-sm transition-all duration-200 text-xs ${
                             costsRowOpen && activeCostsType === 'debt' 
                               ? 'bg-red-100 border-red-300 text-red-700' 
-                              : 'bg-white/90 border-gray-300 text-gray-600 hover:bg-white'
+                              : 'bg-white/90 border-slate-300 text-slate-600 hover:bg-white'
                           }`}
                           title={costsRowOpen && activeCostsType === 'debt' ? "סגור עלויות" : "פתח עלויות"}
                         >
@@ -1452,11 +1452,11 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                       transition={{ duration: 0.2, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="space-y-4">
                           {/* Mortgage Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <Home className="w-4 h-4" />
                               משכנתא - ₪{debtBreakdown.mortgage.total.toLocaleString()}
                             </h4>
@@ -1467,7 +1467,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: index * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${
@@ -1475,16 +1475,16 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                       track.type === 'prime' ? 'bg-green-500' : 'bg-purple-500'
                                     }`} />
                                     <div>
-                                      <div className="font-medium text-gray-800">{track.name}</div>
-                                      <div className="text-xs text-gray-500">
+                                      <div className="font-medium text-slate-800">{track.name}</div>
+                                      <div className="text-xs text-slate-500">
                                         {track.type === 'fixed' ? 'ריבית קבועה' :
                                          track.type === 'prime' ? 'ריבית פריים' : 'ריבית משתנה'}
                                       </div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{track.amount.toLocaleString()}</div>
-                                    <div className="text-sm text-gray-600">{track.rate}%</div>
+                                    <div className="font-semibold text-slate-800">₪{track.amount.toLocaleString()}</div>
+                                    <div className="text-sm text-slate-600">{track.rate}%</div>
                                   </div>
                                 </motion.div>
                               ))}
@@ -1493,7 +1493,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
 
                           {/* Loans Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <CreditCard className="w-4 h-4" />
                               הלוואות - ₪{debtBreakdown.loans.total.toLocaleString()}
                             </h4>
@@ -1504,18 +1504,18 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: (index + 3) * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-3 h-3 rounded-full bg-orange-500" />
                                     <div>
-                                      <div className="font-medium text-gray-800">{loan.name}</div>
-                                      <div className="text-xs text-gray-500">הלוואה</div>
+                                      <div className="font-medium text-slate-800">{loan.name}</div>
+                                      <div className="text-xs text-slate-500">הלוואה</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{loan.amount.toLocaleString()}</div>
-                                    <div className="text-sm text-gray-600">{loan.rate}%</div>
+                                    <div className="font-semibold text-slate-800">₪{loan.amount.toLocaleString()}</div>
+                                    <div className="text-sm text-slate-600">{loan.rate}%</div>
                                   </div>
                                 </motion.div>
                               ))}
@@ -1568,11 +1568,11 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                       transition={{ duration: 0.2, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="space-y-4">
                           {/* Pension Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <PiggyBank className="w-4 h-4" />
                               פנסיה וחסכונות ארוכי טווח - ₪{savingsBreakdown.pension.total.toLocaleString()}
                             </h4>
@@ -1583,7 +1583,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: index * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${
@@ -1591,13 +1591,13 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                       item.type === 'education' ? 'bg-green-500' : 'bg-purple-500'
                                     }`} />
                                     <div>
-                                      <div className="font-medium text-gray-800">{item.name}</div>
-                                      <div className="text-xs text-gray-500">{item.period}</div>
+                                      <div className="font-medium text-slate-800">{item.name}</div>
+                                      <div className="text-xs text-slate-500">{item.period}</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{item.amount.toLocaleString()}</div>
-                                    <div className="text-sm text-gray-600">{item.rate}%</div>
+                                    <div className="font-semibold text-slate-800">₪{item.amount.toLocaleString()}</div>
+                                    <div className="text-sm text-slate-600">{item.rate}%</div>
                                   </div>
                                 </motion.div>
                               ))}
@@ -1606,7 +1606,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
 
                           {/* Monthly Savings Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <Banknote className="w-4 h-4" />
                               חסכונות חודשיים - ₪{savingsBreakdown.monthlySavings.total.toLocaleString()}
                             </h4>
@@ -1617,7 +1617,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: (index + 3) * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${
@@ -1625,13 +1625,13 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                       item.type === 'deposit' ? 'bg-orange-500' : 'bg-blue-500'
                                     }`} />
                                     <div>
-                                      <div className="font-medium text-gray-800">{item.name}</div>
-                                      <div className="text-xs text-gray-500">{item.period}</div>
+                                      <div className="font-medium text-slate-800">{item.name}</div>
+                                      <div className="text-xs text-slate-500">{item.period}</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{item.amount.toLocaleString()}</div>
-                                    <div className="text-sm text-gray-600">{item.rate}%</div>
+                                    <div className="font-semibold text-slate-800">₪{item.amount.toLocaleString()}</div>
+                                    <div className="text-sm text-slate-600">{item.rate}%</div>
                                   </div>
                                 </motion.div>
                               ))}
@@ -1684,11 +1684,11 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                       transition={{ duration: 0.2, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                         <div className="space-y-4">
                           {/* Real Estate Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <Home className="w-4 h-4" />
                               נדלן - ₪{assetsBreakdown.realEstate.total.toLocaleString()}
                             </h4>
@@ -1699,19 +1699,19 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: index * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${
                                       item.type === 'residential' ? 'bg-blue-500' : 'bg-green-500'
                                     }`} />
                                     <div>
-                                      <div className="font-medium text-gray-800">{item.name}</div>
-                                      <div className="text-xs text-gray-500">{item.location}</div>
+                                      <div className="font-medium text-slate-800">{item.name}</div>
+                                      <div className="text-xs text-slate-500">{item.location}</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{item.value.toLocaleString()}</div>
+                                    <div className="font-semibold text-slate-800">₪{item.value.toLocaleString()}</div>
                                     <div className="text-sm text-green-600">+₪{(item.value - item.amount).toLocaleString()}</div>
                                   </div>
                                 </motion.div>
@@ -1721,7 +1721,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
 
                           {/* Stocks Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <TrendingUp className="w-4 h-4" />
                               מניות - ₪{assetsBreakdown.stocks.total.toLocaleString()}
                             </h4>
@@ -1732,19 +1732,19 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: (index + 2) * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${
                                       item.type === 'local' ? 'bg-blue-500' : 'bg-purple-500'
                                     }`} />
                                     <div>
-                                      <div className="font-medium text-gray-800">{item.name}</div>
-                                      <div className="text-xs text-gray-500">{item.sector}</div>
+                                      <div className="font-medium text-slate-800">{item.name}</div>
+                                      <div className="text-xs text-slate-500">{item.sector}</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{item.value.toLocaleString()}</div>
+                                    <div className="font-semibold text-slate-800">₪{item.value.toLocaleString()}</div>
                                     <div className="text-sm text-green-600">+₪{(item.value - item.amount).toLocaleString()}</div>
                                   </div>
                                 </motion.div>
@@ -1754,7 +1754,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
 
                           {/* Bonds Section */}
                           <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                               <DollarSign className="w-4 h-4" />
                               אג״ח - ₪{assetsBreakdown.bonds.total.toLocaleString()}
                             </h4>
@@ -1765,19 +1765,19 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                                   initial={{ opacity: 0, x: -20 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: (index + 4) * 0.05, duration: 0.15 }}
-                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200"
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-3 h-3 rounded-full ${
                                       item.type === 'government' ? 'bg-green-500' : 'bg-orange-500'
                                     }`} />
                                     <div>
-                                      <div className="font-medium text-gray-800">{item.name}</div>
-                                      <div className="text-xs text-gray-500">{item.yield}% תשואה</div>
+                                      <div className="font-medium text-slate-800">{item.name}</div>
+                                      <div className="text-xs text-slate-500">{item.yield}% תשואה</div>
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-semibold text-gray-800">₪{item.value.toLocaleString()}</div>
+                                    <div className="font-semibold text-slate-800">₪{item.value.toLocaleString()}</div>
                                     <div className="text-sm text-green-600">+₪{(item.value - item.amount).toLocaleString()}</div>
                                   </div>
                                 </motion.div>
@@ -1897,11 +1897,11 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
-              className="mt-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200"
+              className="mt-6 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200"
             >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">לוח שנה - ציר זמן</h3>
-                <span className="text-sm font-medium text-gray-600 min-w-[200px] text-center bg-gray-50 rounded px-2 py-1">
+                <h3 className="text-sm font-semibold text-slate-700">לוח שנה - ציר זמן</h3>
+                <span className="text-sm font-medium text-slate-600 min-w-[200px] text-center bg-slate-50 rounded px-2 py-1">
                   {formatDate(currentDate)}
                 </span>
               </div>
@@ -1914,7 +1914,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                  savingsPaymentDay={savingsPaymentDay}
                />
               
-              <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
+              <div className="flex justify-between items-center text-xs text-slate-500 mt-2">
                 <div>
                   <span>היום: {new Date().toLocaleDateString('he-IL')}</span>
                   <span className="mx-2">|</span>
@@ -1940,7 +1940,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
               </div>
               
               {/* Debug Info */}
-              <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
+              <div className="mt-2 p-2 bg-slate-100 rounded text-xs">
                 <div className="grid grid-cols-3 gap-2">
                   <div>נזיל: ₪{displayState.liquid.toLocaleString()}</div>
                   <div>חוב: ₪{displayState.debt.toLocaleString()}</div>
@@ -1952,13 +1952,13 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
 
           {/* Dynamic Chart Based on Selection */}
           <motion.div 
-            className="mt-6 p-4 bg-gray-50 rounded-xl"
+            className="mt-6 p-4 bg-slate-50 rounded-xl"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
           >
             <div className="mb-2">
-              <h3 className="text-sm font-semibold text-gray-700">
+              <h3 className="text-sm font-semibold text-slate-700">
                 דינמיקת {selectedMetric === 'liquid' ? 'כסף נזיל' : 
                          selectedMetric === 'debt' ? 'חוב' :
                          selectedMetric === 'savings' ? 'חסכונות' :
@@ -1999,25 +1999,25 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
 
           {/* Summary Stats */}
           <motion.div 
-            className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200"
+            className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-200"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
           >
             <div className="text-center">
-              <p className="text-sm text-gray-500">תזרים נטו</p>
+              <p className="text-sm text-slate-500">תזרים נטו</p>
               <p className={`text-xl font-bold ${displayState.netCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 ₪{displayState.netCashFlow.toLocaleString()}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-500">סה"כ הקצאות</p>
+              <p className="text-sm text-slate-500">סה"כ הקצאות</p>
               <p className="text-xl font-bold text-blue-600">
                 ₪{(displayState.debtPayment + displayState.savingsDeposit + displayState.assetsInvestment).toLocaleString()}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-500">רווח מריבית</p>
+              <p className="text-sm text-slate-500">רווח מריבית</p>
               <p className="text-xl font-bold text-purple-600">
                 ₪{(displayState.savingsInterest + displayState.assetsGrowth).toLocaleString()}
               </p>

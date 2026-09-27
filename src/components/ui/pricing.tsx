@@ -97,8 +97,8 @@ export default function Pricing() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl font-bold mb-4">מודל המחירים שלנו</h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <h2 className="text-title font-bold mb-4">מודל המחירים שלנו</h2>
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             בחר את הפתרון המתאים לך - מהכלים הבסיסיים ועד לייעוץ מלא
           </p>
         </motion.div>
@@ -134,7 +134,7 @@ export default function Pricing() {
                 </motion.div>
               )}
               
-              <Card className={`h-full ${plan.popular ? 'border-2 border-yellow-400 shadow-xl' : 'border border-gray-200'}`}>
+              <Card className={`h-full ${plan.popular ? 'border-2 border-yellow-400 shadow-xl' : 'border border-slate-200'}`}>
                 <CardHeader className="text-center pb-6">
                   <motion.div
                     className={`w-16 h-16 mx-auto rounded-full ${plan.color} flex items-center justify-center mb-4`}
@@ -144,13 +144,13 @@ export default function Pricing() {
                     <plan.icon className="w-8 h-8 text-white" />
                   </motion.div>
                   <CardTitle className="text-2xl font-bold mb-2">{plan.name}</CardTitle>
-                  <p className="text-gray-600">{plan.description}</p>
+                  <p className="text-slate-600">{plan.description}</p>
                 </CardHeader>
                 
                 <CardContent className="text-center">
                   <div className="mb-6">
-                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                    <span className="text-gray-600 ml-2">{plan.period}</span>
+                    <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
+                    <span className="text-slate-600 ml-2">{plan.period}</span>
                   </div>
                   
                   <ul className="space-y-3 mb-8 text-right">
@@ -163,7 +163,7 @@ export default function Pricing() {
                         className="flex items-center gap-3"
                       >
                         <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
+                        <span className="text-slate-700">{feature}</span>
                       </motion.li>
                     ))}
                   </ul>
@@ -192,7 +192,7 @@ export default function Pricing() {
           viewport={{ once: true }}
           className="mt-16 text-center"
         >
-          <Card className="max-w-4xl mx-auto p-8 bg-gray-50">
+          <Card className="max-w-4xl mx-auto p-8 bg-slate-50">
             <CardHeader>
               <CardTitle className="text-2xl font-bold mb-4 flex items-center justify-center gap-2">
                 <Zap className="w-6 h-6 text-yellow-500" />
@@ -202,16 +202,16 @@ export default function Pricing() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                 <div>
-                  <h3 className="font-bold text-lg mb-2">חיסכון משמעותי</h3>
-                  <p className="text-gray-600">חסכו עד ₪270,000 בממוצע למשפחה</p>
+                  <h3 className="font-bold text-subtitle mb-2">חיסכון משמעותי</h3>
+                  <p className="text-slate-600">חסכו עד ₪270,000 בממוצע למשפחה</p>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg mb-2">זמן מהיר</h3>
-                  <p className="text-gray-600">תהליך מהיר של 30 דקות במקום שבועות</p>
+                  <h3 className="font-bold text-subtitle mb-2">זמן מהיר</h3>
+                  <p className="text-slate-600">תהליך מהיר של 30 דקות במקום שבועות</p>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg mb-2">שקיפות מלאה</h3>
-                  <p className="text-gray-600">כל המידע והחישובים גלויים לכם</p>
+                  <h3 className="font-bold text-subtitle mb-2">שקיפות מלאה</h3>
+                  <p className="text-slate-600">כל המידע והחישובים גלויים לכם</p>
                 </div>
               </div>
             </CardContent>
