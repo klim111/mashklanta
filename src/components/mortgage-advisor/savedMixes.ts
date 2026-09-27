@@ -6,7 +6,7 @@ import { computeMix } from './engine';
 import type { WorkspaceMix } from './engine';
 import { toSavedMix } from './mixRecord';
 import type { SavedMix } from './mixRecord';
-import { demoSavedMix, isDemoPlan } from '@/lib/demo-plan';
+import { demoPricedMixes, demoSavedMix, isDemoPlan } from '@/lib/demo-plan';
 
 export type { SavedMix } from './mixRecord';
 
@@ -47,7 +47,7 @@ function writeLocal(items: SavedMix[]) {
  */
 let demoStore: SavedMix[] | null = null;
 function readDemo(): SavedMix[] {
-  if (!demoStore) demoStore = [demoSavedMix()];
+  if (!demoStore) demoStore = [demoSavedMix(), ...demoPricedMixes()];
   return demoStore;
 }
 function writeDemo(items: SavedMix[]) {

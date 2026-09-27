@@ -12,6 +12,8 @@
 import { computeMix, createWorkspaceMix, createTrack } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
+import { buildQuotedMix } from '@/components/mortgage-advisor/bankQuote/quote';
+import type { MortgageBank } from '@/components/mortgage-advisor/types';
 import { emptyPlanData } from './mortgage-plan';
 import type { PlanData } from './mortgage-plan';
 import type { PlanDocumentView } from './plan-documents';
@@ -75,6 +77,35 @@ export function demoSavedMix(): SavedMix {
     locked: true,
     sharedWithClient: true,
   };
+}
+
+/** הצעות הריבית של שלושת הבנקים על התמהיל הסופי — כך שלב המכרז מציג השוואה */
+export function demoPricedMixes(): SavedMix[] {
+  const source = demoSavedMix().mix;
+  const offers: Array<{ bank: MortgageBank; days: number; rates: [number, number, number] }> = [
+    { bank: 'לאומי', days: -4, rates: [4.85, 5.35, 4.55] },
+    { bank: 'הפועלים', days: -3, rates: [4.7, 5.25, 4.45] },
+    { bank: 'מזרחי', days: -2, rates: [4.55, 5.15, 4.3] },
+  ];
+  return offers.map(({ bank, days, rates }, index) => {
+    const mix = buildQuotedMix({
+      source,
+      bank,
+      receivedAt: daysFromNow(days),
+      rates: Object.fromEntries(source.tracks.map((track, i) => [track.id, rates[i]])),
+    });
+    return {
+      recordId: `demo-priced-${index}`,
+      mix,
+      summary: computeMix(mix).summary,
+      savedAt: daysFromNow(days),
+      planId: DEMO_PLAN_ID,
+      planAddress: DEMO_ADDRESS,
+      isFinal: false,
+      locked: false,
+      sharedWithClient: true,
+    };
+  });
 }
 
 /** האישורים העקרוניים לדוגמה, כקבצים בתיק המסמכים — כך שלב 3 מציג אותם */

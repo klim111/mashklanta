@@ -20,6 +20,7 @@ import {
   DEMO_PLAN_ID,
   DEMO_PROPERTY_VALUE,
   demoPlanData,
+  demoPricedMixes,
   demoSavedMix,
 } from '@/lib/demo-plan';
 import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
@@ -92,7 +93,7 @@ export function demoAlternativeMix(): SavedMix {
 }
 
 export function demoMixes(): SavedMix[] {
-  return [demoSavedMix(), demoAlternativeMix()];
+  return [demoSavedMix(), demoAlternativeMix(), ...demoPricedMixes()];
 }
 
 export function demoMeetings(): AdvisorMeetingView[] {

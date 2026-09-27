@@ -160,6 +160,19 @@ export const DEMO_CATALOG: DemoCatalogEntry[] = [
     minutes: 2,
     load: () => import('./flows/promo'),
   },
+  {
+    // המסכים של סרטון השיווק (scripts/marketing-video). לא מוצג בכרטיסים ולא במסך /demo
+    id: 'marketing',
+    title: 'סרטון שיווק',
+    description: 'המסכים שמהם מוקלט סרטון השיווק.',
+    icon: Clapperboard,
+    gradient: 'from-blue-600 to-indigo-700',
+    route: '/demo/dashboard',
+    category: 'overview',
+    order: 100,
+    minutes: 3,
+    load: () => import('./flows/marketing'),
+  },
 ];
 
 export const featuredDemos = () =>

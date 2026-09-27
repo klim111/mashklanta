@@ -19,7 +19,7 @@ function demoPlan(): PlanView {
   const now = new Date().toISOString();
   return {
     id: DEMO_PLAN_ID,
-    name: 'סיור היכרות בכלי',
+    name: 'הדירה בתל אביב',
     status: 'IN_PROGRESS',
     kind: 'NEW',
     refinanceMode: null,
