@@ -257,7 +257,7 @@ export function isReservedMailboxName(name: string, systemAddress?: string | nul
  * נוסף לו מספר.
  */
 export function mailboxNameBase(usernameOrEmail: string | null | undefined): string {
-  const local = normalizeEmail(usernameOrEmail).split('@')[0].replace(/\+.*$/, '');
+  const local = normalizeEmail(usernameOrEmail).split('@')[0].replace(/\+.*$/, '').replace(/\s+/g, '.');
   const clean = local
     .replace(/[^a-z0-9._-]/g, '')
     .replace(/[._-]{2,}/g, (run) => run[0])
@@ -266,7 +266,30 @@ export function mailboxNameBase(usernameOrEmail: string | null | undefined): str
     .replace(/[._-]+$/, '')
     // c-… שמור לכתובות הישנות
     .replace(/^c-/, 'c');
-  return clean || 'client';
+  return clean || FALLBACK_MAILBOX_NAME;
+}
+
+/** השם שניתן כשאין ממה לבנות כתובת — ואז נוסף לו מספר (client2) */
+export const FALLBACK_MAILBOX_NAME = 'client';
+
+export function isFallbackMailboxName(name: string | null | undefined): boolean {
+  return Boolean(name) && /^client\d*$/.test(name!);
+}
+
+/**
+ * ממה בונים את הכתובת האישית: שם המשתמש, אם הוא באותיות לועזיות; אחרת השם
+ * המלא, אם הוא באנגלית (igor.lebedinsky); אחרת החלק שלפני ה-@ במייל של
+ * הלקוח. שם בעברית לא הופך לכתובת, כי תעתיק אוטומטי יוצא משובש.
+ */
+export function mailboxNameSource(user: {
+  username?: string | null;
+  name?: string | null;
+  email?: string | null;
+}): string | null {
+  for (const source of [user.username, user.name, user.email]) {
+    if (source && mailboxNameBase(source) !== FALLBACK_MAILBOX_NAME) return source;
+  }
+  return user.email ?? user.username ?? null;
 }
 
 /**
@@ -276,6 +299,11 @@ export function mailboxNameBase(usernameOrEmail: string | null | undefined): str
 export function mailboxNameCandidates(email: string | null | undefined, systemAddress?: string | null, count = 20): string[] {
   const base = mailboxNameBase(email);
   const names: string[] = [];
+  // בלי שם — מספר אקראי, כדי שכתובת כללית של לקוח אחד לא תעבור ללקוח אחר
+  if (base === FALLBACK_MAILBOX_NAME) {
+    while (names.length < count) names.push(`${base}${Math.floor(100000 + Math.random() * 900000)}`);
+    return names;
+  }
   if (!isReservedMailboxName(base, systemAddress) && MAILBOX_NAME_PATTERN.test(base)) names.push(base);
   for (let index = 2; names.length < count; index++) names.push(`${base}${index}`);
   return names;

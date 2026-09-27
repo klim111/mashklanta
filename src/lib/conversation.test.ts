@@ -9,6 +9,8 @@ import {
   mailboxAddress,
   mailboxNameBase,
   mailboxNameCandidates,
+  mailboxNameSource,
+  isFallbackMailboxName,
   mailboxTargets,
   addressedToDomains,
   domainList,
@@ -59,6 +61,19 @@ describe('mailbox routing', () => {
     expect(mailboxNameCandidates('igor@gmail.com', null, 3)).toEqual(['igor', 'igor2', 'igor3']);
     expect(mailboxNameCandidates('info@company.co.il', null, 2)).toEqual(['info2', 'info3']);
     expect(mailboxNameCandidates('hi@company.co.il', 'hi@mashkalanta.com', 1)).toEqual(['hi2']);
+    expect(mailboxNameCandidates('דני@walla.co.il', null, 2)).toEqual([
+      expect.stringMatching(/^client\d{6}$/),
+      expect.stringMatching(/^client\d{6}$/),
+    ]);
+  });
+
+  it('builds the address from the client name when the username is Hebrew', () => {
+    expect(mailboxNameSource({ username: 'איגור', name: 'Igor Lebedinsky', email: 'klim111@gmail.com' })).toBe('Igor Lebedinsky');
+    expect(mailboxNameBase('Igor Lebedinsky')).toBe('igor.lebedinsky');
+    expect(mailboxNameSource({ username: 'איגור', name: 'איגור לבדינסקי', email: 'igor.l@gmail.com' })).toBe('igor.l@gmail.com');
+    expect(mailboxNameSource({ username: 'igor_l', name: 'Igor', email: 'x@gmail.com' })).toBe('igor_l');
+    expect(isFallbackMailboxName('client2')).toBe(true);
+    expect(isFallbackMailboxName('clientele')).toBe(false);
   });
 
   it('routes personal addresses on our domains only', () => {

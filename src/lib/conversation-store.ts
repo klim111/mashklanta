@@ -20,7 +20,9 @@ import {
   domainList,
   escapeHtml,
   inboundAttachments,
+  isFallbackMailboxName,
   mailboxNameCandidates,
+  mailboxNameSource,
   mailboxTargets,
   senderAllowed,
   storedAttachments,
@@ -788,18 +790,21 @@ export async function saveAttachmentToPlan(
 }
 
 /**
- * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: שם המשתמש שלו
- * (או החלק שלפני ה-@ במייל), ועם מספר כשהשם כבר תפוס.
+ * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: לפי השם של
+ * הלקוח (ראו mailboxNameSource), ועם מספר כשהשם כבר תפוס. לקוח שקיבל קודם
+ * כתובת כללית (client2, כששם המשתמש שלו בעברית) מקבל עכשיו כתובת לפי השם שלו.
  */
 async function ensureMailboxName(clientUserId: string): Promise<string | null> {
   const user = await prisma.user.findUnique({
     where: { id: clientUserId },
-    select: { mailboxName: true, username: true, email: true },
+    select: { mailboxName: true, username: true, name: true, email: true },
   });
   if (!user) return null;
-  if (user.mailboxName) return user.mailboxName;
-  // שם המשתמש, ובלעדיו החלק שלפני ה-@ במייל
-  const candidates = mailboxNameCandidates(user.username || user.email, senderAddress(process.env.EMAIL_FROM));
+  if (user.mailboxName && !isFallbackMailboxName(user.mailboxName)) return user.mailboxName;
+  const candidates = mailboxNameCandidates(mailboxNameSource(user), senderAddress(process.env.EMAIL_FROM));
+  // אין שם טוב יותר — נשארים עם הכתובת הכללית שכבר יש
+  if (user.mailboxName && isFallbackMailboxName(candidates[0])) return user.mailboxName;
+  const current = user.mailboxName;
   const taken = new Set(
     (
       await prisma.user.findMany({ where: { mailboxName: { in: candidates } }, select: { mailboxName: true } })
@@ -810,7 +815,7 @@ async function ensureMailboxName(clientUserId: string): Promise<string | null> {
   free.push(`${candidates[0].replace(/\d+$/, '')}${Math.floor(1000 + Math.random() * 9000)}`);
   for (const name of free) {
     try {
-      const { count } = await prisma.user.updateMany({ where: { id: clientUserId, mailboxName: null }, data: { mailboxName: name } });
+      const { count } = await prisma.user.updateMany({ where: { id: clientUserId, mailboxName: current }, data: { mailboxName: name } });
       if (count === 1) return name;
       // נוצר במקביל בבקשה אחרת
       return (await prisma.user.findUnique({ where: { id: clientUserId }, select: { mailboxName: true } }))?.mailboxName ?? null;
