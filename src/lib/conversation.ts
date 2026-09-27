@@ -38,6 +38,8 @@ export interface ConversationEmailView {
    * לשיחה רק אחרי אישור
    */
   held: boolean;
+  /** נמחק מהפיד ונמצא בארכיון המיילים */
+  archived: boolean;
   attachments: EmailAttachmentView[];
 }
 

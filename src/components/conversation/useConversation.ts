@@ -227,8 +227,8 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
         const matches = (item: ConversationEmailView) => item.held && item.fromAddress === from;
         setEmails((current) =>
           decision === 'approve'
-            ? current.map((item) => (matches(item) ? { ...item, held: false } : item))
-            : current.filter((item) => !matches(item))
+            ? current.map((item) => (matches(item) ? { ...item, held: false, archived: false } : item))
+            : current.map((item) => (matches(item) && !item.archived ? { ...item, archived: true } : item))
         );
         return null;
       } catch {
@@ -238,7 +238,54 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
     [emails]
   );
 
-  return { emails, contacts, folders, ready, sending, error, setError, send, refresh, saveAttachment, reviewSender };
+  /** מחיקה מהפיד לארכיון, או החזרה ממנו. מחזיר הודעת שגיאה, או null כשהצליח */
+  const setArchived = useCallback(
+    async (emailId: string, archived: boolean): Promise<string | null> => {
+      try {
+        const response = await fetch(`/api/conversation/emails/${encodeURIComponent(emailId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archived, clientUserId: clientUserId ?? undefined }),
+        });
+        if (!response.ok) return await readError(response, 'הפעולה נכשלה');
+        setEmails((current) => current.map((item) => (item.id === emailId ? { ...item, archived } : item)));
+        return null;
+      } catch {
+        return 'הפעולה נכשלה. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [clientUserId]
+  );
+
+  /** מחיקה לגמרי מהארכיון (לקוח בלבד), עם גיבוי לתיבה הפרטית אם נבחר */
+  const deleteForever = useCallback(async (emailId: string, backup: boolean): Promise<string | null> => {
+    try {
+      const response = await fetch(`/api/conversation/emails/${encodeURIComponent(emailId)}${backup ? '?backup=1' : ''}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) return await readError(response, 'המחיקה נכשלה');
+      setEmails((current) => current.filter((item) => item.id !== emailId));
+      return null;
+    } catch {
+      return 'המחיקה נכשלה. בדקו את החיבור ונסו שוב';
+    }
+  }, []);
+
+  return {
+    emails,
+    contacts,
+    folders,
+    ready,
+    sending,
+    error,
+    setError,
+    send,
+    refresh,
+    saveAttachment,
+    reviewSender,
+    setArchived,
+    deleteForever,
+  };
 }
 
 /** הכתובת של קובץ מצורף — לצפייה, או להורדה עם `download` */

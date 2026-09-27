@@ -1445,6 +1445,10 @@ model ConversationEmail {
    * אותו והקבצים שלו לא נפתחים
    */
   held            Boolean           @default(false)
+  /**
+   * הועבר לארכיון המיילים (נמחק מהפיד). מחיקה מהארכיון מוחקת את השורה לגמרי
+   */
+  archivedAt      DateTime?
   readByClientAt  DateTime?
   readByAdvisorAt DateTime?
   createdAt       DateTime          @default(now())

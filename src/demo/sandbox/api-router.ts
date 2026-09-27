@@ -495,6 +495,7 @@ export class DemoApiRouter {
           createdAt: nowIso(),
           unread: false,
           held: false,
+          archived: false,
           attachments: [],
         };
         this.emails = [email, ...this.emails];
@@ -503,6 +504,17 @@ export class DemoApiRouter {
       const view = this.emails;
       this.emails = this.emails.map((item) => (item.unread ? { ...item, unread: false } : item));
       return json({ emails: view, contacts: DEMO_CONTACTS, folders: this.demoFolders() });
+    }
+    // ארכיון ומחיקה לגמרי של מייל בהדגמה
+    const single = path.match(/^\/api\/conversation\/emails\/([^/]+)$/);
+    if (single && method === 'PATCH') {
+      const body = await this.body(init, input);
+      this.emails = this.emails.map((item) => (item.id === single[1] ? { ...item, archived: Boolean(body.archived) } : item));
+      return json({ ok: true });
+    }
+    if (single && method === 'DELETE') {
+      this.emails = this.emails.filter((item) => item.id !== single[1]);
+      return json({ ok: true });
     }
     // אישור או מחיקה של שולח לא מוכר במייל ההדגמה
     const sender = path.match(/^\/api\/conversation\/emails\/([^/]+)\/sender$/);
@@ -513,8 +525,8 @@ export class DemoApiRouter {
       const count = this.emails.filter(matches).length;
       this.emails =
         body.decision === 'approve'
-          ? this.emails.map((item) => (matches(item) ? { ...item, held: false } : item))
-          : this.emails.filter((item) => !matches(item));
+          ? this.emails.map((item) => (matches(item) ? { ...item, held: false, archived: false } : item))
+          : this.emails.map((item) => (matches(item) && !item.archived ? { ...item, archived: true } : item));
       return json({ ok: true, count });
     }
     // קובץ מצורף במייל ההדגמה: תצוגה מקדימה ושמירה בתיק
@@ -603,6 +615,7 @@ function demoEmails(): ConversationEmailView[] {
       createdAt: hoursAgo(1),
       unread: true,
       held: true,
+      archived: false,
       attachments: [],
     },
     {
@@ -619,6 +632,7 @@ function demoEmails(): ConversationEmailView[] {
       createdAt: hoursAgo(4),
       unread: true,
       held: false,
+      archived: false,
       attachments: [
         {
           id: 'demo-att-1',
@@ -644,6 +658,7 @@ function demoEmails(): ConversationEmailView[] {
       createdAt: hoursAgo(28),
       unread: false,
       held: false,
+      archived: false,
       attachments: [],
     },
   ];

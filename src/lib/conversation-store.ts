@@ -230,6 +230,7 @@ async function unreadEmailCount(access: ConversationAccess): Promise<number> {
   return prisma.conversationEmail.count({
     where: {
       clientUserId: access.clientUserId,
+      archivedAt: null,
       ...(access.viewerRole === 'CLIENT' ? { readByClientAt: null } : { readByAdvisorAt: null, held: false }),
     },
   });
@@ -320,7 +321,7 @@ export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]
     }),
     prisma.conversationEmail.groupBy({
       by: ['clientUserId'],
-      where: { clientUserId: { in: ids }, readByAdvisorAt: null, held: false },
+      where: { clientUserId: { in: ids }, readByAdvisorAt: null, held: false, archivedAt: null },
       _count: { _all: true },
     }),
     prisma.conversationMessage.findMany({
@@ -330,7 +331,7 @@ export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]
       select: { clientUserId: true, body: true, createdAt: true },
     }),
     prisma.conversationEmail.findMany({
-      where: { clientUserId: { in: ids }, held: false },
+      where: { clientUserId: { in: ids }, held: false, archivedAt: null },
       orderBy: { createdAt: 'desc' },
       distinct: ['clientUserId'],
       select: { clientUserId: true, subject: true, createdAt: true },
@@ -409,6 +410,7 @@ type EmailRow = {
   bank: string | null;
   attachments: Prisma.JsonValue | null;
   held: boolean;
+  archivedAt: Date | null;
   createdAt: Date;
   readByClientAt: Date | null;
   readByAdvisorAt: Date | null;
@@ -433,6 +435,7 @@ function toEmailView(
     createdAt: row.createdAt.toISOString(),
     unread: viewer === 'CLIENT' ? !row.readByClientAt : !row.readByAdvisorAt,
     held: row.held,
+    archived: Boolean(row.archivedAt),
     attachments: storedAttachments(row.attachments).map((item) => ({
       ...item,
       savable: !row.held && isAllowedDocumentType(item.contentType) && item.size <= MAX_DOCUMENT_BYTES,
@@ -899,18 +902,26 @@ export async function reviewHeldSender(
 ): Promise<ReviewSenderResult> {
   if (access.viewerRole !== 'CLIENT') return { ok: false, status: 403, error: 'רק הלקוח מאשר שולחים' };
   const email = await prisma.conversationEmail.findFirst({
-    where: { id: emailId, clientUserId: access.clientUserId, held: true },
+    where: { id: emailId, clientUserId: access.clientUserId, held: true, ...(approve ? {} : { archivedAt: null }) },
     select: { fromAddress: true },
   });
   if (!email) return { ok: false, status: 404, error: 'המייל לא נמצא' };
   const where = { clientUserId: access.clientUserId, held: true, fromAddress: email.fromAddress };
+  // שולח שאושר — גם מה שנמחק ממנו חוזר לפיד
 
   if (!approve) {
-    const { count } = await prisma.conversationEmail.deleteMany({ where });
+    // כמו כל מחיקה מהפיד — לארכיון, ומשם אפשר למחוק לגמרי
+    const { count } = await prisma.conversationEmail.updateMany({
+      where: { ...where, archivedAt: null },
+      data: { archivedAt: new Date() },
+    });
     return { ok: true, count };
   }
   const rows = await prisma.conversationEmail.findMany({ where, orderBy: { createdAt: 'asc' } });
-  await prisma.conversationEmail.updateMany({ where: { id: { in: rows.map((row) => row.id) } }, data: { held: false } });
+  await prisma.conversationEmail.updateMany({
+    where: { id: { in: rows.map((row) => row.id) } },
+    data: { held: false, archivedAt: null },
+  });
   // עכשיו גם היועץ רואה אותם — ומקבל התראה אחת על האחרון
   const last = rows[rows.length - 1];
   if (last) {
@@ -989,18 +1000,11 @@ async function forwardGeneralEmail(event: InboundEvent, domains: readonly string
     return false;
   }
 
-  // הקבצים עוברים איתו, עד 10MB יחד (מעבר לזה הם נשארים ב-Resend)
-  const attachments: { filename: string; content: string; contentType: string }[] = [];
-  let total = 0;
-  for (const item of email.attachments ?? []) {
-    if (total + item.size > 10 * 1024 * 1024) break;
-    const { data: file } = await resend.emails.receiving.attachments.get({ emailId: event.emailId, id: item.id });
-    const response = file?.download_url ? await fetch(file.download_url, { cache: 'no-store' }) : null;
-    if (!response?.ok) continue;
-    const bytes = Buffer.from(await response.arrayBuffer());
-    total += bytes.byteLength;
-    attachments.push({ filename: item.filename || 'attachment', content: bytes.toString('base64'), contentType: item.content_type });
-  }
+  const { attachments } = await attachmentsForSending(
+    resend,
+    event.emailId,
+    (email.attachments ?? []).map((item) => ({ id: item.id, fileName: item.filename || 'attachment', contentType: item.content_type, size: item.size }))
+  );
 
   const header = `הועבר מ${appName()}: מייל שנשלח ל-${addressedTo} מאת ${event.from}. "השב" יענה ישירות לשולח.`;
   const text = email.text?.trim() || (email.html ? htmlToText(email.html) : '');
@@ -1020,4 +1024,128 @@ async function forwardGeneralEmail(event: InboundEvent, domains: readonly string
     return false;
   }
   return true;
+}
+
+/** מעבר לזה יחד, קבצים לא מצורפים למייל שיוצא (העברה או גיבוי) */
+const MAX_OUTGOING_ATTACHMENTS_BYTES = 10 * 1024 * 1024;
+
+/**
+ * הקבצים של מייל נכנס, מוכנים לצירוף למייל יוצא — עד 10MB יחד. `skipped` הם
+ * הקבצים שלא נכנסו (גדולים מדי, או שלא נמצאו אצל ספק המיילים).
+ */
+async function attachmentsForSending(resend: Resend, providerEmailId: string, list: readonly StoredAttachment[]) {
+  const attachments: { filename: string; content: string; contentType: string }[] = [];
+  const skipped: string[] = [];
+  let total = 0;
+  for (const item of list) {
+    if (total + item.size > MAX_OUTGOING_ATTACHMENTS_BYTES) {
+      skipped.push(item.fileName);
+      continue;
+    }
+    const { data: file } = await resend.emails.receiving.attachments.get({ emailId: providerEmailId, id: item.id });
+    const response = file?.download_url ? await fetch(file.download_url, { cache: 'no-store' }) : null;
+    if (!response?.ok) {
+      skipped.push(item.fileName);
+      continue;
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    total += bytes.byteLength;
+    attachments.push({ filename: item.fileName, content: bytes.toString('base64'), contentType: item.contentType });
+  }
+  return { attachments, skipped };
+}
+
+// ─────────────────────────── ארכיון ומחיקה ───────────────────────────
+
+export type EmailActionResult = { ok: true } | { ok: false; status: number; error: string };
+
+/**
+ * מחיקה מהפיד (לארכיון) או החזרה מהארכיון. הלקוח והיועץ המלווה — שניהם רואים
+ * את אותו פיד. מייל שממתין לאישור השולח נשאר של הלקוח בלבד.
+ */
+export async function setEmailArchived(
+  access: ConversationAccess,
+  emailId: string,
+  archived: boolean
+): Promise<EmailActionResult> {
+  const { count } = await prisma.conversationEmail.updateMany({
+    where: {
+      id: emailId,
+      clientUserId: access.clientUserId,
+      ...(access.viewerRole === 'ADVISOR' ? { held: false } : {}),
+    },
+    data: { archivedAt: archived ? new Date() : null },
+  });
+  return count === 1 ? { ok: true } : { ok: false, status: 404, error: 'המייל לא נמצא' };
+}
+
+/**
+ * מחיקה לגמרי של מייל מהארכיון — השורה נמחקת ממסד הנתונים. רק הלקוח, בעל
+ * השיחה, מוחק לגמרי. `backup` שולח קודם עותק לתיבה הפרטית שלו, עם הקבצים;
+ * כשהגיבוי לא נשלח, המייל לא נמחק.
+ */
+export async function deleteEmailForever(
+  access: ConversationAccess,
+  emailId: string,
+  backup: boolean
+): Promise<EmailActionResult & { backupSkipped?: string[] }> {
+  if (access.viewerRole !== 'CLIENT') return { ok: false, status: 403, error: 'רק הלקוח מוחק מיילים לגמרי' };
+  const row = await prisma.conversationEmail.findFirst({
+    where: { id: emailId, clientUserId: access.clientUserId, archivedAt: { not: null } },
+  });
+  if (!row) return { ok: false, status: 404, error: 'המייל לא נמצא בארכיון' };
+
+  let backupSkipped: string[] | undefined;
+  if (backup) {
+    const sent = await sendEmailBackup(access.clientUserId, row);
+    if (!sent.ok) return sent;
+    backupSkipped = sent.skipped;
+  }
+  await prisma.conversationEmail.delete({ where: { id: row.id } });
+  return { ok: true, ...(backupSkipped?.length ? { backupSkipped } : {}) };
+}
+
+async function sendEmailBackup(
+  clientUserId: string,
+  row: EmailRow & { providerId: string | null }
+): Promise<{ ok: true; skipped: string[] } | { ok: false; status: number; error: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const client = await prisma.user.findUnique({ where: { id: clientUserId }, select: { email: true } });
+  const to = normalizeEmail(client?.email);
+  if (!apiKey || !isValidEmail(to)) return { ok: false, status: 503, error: 'אין לאן לשלוח גיבוי. המייל לא נמחק' };
+
+  const resend = new Resend(apiKey);
+  const files = storedAttachments(row.attachments);
+  const { attachments, skipped } =
+    row.direction === 'INBOUND' && row.providerId?.startsWith('in:') && files.length > 0
+      ? await attachmentsForSending(resend, row.providerId.slice(3), files)
+      : { attachments: [], skipped: [] as string[] };
+
+  const when = new Intl.DateTimeFormat('he-IL', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Jerusalem' }).format(
+    row.createdAt
+  );
+  const lines = [
+    `גיבוי של מייל מההתכתבות ב${appName()}, לפני שנמחק מהפלטפורמה.`,
+    '',
+    `מאת: ${row.fromName ? `${row.fromName} (${row.fromAddress})` : row.fromAddress}`,
+    `אל: ${row.toAddresses.join(', ') || '—'}`,
+    ...(row.ccAddresses.length > 0 ? [`העתק: ${row.ccAddresses.join(', ')}`] : []),
+    `תאריך: ${when}`,
+    `נושא: ${row.subject}`,
+    ...(skipped.length > 0 ? [`קבצים שלא צורפו (גדולים מדי או לא זמינים): ${skipped.join(', ')}`] : []),
+  ];
+  const header = lines.join('\n');
+  const { error } = await resend.emails.send({
+    from: `${appName()} <${senderAddress(process.env.EMAIL_FROM)}>`,
+    to,
+    subject: `גיבוי: ${row.subject}`,
+    text: `${header}\n\n${row.text}`,
+    html: emailHtml(`${header}\n\n${row.text}`, appName()),
+    ...(attachments.length > 0 ? { attachments } : {}),
+  });
+  if (error) {
+    console.error('[conversation] email backup failed:', error);
+    return { ok: false, status: 502, error: 'הגיבוי לא נשלח, ולכן המייל לא נמחק. נסו שוב בעוד רגע' };
+  }
+  return { ok: true, skipped };
 }
