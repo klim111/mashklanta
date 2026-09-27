@@ -286,7 +286,7 @@ export function PlanWorkspace({
   const isRefinance = flow.kind === 'REFINANCE';
   const internalRefinance = isRefinance && flow.refinanceMode === 'INTERNAL';
   /** מיחזור שעדיין לא נבחר בו בין פנימי לחיצוני — קודם המסך שמסביר את ההבדל */
-  const modePending = isRefinance && flow.refinanceMode === null;
+  const modePending = isRefinance && refinance !== null && flow.refinanceMode === null;
 
   const stage = viewingStage ?? plan.currentStage;
   /*

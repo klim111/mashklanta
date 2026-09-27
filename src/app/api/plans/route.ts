@@ -5,6 +5,7 @@ import {
   createPlan,
   createPlanFromMix,
   createRefinancePlan,
+  createEmptyRefinancePlan,
   listPlansForUser,
 } from '@/lib/mortgage-plans';
 import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
@@ -47,6 +48,13 @@ export async function POST(req: NextRequest) {
       },
       { status: 409 }
     );
+  }
+
+  // תהליך מיחזור ריק — נפתח מהאזור האישי, והתמהיל נבנה בשלב הראשון שלו
+  if (body?.kind === 'REFINANCE' && !body?.refinance) {
+    const plan = await createEmptyRefinancePlan(userId);
+    if (!plan) return NextResponse.json({ error: 'Could not create plan' }, { status: 500 });
+    return NextResponse.json(plan, { status: 201 });
   }
 
   // תהליך מיחזור — נפתח מכלי המיחזור עם התמהיל שנבנה בו
