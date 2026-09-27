@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Copy, Info, Loader2, Mail, Paperclip, PenLine, Reply, Send, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Check, Copy, Info, Loader2, Mail, Paperclip, PenLine, Reply, Send, ShieldQuestion, Trash2, X } from 'lucide-react';
 import type { AttachmentFolder, ConversationContact, ConversationEmailView, ConversationRole } from '@/lib/conversation';
 import { MAX_EMAIL_LENGTH, MAX_SUBJECT_LENGTH } from '@/lib/conversation';
 import { useConversationEmails } from './useConversation';
@@ -42,10 +42,11 @@ export function EmailsPane({
   mailboxAddress: string | null;
   receivesEmail: boolean;
 }) {
-  const { emails, contacts, folders, ready, sending, error, setError, send, saveAttachment } = useConversationEmails(
-    clientUserId,
-    true
-  );
+  const { emails: all, contacts, folders, ready, sending, error, setError, send, saveAttachment, reviewSender } =
+    useConversationEmails(clientUserId, true);
+  // מיילים משולחים לא מוכרים — מוצגים ללקוח בנפרד, עד שיאשר או ימחק
+  const held = all.filter((email) => email.held);
+  const emails = all.filter((email) => !email.held);
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const accent = accentFor(role);
@@ -77,6 +78,7 @@ export function EmailsPane({
         recipients={recipients}
         contacts={contacts}
         receivesEmail={receivesEmail}
+        mailboxAddress={role === 'CLIENT' ? mailboxAddress : null}
         sending={sending}
         error={error}
         onCancel={() => setDraft(null)}
@@ -111,6 +113,9 @@ export function EmailsPane({
           </Hint>
         )}
         {role === 'CLIENT' && mailboxAddress && <MailboxHint address={mailboxAddress} />}
+        {held.map((email) => (
+          <HeldEmailCard key={email.id} email={email} onReview={(decision) => reviewSender(email.id, decision)} />
+        ))}
 
         {!ready ? (
           <div className="flex justify-center py-10">
@@ -153,12 +158,16 @@ function Hint({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** הכתובת האישית, למייל שהבנק שלח ישר לתיבה של הלקוח */
+/**
+ * הכתובת האישית של הלקוח במשכלנתא: אפשר לרשום אותה בבקשה באתר הבנק, או
+ * להעביר אליה מייל שהבנק שלח ישר לתיבה הפרטית
+ */
 function MailboxHint({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-600">
-      קיבלתם מייל מהבנק ישירות לתיבה שלכם? העבירו אותו לכתובת הזו, והוא יופיע כאן:
+      הכתובת האישית שלכם במשכלנתא. רשמו אותה בבקשות באתרי הבנקים, או העבירו אליה מייל מהבנק, והוא יופיע כאן וגם
+      בתיבה שלכם:
       <button
         type="button"
         onClick={() => {
@@ -175,6 +184,73 @@ function MailboxHint({ address }: { address: string }) {
         </span>
       </button>
     </div>
+  );
+}
+
+/**
+ * מייל משולח שהשיחה עוד לא מכירה. אישור מכניס אותו לשיחה (והיועץ רואה אותו),
+ * ומיילים הבאים מאותו שולח נכנסים ישר. מחיקה מסירה אותו.
+ */
+function HeldEmailCard({
+  email,
+  onReview,
+}: {
+  email: ConversationEmailView;
+  onReview: (decision: 'approve' | 'reject') => Promise<string | null>;
+}) {
+  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const review = async (decision: 'approve' | 'reject') => {
+    setBusy(decision);
+    setFailure(null);
+    const result = await onReview(decision);
+    setBusy(null);
+    if (result) setFailure(result);
+  };
+
+  return (
+    <article className="rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2">
+      <p className="flex items-center gap-1.5 text-2xs font-black text-amber-900">
+        <ShieldQuestion className="h-4 w-4" />
+        ממתין לאישור: שולח שעוד לא מוכר לשיחה
+      </p>
+      <p className="mt-1 truncate text-sm font-black text-slate-900">
+        {email.fromName ? `${email.fromName} · ` : ''}
+        <span dir="ltr">{email.fromAddress}</span>
+      </p>
+      <p className="truncate text-sm font-bold text-slate-700">{email.subject}</p>
+      {email.text && <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap text-sm text-slate-600">{email.text}</p>}
+      {email.attachments.length > 0 && (
+        <p className="mt-1 flex items-center gap-1 text-2xs font-semibold text-slate-500">
+          <Paperclip className="h-3.5 w-3.5" />
+          {email.attachments.length === 1 ? 'קובץ מצורף' : `${email.attachments.length} קבצים מצורפים`}, ייפתחו אחרי האישור
+        </p>
+      )}
+      <p className="mt-1.5 text-2xs leading-relaxed text-slate-600">
+        מכירים את השולח, למשל הבנק? אשרו, והמייל ייכנס לשיחה ויגיע גם ליועץ. מיילים הבאים ממנו ייכנסו ישר.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void review('approve')}
+          disabled={busy !== null}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          {busy === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          אישור השולח
+        </button>
+        <button
+          type="button"
+          onClick={() => void review('reject')}
+          disabled={busy !== null}
+          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {busy === 'reject' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          מחיקה
+        </button>
+      </div>
+      {failure && <p className="mt-1 text-2xs font-bold text-rose-600">{failure}</p>}
+    </article>
   );
 }
 
@@ -273,6 +349,7 @@ function Composer({
   recipients,
   contacts,
   receivesEmail,
+  mailboxAddress,
   sending,
   error,
   onCancel,
@@ -284,6 +361,7 @@ function Composer({
   recipients: readonly ConversationContact[];
   contacts: readonly ConversationContact[];
   receivesEmail: boolean;
+  mailboxAddress: string | null;
   sending: boolean;
   error: string | null;
   onCancel: () => void;
@@ -359,7 +437,13 @@ function Composer({
         </label>
 
         <p className="text-2xs leading-relaxed text-slate-500">
-          המייל יוצא מכתובת הפלטפורמה בשמכם.{' '}
+          {mailboxAddress ? (
+            <>
+              המייל יוצא מהכתובת האישית שלכם, <span dir="ltr">{mailboxAddress}</span>.{' '}
+            </>
+          ) : (
+            'המייל יוצא מכתובת הפלטפורמה בשמכם. '
+          )}
           {receivesEmail ? 'תשובה אליו תגיע גם לתיבה שלכם וגם לכאן.' : 'תשובה אליו תגיע לתיבת המייל שלכם.'}
         </p>
         {error && <p className="text-sm font-bold text-rose-600">{error}</p>}

@@ -210,7 +210,35 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
     [clientUserId]
   );
 
-  return { emails, contacts, folders, ready, sending, error, setError, send, refresh, saveAttachment };
+  /**
+   * החלטה על שולח לא מוכר (לקוח בלבד). אישור מכניס לשיחה את כל המיילים שלו
+   * שממתינים, מחיקה מסירה אותם. מחזיר הודעת שגיאה, או null כשהצליח
+   */
+  const reviewSender = useCallback(
+    async (emailId: string, decision: 'approve' | 'reject'): Promise<string | null> => {
+      const from = emails.find((item) => item.id === emailId)?.fromAddress;
+      try {
+        const response = await fetch(`/api/conversation/emails/${encodeURIComponent(emailId)}/sender`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision }),
+        });
+        if (!response.ok) return await readError(response, 'הפעולה נכשלה');
+        const matches = (item: ConversationEmailView) => item.held && item.fromAddress === from;
+        setEmails((current) =>
+          decision === 'approve'
+            ? current.map((item) => (matches(item) ? { ...item, held: false } : item))
+            : current.filter((item) => !matches(item))
+        );
+        return null;
+      } catch {
+        return 'הפעולה נכשלה. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [emails]
+  );
+
+  return { emails, contacts, folders, ready, sending, error, setError, send, refresh, saveAttachment, reviewSender };
 }
 
 /** הכתובת של קובץ מצורף — לצפייה, או להורדה עם `download` */

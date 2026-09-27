@@ -7,7 +7,12 @@ import {
   cleanSubject,
   emailHtml,
   mailboxAddress,
-  mailboxKeyFromAddresses,
+  mailboxNameBase,
+  mailboxNameCandidates,
+  mailboxTargets,
+  addressedToDomains,
+  domainList,
+  senderAllowed,
   parseAddress,
   senderAddress,
   senderDisplayName,
@@ -40,21 +45,59 @@ describe('addresses', () => {
 });
 
 describe('mailbox routing', () => {
-  const key = 'a1b2c3d4e5f6a7b8c9d0e1f2';
-
-  it('builds and reads back the personal address', () => {
-    const address = mailboxAddress(key, 'inbox.mashkalanta.co.il');
-    expect(address).toBe(`c-${key}@inbox.mashkalanta.co.il`);
-    expect(mailboxKeyFromAddresses([`Bank <${address}>`], 'inbox.mashkalanta.co.il')).toBe(key);
+  it('names the address after the client email', () => {
+    expect(mailboxNameBase('Igor.L+bank@Gmail.com')).toBe('igor.l');
+    expect(mailboxNameBase('דני@walla.co.il')).toBe('client');
+    expect(mailboxNameBase('..a__b--c..@x.com')).toBe('a_b-c');
+    expect(mailboxNameBase('c-dan@x.com')).toBe('cdan');
+    expect(mailboxAddress('igor.l', 'mashkalanta.com')).toBe('igor.l@mashkalanta.com');
   });
 
-  it('ignores the same local part on another domain', () => {
-    expect(mailboxKeyFromAddresses([`c-${key}@evil.com`], 'inbox.mashkalanta.co.il')).toBeNull();
+  it('numbers taken and reserved names', () => {
+    expect(mailboxNameCandidates('igor@gmail.com', null, 3)).toEqual(['igor', 'igor2', 'igor3']);
+    expect(mailboxNameCandidates('info@company.co.il', null, 2)).toEqual(['info2', 'info3']);
+    expect(mailboxNameCandidates('hi@company.co.il', 'hi@mashkalanta.com', 1)).toEqual(['hi2']);
+  });
+
+  it('routes personal addresses on our domains only', () => {
+    expect(mailboxTargets(['Bank <Igor.L@mashkalanta.com>'], ['mashkalanta.com'])).toEqual([{ name: 'igor.l', legacyKey: null }]);
+    expect(mailboxTargets(['igor.l@evil.com'], ['mashkalanta.com'])).toEqual([]);
+    expect(mailboxTargets(['info@mashkalanta.com', 'noreply@mashkalanta.com'], ['mashkalanta.com'])).toEqual([]);
+    expect(addressedToDomains(['Igor <info@mashkalanta.com>'], ['mashkalanta.com'])).toBe('info@mashkalanta.com');
+  });
+
+  it('still routes the first addresses (c-…@inbox)', () => {
+    const old = 'a1b2c3d4e5f6a7b8c9d0e1f2';
+    expect(mailboxTargets([`c-${old}@inbox.mashkalanta.com`], ['mashkalanta.com', 'inbox.mashkalanta.com'])).toEqual([
+      { name: `c-${old}`, legacyKey: old },
+    ]);
   });
 
   it('returns nothing when receiving is not configured', () => {
-    expect(mailboxAddress(key, '')).toBeNull();
-    expect(mailboxKeyFromAddresses([`c-${key}@inbox.mashkalanta.co.il`], null)).toBeNull();
+    expect(mailboxAddress('igor', '')).toBeNull();
+    expect(mailboxTargets(['igor@mashkalanta.com'], null)).toEqual([]);
+    expect(domainList(' mashkalanta.com, inbox.mashkalanta.com ')).toEqual(['mashkalanta.com', 'inbox.mashkalanta.com']);
+  });
+});
+
+describe('who may write to the personal address', () => {
+  const known = new Set(['someone@partner.co.il']);
+
+  it('lets in the client, advisor, bankers and past correspondents', () => {
+    expect(senderAllowed('Client <CLIENT@gmail.com>', contacts, known)).toBe(true);
+    expect(senderAllowed('dana@leumi.co.il', contacts, known)).toBe(true);
+    expect(senderAllowed('someone@partner.co.il', contacts, known)).toBe(true);
+  });
+
+  it('lets in another address at a banker’s bank, but not at a personal mail provider', () => {
+    expect(senderAllowed('noreply@leumi.co.il', contacts, known)).toBe(true);
+    const gmailBanker = [...contacts, { kind: 'BANKER' as const, email: 'yossi@gmail.com', name: 'יוסי', bank: 'מזרחי' }];
+    expect(senderAllowed('stranger@gmail.com', gmailBanker, known)).toBe(false);
+  });
+
+  it('holds everyone else', () => {
+    expect(senderAllowed('spam@random.com', contacts, known)).toBe(false);
+    expect(senderAllowed('not-an-email', contacts, known)).toBe(false);
   });
 });
 

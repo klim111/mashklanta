@@ -1,5 +1,5 @@
-import { randomBytes } from 'crypto';
 import { Resend } from 'resend';
+import { Prisma as PrismaErrors } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { MAX_DOCUMENT_BYTES, isAllowedDocumentType, storeFileInPlan } from './plan-documents';
@@ -11,7 +11,13 @@ import {
   MAX_EMAIL_LENGTH,
   allowedRecipients,
   attachmentDocumentKey,
+  addressedToDomains,
+  domainList,
+  escapeHtml,
   inboundAttachments,
+  mailboxNameCandidates,
+  mailboxTargets,
+  senderAllowed,
   storedAttachments,
   bankFor,
   bankerContacts,
@@ -21,7 +27,6 @@ import {
   htmlToText,
   isValidEmail,
   mailboxAddress,
-  mailboxKeyFromAddresses,
   normalizeEmail,
   parseAddress,
   senderAddress,
@@ -55,10 +60,21 @@ export interface ConversationAccess {
 
 const appName = () => process.env.PUBLIC_APP_NAME || 'משכלנתא';
 
-/** הדומיין שמקבל מיילים לשיחות. בלעדיו השליחה עובדת, והתשובות מגיעות רק לתיבה של הלקוח */
+/**
+ * הדומיין של הכתובות האישיות של הלקוחות (`EMAIL_INBOUND_DOMAIN`, למשל
+ * mashkalanta.com). בלעדיו השליחה עובדת, והתשובות מגיעות רק לתיבה של הלקוח.
+ */
 export function inboundDomain(): string | null {
-  const value = (process.env.EMAIL_INBOUND_DOMAIN || '').trim().toLowerCase();
-  return value || null;
+  return domainList(process.env.EMAIL_INBOUND_DOMAIN)[0] ?? null;
+}
+
+/**
+ * כל הדומיינים שמקבלים מיילים: הדומיין הנוכחי, ודומיינים קודמים
+ * (`EMAIL_INBOUND_LEGACY_DOMAINS`) — כדי שכתובות שכבר נמסרו לבנקים ימשיכו לעבוד.
+ */
+export function inboundDomains(): string[] {
+  const all = [...domainList(process.env.EMAIL_INBOUND_DOMAIN), ...domainList(process.env.EMAIL_INBOUND_LEGACY_DOMAINS)];
+  return Array.from(new Set(all));
 }
 
 export async function resolveConversationAccess(
@@ -214,14 +230,14 @@ async function unreadEmailCount(access: ConversationAccess): Promise<number> {
   return prisma.conversationEmail.count({
     where: {
       clientUserId: access.clientUserId,
-      ...(access.viewerRole === 'CLIENT' ? { readByClientAt: null } : { readByAdvisorAt: null }),
+      ...(access.viewerRole === 'CLIENT' ? { readByClientAt: null } : { readByAdvisorAt: null, held: false }),
     },
   });
 }
 
 export async function conversationSummary(access: ConversationAccess): Promise<ConversationSummary> {
   const domain = inboundDomain();
-  const [unreadChat, unreadEmails, advisor, key] = await Promise.all([
+  const [unreadChat, unreadEmails, advisor, name] = await Promise.all([
     prisma.conversationMessage.count({
       where: { clientUserId: access.clientUserId, authorRole: otherRole(access.viewerRole), readAt: null },
     }),
@@ -229,16 +245,16 @@ export async function conversationSummary(access: ConversationAccess): Promise<C
     advisorOf(access.clientUserId),
     // ללקוח הכתובת נוצרת כבר עכשיו, כדי שיוכל להעביר אליה מייל שהבנק שלח לו ישירות
     domain && access.viewerRole === 'CLIENT'
-      ? ensureMailboxKey(access.clientUserId)
+      ? ensureMailboxName(access.clientUserId)
       : prisma.user
-          .findUnique({ where: { id: access.clientUserId }, select: { mailboxKey: true } })
-          .then((user) => user?.mailboxKey ?? null),
+          .findUnique({ where: { id: access.clientUserId }, select: { mailboxName: true } })
+          .then((user) => user?.mailboxName ?? null),
   ]);
   return {
     unreadChat,
     unreadEmails,
     advisorName: advisor?.name ?? null,
-    mailboxAddress: mailboxAddress(key, domain),
+    mailboxAddress: mailboxAddress(name, domain),
     receivesEmail: Boolean(domain),
   };
 }
@@ -257,7 +273,7 @@ export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]
       where: {
         role: 'CLIENT',
         advisedAs: { none: {} },
-        OR: [{ conversationMessages: { some: {} } }, { conversationEmails: { some: {} } }],
+        OR: [{ conversationMessages: { some: {} } }, { conversationEmails: { some: { held: false } } }],
       },
       select: { id: true, name: true, email: true },
       take: 100,
@@ -304,7 +320,7 @@ export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]
     }),
     prisma.conversationEmail.groupBy({
       by: ['clientUserId'],
-      where: { clientUserId: { in: ids }, readByAdvisorAt: null },
+      where: { clientUserId: { in: ids }, readByAdvisorAt: null, held: false },
       _count: { _all: true },
     }),
     prisma.conversationMessage.findMany({
@@ -314,7 +330,7 @@ export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]
       select: { clientUserId: true, body: true, createdAt: true },
     }),
     prisma.conversationEmail.findMany({
-      where: { clientUserId: { in: ids } },
+      where: { clientUserId: { in: ids }, held: false },
       orderBy: { createdAt: 'desc' },
       distinct: ['clientUserId'],
       select: { clientUserId: true, subject: true, createdAt: true },
@@ -392,6 +408,7 @@ type EmailRow = {
   text: string;
   bank: string | null;
   attachments: Prisma.JsonValue | null;
+  held: boolean;
   createdAt: Date;
   readByClientAt: Date | null;
   readByAdvisorAt: Date | null;
@@ -415,9 +432,10 @@ function toEmailView(
     bank: row.bank,
     createdAt: row.createdAt.toISOString(),
     unread: viewer === 'CLIENT' ? !row.readByClientAt : !row.readByAdvisorAt,
+    held: row.held,
     attachments: storedAttachments(row.attachments).map((item) => ({
       ...item,
-      savable: isAllowedDocumentType(item.contentType) && item.size <= MAX_DOCUMENT_BYTES,
+      savable: !row.held && isAllowedDocumentType(item.contentType) && item.size <= MAX_DOCUMENT_BYTES,
       savedToPlanId: saved.get(attachmentDocumentKey(item.id)) ?? null,
     })),
   };
@@ -499,7 +517,7 @@ async function savedAttachmentPlans(clientUserId: string, rows: EmailRow[]): Pro
 /** המיילים של השיחה, מהחדש לישן. `unread` נשאר כפי שהיה לפני הפתיחה, כדי שיודגש פעם אחת */
 export async function listConversationEmails(access: ConversationAccess): Promise<ConversationEmailView[]> {
   const rows = await prisma.conversationEmail.findMany({
-    where: { clientUserId: access.clientUserId },
+    where: { clientUserId: access.clientUserId, ...(access.viewerRole === 'ADVISOR' ? { held: false } : {}) },
     orderBy: { createdAt: 'desc' },
     take: 200,
   });
@@ -510,7 +528,7 @@ export async function listConversationEmails(access: ConversationAccess): Promis
     await prisma.conversationEmail.updateMany({
       where: {
         clientUserId: access.clientUserId,
-        ...(access.viewerRole === 'CLIENT' ? { readByClientAt: null } : { readByAdvisorAt: null }),
+        ...(access.viewerRole === 'CLIENT' ? { readByClientAt: null } : { readByAdvisorAt: null, held: false }),
       },
       data: access.viewerRole === 'CLIENT' ? { readByClientAt: new Date() } : { readByAdvisorAt: new Date() },
     });
@@ -539,7 +557,8 @@ export async function attachmentFolders(access: ConversationAccess): Promise<Att
 
 async function attachmentOf(access: ConversationAccess, emailId: string, attachmentId: string) {
   const row = await prisma.conversationEmail.findFirst({
-    where: { id: emailId, clientUserId: access.clientUserId, direction: 'INBOUND' },
+    // קבצים ממייל שממתין לאישור השולח לא נפתחים
+    where: { id: emailId, clientUserId: access.clientUserId, direction: 'INBOUND', held: false },
     select: { providerId: true, attachments: true },
   });
   if (!row?.providerId?.startsWith('in:')) return null;
@@ -622,13 +641,41 @@ export async function saveAttachmentToPlan(
   return { ok: true, planId: folder.planId, documentId: doc.id };
 }
 
-/** המפתח של הכתובת האישית, ונוצר בפעם הראשונה שצריך אותו */
-async function ensureMailboxKey(clientUserId: string): Promise<string> {
-  const user = await prisma.user.findUnique({ where: { id: clientUserId }, select: { mailboxKey: true } });
-  if (user?.mailboxKey) return user.mailboxKey;
-  const key = randomBytes(12).toString('hex');
-  await prisma.user.update({ where: { id: clientUserId }, data: { mailboxKey: key } });
-  return key;
+/**
+ * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: החלק שלפני
+ * ה-@ במייל שלו, ועם מספר כשהשם כבר תפוס.
+ */
+async function ensureMailboxName(clientUserId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { id: clientUserId }, select: { mailboxName: true, email: true } });
+  if (!user) return null;
+  if (user.mailboxName) return user.mailboxName;
+  const candidates = mailboxNameCandidates(user.email, senderAddress(process.env.EMAIL_FROM));
+  const taken = new Set(
+    (
+      await prisma.user.findMany({ where: { mailboxName: { in: candidates } }, select: { mailboxName: true } })
+    ).map((row) => row.mailboxName)
+  );
+  const free = candidates.filter((name) => !taken.has(name));
+  // אחרי 20 שמות תפוסים — מספר אקראי
+  free.push(`${candidates[0].replace(/\d+$/, '')}${Math.floor(1000 + Math.random() * 9000)}`);
+  for (const name of free) {
+    try {
+      const { count } = await prisma.user.updateMany({ where: { id: clientUserId, mailboxName: null }, data: { mailboxName: name } });
+      if (count === 1) return name;
+      // נוצר במקביל בבקשה אחרת
+      return (await prisma.user.findUnique({ where: { id: clientUserId }, select: { mailboxName: true } }))?.mailboxName ?? null;
+    } catch (error) {
+      // השם נתפס ברגע זה על ידי לקוח אחר — עוברים לבא
+      if (!(error instanceof PrismaErrors.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+    }
+  }
+  return null;
+}
+
+/** הכתובת האישית של הלקוח, אם קבלת מיילים מוגדרת — נוצרת בפעם הראשונה שצריך אותה */
+export async function clientMailboxAddress(clientUserId: string): Promise<string | null> {
+  const domain = inboundDomain();
+  return domain ? mailboxAddress(await ensureMailboxName(clientUserId), domain) : null;
 }
 
 export type SendEmailResult =
@@ -658,36 +705,56 @@ export async function sendConversationEmail(
     return { ok: false, status: 400, error: 'אפשר לשלוח רק לבנקאי שהוזן בשלב האישור העקרוני, ליועץ או ללקוח' };
   }
 
-  const domain = inboundDomain();
-  const mailbox = domain ? mailboxAddress(await ensureMailboxKey(access.clientUserId), domain) : null;
+  const mailbox = await clientMailboxAddress(access.clientUserId);
   const senderEmail = normalizeEmail(sender?.email);
   const cc = carbonCopies(recipients, contacts);
-  const replyTo = [mailbox, isValidEmail(senderEmail) ? senderEmail : null].filter(
-    (item): item is string => Boolean(item)
-  );
-  const fromName = senderDisplayName(sender?.name ?? null, access.viewerRole, appName());
-  const fromAddress = senderAddress(process.env.EMAIL_FROM);
   const to = recipients.map((item) => item.email);
+  const systemAddress = senderAddress(process.env.EMAIL_FROM);
 
   const footer =
     access.viewerRole === 'CLIENT'
       ? `נשלח דרך ${appName()} בשם ${sender?.name || senderEmail}. תשובה למייל הזה תגיע אליו ואל השיחה שלו בפלטפורמה.`
       : `נשלח דרך ${appName()} על ידי היועץ המלווה. תשובה למייל הזה תגיע ליועץ ואל השיחה בפלטפורמה.`;
 
+  /*
+    לקוח שולח מהכתובת האישית שלו (igor.l@mashkalanta.com), כך שהבנק רואה
+    כתובת אחת קבועה ועונה אליה. יועץ שולח מכתובת הפלטפורמה, עם הכתובת של
+    הלקוח בתשובה — כדי שהשרשור יישאר בשיחה של הלקוח.
+  */
+  const asSystem = {
+    from: `${senderDisplayName(sender?.name ?? null, access.viewerRole, appName())} <${systemAddress}>`,
+    replyTo: [mailbox, isValidEmail(senderEmail) ? senderEmail : null].filter((item): item is string => Boolean(item)),
+  };
+  const asClient =
+    access.viewerRole === 'CLIENT' && mailbox
+      ? { from: `${(sender?.name || appName()).replace(/["<>\r\n]/g, '').trim()} <${mailbox}>`, replyTo: [] as string[] }
+      : null;
+
   const resend = new Resend(apiKey);
-  const { data, error } = await resend.emails.send({
-    from: `${fromName} <${fromAddress}>`,
-    to,
-    ...(cc.length > 0 ? { cc } : {}),
-    ...(replyTo.length > 0 ? { replyTo } : {}),
-    subject,
-    text: `${text}\n\n—\n${footer}`,
-    html: emailHtml(text, footer),
-  });
+  const attempt = (envelope: { from: string; replyTo: string[] }) =>
+    resend.emails.send({
+      from: envelope.from,
+      to,
+      ...(cc.length > 0 ? { cc } : {}),
+      ...(envelope.replyTo.length > 0 ? { replyTo: envelope.replyTo } : {}),
+      subject,
+      text: `${text}\n\n—\n${footer}`,
+      html: emailHtml(text, footer),
+    });
+
+  let used = asClient ?? asSystem;
+  let { data, error } = await attempt(used);
+  if (asClient && (error || !data)) {
+    // דומיין הכתובות האישיות עוד לא אומת לשליחה — שולחים מכתובת הפלטפורמה
+    console.error('Conversation email from the client address failed, retrying from the platform address:', error);
+    used = asSystem;
+    ({ data, error } = await attempt(used));
+  }
   if (error || !data) {
     console.error('Conversation email failed:', error);
     return { ok: false, status: 502, error: 'המייל לא נשלח. נסו שוב בעוד רגע' };
   }
+  const fromAddress = parseAddress(used.from).email;
 
   const now = new Date();
   const row = await prisma.conversationEmail.create({
@@ -696,7 +763,7 @@ export async function sendConversationEmail(
       direction: 'OUTBOUND',
       senderId: access.viewerId,
       senderRole: access.viewerRole,
-      fromAddress: isValidEmail(senderEmail) ? senderEmail : fromAddress,
+      fromAddress: used === asClient ? fromAddress : isValidEmail(senderEmail) ? senderEmail : fromAddress,
       fromName: sender?.name ?? null,
       toAddresses: to,
       ccAddresses: cc,
@@ -722,18 +789,46 @@ export interface InboundEvent {
   messageId: string | null;
 }
 
+/** הלקוח שהכתובת האישית שלו בין הנמענים — לפי השם, או לפי המפתח בכתובת ישנה */
+async function mailboxOwner(recipients: string[], domains: string[]) {
+  for (const target of mailboxTargets(recipients, domains, senderAddress(process.env.EMAIL_FROM))) {
+    const owner = await prisma.user.findFirst({
+      where: target.legacyKey ? { mailboxKey: target.legacyKey } : { mailboxName: target.name },
+      select: { id: true },
+    });
+    if (owner) return owner;
+  }
+  return null;
+}
+
+/** הכתובות שהשיחה כבר מכירה: מי שקיבל ממנה מייל, ומי ששלח אליה מייל שנכנס */
+async function correspondentsOf(clientUserId: string): Promise<Set<string>> {
+  const rows = await prisma.conversationEmail.findMany({
+    where: { clientUserId, OR: [{ direction: 'OUTBOUND' }, { direction: 'INBOUND', held: false }] },
+    orderBy: { createdAt: 'desc' },
+    take: 500,
+    select: { direction: true, fromAddress: true, toAddresses: true, ccAddresses: true },
+  });
+  return new Set(
+    rows
+      .flatMap((row) => (row.direction === 'OUTBOUND' ? [...row.toAddresses, ...row.ccAddresses] : [row.fromAddress]))
+      .map(normalizeEmail)
+  );
+}
+
+/** מעבר לזה ביממה, מיילים משולחים לא מוכרים כבר לא נשמרים — הגנה מהצפה */
+const MAX_HELD_PER_DAY = 30;
+
 /**
  * מייל שהגיע לכתובת אישית של לקוח (דרך webhook של Resend). הגוף נמשך מה-API
- * של Resend, כי ה-webhook מחזיק רק את הכותרות. מייל לכתובת שאינה של לקוח —
- * או שכבר נשמר — פשוט מדולג.
+ * של Resend, כי ה-webhook מחזיק רק את הכותרות. מייל משולח שהשיחה לא מכירה
+ * נשמר כממתין לאישור הלקוח. מייל לכתובת כללית מועבר, ומייל שכבר נשמר מדולג.
  */
-export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' | 'skipped'> {
-  const domain = inboundDomain();
-  const key = mailboxKeyFromAddresses([...event.receivedFor, ...event.to, ...event.cc], domain);
-  if (!key) return 'skipped';
-
-  const owner = await prisma.user.findUnique({ where: { mailboxKey: key }, select: { id: true } });
-  if (!owner) return 'skipped';
+export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' | 'held' | 'forwarded' | 'skipped'> {
+  const domains = inboundDomains();
+  const owner = await mailboxOwner([...event.receivedFor, ...event.to, ...event.cc], domains);
+  // מייל לכתובת כללית בדומיין (info@, hello@) — או לכתובת שאינה של אף לקוח
+  if (!owner) return (await forwardGeneralEmail(event, domains)) ? 'forwarded' : 'skipped';
 
   const providerId = `in:${event.emailId}`;
   const existing = await prisma.conversationEmail.findUnique({ where: { providerId }, select: { id: true } });
@@ -747,10 +842,20 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
   const from = parseAddress(event.from);
   // הכתובות האישיות בדומיין הקבלה הן צנרת פנימית — לא נמענים שכדאי להציג
   const visible = (list: string[]) =>
-    list.map((item) => parseAddress(item).email).filter((email) => !email.endsWith(`@${domain}`));
+    list.map((item) => parseAddress(item).email).filter((email) => !domains.some((host) => email.endsWith(`@${host}`)));
   const known = contacts.find((contact) => contact.email === from.email) ?? null;
+  const held = !senderAllowed(from.email, contacts, await correspondentsOf(owner.id));
+  if (held) {
+    const recent = await prisma.conversationEmail.count({
+      where: { clientUserId: owner.id, held: true, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    });
+    if (recent >= MAX_HELD_PER_DAY) {
+      console.warn(`[conversation] inbound email from ${from.email} dropped: too many held emails for ${owner.id}`);
+      return 'skipped';
+    }
+  }
 
-  await prisma.conversationEmail.create({
+  const row = await prisma.conversationEmail.create({
     data: {
       clientUserId: owner.id,
       direction: 'INBOUND',
@@ -765,10 +870,150 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
       bank: bankFor([event.from], contacts),
       providerId,
       messageId: event.messageId,
+      held,
       // מייל שהלקוח עצמו העביר אינו "חדש" בשבילו
       ...(known?.kind === 'CLIENT' ? { readByClientAt: new Date() } : {}),
       ...(known?.kind === 'ADVISOR' ? { readByAdvisorAt: new Date() } : {}),
     },
   });
-  return 'stored';
+  await (held ? notifyHeldEmail(owner.id, row) : notifyInboundEmail(owner.id, row, known?.kind ?? null)).catch((error) =>
+    console.error('[conversation] inbound email notification failed:', error)
+  );
+  return held ? 'held' : 'stored';
+}
+
+export type ReviewSenderResult = { ok: true; count: number } | { ok: false; status: number; error: string };
+
+/**
+ * החלטת הלקוח על שולח לא מוכר: אישור מכניס לשיחה את כל המיילים שלו שממתינים
+ * (והבאים ייכנסו ישר), מחיקה מוחקת אותם. רק הלקוח מחליט.
+ */
+export async function reviewHeldSender(
+  access: ConversationAccess,
+  emailId: string,
+  approve: boolean
+): Promise<ReviewSenderResult> {
+  if (access.viewerRole !== 'CLIENT') return { ok: false, status: 403, error: 'רק הלקוח מאשר שולחים' };
+  const email = await prisma.conversationEmail.findFirst({
+    where: { id: emailId, clientUserId: access.clientUserId, held: true },
+    select: { fromAddress: true },
+  });
+  if (!email) return { ok: false, status: 404, error: 'המייל לא נמצא' };
+  const where = { clientUserId: access.clientUserId, held: true, fromAddress: email.fromAddress };
+
+  if (!approve) {
+    const { count } = await prisma.conversationEmail.deleteMany({ where });
+    return { ok: true, count };
+  }
+  const rows = await prisma.conversationEmail.findMany({ where, orderBy: { createdAt: 'asc' } });
+  await prisma.conversationEmail.updateMany({ where: { id: { in: rows.map((row) => row.id) } }, data: { held: false } });
+  // עכשיו גם היועץ רואה אותם — ומקבל התראה אחת על האחרון
+  const last = rows[rows.length - 1];
+  if (last) {
+    await notifyInboundEmail(access.clientUserId, last, 'CLIENT').catch((error) =>
+      console.error('[conversation] approved email notification failed:', error)
+    );
+  }
+  return { ok: true, count: rows.length };
+}
+
+/**
+ * מייל משולח לא מוכר: הלקוח מקבל הודעה קצרה בלי התוכן — כדי שמייל התחזות לא
+ * יגיע אליו מהדומיין של משכלנתא — ומאשר או מוחק בפלטפורמה.
+ */
+async function notifyHeldEmail(clientUserId: string, email: { fromAddress: string; fromName: string | null; subject: string }) {
+  const client = await prisma.user.findUnique({ where: { id: clientUserId }, select: { email: true } });
+  if (!client?.email) return;
+  const origin = (canonicalSiteOrigin() || process.env.NEXTAUTH_URL || '').replace(/\/$/, '');
+  const from = email.fromName ? `${email.fromName} (${email.fromAddress})` : email.fromAddress;
+  const text = `הגיע מייל לכתובת האישית שלכם ב${appName()} משולח שעוד לא מוכר לשיחה.\n\nמאת: ${from}\nנושא: ${email.subject}\n\nהמייל ממתין בטאב המיילים. אם אתם מכירים את השולח (למשל הבנק), אשרו אותו והמייל ייכנס לשיחה. אם לא — מחקו אותו.\n\n${origin}/dashboard#chat`;
+  await sendEmail({ to: client.email, subject: `מייל ממתין לאישור: ${email.subject}`, text, html: emailHtml(text, appName()) });
+}
+
+/**
+ * מייל שהגיע לכתובת האישית: הלקוח (והיועץ המלווה) מקבלים עליו מייל לתיבה
+ * הרגילה שלהם, עם התוכן וקישור לשיחה. מי ששלח את המייל בעצמו לא מקבל התראה.
+ */
+async function notifyInboundEmail(
+  clientUserId: string,
+  email: { fromAddress: string; fromName: string | null; subject: string; text: string; attachments: Prisma.JsonValue | null },
+  senderKind: ConversationContact['kind'] | null
+) {
+  const origin = (canonicalSiteOrigin() || process.env.NEXTAUTH_URL || '').replace(/\/$/, '');
+  const from = email.fromName ? `${email.fromName} (${email.fromAddress})` : email.fromAddress;
+  const body = email.text ? (email.text.length > 1500 ? `${email.text.slice(0, 1500)}…` : email.text) : '';
+  const files = storedAttachments(email.attachments).length;
+  const filesLine = files ? `\n\nמצורפים ${files === 1 ? 'קובץ אחד' : `${files} קבצים`} — אפשר לצפות בהם ולשמור אותם בתיק המסמכים בפלטפורמה.` : '';
+
+  const [client, advisor] = await Promise.all([
+    prisma.user.findUnique({ where: { id: clientUserId }, select: { name: true, email: true } }),
+    advisorOf(clientUserId),
+  ]);
+
+  if (senderKind !== 'CLIENT' && client?.email) {
+    const text = `הגיע מייל חדש לכתובת האישית שלכם ב${appName()}.\n\nמאת: ${from}\nנושא: ${email.subject}\n\n${body}${filesLine}\n\nכדי שהתשובה תישמר בשיחה ותצא מהכתובת האישית, ענו מהפלטפורמה: ${origin}/dashboard#chat`;
+    await sendEmail({ to: client.email, subject: `מייל חדש: ${email.subject}`, text, html: emailHtml(text, appName()) });
+  }
+  if (senderKind !== 'ADVISOR' && advisor?.email) {
+    const who = client?.name || client?.email || 'הלקוח';
+    const text = `הגיע מייל חדש לשיחה של ${who}.\n\nמאת: ${from}\nנושא: ${email.subject}\n\n${body}${filesLine}\n\nלצפייה ולתשובה: ${origin}/advisor-dashboard`;
+    await sendEmail({ to: advisor.email, subject: `מייל חדש אצל ${who}: ${email.subject}`, text, html: emailHtml(text, appName()) });
+  }
+}
+
+/**
+ * מייל לכתובת כללית בדומיין — info@, hello@, או תשובה למייל מערכת — מועבר
+ * לכתובת שב-`EMAIL_FORWARD_TO`, עם השולח המקורי בשדה התשובה ועם הקבצים שצורפו.
+ * כך שום מייל לדומיין לא הולך לאיבוד, גם כשכל הדומיין מקבל דרך Resend.
+ */
+async function forwardGeneralEmail(event: InboundEvent, domains: readonly string[]): Promise<boolean> {
+  const target = normalizeEmail(process.env.EMAIL_FORWARD_TO);
+  const apiKey = process.env.RESEND_API_KEY;
+  const addressedTo = addressedToDomains([...event.receivedFor, ...event.to, ...event.cc], domains);
+  if (!addressedTo || !apiKey || !isValidEmail(target)) {
+    if (addressedTo) console.warn(`[conversation] email to ${addressedTo} dropped: EMAIL_FORWARD_TO is not set`);
+    return false;
+  }
+  const original = parseAddress(event.from);
+  // לא מעבירים מייל שנשלח מהכתובת שאליה מעבירים — כדי לא ליצור לולאה
+  if (original.email === target) return false;
+
+  const resend = new Resend(apiKey);
+  const { data: email, error } = await resend.emails.receiving.get(event.emailId);
+  if (!email) {
+    console.error(`[conversation] forward ${event.emailId}: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`);
+    return false;
+  }
+
+  // הקבצים עוברים איתו, עד 10MB יחד (מעבר לזה הם נשארים ב-Resend)
+  const attachments: { filename: string; content: string; contentType: string }[] = [];
+  let total = 0;
+  for (const item of email.attachments ?? []) {
+    if (total + item.size > 10 * 1024 * 1024) break;
+    const { data: file } = await resend.emails.receiving.attachments.get({ emailId: event.emailId, id: item.id });
+    const response = file?.download_url ? await fetch(file.download_url, { cache: 'no-store' }) : null;
+    if (!response?.ok) continue;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    total += bytes.byteLength;
+    attachments.push({ filename: item.filename || 'attachment', content: bytes.toString('base64'), contentType: item.content_type });
+  }
+
+  const header = `הועבר מ${appName()}: מייל שנשלח ל-${addressedTo} מאת ${event.from}. "השב" יענה ישירות לשולח.`;
+  const text = email.text?.trim() || (email.html ? htmlToText(email.html) : '');
+  const { error: sendError } = await resend.emails.send({
+    from: `${(original.name || original.email).replace(/["<>\r\n]/g, '')} דרך ${appName()} <${senderAddress(process.env.EMAIL_FROM)}>`,
+    to: target,
+    replyTo: original.email,
+    subject: cleanSubject(event.subject) || '(ללא נושא)',
+    text: `${header}\n\n${text}`,
+    html: email.html
+      ? `<p style="font-family:Arial,sans-serif;color:#64748b;font-size:13px;direction:rtl;">${escapeHtml(header)}</p><hr>${email.html}`
+      : emailHtml(text, header),
+    ...(attachments.length > 0 ? { attachments } : {}),
+  });
+  if (sendError) {
+    console.error('[conversation] forward failed:', sendError);
+    return false;
+  }
+  return true;
 }

@@ -453,7 +453,7 @@ export class DemoApiRouter {
         unreadChat: this.chat.filter((item) => item.authorRole === 'ADVISOR' && !item.readAt).length,
         unreadEmails: this.emails.filter((item) => item.unread).length,
         advisorName: 'רון, יועץ משכלנתא',
-        mailboxAddress: 'c-demo0000000000000000@inbox.mashkalanta.example',
+        mailboxAddress: 'dana.cohen@mashkalanta.example',
         receivesEmail: true,
       });
     }
@@ -494,6 +494,7 @@ export class DemoApiRouter {
           bank: DEMO_CONTACTS.find((item) => to.includes(item.email) && item.bank)?.bank ?? null,
           createdAt: nowIso(),
           unread: false,
+          held: false,
           attachments: [],
         };
         this.emails = [email, ...this.emails];
@@ -502,6 +503,19 @@ export class DemoApiRouter {
       const view = this.emails;
       this.emails = this.emails.map((item) => (item.unread ? { ...item, unread: false } : item));
       return json({ emails: view, contacts: DEMO_CONTACTS, folders: this.demoFolders() });
+    }
+    // אישור או מחיקה של שולח לא מוכר במייל ההדגמה
+    const sender = path.match(/^\/api\/conversation\/emails\/([^/]+)\/sender$/);
+    if (sender && method === 'POST') {
+      const body = await this.body(init, input);
+      const from = this.emails.find((item) => item.id === sender[1] && item.held)?.fromAddress;
+      const matches = (item: ConversationEmailView) => item.held && item.fromAddress === from;
+      const count = this.emails.filter(matches).length;
+      this.emails =
+        body.decision === 'approve'
+          ? this.emails.map((item) => (matches(item) ? { ...item, held: false } : item))
+          : this.emails.filter((item) => !matches(item));
+      return json({ ok: true, count });
     }
     // קובץ מצורף במייל ההדגמה: תצוגה מקדימה ושמירה בתיק
     const attachment = path.match(/^\/api\/conversation\/emails\/([^/]+)\/attachments\/([^/]+)$/);
@@ -576,6 +590,22 @@ function demoChat(): ChatMessageView[] {
 function demoEmails(): ConversationEmailView[] {
   return [
     {
+      id: 'demo-email-3',
+      direction: 'INBOUND',
+      senderRole: null,
+      fromAddress: 'mashkanta-noreply@mizrahi.example',
+      fromName: 'מזרחי טפחות',
+      toAddresses: ['dana.cohen@mashkalanta.example'],
+      ccAddresses: [],
+      subject: 'עדכון סטטוס לבקשת המשכנתא שלך',
+      text: 'שלום,\nהבקשה שלך לאישור עקרוני התקבלה ונמצאת בבדיקה. נעדכן כשתהיה החלטה.\nמזרחי טפחות',
+      bank: null,
+      createdAt: hoursAgo(1),
+      unread: true,
+      held: true,
+      attachments: [],
+    },
+    {
       id: 'demo-email-2',
       direction: 'INBOUND',
       senderRole: null,
@@ -588,6 +618,7 @@ function demoEmails(): ConversationEmailView[] {
       bank: 'לאומי',
       createdAt: hoursAgo(4),
       unread: true,
+      held: false,
       attachments: [
         {
           id: 'demo-att-1',
@@ -612,6 +643,7 @@ function demoEmails(): ConversationEmailView[] {
       bank: 'לאומי',
       createdAt: hoursAgo(28),
       unread: false,
+      held: false,
       attachments: [],
     },
   ];
