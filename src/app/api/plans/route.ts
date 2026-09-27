@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
   if (body?.kind === 'REFINANCE' && !body?.refinance) {
     const plan = await createEmptyRefinancePlan(userId);
     if (!plan) return NextResponse.json({ error: 'Could not create plan' }, { status: 500 });
+    await sendProcessStartEmail(userId, plan);
     return NextResponse.json(plan, { status: 201 });
   }
 
