@@ -444,14 +444,27 @@ const SCENES = {
     },
     shoot: async (d) => {
       const { page } = d;
-      await d.wait(1200);
-      await d.click(button(page, 'מייל חדש'), 700);
-      const fields = page.locator('input[type="text"], input:not([type])');
-      await d.type(fields.last(), 'בקשה לאישור עקרוני - דנה ואורי לוי', 32);
-      await d.type(page.locator('textarea').last(), 'שלום מיכל, מצורפים שלושת התלושים האחרונים ודפי החשבון. נשמח לאישור עקרוני על התמהיל.', 22);
-      await d.wait(500);
-      await d.pointAt(button(page, /שליחת המייל/));
-      await d.wait(1200);
+      await d.wait(900);
+      await d.click(button(page, 'מייל חדש'), 600);
+      // נמען חדש: עורכת הדין של העסקה
+      await d.click(button(page, 'נמען חדש'), 500);
+      const form = page.locator('div', { has: page.getByText('נמען חדש', { exact: true }) }).last();
+      await d.type(form.locator('input').nth(0), 'עו״ד רונית שחר', 40);
+      await d.pointAt(form.locator('select'));
+      await form.locator('select').selectOption('LAWYER');
+      await d.wait(300);
+      await d.type(form.locator('input[type="email"]'), 'ronit@shahar-law.co.il', 30);
+      await d.click(form.getByRole('button', { name: 'הוספה' }), 700);
+      await d.type(page.locator('label:has-text("נושא") input').first(), 'חוזה הרכישה והאישור העקרוני', 30);
+      await d.type(page.locator('[role=dialog] textarea').first(), 'שלום רונית, מצרפת את האישור העקרוני ממזרחי לבדיקת החוזה.', 22);
+      // צירוף מסמך מתיק המסמכים
+      await d.click(page.getByRole('button', { name: 'צירוף קובץ' }).last(), 500);
+      await d.click(button(page, 'מתיק המסמכים'), 700);
+      await d.click(page.locator('[role=dialog]').getByRole('button', { name: /אישור עקרוני · מזרחי/ }), 900);
+      await d.wait(600);
+      await d.click(button(page, /שליחת המייל/), 1600);
+      await d.hideCursor();
+      await d.wait(1400);
     },
   },
   pricing: {
