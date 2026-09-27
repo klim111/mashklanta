@@ -11,6 +11,7 @@ import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 import { assignMixDeal, getMixForUser } from '@/lib/mixes';
 import { sanitizeMix } from '@/components/mortgage-advisor/engine';
 import { rateLimit } from '@/lib/rate-limit';
+import { sendProcessStartEmail } from '@/lib/client-emails';
 
 /** תהליכי תכנון המשכנתא של המשתמש — הפעילים והמושלמים */
 export async function GET() {
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
     if (!mix) return NextResponse.json({ error: 'Invalid mix' }, { status: 400 });
     const plan = await createRefinancePlan(userId, { refinance: body.refinance, mix });
     if (!plan) return NextResponse.json({ error: 'Invalid refinance data' }, { status: 400 });
+    await sendProcessStartEmail(userId, plan);
     return NextResponse.json(plan, { status: 201 });
   }
 
@@ -81,8 +83,12 @@ export async function POST(req: NextRequest) {
       propertyValue: plan.propertyValue ?? propertyValue,
       totalAmount: plan.mortgageAmount ?? mortgageAmount ?? undefined,
     });
+    await sendProcessStartEmail(userId, plan);
     return NextResponse.json(plan, { status: 201 });
   }
 
-  return NextResponse.json(await createPlan(userId, name), { status: 201 });
+  const plan = await createPlan(userId, name);
+  // מייל הסבר ללקוח שפתח תהליך (לא ליועץ). כשל בשליחה לא עוצר את הפתיחה
+  await sendProcessStartEmail(userId, plan);
+  return NextResponse.json(plan, { status: 201 });
 }

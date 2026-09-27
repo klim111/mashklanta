@@ -189,12 +189,12 @@ export function isReservedMailboxName(name: string, systemAddress?: string | nul
 }
 
 /**
- * הבסיס לשם הכתובת האישית: החלק שלפני ה-@ במייל של הלקוח, בלי תגית (+…),
+ * הבסיס לשם הכתובת האישית: שם המשתמש, או החלק שלפני ה-@ במייל, בלי תגית (+…),
  * באותיות קטנות ורק בתווים שמותרים בכתובת. שם שמור או ריק — `client`, ואז
  * נוסף לו מספר.
  */
-export function mailboxNameBase(email: string | null | undefined): string {
-  const local = normalizeEmail(email).split('@')[0].replace(/\+.*$/, '');
+export function mailboxNameBase(usernameOrEmail: string | null | undefined): string {
+  const local = normalizeEmail(usernameOrEmail).split('@')[0].replace(/\+.*$/, '');
   const clean = local
     .replace(/[^a-z0-9._-]/g, '')
     .replace(/[._-]{2,}/g, (run) => run[0])

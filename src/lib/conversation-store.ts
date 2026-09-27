@@ -642,14 +642,18 @@ export async function saveAttachmentToPlan(
 }
 
 /**
- * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: החלק שלפני
- * ה-@ במייל שלו, ועם מספר כשהשם כבר תפוס.
+ * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: שם המשתמש שלו
+ * (או החלק שלפני ה-@ במייל), ועם מספר כשהשם כבר תפוס.
  */
 async function ensureMailboxName(clientUserId: string): Promise<string | null> {
-  const user = await prisma.user.findUnique({ where: { id: clientUserId }, select: { mailboxName: true, email: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: clientUserId },
+    select: { mailboxName: true, username: true, email: true },
+  });
   if (!user) return null;
   if (user.mailboxName) return user.mailboxName;
-  const candidates = mailboxNameCandidates(user.email, senderAddress(process.env.EMAIL_FROM));
+  // שם המשתמש, ובלעדיו החלק שלפני ה-@ במייל
+  const candidates = mailboxNameCandidates(user.username || user.email, senderAddress(process.env.EMAIL_FROM));
   const taken = new Set(
     (
       await prisma.user.findMany({ where: { mailboxName: { in: candidates } }, select: { mailboxName: true } })

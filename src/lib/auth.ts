@@ -17,6 +17,7 @@ import {
 } from "@/lib/registration";
 import { canonicalSiteOrigin } from "@/lib/auth-url";
 import { cookies } from "next/headers";
+import { sendWelcomeEmail } from "@/lib/client-emails";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
@@ -134,6 +135,8 @@ export const authOptions: NextAuthOptions = {
             REGISTRATION_DEVICE_COOKIE
           ),
         });
+        // מייל ברוכים הבאים, עם הכתובת האישית. כשל בשליחה לא עוצר את הכניסה
+        await sendWelcomeEmail(user.id);
         return {
           id: user.id,
           email: user.email ?? undefined,
