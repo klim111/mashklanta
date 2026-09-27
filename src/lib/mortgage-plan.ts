@@ -136,7 +136,7 @@ export function flowStages(flow: PlanFlow = NEW_PLAN_FLOW): readonly PlanStageId
 /** סוג התהליך כפי שהוא נגזר מנתוני השלבים */
 export function planFlowOf(data: Pick<PlanData, 'MIX'>): PlanFlow {
   const refinance = data.MIX.refinance;
-  if (!refinance) return NEW_PLAN_FLOW;
+  if (!refinance) return data.MIX.refinancePending ? { kind: 'REFINANCE', refinanceMode: null } : NEW_PLAN_FLOW;
   return { kind: 'REFINANCE', refinanceMode: refinance.mode };
 }
 
@@ -422,6 +422,12 @@ export interface MixData {
    * והבחירה בין מיחזור פנימי לחיצוני.
    */
   refinance: RefinanceMixData | null;
+  /**
+   * תהליך מיחזור שנפתח מהאזור האישי ועדיין לא נשמר בו תמהיל. הוא כבר תהליך
+   * מיחזור (שלבי המיחזור, ושלב התמהיל הוא כלי המיחזור), והשמירה הראשונה בכלי
+   * ממלאת את `refinance`.
+   */
+  refinancePending?: boolean;
 }
 
 // ───────────────────────────── מיחזור ─────────────────────────────
@@ -710,6 +716,7 @@ const EMPTY: PlanData = {
     isFinal: false,
     finalLocked: false,
     refinance: null,
+    refinancePending: false,
   },
   APPLICATIONS: {
     bank: null,
@@ -1188,6 +1195,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         isFinal: bool(source.isFinal),
         finalLocked: bool(source.finalLocked) || bool(source.isFinal),
         refinance: parseRefinanceMixData(source.refinance),
+        refinancePending: bool(source.refinancePending),
       } as PlanStageDataMap[S];
     }
 
@@ -2052,7 +2060,9 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       break;
     case 'MIX':
       if (!data.MIX.mixRecordId && !data.MIX.mixKey) {
-        missing.push(data.MIX.refinance ? 'שמירת התמהיל למיחזור' : 'שמירת תמהיל בכלי התכנון');
+        missing.push(
+          data.MIX.refinance || data.MIX.refinancePending ? 'שמירת התמהיל למיחזור' : 'שמירת תמהיל בכלי התכנון'
+        );
       }
       if (data.MIX.refinance && !data.MIX.refinance.mode) {
         missing.push('בחירה בין מיחזור פנימי למיחזור חיצוני');

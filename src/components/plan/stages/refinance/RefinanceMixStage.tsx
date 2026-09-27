@@ -54,6 +54,14 @@ export function RefinanceMixStage({
   /** המשכנתא הנוכחית כפי שהיא נערכת בכלי — נפתחת ממה שנשמר */
   const [currentMix, setCurrentMix] = useState<MortgageMix | null>(null);
   const [perTrack, setPerTrack] = useState(false);
+  /** תהליך שנפתח מהאזור האישי ועדיין אין בו תמהיל — המשכנתא הנוכחית מוזנת כאן */
+  const [firstMix, setFirstMix] = useState<MortgageMix>(() => ({
+    id: 'refinance-current',
+    name: 'המשכנתא הנוכחית',
+    totalAmount: 0,
+    tracks: [],
+    createdAt: new Date(),
+  }));
 
   const calcs = useMemo(() => {
     if (!refinance) return null;
@@ -63,7 +71,52 @@ export function RefinanceMixStage({
     };
   }, [refinance]);
 
-  if (!refinance || !calcs) return null;
+  if (!refinance) {
+    // השמירה הראשונה בכלי ממלאת את נתוני המיחזור בתהליך הזה
+    const saveFirst = async (payload: RefinanceSavePayload): Promise<RefinanceSaveOutcome> => {
+      const next = refinanceMixDataFrom(payload, null);
+      const mix = refinanceWorkspaceMix(next);
+      const stored = await save(mix, { planId });
+      onChange({
+        ...data.MIX,
+        mixRecordId: stored.recordId ?? data.MIX.mixRecordId,
+        mixKey: next.refinancedMix.id,
+        mixName: next.refinancedMix.name,
+        totalAmount: next.refinancedMix.totalAmount,
+        monthlyPayment: next.refinanced.monthlyPayment,
+        averageRate: next.refinanced.averageRate,
+        totalInterest: next.refinanced.totalInterest,
+        totalPaid: next.refinanced.totalPaid,
+        months: next.refinanced.months,
+        isFinal: true,
+        refinance: next,
+        refinancePending: false,
+      });
+      return { planId, href: null, mix };
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3" dir="rtl">
+          <p className="text-sm font-bold text-blue-900">
+            השלב הראשון במיחזור: מזינים את המשכנתא כפי שהיא היום, בונים בפאנל השליטה את התמהיל למיחזור, ושומרים
+            אותו לתהליך בלחיצה על "שמור מצב נוכחי כתמהיל למיחזור".
+          </p>
+        </div>
+        <RefinanceMortgageInput
+          mix={firstMix}
+          onMixChange={setFirstMix}
+          perTrackRefinanceEnabled={perTrack}
+          onPerTrackRefinanceEnabledChange={setPerTrack}
+          onSaveRefinance={saveFirst}
+          saveContext="plan"
+          market={market}
+        />
+      </div>
+    );
+  }
+
+  if (!calcs) return null;
 
   /** התמהיל למיחזור כתמהיל של כלי התכנון — מהתמהילים השמורים, או מתורגם מהשלב */
   const quoteMix =

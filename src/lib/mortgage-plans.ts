@@ -843,6 +843,42 @@ export async function createRefinancePlan(
 }
 
 /**
+ * תהליך מיחזור ריק — נפתח כשלקוח ששילם בוחר "מיחזור" באזור האישי. התהליך
+ * נוצר מיד עם שלבי המיחזור, ושלב התמהיל (כלי המיחזור) נפתח ראשון. השמירה
+ * הראשונה בכלי ממלאת את נתוני המיחזור, בדיוק כמו תהליך שנפתח מכלי המיחזור.
+ */
+export async function createEmptyRefinancePlan(userId: string): Promise<PlanView | null> {
+  const client = await prisma.client.findFirst({ where: { userId }, select: { id: true } });
+  const row = await prisma.mortgagePlan.create({
+    data: {
+      ownerId: userId,
+      clientId: client?.id ?? null,
+      name: 'מיחזור משכנתא',
+      currentStage: 'MIX',
+      stages: {
+        create: PLAN_STAGES.map((stage) => ({
+          stage,
+          status: stage === 'MIX' ? 'IN_PROGRESS' : 'PENDING',
+          ...(stage === 'MIX'
+            ? {
+                dataJson: {
+                  ...emptyPlanData().MIX,
+                  refinancePending: true,
+                } as unknown as Prisma.InputJsonValue,
+              }
+            : {}),
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  await bindOpenPass(userId, row.id);
+  await refreshPlan(row.id);
+  return getPlanForUser(userId, row.id);
+}
+
+/**
  * "חתמתי על המשכנתא בבנק" — סיום התהליך.
  *
  * נקרא מהשלב האחרון של התהליך, אחרי שכל הבדיקות בו סומנו. השלב נסגר, והתהליך
