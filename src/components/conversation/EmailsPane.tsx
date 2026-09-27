@@ -18,11 +18,20 @@ import {
   Send,
   ShieldQuestion,
   Trash2,
+  UserPlus,
   X,
 } from 'lucide-react';
-import type { AttachmentFolder, ConversationContact, ConversationEmailView, ConversationRole } from '@/lib/conversation';
-import { MAX_EMAIL_LENGTH, MAX_SUBJECT_LENGTH } from '@/lib/conversation';
-import { useConversationEmails } from './useConversation';
+import type {
+  AttachmentFolder,
+  ConversationContact,
+  ConversationEmailView,
+  ConversationRole,
+  OutgoingFileRef,
+  RecipientRole,
+} from '@/lib/conversation';
+import { MAX_EMAIL_LENGTH, MAX_SUBJECT_LENGTH, RECIPIENT_ROLES, recipientRoleLabel } from '@/lib/conversation';
+import { attachmentUrl, useConversationEmails } from './useConversation';
+import { AttachButton, PendingFiles, useOutgoingFiles } from './OutgoingFiles';
 import type { EmailDraft } from './useConversation';
 import { accentFor } from './ConversationWindow';
 import { EmailAttachments } from './EmailAttachments';
@@ -35,12 +44,6 @@ const WHEN = new Intl.DateTimeFormat('he-IL', {
   hour: '2-digit',
   minute: '2-digit',
 });
-
-const KIND_LABEL: Record<ConversationContact['kind'], string> = {
-  BANKER: 'בנקאי',
-  ADVISOR: 'יועץ',
-  CLIENT: 'לקוח',
-};
 
 /**
  * טאב המיילים: כל מה שנשלח מהפלטפורמה לבנקאי, ליועץ וללקוח, ומה שחזר.
@@ -73,6 +76,8 @@ export function EmailsPane({
     reviewSender,
     setArchived,
     deleteForever,
+    addRecipient,
+    removeRecipient,
   } = useConversationEmails(clientUserId, true);
   const [view, setView] = useState<'feed' | 'archive'>('feed');
   // מייל שהועבר עכשיו לארכיון — עם "ביטול" לכמה שניות
@@ -141,11 +146,14 @@ export function EmailsPane({
         contacts={contacts}
         receivesEmail={receivesEmail}
         mailboxAddress={role === 'CLIENT' ? mailboxAddress : null}
+        clientUserId={clientUserId}
         sending={sending}
         error={error}
         onCancel={() => setDraft(null)}
-        onSend={async () => {
-          if (await send(draft)) setDraft(null);
+        onAddRecipient={addRecipient}
+        onRemoveRecipient={removeRecipient}
+        onSend={async (files) => {
+          if (await send({ ...draft, files })) setDraft(null);
         }}
       />
     );
@@ -166,7 +174,6 @@ export function EmailsPane({
         <button
           type="button"
           onClick={() => startDraft(recipients.filter((item) => item.kind === 'BANKER').slice(0, 1).map((item) => item.email))}
-          disabled={recipients.length === 0}
           className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-button font-black text-white disabled:opacity-50 ${accent.solid}`}
         >
           <PenLine className="h-4 w-4" />
@@ -178,8 +185,8 @@ export function EmailsPane({
         {!hasBanker && (
           <Hint>
             {role === 'CLIENT'
-              ? 'הזינו את המייל של הבנקאי שמטפל בבקשה בשלב האישור העקרוני, והוא יופיע כאן כנמען.'
-              : 'הלקוח עדיין לא הזין מייל של בנקאי בשלב האישור העקרוני. בינתיים אפשר לכתוב ללקוח.'}
+              ? 'הזינו את המייל של הבנקאי בשלב האישור העקרוני, או הוסיפו נמען ב"מייל חדש", והוא יופיע כאן.'
+              : 'הלקוח עדיין לא הזין מייל של בנקאי. אפשר להוסיף נמען ב"מייל חדש", או לכתוב ללקוח.'}
           </Hint>
         )}
         {archivedNow && (
@@ -588,10 +595,9 @@ function EmailCard({
           </p>
           <p className="mt-2 whitespace-pre-wrap break-words text-info leading-relaxed text-slate-800">{email.text || PENDING_TEXT}</p>
           <EmailAttachments
-            emailId={email.id}
             attachments={email.attachments}
+            urlFor={(attachmentId, download) => attachmentUrl(email.id, attachmentId, clientUserId, download)}
             folders={folders}
-            clientUserId={clientUserId}
             onSave={onSaveAttachment}
           />
           <div className="mt-2 flex flex-wrap gap-2">
@@ -627,9 +633,12 @@ function Composer({
   contacts,
   receivesEmail,
   mailboxAddress,
+  clientUserId,
   sending,
   error,
   onCancel,
+  onAddRecipient,
+  onRemoveRecipient,
   onSend,
 }: {
   role: ConversationRole;
@@ -639,26 +648,33 @@ function Composer({
   contacts: readonly ConversationContact[];
   receivesEmail: boolean;
   mailboxAddress: string | null;
+  clientUserId?: string | null;
   sending: boolean;
   error: string | null;
   onCancel: () => void;
-  onSend: () => void;
+  onAddRecipient: (input: { email: string; name: string; role: RecipientRole; bank?: string }) => Promise<string | null>;
+  onRemoveRecipient: (recipientId: string) => Promise<string | null>;
+  onSend: (files: OutgoingFileRef[]) => void;
 }) {
   const accent = accentFor(role);
+  const outgoing = useOutgoingFiles(clientUserId);
+  const [adding, setAdding] = useState(false);
   const toggle = (email: string) =>
     onChange({
       ...draft,
       to: draft.to.includes(email) ? draft.to.filter((item) => item !== email) : [...draft.to, email],
     });
   // אותו כלל כמו בשרת: הלקוח והיועץ שאינם בין הנמענים מקבלים העתק
-  const copies = contacts.filter((contact) => contact.kind !== 'BANKER' && !draft.to.includes(contact.email));
-  const ready = draft.to.length > 0 && draft.subject.trim() && draft.text.trim();
+  const copies = contacts.filter(
+    (contact) => (contact.kind === 'CLIENT' || contact.kind === 'ADVISOR') && !draft.to.includes(contact.email)
+  );
+  const ready = draft.to.length > 0 && draft.subject.trim() && draft.text.trim() && !outgoing.uploading && !outgoing.failed;
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (ready) onSend();
+        if (ready) onSend(outgoing.refs);
       }}
       className="flex min-h-0 flex-1 flex-col"
     >
@@ -668,23 +684,70 @@ function Composer({
           <div className="mt-1 flex flex-wrap gap-1.5">
             {recipients.map((contact) => {
               const active = draft.to.includes(contact.email);
+              const label = recipientRoleLabel(contact);
               return (
-                <button
+                <span
                   key={contact.email}
-                  type="button"
-                  onClick={() => toggle(contact.email)}
-                  className={`rounded-full border-2 px-3 py-1 text-right text-sm font-bold transition-colors ${
+                  className={`inline-flex items-center rounded-full border-2 text-sm font-bold transition-colors ${
                     active ? `border-transparent text-white ${accent.solid}` : 'border-slate-200 bg-white text-slate-700'
                   }`}
                 >
-                  {contact.name}
-                  <span className={`mr-1 text-2xs ${active ? 'text-white/80' : 'text-slate-400'}`}>
-                    {contact.bank ? `${KIND_LABEL[contact.kind]} · ${contact.bank}` : KIND_LABEL[contact.kind]}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => toggle(contact.email)}
+                    title={contact.email}
+                    className="px-3 py-1 text-right"
+                  >
+                    {contact.name}
+                    <span className={`mr-1 text-2xs ${active ? 'text-white/80' : 'text-slate-400'}`}>
+                      {contact.bank ? `${label} · ${contact.bank}` : label}
+                    </span>
+                  </button>
+                  {contact.recipientId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (active) toggle(contact.email);
+                        void onRemoveRecipient(contact.recipientId!);
+                      }}
+                      aria-label={`הסרת ${contact.name} מהנמענים`}
+                      title="הסרה מרשימת הנמענים"
+                      className={`-mr-1 ml-1 rounded-full p-0.5 ${active ? 'hover:bg-white/20' : 'hover:bg-slate-100'}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
               );
             })}
+            {!adding && (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="inline-flex items-center gap-1 rounded-full border-2 border-dashed border-slate-300 px-3 py-1 text-sm font-bold text-slate-600 hover:bg-slate-50"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                נמען חדש
+              </button>
+            )}
           </div>
+          {adding && (
+            <AddRecipientForm
+              role={role}
+              onCancel={() => setAdding(false)}
+              onAdd={async (input) => {
+                const failure = await onAddRecipient(input);
+                if (!failure) {
+                  setAdding(false);
+                  onChange({
+                    ...draft,
+                    to: [...draft.to, input.email.trim().toLowerCase()],
+                  });
+                }
+                return failure;
+              }}
+            />
+          )}
           {copies.length > 0 && (
             <p className="mt-1 text-2xs font-semibold text-slate-500">
               העתק יישלח אל: {copies.map((contact) => contact.name).join(', ')}
@@ -726,24 +789,131 @@ function Composer({
         {error && <p className="text-sm font-bold text-rose-600">{error}</p>}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-slate-200 bg-white p-2">
+      <div className="border-t border-slate-200 bg-white p-2">
+        {outgoing.files.length > 0 && (
+          <div className="mb-2">
+            <PendingFiles outgoing={outgoing} />
+            {outgoing.failed && <p className="mt-1 text-2xs font-bold text-rose-600">הסירו את הקובץ שלא עלה כדי לשלוח.</p>}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <AttachButton outgoing={outgoing} clientUserId={clientUserId} />
+          <button
+            type="submit"
+            disabled={!ready || sending}
+            className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-button font-black text-white disabled:opacity-50 ${accent.solid}`}
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 -scale-x-100" />}
+            שליחת המייל
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex items-center gap-1 rounded-xl border-2 border-slate-200 px-3 py-2 text-button font-black text-slate-700 hover:bg-slate-50"
+          >
+            <X className="h-4 w-4" />
+            ביטול
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+/** טופס קצר להוספת נמען לשיחה: שם, מייל ותפקיד (ולבנקאי — הבנק) */
+function AddRecipientForm({
+  role,
+  onAdd,
+  onCancel,
+}: {
+  role: ConversationRole;
+  onAdd: (input: { email: string; name: string; role: RecipientRole; bank?: string }) => Promise<string | null>;
+  onCancel: () => void;
+}) {
+  const accent = accentFor(role);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [recipientRole, setRecipientRole] = useState<RecipientRole>('BANKER');
+  const [bank, setBank] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const field = `w-full rounded-lg border-2 border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none ${accent.ring}`;
+
+  const submit = async () => {
+    if (!name.trim() || !email.trim()) {
+      setFailure('נדרשים שם ומייל');
+      return;
+    }
+    setBusy(true);
+    setFailure(null);
+    const result = await onAdd({
+      name: name.trim(),
+      email: email.trim(),
+      role: recipientRole,
+      bank: bank.trim() || undefined,
+    });
+    setBusy(false);
+    if (result) setFailure(result);
+  };
+
+  return (
+    <div className="mt-2 space-y-2 rounded-xl border-2 border-slate-200 bg-slate-50 p-2.5">
+      <p className="text-sm font-black text-slate-800">נמען חדש</p>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="text-2xs font-bold text-slate-600">שם</span>
+          <input value={name} maxLength={80} onChange={(event) => setName(event.target.value)} className={field} />
+        </label>
+        <label className="block">
+          <span className="text-2xs font-bold text-slate-600">תפקיד</span>
+          <select
+            value={recipientRole}
+            onChange={(event) => setRecipientRole(event.target.value as RecipientRole)}
+            className={field}
+          >
+            {(Object.keys(RECIPIENT_ROLES) as RecipientRole[]).map((key) => (
+              <option key={key} value={key}>
+                {RECIPIENT_ROLES[key]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={recipientRole === 'BANKER' ? 'block' : 'col-span-2 block'}>
+          <span className="text-2xs font-bold text-slate-600">מייל</span>
+          <input
+            type="email"
+            dir="ltr"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className={`${field} text-left`}
+          />
+        </label>
+        {recipientRole === 'BANKER' && (
+          <label className="block">
+            <span className="text-2xs font-bold text-slate-600">בנק (לא חובה)</span>
+            <input value={bank} maxLength={60} onChange={(event) => setBank(event.target.value)} className={field} />
+          </label>
+        )}
+      </div>
+      {failure && <p className="text-2xs font-bold text-rose-600">{failure}</p>}
+      <div className="flex gap-2">
         <button
-          type="submit"
-          disabled={!ready || sending}
-          className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-button font-black text-white disabled:opacity-50 ${accent.solid}`}
+          type="button"
+          onClick={() => void submit()}
+          disabled={busy}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black text-white disabled:opacity-60 ${accent.solid}`}
         >
-          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 -scale-x-100" />}
-          שליחת המייל
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+          הוספה
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center gap-1 rounded-xl border-2 border-slate-200 px-3 py-2 text-button font-black text-slate-700 hover:bg-slate-50"
+          className="rounded-lg border-2 border-slate-200 bg-white px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50"
         >
-          <X className="h-4 w-4" />
           ביטול
         </button>
       </div>
-    </form>
+    </div>
   );
 }

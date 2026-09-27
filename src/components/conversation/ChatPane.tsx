@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, CheckCheck, Loader2, Send } from 'lucide-react';
 import type { ChatMessageView, ConversationRole } from '@/lib/conversation';
 import { MAX_CHAT_LENGTH } from '@/lib/conversation';
-import { useChat } from './useConversation';
+import { chatAttachmentUrl, useChat } from './useConversation';
 import { accentFor } from './ConversationWindow';
+import { EmailAttachments } from './EmailAttachments';
+import { AttachButton, PendingFiles, useOutgoingFiles } from './OutgoingFiles';
 
 const TIME = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' });
 const DAY = new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -24,15 +26,21 @@ function dayLabel(iso: string): string {
 export function ChatPane({ role, clientUserId }: { role: ConversationRole; clientUserId?: string | null }) {
   const { messages, ready, sending, error, send } = useChat(clientUserId, true);
   const [draft, setDraft] = useState('');
+  const outgoing = useOutgoingFiles(clientUserId);
   const list = useRef<HTMLDivElement>(null);
   const accent = accentFor(role);
+  const canSend = (draft.trim() || outgoing.refs.length > 0) && !outgoing.uploading && !outgoing.failed;
 
   useEffect(() => {
     list.current?.scrollTo({ top: list.current.scrollHeight });
   }, [messages.length]);
 
   const submit = async () => {
-    if (await send(draft)) setDraft('');
+    if (!canSend) return;
+    if (await send(draft, outgoing.refs)) {
+      setDraft('');
+      outgoing.reset();
+    }
   };
 
   return (
@@ -60,6 +68,7 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
               message={message}
               mine={message.authorRole === role}
               mineClass={accent.solid.split(' ')[0]}
+              clientUserId={clientUserId}
               showDay={index === 0 || dayLabel(messages[index - 1].createdAt) !== dayLabel(message.createdAt)}
             />
           ))
@@ -74,7 +83,14 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
         className="border-t border-slate-200 bg-white p-2"
       >
         {error && <p className="mb-1 px-1 text-sm font-bold text-rose-600">{error}</p>}
+        {outgoing.failed && (
+          <p className="mb-1 px-1 text-2xs font-bold text-rose-600">הסירו את הקובץ שלא עלה כדי לשלוח.</p>
+        )}
+        <div className="mb-1.5 empty:hidden">
+          <PendingFiles outgoing={outgoing} />
+        </div>
         <div className="flex items-end gap-2">
+          <AttachButton outgoing={outgoing} clientUserId={clientUserId} />
           <textarea
             value={draft}
             onChange={(event) => setDraft(event.target.value.slice(0, MAX_CHAT_LENGTH))}
@@ -90,7 +106,7 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
           />
           <button
             type="submit"
-            disabled={sending || !draft.trim()}
+            disabled={sending || !canSend}
             aria-label="שליחה"
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white transition-colors disabled:opacity-50 ${accent.solid}`}
           >
@@ -107,11 +123,13 @@ function MessageBubble({
   mine,
   mineClass,
   showDay,
+  clientUserId,
 }: {
   message: ChatMessageView;
   mine: boolean;
   mineClass: string;
   showDay: boolean;
+  clientUserId?: string | null;
 }) {
   return (
     <>
@@ -129,7 +147,16 @@ function MessageBubble({
               {message.authorName || (message.authorRole === 'ADVISOR' ? 'היועץ' : 'הלקוח')}
             </p>
           )}
-          <p className="whitespace-pre-wrap break-words text-info leading-snug">{message.body}</p>
+          {message.body && <p className="whitespace-pre-wrap break-words text-info leading-snug">{message.body}</p>}
+          {message.attachments.length > 0 && (
+            <div className="text-slate-900">
+              <EmailAttachments
+                compact
+                attachments={message.attachments}
+                urlFor={(attachmentId, download) => chatAttachmentUrl(message.id, attachmentId, clientUserId, download)}
+              />
+            </div>
+          )}
           <p className={`mt-0.5 flex items-center gap-1 text-2xs ${mine ? 'text-white/70' : 'text-slate-400'}`}>
             {TIME.format(new Date(message.createdAt))}
             {mine && (message.readAt ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}

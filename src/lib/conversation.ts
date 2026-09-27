@@ -17,6 +17,16 @@ export interface ChatMessageView {
   body: string;
   createdAt: string;
   readAt: string | null;
+  /** קבצים שצורפו להודעה */
+  attachments: AttachmentView[];
+}
+
+/** קובץ מצורף כפי שהדפדפן רואה אותו — בלי שום נתיב אחסון */
+export interface AttachmentView {
+  id: string;
+  fileName: string;
+  contentType: string;
+  size: number;
 }
 
 export interface ConversationEmailView {
@@ -49,13 +59,29 @@ export interface StoredAttachment {
   fileName: string;
   contentType: string;
   size: number;
+  /**
+   * נתיב הקובץ בחנות הקבצים — לקובץ שצורף מהפלטפורמה. בלעדיו הקובץ נמצא אצל
+   * ספק המיילים (מייל נכנס). לא נשלח לדפדפן
+   */
+  blob?: string;
 }
 
-export interface EmailAttachmentView extends StoredAttachment {
+export interface EmailAttachmentView extends AttachmentView {
   /** PDF או תמונה בגודל שהתיק מקבל — אפשר לשמור בתיק ולצפות בפלטפורמה */
   savable: boolean;
   /** התהליך שבתיק שלו הקובץ כבר נשמר */
   savedToPlanId: string | null;
+}
+
+/** מסמך מתיק המסמכים שאפשר לצרף למייל או להודעה */
+export interface ConversationDocument {
+  id: string;
+  name: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  /** התהליך שבתיק שלו המסמך */
+  planName: string;
 }
 
 /** תיק מסמכים שאפשר לשמור אליו — תהליך פתוח של הלקוח */
@@ -64,7 +90,11 @@ export interface AttachmentFolder {
   name: string;
 }
 
-export type ContactKind = 'BANKER' | 'ADVISOR' | 'CLIENT';
+/**
+ * BANKER — בנקאי (מהשלב של האישור העקרוני, או שנוסף ידנית), ADVISOR — היועץ
+ * המלווה, CLIENT — הלקוח, CONTACT — איש מקצוע אחר שנוסף ידנית (עורך דין, שמאי…)
+ */
+export type ContactKind = 'BANKER' | 'ADVISOR' | 'CLIENT' | 'CONTACT';
 
 /** נמען שאפשר לשלוח אליו מייל מהשיחה — רק אנשים שכבר קשורים לתהליך */
 export interface ConversationContact {
@@ -73,7 +103,38 @@ export interface ConversationContact {
   name: string;
   /** לבנקאי — הבנק שהוא מטפל בבקשה בו */
   bank: string | null;
+  /** התפקיד של נמען שנוסף ידנית (מפתח מ-`RECIPIENT_ROLES`) */
+  role?: RecipientRole | null;
+  /** המזהה של נמען שנוסף ידנית — כדי שאפשר יהיה להסיר אותו */
+  recipientId?: string | null;
 }
+
+/** התפקידים שאפשר לבחור לנמען שמוסיפים מתיבת המיילים */
+export const RECIPIENT_ROLES = {
+  BANKER: 'בנקאי',
+  ADVISOR: 'יועץ',
+  LAWYER: 'עורך דין',
+  APPRAISER: 'שמאי',
+  INSURANCE: 'סוכן ביטוח',
+  BROKER: 'מתווך',
+  ACCOUNTANT: 'רואה חשבון',
+  OTHER: 'אחר',
+} as const;
+
+export type RecipientRole = keyof typeof RECIPIENT_ROLES;
+
+export function isRecipientRole(value: unknown): value is RecipientRole {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(RECIPIENT_ROLES, value);
+}
+
+/** התווית של נמען: התפקיד שנבחר, או הסוג */
+export function recipientRoleLabel(contact: ConversationContact): string {
+  if (contact.role) return RECIPIENT_ROLES[contact.role];
+  return contact.kind === 'BANKER' ? 'בנקאי' : contact.kind === 'ADVISOR' ? 'יועץ' : 'לקוח';
+}
+
+/** עד כמה נמענים אפשר להוסיף ידנית לשיחה אחת */
+export const MAX_CUSTOM_RECIPIENTS = 30;
 
 export interface ConversationSummary {
   unreadChat: number;
@@ -413,7 +474,7 @@ export function carbonCopies(
 ): string[] {
   const inTo = new Set(to.map((item) => item.email));
   return contacts
-    .filter((contact) => contact.kind !== 'BANKER' && !inTo.has(contact.email))
+    .filter((contact) => (contact.kind === 'CLIENT' || contact.kind === 'ADVISOR') && !inTo.has(contact.email))
     .map((contact) => contact.email);
 }
 
@@ -459,9 +520,48 @@ export function storedAttachments(value: unknown): StoredAttachment[] {
         fileName: row.fileName,
         contentType: typeof row.contentType === 'string' ? row.contentType : 'application/octet-stream',
         size: typeof row.size === 'number' ? row.size : 0,
+        ...(typeof row.blob === 'string' && row.blob ? { blob: row.blob } : {}),
       },
     ];
   });
+}
+
+/** הקובץ בלי נתיב האחסון שלו — מה שמותר להגיע לדפדפן */
+export function attachmentView(item: StoredAttachment): AttachmentView {
+  return { id: item.id, fileName: item.fileName, contentType: item.contentType, size: item.size };
+}
+
+/** קבצים שהמשתמש מצרף למייל או להודעה: עד 5 */
+export const MAX_OUTGOING_FILES = 5;
+
+/**
+ * קובץ שמצרפים בשליחה: קובץ שהדפדפן העלה עכשיו לאחסון (`upload`, עם הנתיב
+ * שקיבל), או מסמך מתיק המסמכים (`document`).
+ */
+export type OutgoingFileRef =
+  | { kind: 'upload'; pathname: string; fileName: string }
+  | { kind: 'document'; documentId: string };
+
+export function parseOutgoingFiles(value: unknown): OutgoingFileRef[] | null {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > MAX_OUTGOING_FILES) return null;
+  const refs: OutgoingFileRef[] = [];
+  for (const item of value) {
+    const row = item as Record<string, unknown> | null;
+    if (row?.kind === 'upload' && typeof row.pathname === 'string' && typeof row.fileName === 'string') {
+      refs.push({ kind: 'upload', pathname: row.pathname, fileName: row.fileName.replace(/[\r\n"\\/]/g, '').slice(0, 120) || 'file' });
+    } else if (row?.kind === 'document' && typeof row.documentId === 'string') {
+      refs.push({ kind: 'document', documentId: row.documentId });
+    } else {
+      return null;
+    }
+  }
+  return refs;
+}
+
+/** התחילית בחנות הקבצים של קבצים שצורפו בהתכתבות של לקוח */
+export function conversationFilePrefix(clientUserId: string): string {
+  return `conversation/${clientUserId}/`;
 }
 
 /**

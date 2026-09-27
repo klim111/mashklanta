@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
-import { attachmentLink, resolveConversationAccess, saveAttachmentToPlan } from '@/lib/conversation-store';
+import { attachmentSource, resolveConversationAccess, saveAttachmentToPlan } from '@/lib/conversation-store';
+import { streamStoredFile } from '@/lib/conversation-files';
+import { attachmentResponse } from '@/lib/attachment-response';
 import { MAX_STREAMED_ATTACHMENT_BYTES } from '@/lib/conversation';
-import { isAllowedDocumentType, planDocumentFailure } from '@/lib/plan-documents';
+import { planDocumentFailure } from '@/lib/plan-documents';
 
 interface RouteContext {
   params: Promise<{ emailId: string; attachmentId: string }>;
@@ -20,31 +22,22 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { emailId, attachmentId } = await params;
-  const link = await attachmentLink(access, emailId, attachmentId);
-  if (!link) return NextResponse.json({ error: 'הקובץ לא נמצא' }, { status: 404 });
-  // קובץ גדול נפתח ישר מהקישור הזמני של ספק המיילים, בלי לעבור דרך הפונקציה
-  if (link.attachment.size > MAX_STREAMED_ATTACHMENT_BYTES) return NextResponse.redirect(link.url);
+  const download = req.nextUrl.searchParams.get('download') === '1';
+  const source = await attachmentSource(access, emailId, attachmentId);
+  if (!source) return NextResponse.json({ error: 'הקובץ לא נמצא' }, { status: 404 });
 
-  const response = await fetch(link.url, { cache: 'no-store' });
+  // קובץ שצורף מהפלטפורמה — מוזרם מחנות הקבצים
+  if (source.kind === 'blob') {
+    const stream = await streamStoredFile(source.pathname);
+    if (!stream) return NextResponse.json({ error: 'הקובץ לא נמצא' }, { status: 404 });
+    return attachmentResponse(stream, source.attachment, download);
+  }
+
+  // קובץ גדול ממייל נכנס נפתח ישר מהקישור הזמני של ספק המיילים, בלי לעבור דרך הפונקציה
+  if (source.attachment.size > MAX_STREAMED_ATTACHMENT_BYTES) return NextResponse.redirect(source.url);
+  const response = await fetch(source.url, { cache: 'no-store' });
   if (!response.ok) return NextResponse.json({ error: 'הקובץ לא נמצא' }, { status: 404 });
-  const file = { bytes: new Uint8Array(await response.arrayBuffer()), attachment: link.attachment };
-
-  /*
-    רק PDF ותמונה מוצגים בדפדפן. כל סוג אחר — ובמיוחד HTML שמישהו צירף — יורד
-    כקובץ בלבד, כדי שלא ירוץ בדומיין של הפלטפורמה
-  */
-  const previewable = isAllowedDocumentType(file.attachment.contentType);
-  const download = req.nextUrl.searchParams.get('download') === '1' || !previewable;
-  return new NextResponse(Buffer.from(file.bytes), {
-    headers: {
-      'Content-Type': previewable ? file.attachment.contentType : 'application/octet-stream',
-      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(
-        file.attachment.fileName
-      )}`,
-      'Cache-Control': 'private, max-age=0, must-revalidate',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  });
+  return attachmentResponse(Buffer.from(await response.arrayBuffer()), source.attachment, download);
 }
 
 /** שמירת הקובץ בתיק המסמכים של אחד התהליכים הפתוחים של הלקוח */
