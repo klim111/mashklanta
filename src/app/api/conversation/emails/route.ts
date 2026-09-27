@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     to: body?.to,
     subject: body?.subject,
     text: body?.text,
+    files: body?.files,
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json(result.email, { status: 201 });

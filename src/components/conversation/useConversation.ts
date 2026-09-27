@@ -8,6 +8,8 @@ import type {
   ConversationContact,
   ConversationEmailView,
   ConversationSummary,
+  OutgoingFileRef,
+  RecipientRole,
 } from '@/lib/conversation';
 
 /**
@@ -76,16 +78,16 @@ export function useChat(clientUserId: string | null | undefined, enabled: boolea
   usePolling(() => void refresh(), 8000, enabled);
 
   const send = useCallback(
-    async (body: string): Promise<boolean> => {
+    async (body: string, files: readonly OutgoingFileRef[] = []): Promise<boolean> => {
       const text = body.trim();
-      if (!text) return false;
+      if (!text && files.length === 0) return false;
       setSending(true);
       setError(null);
       try {
         const response = await fetch('/api/conversation/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ body: text, clientUserId: clientUserId ?? undefined }),
+          body: JSON.stringify({ body: text, files, clientUserId: clientUserId ?? undefined }),
         });
         if (!response.ok) {
           setError(await readError(response, 'ההודעה לא נשלחה'));
@@ -111,6 +113,8 @@ export interface EmailDraft {
   to: string[];
   subject: string;
   text: string;
+  /** קבצים שצורפו — מוכנים לשליחה */
+  files?: OutgoingFileRef[];
 }
 
 export function useConversationEmails(clientUserId: string | null | undefined, enabled: boolean) {
@@ -271,7 +275,46 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
     }
   }, []);
 
+  /** נמען חדש עם תפקיד. מחזיר הודעת שגיאה, או null כשהצליח */
+  const addRecipient = useCallback(
+    async (input: { email: string; name: string; role: RecipientRole; bank?: string }): Promise<string | null> => {
+      try {
+        const response = await fetch('/api/conversation/recipients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...input, clientUserId: clientUserId ?? undefined }),
+        });
+        if (!response.ok) return await readError(response, 'הנמען לא נוסף');
+        const contact: ConversationContact = await response.json();
+        setContacts((current) => [...current, contact]);
+        return null;
+      } catch {
+        return 'הנמען לא נוסף. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [clientUserId]
+  );
+
+  const removeRecipient = useCallback(
+    async (recipientId: string): Promise<string | null> => {
+      try {
+        const response = await fetch(
+          `/api/conversation/recipients/${encodeURIComponent(recipientId)}${query(clientUserId)}`,
+          { method: 'DELETE' }
+        );
+        if (!response.ok) return await readError(response, 'הנמען לא הוסר');
+        setContacts((current) => current.filter((item) => item.recipientId !== recipientId));
+        return null;
+      } catch {
+        return 'הנמען לא הוסר. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [clientUserId]
+  );
+
   return {
+    addRecipient,
+    removeRecipient,
     emails,
     contacts,
     folders,
@@ -316,4 +359,20 @@ export function useAdvisorInbox(enabled: boolean, ms: number) {
   }, []);
   usePolling(() => void refresh(), ms, enabled);
   return { rows, ready, refresh };
+}
+
+/** כתובת של קובץ שצורף להודעת צ'אט */
+export function chatAttachmentUrl(
+  messageId: string,
+  attachmentId: string,
+  clientUserId?: string | null,
+  download = false
+): string {
+  const params = new URLSearchParams();
+  if (clientUserId) params.set('clientUserId', clientUserId);
+  if (download) params.set('download', '1');
+  const qs = params.toString();
+  return `/api/conversation/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}${
+    qs ? `?${qs}` : ''
+  }`;
 }

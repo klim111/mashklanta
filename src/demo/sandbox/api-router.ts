@@ -24,7 +24,13 @@ import {
 import type { ClientTaskView } from '@/lib/client-tasks';
 import type { AdvisorMeetingView } from '@/lib/advisor-crm';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
-import type { ChatMessageView, ConversationContact, ConversationEmailView } from '@/lib/conversation';
+import type {
+  AttachmentView,
+  ChatMessageView,
+  ConversationContact,
+  ConversationEmailView,
+  RecipientRole,
+} from '@/lib/conversation';
 import {
   DEMO_ADDRESS,
   DEMO_MORTGAGE,
@@ -150,6 +156,23 @@ export class DemoApiRouter {
   private orders: Record<string, unknown>[] = [];
   private chat: ChatMessageView[] = demoChat();
   private emails: ConversationEmailView[] = demoEmails();
+
+  private contacts: ConversationContact[] = [...DEMO_CONTACTS];
+
+  /** קבצים שצורפו בהדגמה — רק השם נשמר, והתצוגה המקדימה היא PDF לדוגמה */
+  private demoFiles(value: unknown): AttachmentView[] {
+    if (!Array.isArray(value)) return [];
+    return value.map((item, index) => {
+      const ref = item as { kind?: string; fileName?: string; documentId?: string };
+      const doc = ref.kind === 'document' ? this.documents.find((row) => row.id === ref.documentId) : null;
+      return {
+        id: this.nextId(`demo-file-${index}`),
+        fileName: doc?.fileName ?? ref.fileName ?? 'קובץ.pdf',
+        contentType: doc?.contentType ?? 'application/pdf',
+        size: doc?.size ?? 120000,
+      };
+    });
+  }
 
   private demoFolders() {
     return this.plans
@@ -496,12 +519,13 @@ export class DemoApiRouter {
       if (method === 'POST') {
         const body = await this.body(init, input);
         const message: ChatMessageView = {
-          id: this.nextId('demo-chat'),
+          id: this.nextId('demo-chat-sent'),
           authorRole: 'CLIENT',
           authorName: DEMO_PERSONA.name,
           body: String(body.body ?? '').trim(),
           createdAt: nowIso(),
           readAt: null,
+          attachments: this.demoFiles(body.files),
         };
         this.chat = [...this.chat, message];
         return json(message, 201);
@@ -515,31 +539,67 @@ export class DemoApiRouter {
         const body = await this.body(init, input);
         const to = Array.isArray(body.to) ? body.to.map(String) : [];
         const email: ConversationEmailView = {
-          id: this.nextId('demo-email'),
+          id: this.nextId('demo-email-sent'),
           direction: 'OUTBOUND',
           senderRole: 'CLIENT',
           fromAddress: DEMO_PERSONA.email,
           fromName: DEMO_PERSONA.name,
           toAddresses: to,
-          ccAddresses: DEMO_CONTACTS.filter((item) => item.kind !== 'BANKER' && !to.includes(item.email)).map(
+          ccAddresses: this.contacts.filter((item) => (item.kind === 'CLIENT' || item.kind === 'ADVISOR') && !to.includes(item.email)).map(
             (item) => item.email
           ),
           subject: String(body.subject ?? ''),
           text: String(body.text ?? ''),
-          bank: DEMO_CONTACTS.find((item) => to.includes(item.email) && item.bank)?.bank ?? null,
+          bank: this.contacts.find((item) => to.includes(item.email) && item.bank)?.bank ?? null,
           createdAt: nowIso(),
           unread: false,
           held: false,
           archived: false,
-          attachments: [],
+          attachments: this.demoFiles(body.files).map((item) => ({ ...item, savable: false, savedToPlanId: null })),
         };
         this.emails = [email, ...this.emails];
         return json(email, 201);
       }
       const view = this.emails;
       this.emails = this.emails.map((item) => (item.unread ? { ...item, unread: false } : item));
-      return json({ emails: view, contacts: DEMO_CONTACTS, folders: this.demoFolders() });
+      return json({ emails: view, contacts: this.contacts, folders: this.demoFolders() });
     }
+    // נמענים שנוספו ידנית, ומסמכים לצירוף — בהדגמה
+    if (path === '/api/conversation/recipients' && method === 'POST') {
+      const body = await this.body(init, input);
+      const role = String(body.role ?? 'OTHER') as RecipientRole;
+      const contact: ConversationContact = {
+        kind: role === 'BANKER' ? 'BANKER' : 'CONTACT',
+        email: String(body.email ?? '').trim().toLowerCase(),
+        name: String(body.name ?? '').trim(),
+        bank: role === 'BANKER' ? String(body.bank ?? '').trim() || null : null,
+        role,
+        recipientId: this.nextId('demo-recipient'),
+      };
+      this.contacts = [...this.contacts, contact];
+      return json(contact, 201);
+    }
+    const recipient = path.match(/^\/api\/conversation\/recipients\/([^/]+)$/);
+    if (recipient && method === 'DELETE') {
+      this.contacts = this.contacts.filter((item) => item.recipientId !== recipient[1]);
+      return json({ ok: true });
+    }
+    if (path === '/api/conversation/documents') {
+      return json(
+        this.documents.map((doc) => ({
+          id: doc.id,
+          name: doc.name,
+          fileName: doc.fileName,
+          contentType: doc.contentType,
+          size: doc.size,
+          planName: 'רחוב הדוגמה 12, תל אביב',
+        }))
+      );
+    }
+    if (/^\/api\/conversation\/messages\/[^/]+\/attachments\/[^/]+$/.test(path)) {
+      return new Response(demoPdf('Demo attachment'), { headers: { 'Content-Type': 'application/pdf' } });
+    }
+
     // ארכיון ומחיקה לגמרי של מייל בהדגמה
     const single = path.match(/^\/api\/conversation\/emails\/([^/]+)$/);
     if (single && method === 'PATCH') {
@@ -614,6 +674,7 @@ function demoChat(): ChatMessageView[] {
       body: 'היי דנה, ראיתי שהגשתם ללאומי. אם הבנקאית תבקש תלושים נוספים, תעלו אותם לתיק ואעבור עליהם.',
       createdAt: hoursAgo(26),
       readAt: hoursAgo(25),
+      attachments: [],
     },
     {
       id: 'demo-chat-2',
@@ -622,6 +683,7 @@ function demoChat(): ChatMessageView[] {
       body: 'תודה! היא ביקשה גם דפי חשבון של שלושה חודשים. לשלוח לה ישר?',
       createdAt: hoursAgo(3),
       readAt: hoursAgo(2),
+      attachments: [],
     },
     {
       id: 'demo-chat-3',
@@ -630,6 +692,7 @@ function demoChat(): ChatMessageView[] {
       body: 'כן, שלחו מטאב המיילים כדי שהכול יישמר כאן. אני בהעתק.',
       createdAt: hoursAgo(2),
       readAt: null,
+      attachments: [],
     },
   ];
 }

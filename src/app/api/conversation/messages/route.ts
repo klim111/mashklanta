@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const message = await postChatMessage(access, body?.body);
-  if (!message) return NextResponse.json({ error: 'ההודעה ריקה' }, { status: 400 });
-  return NextResponse.json(message, { status: 201 });
+  const result = await postChatMessage(access, body?.body, body?.files);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  return NextResponse.json(result.message, { status: 201 });
 }

@@ -6,16 +6,23 @@ import { MAX_DOCUMENT_BYTES, isAllowedDocumentType, storeFileInPlan } from './pl
 import { canonicalSiteOrigin } from './auth-url';
 import { sendEmail } from './email';
 import { parseStageData } from './mortgage-plan';
+import { deleteStoredFiles, readStoredFile, resolveOutgoingFiles } from './conversation-files';
 import {
   MAX_CHAT_LENGTH,
+  MAX_CUSTOM_RECIPIENTS,
   MAX_EMAIL_LENGTH,
+  isRecipientRole,
+  parseOutgoingFiles,
   allowedRecipients,
   attachmentDocumentKey,
+  attachmentView,
   addressedToDomains,
   domainList,
   escapeHtml,
   inboundAttachments,
+  isFallbackMailboxName,
   mailboxNameCandidates,
+  mailboxNameSource,
   mailboxTargets,
   senderAllowed,
   storedAttachments,
@@ -39,6 +46,7 @@ import type {
   StoredAttachment,
   ChatMessageView,
   ConversationContact,
+  ConversationDocument,
   ConversationEmailView,
   ConversationRole,
   ConversationSummary,
@@ -124,6 +132,7 @@ const messageSelect = {
   body: true,
   createdAt: true,
   readAt: true,
+  attachments: true,
   author: { select: { name: true } },
 } as const;
 
@@ -133,6 +142,7 @@ type MessageRow = {
   body: string;
   createdAt: Date;
   readAt: Date | null;
+  attachments: Prisma.JsonValue | null;
   author: { name: string | null } | null;
 };
 
@@ -144,6 +154,7 @@ function toMessageView(row: MessageRow): ChatMessageView {
     body: row.body,
     createdAt: row.createdAt.toISOString(),
     readAt: row.readAt?.toISOString() ?? null,
+    attachments: storedAttachments(row.attachments).map(attachmentView),
   };
 }
 
@@ -164,12 +175,23 @@ export async function listChatMessages(access: ConversationAccess): Promise<Chat
   return rows.reverse().map(toMessageView);
 }
 
+/** עד כמה קבצים יחד בהודעת צ'אט אחת */
+const MAX_CHAT_FILES_BYTES = 30 * 1024 * 1024;
+
+export type PostChatResult = { ok: true; message: ChatMessageView } | { ok: false; status: number; error: string };
+
+/** הודעה חדשה בצ'אט: טקסט, קבצים, או שניהם */
 export async function postChatMessage(
   access: ConversationAccess,
-  rawBody: unknown
-): Promise<ChatMessageView | null> {
+  rawBody: unknown,
+  rawFiles?: unknown
+): Promise<PostChatResult> {
   const body = typeof rawBody === 'string' ? rawBody.trim().slice(0, MAX_CHAT_LENGTH) : '';
-  if (!body) return null;
+  const refs = parseOutgoingFiles(rawFiles);
+  if (!refs) return { ok: false, status: 400, error: 'אפשר לצרף עד 5 קבצים' };
+  if (!body && refs.length === 0) return { ok: false, status: 400, error: 'ההודעה ריקה' };
+  const resolved = await resolveOutgoingFiles(access, refs, MAX_CHAT_FILES_BYTES);
+  if (!resolved.ok) return resolved;
 
   // הודעה ראשונה שממתינה לצד השני — רק עליה נשלחת התראה במייל, לא על כל שורה
   const waiting = await prisma.conversationMessage.count({
@@ -182,12 +204,28 @@ export async function postChatMessage(
       authorId: access.viewerId,
       authorRole: access.viewerRole,
       body,
+      ...(resolved.files.length > 0 ? { attachments: resolved.files as unknown as Prisma.InputJsonValue } : {}),
     },
     select: messageSelect,
   });
 
-  if (waiting === 0) void notifyNewMessage(access, body).catch(() => {});
-  return toMessageView(row);
+  const files = resolved.files.map((item) => item.fileName);
+  const preview = [body, files.length > 0 ? `מצורף: ${files.join(', ')}` : ''].filter(Boolean).join('\n');
+  if (waiting === 0) void notifyNewMessage(access, preview).catch(() => {});
+  return { ok: true, message: toMessageView(row) };
+}
+
+/** קובץ שצורף להודעת צ'אט — אם מי שמבקש רשאי לראות את השיחה */
+export async function chatAttachment(
+  access: ConversationAccess,
+  messageId: string,
+  attachmentId: string
+): Promise<StoredAttachment | null> {
+  const row = await prisma.conversationMessage.findFirst({
+    where: { id: messageId, clientUserId: access.clientUserId },
+    select: { attachments: true },
+  });
+  return storedAttachments(row?.attachments).find((item) => item.id === attachmentId && item.blob) ?? null;
 }
 
 /** התראה במייל לצד השני שיש הודעה חדשה, עם קישור ישר לשיחה */
@@ -372,7 +410,7 @@ export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]
 
 /** מי שאפשר לשלוח אליו מהשיחה: הבנקאים שהוזנו, היועץ והלקוח */
 export async function conversationContacts(clientUserId: string): Promise<ConversationContact[]> {
-  const [client, advisor, stages] = await Promise.all([
+  const [client, advisor, stages, custom] = await Promise.all([
     prisma.user.findUnique({ where: { id: clientUserId }, select: { name: true, email: true } }),
     advisorOf(clientUserId),
     prisma.mortgagePlanStage.findMany({
@@ -380,12 +418,25 @@ export async function conversationContacts(clientUserId: string): Promise<Conver
       orderBy: { updatedAt: 'desc' },
       select: { dataJson: true },
     }),
+    prisma.conversationRecipient.findMany({ where: { clientUserId }, orderBy: { createdAt: 'asc' } }),
   ]);
 
   const bankers = bankerContacts(
     stages.flatMap((row) => parseStageData('APPLICATIONS', row.dataJson).bankApprovals)
   );
   const contacts: ConversationContact[] = [...bankers];
+  for (const row of custom) {
+    if (contacts.some((item) => item.email === row.email)) continue;
+    const role = isRecipientRole(row.role) ? row.role : 'OTHER';
+    contacts.push({
+      kind: role === 'BANKER' ? 'BANKER' : 'CONTACT',
+      email: row.email,
+      name: row.name,
+      bank: role === 'BANKER' ? row.bank : null,
+      role,
+      recipientId: row.id,
+    });
+  }
   const advisorEmail = normalizeEmail(advisor?.email);
   if (isValidEmail(advisorEmail) && !contacts.some((item) => item.email === advisorEmail)) {
     contacts.push({ kind: 'ADVISOR', email: advisorEmail, name: advisor?.name || 'היועץ', bank: null });
@@ -395,6 +446,63 @@ export async function conversationContacts(clientUserId: string): Promise<Conver
     contacts.push({ kind: 'CLIENT', email: clientEmail, name: client?.name || 'הלקוח', bank: null });
   }
   return contacts;
+}
+
+export type RecipientResult = { ok: true; contact: ConversationContact } | { ok: false; status: number; error: string };
+
+/**
+ * נמען חדש לשיחה, עם תפקיד — הלקוח או היועץ מוסיפים אותו מתיבת המיילים.
+ * כתובת בדומיין של משכלנתא לא מתקבלת (זו הכתובת האישית, לא נמען).
+ */
+export async function addConversationRecipient(
+  access: ConversationAccess,
+  input: { email: unknown; name: unknown; role: unknown; bank: unknown }
+): Promise<RecipientResult> {
+  const email = normalizeEmail(input.email);
+  const name = typeof input.name === 'string' ? input.name.replace(/[\r\n<>"]/g, '').trim().slice(0, 80) : '';
+  const bank = typeof input.bank === 'string' ? input.bank.replace(/[\r\n<>"]/g, '').trim().slice(0, 60) : '';
+  if (!isValidEmail(email)) return { ok: false, status: 400, error: 'כתובת המייל אינה תקינה' };
+  if (!name) return { ok: false, status: 400, error: 'נדרש שם' };
+  if (!isRecipientRole(input.role)) return { ok: false, status: 400, error: 'בחרו תפקיד' };
+  const host = email.slice(email.lastIndexOf('@') + 1);
+  if (inboundDomains().includes(host) || host === senderAddress(process.env.EMAIL_FROM).split('@')[1]) {
+    return { ok: false, status: 400, error: 'זו כתובת של משכלנתא, לא של נמען' };
+  }
+
+  const existing = await conversationContacts(access.clientUserId);
+  if (existing.some((item) => item.email === email)) return { ok: false, status: 409, error: 'הנמען כבר ברשימה' };
+  const count = await prisma.conversationRecipient.count({ where: { clientUserId: access.clientUserId } });
+  if (count >= MAX_CUSTOM_RECIPIENTS) return { ok: false, status: 409, error: `אפשר להוסיף עד ${MAX_CUSTOM_RECIPIENTS} נמענים` };
+
+  const row = await prisma.conversationRecipient.create({
+    data: {
+      clientUserId: access.clientUserId,
+      email,
+      name,
+      role: input.role,
+      bank: input.role === 'BANKER' && bank ? bank : null,
+      createdById: access.viewerId,
+    },
+  });
+  return {
+    ok: true,
+    contact: {
+      kind: input.role === 'BANKER' ? 'BANKER' : 'CONTACT',
+      email,
+      name,
+      bank: row.bank,
+      role: input.role,
+      recipientId: row.id,
+    },
+  };
+}
+
+/** הסרת נמען שנוסף ידנית. בנקאי מהשלב של האישור העקרוני מוסר שם, לא כאן */
+export async function removeConversationRecipient(access: ConversationAccess, recipientId: string): Promise<boolean> {
+  const { count } = await prisma.conversationRecipient.deleteMany({
+    where: { id: recipientId, clientUserId: access.clientUserId },
+  });
+  return count === 1;
 }
 
 type EmailRow = {
@@ -437,7 +545,7 @@ function toEmailView(
     held: row.held,
     archived: Boolean(row.archivedAt),
     attachments: storedAttachments(row.attachments).map((item) => ({
-      ...item,
+      ...attachmentView(item),
       savable: !row.held && isAllowedDocumentType(item.contentType) && item.size <= MAX_DOCUMENT_BYTES,
       savedToPlanId: saved.get(attachmentDocumentKey(item.id)) ?? null,
     })),
@@ -542,6 +650,30 @@ export async function listConversationEmails(access: ConversationAccess): Promis
 // ─────────────────────────── קבצים מצורפים ───────────────────────────
 
 /**
+ * מסמכים מתיק המסמכים של הלקוח שאפשר לצרף בשליחה. הלקוח רואה את כל התיקים
+ * שלו; יועץ — רק תהליכים של לקוח שהוא מלווה.
+ */
+export async function conversationDocuments(access: ConversationAccess): Promise<ConversationDocument[]> {
+  const rows = await prisma.planDocument.findMany({
+    where: {
+      ownerId: access.clientUserId,
+      ...(access.viewerRole === 'ADVISOR' ? { plan: { client: { advisorId: access.viewerId } } } : {}),
+    },
+    orderBy: { uploadedAt: 'desc' },
+    take: 200,
+    select: { id: true, name: true, fileName: true, contentType: true, size: true, plan: { select: { name: true } } },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    fileName: row.fileName,
+    contentType: row.contentType,
+    size: row.size,
+    planName: row.plan.name,
+  }));
+}
+
+/**
  * תיקי המסמכים שאפשר לשמור אליהם קובץ מצורף: התהליכים הפתוחים של הלקוח.
  * הלקוח שומר לתיק שלו; יועץ — רק כשהוא היועץ המלווה, לא כשהלקוח עוד לא שויך.
  */
@@ -561,27 +693,36 @@ export async function attachmentFolders(access: ConversationAccess): Promise<Att
 async function attachmentOf(access: ConversationAccess, emailId: string, attachmentId: string) {
   const row = await prisma.conversationEmail.findFirst({
     // קבצים ממייל שממתין לאישור השולח לא נפתחים
-    where: { id: emailId, clientUserId: access.clientUserId, direction: 'INBOUND', held: false },
+    where: { id: emailId, clientUserId: access.clientUserId, held: false },
     select: { providerId: true, attachments: true },
   });
-  if (!row?.providerId?.startsWith('in:')) return null;
-  const attachment = storedAttachments(row.attachments).find((item) => item.id === attachmentId);
-  if (!attachment) return null;
-  return { providerEmailId: row.providerId.slice(3), attachment };
+  const attachment = storedAttachments(row?.attachments).find((item) => item.id === attachmentId);
+  if (!row || !attachment) return null;
+  // קובץ שצורף מהפלטפורמה יושב בחנות הקבצים; קובץ ממייל נכנס — אצל ספק המיילים
+  if (attachment.blob) return { attachment, providerEmailId: null };
+  if (!row.providerId?.startsWith('in:')) return null;
+  return { attachment, providerEmailId: row.providerId.slice(3) };
 }
 
+export type AttachmentSource =
+  | { kind: 'blob'; pathname: string; attachment: StoredAttachment }
+  | { kind: 'url'; url: string; attachment: StoredAttachment };
+
 /**
- * קישור זמני לקובץ אצל Resend. הקובץ נשאר אצלם, והקישור לא יוצא לדפדפן —
- * חוץ מקובץ גדול מדי להזרמה דרך השרת (ראו `MAX_STREAMED_ATTACHMENT_BYTES`).
+ * איפה הקובץ: בחנות הקבצים (קובץ שצורף מהפלטפורמה), או קישור זמני אצל Resend
+ * (מייל נכנס). הקישור לא יוצא לדפדפן — חוץ מקובץ גדול מדי להזרמה דרך השרת
+ * (ראו `MAX_STREAMED_ATTACHMENT_BYTES`).
  */
-export async function attachmentLink(
+export async function attachmentSource(
   access: ConversationAccess,
   emailId: string,
   attachmentId: string
-): Promise<{ url: string; attachment: StoredAttachment } | null> {
+): Promise<AttachmentSource | null> {
   const found = await attachmentOf(access, emailId, attachmentId);
+  if (!found) return null;
+  if (found.attachment.blob) return { kind: 'blob', pathname: found.attachment.blob, attachment: found.attachment };
   const apiKey = process.env.RESEND_API_KEY;
-  if (!found || !apiKey) return null;
+  if (!apiKey || !found.providerEmailId) return null;
   const { data, error } = await new Resend(apiKey).emails.receiving.attachments.get({
     emailId: found.providerEmailId,
     id: attachmentId,
@@ -590,20 +731,24 @@ export async function attachmentLink(
     console.error(`[conversation] attachment ${attachmentId}: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`);
     return null;
   }
-  return { url: data.download_url, attachment: found.attachment };
+  return { kind: 'url', url: data.download_url, attachment: found.attachment };
 }
 
-/** הקובץ עצמו, נמשך בשרת — לצפייה דרך הפלטפורמה ולשמירה בתיק */
+/** הקובץ עצמו, נמשך בשרת — לשמירה בתיק */
 export async function readAttachment(
   access: ConversationAccess,
   emailId: string,
   attachmentId: string
 ): Promise<{ bytes: Uint8Array; attachment: StoredAttachment } | null> {
-  const link = await attachmentLink(access, emailId, attachmentId);
-  if (!link) return null;
-  const response = await fetch(link.url, { cache: 'no-store' });
+  const source = await attachmentSource(access, emailId, attachmentId);
+  if (!source) return null;
+  if (source.kind === 'blob') {
+    const bytes = await readStoredFile(source.pathname);
+    return bytes ? { bytes, attachment: source.attachment } : null;
+  }
+  const response = await fetch(source.url, { cache: 'no-store' });
   if (!response.ok) return null;
-  return { bytes: new Uint8Array(await response.arrayBuffer()), attachment: link.attachment };
+  return { bytes: new Uint8Array(await response.arrayBuffer()), attachment: source.attachment };
 }
 
 export type SaveAttachmentResult =
@@ -645,18 +790,21 @@ export async function saveAttachmentToPlan(
 }
 
 /**
- * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: שם המשתמש שלו
- * (או החלק שלפני ה-@ במייל), ועם מספר כשהשם כבר תפוס.
+ * השם בכתובת האישית של הלקוח, ונוצר בפעם הראשונה שצריך אותו: לפי השם של
+ * הלקוח (ראו mailboxNameSource), ועם מספר כשהשם כבר תפוס. לקוח שקיבל קודם
+ * כתובת כללית (client2, כששם המשתמש שלו בעברית) מקבל עכשיו כתובת לפי השם שלו.
  */
 async function ensureMailboxName(clientUserId: string): Promise<string | null> {
   const user = await prisma.user.findUnique({
     where: { id: clientUserId },
-    select: { mailboxName: true, username: true, email: true },
+    select: { mailboxName: true, username: true, name: true, email: true },
   });
   if (!user) return null;
-  if (user.mailboxName) return user.mailboxName;
-  // שם המשתמש, ובלעדיו החלק שלפני ה-@ במייל
-  const candidates = mailboxNameCandidates(user.username || user.email, senderAddress(process.env.EMAIL_FROM));
+  if (user.mailboxName && !isFallbackMailboxName(user.mailboxName)) return user.mailboxName;
+  const candidates = mailboxNameCandidates(mailboxNameSource(user), senderAddress(process.env.EMAIL_FROM));
+  // אין שם טוב יותר — נשארים עם הכתובת הכללית שכבר יש
+  if (user.mailboxName && isFallbackMailboxName(candidates[0])) return user.mailboxName;
+  const current = user.mailboxName;
   const taken = new Set(
     (
       await prisma.user.findMany({ where: { mailboxName: { in: candidates } }, select: { mailboxName: true } })
@@ -667,7 +815,7 @@ async function ensureMailboxName(clientUserId: string): Promise<string | null> {
   free.push(`${candidates[0].replace(/\d+$/, '')}${Math.floor(1000 + Math.random() * 9000)}`);
   for (const name of free) {
     try {
-      const { count } = await prisma.user.updateMany({ where: { id: clientUserId, mailboxName: null }, data: { mailboxName: name } });
+      const { count } = await prisma.user.updateMany({ where: { id: clientUserId, mailboxName: current }, data: { mailboxName: name } });
       if (count === 1) return name;
       // נוצר במקביל בבקשה אחרת
       return (await prisma.user.findUnique({ where: { id: clientUserId }, select: { mailboxName: true } }))?.mailboxName ?? null;
@@ -685,13 +833,16 @@ export async function clientMailboxAddress(clientUserId: string): Promise<string
   return domain ? mailboxAddress(await ensureMailboxName(clientUserId), domain) : null;
 }
 
+/** הקבצים יחד במייל יוצא — ספק המיילים מקבל עד 40MB, כולל הקידוד */
+const MAX_OUTGOING_EMAIL_BYTES = 20 * 1024 * 1024;
+
 export type SendEmailResult =
   | { ok: true; email: ConversationEmailView }
   | { ok: false; status: number; error: string };
 
 export async function sendConversationEmail(
   access: ConversationAccess,
-  input: { to: unknown; subject: unknown; text: unknown }
+  input: { to: unknown; subject: unknown; text: unknown; files?: unknown }
 ): Promise<SendEmailResult> {
   const requested = Array.isArray(input.to) ? input.to.filter((item): item is string => typeof item === 'string') : [];
   const subject = cleanSubject(input.subject);
@@ -709,7 +860,18 @@ export async function sendConversationEmail(
   ]);
   const { recipients, rejected } = allowedRecipients(requested, contacts);
   if (rejected.length > 0 || recipients.length === 0) {
-    return { ok: false, status: 400, error: 'אפשר לשלוח רק לבנקאי שהוזן בשלב האישור העקרוני, ליועץ או ללקוח' };
+    return { ok: false, status: 400, error: 'אפשר לשלוח רק לנמענים שברשימה. נמען חדש מוסיפים עם "הוספת נמען"' };
+  }
+
+  const refs = parseOutgoingFiles(input.files);
+  if (!refs) return { ok: false, status: 400, error: 'אפשר לצרף עד 5 קבצים' };
+  const resolved = await resolveOutgoingFiles(access, refs, MAX_OUTGOING_EMAIL_BYTES);
+  if (!resolved.ok) return resolved;
+  const outgoing: { filename: string; content: string; contentType: string }[] = [];
+  for (const file of resolved.files) {
+    const bytes = await readStoredFile(file.blob!);
+    if (!bytes) return { ok: false, status: 404, error: `הקובץ ${file.fileName} לא נמצא. נסו לצרף אותו שוב` };
+    outgoing.push({ filename: file.fileName, content: Buffer.from(bytes).toString('base64'), contentType: file.contentType });
   }
 
   const mailbox = await clientMailboxAddress(access.clientUserId);
@@ -747,6 +909,7 @@ export async function sendConversationEmail(
       subject,
       text: `${text}\n\n—\n${footer}`,
       html: emailHtml(text, footer),
+      ...(outgoing.length > 0 ? { attachments: outgoing } : {}),
     });
 
   let used = asClient ?? asSystem;
@@ -759,6 +922,7 @@ export async function sendConversationEmail(
   }
   if (error || !data) {
     console.error('Conversation email failed:', error);
+    await deleteStoredFiles(resolved.files);
     return { ok: false, status: 502, error: 'המייל לא נשלח. נסו שוב בעוד רגע' };
   }
   const fromAddress = parseAddress(used.from).email;
@@ -778,6 +942,7 @@ export async function sendConversationEmail(
       text,
       bank: bankFor(to, contacts),
       providerId: `out:${data.id}`,
+      ...(resolved.files.length > 0 ? { attachments: resolved.files as unknown as Prisma.InputJsonValue } : {}),
       ...(access.viewerRole === 'CLIENT' ? { readByClientAt: now } : { readByAdvisorAt: now }),
     },
   });
@@ -1102,6 +1267,7 @@ export async function deleteEmailForever(
     backupSkipped = sent.skipped;
   }
   await prisma.conversationEmail.delete({ where: { id: row.id } });
+  await deleteStoredFiles(storedAttachments(row.attachments));
   return { ok: true, ...(backupSkipped?.length ? { backupSkipped } : {}) };
 }
 
@@ -1116,10 +1282,22 @@ async function sendEmailBackup(
 
   const resend = new Resend(apiKey);
   const files = storedAttachments(row.attachments);
+  const inProvider = files.filter((item) => !item.blob);
   const { attachments, skipped } =
-    row.direction === 'INBOUND' && row.providerId?.startsWith('in:') && files.length > 0
-      ? await attachmentsForSending(resend, row.providerId.slice(3), files)
-      : { attachments: [], skipped: [] as string[] };
+    row.providerId?.startsWith('in:') && inProvider.length > 0
+      ? await attachmentsForSending(resend, row.providerId.slice(3), inProvider)
+      : { attachments: [] as { filename: string; content: string; contentType: string }[], skipped: [] as string[] };
+  // קבצים שצורפו מהפלטפורמה — מחנות הקבצים, באותה מגבלת גודל
+  let total = attachments.reduce((sum, item) => sum + Math.floor((item.content.length * 3) / 4), 0);
+  for (const item of files.filter((file) => file.blob)) {
+    const bytes = total + item.size <= MAX_OUTGOING_ATTACHMENTS_BYTES ? await readStoredFile(item.blob!) : null;
+    if (!bytes) {
+      skipped.push(item.fileName);
+      continue;
+    }
+    total += bytes.byteLength;
+    attachments.push({ filename: item.fileName, content: Buffer.from(bytes).toString('base64'), contentType: item.contentType });
+  }
 
   const when = new Intl.DateTimeFormat('he-IL', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Jerusalem' }).format(
     row.createdAt

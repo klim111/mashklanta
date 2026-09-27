@@ -9,54 +9,64 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { AttachmentFolder, EmailAttachmentView } from '@/lib/conversation';
+import type { AttachmentFolder, AttachmentView, EmailAttachmentView } from '@/lib/conversation';
 import { MAX_STREAMED_ATTACHMENT_BYTES } from '@/lib/conversation';
-import { attachmentUrl } from './useConversation';
+import { ALLOWED_DOCUMENT_TYPES } from '@/lib/plan-documents';
 
 type Save = (attachmentId: string, planId: string | null) => Promise<string | null>;
+/** כתובת הקובץ — לצפייה, או להורדה */
+type UrlFor = (attachmentId: string, download?: boolean) => string;
 
-function sizeLabel(bytes: number): string {
+/** קובץ במייל (אפשר לשמור בתיק) או בהודעת צ'אט (צפייה והורדה) */
+type AnyAttachment = EmailAttachmentView | AttachmentView;
+
+function previewable(item: AnyAttachment): boolean {
+  return 'savable' in item ? item.savable : (ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(item.contentType);
+}
+
+export function sizeLabel(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
   return `${Math.max(1, Math.round(bytes / 1024))}KB`;
 }
 
 /**
- * הקבצים שצורפו למייל. לחיצה על קובץ פותחת תצוגה מקדימה, ומשם — או ישר
- * מהשורה — אפשר לשמור אותו בתיק המסמכים של התהליך.
+ * הקבצים שצורפו למייל או להודעה. לחיצה על קובץ פותחת תצוגה מקדימה, ובמייל —
+ * משם או ישר מהשורה — אפשר לשמור אותו בתיק המסמכים של התהליך.
  */
 export function EmailAttachments({
-  emailId,
   attachments,
-  folders,
-  clientUserId,
+  urlFor,
+  folders = [],
   onSave,
+  compact = false,
 }: {
-  emailId: string;
-  attachments: readonly EmailAttachmentView[];
-  folders: readonly AttachmentFolder[];
-  clientUserId?: string | null;
-  onSave: Save;
+  attachments: readonly AnyAttachment[];
+  urlFor: UrlFor;
+  folders?: readonly AttachmentFolder[];
+  onSave?: Save;
+  /** בתוך בועת צ'אט — בלי כותרת */
+  compact?: boolean;
 }) {
-  const [preview, setPreview] = useState<EmailAttachmentView | null>(null);
+  const [preview, setPreview] = useState<AnyAttachment | null>(null);
   if (attachments.length === 0) return null;
 
   return (
-    <div className="mt-3 space-y-1.5">
-      <p className="flex items-center gap-1 text-2xs font-bold text-slate-500">
-        <Paperclip className="h-3.5 w-3.5" />
-        {attachments.length === 1 ? 'קובץ מצורף' : `${attachments.length} קבצים מצורפים`}
-      </p>
+    <div className={compact ? 'mt-1.5 space-y-1' : 'mt-3 space-y-1.5'}>
+      {!compact && (
+        <p className="flex items-center gap-1 text-2xs font-bold text-slate-500">
+          <Paperclip className="h-3.5 w-3.5" />
+          {attachments.length === 1 ? 'קובץ מצורף' : `${attachments.length} קבצים מצורפים`}
+        </p>
+      )}
       {attachments.map((item) => (
         <AttachmentRow
           key={item.id}
           attachment={item}
-          download={attachmentUrl(emailId, item.id, clientUserId, true)}
+          download={urlFor(item.id, true)}
           folders={folders}
           onOpen={() =>
-            // קובץ גדול נפתח בלשונית חדשה, ישר מספק המיילים
-            item.size > MAX_STREAMED_ATTACHMENT_BYTES
-              ? window.open(attachmentUrl(emailId, item.id, clientUserId), '_blank', 'noopener')
-              : setPreview(item)
+            // קובץ גדול נפתח בלשונית חדשה
+            item.size > MAX_STREAMED_ATTACHMENT_BYTES ? window.open(urlFor(item.id), '_blank', 'noopener') : setPreview(item)
           }
           onSave={onSave}
         />
@@ -64,8 +74,8 @@ export function EmailAttachments({
       {preview && (
         <AttachmentPreview
           attachment={attachments.find((item) => item.id === preview.id) ?? preview}
-          src={attachmentUrl(emailId, preview.id, clientUserId)}
-          download={attachmentUrl(emailId, preview.id, clientUserId, true)}
+          src={urlFor(preview.id)}
+          download={urlFor(preview.id, true)}
           folders={folders}
           onSave={onSave}
           onClose={() => setPreview(null)}
@@ -82,28 +92,29 @@ function AttachmentRow({
   onOpen,
   onSave,
 }: {
-  attachment: EmailAttachmentView;
+  attachment: AnyAttachment;
   download: string;
   folders: readonly AttachmentFolder[];
   onOpen: () => void;
-  onSave: Save;
+  onSave?: Save;
 }) {
   const Icon = attachment.contentType.startsWith('image/') ? ImageIcon : FileText;
+  const canOpen = previewable(attachment);
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={attachment.savable ? onOpen : undefined}
-          disabled={!attachment.savable}
-          title={attachment.savable ? 'תצוגה מקדימה' : undefined}
+          onClick={canOpen ? onOpen : undefined}
+          disabled={!canOpen}
+          title={canOpen ? 'תצוגה מקדימה' : undefined}
           className="flex min-w-0 flex-1 items-center gap-2 text-right enabled:hover:text-blue-700"
         >
           <Icon className="h-4 w-4 shrink-0 text-slate-500" />
           <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-800">{attachment.fileName}</span>
           <span className="shrink-0 text-2xs font-semibold text-slate-400">{sizeLabel(attachment.size)}</span>
         </button>
-        {attachment.savable && (
+        {canOpen && (
           <button
             type="button"
             onClick={onOpen}
@@ -117,7 +128,7 @@ function AttachmentRow({
           <Download className="h-4 w-4" />
         </a>
       </div>
-      {attachment.savable ? (
+      {!onSave || !('savable' in attachment) ? null : attachment.savable ? (
         <SaveControl attachment={attachment} folders={folders} onSave={onSave} compact />
       ) : (
         <p className="mt-1 text-2xs font-semibold text-slate-500">
@@ -221,11 +232,11 @@ function AttachmentPreview({
   onSave,
   onClose,
 }: {
-  attachment: EmailAttachmentView;
+  attachment: AnyAttachment;
   src: string;
   download: string;
   folders: readonly AttachmentFolder[];
-  onSave: Save;
+  onSave?: Save;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -264,7 +275,7 @@ function AttachmentPreview({
             </span>
           </DialogTitle>
           <DialogDescription className="text-center text-info">
-            קובץ שצורף למייל · {sizeLabel(attachment.size)}
+            קובץ מצורף · {sizeLabel(attachment.size)}
           </DialogDescription>
         </DialogHeader>
 
@@ -288,7 +299,9 @@ function AttachmentPreview({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <SaveControl attachment={attachment} folders={folders} onSave={onSave} />
+          {onSave && 'savable' in attachment && attachment.savable && (
+            <SaveControl attachment={attachment} folders={folders} onSave={onSave} />
+          )}
           <a
             href={download}
             className="inline-flex items-center gap-2 rounded-lg border-2 border-slate-200 bg-white px-5 py-2 text-button font-black text-slate-800 hover:bg-slate-50"

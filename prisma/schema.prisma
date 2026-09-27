@@ -182,6 +182,10 @@ model User {
    * המיילים של השיחה שבה המשתמש הוא הלקוח — לבנקאי, ליועץ וממנו
    */
   conversationEmails     ConversationEmail[]   @relation("ConversationEmailClient")
+  /**
+   * נמענים שנוספו ידנית לשיחה שבה המשתמש הוא הלקוח (עורך דין, שמאי…)
+   */
+  conversationRecipients ConversationRecipient[] @relation("ConversationRecipientClient")
   sentConversationEmails ConversationEmail[]   @relation("ConversationEmailSender")
 
   createdAt DateTime @default(now())
@@ -1384,12 +1388,41 @@ model ConversationMessage {
   authorRole   ConversationRole
   body         String
   /**
+   * קבצים שצורפו להודעה: [{ id, fileName, contentType, size, blob }]. הקבצים
+   * עצמם בחנות הקבצים, תחת conversation/<הלקוח>/
+   */
+  attachments  Json?
+  /**
    * מתי הצד השני קרא את ההודעה
    */
   readAt       DateTime?
   createdAt    DateTime         @default(now())
 
   @@index([clientUserId, createdAt])
+}
+
+/**
+ * נמען שהלקוח או היועץ הוסיפו לשיחה מתיבת המיילים, עם התפקיד שלו. מרגע שנוסף
+ * אפשר לשלוח אליו, ומייל ממנו נכנס לשיחה בלי לחכות לאישור
+ */
+model ConversationRecipient {
+  id           String   @id @default(cuid())
+  clientUserId String
+  clientUser   User     @relation("ConversationRecipientClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  email        String
+  name         String
+  /**
+   * מפתח מ-RECIPIENT_ROLES: BANKER, ADVISOR, LAWYER, APPRAISER…
+   */
+  role         String
+  /**
+   * לבנקאי — שם הבנק
+   */
+  bank         String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@unique([clientUserId, email])
 }
 
 enum ConversationRole {

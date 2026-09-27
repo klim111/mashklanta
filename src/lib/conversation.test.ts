@@ -9,10 +9,14 @@ import {
   mailboxAddress,
   mailboxNameBase,
   mailboxNameCandidates,
+  mailboxNameSource,
+  isFallbackMailboxName,
   mailboxTargets,
   addressedToDomains,
   domainList,
   senderAllowed,
+  parseOutgoingFiles,
+  recipientRoleLabel,
   parseAddress,
   senderAddress,
   senderDisplayName,
@@ -57,6 +61,19 @@ describe('mailbox routing', () => {
     expect(mailboxNameCandidates('igor@gmail.com', null, 3)).toEqual(['igor', 'igor2', 'igor3']);
     expect(mailboxNameCandidates('info@company.co.il', null, 2)).toEqual(['info2', 'info3']);
     expect(mailboxNameCandidates('hi@company.co.il', 'hi@mashkalanta.com', 1)).toEqual(['hi2']);
+    expect(mailboxNameCandidates('דני@walla.co.il', null, 2)).toEqual([
+      expect.stringMatching(/^client\d{6}$/),
+      expect.stringMatching(/^client\d{6}$/),
+    ]);
+  });
+
+  it('builds the address from the client name when the username is Hebrew', () => {
+    expect(mailboxNameSource({ username: 'איגור', name: 'Igor Lebedinsky', email: 'klim111@gmail.com' })).toBe('Igor Lebedinsky');
+    expect(mailboxNameBase('Igor Lebedinsky')).toBe('igor.lebedinsky');
+    expect(mailboxNameSource({ username: 'איגור', name: 'איגור לבדינסקי', email: 'igor.l@gmail.com' })).toBe('igor.l@gmail.com');
+    expect(mailboxNameSource({ username: 'igor_l', name: 'Igor', email: 'x@gmail.com' })).toBe('igor_l');
+    expect(isFallbackMailboxName('client2')).toBe(true);
+    expect(isFallbackMailboxName('clientele')).toBe(false);
   });
 
   it('routes personal addresses on our domains only', () => {
@@ -171,5 +188,39 @@ describe('attachments', () => {
     expect(storedAttachments([{ id: 'a1', fileName: 'x.pdf', contentType: 'application/pdf', size: 3 }, { id: 5 }])).toEqual([
       { id: 'a1', fileName: 'x.pdf', contentType: 'application/pdf', size: 3 },
     ]);
+  });
+});
+
+describe('recipients added by hand', () => {
+  const lawyer = { kind: 'CONTACT' as const, email: 'adv@law.co.il', name: 'עו"ד כהן', bank: null, role: 'LAWYER' as const, recipientId: 'r1' };
+
+  it('are not copied on every email like the client and advisor', () => {
+    expect(carbonCopies([contacts[0]], [...contacts, lawyer])).toEqual(['advisor@mashkalanta.co.il', 'client@gmail.com']);
+  });
+
+  it('show the role that was picked', () => {
+    expect(recipientRoleLabel(lawyer)).toBe('עורך דין');
+    expect(recipientRoleLabel(contacts[0])).toBe('בנקאי');
+  });
+
+  it('may write in without waiting for approval', () => {
+    expect(senderAllowed('adv@law.co.il', [...contacts, lawyer], new Set())).toBe(true);
+  });
+});
+
+describe('files attached when sending', () => {
+  it('accepts uploads and folder documents, up to five', () => {
+    expect(parseOutgoingFiles(undefined)).toEqual([]);
+    expect(
+      parseOutgoingFiles([
+        { kind: 'upload', pathname: 'conversation/u1/a.pdf', fileName: 'אישור\r\n.pdf' },
+        { kind: 'document', documentId: 'd1' },
+      ])
+    ).toEqual([
+      { kind: 'upload', pathname: 'conversation/u1/a.pdf', fileName: 'אישור.pdf' },
+      { kind: 'document', documentId: 'd1' },
+    ]);
+    expect(parseOutgoingFiles(Array.from({ length: 6 }, () => ({ kind: 'document', documentId: 'd' })))).toBeNull();
+    expect(parseOutgoingFiles([{ kind: 'url', href: 'x' }])).toBeNull();
   });
 });
