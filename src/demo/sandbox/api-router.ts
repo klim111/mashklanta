@@ -488,7 +488,7 @@ export class DemoApiRouter {
         unreadChat: this.chat.filter((item) => item.authorRole === 'ADVISOR' && !item.readAt).length,
         unreadEmails: this.emails.filter((item) => item.unread).length,
         advisorName: 'רון, יועץ משכלנתא',
-        mailboxAddress: 'dana.cohen@mashkalanta.example',
+        mailboxAddress: 'dana.cohen@mashkalanta.com',
         receivesEmail: true,
       });
     }
@@ -597,7 +597,7 @@ export class DemoApiRouter {
 
 const DEMO_CONTACTS: ConversationContact[] = [
   { kind: 'BANKER', email: 'michal.cohen@leumi.example', name: 'מיכל כהן', bank: 'לאומי' },
-  { kind: 'ADVISOR', email: 'ron@mashkalanta.example', name: 'רון, יועץ משכלנתא', bank: null },
+  { kind: 'ADVISOR', email: 'ron@mashkalanta.com', name: 'רון, יועץ משכלנתא', bank: null },
   { kind: 'CLIENT', email: DEMO_PERSONA.email, name: DEMO_PERSONA.name, bank: null },
 ];
 
@@ -642,7 +642,7 @@ function demoEmails(): ConversationEmailView[] {
       senderRole: null,
       fromAddress: 'mashkanta-noreply@mizrahi.example',
       fromName: 'מזרחי טפחות',
-      toAddresses: ['dana.cohen@mashkalanta.example'],
+      toAddresses: ['dana.cohen@mashkalanta.com'],
       ccAddresses: [],
       subject: 'עדכון סטטוס לבקשת המשכנתא שלך',
       text: 'שלום,\nהבקשה שלך לאישור עקרוני התקבלה ונמצאת בבדיקה. נעדכן כשתהיה החלטה.\nמזרחי טפחות',
@@ -660,7 +660,7 @@ function demoEmails(): ConversationEmailView[] {
       fromAddress: 'michal.cohen@leumi.example',
       fromName: 'מיכל כהן',
       toAddresses: [DEMO_PERSONA.email],
-      ccAddresses: ['ron@mashkalanta.example'],
+      ccAddresses: ['ron@mashkalanta.com'],
       subject: 'Re: בקשה לאישור עקרוני · לוי',
       text: 'שלום דנה,\nקיבלתי את הבקשה. כדי להשלים אותה אצטרך דפי עו"ש של שלושת החודשים האחרונים.\nבברכה, מיכל',
       bank: 'לאומי',
@@ -686,7 +686,7 @@ function demoEmails(): ConversationEmailView[] {
       fromAddress: DEMO_PERSONA.email,
       fromName: DEMO_PERSONA.name,
       toAddresses: ['michal.cohen@leumi.example'],
-      ccAddresses: ['ron@mashkalanta.example', DEMO_PERSONA.email],
+      ccAddresses: ['ron@mashkalanta.com', DEMO_PERSONA.email],
       subject: 'בקשה לאישור עקרוני · לוי',
       text: 'שלום מיכל,\nהגשנו היום בקשה לאישור עקרוני באתר. המייל שציינו בבקשה הוא המייל הזה.\nתודה, דנה',
       bank: 'לאומי',

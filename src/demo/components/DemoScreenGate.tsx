@@ -17,7 +17,8 @@ export function DemoScreenGate({ flowId, children }: { flowId: string; children:
   const autoStart = useRef(request === null);
 
   useEffect(() => {
-    if (!request && autoStart.current) {
+    // בהידרציה הבקשה עוד לא נקראה מהאחסון — בודקים את החנות עצמה לפני שמתחילים
+    if (!request && autoStart.current && !demoStore.getSnapshot()) {
       autoStart.current = false;
       demoStore.start(flowId, { returnTo: '/' });
     }

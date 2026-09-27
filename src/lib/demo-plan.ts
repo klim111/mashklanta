@@ -88,12 +88,14 @@ export function demoPricedMixes(): SavedMix[] {
     { bank: 'מזרחי', days: -2, rates: [4.55, 5.15, 4.3] },
   ];
   return offers.map(({ bank, days, rates }, index) => {
-    const mix = buildQuotedMix({
+    const quoted = buildQuotedMix({
       source,
       bank,
       receivedAt: daysFromNow(days),
       rates: Object.fromEntries(source.tracks.map((track, i) => [track.id, rates[i]])),
     });
+    // מזהה קבוע, כדי שהבחירה בשלב המכרז תצביע על אותה הצעה בכל טעינה
+    const mix = { ...quoted, id: `demo-priced-mix-${index}` };
     return {
       recordId: `demo-priced-${index}`,
       mix,
@@ -189,7 +191,27 @@ export function demoPlanData(): PlanData {
     })),
   };
 
-  data.AUCTION = { ...data.AUCTION, mode: 'self' };
+  // ההצעה של מזרחי (הזולה מבין שלוש ההצעות לדוגמה) נבחרה לחתימה
+  const winner = demoPricedMixes().find((item) => item.mix.quote?.bank === 'מזרחי');
+  data.AUCTION = {
+    ...data.AUCTION,
+    mode: 'self',
+    signedMix: winner
+      ? {
+          mixKey: winner.mix.id,
+          mixRecordId: winner.recordId ?? null,
+          bank: 'מזרחי',
+          name: winner.mix.name,
+          monthlyPayment: winner.summary.monthlyPayment,
+          averageRate: winner.summary.averageRate,
+          totalInterest: winner.summary.totalInterest,
+          totalPaid: winner.summary.totalPaid,
+          months: winner.summary.months,
+          chosenAt: daysFromNow(-1),
+        }
+      : null,
+  };
+  data.SIGNING = { ...data.SIGNING, bank: 'מזרחי' };
 
   return data;
 }

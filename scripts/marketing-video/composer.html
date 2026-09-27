@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face { font-family: 'Assistant'; font-weight: 400; src: url('/fonts/assistant-hebrew-400-normal.woff2') format('woff2'); unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+  @font-face { font-family: 'Assistant'; font-weight: 400; src: url('/fonts/assistant-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Assistant'; font-weight: 700; src: url('/fonts/assistant-hebrew-700-normal.woff2') format('woff2'); unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+  @font-face { font-family: 'Assistant'; font-weight: 700; src: url('/fonts/assistant-latin-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Assistant'; font-weight: 800; src: url('/fonts/assistant-hebrew-800-normal.woff2') format('woff2'); unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+  @font-face { font-family: 'Assistant'; font-weight: 800; src: url('/fonts/assistant-latin-800-normal.woff2') format('woff2'); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #060a1c; }
+  body { font-family: 'Assistant', sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+  .layer { position: absolute; inset: 0; }
+  #bg { background-color: #060a1c; }
+  #grid { background-image: radial-gradient(rgba(148, 163, 184, 0.13) 1.2px, transparent 1.3px); background-size: 34px 34px;
+    mask-image: radial-gradient(ellipse at 50% 40%, #000 20%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 20%, transparent 75%); }
+
+  /* ─── סצנה: כותרת + חלון דפדפן ─── */
+  #scene { display: none; }
+  #hdr { position: absolute; top: 40px; right: 216px; left: 216px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  #chip { font-size: 24px; font-weight: 800; color: #93c5fd; background: rgba(59, 130, 246, 0.16); border: 1px solid rgba(147, 197, 253, 0.28);
+    padding: 3px 16px 5px; border-radius: 999px; letter-spacing: .2px; }
+  #headline { font-size: 54px; font-weight: 800; line-height: 1.05; letter-spacing: -0.5px; }
+  #win { position: absolute; left: 216px; top: 172px; width: 1488px; height: 877px; border-radius: 20px; overflow: hidden;
+    background: #0f172a; box-shadow: 0 40px 120px rgba(2, 6, 23, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.10); transform-origin: 50% 60%; }
+  #bar { position: absolute; top: 0; left: 0; right: 0; height: 40px; background: linear-gradient(#131c36, #0f172a); display: flex; align-items: center; justify-content: center; direction: ltr; }
+  #dots { position: absolute; left: 18px; top: 14px; display: flex; gap: 8px; }
+  #dots i { width: 12px; height: 12px; border-radius: 99px; display: block; }
+  #url { font-size: 17px; font-weight: 700; color: #cbd5e1; background: rgba(255, 255, 255, 0.07); padding: 3px 26px 4px; border-radius: 8px; min-width: 420px; text-align: center; }
+  #url b { color: #fff; }
+  #view { position: absolute; top: 40px; left: 0; width: 1488px; height: 837px; overflow: hidden; background: #fff; }
+  #view img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 50%; }
+  #cap { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); max-width: 1320px; width: max-content; text-align: center;
+    font-size: 38px; font-weight: 800; line-height: 1.25; padding: 12px 30px 15px; border-radius: 18px; background: rgba(6, 10, 28, 0.86);
+    box-shadow: 0 16px 48px rgba(2, 6, 23, 0.45); }
+  #cap::before { content: ''; position: absolute; top: 0; right: 28px; left: 28px; height: 4px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, #8b5cf6, #3b82f6); }
+  #cap:empty { display: none; }
+
+  /* ─── כותרות על מסך מלא ─── */
+  #big { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; }
+  #big .line { font-size: 104px; font-weight: 800; line-height: 1.12; letter-spacing: -1px; white-space: nowrap; }
+  #big .line.accent span { background: linear-gradient(90deg, #a78bfa, #60a5fa 55%, #5eead4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #big .word { display: inline-block; margin: 0 0.12em; will-change: transform, opacity, filter; }
+  #big .kicker { width: 120px; height: 6px; border-radius: 6px; background: linear-gradient(90deg, #8b5cf6, #3b82f6); margin-bottom: 26px; }
+
+  /* ─── לוגו ─── */
+  #logo { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+  #logo .mark { font-size: 190px; font-weight: 800; letter-spacing: -3px; line-height: 1; }
+  #logo .mark span { color: #60a5fa; }
+  #logo .ring { position: absolute; left: 50%; top: 50%; width: 720px; height: 720px; margin: -360px 0 0 -360px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.35), rgba(59, 130, 246, 0) 62%); }
+  #logo .tag { font-size: 50px; font-weight: 700; color: #cbd5e1; }
+  #logo .cta { margin-top: 26px; font-size: 50px; font-weight: 800; padding: 14px 44px 18px; border-radius: 20px; background: #2563eb; color: #fff; direction: ltr;
+    box-shadow: 0 20px 60px rgba(37, 99, 235, 0.45); }
+  #logo .small { font-size: 30px; font-weight: 700; color: #94a3b8; }
+</style>
+</head>
+<body>
+  <div id="bg" class="layer"></div>
+  <div id="grid" class="layer"></div>
+
+  <div id="scene" class="layer">
+    <div id="hdr"><div id="chip"></div><div id="headline"></div></div>
+    <div id="win">
+      <div id="bar"><div id="dots"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i></div><div id="url"></div></div>
+      <div id="view"><img id="imgB" alt="" /><img id="imgA" alt="" /></div>
+    </div>
+  </div>
+
+  <div id="big" class="layer"></div>
+  <div id="logo" class="layer">
+    <div class="ring"></div>
+    <div class="mark">משכל<span>נתא</span></div>
+    <div class="tag"></div>
+    <div class="cta"></div>
+    <div class="small"></div>
+  </div>
+  <div id="capLayer" class="layer" style="pointer-events:none"><div id="cap"></div></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+  const easeInOut = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+  const URLS = {
+    home: '/', market: '/', pricing: '/', affordability: '/mortgage-planning', equity: '/equity-planning',
+    'refi-check': '/mortgage-refinance', dashboard: '/dashboard', vault: '/dashboard', chat: '/dashboard', emails: '/dashboard',
+    stages: '/dashboard/plans', s1: '/dashboard/plans', s2: '/dashboard/plans', s3: '/dashboard/plans', s4: '/dashboard/plans', s5: '/dashboard/plans',
+    completed: '/dashboard/plans', 'refi-process': '/dashboard/plans', letters: '/dashboard/plans/authorization-letters',
+  };
+
+  let DATA = null;
+  const imgCache = new Map();
+  let lastBig = null;
+
+  window.setup = (data) => {
+    DATA = data;
+    DATA.segments.forEach((seg, i) => { seg.index = i; });
+  };
+
+  function segmentAt(t) {
+    const list = DATA.segments;
+    for (let i = list.length - 1; i >= 0; i -= 1) if (t >= list[i].start) return list[i];
+    return list[0];
+  }
+
+  function frameAt(seg, local) {
+    const clip = seg.clip;
+    const usable = Math.max(0.5, seg.duration - 0.4);
+    const rate = Math.max(1, clip.duration / usable);
+    const ct = Math.min(clip.duration, local * rate);
+    const frames = clip.frames;
+    let lo = 0, hi = frames.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (frames[mid].t <= ct) lo = mid; else hi = mid - 1; }
+    return `/scenes/${clip.scene}/${frames[lo].file}`;
+  }
+  const lastFrame = (seg) => `/scenes/${seg.clip.scene}/${seg.clip.frames[seg.clip.frames.length - 1].file}`;
+
+  async function setImg(el, src) {
+    if (el.dataset.src === src) return;
+    el.dataset.src = src;
+    el.src = src;
+    try { await el.decode(); } catch (e) { /* ignore */ }
+  }
+
+  function renderBg(t) {
+    const a = t * 0.11, b = t * 0.07 + 2, c = t * 0.05 + 4;
+    const p1 = `${50 + 30 * Math.cos(a)}% ${35 + 22 * Math.sin(a * 1.3)}%`;
+    const p2 = `${30 + 25 * Math.sin(b)}% ${70 + 18 * Math.cos(b * 0.8)}%`;
+    const p3 = `${75 + 18 * Math.cos(c * 1.1)}% ${75 + 15 * Math.sin(c)}%`;
+    $('bg').style.backgroundImage = [
+      `radial-gradient(900px 700px at ${p1}, rgba(37, 99, 235, 0.42), transparent 70%)`,
+      `radial-gradient(800px 650px at ${p2}, rgba(124, 58, 237, 0.34), transparent 70%)`,
+      `radial-gradient(700px 600px at ${p3}, rgba(20, 184, 166, 0.20), transparent 70%)`,
+    ].join(',');
+  }
+
+  function wordsHtml(lines, accentLast) {
+    return lines.map((line, i) => `<div class="line${accentLast && i === lines.length - 1 ? ' accent' : ''}">${line.split(' ').map((w) => `<span class="word">${w}</span>`).join(' ')}</div>`).join('');
+  }
+
+  function renderWords(local, duration, startDelay = 0.05) {
+    const words = [...$('big').querySelectorAll('.word')];
+    words.forEach((w, i) => {
+      const k = easeOut((local - startDelay - i * 0.085) / 0.55);
+      w.style.opacity = k;
+      w.style.transform = `translateY(${(1 - k) * 40}px)`;
+      w.style.filter = k < 1 ? `blur(${(1 - k) * 14}px)` : 'none';
+    });
+    const out = easeInOut((local - (duration - 0.4)) / 0.4);
+    $('big').style.opacity = 1 - out;
+    $('big').style.transform = `translateY(${-out * 24}px) scale(${1 + local * 0.006})`;
+  }
+
+  window.render = async (t) => {
+    renderBg(t);
+    const seg = segmentAt(t);
+    const local = t - seg.start;
+    const prev = DATA.segments[seg.index - 1];
+    const next = DATA.segments[seg.index + 1];
+    const cap = seg.kind === 'scene' ? seg.captions.find((c) => t >= c.start && t < c.end) : null;
+    $('cap').textContent = cap ? cap.text : '';
+    if (cap) {
+      const k = easeOut((t - cap.start) / 0.25);
+      $('cap').style.opacity = k;
+      $('cap').style.transform = `translateX(-50%) translateY(${(1 - k) * 12}px)`;
+    }
+
+    $('scene').style.display = seg.kind === 'scene' ? 'block' : 'none';
+    $('big').style.display = seg.kind === 'title' || seg.kind === 'chapter' ? 'flex' : 'none';
+    $('logo').style.display = seg.kind === 'logo' || seg.kind === 'outro' ? 'flex' : 'none';
+
+    if (seg.kind === 'scene') {
+      const fromScene = prev && prev.kind === 'scene';
+      const toScene = next && next.kind === 'scene';
+      // חלון: כניסה (אם הקטע הקודם לא היה מסך), יציאה (אם הבא לא מסך)
+      const inK = fromScene ? 1 : easeOut(local / 0.7);
+      const outK = toScene ? 0 : easeInOut((local - (seg.duration - 0.35)) / 0.35);
+      const win = $('win');
+      win.style.opacity = inK * (1 - outK);
+      win.style.transform = `translateY(${(1 - inK) * 70}px) scale(${0.94 + 0.06 * inK - 0.02 * outK})`;
+      // כותרת
+      const chip = $('chip'), head = $('headline');
+      if (chip.textContent !== seg.chapter) chip.textContent = seg.chapter;
+      if (head.textContent !== seg.headline) head.textContent = seg.headline;
+      const hk = easeOut((local - 0.08) / 0.6);
+      const ck = easeOut(local / 0.5);
+      chip.style.opacity = ck * (1 - outK);
+      chip.style.transform = `translateX(${(ck - 1) * -40}px)`;
+      head.style.opacity = hk * (1 - outK);
+      head.style.transform = `translateX(${(hk - 1) * -60}px)`;
+      const path = URLS[seg.scene] ?? '/';
+      $('url').innerHTML = `<b>mashkalanta.com</b>${path === '/' ? '' : path}`;
+      // התוכן: זום עדין, ומעבר רך מהמסך הקודם
+      const zoom = 1 + 0.03 * easeInOut(local / seg.duration);
+      const a = $('imgA'), b = $('imgB');
+      a.style.transform = `scale(${zoom})`;
+      const waits = [setImg(a, frameAt(seg, local))];
+      if (fromScene && local < 0.45) {
+        waits.push(setImg(b, lastFrame(prev)));
+        b.style.display = 'block';
+        b.style.transform = 'scale(1.03)';
+        a.style.opacity = easeInOut(local / 0.45);
+      } else {
+        b.style.display = 'none';
+        a.style.opacity = 1;
+      }
+      await Promise.all(waits);
+      return;
+    }
+
+    if (seg.kind === 'title' || seg.kind === 'chapter') {
+      if (lastBig !== seg.id) {
+        lastBig = seg.id;
+        $('big').innerHTML = (seg.kind === 'chapter' ? '<div class="kicker"></div>' : '') + wordsHtml(seg.lines, true);
+      }
+      const kick = $('big').querySelector('.kicker');
+      if (kick) kick.style.width = `${40 + 120 * easeOut(local / 0.8)}px`;
+      renderWords(local, seg.duration);
+      return;
+    }
+
+    // לוגו / סיום
+    const logo = $('logo');
+    const k = easeOut(local / 0.9);
+    const outK = seg.kind === 'logo' ? easeInOut((local - (seg.duration - 0.4)) / 0.4) : easeInOut((local - (seg.duration - 0.6)) / 0.6);
+    logo.style.opacity = 1 - outK;
+    logo.querySelector('.mark').style.transform = `scale(${0.86 + 0.14 * k})`;
+    logo.querySelector('.mark').style.opacity = k;
+    logo.querySelector('.mark').style.filter = k < 1 ? `blur(${(1 - k) * 18}px)` : 'none';
+    const ring = logo.querySelector('.ring');
+    ring.style.transform = `scale(${0.4 + 0.8 * easeOut(local / 1.6)})`;
+    ring.style.opacity = 0.9 * (1 - easeOut((local - 1.2) / 2.5)) + 0.25;
+    const tag = logo.querySelector('.tag');
+    tag.textContent = seg.tagline || '';
+    const tk = easeOut((local - 0.6) / 0.6);
+    tag.style.opacity = tk;
+    tag.style.transform = `translateY(${(1 - tk) * 24}px)`;
+    const cta = logo.querySelector('.cta');
+    const small = logo.querySelector('.small');
+    cta.style.display = seg.cta ? 'block' : 'none';
+    small.style.display = seg.cta ? 'block' : 'none';
+    if (seg.cta) {
+      cta.textContent = seg.cta;
+      small.textContent = 'הכלים החינמיים פתוחים לכולם';
+      const ak = easeOut((local - 1.3) / 0.6);
+      cta.style.opacity = ak;
+      cta.style.transform = `translateY(${(1 - ak) * 30}px) scale(${0.94 + 0.06 * ak})`;
+      const sk = easeOut((local - 1.9) / 0.6);
+      small.style.opacity = sk;
+    }
+  };
+</script>
+</body>
+</html>

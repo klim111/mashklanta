@@ -324,10 +324,10 @@ const SCENES = {
     await d.wait(1700);
   }),
   s3: stageScene('APPLICATIONS', async (d) => {
-    await d.scrollBy(560, 1800);
-    await d.wait(1500);
-    await d.scrollBy(380, 1600);
-    await d.wait(1500);
+    await d.scrollTo(byText(d.page, 'הגשת הבקשה לבנקים'), 'top', -30, 2000);
+    await d.wait(1400);
+    await d.pointAt(byText(d.page, 'הגשה באתר הבנק'));
+    await d.wait(1400);
   }),
   letters: {
     demo: 3,
@@ -351,20 +351,26 @@ const SCENES = {
       await d.hideCursor();
       await d.scrollTo(byText(page, 'הפקת הכתבים לבנקים'), 'top', -20, 1600);
       await d.wait(1200);
-      await d.pointAt(button(page, 'הפקת כתב חתום'));
-      await d.wait(1200);
+      const ready = page.getByRole('button', { name: 'הפקת כתב חתום' }).and(page.locator(':not([disabled])')).first();
+      await d.click(ready, 1400);
+      await d.hideCursor();
+      await d.wait(1500);
     },
   },
   s4: stageScene('AUCTION', async (d) => {
-    await d.scrollBy(560, 1800);
-    await d.wait(1600);
-    await d.scrollBy(460, 1800);
-    await d.wait(1600);
+    await d.scrollTo(byText(d.page, 'הצעות שהתקבלו'), 'top', -40, 1600);
+    await d.wait(1200);
+    await d.scrollTo(byText(d.page, 'ההצעה הזולה ביותר — במלואה'), 'top', -20, 1600);
+    await d.wait(1200);
+    await d.scrollTo(byText(d.page, 'ההצעה המשתלמת ביותר'), 'top', -30, 1800);
+    await d.wait(1800);
   }),
   s5: stageScene('SIGNING', async (d) => {
-    await d.scrollBy(560, 1800);
-    await d.wait(1400);
-    await d.scrollBy(360, 1600);
+    await d.scrollBy(300, 1400);
+    await d.wait(1200);
+    await d.scrollTo(byText(d.page, 'אשרו לבנק מזרחי'), 'top', -60, 1600);
+    await d.wait(1300);
+    await d.scrollTo(byText(d.page, 'המסמכים לפתיחת התיק'), 'top', -30, 1600);
     await d.wait(1600);
   }),
   completed: {
@@ -463,19 +469,18 @@ const SCENES = {
   },
 };
 
-/** סצנה של שלב בתהליך: פתיחת השלב, דילוג על דף הפתיחה, וגלילה לתוכן */
+/** סצנה של שלב בתהליך: פתיחת השלב בכתובת, דילוג על דף ההסבר, וגלילה לתוכן */
 function stageScene(stage, body) {
   return {
     demo: 1,
-    url: '/demo/plan',
+    url: `/demo/plan?stage=${stage}`,
     prepare: async (d) => {
       await d.loc('plan-stage-rail').waitFor();
-      await d.loc(`plan-stage-${stage}`).click();
-      await d.wait(900);
+      await d.wait(1500);
       const start = d.loc('plan-stage-intro-start');
       if (await start.isVisible().catch(() => false)) {
         await start.click();
-        await d.wait(900);
+        await d.wait(1200);
       }
       await d.page.evaluate(() => window.scrollTo(0, 0));
       await d.wait(900);
@@ -493,15 +498,22 @@ async function drawSignature(d, pad) {
   const box = await pad.boundingBox();
   if (!box) return;
   const { page } = d;
+  // כתב יד: לולאות (ציקלואידה מוארכת) עם גובה משתנה, ובסוף קו תחתון
   const cx = box.x + box.width * 0.5;
-  const cy = box.y + box.height * 0.55;
-  const w = Math.min(box.width * 0.5, 320);
+  const cy = box.y + box.height * 0.5;
+  const w = Math.min(box.width * 0.42, 300);
   const path = [];
-  for (let i = 0; i <= 90; i += 1) {
-    const t = i / 90;
-    const x = cx + w / 2 - t * w;
-    const y = cy + Math.sin(t * Math.PI * 5) * 18 * (1 - t * 0.4) + Math.cos(t * Math.PI * 2) * 8;
+  const loops = 6;
+  for (let i = 0; i <= 150; i += 1) {
+    const t = (i / 150) * loops * 2 * Math.PI;
+    const k = i / 150;
+    const x = cx + w / 2 - (k * w - 7 * Math.sin(t));
+    const y = cy - (14 + 8 * Math.sin(k * 7)) * Math.cos(t) + 6 * k;
     path.push([x, y]);
+  }
+  for (let i = 0; i <= 30; i += 1) {
+    const k = i / 30;
+    path.push([cx - w / 2 + 10 + k * (w * 0.9), cy + 30 - 4 * k]);
   }
   await d.moveTo(path[0][0], path[0][1]);
   await page.mouse.move(path[0][0], path[0][1]);
