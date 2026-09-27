@@ -7,8 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FolderOpen, LayoutDashboard, LayoutGrid, MessageCircle, X } from 'lucide-react';
 import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
 import { DocumentVaultDialog, useDocumentProgress } from './documents/DocumentVaultDialog';
-import { ClientChatDock } from '@/components/conversation/ClientChatDock';
-import type { ConversationMode } from '@/components/conversation/ConversationWindow';
+import { useClientConversation } from '@/components/conversation/ClientChatDock';
 import { demoId } from '@/demo/demo-attr';
 
 /**
@@ -33,8 +32,12 @@ export function StageActionsMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
-  const [chatMode, setChatMode] = useState<ConversationMode>('closed');
-  const [unread, setUnread] = useState(0);
+  // ההתכתבות עצמה יושבת בשורש האפליקציה; כאן רק פותחים אותה ומציגים את המספר
+  const conversation = useClientConversation();
+  const registerActionsHost = conversation?.registerActionsHost;
+  useEffect(() => (tour || !registerActionsHost ? undefined : registerActionsHost()), [tour, registerActionsHost]);
+  const unread = conversation?.enabled ? conversation.unread : 0;
+  const chatOpen = conversation?.mode === 'open';
   const { progress } = useDocumentProgress(planId, data);
 
   const close = useCallback(() => setOpen(false), []);
@@ -51,7 +54,7 @@ export function StageActionsMenu({
   // חלון ההתכתבות המלא יושב בדיוק מעל העיגול — התפריט נאסף כשהוא נפתח
   const openChat = () => {
     setOpen(false);
-    setChatMode((mode) => (mode === 'open' ? 'bar' : 'open'));
+    conversation?.toggle();
   };
 
   const openVault = () => {
@@ -72,7 +75,7 @@ export function StageActionsMenu({
       node: (
         <ActionItem
           onClick={openChat}
-          label={chatMode === 'open' ? 'הקטנת ההתכתבות' : 'התכתבות עם היועץ'}
+          label={chatOpen ? 'הקטנת ההתכתבות' : 'התכתבות עם היועץ'}
           icon={<MessageCircle className="h-6 w-6" />}
           badge={unread > 0 ? <CountBadge value={unread} /> : null}
         />
@@ -183,7 +186,6 @@ export function StageActionsMenu({
             data={data}
             stage={stage}
           />
-          <ClientChatDock mode={chatMode} onMode={setChatMode} onSummary={setUnread} anchor="above-actions" />
         </>
       )}
     </>

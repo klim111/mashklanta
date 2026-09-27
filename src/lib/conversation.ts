@@ -33,6 +33,35 @@ export interface ConversationEmailView {
   createdAt: string;
   /** מייל נכנס שהצד שמסתכל עדיין לא פתח */
   unread: boolean;
+  /**
+   * מייל משולח שלא מוכר לשיחה — מוצג רק ללקוח, עם אישור השולח או מחיקה, ונכנס
+   * לשיחה רק אחרי אישור
+   */
+  held: boolean;
+  /** נמחק מהפיד ונמצא בארכיון המיילים */
+  archived: boolean;
+  attachments: EmailAttachmentView[];
+}
+
+/** קובץ שצורף למייל, כפי שנשמר עם המייל */
+export interface StoredAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+}
+
+export interface EmailAttachmentView extends StoredAttachment {
+  /** PDF או תמונה בגודל שהתיק מקבל — אפשר לשמור בתיק ולצפות בפלטפורמה */
+  savable: boolean;
+  /** התהליך שבתיק שלו הקובץ כבר נשמר */
+  savedToPlanId: string | null;
+}
+
+/** תיק מסמכים שאפשר לשמור אליו — תהליך פתוח של הלקוח */
+export interface AttachmentFolder {
+  planId: string;
+  name: string;
 }
 
 export type ContactKind = 'BANKER' | 'ADVISOR' | 'CLIENT';
@@ -117,35 +146,150 @@ export function senderDisplayName(name: string | null, role: ConversationRole, a
   return `${clean} באמצעות ${appName}`;
 }
 
-const MAILBOX_PREFIX = 'c-';
+/** הקידומת של הכתובות הראשונות (c-<מפתח>@inbox…), שממשיכות לעבוד */
+const LEGACY_MAILBOX_PREFIX = 'c-';
 
-/** הכתובת האישית של הלקוח לקבלת מיילים, כשיש דומיין לקבלה */
-export function mailboxAddress(key: string | null, domain: string | null | undefined): string | null {
-  const host = (domain || '').trim().toLowerCase().replace(/^@/, '');
-  if (!key || !host) return null;
-  return `${MAILBOX_PREFIX}${key}@${host}`;
+function cleanDomain(domain: string | null | undefined): string {
+  return (domain || '').trim().toLowerCase().replace(/^@/, '');
+}
+
+/** רשימת דומיינים ממשתנה סביבה — מופרדים בפסיק או ברווח */
+export function domainList(value: string | null | undefined): string[] {
+  return (value || '')
+    .split(/[\s,]+/)
+    .map(cleanDomain)
+    .filter(Boolean);
 }
 
 /**
- * מתוך רשימת הנמענים של מייל נכנס — המפתח של הלקוח שהמייל שייך אליו. נבדקות
- * רק כתובות בדומיין הקבלה, כדי שכתובת דומה בדומיין אחר לא תנותב לשיחה.
+ * הכתובת האישית של הלקוח, כשיש דומיין לקבלה: `igor.l@mashkalanta.com`, לפי
+ * שם הכתובת ששמור ללקוח. גם המפתח הישן (`c-…`) עובר כאן, כשזה מה שיש.
  */
-export function mailboxKeyFromAddresses(
+export function mailboxAddress(name: string | null, domain: string | null | undefined): string | null {
+  const host = cleanDomain(domain);
+  if (!name || !host) return null;
+  return `${name}@${host}`;
+}
+
+/**
+ * שמות שלא ניתנים ללקוחות — כתובות כלליות של משכלנתא, וכתובות שספקי מייל
+ * ובנקים מצפים שיהיו של בעל הדומיין.
+ */
+const RESERVED_MAILBOX_NAMES = new Set([
+  'abuse', 'accessibility', 'account', 'accounts', 'admin', 'administrator', 'advisor', 'advisors', 'billing',
+  'bounce', 'bounces', 'client', 'clients', 'contact', 'daemon', 'dmarc', 'help', 'hello', 'hostmaster', 'info',
+  'legal', 'mail', 'mailer-daemon', 'marketing', 'mashkalanta', 'news', 'newsletter', 'no-reply', 'noc',
+  'noreply', 'office', 'payments', 'postmaster', 'privacy', 'root', 'sales', 'security', 'service', 'support',
+  'system', 'team', 'webmaster', 'www',
+]);
+
+const MAILBOX_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,38}[a-z0-9])?$/;
+
+export function isReservedMailboxName(name: string, systemAddress?: string | null): boolean {
+  const own = (systemAddress || '').split('@')[0]?.toLowerCase();
+  return RESERVED_MAILBOX_NAMES.has(name) || name === own || name.startsWith(LEGACY_MAILBOX_PREFIX);
+}
+
+/**
+ * הבסיס לשם הכתובת האישית: שם המשתמש, או החלק שלפני ה-@ במייל, בלי תגית (+…),
+ * באותיות קטנות ורק בתווים שמותרים בכתובת. שם שמור או ריק — `client`, ואז
+ * נוסף לו מספר.
+ */
+export function mailboxNameBase(usernameOrEmail: string | null | undefined): string {
+  const local = normalizeEmail(usernameOrEmail).split('@')[0].replace(/\+.*$/, '');
+  const clean = local
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/[._-]{2,}/g, (run) => run[0])
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 30)
+    .replace(/[._-]+$/, '')
+    // c-… שמור לכתובות הישנות
+    .replace(/^c-/, 'c');
+  return clean || 'client';
+}
+
+/**
+ * שמות לנסות לפי הסדר: הבסיס, ואז הבסיס עם מספר (igor2, igor3…). שם שמור
+ * מתחיל ישר מהמספר.
+ */
+export function mailboxNameCandidates(email: string | null | undefined, systemAddress?: string | null, count = 20): string[] {
+  const base = mailboxNameBase(email);
+  const names: string[] = [];
+  if (!isReservedMailboxName(base, systemAddress) && MAILBOX_NAME_PATTERN.test(base)) names.push(base);
+  for (let index = 2; names.length < count; index++) names.push(`${base}${index}`);
+  return names;
+}
+
+export interface MailboxTarget {
+  /** השם בכתובת, כפי שנכתב (igor.l) */
+  name: string;
+  /** מפתח של כתובת ישנה (c-<מפתח>), כשהכתובת בפורמט הזה */
+  legacyKey: string | null;
+}
+
+/**
+ * מתוך הנמענים של מייל נכנס — הכתובות האישיות שהוא נשלח אליהן. נבדקות רק
+ * כתובות בדומייני הקבלה, כדי שכתובת דומה בדומיין אחר לא תנותב לשיחה, ולא
+ * כתובות כלליות (info@, hello@).
+ */
+export function mailboxTargets(
   addresses: readonly string[],
-  domain: string | null | undefined
-): string | null {
-  const host = (domain || '').trim().toLowerCase().replace(/^@/, '');
-  if (!host) return null;
+  domains: string | readonly string[] | null | undefined,
+  systemAddress?: string | null
+): MailboxTarget[] {
+  const hosts = (Array.isArray(domains) ? domains : [domains]).map((item) => cleanDomain(item as string)).filter(Boolean);
+  const targets: MailboxTarget[] = [];
   for (const raw of addresses) {
     const { email } = parseAddress(raw);
     const at = email.lastIndexOf('@');
-    if (at < 0 || email.slice(at + 1) !== host) continue;
-    const local = email.slice(0, at);
-    if (!local.startsWith(MAILBOX_PREFIX)) continue;
-    const key = local.slice(MAILBOX_PREFIX.length).replace(/\+.*$/, '');
-    if (/^[a-z0-9]{16,64}$/.test(key)) return key;
+    if (at < 0 || !hosts.includes(email.slice(at + 1))) continue;
+    const name = email.slice(0, at).replace(/\+.*$/, '');
+    const legacy = name.startsWith(LEGACY_MAILBOX_PREFIX) ? name.slice(LEGACY_MAILBOX_PREFIX.length) : '';
+    const legacyKey = /^[a-z0-9]{16,64}$/.test(legacy) ? legacy : null;
+    if (!legacyKey && (!MAILBOX_NAME_PATTERN.test(name) || isReservedMailboxName(name, systemAddress))) continue;
+    if (!targets.some((item) => item.name === name)) targets.push({ name, legacyKey });
+  }
+  return targets;
+}
+
+/** האם אחת הכתובות היא בדומייני הקבלה — מייל לכתובת כללית (info@) ולא ללקוח */
+export function addressedToDomains(
+  addresses: readonly string[],
+  domains: readonly string[]
+): string | null {
+  for (const raw of addresses) {
+    const { email } = parseAddress(raw);
+    const host = email.slice(email.lastIndexOf('@') + 1);
+    if (email.includes('@') && domains.includes(host)) return email;
   }
   return null;
+}
+
+/** ספקי מייל פרטיים — כתובת בנקאי ב-gmail לא פותחת את כל gmail */
+const PERSONAL_MAIL_DOMAINS = new Set([
+  '012.net.il', 'aol.com', 'bezeqint.net', 'gmail.com', 'gmx.com', 'googlemail.com', 'hotmail.com', 'icloud.com',
+  'live.com', 'mail.ru', 'me.com', 'msn.com', 'netvision.net.il', 'outlook.com', 'proton.me', 'protonmail.com',
+  'walla.co.il', 'walla.com', 'yahoo.com', 'yandex.ru', 'zahav.net.il',
+]);
+
+/**
+ * האם מייל נכנס לכתובת האישית נכנס ישר לשיחה: מהלקוח, מהיועץ, מבנקאי שהוזן
+ * (או מכתובת אחרת באותו בנק), ממי שכבר קיבל מייל מהשיחה, או משולח שהלקוח כבר
+ * אישר. כל השאר ממתין לאישור הלקוח — כך מי שמנחש כתובת לא מכניס מיילים לשיחה.
+ */
+export function senderAllowed(
+  sender: string,
+  contacts: readonly ConversationContact[],
+  correspondents: ReadonlySet<string>
+): boolean {
+  const { email } = parseAddress(sender);
+  if (!isValidEmail(email)) return false;
+  if (correspondents.has(email) || contacts.some((contact) => contact.email === email)) return true;
+  const host = email.slice(email.lastIndexOf('@') + 1);
+  return (
+    !PERSONAL_MAIL_DOMAINS.has(host) &&
+    contacts.some((contact) => contact.kind === 'BANKER' && contact.email.endsWith(`@${host}`))
+  );
 }
 
 /** בריחה של טקסט לפני שהוא נכנס ל-HTML של מייל */
@@ -198,13 +342,15 @@ export function trimQuotedReply(text: string): string {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   const markers = [
     /^On .+ wrote:\s*$/i,
-    /^בתאריך .+(כתב|כתבה|נכתב).*:\s*$/,
+    /^בתאריך .+(כתב|כתבה|נכתב|מאת).*:\s*$/,
     /^-{2,}\s*Original Message\s*-{2,}/i,
     /^-{2,}\s*הודעה מקורית\s*-{2,}/,
     /^From: .+/i,
     /^מאת: .+/,
   ];
-  const cut = lines.findIndex((line) => markers.some((pattern) => pattern.test(line.trim())));
+  // ג'ימייל בעברית עוטף את שורת הציטוט בתווי כיווניות, שמסתירים ממנה את ההתחלה
+  const plain = (line: string) => line.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
+  const cut = lines.findIndex((line) => markers.some((pattern) => pattern.test(plain(line))));
   const kept = (cut > 0 ? lines.slice(0, cut) : lines).filter((line) => !line.startsWith('>'));
   const result = kept.join('\n').trim();
   return result || text.trim();
@@ -275,4 +421,56 @@ export function carbonCopies(
 export function bankFor(addresses: readonly string[], contacts: readonly ConversationContact[]): string | null {
   const emails = new Set(addresses.map((raw) => parseAddress(raw).email));
   return contacts.find((contact) => contact.kind === 'BANKER' && emails.has(contact.email))?.bank ?? null;
+}
+
+/**
+ * הקבצים המצורפים של מייל נכנס, בלי התמונות שמשובצות בגוף המייל (חתימות,
+ * לוגו) — אלה חלק מהעיצוב של המייל ולא מסמך שנשלח.
+ */
+export function inboundAttachments(
+  list: readonly {
+    id: string;
+    filename: string | null;
+    size: number;
+    content_type: string;
+    content_id: string | null;
+    content_disposition: string | null;
+  }[]
+): StoredAttachment[] {
+  return list
+    .filter((item) => !(item.content_disposition === 'inline' && item.content_id && item.content_type.startsWith('image/')))
+    .map((item) => ({
+      id: item.id,
+      fileName: (item.filename || '').replace(/[\r\n"\\/]/g, ' ').trim() || 'קובץ מצורף',
+      contentType: (item.content_type || 'application/octet-stream').split(';')[0].trim().toLowerCase(),
+      size: Math.max(0, item.size || 0),
+    }));
+}
+
+/** הקבצים שנשמרו עם המייל, מתוך עמודת ה-JSON — מה שלא בצורה הנכונה מדולג */
+export function storedAttachments(value: unknown): StoredAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const row = item as Partial<StoredAttachment> | null;
+    if (!row || typeof row.id !== 'string' || typeof row.fileName !== 'string') return [];
+    return [
+      {
+        id: row.id,
+        fileName: row.fileName,
+        contentType: typeof row.contentType === 'string' ? row.contentType : 'application/octet-stream',
+        size: typeof row.size === 'number' ? row.size : 0,
+      },
+    ];
+  });
+}
+
+/**
+ * קובץ גדול מזה לא עובר דרך השרת (לפונקציה ב-Vercel יש מגבלה על גודל
+ * התשובה), ולכן נפתח ישר מהקישור הזמני של ספק המיילים ולא בתצוגה המקדימה
+ */
+export const MAX_STREAMED_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
+/** המפתח של קובץ מצורף בתיק המסמכים — אותו קובץ נשמר פעם אחת בכל תהליך */
+export function attachmentDocumentKey(attachmentId: string): string {
+  return `email:${attachmentId}`;
 }

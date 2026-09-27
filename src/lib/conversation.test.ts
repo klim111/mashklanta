@@ -7,11 +7,18 @@ import {
   cleanSubject,
   emailHtml,
   mailboxAddress,
-  mailboxKeyFromAddresses,
+  mailboxNameBase,
+  mailboxNameCandidates,
+  mailboxTargets,
+  addressedToDomains,
+  domainList,
+  senderAllowed,
   parseAddress,
   senderAddress,
   senderDisplayName,
   trimQuotedReply,
+  inboundAttachments,
+  storedAttachments,
 } from './conversation';
 import type { ConversationContact } from './conversation';
 
@@ -38,21 +45,59 @@ describe('addresses', () => {
 });
 
 describe('mailbox routing', () => {
-  const key = 'a1b2c3d4e5f6a7b8c9d0e1f2';
-
-  it('builds and reads back the personal address', () => {
-    const address = mailboxAddress(key, 'inbox.mashkalanta.co.il');
-    expect(address).toBe(`c-${key}@inbox.mashkalanta.co.il`);
-    expect(mailboxKeyFromAddresses([`Bank <${address}>`], 'inbox.mashkalanta.co.il')).toBe(key);
+  it('names the address after the client email', () => {
+    expect(mailboxNameBase('Igor.L+bank@Gmail.com')).toBe('igor.l');
+    expect(mailboxNameBase('דני@walla.co.il')).toBe('client');
+    expect(mailboxNameBase('..a__b--c..@x.com')).toBe('a_b-c');
+    expect(mailboxNameBase('c-dan@x.com')).toBe('cdan');
+    expect(mailboxAddress('igor.l', 'mashkalanta.com')).toBe('igor.l@mashkalanta.com');
   });
 
-  it('ignores the same local part on another domain', () => {
-    expect(mailboxKeyFromAddresses([`c-${key}@evil.com`], 'inbox.mashkalanta.co.il')).toBeNull();
+  it('numbers taken and reserved names', () => {
+    expect(mailboxNameCandidates('igor@gmail.com', null, 3)).toEqual(['igor', 'igor2', 'igor3']);
+    expect(mailboxNameCandidates('info@company.co.il', null, 2)).toEqual(['info2', 'info3']);
+    expect(mailboxNameCandidates('hi@company.co.il', 'hi@mashkalanta.com', 1)).toEqual(['hi2']);
+  });
+
+  it('routes personal addresses on our domains only', () => {
+    expect(mailboxTargets(['Bank <Igor.L@mashkalanta.com>'], ['mashkalanta.com'])).toEqual([{ name: 'igor.l', legacyKey: null }]);
+    expect(mailboxTargets(['igor.l@evil.com'], ['mashkalanta.com'])).toEqual([]);
+    expect(mailboxTargets(['info@mashkalanta.com', 'noreply@mashkalanta.com'], ['mashkalanta.com'])).toEqual([]);
+    expect(addressedToDomains(['Igor <info@mashkalanta.com>'], ['mashkalanta.com'])).toBe('info@mashkalanta.com');
+  });
+
+  it('still routes the first addresses (c-…@inbox)', () => {
+    const old = 'a1b2c3d4e5f6a7b8c9d0e1f2';
+    expect(mailboxTargets([`c-${old}@inbox.mashkalanta.com`], ['mashkalanta.com', 'inbox.mashkalanta.com'])).toEqual([
+      { name: `c-${old}`, legacyKey: old },
+    ]);
   });
 
   it('returns nothing when receiving is not configured', () => {
-    expect(mailboxAddress(key, '')).toBeNull();
-    expect(mailboxKeyFromAddresses([`c-${key}@inbox.mashkalanta.co.il`], null)).toBeNull();
+    expect(mailboxAddress('igor', '')).toBeNull();
+    expect(mailboxTargets(['igor@mashkalanta.com'], null)).toEqual([]);
+    expect(domainList(' mashkalanta.com, inbox.mashkalanta.com ')).toEqual(['mashkalanta.com', 'inbox.mashkalanta.com']);
+  });
+});
+
+describe('who may write to the personal address', () => {
+  const known = new Set(['someone@partner.co.il']);
+
+  it('lets in the client, advisor, bankers and past correspondents', () => {
+    expect(senderAllowed('Client <CLIENT@gmail.com>', contacts, known)).toBe(true);
+    expect(senderAllowed('dana@leumi.co.il', contacts, known)).toBe(true);
+    expect(senderAllowed('someone@partner.co.il', contacts, known)).toBe(true);
+  });
+
+  it('lets in another address at a banker’s bank, but not at a personal mail provider', () => {
+    expect(senderAllowed('noreply@leumi.co.il', contacts, known)).toBe(true);
+    const gmailBanker = [...contacts, { kind: 'BANKER' as const, email: 'yossi@gmail.com', name: 'יוסי', bank: 'מזרחי' }];
+    expect(senderAllowed('stranger@gmail.com', gmailBanker, known)).toBe(false);
+  });
+
+  it('holds everyone else', () => {
+    expect(senderAllowed('spam@random.com', contacts, known)).toBe(false);
+    expect(senderAllowed('not-an-email', contacts, known)).toBe(false);
   });
 });
 
@@ -97,8 +142,34 @@ describe('content', () => {
     expect(trimQuotedReply(text)).toBe('תודה, קיבלתי.');
   });
 
+  it('cuts a Hebrew Gmail quote header wrapped in direction marks', () => {
+    const text = 'מעולה, תודה\n\n\u202bבתאריך יום ה׳, 24 בספט׳ 2026 ב-7:40 מאת \u202aIgor\u202c\u200f <\u202ax@gmail.com\u202c\u200f>:\u202c\n> שלום';
+    expect(trimQuotedReply(text)).toBe('מעולה, תודה');
+  });
+
   it('keeps a forwarded bank email whole', () => {
     const text = 'מצורף\n---------- Forwarded message ---------\nFrom: Bank <x@bank.co.il>\nהאישור שלכם';
     expect(trimQuotedReply(text)).toBe(text);
+  });
+});
+
+describe('attachments', () => {
+  it('keeps documents and drops images embedded in the email body', () => {
+    const list = inboundAttachments([
+      { id: 'a1', filename: 'אישור.pdf', size: 1000, content_type: 'application/pdf', content_id: null, content_disposition: 'attachment' },
+      { id: 'a2', filename: 'logo.png', size: 200, content_type: 'image/png', content_id: 'logo@x', content_disposition: 'inline' },
+      { id: 'a3', filename: null, size: 50, content_type: 'IMAGE/JPEG; name=x', content_id: null, content_disposition: 'attachment' },
+    ]);
+    expect(list).toEqual([
+      { id: 'a1', fileName: 'אישור.pdf', contentType: 'application/pdf', size: 1000 },
+      { id: 'a3', fileName: 'קובץ מצורף', contentType: 'image/jpeg', size: 50 },
+    ]);
+  });
+
+  it('reads only well-formed stored attachments', () => {
+    expect(storedAttachments(null)).toEqual([]);
+    expect(storedAttachments([{ id: 'a1', fileName: 'x.pdf', contentType: 'application/pdf', size: 3 }, { id: 5 }])).toEqual([
+      { id: 'a1', fileName: 'x.pdf', contentType: 'application/pdf', size: 3 },
+    ]);
   });
 });

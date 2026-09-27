@@ -49,7 +49,10 @@ export function ConversationWindow({
   unreadEmails = 0,
   mailboxAddress = null,
   receivesEmail = false,
-  anchor = 'left',
+  side = 'left',
+  docked = false,
+  offset = 0,
+  anchor = 'corner',
   children,
 }: {
   role: ConversationRole;
@@ -63,11 +66,20 @@ export function ConversationWindow({
   unreadEmails?: number;
   mailboxAddress?: string | null;
   receivesEmail?: boolean;
+  /** הפינה שבה החלון יושב */
+  side?: 'left' | 'right';
   /**
-   * איפה החלון יושב: `left` — הפינה השמאלית התחתונה; `above-actions` — בפינה
-   * הימנית, מעל כפתור הפעולות העגול של שלבי המשכנתא, שממנו הוא נפתח.
+   * השורה המוקטנת יושבת בתוך עמודת הכפתורים הצפים של המסך, ולא בפינה משלה —
+   * והיא תמיד שם, ולכן אין לה כפתור סגירה
    */
-  anchor?: 'left' | 'above-actions';
+  docked?: boolean;
+  /** מרחק החלון המלא מהקצה, במסך רחב — כדי לא לכסות תפריט צד */
+  offset?: number;
+  /**
+   * `above-actions` — החלון המלא נפתח בפינה הימנית, מעל כפתור הפעולות העגול
+   * של שלבי המשכנתא, שממנו הוא נפתח
+   */
+  anchor?: 'corner' | 'above-actions';
   /** תוכן במקום הטאבים — רשימת השיחות אצל היועץ */
   children?: ReactNode;
 }) {
@@ -75,41 +87,62 @@ export function ConversationWindow({
   const accent = accentFor(role);
   const open = mode === 'open';
   const unread = unreadChat + unreadEmails;
-  const aboveActions = anchor === 'above-actions';
 
   if (!open) {
     return (
       <div
         dir="rtl"
-        className={`fixed z-50 flex w-[min(340px,calc(100vw-2rem))] ${aboveActions ? 'bottom-28 right-5' : 'bottom-4 left-4'} text-right items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-slate-900/15`}
+        className={`${
+          docked ? '' : `fixed bottom-4 z-50 ${side === 'right' ? 'right-4' : 'left-4'}`
+        } flex items-center gap-2 border border-slate-200 bg-white text-right shadow-2xl shadow-slate-900/15 print:hidden ${
+          // במסך צר השורה הצמודה מתכווצת לעיגול עם המספר, כדי לא לכסות כפתורים אחרים
+          docked
+            ? 'rounded-full p-1 sm:w-[320px] sm:rounded-2xl sm:p-1.5'
+            : 'w-[min(320px,calc(100vw-2.5rem))] rounded-2xl p-1.5'
+        }`}
       >
         <button
           type="button"
           onClick={() => onMode('open')}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-right hover:bg-slate-50"
+          aria-label={docked ? title : undefined}
+          className={`relative flex min-w-0 flex-1 items-center gap-2 rounded-xl text-right hover:bg-slate-50 ${
+            docked ? 'p-0.5 sm:px-2 sm:py-1.5' : 'px-2 py-1.5'
+          }`}
         >
-          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white ${accent.solid}`}>
+          <span
+            className={`flex shrink-0 items-center justify-center rounded-full text-white ${accent.solid} ${
+              docked ? 'h-11 w-11 sm:h-8 sm:w-8' : 'h-8 w-8'
+            }`}
+          >
             <MessageCircle className="h-4 w-4" />
           </span>
-          <span className="min-w-0 flex-1 truncate text-button font-black text-slate-900">{title}</span>
-          <Badge value={unread} />
+          <span
+            className={`min-w-0 flex-1 truncate text-button font-black text-slate-900 ${docked ? 'hidden sm:block' : ''}`}
+          >
+            {title}
+          </span>
+          <span className={docked ? 'absolute -top-1 -left-1 sm:static' : ''}>
+            <Badge value={unread} />
+          </span>
         </button>
         <button
           type="button"
           onClick={() => onMode('open')}
           aria-label="פתיחת חלון מלא"
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          className={`rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 ${docked ? 'hidden sm:block' : ''}`}
         >
           <ChevronUp className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          onClick={() => onMode('closed')}
-          aria-label="סגירה"
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {!docked && (
+          <button
+            type="button"
+            onClick={() => onMode('closed')}
+            aria-label="סגירה"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
     );
   }
@@ -119,10 +152,11 @@ export function ConversationWindow({
       dir="rtl"
       role="dialog"
       aria-label={title}
-      className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20 ${
-        aboveActions
+      style={offset && anchor === 'corner' ? { [side]: offset } : undefined}
+      className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20 print:hidden ${
+        anchor === 'above-actions'
           ? 'sm:bottom-28 sm:right-5 sm:h-[min(620px,calc(100vh-8.5rem))]'
-          : 'sm:bottom-4 sm:left-4 sm:h-[min(640px,calc(100vh-2rem))]'
+          : `sm:bottom-4 sm:h-[min(640px,calc(100vh-2rem))] ${side === 'right' ? 'sm:right-4' : 'sm:left-4'}`
       }`}
     >
       <header className={`flex items-center gap-2 px-3 py-2.5 text-white ${role === 'ADVISOR' ? 'bg-violet-700' : 'bg-brand-dark'}`}>
@@ -143,14 +177,16 @@ export function ConversationWindow({
         >
           <ChevronDown className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          onClick={() => onMode('closed')}
-          aria-label="סגירה"
-          className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {!docked && (
+          <button
+            type="button"
+            onClick={() => onMode('closed')}
+            aria-label="סגירה"
+            className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </header>
 
       {children ?? (

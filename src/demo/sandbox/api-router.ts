@@ -150,6 +150,12 @@ export class DemoApiRouter {
   private orders: Record<string, unknown>[] = [];
   private chat: ChatMessageView[] = demoChat();
   private emails: ConversationEmailView[] = demoEmails();
+
+  private demoFolders() {
+    return this.plans
+      .filter((plan) => plan.status === 'IN_PROGRESS')
+      .map((plan) => ({ planId: plan.id, name: plan.name }));
+  }
   private counter = 0;
   /** כל בקשה שנענתה — לבדיקות ולתצוגת "מה נחסם" */
   readonly log: Array<{ method: string; path: string }> = [];
@@ -479,10 +485,10 @@ export class DemoApiRouter {
     // ─── התכתבות עם היועץ: צ'אט ומיילים, בזיכרון בלבד ───
     if (path === '/api/conversation/summary') {
       return json({
-        unreadChat: 0,
-        unreadEmails: 0,
+        unreadChat: this.chat.filter((item) => item.authorRole === 'ADVISOR' && !item.readAt).length,
+        unreadEmails: this.emails.filter((item) => item.unread).length,
         advisorName: 'רון, יועץ משכלנתא',
-        mailboxAddress: 'c-demo0000000000000000@inbox.mashkalanta.example',
+        mailboxAddress: 'dana.cohen@mashkalanta.example',
         receivesEmail: true,
       });
     }
@@ -500,7 +506,9 @@ export class DemoApiRouter {
         this.chat = [...this.chat, message];
         return json(message, 201);
       }
-      return json(this.chat);
+      const view = this.chat;
+      this.chat = this.chat.map((item) => (item.readAt ? item : { ...item, readAt: nowIso() }));
+      return json(view);
     }
     if (path === '/api/conversation/emails') {
       if (method === 'POST') {
@@ -521,11 +529,62 @@ export class DemoApiRouter {
           bank: DEMO_CONTACTS.find((item) => to.includes(item.email) && item.bank)?.bank ?? null,
           createdAt: nowIso(),
           unread: false,
+          held: false,
+          archived: false,
+          attachments: [],
         };
         this.emails = [email, ...this.emails];
         return json(email, 201);
       }
-      return json({ emails: this.emails, contacts: DEMO_CONTACTS });
+      const view = this.emails;
+      this.emails = this.emails.map((item) => (item.unread ? { ...item, unread: false } : item));
+      return json({ emails: view, contacts: DEMO_CONTACTS, folders: this.demoFolders() });
+    }
+    // ארכיון ומחיקה לגמרי של מייל בהדגמה
+    const single = path.match(/^\/api\/conversation\/emails\/([^/]+)$/);
+    if (single && method === 'PATCH') {
+      const body = await this.body(init, input);
+      this.emails = this.emails.map((item) => (item.id === single[1] ? { ...item, archived: Boolean(body.archived) } : item));
+      return json({ ok: true });
+    }
+    if (single && method === 'DELETE') {
+      this.emails = this.emails.filter((item) => item.id !== single[1]);
+      return json({ ok: true });
+    }
+    // אישור או מחיקה של שולח לא מוכר במייל ההדגמה
+    const sender = path.match(/^\/api\/conversation\/emails\/([^/]+)\/sender$/);
+    if (sender && method === 'POST') {
+      const body = await this.body(init, input);
+      const from = this.emails.find((item) => item.id === sender[1] && item.held)?.fromAddress;
+      const matches = (item: ConversationEmailView) => item.held && item.fromAddress === from;
+      const count = this.emails.filter(matches).length;
+      this.emails =
+        body.decision === 'approve'
+          ? this.emails.map((item) => (matches(item) ? { ...item, held: false, archived: false } : item))
+          : this.emails.map((item) => (matches(item) && !item.archived ? { ...item, archived: true } : item));
+      return json({ ok: true, count });
+    }
+    // קובץ מצורף במייל ההדגמה: תצוגה מקדימה ושמירה בתיק
+    const attachment = path.match(/^\/api\/conversation\/emails\/([^/]+)\/attachments\/([^/]+)$/);
+    if (attachment) {
+      const [, emailId, attachmentId] = attachment;
+      if (method === 'POST') {
+        const planId = this.demoFolders()[0]?.planId ?? DEMO_PLAN_ID;
+        this.emails = this.emails.map((email) =>
+          email.id !== emailId
+            ? email
+            : {
+                ...email,
+                attachments: email.attachments.map((item) =>
+                  item.id === attachmentId ? { ...item, savedToPlanId: planId } : item
+                ),
+              }
+        );
+        return json({ ok: true, planId, documentId: `demo-doc-${attachmentId}` }, 201);
+      }
+      return new Response(demoPdf('Bank Leumi - approval in principle form'), {
+        headers: { 'Content-Type': 'application/pdf' },
+      });
     }
 
     // ─── כל השאר: מוצלח וריק, בלי לגעת בשום דבר אמיתי ───
@@ -578,6 +637,23 @@ function demoChat(): ChatMessageView[] {
 function demoEmails(): ConversationEmailView[] {
   return [
     {
+      id: 'demo-email-3',
+      direction: 'INBOUND',
+      senderRole: null,
+      fromAddress: 'mashkanta-noreply@mizrahi.example',
+      fromName: 'מזרחי טפחות',
+      toAddresses: ['dana.cohen@mashkalanta.example'],
+      ccAddresses: [],
+      subject: 'עדכון סטטוס לבקשת המשכנתא שלך',
+      text: 'שלום,\nהבקשה שלך לאישור עקרוני התקבלה ונמצאת בבדיקה. נעדכן כשתהיה החלטה.\nמזרחי טפחות',
+      bank: null,
+      createdAt: hoursAgo(1),
+      unread: true,
+      held: true,
+      archived: false,
+      attachments: [],
+    },
+    {
       id: 'demo-email-2',
       direction: 'INBOUND',
       senderRole: null,
@@ -590,6 +666,18 @@ function demoEmails(): ConversationEmailView[] {
       bank: 'לאומי',
       createdAt: hoursAgo(4),
       unread: true,
+      held: false,
+      archived: false,
+      attachments: [
+        {
+          id: 'demo-att-1',
+          fileName: 'טופס בקשה לאישור עקרוני - לאומי.pdf',
+          contentType: 'application/pdf',
+          size: 184320,
+          savable: true,
+          savedToPlanId: null,
+        },
+      ],
     },
     {
       id: 'demo-email-1',
@@ -604,6 +692,33 @@ function demoEmails(): ConversationEmailView[] {
       bank: 'לאומי',
       createdAt: hoursAgo(28),
       unread: false,
+      held: false,
+      archived: false,
+      attachments: [],
     },
   ];
+}
+
+/** PDF של עמוד אחד עם שורת טקסט — לתצוגה המקדימה של קובץ מצורף בהדגמה */
+function demoPdf(title: string): string {
+  const text = title.replace(/[()\\]/g, '');
+  const stream = `BT /F1 22 Tf 60 760 Td (${text}) Tj ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let out = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  objects.forEach((body, index) => {
+    offsets.push(out.length);
+    out += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xref = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  out += offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return out;
 }

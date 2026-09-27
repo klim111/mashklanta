@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Home } from 'lucide-react';
+import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
 
 /**
  * כפתור צף לחזרה לעמוד הבית.
@@ -21,16 +22,22 @@ export function HomeFloatingButton({
   side?: 'right' | 'left';
 }) {
   return (
-    <Link
-      href={href}
-      aria-label={label}
-      className={`fixed bottom-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5 print:hidden ${
-        side === 'right' ? 'right-5' : 'left-5'
+    <div
+      className={`fixed bottom-5 z-40 flex flex-col gap-2.5 print:hidden ${
+        side === 'right' ? 'right-5 items-end' : 'left-5 items-start'
       }`}
     >
-      <Home className="h-5 w-5" />
-      {/* בטלפון הכפתור עגול, כדי שלא יסתיר את תוכן הכלי */}
-      <span className="sr-only sm:not-sr-only">{label}</span>
-    </Link>
+      {/* למשתמש מחובר — שורת ההתכתבות עם היועץ, מעל הכפתור ובאותה פינה */}
+      {side === 'right' && <ConversationDockSlot />}
+      <Link
+        href={href}
+        aria-label={label}
+        className="inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 text-info font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5 sm:px-5 sm:py-3"
+      >
+        <Home className="h-5 w-5" />
+        {/* בטלפון הכפתור עגול, כדי שלא יסתיר את תוכן הכלי */}
+        <span className="sr-only sm:not-sr-only">{label}</span>
+      </Link>
+    </div>
   );
 }

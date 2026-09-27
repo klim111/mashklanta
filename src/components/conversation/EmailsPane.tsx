@@ -1,12 +1,33 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Copy, Info, Loader2, Mail, PenLine, Reply, Send, X } from 'lucide-react';
-import type { ConversationContact, ConversationEmailView, ConversationRole } from '@/lib/conversation';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Copy,
+  Info,
+  Loader2,
+  Mail,
+  Paperclip,
+  PenLine,
+  Reply,
+  Send,
+  ShieldQuestion,
+  Trash2,
+  X,
+} from 'lucide-react';
+import type { AttachmentFolder, ConversationContact, ConversationEmailView, ConversationRole } from '@/lib/conversation';
 import { MAX_EMAIL_LENGTH, MAX_SUBJECT_LENGTH } from '@/lib/conversation';
 import { useConversationEmails } from './useConversation';
 import type { EmailDraft } from './useConversation';
 import { accentFor } from './ConversationWindow';
+import { EmailAttachments } from './EmailAttachments';
+
+const PENDING_TEXT = 'תוכן המייל עוד נטען…';
 
 const WHEN = new Intl.DateTimeFormat('he-IL', {
   day: 'numeric',
@@ -39,7 +60,41 @@ export function EmailsPane({
   mailboxAddress: string | null;
   receivesEmail: boolean;
 }) {
-  const { emails, contacts, ready, sending, error, setError, send } = useConversationEmails(clientUserId, true);
+  const {
+    emails: all,
+    contacts,
+    folders,
+    ready,
+    sending,
+    error,
+    setError,
+    send,
+    saveAttachment,
+    reviewSender,
+    setArchived,
+    deleteForever,
+  } = useConversationEmails(clientUserId, true);
+  const [view, setView] = useState<'feed' | 'archive'>('feed');
+  // מייל שהועבר עכשיו לארכיון — עם "ביטול" לכמה שניות
+  const [archivedNow, setArchivedNow] = useState<string | null>(null);
+  useEffect(() => {
+    if (!archivedNow) return;
+    const timer = window.setTimeout(() => setArchivedNow(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [archivedNow]);
+
+  const feed = all.filter((email) => !email.archived);
+  const archive = all.filter((email) => email.archived);
+  // מיילים משולחים לא מוכרים — מוצגים ללקוח בנפרד, עד שיאשר או ימחק
+  const held = feed.filter((email) => email.held);
+  const emails = feed.filter((email) => !email.held);
+  const personalEmail = contacts.find((contact) => contact.kind === 'CLIENT')?.email ?? null;
+
+  const moveToArchive = async (emailId: string) => {
+    const failure = await setArchived(emailId, true);
+    if (failure) setError(failure);
+    else setArchivedNow(emailId);
+  };
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const accent = accentFor(role);
@@ -62,6 +117,20 @@ export function EmailsPane({
     startDraft(allowed, /^(re|תשובה):/i.test(email.subject) ? email.subject : `Re: ${email.subject}`);
   };
 
+  if (view === 'archive') {
+    return (
+      <ArchiveView
+        role={role}
+        emails={archive}
+        contacts={contacts}
+        personalEmail={personalEmail}
+        onBack={() => setView('feed')}
+        onRestore={(emailId) => setArchived(emailId, false)}
+        onDelete={deleteForever}
+      />
+    );
+  }
+
   if (draft) {
     return (
       <Composer
@@ -71,6 +140,7 @@ export function EmailsPane({
         recipients={recipients}
         contacts={contacts}
         receivesEmail={receivesEmail}
+        mailboxAddress={role === 'CLIENT' ? mailboxAddress : null}
         sending={sending}
         error={error}
         onCancel={() => setDraft(null)}
@@ -85,6 +155,14 @@ export function EmailsPane({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2">
         <p className="text-sm font-bold text-slate-500">{emails.length > 0 ? `${emails.length} מיילים` : 'מיילים'}</p>
+        <button
+          type="button"
+          onClick={() => setView('archive')}
+          className="mr-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-100"
+        >
+          <Archive className="h-4 w-4" />
+          ארכיון{archive.length > 0 ? ` (${archive.length})` : ''}
+        </button>
         <button
           type="button"
           onClick={() => startDraft(recipients.filter((item) => item.kind === 'BANKER').slice(0, 1).map((item) => item.email))}
@@ -104,7 +182,27 @@ export function EmailsPane({
               : 'הלקוח עדיין לא הזין מייל של בנקאי בשלב האישור העקרוני. בינתיים אפשר לכתוב ללקוח.'}
           </Hint>
         )}
+        {archivedNow && (
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-xl bg-slate-800 px-3 py-2 text-sm font-bold text-white shadow">
+            <span>המייל הועבר לארכיון</span>
+            <button
+              type="button"
+              onClick={() => {
+                const emailId = archivedNow;
+                setArchivedNow(null);
+                void setArchived(emailId, false);
+              }}
+              className="rounded-md px-2 py-0.5 text-blue-200 hover:bg-white/10"
+            >
+              ביטול
+            </button>
+          </div>
+        )}
+        {error && !draft && <p className="text-sm font-bold text-rose-600">{error}</p>}
         {role === 'CLIENT' && mailboxAddress && <MailboxHint address={mailboxAddress} />}
+        {held.map((email) => (
+          <HeldEmailCard key={email.id} email={email} onReview={(decision) => reviewSender(email.id, decision)} />
+        ))}
 
         {!ready ? (
           <div className="flex justify-center py-10">
@@ -127,6 +225,10 @@ export function EmailsPane({
               open={expanded === email.id}
               onToggle={() => setExpanded((current) => (current === email.id ? null : email.id))}
               onReply={() => reply(email)}
+              onArchive={() => void moveToArchive(email.id)}
+              folders={folders}
+              clientUserId={clientUserId}
+              onSaveAttachment={(attachmentId, planId) => saveAttachment(email.id, attachmentId, planId)}
             />
           ))
         )}
@@ -144,12 +246,16 @@ function Hint({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** הכתובת האישית, למייל שהבנק שלח ישר לתיבה של הלקוח */
+/**
+ * הכתובת האישית של הלקוח במשכלנתא: אפשר לרשום אותה בבקשה באתר הבנק, או
+ * להעביר אליה מייל שהבנק שלח ישר לתיבה הפרטית
+ */
 function MailboxHint({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-600">
-      קיבלתם מייל מהבנק ישירות לתיבה שלכם? העבירו אותו לכתובת הזו, והוא יופיע כאן:
+      הכתובת האישית שלכם במשכלנתא. רשמו אותה בבקשות באתרי הבנקים, או העבירו אליה מייל מהבנק, והוא יופיע כאן וגם
+      בתיבה שלכם:
       <button
         type="button"
         onClick={() => {
@@ -169,6 +275,249 @@ function MailboxHint({ address }: { address: string }) {
   );
 }
 
+/**
+ * מייל משולח שהשיחה עוד לא מכירה. אישור מכניס אותו לשיחה (והיועץ רואה אותו),
+ * ומיילים הבאים מאותו שולח נכנסים ישר. מחיקה מסירה אותו.
+ */
+function HeldEmailCard({
+  email,
+  onReview,
+}: {
+  email: ConversationEmailView;
+  onReview: (decision: 'approve' | 'reject') => Promise<string | null>;
+}) {
+  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const review = async (decision: 'approve' | 'reject') => {
+    setBusy(decision);
+    setFailure(null);
+    const result = await onReview(decision);
+    setBusy(null);
+    if (result) setFailure(result);
+  };
+
+  return (
+    <article className="rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2">
+      <p className="flex items-center gap-1.5 text-2xs font-black text-amber-900">
+        <ShieldQuestion className="h-4 w-4" />
+        ממתין לאישור: שולח שעוד לא מוכר לשיחה
+      </p>
+      <p className="mt-1 truncate text-sm font-black text-slate-900">
+        {email.fromName ? `${email.fromName} · ` : ''}
+        <span dir="ltr">{email.fromAddress}</span>
+      </p>
+      <p className="truncate text-sm font-bold text-slate-700">{email.subject}</p>
+      {email.text && <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap text-sm text-slate-600">{email.text}</p>}
+      {email.attachments.length > 0 && (
+        <p className="mt-1 flex items-center gap-1 text-2xs font-semibold text-slate-500">
+          <Paperclip className="h-3.5 w-3.5" />
+          {email.attachments.length === 1 ? 'קובץ מצורף' : `${email.attachments.length} קבצים מצורפים`}, ייפתחו אחרי האישור
+        </p>
+      )}
+      <p className="mt-1.5 text-2xs leading-relaxed text-slate-600">
+        מכירים את השולח, למשל הבנק? אשרו, והמייל ייכנס לשיחה ויגיע גם ליועץ. מיילים הבאים ממנו ייכנסו ישר.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void review('approve')}
+          disabled={busy !== null}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          {busy === 'approve' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          אישור השולח
+        </button>
+        <button
+          type="button"
+          onClick={() => void review('reject')}
+          disabled={busy !== null}
+          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {busy === 'reject' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          מחיקה
+        </button>
+      </div>
+      {failure && <p className="mt-1 text-2xs font-bold text-rose-600">{failure}</p>}
+    </article>
+  );
+}
+
+/**
+ * ארכיון המיילים: מה שנמחק מהפיד. אפשר להחזיר לפיד, והלקוח יכול גם למחוק
+ * לגמרי — עם עותק לתיבה הפרטית שלו, אם ירצה.
+ */
+function ArchiveView({
+  role,
+  emails,
+  contacts,
+  personalEmail,
+  onBack,
+  onRestore,
+  onDelete,
+}: {
+  role: ConversationRole;
+  emails: readonly ConversationEmailView[];
+  contacts: readonly ConversationContact[];
+  personalEmail: string | null;
+  onBack: () => void;
+  onRestore: (emailId: string) => Promise<string | null>;
+  onDelete: (emailId: string, backup: boolean) => Promise<string | null>;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center gap-2 border-b border-slate-100 bg-white px-3 py-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-100"
+        >
+          <ArrowRight className="h-4 w-4" />
+          חזרה למיילים
+        </button>
+        <p className="mr-auto text-sm font-bold text-slate-500">ארכיון · {emails.length}</p>
+      </div>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3">
+        <p className="text-2xs leading-relaxed text-slate-500">
+          {role === 'CLIENT'
+            ? 'מיילים שנמחקו מהפיד. אפשר להחזיר אותם, או למחוק לגמרי מהפלטפורמה.'
+            : 'מיילים שנמחקו מהפיד. אפשר להחזיר אותם לפיד. מחיקה לגמרי — רק על ידי הלקוח.'}
+        </p>
+        {emails.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <Archive className="mx-auto h-8 w-8 text-slate-300" />
+            <p className="mt-2 text-info font-black text-slate-900">הארכיון ריק</p>
+          </div>
+        ) : (
+          emails.map((email) => (
+            <ArchivedCard
+              key={email.id}
+              email={email}
+              contacts={contacts}
+              canDelete={role === 'CLIENT'}
+              personalEmail={personalEmail}
+              onRestore={() => onRestore(email.id)}
+              onDelete={(backup) => onDelete(email.id, backup)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ArchivedCard({
+  email,
+  contacts,
+  canDelete,
+  personalEmail,
+  onRestore,
+  onDelete,
+}: {
+  email: ConversationEmailView;
+  contacts: readonly ConversationContact[];
+  canDelete: boolean;
+  personalEmail: string | null;
+  onRestore: () => Promise<string | null>;
+  onDelete: (backup: boolean) => Promise<string | null>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [backup, setBackup] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const inbound = email.direction === 'INBOUND';
+  const who = inbound
+    ? email.fromName || nameOf(email.fromAddress, contacts)
+    : `אל ${email.toAddresses.map((address) => nameOf(address, contacts)).join(', ')}`;
+
+  const run = async (action: () => Promise<string | null>) => {
+    setBusy(true);
+    setFailure(null);
+    const result = await action();
+    setBusy(false);
+    if (result) setFailure(result);
+  };
+
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+      <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-1 truncate text-sm font-black text-slate-800">{who}</p>
+        {email.held && (
+          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-bold text-amber-900">שולח לא מאושר</span>
+        )}
+        <span className="shrink-0 text-2xs font-semibold text-slate-400">{WHEN.format(new Date(email.createdAt))}</span>
+      </div>
+      <p className="mt-0.5 truncate text-sm font-bold text-slate-600">{email.subject}</p>
+      {email.text && <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{email.text}</p>}
+
+      {confirming ? (
+        <div className="mt-2 rounded-lg border-2 border-rose-200 bg-rose-50 p-2">
+          <p className="text-sm font-bold text-rose-900">
+            המייל יימחק לגמרי מהפלטפורמה, וגם היועץ לא יראה אותו. אי אפשר לשחזר אותו.
+          </p>
+          {personalEmail && (
+            <label className="mt-2 flex items-start gap-2 text-sm font-semibold text-slate-800">
+              <input
+                type="checkbox"
+                checked={backup}
+                onChange={(event) => setBackup(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-blue-600"
+              />
+              <span>
+                לשלוח לפני כן עותק, עם הקבצים, למייל שלי{' '}
+                <span dir="ltr" className="font-bold">
+                  {personalEmail}
+                </span>
+              </span>
+            </label>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => onDelete(backup))}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-60"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {backup ? 'שליחת עותק ומחיקה' : 'מחיקה לצמיתות'}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirming(false)}
+              className="rounded-lg border-2 border-slate-200 bg-white px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50"
+            >
+              ביטול
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(onRestore)}
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArchiveRestore className="h-4 w-4" />}
+            החזרה לפיד
+          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-rose-200 px-3 py-1 text-sm font-black text-rose-700 hover:bg-rose-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              מחיקה לצמיתות
+            </button>
+          )}
+        </div>
+      )}
+      {failure && <p className="mt-1 text-2xs font-bold text-rose-600">{failure}</p>}
+    </article>
+  );
+}
+
 function nameOf(address: string, contacts: readonly ConversationContact[]): string {
   return contacts.find((contact) => contact.email === address)?.name ?? address;
 }
@@ -179,12 +528,20 @@ function EmailCard({
   open,
   onToggle,
   onReply,
+  onArchive,
+  folders,
+  clientUserId,
+  onSaveAttachment,
 }: {
   email: ConversationEmailView;
   contacts: readonly ConversationContact[];
   open: boolean;
   onToggle: () => void;
   onReply: () => void;
+  onArchive: () => void;
+  folders: readonly AttachmentFolder[];
+  clientUserId?: string | null;
+  onSaveAttachment: (attachmentId: string, planId: string | null) => Promise<string | null>;
 }) {
   const inbound = email.direction === 'INBOUND';
   const from = email.fromName || nameOf(email.fromAddress, contacts);
@@ -204,6 +561,12 @@ function EmailCard({
           <p className="min-w-0 flex-1 truncate text-sm font-black text-slate-900">
             {inbound ? from : `אל ${to}`}
           </p>
+          {email.attachments.length > 0 && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-2xs font-bold text-slate-500" title="קבצים מצורפים">
+              <Paperclip className="h-3.5 w-3.5" />
+              {email.attachments.length}
+            </span>
+          )}
           {email.bank && (
             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-bold text-slate-600">
               {email.bank}
@@ -214,7 +577,7 @@ function EmailCard({
         <p className={`mt-1 truncate text-sm ${email.unread ? 'font-black text-slate-900' : 'font-bold text-slate-700'}`}>
           {email.subject}
         </p>
-        {!open && <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{email.text}</p>}
+        {!open && <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{email.text || PENDING_TEXT}</p>}
       </button>
 
       {open && (
@@ -223,15 +586,33 @@ function EmailCard({
             מאת {from} · אל {to}
             {email.ccAddresses.length > 0 && ` · העתק: ${email.ccAddresses.map((address) => nameOf(address, contacts)).join(', ')}`}
           </p>
-          <p className="mt-2 whitespace-pre-wrap break-words text-info leading-relaxed text-slate-800">{email.text}</p>
-          <button
-            type="button"
-            onClick={onReply}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50"
-          >
-            <Reply className="h-4 w-4" />
-            תשובה
-          </button>
+          <p className="mt-2 whitespace-pre-wrap break-words text-info leading-relaxed text-slate-800">{email.text || PENDING_TEXT}</p>
+          <EmailAttachments
+            emailId={email.id}
+            attachments={email.attachments}
+            folders={folders}
+            clientUserId={clientUserId}
+            onSave={onSaveAttachment}
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onReply}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50"
+            >
+              <Reply className="h-4 w-4" />
+              תשובה
+            </button>
+            <button
+              type="button"
+              onClick={onArchive}
+              title="המייל יעבור לארכיון המיילים"
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 px-3 py-1 text-sm font-black text-slate-700 hover:bg-slate-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              מחיקה
+            </button>
+          </div>
         </div>
       )}
     </article>
@@ -245,6 +626,7 @@ function Composer({
   recipients,
   contacts,
   receivesEmail,
+  mailboxAddress,
   sending,
   error,
   onCancel,
@@ -256,6 +638,7 @@ function Composer({
   recipients: readonly ConversationContact[];
   contacts: readonly ConversationContact[];
   receivesEmail: boolean;
+  mailboxAddress: string | null;
   sending: boolean;
   error: string | null;
   onCancel: () => void;
@@ -331,7 +714,13 @@ function Composer({
         </label>
 
         <p className="text-2xs leading-relaxed text-slate-500">
-          המייל יוצא מכתובת הפלטפורמה בשמכם.{' '}
+          {mailboxAddress ? (
+            <>
+              המייל יוצא מהכתובת האישית שלכם, <span dir="ltr">{mailboxAddress}</span>.{' '}
+            </>
+          ) : (
+            'המייל יוצא מכתובת הפלטפורמה בשמכם. '
+          )}
           {receivesEmail ? 'תשובה אליו תגיע גם לתיבה שלכם וגם לכאן.' : 'תשובה אליו תגיע לתיבת המייל שלכם.'}
         </p>
         {error && <p className="text-sm font-bold text-rose-600">{error}</p>}

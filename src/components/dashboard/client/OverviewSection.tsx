@@ -307,10 +307,10 @@ export function OverviewSection({
   );
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       {kpis}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DashCard
           demoId="dash-mortgages-card"
           title="המשכנתא שלי"
@@ -443,7 +443,7 @@ export function OverviewSection({
         העמודה הרחבה היא עמודת המשכנתא — ומתחתיה הפעולות המהירות; העמודה
         הצרה היא לוח השנה — ומתחתיו המשימות, שהמועד שלהן נקבע בלוח.
       */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         {quickActions}
         {tasksCard}
       </div>

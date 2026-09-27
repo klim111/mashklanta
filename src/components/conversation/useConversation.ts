@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdvisorInboxRow,
+  AttachmentFolder,
   ChatMessageView,
   ConversationContact,
   ConversationEmailView,
@@ -115,6 +116,7 @@ export interface EmailDraft {
 export function useConversationEmails(clientUserId: string | null | undefined, enabled: boolean) {
   const [emails, setEmails] = useState<ConversationEmailView[]>([]);
   const [contacts, setContacts] = useState<ConversationContact[]>([]);
+  const [folders, setFolders] = useState<AttachmentFolder[]>([]);
   const [ready, setReady] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +124,7 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
   useEffect(() => {
     setEmails([]);
     setContacts([]);
+    setFolders([]);
     setReady(false);
   }, [clientUserId]);
 
@@ -137,6 +140,7 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
         );
       });
       setContacts(data.contacts);
+      setFolders(Array.isArray(data.folders) ? data.folders : []);
       setReady(true);
     }
   }, [clientUserId]);
@@ -170,7 +174,134 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
     [clientUserId]
   );
 
-  return { emails, contacts, ready, sending, error, setError, send, refresh };
+  /** שמירת קובץ מצורף בתיק המסמכים. מחזיר הודעת שגיאה, או null כשהצליח */
+  const saveAttachment = useCallback(
+    async (emailId: string, attachmentId: string, planId: string | null): Promise<string | null> => {
+      try {
+        const response = await fetch(
+          `/api/conversation/emails/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId, clientUserId: clientUserId ?? undefined }),
+          }
+        );
+        if (!response.ok) return await readError(response, 'השמירה בתיק נכשלה');
+        const result: { planId: string } = await response.json();
+        setEmails((current) =>
+          current.map((email) =>
+            email.id !== emailId
+              ? email
+              : {
+                  ...email,
+                  attachments: email.attachments.map((item) =>
+                    item.id === attachmentId ? { ...item, savedToPlanId: result.planId } : item
+                  ),
+                }
+          )
+        );
+        // תיק המסמכים ופסי ההתקדמות שפתוחים במסך מתעדכנים מיד
+        window.dispatchEvent(new Event('mashklanta:plan-documents-changed'));
+        return null;
+      } catch {
+        return 'השמירה בתיק נכשלה. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [clientUserId]
+  );
+
+  /**
+   * החלטה על שולח לא מוכר (לקוח בלבד). אישור מכניס לשיחה את כל המיילים שלו
+   * שממתינים, מחיקה מסירה אותם. מחזיר הודעת שגיאה, או null כשהצליח
+   */
+  const reviewSender = useCallback(
+    async (emailId: string, decision: 'approve' | 'reject'): Promise<string | null> => {
+      const from = emails.find((item) => item.id === emailId)?.fromAddress;
+      try {
+        const response = await fetch(`/api/conversation/emails/${encodeURIComponent(emailId)}/sender`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ decision }),
+        });
+        if (!response.ok) return await readError(response, 'הפעולה נכשלה');
+        const matches = (item: ConversationEmailView) => item.held && item.fromAddress === from;
+        setEmails((current) =>
+          decision === 'approve'
+            ? current.map((item) => (matches(item) ? { ...item, held: false, archived: false } : item))
+            : current.map((item) => (matches(item) && !item.archived ? { ...item, archived: true } : item))
+        );
+        return null;
+      } catch {
+        return 'הפעולה נכשלה. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [emails]
+  );
+
+  /** מחיקה מהפיד לארכיון, או החזרה ממנו. מחזיר הודעת שגיאה, או null כשהצליח */
+  const setArchived = useCallback(
+    async (emailId: string, archived: boolean): Promise<string | null> => {
+      try {
+        const response = await fetch(`/api/conversation/emails/${encodeURIComponent(emailId)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archived, clientUserId: clientUserId ?? undefined }),
+        });
+        if (!response.ok) return await readError(response, 'הפעולה נכשלה');
+        setEmails((current) => current.map((item) => (item.id === emailId ? { ...item, archived } : item)));
+        return null;
+      } catch {
+        return 'הפעולה נכשלה. בדקו את החיבור ונסו שוב';
+      }
+    },
+    [clientUserId]
+  );
+
+  /** מחיקה לגמרי מהארכיון (לקוח בלבד), עם גיבוי לתיבה הפרטית אם נבחר */
+  const deleteForever = useCallback(async (emailId: string, backup: boolean): Promise<string | null> => {
+    try {
+      const response = await fetch(`/api/conversation/emails/${encodeURIComponent(emailId)}${backup ? '?backup=1' : ''}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) return await readError(response, 'המחיקה נכשלה');
+      setEmails((current) => current.filter((item) => item.id !== emailId));
+      return null;
+    } catch {
+      return 'המחיקה נכשלה. בדקו את החיבור ונסו שוב';
+    }
+  }, []);
+
+  return {
+    emails,
+    contacts,
+    folders,
+    ready,
+    sending,
+    error,
+    setError,
+    send,
+    refresh,
+    saveAttachment,
+    reviewSender,
+    setArchived,
+    deleteForever,
+  };
+}
+
+/** הכתובת של קובץ מצורף — לצפייה, או להורדה עם `download` */
+export function attachmentUrl(
+  emailId: string,
+  attachmentId: string,
+  clientUserId?: string | null,
+  download = false
+): string {
+  const params = new URLSearchParams();
+  if (clientUserId) params.set('clientUserId', clientUserId);
+  if (download) params.set('download', '1');
+  const qs = params.toString();
+  return `/api/conversation/emails/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}${
+    qs ? `?${qs}` : ''
+  }`;
 }
 
 export function useAdvisorInbox(enabled: boolean, ms: number) {

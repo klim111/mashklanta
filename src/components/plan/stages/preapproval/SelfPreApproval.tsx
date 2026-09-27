@@ -33,6 +33,7 @@ import { PRE_APPROVAL_BANKS, preApprovalDocumentKey } from './banks';
 import type { PreApprovalBankInfo } from './banks';
 import { BankMark } from './BankMark';
 import { RateCountdown } from '../../RateValidity';
+import { useClientConversation } from '@/components/conversation/ClientChatDock';
 
 const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
 
@@ -96,6 +97,8 @@ export function SelfPreApproval({
   const [leaving, setLeaving] = useState<PreApprovalBankInfo | null>(null);
   const { data: session } = useSession();
   const registeredEmail = session?.user?.role === 'ADVISOR' ? null : session?.user?.email ?? null;
+  // הכתובת האישית במשכלנתא, כשקבלת מיילים מוגדרת — היא שנרשמת בבקשה לבנק
+  const mailbox = useClientConversation()?.summary?.mailboxAddress ?? null;
 
   const finalMix = useMemo(
     () => saved.find((item) => item.mix.id === finalMixKey) ?? null,
@@ -324,7 +327,8 @@ export function SelfPreApproval({
 
       <BankEmailReminder
         info={leaving}
-        email={registeredEmail}
+        email={mailbox ?? registeredEmail}
+        personal={Boolean(mailbox)}
         onClose={() => setLeaving(null)}
         onContinue={(info) => {
           markSubmitted(info.bank);
@@ -336,18 +340,21 @@ export function SelfPreApproval({
 }
 
 /**
- * תזכורת לפני המעבר לאתר הבנק: בבקשה לבנק מציינים את המייל שאיתו נרשמו
- * לפלטפורמה. כך תשובות הבנק מגיעות לאותה תיבה, ומייל שיישלח לבנקאי מטאב
- * המיילים יזוהה אצלו כשייך לאותה בקשה.
+ * תזכורת לפני המעבר לאתר הבנק: בבקשה לבנק מציינים את הכתובת האישית במשכלנתא
+ * (`personal`) — כך תשובות הבנק נכנסות לטאב המיילים וגם לתיבה של הלקוח, ומייל
+ * שיישלח לבנקאי מאותה כתובת יזוהה אצלו כשייך לבקשה. בלי קבלת מיילים — המייל
+ * שאיתו נרשמו.
  */
 function BankEmailReminder({
   info,
   email,
+  personal,
   onClose,
   onContinue,
 }: {
   info: PreApprovalBankInfo | null;
   email: string | null;
+  personal: boolean;
   onClose: () => void;
   onContinue: (info: PreApprovalBankInfo) => void;
 }) {
@@ -370,7 +377,9 @@ function BankEmailReminder({
             </div>
 
             <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-3">
-              <p className="text-info font-black text-amber-950">בטופס הבקשה ציינו את המייל שאיתו נרשמתם:</p>
+              <p className="text-info font-black text-amber-950">
+                {personal ? 'בטופס הבקשה ציינו את הכתובת האישית שלכם במשכלנתא:' : 'בטופס הבקשה ציינו את המייל שאיתו נרשמתם:'}
+              </p>
               {email ? (
                 <button
                   type="button"
@@ -386,8 +395,9 @@ function BankEmailReminder({
                 <p className="mt-1 text-sm font-bold text-amber-900">המייל שמופיע בפרטי החשבון שלכם.</p>
               )}
               <p className="mt-2 text-sm leading-relaxed text-amber-900">
-                כך תשובות הבנק יגיעו אליכם, ומייל שתשלחו לבנקאי מטאב המיילים בהתכתבות עם היועץ יזוהה אצלו
-                כשייך לבקשה.
+                {personal
+                  ? 'כך תשובות הבנק יגיעו לטאב המיילים בהתכתבות וגם לתיבה הרגילה שלכם, ומייל שתשלחו לבנקאי מהפלטפורמה ייצא מאותה כתובת.'
+                  : 'כך תשובות הבנק יגיעו אליכם, ומייל שתשלחו לבנקאי מטאב המיילים בהתכתבות עם היועץ יזוהה אצלו כשייך לבקשה.'}
               </p>
             </div>
 

@@ -1,3 +1,4 @@
+import { SITE_CONTACT } from './site-contact';
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
@@ -47,7 +48,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 export async function sendEmail({ to, subject, html, text }: EmailOptions) {
   const from = process.env.EMAIL_FROM || 'noreply@nadlanium.com';
-  const replyTo = process.env.EMAIL_REPLY_TO || 'support@nadlanium.com';
+  // תשובה למייל מערכת מגיעה לכתובת הקשר של משכלנתא (info@)
+  const replyTo = process.env.EMAIL_REPLY_TO || SITE_CONTACT.email;
   const timeoutMs = 8000;
 
   // Try Resend first
@@ -96,7 +98,7 @@ export async function sendEmail({ to, subject, html, text }: EmailOptions) {
 }
 
 /** בריחה של טקסט שהמשתמש הקליד (שם, שם משתמש) לפני שהוא נכנס ל-HTML של מייל */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -108,7 +110,7 @@ function escapeHtml(value: string): string {
 const appName = () => process.env.PUBLIC_APP_NAME || 'משכלנתא';
 
 /** מעטפת אחידה למיילי ההרשמה: RTL, פונט מערכת, כפתור כחול */
-function authEmailShell(title: string, body: string): string {
+export function authEmailShell(title: string, body: string): string {
   return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>

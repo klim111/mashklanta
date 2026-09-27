@@ -18,6 +18,7 @@ import { useMarketRates } from '@/hooks/useMarketRates';
 import { mixWithRemainingTerms } from '@/lib/refinance';
 import { AdvisorHelpButton } from '@/components/plan/stages/analysis/AdvisorHelpButton';
 import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
+import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
 import { saveRefinanceAsNewPlan } from '@/components/mortgage-refinance/refinancePlan';
 import { RefinanceCheck } from '@/components/refinance-check/RefinanceCheck';
 import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePreviewBar';
@@ -333,14 +334,17 @@ function FullRefinanceTool({ initialMix, banner }: { initialMix?: MortgageMix; b
       <AdvisorLeadDialog open={leadOpen} onOpenChange={setLeadOpen} topic="REFINANCE_HYBRID" />
 
       {signedIn && (
-        <Link
-          href="/dashboard"
-          aria-label="חזרה לדאשבורד"
-          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
-        >
-          <LayoutDashboard className="h-5 w-5" />
-          <span className="sr-only sm:not-sr-only">חזרה לדאשבורד</span>
-        </Link>
+        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden">
+          <ConversationDockSlot />
+          <Link
+            href="/dashboard"
+            aria-label="חזרה לדאשבורד"
+            className="inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            <span className="sr-only sm:not-sr-only">חזרה לדאשבורד</span>
+          </Link>
+        </div>
       )}
     </div>
   );

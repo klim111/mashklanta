@@ -7,8 +7,8 @@ export const SITE_CONTACT = {
   phone: '050-882-2207',
   /** לקישור tel: — בפורמט בינלאומי */
   phoneHref: 'tel:+972508822207',
-  email: 'mashkalanta@gmail.com',
-  emailHref: 'mailto:mashkalanta@gmail.com',
+  email: 'info@mashkalanta.com',
+  emailHref: 'mailto:info@mashkalanta.com',
   /**
    * השם המשפטי של מפעיל הפלטפורמה ומספר העוסק / החברה. כשהם ריקים, המסמכים
    * המשפטיים מציגים את שם המותג בלבד.
