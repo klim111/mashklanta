@@ -3,6 +3,7 @@ import { Assistant } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
 import { A11Y_BOOT_SCRIPT } from '@/components/a11y/a11yConfig';
+import { Analytics } from '@vercel/analytics/next';
 
 // הגופן היחיד של הפלטפורמה. נטען מקומית בזמן הבנייה ונחשף כמשתנה --font-assistant
 const assistant = Assistant({
@@ -42,6 +43,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
