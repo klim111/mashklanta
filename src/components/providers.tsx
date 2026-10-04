@@ -10,6 +10,7 @@ import { demoSession } from '@/demo/data/demo-session';
 import { DemoHost } from '@/demo/DemoHost';
 import { PhoneGate } from '@/components/device/PhoneGate';
 import { ClientConversationProvider } from '@/components/conversation/ClientChatDock';
+import { SiteVisitTracker } from '@/components/analytics/SiteVisitTracker';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <MotionConfig reducedMotion={stopMotion ? 'always' : 'user'}>
         <DemoHost>
+          <SiteVisitTracker />
           <PhoneGate>
             {/* ההתכתבות עם היועץ — בתוך PhoneGate, כך שלא תופיע מעל מסך החסימה בטלפון */}
             <ClientConversationProvider>{children}</ClientConversationProvider>

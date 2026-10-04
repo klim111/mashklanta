@@ -1488,3 +1488,55 @@ model ConversationEmail {
 
   @@index([clientUserId, createdAt])
 }
+
+/**
+ * צפייה בעמוד באתר — לדאשבורד הביקורים של היועץ. בלי עוגיות ובלי שירות חיצוני:
+ * מזהה המבקר הוא מספר אקראי שנשמר בדפדפן, והנתיב נשמר בלי פרמטרים (שלא יישמרו
+ * טוקנים מקישורי אימות).
+ */
+model SiteVisit {
+  id         String   @id @default(cuid())
+  /** מזהה אקראי של הדפדפן, נשמר ב-localStorage */
+  visitorId  String
+  /** מזהה אקראי של הביקור (לשונית פתוחה), נשמר ב-sessionStorage */
+  sessionId  String
+  path       String
+  /** הדומיין שממנו הגיעו, רק בעמוד הראשון של הביקור */
+  referrer   String?
+  /** phone / tablet / desktop */
+  device     String?
+  userId     String?
+  /** זמן שהעמוד היה גלוי למבקר, באלפיות שנייה */
+  durationMs Int      @default(0)
+  startedAt  DateTime @default(now())
+
+  @@index([startedAt])
+  @@index([path, startedAt])
+  @@index([sessionId])
+}
+
+/**
+ * פרטי הרשמה שנשמרים תוך כדי הקלדה, כדי שהיועץ יראה מי התחיל להירשם ולא סיים.
+ * הסיסמה לעולם לא נשמרת כאן.
+ */
+model SignupDraft {
+  id        String   @id @default(cuid())
+  /** מזהה אקראי של הטופס בדפדפן — אותו טופס מעדכן את אותה שורה */
+  draftKey  String   @unique
+  visitorId String?
+  /** register — עמוד ההרשמה; guest-dialog — ההרשמה שנפתחת מתוך הכלים */
+  source    String
+  path      String?
+  name      String?
+  username  String?
+  email     String?
+  /** השדה האחרון שהוקלד, לראות איפה עצרו */
+  lastField String?
+  /** נלחץ "הירשם" והשרת שלח מייל אישור */
+  submitted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([updatedAt])
+}

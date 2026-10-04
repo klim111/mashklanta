@@ -10,6 +10,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
+import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 
 /** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
 function safeCallbackUrl(value: string | null): string | null {
@@ -31,6 +32,12 @@ function RegisterForm() {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const emailStatus = useEmailExists(formData.email);
+  // מה שהוקלד נשמר כבר עכשיו, כדי שהיועץ יראה גם הרשמה שלא הושלמה (בלי הסיסמה)
+  const draft = useSignupDraft('register', {
+    name: formData.name,
+    username: formData.username,
+    email: formData.email,
+  });
   const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
 
   useEffect(() => {
@@ -119,6 +126,7 @@ function RegisterForm() {
           יאשר את הקישור שנשלח אליו במייל. הבחירה שעשה בעמוד הבית שמורה עם
           ההרשמה וממתינה לו אחרי האישור.
         */
+        draft.markSubmitted();
         setSuccess('שלחנו לכם מייל לאישור ההרשמה');
         router.push(`/auth/check-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
       }

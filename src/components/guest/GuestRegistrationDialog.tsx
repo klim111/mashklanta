@@ -9,6 +9,7 @@ import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
+import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 
 /**
  * ההרשמה שנפתחת מתוך הכלים הפתוחים.
@@ -55,6 +56,8 @@ export function GuestRegistrationDialog({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const emailStatus = useEmailExists(email);
+  // מה שהוקלד נשמר כבר עכשיו, כדי שהיועץ יראה גם הרשמה שלא הושלמה (בלי הסיסמה)
+  const draft = useSignupDraft('guest-dialog', { name, email });
 
   // כל פתיחה מתחילה נקייה, כדי שלא יוצג אישור של הרשמה קודמת
   useEffect(() => {
@@ -125,6 +128,7 @@ export function GuestRegistrationDialog({
         return;
       }
 
+      draft.markSubmitted();
       setDone(true);
     } catch {
       setError('ההרשמה נכשלה. בדקו את החיבור ונסו שוב.');

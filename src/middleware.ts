@@ -21,6 +21,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/turn',
   // ה-webhook של Resend למיילים נכנסים. הנתיב עצמו מאמת את החתימה
   '/api/email/inbound',
+  // רישום ביקורים ופרטי הרשמה שלא הושלמה — נשלחים גם מדפדפן של מי שלא מחובר
+  '/api/track',
 ];
 
 function isPublicApi(pathname: string): boolean {

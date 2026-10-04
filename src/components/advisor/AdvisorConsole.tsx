@@ -22,6 +22,8 @@ import {
   UserPlus,
   UserRound,
   Users,
+  UserX,
+  Activity,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
@@ -38,6 +40,8 @@ import { StageChip } from './ui';
 import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
+import { SiteAnalyticsPanel } from './SiteAnalyticsPanel';
+import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 
 type TabId =
@@ -47,6 +51,8 @@ type TabId =
   | 'calendar'
   | 'mixes'
   | 'rate-requests'
+  | 'site-visits'
+  | 'unfinished-signups'
   | 'settings';
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
@@ -56,6 +62,8 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'calendar', label: 'לוח שנה', icon: CalendarDays },
   { id: 'mixes', label: 'תמהילים שמורים', icon: Layers },
   { id: 'rate-requests', label: 'תמהילים שהוגשו לבנקים', icon: Gavel },
+  { id: 'site-visits', label: 'ביקורים באתר', icon: Activity },
+  { id: 'unfinished-signups', label: 'הרשמות שלא הושלמו', icon: UserX },
   { id: 'settings', label: 'הגדרות', icon: Settings },
 ];
 
@@ -422,6 +430,10 @@ export function AdvisorConsole() {
           {tab === 'mixes' && <MixesPanel />}
 
           {tab === 'rate-requests' && <BankRateRequests />}
+
+          {tab === 'site-visits' && <SiteAnalyticsPanel />}
+
+          {tab === 'unfinished-signups' && <UnfinishedSignupsPanel />}
 
           {tab === 'settings' && (
             <AdvisorSettingsPanel
