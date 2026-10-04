@@ -19,8 +19,14 @@ export function authErrorMessage(code: string | null | undefined): string {
       return "שם משתמש או סיסמה שגויים";
     case "EmailNotVerified":
       return "עוד לא אישרתם את כתובת המייל. פתחו את הקישור ששלחנו לכם כדי להשלים את ההרשמה.";
-    case "NotAdvisor":
-      return "הכניסה הזו מיועדת ליועצים הרשומים במערכת בלבד. לקוחות מתחברים בטופס שלמעלה.";
+    case "GoogleNotAllowed":
+      return "אי אפשר להתחבר לחשבון הזה עם Google.";
+    case "AdvisorLinkInvalid":
+      return "הקישור אינו תקף. ייתכן שכבר השתמשת בו, או שנשלח קישור חדש יותר.";
+    case "AdvisorLinkExpired":
+      return "פג תוקף הקישור. בקש קישור חדש.";
+    case "AdvisorLinkOtherBrowser":
+      return "הקישור עובד רק בדפדפן שבו ביקשת אותו. פתח אותו שם, או בקש קישור חדש מהדפדפן הזה.";
     case "GoogleEmailUnverified":
       return "Google לא אישרה את כתובת המייל של החשבון הזה, ולכן אי אפשר להתחבר איתו.";
     case "VerificationInvalid":

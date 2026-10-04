@@ -42,9 +42,10 @@ export async function requestPasswordReset(
 
   const user = await prisma.user.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, role: true },
   });
-  if (!user?.email) return 'sent';
+  // ליועץ אין סיסמה: הוא נכנס רק בקישור של הכניסה הנסתרת
+  if (!user?.email || user.role === 'ADVISOR') return 'sent';
 
   const identifier = `${IDENTIFIER_PREFIX}${user.id}`;
   const token = generateToken();
@@ -107,7 +108,7 @@ export async function resetPassword(token: string, password: string): Promise<Re
   const userId = row.identifier.slice(IDENTIFIER_PREFIX.length);
   const hashedPassword = await bcrypt.hash(password, 12);
   const updated = await prisma.user.updateMany({
-    where: { id: userId },
+    where: { id: userId, role: { not: 'ADVISOR' } },
     // מי שפתח את הקישור הוכיח שהמייל שלו
     data: { hashedPassword, emailVerified: new Date() },
   });

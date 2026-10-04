@@ -75,7 +75,6 @@ export default function NavBar() {
               </Button>
             </Link>
 
-            {/* כניסת יועצים נמצאת בתחתית מסך ההתחברות */}
             <Link href="/auth/register">
               <Button size="lg" className="font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
                 <UserPlus className="w-4 h-4 ml-2" />
