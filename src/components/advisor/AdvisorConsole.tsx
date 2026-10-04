@@ -51,7 +51,7 @@ type TabId =
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'clients', label: 'לקוחות', icon: Users },
-  { id: 'requests', label: 'בקשות ליווי', icon: Sparkles },
+  { id: 'requests', label: 'פניות ובקשות', icon: Sparkles },
   { id: 'tasks', label: 'משימות', icon: ListChecks },
   { id: 'calendar', label: 'לוח שנה', icon: CalendarDays },
   { id: 'mixes', label: 'תמהילים שמורים', icon: Layers },

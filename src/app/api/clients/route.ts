@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { listAdvisorClients, syncStageDocuments } from '@/lib/clients';
+import { linkUnlinkedClients } from '@/lib/advisor-link';
 
 /** הלקוחות שהיועץ מלווה */
 export async function GET() {
@@ -12,6 +13,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // לקוחות שנרשמו לבד מצטרפים לרשימה של היועץ של הפלטפורמה
+  await linkUnlinkedClients(userId);
   return NextResponse.json(await listAdvisorClients(userId));
 }
 
