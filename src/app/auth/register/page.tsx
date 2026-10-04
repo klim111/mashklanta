@@ -11,6 +11,7 @@ import { PasswordField } from '@/components/auth/PasswordField';
 import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
+import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 
 /** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
 function safeCallbackUrl(value: string | null): string | null {
@@ -313,6 +314,7 @@ function RegisterForm() {
               מדיניות הפרטיות
             </Link>
           </p>
+          <SignupDraftNotice className="mt-2 text-center" />
 
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">

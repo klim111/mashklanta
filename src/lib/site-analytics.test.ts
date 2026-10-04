@@ -18,6 +18,10 @@ describe('normalizePath', () => {
       '/dashboard/plans/[id]/authorization-letters'
     );
   });
+  it('never stores the hidden advisor entry', () => {
+    expect(normalizePath('/auth/team-entry?token=x')).toBeNull();
+    expect(normalizePath('/auth/advisor-verify')).toBeNull();
+  });
   it('rejects anything that is not a site path', () => {
     expect(normalizePath('https://evil.example/')).toBeNull();
     expect(normalizePath('//evil.example')).toBeNull();

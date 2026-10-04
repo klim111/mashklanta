@@ -10,6 +10,7 @@ import { PasswordField } from '@/components/auth/PasswordField';
 import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
+import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 
 /**
  * ההרשמה שנפתחת מתוך הכלים הפתוחים.
@@ -225,6 +226,8 @@ export function GuestRegistrationDialog({
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
               הרשמה והמשך לאזור האישי
             </button>
+
+            <SignupDraftNotice className="mt-3 text-center" />
 
             <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-slate-200" />

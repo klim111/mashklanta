@@ -23,6 +23,9 @@ function looksLikeId(segment: string): boolean {
   return segment.length >= 16 && /\d/.test(segment) && /[a-z]/i.test(segment);
 }
 
+/** כתובות הכניסה הנסתרת של היועץ — לעולם לא נשמרות, שלא ייחשפו בדאשבורד */
+const HIDDEN_PATHS = ['/auth/team-entry', '/auth/advisor-verify', '/advisor-dashboard'];
+
 /**
  * הנתיב בלבד, בלי פרמטרים ובלי עוגן — שקישורי אימות ואיפוס סיסמה לא ישאירו
  * טוקן בבסיס הנתונים — ומזהים מוחלפים ב-[id].
@@ -30,6 +33,7 @@ function looksLikeId(segment: string): boolean {
 export function normalizePath(raw: unknown): string | null {
   if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//')) return null;
   const path = raw.split(/[?#]/)[0].slice(0, 200);
+  if (HIDDEN_PATHS.some((hidden) => path === hidden || path.startsWith(`${hidden}/`))) return null;
   const segments = path
     .split('/')
     .filter(Boolean)

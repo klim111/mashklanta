@@ -22,6 +22,26 @@ const SOURCE_LABELS: Record<string, string> = {
   google: 'הרשמה עם Google',
 };
 
+/**
+ * טיוטת מייל המעקב. פנייה למי שרק התחיל להירשם עלולה להיחשב דבר פרסומת לפי
+ * סעיף 30א לחוק התקשורת, ולכן הטיוטה מזוהה כמשכלנתא ומציעה דרך לסרב לפניות.
+ */
+function followUpMailto(signup: UnfinishedSignup): string {
+  const greeting = signup.name ? `שלום ${signup.name},` : 'שלום,';
+  const body = [
+    greeting,
+    '',
+    'ראינו שהתחלתם להירשם למשכלנתא ולא השלמתם את ההרשמה. אם נתקלתם בבעיה או שיש לכם שאלה, נשמח לעזור — אפשר פשוט להשיב למייל הזה.',
+    '',
+    'בברכה,',
+    'משכלנתא',
+    '',
+    '---',
+    'קיבלתם את המייל כי הקלדתם את הכתובת בטופס ההרשמה באתר. לא מעוניינים שנפנה אליכם שוב? השיבו "הסר" ונמחק את הפרטים.',
+  ].join('\n');
+  return `mailto:${signup.email}?subject=${encodeURIComponent('ההרשמה שלכם למשכלנתא')}&body=${encodeURIComponent(body)}`;
+}
+
 function formatWhen(iso: string): string {
   return new Intl.DateTimeFormat('he-IL', {
     timeZone: 'Asia/Jerusalem',
@@ -172,7 +192,7 @@ export function UnfinishedSignupsPanel() {
                     {signup.email && signup.emailLooksValid && (
                       <>
                         <a
-                          href={`mailto:${signup.email}`}
+                          href={followUpMailto(signup)}
                           className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-blue-700"
                         >
                           <Mail className="h-4 w-4" />

@@ -7,8 +7,17 @@ import { useDemoRequest } from '@/demo/store';
 import { deviceFromWidth } from '@/lib/site-analytics';
 import { randomTrackingId, visitSessionId, visitorId } from '@/lib/visitor-ids';
 
-/** עמודים שלא נספרים: צד היועץ, וההדגמה עם הנתונים הבדויים */
-const IGNORED_PREFIXES = ['/advisor-dashboard', '/demo', '/video-call'];
+/**
+ * עמודים שלא נספרים: צד היועץ, הכניסה הנסתרת של היועץ (שהכתובת שלה לא תופיע
+ * בטבלה), וההדגמה עם הנתונים הבדויים
+ */
+const IGNORED_PREFIXES = [
+  '/advisor-dashboard',
+  '/auth/team-entry',
+  '/auth/advisor-verify',
+  '/demo',
+  '/video-call',
+];
 
 function send(body: Record<string, unknown>) {
   const payload = JSON.stringify(body);
