@@ -319,4 +319,51 @@ ${resetUrl}
 לא ביקשתם? אין צורך לעשות דבר. הסיסמה הנוכחית שלכם לא השתנתה.`,
     };
   },
+
+  /** קישור הכניסה הנסתרת של היועץ. עובד רק בדפדפן שביקש אותו */
+  advisorLoginEmail: ({ loginUrl, ttlMinutes }: { loginUrl: string; ttlMinutes: number }) => ({
+    subject: `קישור כניסה לאזור היועץ ב${appName()}`,
+    html: authEmailShell(
+      'כניסה לאזור היועץ',
+      `<p style="margin:0 0 20px;">התבקש קישור כניסה לאזור היועץ. לכניסה:</p>
+       <div style="text-align:center;margin:0 0 20px;">
+         <a href="${loginUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">כניסה לאזור היועץ</a>
+       </div>
+       <p style="margin:0 0 12px;color:#475569;font-size:14px;">הקישור תקף ל-${ttlMinutes} דקות, לשימוש אחד, ועובד רק באותו דפדפן שבו ביקשת אותו.</p>
+       <p style="margin:0;color:#475569;font-size:14px;"><strong>לא ביקשת?</strong> אל תפתח את הקישור. בלי הדפדפן שביקש אותו הוא לא מכניס אף אחד.</p>`
+    ),
+    text: `התבקש קישור כניסה לאזור היועץ ב${appName()}.
+
+לכניסה (תקף ל-${ttlMinutes} דקות, לשימוש אחד, רק באותו דפדפן שבו ביקשת אותו):
+${loginUrl}
+
+לא ביקשת? אל תפתח את הקישור.`,
+  }),
+
+  /** הודעה אחרי כל כניסה לאזור היועץ */
+  advisorLoginNotice: ({ when, ip, userAgent }: { when: Date; ip: string; userAgent: string | null }) => {
+    const time = new Intl.DateTimeFormat('he-IL', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'Asia/Jerusalem',
+    }).format(when);
+    const device = userAgent ? escapeHtml(userAgent.slice(0, 200)) : 'לא ידוע';
+    return {
+      subject: `נכנסת לאזור היועץ ב${appName()}`,
+      html: authEmailShell(
+        'כניסה לאזור היועץ',
+        `<p style="margin:0 0 12px;">בוצעה כניסה לאזור היועץ.</p>
+         <p style="margin:0 0 4px;color:#475569;font-size:14px;">מתי: ${time}</p>
+         <p style="margin:0 0 4px;color:#475569;font-size:14px;">כתובת IP: ${escapeHtml(ip)}</p>
+         <p style="margin:0 0 16px;color:#475569;font-size:14px;">דפדפן: ${device}</p>
+         <p style="margin:0;color:#475569;font-size:14px;">אם זה לא היית אתה, החלף מיד את הסיסמה של תיבת המייל הזו.</p>`
+      ),
+      text: `בוצעה כניסה לאזור היועץ.
+מתי: ${time}
+כתובת IP: ${ip}
+דפדפן: ${userAgent ?? 'לא ידוע'}
+
+אם זה לא היית אתה, החלף מיד את הסיסמה של תיבת המייל הזו.`,
+    };
+  },
 };

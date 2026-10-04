@@ -1107,7 +1107,7 @@ function ToolTopBar({ active }: { active: string }) {
           התחברות
         </span>
         <span className="rounded-lg bg-blue-600 px-2 py-1 text-[10.5px] font-black text-white">
-          כניסה ליועצים
+          הרשמה
         </span>
       </span>
     </div>

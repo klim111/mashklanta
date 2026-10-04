@@ -84,8 +84,9 @@ export async function middleware(request: NextRequest) {
 
   const userRole = (token as { role?: string })?.role;
 
-  // משתמש מחובר שמגיע למסכי ההתחברות נשלח ללוח שלו
-  if (isAuthPage && !pathname.includes('verify')) {
+  // משתמש מחובר שמגיע למסכי ההתחברות נשלח ללוח שלו. הכניסה הנסתרת של היועץ
+  // פתוחה גם למי שמחובר, כדי שאפשר יהיה לעבור ממנה לאזור היועץ
+  if (isAuthPage && !pathname.includes('verify') && pathname !== '/auth/team-entry') {
     return NextResponse.redirect(
       new URL(userRole === 'ADVISOR' ? '/advisor-dashboard' : '/dashboard', request.url)
     );
