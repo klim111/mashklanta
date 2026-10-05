@@ -31,6 +31,7 @@ import type { ClientDetail } from './clientDetail';
 import { ClientDetailsForm } from './ClientDetailsForm';
 import type { ClientDetailsValues } from './ClientDetailsForm';
 import { AdvisorAuctionPanel } from './AdvisorAuctionPanel';
+import { AdvisorBankHandoffs } from './AdvisorBankHandoffs';
 import { AdvisorMixPanel } from './AdvisorMixPanel';
 import { ClientDocumentsPanel } from './ClientDocumentsPanel';
 import { MeetingRow } from './MeetingRow';
@@ -274,6 +275,9 @@ function StageTools({
             </p>
           </CardContent>
         </Card>
+
+        {/* בנקים שהלקוח העביר ליועץ — הפגישה, הבנקאי והאישור */}
+        <AdvisorBankHandoffs planId={planId} />
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <PrincipalApproval clientRecordId={client.id} embedded />

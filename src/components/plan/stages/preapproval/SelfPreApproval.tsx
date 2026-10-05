@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  CalendarClock,
   CheckCircle2,
   CircleDashed,
   Eye,
@@ -13,6 +14,7 @@ import {
   Trash2,
   Upload,
   UserRound,
+  UserRoundCheck,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -34,6 +36,10 @@ import type { PreApprovalBankInfo } from './banks';
 import { BankMark } from './BankMark';
 import { RateCountdown } from '../../RateValidity';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
+import { useClientMeetings } from '../../advisor/useClientMeetings';
+import type { ClientMeetingView } from '../../advisor/useClientMeetings';
+import type { SubmissionChannel } from '@/lib/mortgage-plan';
+import { HANDOFF_MEETING_TITLE, emptyBankRow, submissionChannelOf } from '@/lib/preapproval-handoff';
 
 const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
 
@@ -62,7 +68,7 @@ const DEFAULT_COPY: SelfPreApprovalCopy = {
     'זה המבנה שנבחר בשלב בניית התמהיל, ועליו מוגשת הבקשה לאישור עקרוני. הוא אינו ניתן לעריכה כאן — לשינוי, חזרו לשלב בניית התמהיל.',
   banksTitle: 'הגשת הבקשה לבנקים',
   banksDescription:
-    'פנו לכל בנק שתרצו להתמחר מולו — הקישור פותח את אזור המשכנתאות הדיגיטלי שלו. את האישור העקרוני שתקבלו העלו כאן, והבנק ייפתח לתמחור בשלב המכרז.',
+    'ליד כל בנק שתרצו להתמחר מולו בחרו אם להגיש בעצמכם באתר הבנק, או לתת ליועץ משכלנתא לנהל את ההגשה מולו. בנק שהתקבל ממנו אישור עקרוני ייפתח לתמחור בשלב המכרז.',
 };
 
 export function SelfPreApproval({
@@ -124,6 +130,8 @@ export function SelfPreApproval({
         const document = byKey.get(preApprovalDocumentKey(info.slug)) ?? null;
         const existing = value.bankApprovals.find((row) => row.bank === info.bank) ?? null;
         if (!document && !existing) return [];
+        // בבנק שהועבר ליועץ, האישור נרשם בצד היועץ ולא נגזר מקובץ שהלקוח העלה
+        if (existing?.channel === 'ADVISOR') return [existing];
         return [
           {
             bank: info.bank,
@@ -135,6 +143,8 @@ export function SelfPreApproval({
             note: existing?.note ?? '',
             bankerName: existing?.bankerName ?? '',
             bankerEmail: existing?.bankerEmail ?? '',
+            channel: existing?.channel ?? (document ? 'SELF' : null),
+            handedAt: existing?.handedAt ?? null,
           },
         ];
       }),
@@ -184,15 +194,8 @@ export function SelfPreApproval({
     if (existing?.submittedAt) return;
 
     const row: BankPreApproval = {
-      bank,
-      approved: false,
-      approvedAt: null,
-      approvedAmount: null,
-      documentName: null,
-      note: '',
-      bankerName: '',
-      bankerEmail: '',
-      ...(existing ?? {}),
+      ...(existing ?? emptyBankRow(bank)),
+      channel: 'SELF',
       submittedAt: new Date().toISOString(),
     };
     const bankApprovals = existing
@@ -229,18 +232,7 @@ export function SelfPreApproval({
     ) {
       return;
     }
-    const row: BankPreApproval = existing
-      ? { ...existing, ...banker }
-      : {
-          bank,
-          submittedAt: null,
-          approved: false,
-          approvedAt: null,
-          approvedAmount: null,
-          documentName: null,
-          note: '',
-          ...banker,
-        };
+    const row: BankPreApproval = { ...(existing ?? emptyBankRow(bank)), ...banker };
     const bankApprovals = existing
       ? value.bankApprovals.map((item) => (item.bank === bank ? row : item))
       : [...value.bankApprovals, row];
@@ -248,11 +240,68 @@ export function SelfPreApproval({
     onChange(withApprovals(bankApprovals));
   };
 
+  /** בחירת אופן ההגשה לבנק, או חזרה לבחירה (`null`) כל עוד לא הוגש דבר */
+  const setChannel = (bank: string, channel: SubmissionChannel | null, handedAt?: string) => {
+    const existing = approvalOf(bank);
+    const row: BankPreApproval = {
+      ...(existing ?? emptyBankRow(bank)),
+      channel,
+      ...(handedAt ? { handedAt } : {}),
+    };
+    const bankApprovals = existing
+      ? value.bankApprovals.map((item) => (item.bank === bank ? row : item))
+      : [...value.bankApprovals, row];
+    lastPushed.current = null;
+    onChange(withApprovals(bankApprovals));
+  };
+
+  /**
+   * "הגשה באמצעות יועץ משכלנתא": השרת רושם את הבנק כמועבר ליועץ, פותח אצלו
+   * משימה ופגישה להשלמת פרטים, ושולח לו מייל. רק אחרי שזה נשמר הכרטיס מתחלף.
+   */
+  const [handing, setHanding] = useState<string | null>(null);
+  const [handError, setHandError] = useState<string | null>(null);
+  const handToAdvisor = async (bank: string) => {
+    setHanding(bank);
+    setHandError(null);
+    try {
+      const response = await fetch(`/api/plans/${planId}/preapproval-handoff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bank }),
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      setChannel(bank, 'ADVISOR', new Date().toISOString());
+    } catch {
+      setHandError('לא הצלחנו להעביר את ההגשה ליועץ. נסו שוב בעוד רגע.');
+    } finally {
+      setHanding(null);
+    }
+  };
+
+  const conversation = useClientConversation();
+  const emailBanker = conversation?.enabled ? conversation.composeEmail : null;
+  const { meetings } = useClientMeetings();
+  const handoffMeeting = useMemo(
+    () =>
+      meetings
+        .filter(
+          (meeting) =>
+            meeting.title === HANDOFF_MEETING_TITLE &&
+            meeting.status !== 'CANCELLED' &&
+            meeting.status !== 'DECLINED'
+        )
+        .sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0] ?? null,
+    [meetings]
+  );
+  const anyHanded = bankList.some((info) => approvalOf(info.bank)?.channel === 'ADVISOR');
+
   const validity = useMemo(() => rateValidity(data), [data]);
   const validityOf = (bank: string): RateValidityRow | null =>
     validity.find((row) => row.bank === bank) ?? null;
 
   const approvedCount = value.bankApprovals.filter((row) => row.approved).length;
+
 
   return (
     <div className="space-y-5">
@@ -295,11 +344,13 @@ export function SelfPreApproval({
         title={copy.banksTitle}
         description={copy.banksDescription}
       >
-        {error && (
+        {(error || handError) && (
           <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-center text-sm font-bold text-rose-700">
-            {error}
+            {error || handError}
           </p>
         )}
+
+        {anyHanded && <HandoffMeeting meeting={handoffMeeting} />}
 
         <div className={`grid gap-3 ${bankList.length > 1 ? 'md:grid-cols-2' : 'md:max-w-xl md:mx-auto'}`}>
           {bankList.map((info) => (
@@ -307,6 +358,15 @@ export function SelfPreApproval({
               key={info.slug}
               info={info}
               approval={approvalOf(info.bank)}
+              channel={submissionChannelOf(
+                approvalOf(info.bank),
+                byKey.has(preApprovalDocumentKey(info.slug))
+              )}
+              handing={handing === info.bank}
+              onChooseSelf={() => setChannel(info.bank, 'SELF')}
+              onChooseAdvisor={() => void handToAdvisor(info.bank)}
+              onResetChoice={() => setChannel(info.bank, null)}
+              onEmailBanker={emailBanker}
               uploaded={byKey.get(preApprovalDocumentKey(info.slug)) ?? null}
               busy={busyKey === preApprovalDocumentKey(info.slug) || !ready}
               onUpload={(file) =>
@@ -491,10 +551,95 @@ function BankerFields({
   );
 }
 
-/** אזור של בנק אחד: הסמל, הקישור להגשה, והאישור שהתקבל ממנו */
+/** הפגישה עם היועץ להשלמת הפרטים להגשה — ממתינה למועד, או עם התאריך והשעה */
+function HandoffMeeting({ meeting }: { meeting: ClientMeetingView | null }) {
+  const when = meeting ? new Date(meeting.startsAt) : null;
+  return (
+    <div className="mb-3 flex items-start gap-3 rounded-2xl border-2 border-violet-200 bg-violet-50 p-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+        <CalendarClock className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p dir="rtl" className="text-info font-black text-violet-950">
+          פגישה עם יועץ משכלנתא להשלמת פרטים להגשה לבנקים
+        </p>
+        {when ? (
+          <p dir="rtl" className="mt-0.5 text-sm font-black text-violet-800">
+            {when.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })} · בשעה{' '}
+            {when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        ) : (
+          <p dir="rtl" className="mt-0.5 text-sm font-bold text-violet-800">
+            היועץ יקבע מועד לפגישה, והתאריך והשעה יופיעו כאן.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** הבנקאי שהיועץ הזין — לקריאה, עם מייל אליו מכלי ההתכתבויות */
+function AdvisorBanker({
+  approval,
+  onEmail,
+}: {
+  approval: BankPreApproval;
+  onEmail: ((to: string) => void) | null;
+}) {
+  const name = approval.bankerName?.trim() ?? '';
+  const email = approval.bankerEmail?.trim() ?? '';
+  if (!name && !email) return null;
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <p dir="rtl" className="text-sm font-black text-slate-700">הבנקאי שמטפל בבקשה</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          {name && (
+            <p dir="rtl" className="flex items-center gap-1.5 text-info font-black text-slate-900">
+              <UserRound className="h-4 w-4 shrink-0 text-slate-400" />
+              {name}
+            </p>
+          )}
+          {email && (
+            <p dir="ltr" className="truncate text-right text-sm font-bold text-slate-500">
+              {email}
+            </p>
+          )}
+        </div>
+        {email && onEmail && (
+          <button
+            type="button"
+            onClick={() => onEmail(email)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-button font-black text-white hover:bg-blue-700"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            שליחת מייל לבנקאי
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * אזור של בנק אחד. בכניסה למסך יש בו רק שני כפתורים — הגשה עצמית או הגשה
+ * באמצעות יועץ משכלנתא — ורק אחרי הבחירה נפתחות האפשרויות בשורה שמתחת:
+ *
+ * - **הגשה עצמית:** הקישור לאתר הבנק; אחרי המעבר אליו — העלאת האישור, פרטי
+ *   הבנקאי, ותוקף הריביות כשהאישור התקבל.
+ * - **דרך היועץ:** הודעה שהיועץ מטפל ויחזור להשלמת הפרטים; הבנקאי שהיועץ הזין
+ *   עם מייל אליו, ותוקף הריביות כשהיועץ רשם את האישור. אין העלאה — הלקוח לא
+ *   מגיש לבד.
+ */
 function BankCard({
   info,
   approval,
+  channel,
+  handing,
+  onChooseSelf,
+  onChooseAdvisor,
+  onResetChoice,
+  onEmailBanker,
   uploaded,
   busy,
   onUpload,
@@ -507,6 +652,15 @@ function BankCard({
 }: {
   info: PreApprovalBankInfo;
   approval: BankPreApproval | null;
+  /** אופן ההגשה שנבחר; ריק — עוד לא נבחר */
+  channel: SubmissionChannel | null;
+  /** ההעברה ליועץ נשמרת כרגע */
+  handing: boolean;
+  onChooseSelf: () => void;
+  onChooseAdvisor: () => void;
+  onResetChoice: () => void;
+  /** פתיחת מייל חדש לבנקאי בכלי ההתכתבויות; ריק — אין כלי התכתבות במסך */
+  onEmailBanker: ((to: string) => void) | null;
   uploaded: PlanDocumentView | null;
   busy: boolean;
   onUpload: (file: File) => unknown;
@@ -521,7 +675,20 @@ function BankCard({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const received = approval?.approvedAt ? parseDay(approval.approvedAt) : null;
-  const approved = Boolean(uploaded);
+  const viaAdvisor = channel === 'ADVISOR';
+  const approved = viaAdvisor ? Boolean(approval?.approved) : Boolean(uploaded);
+  // בהגשה עצמית, ההעלאה ופרטי הבנקאי נפתחים רק אחרי המעבר לאתר הבנק
+  const selfOpened = channel === 'SELF' && Boolean(approval?.submittedAt || uploaded);
+
+  const status = approved
+    ? `אישור עקרוני התקבל${!viaAdvisor && uploaded ? ` · ${uploaded.fileName}` : ''}`
+    : viaAdvisor
+      ? 'ההגשה בטיפול יועץ משכלנתא'
+      : approval?.submittedAt
+        ? 'הבקשה הוגשה — ממתינים לאישור'
+        : channel === 'SELF'
+          ? 'הגשה עצמית — טרם הוגשה בקשה'
+          : 'בחרו איך להגיש לבנק';
 
   return (
     <section
@@ -541,79 +708,134 @@ function BankCard({
         )}
       </header>
 
-      <p className={`mt-2 text-sm font-bold ${approved ? 'text-emerald-700' : 'text-slate-500'}`}>
-        {approved
-          ? `אישור עקרוני התקבל${uploaded ? ` · ${uploaded.fileName}` : ''}`
-          : approval?.submittedAt
-            ? 'הבקשה הוגשה — ממתינים לאישור'
-            : 'טרם הוגשה בקשה'}
+      <p className={`mt-2 text-sm font-bold ${approved ? 'text-emerald-700' : viaAdvisor ? 'text-violet-700' : 'text-slate-500'}`}>
+        {status}
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onApply}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: info.color }}
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          להגשה באתר הבנק
-        </button>
+      {/* בכניסה למסך: שני כפתורים בלבד */}
+      {channel === null && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onChooseSelf}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-button font-black text-white transition-colors hover:bg-blue-700"
+          >
+            <ExternalLink className="h-4 w-4" />
+            הגשה עצמית
+          </button>
+          <button
+            type="button"
+            disabled={handing}
+            onClick={onChooseAdvisor}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-button font-black text-white transition-colors hover:bg-violet-700 disabled:opacity-60"
+          >
+            {handing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundCheck className="h-4 w-4" />}
+            הגשה באמצעות יועץ משכלנתא
+          </button>
+        </div>
+      )}
 
-        <input
-          ref={input}
-          type="file"
-          accept={ACCEPT}
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void onUpload(file);
-            event.target.value = '';
-          }}
-        />
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => input.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
-        >
-          {busy ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : uploaded ? (
-            <FileUp className="h-3.5 w-3.5" />
-          ) : (
-            <Upload className="h-3.5 w-3.5" />
+      {/* הגשה עצמית */}
+      {channel === 'SELF' && (
+        <>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onApply}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: info.color }}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              להגשה באתר הבנק
+            </button>
+
+            {selfOpened && (
+              <>
+                <input
+                  ref={input}
+                  type="file"
+                  accept={ACCEPT}
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void onUpload(file);
+                    event.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => input.current?.click()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
+                >
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : uploaded ? (
+                    <FileUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
+                  {uploaded ? 'החלפת האישור' : 'העלאת האישור העקרוני'}
+                </button>
+              </>
+            )}
+
+            {uploaded && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onView(uploaded)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-blue-700"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  צפייה
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onRemove(uploaded.id)}
+                  aria-label="הסרת האישור"
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </>
+            )}
+
+            {!selfOpened && (
+              <button
+                type="button"
+                onClick={onResetChoice}
+                className="text-sm font-bold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+              >
+                חזרה לבחירה
+              </button>
+            )}
+          </div>
+
+          {selfOpened && <BankerFields approval={approval} onSave={onBanker} />}
+        </>
+      )}
+
+      {/* הגשה דרך יועץ משכלנתא */}
+      {viaAdvisor && approval && (
+        <>
+          {!approved && (
+            <p dir="rtl" className="mt-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold leading-relaxed text-violet-900">
+              יועץ משכלנתא מטפל בהגשה ל{info.bank} ויחזור אליכם להשלמת הפרטים. אין צורך להגיש בעצמכם.
+            </p>
           )}
-          {uploaded ? 'החלפת האישור' : 'העלאת האישור העקרוני'}
-        </button>
+          <AdvisorBanker approval={approval} onEmail={onEmailBanker} />
+          {approved && validity && (
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <RateCountdown row={validity} compact />
+            </div>
+          )}
+        </>
+      )}
 
-        {uploaded && (
-          <>
-            <button
-              type="button"
-              onClick={() => onView(uploaded)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-button font-black text-white transition-colors hover:bg-blue-700"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              צפייה
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void onRemove(uploaded.id)}
-              aria-label="הסרת האישור"
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
-
-      <BankerFields approval={approval} onSave={onBanker} />
-
-      {/* תאריך הקבלה והספירה של 24 ימי תוקף הריביות */}
-      {approved && (
+      {/* תאריך הקבלה והספירה של 24 ימי תוקף הריביות, בהגשה עצמית */}
+      {channel === 'SELF' && approved && (
         <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
           <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-700">
             תאריך קבלת האישור

@@ -23,8 +23,10 @@ import type {
   PlanStageId,
   PlanStageStatus,
   PlanStatus,
+  PreApprovalData,
   RefinanceMode,
 } from './mortgage-plan';
+import { keepAdvisorRows } from './preapproval-handoff';
 import { saveMix } from './mixes';
 import { MAX_OPEN_PROCESSES, newProcessPass, openPass, processAccess, processLocked } from './process-access';
 import type { ProcessAccess } from './process-access';
@@ -435,7 +437,12 @@ export async function saveStage({
 }: SaveStageInput): Promise<SaveStageResult> {
   if (!(await assertAccess(userId, planId))) return { ok: false };
 
-  const clean = parseStageData(stage, data);
+  let clean = parseStageData(stage, data);
+  // בבנק שהועבר ליועץ, הבנקאי והאישור שהיועץ הזין נשמרים גם מול עותק ישן
+  if (stage === 'APPLICATIONS') {
+    const saved = await loadData(planId);
+    clean = keepAdvisorRows(saved.APPLICATIONS, clean as PreApprovalData) as typeof clean;
+  }
 
   await prisma.mortgagePlanStage.upsert({
     where: { planId_stage: { planId, stage } },
@@ -466,6 +473,39 @@ export async function saveStage({
   await refreshPlan(planId);
   const plan = await getPlanForUser(userId, planId);
   return { ok: true, plan: plan ?? undefined };
+}
+
+/**
+ * עדכון נתוני שלב האישור העקרוני מהשרת — כשהלקוח מעביר בנק ליועץ, וכשהיועץ
+ * מזין את הבנקאי והאישור. מחזיר את הנתונים אחרי העדכון.
+ */
+export async function updateApplicationsStage(
+  planId: string,
+  mutate: (current: PreApprovalData) => PreApprovalData
+): Promise<PreApprovalData> {
+  const current = (await loadData(planId)).APPLICATIONS;
+  const next = parseStageData('APPLICATIONS', mutate(current));
+  await prisma.mortgagePlanStage.upsert({
+    where: { planId_stage: { planId, stage: 'APPLICATIONS' } },
+    create: {
+      planId,
+      stage: 'APPLICATIONS',
+      status: 'IN_PROGRESS',
+      dataJson: next as unknown as Prisma.InputJsonValue,
+    },
+    update: { dataJson: next as unknown as Prisma.InputJsonValue },
+  });
+  await prisma.mortgagePlanStage.updateMany({
+    where: { planId, stage: 'APPLICATIONS', status: 'PENDING' },
+    data: { status: 'IN_PROGRESS' },
+  });
+  await refreshPlan(planId);
+  return next;
+}
+
+/** נתוני שלב האישור העקרוני, כפי שהם שמורים */
+export async function readApplicationsStage(planId: string): Promise<PreApprovalData> {
+  return (await loadData(planId)).APPLICATIONS;
 }
 
 async function loadData(planId: string): Promise<PlanData> {

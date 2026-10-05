@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   ArchiveRestore,
@@ -57,11 +57,14 @@ export function EmailsPane({
   clientUserId,
   mailboxAddress,
   receivesEmail,
+  compose = null,
 }: {
   role: ConversationRole;
   clientUserId?: string | null;
   mailboxAddress: string | null;
   receivesEmail: boolean;
+  /** מייל חדש שנפתח מבחוץ — מכפתור "שליחת מייל לבנקאי" בשלב האישור העקרוני */
+  compose?: { to: string; at: number } | null;
 }) {
   const {
     emails: all,
@@ -112,6 +115,17 @@ export function EmailsPane({
     setError(null);
     setDraft({ to, subject, text: '' });
   };
+
+  // הטיוטה נפתחת פעם אחת לכל בקשה, אחרי שהנמענים נטענו
+  const composed = useRef<number | null>(null);
+  useEffect(() => {
+    if (!compose || !ready || composed.current === compose.at) return;
+    composed.current = compose.at;
+    setView('feed');
+    startDraft(recipients.some((item) => item.email === compose.to) ? [compose.to] : []);
+    // startDraft נגזר מ-setError ו-setDraft, שאינם משתנים
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compose, ready, recipients]);
 
   const reply = (email: ConversationEmailView) => {
     const target =

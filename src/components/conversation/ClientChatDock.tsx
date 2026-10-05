@@ -19,6 +19,8 @@ interface ClientConversationApi {
   unread: number;
   summary: ConversationSummary | null;
   open: () => void;
+  /** פתיחת החלון בטאב המיילים, עם מייל חדש לכתובת הזו */
+  composeEmail: (to: string) => void;
   toggle: () => void;
   registerSlot: (element: HTMLElement) => () => void;
   /**
@@ -91,6 +93,19 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
     setMode('open');
   }, [slots]);
 
+  /** בקשה לפתוח מייל חדש — `at` מבדיל בין שתי בקשות לאותה כתובת */
+  const [compose, setCompose] = useState<{ to: string; at: number } | null>(null);
+  useEffect(() => {
+    if (mode === 'bar') setCompose(null);
+  }, [mode]);
+  const composeEmail = useCallback(
+    (to: string) => {
+      setCompose({ to, at: Date.now() });
+      openWindow();
+    },
+    [openWindow]
+  );
+
   const api = useMemo<ClientConversationApi>(
     () => ({
       enabled,
@@ -98,11 +113,12 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       unread,
       summary,
       open: openWindow,
+      composeEmail,
       toggle: () => (mode === 'open' ? setMode('bar') : openWindow()),
       registerSlot,
       registerActionsHost,
     }),
-    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow]
+    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow, composeEmail]
   );
 
   const dock = enabled ? (
@@ -120,6 +136,7 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       unreadEmails={summary?.unreadEmails}
       mailboxAddress={summary?.mailboxAddress ?? null}
       receivesEmail={summary?.receivesEmail ?? false}
+      compose={compose}
     />
   ) : null;
 

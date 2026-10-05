@@ -497,6 +497,9 @@ export interface PreApprovalBasket {
  * הלקוח שמגיש בעצמו פונה לכמה בנקים במקביל — כל אחד מהם נרשם כאן בנפרד, עם
  * המסמך שהתקבל ממנו. הבנקים שסומנו כאן הם אלה שנפתחים לתמחור בשלב המכרז.
  */
+/** אופן ההגשה לבנק בשלב האישור העקרוני */
+export type SubmissionChannel = 'SELF' | 'ADVISOR';
+
 export interface BankPreApproval {
   bank: string;
   /** נשלחה בקשה לבנק הזה */
@@ -514,6 +517,14 @@ export interface BankPreApproval {
    */
   bankerName?: string;
   bankerEmail?: string;
+  /**
+   * איך מגישים לבנק הזה: `SELF` — הלקוח מגיש באתר הבנק בעצמו; `ADVISOR` — יועץ
+   * משכלנתא מנהל את ההגשה, ואז הבנקאי והאישור מוזנים בצד היועץ. ריק — הלקוח
+   * עוד לא בחר
+   */
+  channel?: SubmissionChannel | null;
+  /** מתי הלקוח העביר את ההגשה לבנק הזה ליועץ */
+  handedAt?: string | null;
 }
 
 /**
@@ -1247,6 +1258,8 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
             note: str(row.note),
             bankerName: str(row.bankerName),
             bankerEmail: str(row.bankerEmail).trim().toLowerCase(),
+            channel: row.channel === 'SELF' || row.channel === 'ADVISOR' ? row.channel : null,
+            handedAt: typeof row.handedAt === 'string' ? row.handedAt : null,
           },
         ];
       });
