@@ -9,6 +9,8 @@ import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
+import { useSignupDraft } from '@/components/analytics/useSignupDraft';
+import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 
 /**
  * ההרשמה שנפתחת מתוך הכלים הפתוחים.
@@ -55,6 +57,8 @@ export function GuestRegistrationDialog({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const emailStatus = useEmailExists(email);
+  // מה שהוקלד נשמר כבר עכשיו, כדי שהיועץ יראה גם הרשמה שלא הושלמה (בלי הסיסמה)
+  const draft = useSignupDraft('guest-dialog', { name, email });
 
   // כל פתיחה מתחילה נקייה, כדי שלא יוצג אישור של הרשמה קודמת
   useEffect(() => {
@@ -125,6 +129,7 @@ export function GuestRegistrationDialog({
         return;
       }
 
+      draft.markSubmitted();
       setDone(true);
     } catch {
       setError('ההרשמה נכשלה. בדקו את החיבור ונסו שוב.');
@@ -221,6 +226,8 @@ export function GuestRegistrationDialog({
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
               הרשמה והמשך לאזור האישי
             </button>
+
+            <SignupDraftNotice className="mt-3 text-center" />
 
             <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-slate-200" />

@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, AlertCircle, Loader2, Home, UserCheck, ChevronDown } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader2, Home } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 
@@ -209,8 +209,6 @@ function LoginForm() {
             </p>
           </div>
 
-          {/* כניסה ליועצים — בתחתית החלון, ליועצים שכבר רשומים במערכת בלבד */}
-          <AdvisorLogin />
         </div>
 
         {/* Back to Home */}
@@ -224,99 +222,6 @@ function LoginForm() {
           </Link>
         </div>
       </motion.div>
-    </div>
-  );
-}
-
-/**
- * כניסת יועצים. אין כאן הרשמה: יועצים נוספים למערכת רק על ידי הנהלת האתר.
- * השרת בודק את התפקיד לפני שנוצרת התחברות, כך שחשבון לקוח לא נפתח מכאן.
- */
-function AdvisorLogin() {
-  const [open, setOpen] = useState(false);
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    try {
-      const result = await signIn('credentials', {
-        email: identifier,
-        password,
-        portal: 'advisor',
-        redirect: false,
-      });
-      if (result?.error) {
-        setError(authErrorMessage(result.error));
-        return;
-      }
-      window.location.assign('/advisor-dashboard');
-    } catch {
-      setError('אירעה שגיאה בהתחברות');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="mt-8 border-t border-slate-200 pt-5">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        className="mx-auto flex items-center gap-2 text-button font-semibold text-violet-700 hover:text-violet-800"
-      >
-        <UserCheck className="h-4 w-4" />
-        כניסה ליועצים
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <form onSubmit={submit} className="mt-4 space-y-3 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
-          <p className="text-2xs text-slate-600">ליועצים שכבר רשומים במערכת בלבד.</p>
-          {error && (
-            <p className="flex items-start gap-2 text-sm text-red-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </p>
-          )}
-          <input
-            type="text"
-            autoComplete="username"
-            aria-label="שם משתמש או מייל של יועץ"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            required
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-right focus:border-transparent focus:ring-2 focus:ring-violet-500"
-            placeholder="שם משתמש או מייל"
-          />
-          <input
-            type="password"
-            autoComplete="current-password"
-            aria-label="סיסמת יועץ"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-right focus:border-transparent focus:ring-2 focus:ring-violet-500"
-            placeholder="סיסמה"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-button font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
-          >
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            כניסה כיועץ
-          </button>
-          <Link href="/auth/forgot-password" className="block text-center text-sm text-violet-700 hover:underline">
-            שכחתי סיסמה
-          </Link>
-        </form>
-      )}
     </div>
   );
 }

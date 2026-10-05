@@ -19,6 +19,7 @@ function neonDirectUrl(databaseUrl) {
 const RETRYABLE_MIGRATIONS = new Set([
   '20260927050000_conversation_email_attachments_and_mailbox_names',
   '20260927063000_repair_conversation_email_archive',
+  '20261004060000_site_visits_and_signup_drafts',
 ]);
 
 const databaseUrl = process.env.DATABASE_URL;

@@ -19,12 +19,18 @@ import { canonicalSiteOrigin } from "@/lib/auth-url";
 import { cookies } from "next/headers";
 import { sendWelcomeEmail } from "@/lib/client-emails";
 import { ensureClientLinkSafely } from "@/lib/advisor-link";
+import {
+  ADVISOR_DEVICE_COOKIE,
+  AdvisorLinkError,
+  confirmAdvisorLink,
+  notifyAdvisorLogin,
+} from "@/lib/advisor-access";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
   EmailNotVerified: "EmailNotVerified",
-  NotAdvisor: "NotAdvisor",
   GoogleEmailUnverified: "GoogleEmailUnverified",
+  GoogleNotAllowed: "GoogleNotAllowed",
 } as const;
 
 function readCookie(header: string | undefined, name: string): string | null {
@@ -87,8 +93,6 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
-        /** "advisor" — הכניסה בתחתית מסך ההתחברות, ליועצים שכבר רשומים בלבד */
-        portal: { label: "Portal", type: "text" },
       },
       async authorize(credentials) {
         const identifier = credentials?.email as string | undefined;
@@ -103,10 +107,8 @@ export const authOptions: NextAuthOptions = {
           }
           return null;
         }
-        // הכניסה ליועצים לא פותחת שום חשבון שאינו חשבון יועץ
-        if (credentials?.portal === "advisor" && user.role !== "ADVISOR") {
-          throw new Error(LoginError.NotAdvisor);
-        }
+        // היועץ נכנס רק דרך הכניסה הנסתרת (advisor-link), לעולם לא בסיסמה
+        if (user.role === "ADVISOR") return null;
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -149,6 +151,34 @@ export const authOptions: NextAuthOptions = {
         } as any;
       },
     }),
+    /**
+     * הכניסה הנסתרת של היועץ: הקישור החד-פעמי שנשלח למייל היועץ, ורק מהדפדפן
+     * שביקש אותו. ראו advisor-access.
+     */
+    Credentials({
+      id: "advisor-link",
+      name: "Advisor link",
+      credentials: {
+        token: { label: "Token", type: "text" },
+      },
+      async authorize(credentials, req) {
+        const headers = (req?.headers ?? {}) as Record<string, string | undefined>;
+        try {
+          const advisor = await confirmAdvisorLink(
+            String(credentials?.token ?? ""),
+            readCookie(headers.cookie, ADVISOR_DEVICE_COOKIE)
+          );
+          await notifyAdvisorLogin({
+            ip: (headers["x-forwarded-for"] ?? "").split(",")[0]?.trim() || "לא ידוע",
+            userAgent: headers["user-agent"] ?? null,
+          });
+          return { ...advisor, email: advisor.email ?? undefined, advisorLink: true } as any;
+        } catch (error) {
+          if (error instanceof AdvisorLinkError) throw new Error(error.message);
+          throw error;
+        }
+      },
+    }),
   ],
   callbacks: {
     /**
@@ -174,14 +204,26 @@ export const authOptions: NextAuthOptions = {
             providerAccountId: account.providerAccountId,
           },
         },
-        select: { id: true },
+        select: { user: { select: { role: true } } },
       });
-      if (linked) return true;
+      if (linked) {
+        // חשבון היועץ לא נפתח עם גוגל — רק בכניסה הנסתרת
+        if (linked.user.role === "ADVISOR") return `/auth/login?error=${LoginError.GoogleNotAllowed}`;
+        return true;
+      }
 
       const existing = await prisma.user.findFirst({
         where: { email: { equals: email, mode: "insensitive" } },
-        select: { id: true, emailVerified: true, hashedPassword: true, accounts: { select: { id: true } } },
+        select: {
+          id: true,
+          role: true,
+          emailVerified: true,
+          hashedPassword: true,
+          accounts: { select: { id: true } },
+        },
       });
+      // חשבון היועץ לא נפתח עם גוגל — רק בכניסה הנסתרת
+      if (existing?.role === "ADVISOR") return `/auth/login?error=${LoginError.GoogleNotAllowed}`;
       if (existing) {
         /**
          * חשבון ישן עם סיסמה שהמייל שלו מעולם לא אומת, ובלי שום חשבון מקושר:
@@ -213,6 +255,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
+        token.advisorLink = (user as any).advisorLink === true;
         const existingRole = (user as any).role;
         if (existingRole) {
           token.role = existingRole;
@@ -225,6 +268,14 @@ export const authOptions: NextAuthOptions = {
         } else {
           token.role = "CLIENT";
         }
+      }
+      /**
+       * התחברות של יועץ שלא עברה בכניסה הנסתרת — למשל של יועץ שנמחק, או
+       * מלפני שהכניסה בסיסמה בוטלה — אינה תקפה יותר.
+       */
+      if (token.role === "ADVISOR" && token.advisorLink !== true) {
+        delete token.id;
+        delete token.role;
       }
       return token;
     },
