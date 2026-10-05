@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { AlarmClock, Check, Gavel, Lightbulb, TrendingUp, Undo2 } from 'lucide-react';
+import { AlarmClock, ArrowLeft, Check, Gavel, Lightbulb, TrendingUp, Undo2 } from 'lucide-react';
 import { planRecommendations } from '@/lib/client-agenda';
 import type { AgendaPlan, ClientTaskState, PlanRecommendation } from '@/lib/client-agenda';
 
@@ -94,6 +95,15 @@ export function PlanRecommendations({
                 >
                   {recommendation.hint}
                 </span>
+                {recommendation.link && (
+                  <Link
+                    href={recommendation.link.href}
+                    className="mt-1.5 inline-flex items-center gap-1 text-sm font-black text-blue-700 hover:underline"
+                  >
+                    {recommendation.link.label}
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                  </Link>
+                )}
                 {multiplePlans && (
                   <span className="mt-1 block text-2xs font-bold text-slate-400">
                     {plan.propertyAddress?.trim() || plan.name}

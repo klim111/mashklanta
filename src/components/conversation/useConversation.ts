@@ -7,6 +7,7 @@ import type {
   AttachmentFolder,
   ChatMessageView,
   ConversationContact,
+  ConversationDocument,
   ConversationEmailView,
   ConversationSummary,
   OutgoingFileRef,
@@ -116,6 +117,19 @@ export interface EmailDraft {
   text: string;
   /** קבצים שצורפו — מוכנים לשליחה */
   files?: OutgoingFileRef[];
+}
+
+/**
+ * מייל שמסך אחר מבקש לפתוח בתיבת המיילים — למשל "העבר לעורך דין" בשלב החתימה:
+ * נושא ותוכן מוכנים, מסמכים מהתיק כבר מצורפים, וכשאין עדיין נמען מתאים —
+ * טופס "נמען חדש" פתוח עם התפקיד שנבחר מראש.
+ */
+export interface ComposeRequest {
+  to?: string[];
+  subject: string;
+  text: string;
+  documents?: ConversationDocument[];
+  addRecipientRole?: RecipientRole;
 }
 
 export function useConversationEmails(clientUserId: string | null | undefined, enabled: boolean) {

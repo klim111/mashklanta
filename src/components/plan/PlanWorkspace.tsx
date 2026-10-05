@@ -24,6 +24,8 @@ import {
   isPlanStage,
   missingForStage,
   nextPlanStage,
+  paymentScheduleDefined,
+  usesPaymentSchedule,
   planFlowOf,
   previousPlanStage,
   stageIndex,
@@ -49,6 +51,8 @@ import { processLocked } from '@/lib/process-access';
 import type { PlanView, SaveState } from './usePlan';
 import { PlanTour, TOUR_FREE_CHANGES, tourAllowsTry } from './PlanTour';
 import { StageTasksPanel } from './tasks/StageTasksPanel';
+import { PaymentScheduleReminder } from './payment-schedule/PaymentScheduleReminder';
+import { ContractQuestionDialog } from './payment-schedule/ContractQuestionDialog';
 import { VaultButton } from './documents/VaultButton';
 import { StageActionsMenu } from './StageActionsMenu';
 import Mashkalanta from '@/components/ui/mashkalanta';
@@ -180,6 +184,10 @@ export function PlanWorkspace({
    * שעמוד ההסבר לא יופיע שוב בכל טעינה אחרי שכבר נכנס לעבוד.
    */
   const [enteredStages, setEnteredStages] = useState<PlanStageId[]>([]);
+  /** "האם כבר חתמתם על חוזה?" נסגר בלי תשובה — לא קופץ שוב עד הטעינה הבאה */
+  const [contractDismissed, setContractDismissed] = useState(false);
+  /** ענו עכשיו — החלון נשאר פתוח עם ההמשך של התשובה */
+  const [contractAnsweredNow, setContractAnsweredNow] = useState(false);
   /** השלב שעבורו נשלחת כעת בקשת ליווי חינמית */
   const [handoffBusy, setHandoffBusy] = useState<PlanStageId | null>(null);
   /** סוג המיחזור שנבחר כרגע ונשמר — עד שהשרת פותח את השלב הבא */
@@ -357,6 +365,25 @@ export function PlanWorkspace({
     !isDone &&
     (stage === 'APPLICATIONS' || stage === 'AUCTION') &&
     !enteredStages.includes(stage);
+
+  /*
+    פעימות התשלום למוכר — במשכנתא חדשה בלבד. עד שהן מוגדרות, בראש שלבים 1–4
+    מופיעה תזכורת עם קישור לכלי, ובשלב החתימה הן סעיף חובה.
+  */
+  const schedulePlan = !tour && usesPaymentSchedule(plan.data);
+  const scheduleReady = paymentScheduleDefined(plan.data);
+  const contractAnswer = plan.data.SIGNING.contractAnswer;
+  const contractDialogOpen =
+    schedulePlan &&
+    !planSigned &&
+    !contractDismissed &&
+    !(plan.access && processLocked(plan.access)) &&
+    (contractAnsweredNow || (contractAnswer === null && !scheduleReady));
+
+  const answerContract = (answer: 'SIGNED' | 'NOT_YET') => {
+    setContractAnsweredNow(true);
+    rawUpdateStage('SIGNING', { ...plan.data.SIGNING, contractAnswer: answer });
+  };
 
   const toggleStageDetails = () =>
     setDetailStages((current) =>
@@ -736,7 +763,17 @@ export function PlanWorkspace({
                 <RateValidityStrip rows={rateValidity(plan.data)} />
               )}
 
-            {/* המשימות המתוכננות של השלב — לכל לקוח עם תהליך פתוח */}
+            {/* פעימות התשלום: תזכורת בשלבים 1–4 עד שהוגדרו, וסעיף חובה בשלב החתימה */}
+            {schedulePlan && !planSigned && (stage === 'SIGNING' || !scheduleReady) && (
+              <PaymentScheduleReminder
+                planId={plan.id}
+                stage={stage}
+                defined={scheduleReady}
+                mandatory={stage === 'SIGNING'}
+              />
+            )}
+
+            {/* המשימות הפתוחות של השלב; הוספת משימה נמצאת בכפתור הפעולות */}
             {!tour && !advisorSummaryOnly && !needsIntro && (
               <div {...demoId('plan-stage-tasks')}>
                 <StageTasksPanel planId={plan.id} stage={stage} />
@@ -894,12 +931,26 @@ export function PlanWorkspace({
         />
       )}
 
-      {/* תיק המסמכים, ההתכתבות והחזרה לדאשבורד — תחת כפתור פעולות עגול אחד */}
+      {/* הוספת משימה, תיק המסמכים, ההתכתבות והחזרה לדאשבורד — תחת כפתור פעולות עגול אחד */}
       <StageActionsMenu planId={plan.id} data={plan.data} stage={stage} tour={tour} />
 
       {/* עברו 30 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
       {!tour && plan.access && processLocked(plan.access) && (
         <PlanAccessLock planId={plan.id} access={plan.access} />
+      )}
+
+      {schedulePlan && (
+        <ContractQuestionDialog
+          open={contractDialogOpen}
+          planId={plan.id}
+          stage={stage}
+          answer={contractAnswer}
+          onAnswer={answerContract}
+          onClose={() => {
+            setContractDismissed(true);
+            setContractAnsweredNow(false);
+          }}
+        />
       )}
 
       <PlanCompletedDialog

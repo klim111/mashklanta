@@ -144,6 +144,8 @@ export function visualOrder(text: string): string {
   // סימן ניטרלי בין שני תווים לטיניים שייך לקטע הלטיני (למשל 03-1234567, a@b.co)
   const resolved = types.map((type, index) => {
     if (type !== 'N') return type;
+    // סימן אחוז צמוד למספר שייך למספר (70.6%), גם כשאחריו עברית
+    if (chars[index] === '%' && /[0-9]/.test(chars[index - 1] ?? '')) return 'L';
     const before = types.slice(0, index).reverse().find((item) => item !== 'N');
     const after = types.slice(index + 1).find((item) => item !== 'N');
     return before === 'L' && after === 'L' ? 'L' : 'R';
