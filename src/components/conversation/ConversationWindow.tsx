@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowRight, ChevronDown, ChevronUp, Mail, MessageCircle, X } from 'lucide-react';
 import type { ConversationRole } from '@/lib/conversation';
 import { ChatPane } from './ChatPane';
 import { EmailsPane } from './EmailsPane';
+import type { ComposeRequest } from './useConversation';
 
 export type ConversationMode = 'closed' | 'bar' | 'open';
 type Tab = 'chat' | 'emails';
@@ -52,6 +53,8 @@ export function ConversationWindow({
   docked = false,
   offset = 0,
   anchor = 'corner',
+  composeRequest = null,
+  onComposeTaken,
   children,
 }: {
   role: ConversationRole;
@@ -79,10 +82,16 @@ export function ConversationWindow({
    * של שלבי המשכנתא, שממנו הוא נפתח
    */
   anchor?: 'corner' | 'above-actions';
+  /** מייל מוכן שמסך אחר ביקש לפתוח — עובר לטאב המיילים */
+  composeRequest?: ComposeRequest | null;
+  onComposeTaken?: () => void;
   /** תוכן במקום הטאבים — רשימת השיחות אצל היועץ */
   children?: ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>('chat');
+  useEffect(() => {
+    if (composeRequest) setTab('emails');
+  }, [composeRequest]);
   const accent = accentFor(role);
   const open = mode === 'open';
   const unread = unreadChat + unreadEmails;
@@ -223,6 +232,8 @@ export function ConversationWindow({
               clientUserId={clientUserId}
               mailboxAddress={mailboxAddress}
               receivesEmail={receivesEmail}
+              composeRequest={composeRequest}
+              onComposeTaken={onComposeTaken}
             />
           )}
         </>

@@ -24,6 +24,7 @@ import {
 import type {
   AttachmentFolder,
   ConversationContact,
+  ConversationDocument,
   ConversationEmailView,
   ConversationRole,
   OutgoingFileRef,
@@ -32,7 +33,7 @@ import type {
 import { MAX_EMAIL_LENGTH, MAX_SUBJECT_LENGTH, RECIPIENT_ROLES, recipientRoleLabel } from '@/lib/conversation';
 import { attachmentUrl, useConversationEmails } from './useConversation';
 import { AttachButton, PendingFiles, useOutgoingFiles } from './OutgoingFiles';
-import type { EmailDraft } from './useConversation';
+import type { ComposeRequest, EmailDraft } from './useConversation';
 import { accentFor } from './ConversationWindow';
 import { EmailAttachments } from './EmailAttachments';
 
@@ -57,11 +58,16 @@ export function EmailsPane({
   clientUserId,
   mailboxAddress,
   receivesEmail,
+  composeRequest = null,
+  onComposeTaken,
 }: {
   role: ConversationRole;
   clientUserId?: string | null;
   mailboxAddress: string | null;
   receivesEmail: boolean;
+  /** מייל מוכן שמסך אחר ביקש לפתוח */
+  composeRequest?: ComposeRequest | null;
+  onComposeTaken?: () => void;
 }) {
   const {
     emails: all,
@@ -101,7 +107,19 @@ export function EmailsPane({
     else setArchivedNow(emailId);
   };
   const [draft, setDraft] = useState<EmailDraft | null>(null);
+  /** מה שמגיע עם מייל מוכן: מסמכים לצרף, ותפקיד לטופס "נמען חדש" */
+  const [prefill, setPrefill] = useState<{ documents: ConversationDocument[]; addRole: RecipientRole | null } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!composeRequest) return;
+    setView('feed');
+    setError(null);
+    setDraft({ to: composeRequest.to ?? [], subject: composeRequest.subject, text: composeRequest.text });
+    setPrefill({ documents: composeRequest.documents ?? [], addRole: composeRequest.addRecipientRole ?? null });
+    onComposeTaken?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composeRequest]);
   const accent = accentFor(role);
 
   const selfKind = role === 'CLIENT' ? 'CLIENT' : 'ADVISOR';
@@ -149,12 +167,20 @@ export function EmailsPane({
         clientUserId={clientUserId}
         sending={sending}
         error={error}
-        onCancel={() => setDraft(null)}
+        onCancel={() => {
+          setDraft(null);
+          setPrefill(null);
+        }}
         onAddRecipient={addRecipient}
         onRemoveRecipient={removeRecipient}
         onSend={async (files) => {
-          if (await send({ ...draft, files })) setDraft(null);
+          if (await send({ ...draft, files })) {
+            setDraft(null);
+            setPrefill(null);
+          }
         }}
+        initialDocuments={prefill?.documents}
+        addRecipientRole={prefill?.addRole ?? null}
       />
     );
   }
@@ -640,6 +666,8 @@ function Composer({
   onAddRecipient,
   onRemoveRecipient,
   onSend,
+  initialDocuments,
+  addRecipientRole = null,
 }: {
   role: ConversationRole;
   draft: EmailDraft;
@@ -655,10 +683,18 @@ function Composer({
   onAddRecipient: (input: { email: string; name: string; role: RecipientRole; bank?: string }) => Promise<string | null>;
   onRemoveRecipient: (recipientId: string) => Promise<string | null>;
   onSend: (files: OutgoingFileRef[]) => void;
+  /** מסמכים מהתיק שמצורפים מראש למייל מוכן */
+  initialDocuments?: ConversationDocument[];
+  /** טופס "נמען חדש" נפתח מראש עם התפקיד הזה */
+  addRecipientRole?: RecipientRole | null;
 }) {
   const accent = accentFor(role);
   const outgoing = useOutgoingFiles(clientUserId);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(Boolean(addRecipientRole));
+  const addDocument = outgoing.addDocument;
+  useEffect(() => {
+    initialDocuments?.forEach((doc) => addDocument(doc));
+  }, [initialDocuments, addDocument]);
   const toggle = (email: string) =>
     onChange({
       ...draft,
@@ -734,6 +770,7 @@ function Composer({
           {adding && (
             <AddRecipientForm
               role={role}
+              defaultRole={addRecipientRole ?? undefined}
               onCancel={() => setAdding(false)}
               onAdd={async (input) => {
                 const failure = await onAddRecipient(input);
@@ -823,17 +860,19 @@ function Composer({
 /** טופס קצר להוספת נמען לשיחה: שם, מייל ותפקיד (ולבנקאי — הבנק) */
 function AddRecipientForm({
   role,
+  defaultRole = 'BANKER',
   onAdd,
   onCancel,
 }: {
   role: ConversationRole;
+  defaultRole?: RecipientRole;
   onAdd: (input: { email: string; name: string; role: RecipientRole; bank?: string }) => Promise<string | null>;
   onCancel: () => void;
 }) {
   const accent = accentFor(role);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [recipientRole, setRecipientRole] = useState<RecipientRole>('BANKER');
+  const [recipientRole, setRecipientRole] = useState<RecipientRole>(defaultRole);
   const [bank, setBank] = useState('');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);

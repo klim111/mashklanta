@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CalendarClock,
-  CalendarPlus,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -18,26 +17,24 @@ import {
   Upload,
 } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/advisor-crm';
-import { STAGE_TASK_TEMPLATES } from '@/lib/client-tasks';
 import { AUTHORIZATION_TASK_KEY, authorizationLettersHref } from '@/lib/authorization-letters';
 import type { ClientTaskView } from '@/lib/client-tasks';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { DocumentUploadDialog } from '../documents/DocumentUploadDialog';
-import { AddTaskDialog } from './AddTaskDialog';
 import { useClientTasks } from './useClientTasks';
 
 const KIND_ICONS = { TASK: ListChecks, MEETING: CalendarClock, DOCUMENT: FileUp } as const;
 
 /**
- * המשימות המתוכננות של השלב — בתוך שולחן העבודה, מעל תוכן השלב.
+ * המשימות הפתוחות של השלב — בתוך שולחן העבודה, מעל תוכן השלב.
  *
- * "הוסף משימה מתוכננת" פותח את התבניות של השלב וניסוח חופשי. משימה עם מועד
- * מופיעה גם בלוח השנה של האזור האישי; משימת מסמך נסגרת מהעלאת הקובץ לתיק.
+ * הוספת משימה עברה לכפתור הפעולות העגול, ולכן כאן אין שורת "הוסף משימה":
+ * הרשימה מופיעה רק כשיש בשלב משימות פתוחות. משימה עם מועד מופיעה גם בלוח
+ * השנה של האזור האישי; משימת מסמך נסגרת מהעלאת הקובץ לתיק.
  */
 export function StageTasksPanel({ planId, stage }: { planId: string; stage: PlanStageId }) {
-  const { tasks, ready, add, complete, attachDocument, remove } = useClientTasks({ planId, includeDone: true });
-  const [addOpen, setAddOpen] = useState(false);
+  const { tasks, ready, complete, attachDocument, remove } = useClientTasks({ planId, includeDone: true });
   const [uploadFor, setUploadFor] = useState<ClientTaskView | null>(null);
   const [showDone, setShowDone] = useState(false);
 
@@ -45,38 +42,25 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
   const open = stageTasks.filter((task) => task.status === 'OPEN');
   const done = stageTasks.filter((task) => task.status === 'DONE');
   const journey = journeyStageFor(stage);
-  const suggestions = STAGE_TASK_TEMPLATES[stage].length;
+
+  if (!ready || open.length === 0) return null;
 
   return (
     <section className="mb-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-            <ListChecks className="h-4 w-4" />
+      <header className="flex items-center gap-2.5 px-5 pt-3.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+          <ListChecks className="h-4 w-4" />
+        </span>
+        <h3 className="text-sm font-black text-slate-900">
+          המשימות שלי · {journey.shortTitle}
+          <span className="mr-2 text-xs font-bold text-slate-500">
+            {open.length} פתוחות{done.length ? ` · ${done.length} בוצעו` : ''}
           </span>
-          <div>
-            <h3 className="text-sm font-black text-slate-900">המשימות המתוכננות שלי · {journey.shortTitle}</h3>
-            <p className="text-xs text-slate-500">
-              {open.length === 0
-                ? suggestions > 0
-                  ? `יש ${suggestions} משימות מוצעות לשלב, ואפשר להוסיף כל משימה בניסוח חופשי`
-                  : 'הוסיפו משימה, פגישה או מסמך בניסוח חופשי'
-                : `${open.length} פתוחות${done.length ? ` · ${done.length} בוצעו` : ''}`}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-button font-black text-white shadow-sm transition-colors hover:bg-blue-700"
-        >
-          <CalendarPlus className="h-4 w-4" />
-          הוסף משימה מתוכננת
-        </button>
+        </h3>
       </header>
 
       {ready && open.length > 0 && (
-        <ul className="grid gap-2 border-t border-slate-100 px-5 py-4 md:grid-cols-2">
+        <ul className="grid gap-2 px-5 py-3.5 md:grid-cols-2">
           <AnimatePresence initial={false}>
             {open.map((task) => (
               <TaskRow
@@ -115,8 +99,6 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
           )}
         </div>
       )}
-
-      <AddTaskDialog open={addOpen} onOpenChange={setAddOpen} planId={planId} stage={stage} onSubmit={add} />
 
       {uploadFor && (
         <DocumentUploadDialog

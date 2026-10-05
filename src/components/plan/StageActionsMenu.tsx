@@ -4,17 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FolderOpen, LayoutDashboard, LayoutGrid, MessageCircle, X } from 'lucide-react';
+import { CalendarPlus, FolderOpen, LayoutDashboard, LayoutGrid, MessageCircle, X } from 'lucide-react';
 import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
 import { DocumentVaultDialog, useDocumentProgress } from './documents/DocumentVaultDialog';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
+import { AddTaskDialog } from './tasks/AddTaskDialog';
+import { useClientTasks } from './tasks/useClientTasks';
 import { demoId } from '@/demo/demo-attr';
 
 /**
  * כפתור הפעולות העגול של שלבי המשכנתא, בפינה הימנית התחתונה.
  *
- * במקום שלושה כפתורים צפים נפרדים — תיק המסמכים, ההתכתבות עם היועץ והחזרה
- * לדאשבורד — יש עיגול אחד. לחיצה עליו פורשת את השלושה כלפי מעלה, אחד אחרי השני,
+ * במקום כפתורים צפים נפרדים — הוספת משימה, תיק המסמכים, ההתכתבות עם היועץ
+ * והחזרה לדאשבורד — יש עיגול אחד. לחיצה עליו פורשת אותם כלפי מעלה, אחד אחרי השני,
  * כמו תפריט פעולות בטאבלט; כולם באותו גודל ובאותה צורה. הפינה השמאלית נשארת
  * לכפתור «פנו ליועץ» של השלב, וכך הם אינם עולים זה על זה.
  */
@@ -32,6 +34,8 @@ export function StageActionsMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
+  const { add: addTask } = useClientTasks({ planId });
   // ההתכתבות עצמה יושבת בשורש האפליקציה; כאן רק פותחים אותה ומציגים את המספר
   const conversation = useClientConversation();
   const registerActionsHost = conversation?.registerActionsHost;
@@ -62,7 +66,18 @@ export function StageActionsMenu({
     setVaultOpen(true);
   };
 
+  const openTask = () => {
+    setOpen(false);
+    setTaskOpen(true);
+  };
+
   const items: { key: string; node: ReactNode }[] = [];
+  if (!tour) {
+    items.push({
+      key: 'task',
+      node: <ActionItem onClick={openTask} label="הוספת משימה" icon={<CalendarPlus className="h-6 w-6" />} />,
+    });
+  }
   items.push({
     key: 'dashboard',
     node: (
@@ -158,7 +173,9 @@ export function StageActionsMenu({
           whileTap={{ scale: 0.94 }}
           aria-expanded={open}
           aria-controls="stage-actions"
-          aria-label={open ? 'סגירת תפריט הפעולות' : 'פתיחת תפריט הפעולות: תיק המסמכים, התכתבות וחזרה לדאשבורד'}
+          aria-label={
+            open ? 'סגירת תפריט הפעולות' : 'פתיחת תפריט הפעולות: הוספת משימה, תיק המסמכים, התכתבות וחזרה לדאשבורד'
+          }
           className="relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/35 ring-4 ring-white transition-colors hover:bg-blue-700"
         >
           <motion.span
@@ -186,6 +203,7 @@ export function StageActionsMenu({
             data={data}
             stage={stage}
           />
+          <AddTaskDialog open={taskOpen} onOpenChange={setTaskOpen} planId={planId} stage={stage} onSubmit={addTask} />
         </>
       )}
     </>
