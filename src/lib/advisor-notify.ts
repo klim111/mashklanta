@@ -1,7 +1,7 @@
-import { prisma } from './db';
 import { authEmailShell, escapeHtml, sendEmail } from './email';
 import { canonicalSiteOrigin } from './auth-url';
 import { primaryAdvisor } from './advisor-link';
+import { ADVISOR_EMAIL } from './single-advisor';
 
 /**
  * מייל ליועץ על פנייה חדשה: "מחכה לך בקשה לפגישה", "מחכה לך בקשת ליווי"
@@ -11,7 +11,7 @@ import { primaryAdvisor } from './advisor-link';
  */
 
 export interface AdvisorRequestEmail {
-  /** היועץ שהפנייה שויכה אליו; ריק — היועץ של הפלטפורמה */
+  /** היועץ שהפנייה שויכה אליו (לתיעוד; המייל יוצא ליועץ של הפלטפורמה) */
   advisorId?: string | null;
   /** מה מחכה ליועץ: "בקשה לפגישה", "בקשת ליווי לשלב בניית התמהיל" */
   what: string;
@@ -27,12 +27,12 @@ function siteOrigin(): string {
   return (canonicalSiteOrigin() || process.env.NEXTAUTH_URL || '').replace(/\/$/, '');
 }
 
-async function advisorEmail(advisorId: string | null | undefined): Promise<string | null> {
-  if (advisorId) {
-    const advisor = await prisma.user.findUnique({ where: { id: advisorId }, select: { email: true } });
-    if (advisor?.email) return advisor.email;
-  }
-  return (await primaryAdvisor())?.email ?? null;
+/**
+ * לאן נשלח המייל: בשלב הזה יש יועץ אחד, ולכן תמיד ליועץ של הפלטפורמה — גם
+ * כשהפנייה שויכה ליועץ ישן שעוד לא התמזג לחשבון היחיד.
+ */
+async function advisorEmail(): Promise<string> {
+  return (await primaryAdvisor())?.email || ADVISOR_EMAIL;
 }
 
 /** תוכן המייל — בנפרד, כדי שאפשר לבדוק אותו בלי לשלוח */
@@ -76,8 +76,7 @@ export function advisorRequestEmailContent(input: AdvisorRequestEmail, origin = 
 
 export async function emailAdvisorAboutRequest(input: AdvisorRequestEmail): Promise<void> {
   try {
-    const to = await advisorEmail(input.advisorId);
-    if (!to) return;
+    const to = await advisorEmail();
     const content = advisorRequestEmailContent(input);
     // תשובה למייל מגיעה ישר ללקוח שפנה
     const replyTo = input.from.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.from.email) ? input.from.email : undefined;
