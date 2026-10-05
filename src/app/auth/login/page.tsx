@@ -120,9 +120,10 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                שם משתמש או מייל
+                כתובת מייל
               </label>
               <div className="relative">
+                {/* type="text": לקוחות ותיקים עדיין יכולים להיכנס עם שם המשתמש הישן שלהם */}
                 <input
                   id="email"
                   type="text"
@@ -131,7 +132,7 @@ function LoginForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="שם משתמש או your@email.com"
+                  placeholder="your@email.com"
                 />
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>

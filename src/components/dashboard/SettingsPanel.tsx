@@ -99,7 +99,6 @@ export function SettingsPanel() {
         body: JSON.stringify({
           ...profileToJson(profile),
           name: profile.name,
-          username: profile.username,
           ...(password ? { password } : {}),
         }),
       });
@@ -128,11 +127,6 @@ export function SettingsPanel() {
           <h3 className="font-black text-slate-900">חשבון</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="שם מלא" value={profile.name} onChange={(name) => patch({ name })} />
-            <TextField
-              label="שם משתמש"
-              value={profile.username}
-              onChange={(username) => patch({ username })}
-            />
             <div>
               <label className="mb-1.5 block text-xs font-bold text-slate-600">כתובת מייל</label>
               <input

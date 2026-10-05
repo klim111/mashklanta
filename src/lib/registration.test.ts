@@ -11,7 +11,6 @@ import {
   safeCallbackUrl,
   sameHash,
   sendDecision,
-  usernameFromEmail,
 } from './registration';
 
 describe('טוקן האימות', () => {
@@ -64,9 +63,5 @@ describe('תצוגה', () => {
   it('מסתירה את רוב המייל', () => {
     expect(maskEmail('israel@gmail.com')).toBe('is••••@gmail.com');
     expect(maskEmail('ab@x.co')).toBe('a•••@x.co');
-  });
-
-  it('גוזרת שם משתמש מהמייל', () => {
-    expect(usernameFromEmail('Israel.Cohen+tag@gmail.com')).toBe('israel.cohentag');
   });
 });
