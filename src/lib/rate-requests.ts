@@ -52,15 +52,19 @@ async function clientIdsOf(userId: string): Promise<string[]> {
 
 /**
  * כל בקשות הריביות שהמשתמש רשאי לראות: אלה שהוא הפיק, ואלה ששויכו אליו כלקוח —
- * כך שבקשה שהיועץ הכין עבורו מופיעה גם באזור האישי שלו.
+ * כך שבקשה שהיועץ הכין עבורו מופיעה גם באזור האישי שלו. ליועץ — גם הבקשות
+ * שהלקוחות שלו הפיקו בעצמם, כדי שמה שהלקוח הגיש לבנקים יופיע אצלו.
  */
 export async function listRateRequestsForUser(userId: string): Promise<SavedRateRequest[]> {
   const clientIds = await clientIdsOf(userId);
   const rows = await prisma.bankRateRequest.findMany({
-    where:
-      clientIds.length > 0
-        ? { OR: [{ ownerId: userId }, { clientId: { in: clientIds } }] }
-        : { ownerId: userId },
+    where: {
+      OR: [
+        { ownerId: userId },
+        { client: { advisorId: userId } },
+        ...(clientIds.length > 0 ? [{ clientId: { in: clientIds } }] : []),
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     select: requestSelect,
   });

@@ -24,6 +24,7 @@ import {
   confirmAdvisorLink,
   notifyAdvisorLogin,
 } from "@/lib/advisor-access";
+import { ensureClientLinkSafely } from "@/lib/advisor-link";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
@@ -139,6 +140,8 @@ export const authOptions: NextAuthOptions = {
         });
         // מייל ברוכים הבאים, עם הכתובת האישית. כשל בשליחה לא עוצר את הכניסה
         await sendWelcomeEmail(user.id);
+        // הלקוח משויך מיד ליועץ של הפלטפורמה, ומופיע ברשימת הלקוחות שלו
+        await ensureClientLinkSafely(user.id);
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -300,6 +303,7 @@ export const authOptions: NextAuthOptions = {
       } catch {
         // שם המשתמש כבר תפוס — נשאר בלי username
       }
+      await ensureClientLinkSafely(user.id);
     },
   },
 };

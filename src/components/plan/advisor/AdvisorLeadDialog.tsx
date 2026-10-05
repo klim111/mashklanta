@@ -10,8 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { LEAD_TOPIC_LABELS } from '@/lib/advisor-leads';
-import type { LeadTopic } from '@/lib/advisor-leads';
+import { LEAD_TOPIC_LABELS } from '@/lib/advisor-lead-topics';
+import type { LeadTopic } from '@/lib/advisor-lead-topics';
+import type { RequestKind } from '@/lib/advisor-requests';
+import { RequestKindPicker, currentPagePath } from './RequestKindPicker';
 
 /** סימון מקומי שנשלחה פנייה ליועץ — כדי שהדאשבורד לא יציג יותר מסך פתיחה */
 export const CONTACTED_ADVISOR_KEY = 'mashklanta:contacted-advisor';
@@ -38,6 +40,7 @@ export function AdvisorLeadDialog({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [kind, setKind] = useState<RequestKind>('GUIDANCE');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +51,7 @@ export function AdvisorLeadDialog({
     setEmail(session?.user?.email ?? '');
     setPhone('');
     setNotes('');
+    setKind('GUIDANCE');
     setSent(false);
     setError(null);
   }, [open, session?.user?.name, session?.user?.email]);
@@ -62,7 +66,7 @@ export function AdvisorLeadDialog({
       const response = await fetch('/api/advisor-leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, name, phone, email, notes }),
+        body: JSON.stringify({ topic, name, phone, email, notes, requestKind: kind, sourcePath: currentPagePath() }),
       });
       if (!response.ok) throw new Error(String(response.status));
       // הדאשבורד מציג מסך פתיחה אחר אחרי הפנייה הראשונה ליועץ
@@ -118,6 +122,8 @@ export function AdvisorLeadDialog({
           </div>
         ) : (
           <div className="space-y-3">
+            <RequestKindPicker value={kind} onChange={setKind} />
+
             <label className="block">
               <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
                 <User className="h-3.5 w-3.5" />

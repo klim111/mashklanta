@@ -10,6 +10,8 @@ import {
   CONTACTED_ADVISOR_EVENT,
   CONTACTED_ADVISOR_KEY,
 } from '@/components/plan/advisor/AdvisorLeadDialog';
+import { RequestKindPicker, currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
+import type { RequestKind } from '@/lib/advisor-requests';
 
 export interface GuidanceRequestDialogProps {
   open: boolean;
@@ -23,6 +25,8 @@ export interface GuidanceRequestDialogProps {
   mode: 'guest' | 'member';
   memberName?: string;
   memberEmail?: string;
+  /** מה הלקוח כבר הזין בכלי שממנו פנה — מצורף לפנייה, כדי שהיועץ יראה אותו */
+  contextNote?: string;
 }
 
 const inputClass =
@@ -42,11 +46,13 @@ export function GuidanceRequestDialog({
   mode,
   memberName,
   memberEmail,
+  contextNote,
 }: GuidanceRequestDialogProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
+  const [kind, setKind] = useState<RequestKind>('GUIDANCE');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -72,7 +78,9 @@ export function GuidanceRequestDialog({
           name: mode === 'guest' ? name : undefined,
           email: mode === 'guest' ? email : undefined,
           phone: phone || undefined,
-          notes: note.trim() || undefined,
+          notes: [contextNote, note.trim()].filter(Boolean).join('\n') || undefined,
+          requestKind: kind,
+          sourcePath: currentPagePath(),
         }),
       });
       const body = await response.json().catch(() => null);
@@ -180,6 +188,8 @@ export function GuidanceRequestDialog({
                 </label>
               </div>
             )}
+
+            <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
 
             <label className="block text-xs font-bold text-slate-600">
               טלפון לחזרה <span className="font-normal text-slate-400">(רשות)</span>

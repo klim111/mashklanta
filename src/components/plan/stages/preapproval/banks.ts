@@ -44,7 +44,7 @@ export const PRE_APPROVAL_BANKS: readonly PreApprovalBankInfo[] = [
     bank: 'מזרחי',
     slug: 'mizrahi',
     fullName: 'בנק מזרחי טפחות',
-    applyUrl: 'https://sc.mizrahi-tefahot.co.il/TofesMashkantaClient/questionnaire/user-details/1',
+    applyUrl: 'https://sc.mizrahi-tefahot.co.il/TofesMashkantaClient/',
     initials: 'מז',
     color: '#d97706',
   },

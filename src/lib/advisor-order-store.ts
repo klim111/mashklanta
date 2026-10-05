@@ -6,6 +6,8 @@ import type { AdvisorOrder, AdvisorOrderStatus } from './advisor-orders';
 import type { PlanStageId } from './mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { PLATFORM_PROCESS_PRICE, platformMonthsSince } from './service-flow';
+import { ensureClientLinkSafely } from './advisor-link';
+import { emailAdvisorAboutRequest } from './advisor-notify';
 
 /**
  * שכבת הגישה להזמנות הליווי.
@@ -197,8 +199,16 @@ export async function requestStageHandoff(
   planId: string,
   stage: PlanStageId
 ): Promise<AdvisorOrder | null> {
+  if (!(await planForUser(userId, planId))) return null;
+  // לקוח בלי יועץ משויך עכשיו ליועץ של הפלטפורמה, כדי שהבקשה תגיע אליו
+  const link = await ensureClientLinkSafely(userId);
   const plan = await planForUser(userId, planId);
   if (!plan) return null;
+  if (!plan.clientId && link) {
+    await prisma.mortgagePlan.update({ where: { id: plan.id }, data: { clientId: link.clientId } });
+  }
+  const clientId = plan.clientId ?? link?.clientId ?? null;
+  const advisorId = plan.client?.advisorId ?? link?.advisorId ?? null;
 
   const existing = await prisma.advisorServiceOrder.findFirst({
     where: {
@@ -215,8 +225,8 @@ export async function requestStageHandoff(
     data: {
       planId,
       ownerId: userId,
-      advisorId: plan.client?.advisorId ?? null,
-      clientId: plan.clientId,
+      advisorId,
+      clientId,
       stagesJson: [stage],
       amount: 0,
       status: 'REQUESTED',
@@ -224,10 +234,22 @@ export async function requestStageHandoff(
     select: orderSelect,
   });
 
-  await notifyAdvisor(plan.client?.advisorId ?? null, plan.clientId, [stage], {
+  await notifyAdvisor(advisorId, clientId, [stage], {
     planName: plan.name,
     propertyAddress: plan.propertyAddress,
     paid: false,
+  });
+
+  const owner = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
+  await emailAdvisorAboutRequest({
+    advisorId,
+    what: `בקשת ליווי לשלב ${journeyStageFor(stage).title}`,
+    details: [
+      ['תהליך', plan.propertyAddress || plan.name],
+      ['שלב', journeyStageFor(stage).title],
+    ],
+    from: { name: plan.client?.name || owner?.name, email: owner?.email },
+    path: clientId ? `/advisor-dashboard/client/${clientId}` : undefined,
   });
 
   return toView(row);
@@ -293,7 +315,8 @@ export interface AdvisorOrderRequest extends AdvisorOrder {
  */
 export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrderRequest[]> {
   const rows = await prisma.advisorServiceOrder.findMany({
-    where: { advisorId, status: { in: ['REQUESTED', 'PAID'] } },
+    // גם בקשות שעדיין לא שויכו לאף יועץ, כמו בפניות — כדי שלא ייעלמו
+    where: { OR: [{ advisorId }, { advisorId: null }], status: { in: ['REQUESTED', 'PAID'] } },
     orderBy: { createdAt: 'desc' },
     select: {
       ...orderSelect,
@@ -326,7 +349,7 @@ export async function markOrderInWork(
   inWork: boolean
 ): Promise<AdvisorOrder | null> {
   const existing = await prisma.advisorServiceOrder.findFirst({
-    where: { id: orderId, advisorId, status: { in: ['REQUESTED', 'PAID'] } },
+    where: { id: orderId, OR: [{ advisorId }, { advisorId: null }], status: { in: ['REQUESTED', 'PAID'] } },
     select: { id: true },
   });
   if (!existing) return null;
@@ -334,9 +357,10 @@ export async function markOrderInWork(
   const now = new Date();
   const row = await prisma.advisorServiceOrder.update({
     where: { id: orderId },
+    // בקשה שלא שויכה עוברת ליועץ שהתחיל לעבוד עליה
     data: inWork
-      ? { workStartedAt: now, status: 'PAID', paidAt: now }
-      : { workStartedAt: null, status: 'REQUESTED', paidAt: null },
+      ? { advisorId, workStartedAt: now, status: 'PAID', paidAt: now }
+      : { advisorId, workStartedAt: null, status: 'REQUESTED', paidAt: null },
     select: orderSelect,
   });
   return toView(row);

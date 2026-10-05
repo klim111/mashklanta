@@ -796,6 +796,15 @@ model AdvisorLead {
   phone String?
   email String
   notes String?
+  /**
+   * מה הלקוח סימן שהוא מבקש: GUIDANCE / MEETING / QUESTION / QUOTE
+   * (src/lib/advisor-requests.ts). ריק בפניות ישנות
+   */
+  requestKind String?
+  /**
+   * העמוד בפלטפורמה שממנו נשלחה הפנייה
+   */
+  sourcePath  String?
 
   status AdvisorLeadStatus @default(OPEN)
 

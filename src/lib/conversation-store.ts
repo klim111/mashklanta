@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { Prisma as PrismaErrors } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
+import { ensureClientLinkSafely, primaryAdvisor } from './advisor-link';
 import { MAX_DOCUMENT_BYTES, isAllowedDocumentType, storeFileInPlan } from './plan-documents';
 import { canonicalSiteOrigin } from './auth-url';
 import { sendEmail } from './email';
@@ -114,14 +115,17 @@ export async function resolveConversationAccess(
   return { clientUserId, viewerId, viewerRole: 'ADVISOR' };
 }
 
-/** היועץ המלווה של הלקוח, אם כבר שויך — הרשומה הראשונה שנפתחה */
+/**
+ * היועץ המלווה של הלקוח — הרשומה הראשונה שנפתחה. לקוח שעדיין לא שויך מקבל
+ * את היועץ של הפלטפורמה (בשלב הזה יש יועץ אחד), כדי שהודעה ממנו לא תיעלם.
+ */
 async function advisorOf(clientUserId: string) {
   const record = await prisma.client.findFirst({
     where: { userId: clientUserId },
     orderBy: { createdAt: 'asc' },
     select: { advisor: { select: { id: true, name: true, email: true } } },
   });
-  return record?.advisor ?? null;
+  return record?.advisor ?? (await primaryAdvisor());
 }
 
 // ───────────────────────────────── צ'אט ─────────────────────────────────
@@ -211,6 +215,8 @@ export async function postChatMessage(
 
   const files = resolved.files.map((item) => item.fileName);
   const preview = [body, files.length > 0 ? `מצורף: ${files.join(', ')}` : ''].filter(Boolean).join('\n');
+  // לקוח שכותב ליועץ משויך אליו, כדי שיופיע ברשימת הלקוחות שלו
+  if (access.viewerRole === 'CLIENT') await ensureClientLinkSafely(access.clientUserId);
   if (waiting === 0) void notifyNewMessage(access, preview).catch(() => {});
   return { ok: true, message: toMessageView(row) };
 }
@@ -242,7 +248,7 @@ async function notifyNewMessage(access: ConversationAccess, body: string) {
     const who = client?.name || client?.email || 'לקוח';
     await sendEmail({
       to: advisor.email,
-      subject: `הודעה חדשה מ${who}`,
+      subject: `מחכה לך הודעה חדשה בצ'אט מ${who}`,
       html: emailHtml(`${who} כתב/ה לך בצ'אט:\n\n${preview}\n\nלתשובה: ${origin}/advisor-dashboard`, appName()),
       text: `${who} כתב/ה לך בצ'אט:\n\n${preview}\n\nלתשובה: ${origin}/advisor-dashboard`,
     });
