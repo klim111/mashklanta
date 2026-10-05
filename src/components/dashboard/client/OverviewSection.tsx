@@ -136,7 +136,7 @@ export function OverviewSection({
     : [];
 
   const kpis = (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       <KpiTile
         icon={<Compass className="h-5 w-5" />}
         tone="blue"
@@ -310,7 +310,7 @@ export function OverviewSection({
     <div className="grid grid-cols-1 gap-4">
       {kpis}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
         <DashCard
           demoId="dash-mortgages-card"
           title="המשכנתא שלי"
@@ -443,7 +443,7 @@ export function OverviewSection({
         העמודה הרחבה היא עמודת המשכנתא — ומתחתיה הפעולות המהירות; העמודה
         הצרה היא לוח השנה — ומתחתיו המשימות, שהמועד שלהן נקבע בלוח.
       */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
         {quickActions}
         {tasksCard}
       </div>

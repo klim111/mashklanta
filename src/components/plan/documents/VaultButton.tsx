@@ -78,12 +78,12 @@ export function VaultButton({
           <ProgressBar percent={progress.overall.percent} tone="white" />
         </span>
         {variant === 'header' && relevant.length > 0 && (
-          <span className="mt-2 grid gap-1.5 sm:grid-cols-3">
+          <span className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-3">
             {relevant.map((row) => (
               <span key={row.stage} className="block">
-                <span className="flex items-center justify-between text-2xs font-bold text-white/60">
+                <span className="flex items-center justify-between gap-2 text-2xs font-bold text-white/60">
                   <span className="truncate">{journeyStageFor(row.stage).shortTitle}</span>
-                  <span>
+                  <span className="shrink-0 tabular-nums">
                     {row.done}/{row.total}
                   </span>
                 </span>

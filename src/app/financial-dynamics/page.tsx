@@ -44,6 +44,9 @@ interface FinancialParams {
   maxMonths?: number;
 }
 
+// תוויות ציר באלפים; LRM כדי שבהקשר RTL המינוס יוצג משמאל ("-7K" ולא "7K-")
+const formatAxisK = (value: number) => `\u200E${(value / 1000).toFixed(0)}K`;
+
 const MONEY_PARAM_KEYS: (keyof FinancialParams)[] = [
   'liquid0', 'debt0', 'savings0', 'assets0', 'incomeMonthly', 'expenseMonthly',
   'allocToDebt', 'allocToSavings', 'allocToAssets',
@@ -858,21 +861,27 @@ export default function FinancialDynamicsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={chartData}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 8, left: 8, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="month" 
-                      label={{ value: 'חודש', position: 'insideBottom', offset: -5 }}
+                      tick={{ fontSize: 12 }}
+                      interval="preserveStartEnd"
+                      minTickGap={12}
+                      label={{ value: 'חודש', position: 'insideBottom', offset: -14, fontSize: 12 }}
                     />
                     <YAxis 
+                      width={64}
+                      tick={{ fontSize: 12 }}
                       label={{ value: '₪', angle: -90, position: 'insideLeft' }}
-                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                      tickFormatter={formatAxisK}
                     />
                     <Tooltip 
                       formatter={(value) => `₪${value.toLocaleString()}`}
                       labelFormatter={(label) => `חודש ${label}`}
                     />
-                    <Legend />
+                    {/* המקרא למעלה כדי שלא יתנגש בתווית ציר ה"חודש" */}
+                    <Legend verticalAlign="top" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
                     <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
                     
                     <Area type="monotone" dataKey="נזיל" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
@@ -894,12 +903,12 @@ export default function FinancialDynamicsPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`} />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={12} />
+                    <YAxis width={64} tick={{ fontSize: 12 }} tickFormatter={formatAxisK} />
                     <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
                     
                     <Line 
                       type="monotone" 

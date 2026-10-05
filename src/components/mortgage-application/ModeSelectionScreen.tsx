@@ -13,12 +13,6 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
   const [hoveredMode, setHoveredMode] = useState<string | null>(null);
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
 
-  // Test function to verify the component is working
-  const testClick = () => {
-    alert('Test click function called!');
-    console.log('Test click function called!');
-  };
-
   const modes = [
     {
       id: 'guided',
@@ -71,16 +65,6 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
 
       {/* Mode Cards */}
       <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-5xl w-full">
-        {/* Test Button */}
-        <div className="md:col-span-2 mb-4">
-          <button 
-            onClick={testClick}
-            className="bg-red-500 text-white px-4 py-2 rounded"
-          >
-            Test Button - Click Me
-          </button>
-        </div>
-        
         {modes.map((mode, index) => {
           const Icon = mode.icon;
           const isHovered = hoveredMode === mode.id;
@@ -104,10 +88,7 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                 onHoverEnd={() => setHoveredMode(null)}
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => {
-                  console.log('Card clicked for mode:', mode.id);
-                  alert(`Card clicked for mode: ${mode.id}`);
-                }}
+                onClick={() => onModeSelect(mode.id as ApplicationMode)}
               >
                 {/* Background Gradient */}
                 <motion.div
@@ -196,9 +177,6 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                     `}
                     onClick={(e) => {
                       e.stopPropagation();
-                      alert(`Button clicked for mode: ${mode.id}`);
-                      console.log('Button clicked for mode:', mode.id);
-                      console.log('onModeSelect function:', onModeSelect);
                       onModeSelect(mode.id as ApplicationMode);
                     }}
                   >
