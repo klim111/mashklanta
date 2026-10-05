@@ -349,6 +349,13 @@ model Client {
 
   notes String?
 
+  /**
+   * הכרטיס נפתח אוטומטית אצל היועץ של הפלטפורמה, ללקוח שנרשם לבד
+   * (src/lib/advisor-link.ts). כרטיס כזה אינו ליווי ואינו פותח את הכלים בלי
+   * תשלום. כשהיועץ מצרף את הלקוח בעצמו, הסימון יורד
+   */
+  autoLinked Boolean @default(false)
+
   // ריביות מהבנקים
   bankRates Json?
 

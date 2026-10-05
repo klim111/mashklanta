@@ -58,7 +58,8 @@ export async function ensureClientLink(userId: string): Promise<ClientLink | nul
   let clientId: string;
   try {
     const created = await prisma.client.create({
-      data: { advisorId: advisor.id, userId, name: user.name?.trim() || user.email, email: user.email },
+      // אוטומטי — לא ליווי: הכלים בתשלום נשארים סגורים עד שהלקוח משלם
+      data: { advisorId: advisor.id, userId, name: user.name?.trim() || user.email, email: user.email, autoLinked: true },
       select: { id: true },
     });
     clientId = created.id;
