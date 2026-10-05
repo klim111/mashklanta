@@ -12,6 +12,7 @@ import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExists
 import { passwordProblem } from '@/lib/password-policy';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
+import { ConsultSentNotice } from '@/components/auth/ConsultSentNotice';
 
 /** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
 function safeCallbackUrl(value: string | null): string | null {
@@ -157,6 +158,15 @@ function RegisterForm() {
             <h1 className="text-title font-bold text-slate-900">הרשמה</h1>
             <p className="text-slate-600 mt-2">פתיחת חשבון לקוח במשכלנתא. נשלח לכם מייל לאישור הכתובת.</p>
           </div>
+
+          {/* אחרי בקשת ליווי מ"היוועצו איתנו": הסבר, והשם והמייל מהבקשה כבר בטופס */}
+          {searchParams.get('from') === 'consult' && (
+            <ConsultSentNotice
+              onPrefill={({ name, email }) =>
+                setFormData((prev) => ({ ...prev, name: prev.name || name, email: prev.email || email }))
+              }
+            />
+          )}
 
           {/* Success Message */}
           {success && (

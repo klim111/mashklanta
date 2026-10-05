@@ -15,7 +15,6 @@ import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { ADVISORY_TRACK, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
-import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
 import { demoId } from '@/demo/demo-attr';
 
 export default function Home() {
@@ -225,11 +224,6 @@ export default function Home() {
           {/* מה תרצו לעשות? — נקודת הכניסה, גם למי שעדיין לא נרשם */}
           <div id="start" className="mt-8 scroll-mt-24 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
             <GuestStart />
-          </div>
-
-          {/* הכירו את הכלים — הדגמה חיה לכל כלי, מתוך קטלוג ההדגמות */}
-          <div className="mt-8 rounded-3xl border border-indigo-100 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10">
-            <DemoCatalogSection />
           </div>
         </div>
         </motion.section>
