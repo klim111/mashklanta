@@ -20,6 +20,7 @@ import type { ScenarioSelection } from './signing/ScenarioPicker';
 import { DocumentsChecklist } from './signing/DocumentsChecklist';
 import { FinalTermsPanel } from './signing/FinalTermsPanel';
 import { BankFileScreen } from './signing/BankFileScreen';
+import { CollateralScreen } from './signing/CollateralScreen';
 
 /** פער שאינו נובע מעיגול — סימן שמשהו בחוזה שונה ממה שסוכם */
 const MONTHLY_TOLERANCE = 5;
@@ -36,7 +37,7 @@ const reveal = {
  * שלב 5 — ההכנה לחתימה על תיק המשכנתא והחתימה עצמה.
  *
  * בכניסה לשלב מוצג עמוד ההסבר — מסך אחד, כמו לפני כל שלב — ומיד "התחילו את
- * השלב". אחריו האישור לבנק לפתיחת תיק המשכנתא: המסמכים העדכניים שהבנק צריך
+ * השלב". אחריו טופס הבטחונות מהבנק ("טופס טיולים") והעברתו לעורך הדין, ואז האישור לבנק לפתיחת תיק המשכנתא: המסמכים העדכניים שהבנק צריך
  * ורשימת הבטחונות לעורך הדין. אחר כך הלקוח בוחר את תרחיש הרכישה שלו — וממנו נגזרת רשימת המסמכים
  * שהבנק ידרוש. לצידה מוצג התמהיל המתומחר מהמכרז, שמולו מאמתים את הצעת המשכנתא
  * הסופית של הבנק.
@@ -154,7 +155,16 @@ export function SigningStage({
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' ? (
           <motion.div key="overview" {...reveal}>
-            <StageIntro stage="SIGNING" flow={flow} onStart={() => go('bank-file')} />
+            <StageIntro stage="SIGNING" flow={flow} onStart={() => go('collateral')} />
+          </motion.div>
+        ) : screen === 'collateral' ? (
+          <motion.div key="collateral" {...reveal}>
+            <CollateralScreen
+              data={data}
+              planId={planId}
+              onChange={onChange}
+              onContinue={() => go('bank-file')}
+            />
           </motion.div>
         ) : screen === 'bank-file' ? (
           <motion.div key="bank-file" {...reveal}>
@@ -412,6 +422,7 @@ function ScreenRail({
 }) {
   const items: Array<{ id: SigningScreen; label: string }> = [
     { id: 'overview', label: 'על השלב' },
+    { id: 'collateral', label: 'טופס הבטחונות מהבנק' },
     { id: 'bank-file', label: 'אישור לבנק לפתיחת תיק' },
     { id: 'documents', label: dealLabel ? `המסמכים · ${dealLabel}` : 'מסמכי התיק' },
     { id: 'verify', label: 'אימות ההצעה והחתימה' },

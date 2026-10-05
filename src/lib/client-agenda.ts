@@ -20,12 +20,14 @@ import {
   planStageNumber,
   preApprovalDocuments,
   signingDocumentsProgress,
+  usesPaymentSchedule,
 } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import type { ClientTaskView } from './client-tasks';
 import { AUTHORIZATION_TASK_KEY, authorizationLettersHref } from './authorization-letters';
 import type { EquityCalendarExpense } from './equity-planning';
 import { formatDay, rateAlertDates, rateAlertStep, rateValidity } from './rate-validity';
+import { paymentScheduleHref, scheduleDefined } from './payment-schedule';
 
 /** קידומת המזהה של משימה שהלקוח הוסיף לעצמו — כך הדאשבורד יודע שאפשר לסמן ולמחוק אותה */
 export const CLIENT_TASK_PREFIX = 'client-task:';
@@ -497,6 +499,8 @@ export interface PlanRecommendation {
   title: string;
   hint: string;
   tone: 'info' | 'warning';
+  /** קישור מתחת להערה — למשל לכלי תכנון פעימות התשלום */
+  link?: { href: string; label: string };
 }
 
 /** קרוב לתקרה — בטווח של חמש נקודות אחוז ממנה, או מעליה */
@@ -517,6 +521,17 @@ export function planRecommendations(plan: AgendaPlan, now = new Date()): PlanRec
       title: 'פנו לעורך דין מקרקעין לליווי העסקה',
       hint: 'עורך הדין בודק את הזכויות בנכס, מנסח את החוזה ומלווה את הרישום מול הבנק.',
       tone: 'info',
+      // במשכנתא חדשה: פעימות התשלום בחוזה נקבעות יחד עם עורך הדין
+      ...(usesPaymentSchedule(plan.data)
+        ? {
+            link: {
+              href: paymentScheduleHref(plan.id),
+              label: scheduleDefined(plan.data.SIGNING.paymentSchedule)
+                ? 'פעימות התשלום שהגדרתם'
+                : 'לכלי תכנון פעימות התשלום',
+            },
+          }
+        : {}),
     },
   ];
 
