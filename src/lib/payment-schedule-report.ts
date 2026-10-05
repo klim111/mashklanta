@@ -63,7 +63,7 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
   const equityWidth = price ? (equity / price) * 100 : 0;
 
   const row = (item: PaymentInstallment, index: number) => `
-        <tr>
+        <tr class="item">
           <td class="pay">${installmentLabel(index)}</td>
           <td class="to">${escapeHtml(item.payee || '—')}</td>
           <td class="when">${item.dueDate ? `<b>${formatDueDate(item.dueDate)}.</b> ` : ''}${escapeHtml(item.condition || '')}</td>
@@ -169,6 +169,25 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
   .note { background: var(--note-bg); color: var(--note-fg); border-color: var(--note-line); }
   .bad { background: var(--bad-bg); color: var(--bad-fg); border-color: var(--bad-line); }
   footer { color: var(--muted); font-size: 13px; }
+  /* בטלפון כל פעימה היא כרטיס: מספר הפעימה והסכום בשורה אחת, ומתחתם למי ובאיזה שלב — בלי גלילה לצדדים */
+  @media (max-width: 640px) {
+    .scroll { overflow: visible; }
+    table { min-width: 0; }
+    thead { display: none; }
+    table, tbody, tfoot, tr, td, th { display: block; }
+    tr.item { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "pay amount" "to to" "when when"; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    tbody.equity tr.item { border-inline-start: 4px solid var(--equity); }
+    tbody.mortgage tr.item { border-inline-start: 4px solid var(--mortgage); }
+    tr.item td { padding: 0; border: 0; }
+    tr.item .pay { grid-area: pay; }
+    tr.item .amount { grid-area: amount; }
+    tr.item .to { grid-area: to; }
+    tr.item .when { grid-area: when; color: var(--muted); }
+    tr.subtotal, tfoot tr { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    tr.subtotal td, tfoot td { border: 0; }
+    tr.subtotal { border-bottom: 2px solid var(--line); }
+    tfoot tr { background: var(--total-bg); }
+  }
   @media print { body { background: #fff; padding: 0; } .sheet { border: 0; } }
 </style>
 </head>
