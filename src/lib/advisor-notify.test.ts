@@ -43,3 +43,21 @@ describe('page labels', () => {
     expect(cleanSourcePath(5)).toBeNull();
   });
 });
+
+describe('contact phone', () => {
+  it('keeps a usable phone and rejects short ones', async () => {
+    const { cleanPhone } = await import('./contact-roles');
+    expect(cleanPhone('050-123 4567')).toBe('050-123 4567');
+    expect(cleanPhone('+972 50 1234567')).toBe('+972 50 1234567');
+    expect(cleanPhone('1234')).toBeNull();
+    expect(cleanPhone(undefined)).toBeNull();
+  });
+
+  it('lists every role once, the advisor first', async () => {
+    const { CONTACT_ROLES } = await import('./contact-roles');
+    const roles = CONTACT_ROLES.map((item) => item.role);
+    expect(roles[0]).toBe('ADVISOR');
+    expect(new Set(roles).size).toBe(roles.length);
+    expect(roles).toEqual(expect.arrayContaining(['LAWYER', 'APPRAISER', 'BANKER', 'INSURANCE']));
+  });
+});

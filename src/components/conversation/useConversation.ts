@@ -1,5 +1,6 @@
 'use client';
 
+import { CONTACTS_CHANGED_EVENT, notifyContactsChanged } from '@/components/contacts/useContacts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdvisorInboxRow,
@@ -150,6 +151,13 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
   }, [clientUserId]);
 
   usePolling(() => void refresh(), 20000, enabled);
+  // איש קשר שנוסף בטאב "אנשי הקשר" או בשלב — מופיע מיד כנמען
+  useEffect(() => {
+    if (!enabled) return;
+    const reload = () => void refresh();
+    window.addEventListener(CONTACTS_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(CONTACTS_CHANGED_EVENT, reload);
+  }, [enabled, refresh]);
 
   const send = useCallback(
     async (draft: EmailDraft): Promise<boolean> => {
@@ -287,6 +295,8 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
         if (!response.ok) return await readError(response, 'הנמען לא נוסף');
         const contact: ConversationContact = await response.json();
         setContacts((current) => [...current, contact]);
+        // הנמען הוא גם איש קשר — הטאב "אנשי הקשר" מתעדכן
+        notifyContactsChanged();
         return null;
       } catch {
         return 'הנמען לא נוסף. בדקו את החיבור ונסו שוב';
@@ -304,6 +314,7 @@ export function useConversationEmails(clientUserId: string | null | undefined, e
         );
         if (!response.ok) return await readError(response, 'הנמען לא הוסר');
         setContacts((current) => current.filter((item) => item.recipientId !== recipientId));
+        notifyContactsChanged();
         return null;
       } catch {
         return 'הנמען לא הוסר. בדקו את החיבור ונסו שוב';

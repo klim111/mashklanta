@@ -432,7 +432,8 @@ export async function conversationContacts(clientUserId: string): Promise<Conver
   );
   const contacts: ConversationContact[] = [...bankers];
   for (const row of custom) {
-    if (contacts.some((item) => item.email === row.email)) continue;
+    // איש קשר עם טלפון בלבד (מטאב אנשי הקשר) אינו נמען למייל
+    if (!row.email || contacts.some((item) => item.email === row.email)) continue;
     const role = isRecipientRole(row.role) ? row.role : 'OTHER';
     contacts.push({
       kind: role === 'BANKER' ? 'BANKER' : 'CONTACT',
@@ -454,6 +455,17 @@ export async function conversationContacts(clientUserId: string): Promise<Conver
   return contacts;
 }
 
+/** כתובת בדומיין של משכלנתא — הכתובת האישית או כתובת המערכת, ולא נמען */
+export function isOwnAddress(email: string): boolean {
+  const host = email.slice(email.lastIndexOf('@') + 1);
+  return inboundDomains().includes(host) || host === senderAddress(process.env.EMAIL_FROM).split('@')[1];
+}
+
+/** היועץ המלווה של הלקוח (או היועץ של הפלטפורמה) — לשימוש מחוץ לשיחה */
+export async function conversationAdvisor(clientUserId: string) {
+  return advisorOf(clientUserId);
+}
+
 export type RecipientResult = { ok: true; contact: ConversationContact } | { ok: false; status: number; error: string };
 
 /**
@@ -470,10 +482,7 @@ export async function addConversationRecipient(
   if (!isValidEmail(email)) return { ok: false, status: 400, error: 'כתובת המייל אינה תקינה' };
   if (!name) return { ok: false, status: 400, error: 'נדרש שם' };
   if (!isRecipientRole(input.role)) return { ok: false, status: 400, error: 'בחרו תפקיד' };
-  const host = email.slice(email.lastIndexOf('@') + 1);
-  if (inboundDomains().includes(host) || host === senderAddress(process.env.EMAIL_FROM).split('@')[1]) {
-    return { ok: false, status: 400, error: 'זו כתובת של משכלנתא, לא של נמען' };
-  }
+  if (isOwnAddress(email)) return { ok: false, status: 400, error: 'זו כתובת של משכלנתא, לא של נמען' };
 
   const existing = await conversationContacts(access.clientUserId);
   if (existing.some((item) => item.email === email)) return { ok: false, status: 409, error: 'הנמען כבר ברשימה' };

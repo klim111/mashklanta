@@ -812,6 +812,10 @@ model AdvisorLead {
    * העמוד בפלטפורמה שממנו נשלחה הפנייה
    */
   sourcePath  String?
+  /**
+   * השלב בתהליך הפעיל של הלקוח כשהפנייה נשלחה (PlanStage)
+   */
+  stage       String?
 
   status AdvisorLeadStatus @default(OPEN)
 
@@ -1425,7 +1429,11 @@ model ConversationRecipient {
   id           String   @id @default(cuid())
   clientUserId String
   clientUser   User     @relation("ConversationRecipientClient", fields: [clientUserId], references: [id], onDelete: Cascade)
-  email        String
+  /**
+   * ריק כשאיש הקשר נשמר עם טלפון בלבד — ואז הוא לא מופיע כנמען במיילים
+   */
+  email        String?
+  phone        String?
   name         String
   /**
    * מפתח מ-RECIPIENT_ROLES: BANKER, ADVISOR, LAWYER, APPRAISER…

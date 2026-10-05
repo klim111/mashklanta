@@ -40,6 +40,7 @@ export const DASHBOARD_SECTIONS = [
   'agenda',
   'expenses',
   'documents',
+  'contacts',
   'rate-requests',
   'tools',
   'settings',
