@@ -29,8 +29,8 @@ import {
 } from 'lucide-react';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { formatDate, formatTime, relativeDayLabel } from '@/lib/advisor-crm';
-import { planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
-import type { AgendaTarget, DashboardSection } from '@/lib/client-agenda';
+import { groupTasks, planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
+import type { AgendaTarget, CalendarEvent, DashboardSection } from '@/lib/client-agenda';
 import { useStartPlan } from '@/components/plan/StartCard';
 import { MortgageEntry } from '@/components/service-flow/MortgageEntry';
 import { RateValidityDialog } from '@/components/plan/RateValidity';
@@ -39,12 +39,16 @@ import type { RateValidityRow } from '@/lib/rate-validity';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
-import { EquityOverviewCard } from './EquityOverviewCard';
 import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
 import { TaskGroupsList } from './TaskGroups';
 import { PlanRecommendations } from './PlanRecommendations';
 import { DashCard } from './ui';
+import { DashboardWorkspace } from './DashboardWorkspace';
+import type { WorkspaceId } from './DashboardWorkspace';
+import { SnapshotFloat } from './SnapshotFloat';
+import type { SnapshotItem } from './SnapshotFloat';
+import { useCashFlow } from '@/components/cash-flow/useCashFlow';
 import type { ClientDashboardData } from './useClientDashboard';
 
 /** "היום" / "מחר", ואחרת יום.חודש — קצר מספיק לתיבת המועד */
@@ -66,8 +70,11 @@ export function OverviewSection({
   detailPlanId,
   onDetailPlan,
   onNavigate,
+  workspace = null,
 }: {
   data: ClientDashboardData;
+  /** אזור שנפתח לרוחב שלוש העמודות כבר בכניסה — למשל `#cash-flow` */
+  workspace?: WorkspaceId | null;
   /** התהליך שהתמהיל שלו נפתח בשורת הפירוט — נבחר גם מאזור המשכנתאות */
   detailPlanId: string | null;
   onDetailPlan: (planId: string | null) => void;
@@ -90,12 +97,18 @@ export function OverviewSection({
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
 
   const active = plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS');
   const completed = plansState.plans.filter((plan) => plan.status === 'COMPLETED');
   const summaries = active.map((plan) => summarizePlan(plan, advisorStages[plan.id]));
-  const upcoming = upcomingEvents(events, new Date(), 3);
-  const next = upcoming[0] ?? null;
+  const upcoming = upcomingEvents(events, new Date(), 6);
+  /** הפגישה הקרובה — ואם אין פגישה, המועד הקרוב ביומן */
+  const nextMeeting = upcoming.find((event) => event.kind === 'meeting') ?? upcoming[0] ?? null;
+  /** כלי מצב ההון והתזרים — נטען כאן כדי שהתקציר בעמודה והכלי הפתוח יחלקו את אותם נתונים */
+  const cashFlow = useCashFlow(active[0] ?? null, plansState.ready);
   const urgent = tasks.filter((task) => task.tone === 'urgent').length;
   const lead = summaries[0] ?? null;
 
@@ -135,104 +148,151 @@ export function OverviewSection({
       )
     : [];
 
-  const kpis = (
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-      <KpiTile
-        icon={<Compass className="h-5 w-5" />}
-        tone="blue"
-        label="משכנתאות בתהליך"
-        value={`${active.length}`}
-        hint={active.length === 0 ? 'בחרו למטה מה תרצו לעשות' : 'המצב הנוכחי למטה'}
-        onClick={scrollToPlans}
-      />
-      <KpiTile
-        icon={<ListChecks className="h-5 w-5" />}
-        tone="violet"
-        label="השלב הנוכחי"
-        value={lead ? `שלב ${lead.stageNumber}` : '—'}
-        hint={lead ? journeyStageFor(lead.currentStage).shortTitle : 'מתחילים ב״מה תרצו לעשות?״'}
-        onClick={() => (lead ? window.location.assign(lead.href) : scrollToPlans())}
-      />
-      <KpiTile
-        icon={<CalendarDays className="h-5 w-5" />}
-        tone={next && !next.confirmed && next.kind === 'meeting' ? 'amber' : 'emerald'}
-        label="הפגישה הקרובה"
-        value={next ? `${shortDayLabel(next.at)} ${formatTime(next.at)}` : 'אין'}
-        hint={next ? next.title : 'לא נקבעה פגישה'}
-        onClick={() => onNavigate('agenda')}
-      />
-      <KpiTile
-        icon={<ListChecks className="h-5 w-5" />}
-        tone={urgent > 0 ? 'rose' : 'slate'}
-        label="משימות פתוחות"
-        value={`${tasks.length}`}
-        hint={urgent > 0 ? `${urgent} דורשות טיפול מיידי` : 'הכול מעודכן'}
-        onClick={() => onNavigate('agenda')}
-      />
-    </div>
-  );
+  /** תמונת המצב — ארבעת המספרים שהיו בראש המסך, בחלונית הצפה */
+  const snapshot: SnapshotItem[] = [
+    {
+      id: 'plans',
+      icon: <Compass className="h-4 w-4" />,
+      tone: 'blue',
+      label: 'משכנתאות בתהליך',
+      value: `${active.length}`,
+      hint: active.length === 0 ? 'בחרו מה תרצו לעשות' : 'המצב הנוכחי בכרטיס המשכנתא',
+      onClick: scrollToPlans,
+    },
+    {
+      id: 'stage',
+      icon: <ListChecks className="h-4 w-4" />,
+      tone: 'violet',
+      label: 'השלב הנוכחי',
+      value: lead ? `שלב ${lead.stageNumber}` : '—',
+      hint: lead ? journeyStageFor(lead.currentStage).shortTitle : 'מתחילים ב״מה תרצו לעשות?״',
+      onClick: () => (lead ? window.location.assign(lead.href) : scrollToPlans()),
+    },
+    {
+      id: 'meeting',
+      icon: <CalendarDays className="h-4 w-4" />,
+      tone: nextMeeting && !nextMeeting.confirmed ? 'amber' : 'emerald',
+      label: 'הפגישה הקרובה',
+      value: nextMeeting ? `${shortDayLabel(nextMeeting.at)} ${formatTime(nextMeeting.at)}` : 'אין',
+      hint: nextMeeting ? nextMeeting.title : 'לא נקבעה פגישה',
+      onClick: () => onNavigate('agenda'),
+    },
+    {
+      id: 'tasks',
+      icon: <ListChecks className="h-4 w-4" />,
+      tone: urgent > 0 ? 'rose' : 'slate',
+      label: 'משימות פתוחות',
+      value: `${tasks.length}`,
+      hint: urgent > 0 ? `${urgent} דורשות טיפול מיידי` : 'הכול מעודכן',
+      onClick: () => onNavigate('agenda'),
+    },
+  ];
 
+  /*
+    לוח השנה ומתחתיו שורה אחת — הפגישה הקרובה. שאר המועדים נפתחים ב"ראה עוד",
+    כדי שהכרטיס יישאר בגובה של כרטיס המשכנתא שלידו.
+  */
+  const restOfAgenda = upcoming.filter((event) => event.id !== nextMeeting?.id);
   const calendarCard = (
     <DashCard
       demoId="dash-calendar-card"
       title="לוח השנה שלי"
       icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
       action={<GoLink onClick={() => onNavigate('agenda')}>ללוח המלא</GoLink>}
+      className="h-full"
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <MiniCalendar events={events} onSelect={(day) => onNavigate('agenda', day)} />
-        <div className="space-y-2 border-t border-slate-100 pt-3">
-          <p className="text-center text-sm font-black text-slate-500">הקרוב ביומן</p>
-          {upcoming.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-center text-sm text-slate-500">
-              אין פגישות או מועדים קרובים
-            </p>
+        <div className="border-t border-slate-100 pt-2.5">
+          <p className="mb-1.5 text-sm font-black text-slate-500">הפגישה הקרובה</p>
+          {nextMeeting ? (
+            <EventRow event={nextMeeting} onOpen={() => go(nextMeeting.target)} />
           ) : (
-            upcoming.map((event) => (
-              <button
-                key={event.id}
-                type="button"
-                onClick={() => go(event.target)}
-                className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right transition-colors hover:border-blue-300"
-              >
-                <span className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 text-slate-800">
-                  <span className="text-2xs font-bold leading-none text-slate-500">
-                    {shortDayLabel(event.at)}
-                  </span>
-                  <span className="mt-0.5 text-sm font-black leading-none">{formatTime(event.at)}</span>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-info font-black text-slate-900">{event.title}</span>
-                  <span className="block truncate text-sm text-slate-500">{event.subtitle}</span>
-                </span>
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${eventTone(event).dot}`} />
-              </button>
-            ))
+            <p className="rounded-xl bg-slate-50 px-3 py-2 text-center text-sm text-slate-500">לא נקבעה פגישה</p>
+          )}
+          {agendaOpen &&
+            restOfAgenda.map((event) => (
+              <div key={event.id} className="mt-1.5">
+                <EventRow event={event} onOpen={() => go(event.target)} />
+              </div>
+            ))}
+          {restOfAgenda.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAgendaOpen((open) => !open)}
+              className="mt-1.5 text-sm font-black text-blue-600 hover:underline"
+            >
+              {agendaOpen ? 'הצג פחות' : restOfAgenda.length === 1 ? 'ראה עוד מועד' : `ראה עוד ${restOfAgenda.length} מועדים`}
+            </button>
           )}
         </div>
       </div>
     </DashCard>
   );
 
-  const tasksCard = (
-    <DashCard
-      demoId="dash-tasks-card"
-      title="המשימות שלי"
-      icon={<ListChecks className="h-5 w-5 text-blue-600" />}
-      action={<GoLink onClick={() => onNavigate('agenda')}>לכל המשימות</GoLink>}
+  /** המשימות: שורה אחת — מה שהכי דוחק — והשאר ב"ראה עוד" */
+  const taskGroups = groupTasks(tasks);
+  const nextTask = taskGroups.overdue[0] ?? taskGroups.scheduled[0] ?? taskGroups.undated[0] ?? null;
+  const tasksStrip = (
+    <section
+      data-demo-id="dash-tasks-card"
+      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
     >
-      <TaskGroupsList
-        tasks={tasks}
-        compact
-        onOpen={(task) => go(task.target)}
-        onSchedule={scheduleTask}
-      />
-    </DashCard>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex items-center gap-2 text-base font-black text-slate-900">
+          <ListChecks className="h-5 w-5 text-blue-600" />
+          המשימות שלי
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-black text-slate-600">{tasks.length}</span>
+          {urgent > 0 && (
+            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-sm font-black text-rose-700">{urgent} דחופות</span>
+          )}
+        </span>
+        {nextTask ? (
+          <button
+            type="button"
+            onClick={() => go(nextTask.target)}
+            className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border px-3 py-2 text-right transition-colors hover:border-blue-300 ${
+              taskGroups.overdue[0] === nextTask || nextTask.tone === 'urgent'
+                ? 'border-rose-200 bg-rose-50'
+                : 'border-slate-200 bg-slate-50'
+            }`}
+          >
+            <span className="min-w-0 flex-1 truncate !text-right text-info font-black text-slate-900">{nextTask.title}</span>
+            {nextTask.due && (
+              <span className="shrink-0 text-sm font-bold text-slate-500">
+                {shortDayLabel(nextTask.due)} {formatTime(nextTask.due)}
+              </span>
+            )}
+            <ArrowLeft className="h-4 w-4 shrink-0 text-slate-400" />
+          </button>
+        ) : (
+          <span className="flex-1 text-sm font-semibold text-emerald-700">אין משימות פתוחות</span>
+        )}
+        {tasks.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setTasksOpen((open) => !open)}
+            className="shrink-0 text-sm font-black text-blue-600 hover:underline"
+          >
+            {tasksOpen ? 'הצג פחות' : tasks.length === 2 ? 'ראה עוד משימה' : `ראה עוד ${tasks.length - 1} משימות`}
+          </button>
+        )}
+      </div>
+      {tasksOpen && (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <TaskGroupsList
+            tasks={tasks}
+            compact
+            columns={2}
+            onOpen={(task) => go(task.target)}
+            onSchedule={scheduleTask}
+          />
+        </div>
+      )}
+    </section>
   );
-
   const quickActions = (
-    <DashCard demoId="dash-quick-actions" title="פעולות מהירות" icon={<Calculator className="h-5 w-5 text-blue-600" />}>
-      <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4" data-demo-id="dash-quick-actions">
         <QuickAction
           href="/principal-approval"
           icon={<FileText className="h-4 w-4" />}
@@ -266,8 +326,7 @@ export function OverviewSection({
           icon={<UserRound className="h-4 w-4" />}
           label="פרטי הלווים והחשבון"
         />
-      </div>
-    </DashCard>
+    </div>
   );
 
   /** שורת הפירוט: התמהיל של התהליך שנבחר, דוחפת את שאר השורות מטה */
@@ -308,14 +367,13 @@ export function OverviewSection({
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      {kpis}
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
+      {/* המשכנתא ולוח השנה — למעלה, באותו גובה */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DashCard
           demoId="dash-mortgages-card"
           title="המשכנתא שלי"
           icon={<Compass className="h-5 w-5 text-blue-600" />}
-          className="scroll-mt-24"
+          className="h-full scroll-mt-24"
           id="my-mortgages"
         >
           {/*
@@ -329,7 +387,7 @@ export function OverviewSection({
                 <li key={notice.id}>
                   <Link
                     href={notice.href}
-                    className={`flex flex-wrap items-center gap-2 rounded-2xl border-2 px-4 py-3 text-right transition-colors ${
+                    className={`flex flex-wrap items-center gap-2 rounded-2xl border-2 px-4 py-2.5 text-right transition-colors ${
                       notice.done
                         ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-400'
                         : 'border-violet-200 bg-violet-50 hover:border-violet-400'
@@ -368,8 +426,8 @@ export function OverviewSection({
             */
             <MortgageEntry variant="hero" onStart={startPlan} busy={busy} hasPlans={completed.length > 0} />
           ) : (
-            <div className="max-h-[430px] space-y-3 overflow-y-auto pl-1">
-              {summaries.map((summary, index) => (
+            <div className="space-y-3">
+              {(plansOpen ? summaries : summaries.slice(0, 1)).map((summary, index) => (
                 <PlanStatusRow
                   key={summary.id}
                   summary={summary}
@@ -378,17 +436,27 @@ export function OverviewSection({
                   onDelete={() => setDeletePlanId(summary.id)}
                 />
               ))}
+              {summaries.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setPlansOpen((open) => !open)}
+                  className="text-sm font-black text-blue-600 hover:underline"
+                >
+                  {plansOpen ? 'הצג פחות' : summaries.length === 2 ? 'ראה עוד תהליך' : `ראה עוד ${summaries.length - 1} תהליכים`}
+                </button>
+              )}
             </div>
           )}
 
-          {/* משכנתאות שהסתיימו — רק כשיש כאלה */}
+          {/* משכנתאות שהסתיימו — שורה מקופלת אחת */}
           {completed.length > 0 && (
-            <div className="mt-4 border-t border-slate-100 pt-4">
-              <p className="mb-2 flex items-center gap-1.5 text-sm font-black text-slate-500">
+            <details className="group mt-3 border-t border-slate-100 pt-3">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-black text-slate-500">
                 <Check className="h-4 w-4 text-emerald-600" />
                 משכנתאות שלקחתי ({completed.length})
-              </p>
-              <div className="space-y-2">
+                <span className="text-blue-600 group-open:hidden">· ראה עוד</span>
+              </summary>
+              <div className="mt-2 space-y-2">
                 {completed.map((plan) => (
                   <Link
                     key={plan.id}
@@ -406,13 +474,12 @@ export function OverviewSection({
                   </Link>
                 ))}
               </div>
-            </div>
+            </details>
           )}
 
           {/*
             ללקוח שכבר פתח משכנתא, מה שחשוב מתחת לשורה שלה הוא מה כדאי לעשות
-            עכשיו — ולא כפתור לפתיחת משכנתא נוספת. פתיחת תהליך נוסף נשארת
-            זמינה משאלת הפתיחה שבתפריט הצד ומאזור המשכנתאות.
+            עכשיו — הערה אחת, והשאר ב"ראה עוד".
           */}
           {summaries.length === 0 ? (
             <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
@@ -430,6 +497,7 @@ export function OverviewSection({
               plans={active}
               states={taskStates.states}
               onDone={(key, done) => taskStates.setDone(key, done)}
+              limit={1}
             />
           )}
         </DashCard>
@@ -439,17 +507,16 @@ export function OverviewSection({
 
       {detailRow}
 
-      {/*
-        העמודה הרחבה היא עמודת המשכנתא — ומתחתיה הפעולות המהירות; העמודה
-        הצרה היא לוח השנה — ומתחתיו המשימות, שהמועד שלהן נקבע בלוח.
-      */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
-        {quickActions}
-        {tasksCard}
-      </div>
+      {tasksStrip}
 
-      {/* תוצרי כלי תכנון ההוצאות — זמינים כאן ברגע שהתכנון נשמר בחשבון */}
-      <EquityOverviewCard plan={equityState.plan} onOpen={() => onNavigate('expenses')} />
+      {/* שלוש העמודות: פעולות מהירות, הון עצמי, מצב הון ותזרים */}
+      <DashboardWorkspace
+        actions={quickActions}
+        actionsCount={8}
+        equityPlan={equityState.plan}
+        cashFlow={cashFlow}
+        initial={workspace}
+      />
 
       <AdvisorCta variant="row" />
       <MortgageEntry
@@ -471,7 +538,29 @@ export function OverviewSection({
           onDelete={() => plansState.remove(planToDelete.id)}
         />
       )}
+      <SnapshotFloat items={snapshot} alert={urgent > 0} />
     </div>
+  );
+}
+
+/** שורה אחת ביומן: יום ושעה, כותרת ונקודת הצבע של סוג המועד */
+function EventRow({ event, onOpen }: { event: CalendarEvent; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right transition-colors hover:border-blue-300"
+    >
+      <span className="flex h-10 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 text-slate-800">
+        <span className="text-2xs font-bold leading-none text-slate-500">{shortDayLabel(event.at)}</span>
+        <span className="mt-0.5 text-sm font-black leading-none">{formatTime(event.at)}</span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-info font-black text-slate-900">{event.title}</span>
+        <span className="block truncate text-sm text-slate-500">{event.subtitle}</span>
+      </span>
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${eventTone(event).dot}`} />
+    </button>
   );
 }
 
@@ -484,48 +573,6 @@ function GoLink({ onClick, children }: { onClick: () => void; children: ReactNod
     >
       {children}
       <ArrowLeft className="h-3.5 w-3.5" />
-    </button>
-  );
-}
-
-const KPI_TONES = {
-  blue: 'bg-blue-50 text-blue-600',
-  violet: 'bg-violet-50 text-violet-600',
-  emerald: 'bg-emerald-50 text-emerald-600',
-  amber: 'bg-amber-50 text-amber-600',
-  rose: 'bg-rose-50 text-rose-600',
-  slate: 'bg-slate-100 text-slate-600',
-} as const;
-
-function KpiTile({
-  icon,
-  tone,
-  label,
-  value,
-  hint,
-  onClick,
-}: {
-  icon: ReactNode;
-  tone: keyof typeof KPI_TONES;
-  label: string;
-  value: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
-    >
-      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${KPI_TONES[tone]}`}>
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-bold text-slate-500">{label}</span>
-        <span className="block truncate text-2xl font-black leading-tight text-slate-900">{value}</span>
-        <span className="block truncate text-sm text-slate-500">{hint}</span>
-      </span>
     </button>
   );
 }
@@ -554,7 +601,7 @@ function PlanStatusRow({
   const progress = Math.round((summary.completedStages / summary.stages.length) * 100);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-2 text-lg font-black text-slate-900">
           <MapPin className="h-5 w-5 shrink-0 text-slate-400" />
@@ -567,7 +614,7 @@ function PlanStatusRow({
       <p className="mt-0.5 text-sm text-slate-500">{planCreatedLabel(summary.createdAt)}</p>
 
       <ol
-        className="mt-4 grid gap-1"
+        className="mt-3 grid gap-1"
         style={{ gridTemplateColumns: `repeat(${summary.stageIds.length}, minmax(0, 1fr))` }}
       >
         {summary.stageIds.map((stageId, index) => {
@@ -595,7 +642,7 @@ function PlanStatusRow({
         })}
       </ol>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
         <div className="h-2.5 min-w-[6rem] flex-1 overflow-hidden rounded-full bg-slate-200">
           <div
             className={`h-full rounded-full bg-gradient-to-l ${journey.gradient}`}
@@ -606,7 +653,7 @@ function PlanStatusRow({
         <button
           type="button"
           onClick={onPeek}
-          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
+          className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-3.5 py-2 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
         >
           <Eye className="h-4 w-4" />
           להציץ בפרטים
@@ -615,7 +662,7 @@ function PlanStatusRow({
           <button
             type="button"
             onClick={() => setRatesOpen(true)}
-            className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-4 py-2.5 text-button font-black transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3.5 py-2 text-button font-black transition-colors ${
               leadRate.daysLeft < 0
                 ? 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
                 : leadRate.daysLeft <= 5
@@ -634,7 +681,7 @@ function PlanStatusRow({
         )}
         <Link
           href={summary.href}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-info font-black text-white ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-info font-black text-white ${
             summary.advisorStage ? 'bg-violet-600 hover:bg-violet-700' : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
@@ -646,7 +693,7 @@ function PlanStatusRow({
           onClick={onDelete}
           title="מחיקת התהליך"
           aria-label="מחיקת התהליך"
-          className="inline-flex items-center justify-center rounded-xl border-2 border-slate-200 bg-white p-2.5 text-slate-400 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
+          className="inline-flex items-center justify-center rounded-xl border-2 border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600"
         >
           <Trash2 className="h-4 w-4" />
         </button>
