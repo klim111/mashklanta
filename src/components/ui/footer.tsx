@@ -10,7 +10,7 @@ export default function Footer() {
   return (
     <footer className="bg-slate-900 text-white">
       <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Company Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
@@ -80,7 +80,7 @@ export default function Footer() {
                 aria-label={`אימייל: ${SITE_CONTACT.email}`}
               >
                 <Mail className="w-4 h-4 shrink-0 text-blue-500" aria-hidden="true" />
-                <span dir="ltr" className="break-all">{SITE_CONTACT.email}</span>
+                <span dir="ltr" className="whitespace-nowrap">{SITE_CONTACT.email}</span>
               </a>
             </div>
           </div>

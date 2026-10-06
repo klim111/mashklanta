@@ -328,6 +328,8 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-app);
   font-weight: 700;
   direction: rtl;
+  /* שורות מאוזנות: כותרת שנשברת במסך צר לא משאירה מילה או מקף יתומים בשורה האחרונה */
+  text-wrap: balance;
   color: var(--financial-gray-900);
   line-height: 1.2;
   margin-bottom: 0.5em;

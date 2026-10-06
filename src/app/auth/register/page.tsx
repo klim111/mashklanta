@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home, Users } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { PasswordField } from '@/components/auth/PasswordField';
@@ -25,7 +25,6 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     name: '',
-    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -37,7 +36,6 @@ function RegisterForm() {
   // מה שהוקלד נשמר כבר עכשיו, כדי שהיועץ יראה גם הרשמה שלא הושלמה (בלי הסיסמה)
   const draft = useSignupDraft('register', {
     name: formData.name,
-    username: formData.username,
     email: formData.email,
   });
   const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
@@ -57,10 +55,6 @@ function RegisterForm() {
   const validateForm = () => {
     if (formData.name.length < 2) {
       setError('השם חייב להכיל לפחות 2 תווים');
-      return false;
-    }
-    if (formData.username.trim().length < 3) {
-      setError('שם המשתמש חייב להכיל לפחות 3 תווים');
       return false;
     }
     if (!formData.email.includes('@')) {
@@ -102,7 +96,6 @@ function RegisterForm() {
         },
         body: JSON.stringify({
           name: formData.name,
-          username: formData.username,
           email: formData.email,
           password: formData.password,
           callbackUrl,
@@ -140,7 +133,7 @@ function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-start justify-center px-4 py-10 sm:items-center sm:p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -210,27 +203,6 @@ function RegisterForm() {
                   placeholder="ישראל ישראלי"
                 />
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
-                שם משתמש
-              </label>
-              <div className="relative">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  required
-                  minLength={3}
-                  className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="למשל israel92"
-                />
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
             </div>
 
@@ -381,7 +353,7 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-start justify-center px-4 py-10 sm:items-center sm:p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>

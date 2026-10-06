@@ -67,15 +67,6 @@ export function maskEmail(email: string): string {
   return `${visible}${'•'.repeat(Math.max(3, local.length - visible.length))}@${domain}`;
 }
 
-/** שם משתמש ראשוני מתוך המייל, להרשמות שלא בחרו אחד (גוגל) */
-export function usernameFromEmail(email: string): string {
-  return email
-    .split('@')[0]
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]/g, '')
-    .slice(0, 24);
-}
-
 export type SendDecision = 'send' | 'cooldown' | 'limit';
 
 /** האם מותר לשלוח עוד מייל אימות, לפי ההיסטוריה של ההרשמה הממתינה */
@@ -102,7 +93,6 @@ export function verificationUrl(token: string, requestOrigin?: string | null): s
 async function deliverVerification(
   email: string,
   name: string | null,
-  username: string | null,
   token: string,
   requestOrigin?: string | null
 ) {
@@ -110,7 +100,6 @@ async function deliverVerification(
   const template = emailTemplates.verificationEmail({
     name: name ?? '',
     email,
-    username,
     verificationUrl: url,
     ttlMinutes: VERIFICATION_TTL_MINUTES,
   });
@@ -152,7 +141,6 @@ export async function usernameTaken(username: string, email: string): Promise<bo
 type PendingInput = {
   email: string;
   name?: string | null;
-  username?: string | null;
   password?: string | null;
   image?: string | null;
   provider?: 'google' | null;
@@ -199,7 +187,8 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
   const data = {
     email,
     name: input.name ?? null,
-    username: input.username ?? null,
+    // אין יותר שם משתמש בהרשמה; מנקה גם בחירה מהטופס הישן לאותו מייל
+    username: null,
     hashedPassword,
     image: input.image ?? null,
     provider: input.provider ?? null,
@@ -216,7 +205,7 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
 
   await prisma.pendingRegistration.upsert({ where: { email }, create: data, update: data });
 
-  const sent = await deliverVerification(email, data.name, data.username, token, input.requestOrigin);
+  const sent = await deliverVerification(email, data.name, token, input.requestOrigin);
   return sent ? { status: 'sent' } : { status: 'email-failed' };
 }
 
@@ -254,7 +243,7 @@ export async function resendVerification(
     },
   });
 
-  const sent = await deliverVerification(pending.email, pending.name, pending.username, token, requestOrigin);
+  const sent = await deliverVerification(pending.email, pending.name, token, requestOrigin);
   return sent ? { status: 'sent' } : { status: 'email-failed' };
 }
 
@@ -263,7 +252,6 @@ export type PendingSummary =
       status: 'ok';
       maskedEmail: string;
       name: string | null;
-      username: string | null;
       via: 'google' | 'password';
       createdAt: string;
       expiresAt: string;
@@ -285,7 +273,6 @@ export async function inspectVerification(token: string, deviceToken?: string | 
     status: 'ok',
     maskedEmail: maskEmail(pending.email),
     name: pending.name,
-    username: pending.username,
     via: pending.provider === 'google' ? 'google' : 'password',
     createdAt: pending.lastSentAt.toISOString(),
     expiresAt: pending.expires.toISOString(),
@@ -342,8 +329,12 @@ export async function confirmRegistration(input: {
 
   if (await emailHasAccount(pending.email)) throw new Error(VerificationError.AccountExists);
 
-  let username = pending.username ?? usernameFromEmail(pending.email);
-  if (username.length < 3 || (await usernameTaken(username, pending.email))) {
+  /**
+   * לקוחות חדשים מקבלים רק שם מלא ונכנסים במייל (בקשת בעל האתר, 2026-10-05).
+   * שם משתמש נשמר רק להרשמה ממתינה מהטופס הישן שבה הלקוח בחר אחד.
+   */
+  let username = pending.username ?? '';
+  if (username && (username.length < 3 || (await usernameTaken(username, pending.email)))) {
     username = '';
   }
 

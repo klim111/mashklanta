@@ -48,9 +48,12 @@ export const CHART_COLORS = {
 
 export function compactCurrency(value: number): string {
   const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${Math.round(value / 1000)}K`;
-  return String(Math.round(value));
+  const text =
+    abs >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M`
+    : abs >= 1_000 ? `${Math.round(value / 1000)}K`
+    : String(Math.round(value));
+  // LRM – כדי שבהקשר RTL המינוס יוצג משמאל ("-7K" ולא "7K-")
+  return value < 0 ? `\u200E${text}` : text;
 }
 
 export function formatShekel(value: number): string {

@@ -118,7 +118,7 @@ export default function PricingPage() {
             </span>
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
+          <p className="mx-auto mb-10 max-w-2xl text-balance text-lg leading-relaxed text-slate-100 md:text-xl">
             גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. רוצים יועץ?
             במסלול בליווי המחיר נקבע לפי השלבים ומורכבות התיק, מה ששילמתם על הפלטפורמה מקוזז, והגישה המלאה
             כלולה.
@@ -417,10 +417,28 @@ export default function PricingPage() {
             </h2>
           </motion.div>
 
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          {/* בטלפון ההשוואה מוצגת ככרטיס לכל יכולת, כדי שלא יהיה צורך לגלול טבלה לצדדים */}
+          <ul className="space-y-3 md:hidden">
+            {comparisonRows.map((row) => (
+              <li key={row.capability} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md">
+                <p className="text-right text-info font-bold text-slate-900">{row.capability}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-violet-50 px-2 py-2.5 text-center">
+                    <span className="mb-1 block text-2xs font-bold text-violet-700">עצמאי / היברידי</span>
+                    <CellValue value={row.self} />
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-2 py-2.5 text-center">
+                    <span className="mb-1 block text-2xs font-bold text-slate-600">{ADVISORY_TRACK.title}</span>
+                    <CellValue value={row.full} />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl md:block">
             <div className="overflow-x-auto overscroll-x-contain">
-              <p className="mb-2 px-4 pt-3 text-center text-xs text-slate-500 md:hidden">גללו הצידה לצפייה בהשוואה המלאה</p>
-              <table className="w-full min-w-[460px] text-right">
+              <table className="w-full text-right">
                 <thead>
                   <tr className="bg-slate-900 text-white">
                     <th className="px-6 py-4 text-sm font-bold">יכולת</th>

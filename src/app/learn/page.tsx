@@ -70,7 +70,7 @@ export default function LearnPage() {
       </div>
 
       {/* Hero */}
-      <section className="relative min-h-[62vh] sm:min-h-[72vh] lg:min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark text-white px-4">
+      <section className="relative min-h-[62vh] sm:min-h-[72vh] lg:min-h-[78vh] flex flex-col items-center justify-center overflow-hidden bg-brand-dark px-4 pb-24 pt-16 text-white">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 right-[8%] h-[26rem] w-[26rem] rounded-full bg-blue-500/20 blur-3xl animate-blob" />
           <div className="absolute bottom-[-6rem] left-[6%] h-[30rem] w-[30rem] rounded-full bg-violet-500/20 blur-3xl animate-blob [animation-delay:3s]" />

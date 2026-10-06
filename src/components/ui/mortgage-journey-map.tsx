@@ -166,7 +166,8 @@ export default function MortgageJourneyMap({
 
       {/* המפה הראשית */}
       <div className="max-w-7xl mx-auto">
-        <div className="relative">
+        {/* במסך צר המפה נגללת לצדדים בתוך המסגרת שלה, בלי להרחיב את כל העמוד */}
+        <div className="relative overflow-x-auto overflow-y-hidden rounded-3xl">
           {/* רקע המפה */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-100/30 to-indigo-100/30 rounded-3xl"></div>
           
