@@ -37,7 +37,7 @@ export default function AccessibilityStatementPage() {
         <NavBar />
       </div>
 
-      <main id="main" className="mx-auto max-w-3xl px-4 py-10 text-right sm:py-14">
+      <main id="main" className="legal-doc mx-auto max-w-3xl px-4 py-10 text-right sm:py-14">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white">
             <Accessibility className="h-6 w-6" aria-hidden="true" />

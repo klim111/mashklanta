@@ -71,6 +71,9 @@ interface RealTimeMoneyFlowProps {
   onPaymentDayChange?: (type: 'debt' | 'savings', day: number) => void;
 }
 
+// תוויות ציר באלפים; LRM כדי שבהקשר RTL המינוס יוצג משמאל ("-7K" ולא "7K-")
+const formatAxisK = (value: number) => `\u200E${(value / 1000).toFixed(0)}K`;
+
 // Modern Progress Bar Component
 const ModernProgressBar: React.FC<{
   value: number;
@@ -97,9 +100,10 @@ const ModernProgressBar: React.FC<{
     return () => clearTimeout(timer);
   }, [percentage]);
 
+  const compact = layer === 'middle';
   const layerStyles = {
-    top: 'h-20',
-    middle: 'h-32',
+    top: 'h-24',
+    middle: 'min-h-[8rem]',
     bottom: 'h-24',
     side: 'h-16'
   };
@@ -152,14 +156,14 @@ const ModernProgressBar: React.FC<{
             return (
               <div
                 key={`label-${index}`}
-                className="absolute top-0 bottom-0 flex items-center justify-center"
+                className="absolute top-0 bottom-0 flex items-end justify-center pb-1"
                 style={{ 
                   left: `${previousWidth}%`,
                   width: `${segmentWidth}%`
                 }}
               >
                 {segmentWidth > 10 && (
-                  <span className="text-xs font-semibold text-white/80 drop-shadow">
+                  <span className="text-xs font-semibold text-white/90 drop-shadow truncate px-1">
                     {segment.label}
                   </span>
                 )}
@@ -209,15 +213,16 @@ const ModernProgressBar: React.FC<{
       )}
 
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-between h-full px-6">
-        <div className="flex items-center gap-4">
+      {/* בכרטיסים הצרים (שכבה אמצעית) – פריסה אנכית; הסכום על רקע לבן כדי שיהיה קריא מעל המילוי */}
+      <div className={`relative z-10 h-full min-w-0 ${compact ? 'flex flex-col justify-start gap-2 p-3 pb-11 xl:px-4' : 'flex items-center justify-between gap-3 px-3 lg:px-6'}`}>
+        <div className="flex items-center gap-3 min-w-0">
           {/* Icon */}
           <motion.div 
-            className="relative"
+            className="relative shrink-0"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <div className={`w-12 h-12 rounded-xl bg-white shadow-md flex items-center justify-center`}>
+            <div className={`${compact ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl bg-white shadow-md flex items-center justify-center`}>
               <Icon className={`w-6 h-6 ${color.includes('red') ? 'text-red-600' : color.includes('green') ? 'text-green-600' : color.includes('blue') ? 'text-blue-600' : color.includes('purple') ? 'text-purple-600' : 'text-amber-600'}`} />
             </div>
             {trend !== undefined && trend !== 0 && (
@@ -237,26 +242,26 @@ const ModernProgressBar: React.FC<{
           </motion.div>
 
           {/* Label and Value */}
-          <div>
-            <h3 className="font-bold text-slate-800 text-subtitle">{label}</h3>
+          <div className="min-w-0">
+            <h3 className={`font-bold text-slate-800 truncate ${compact ? 'text-cta' : 'text-subtitle'}`}>{label}</h3>
             {sublabel && (
-              <p className="text-xs text-slate-500">{sublabel}</p>
+              <p className="text-xs text-slate-500 truncate">{sublabel}</p>
             )}
           </div>
         </div>
 
         {/* Value Display */}
         <motion.div 
-          className="text-right"
+          className={`shrink-0 rounded-lg bg-white/85 px-2 py-0.5 shadow-sm ${compact ? 'self-end text-left' : 'text-right'}`}
           key={value}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
-          <div className="text-2xl font-bold text-slate-900">
+          <div className={`font-bold text-slate-900 whitespace-nowrap ${compact ? 'text-base lg:text-lg 2xl:text-xl' : 'text-lg xl:text-2xl'}`}>
             ₪{value.toLocaleString()}
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-600">
             {percentage.toFixed(1)}%
           </div>
         </motion.div>
@@ -983,7 +988,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.2 }}
-                      className="relative w-1/3"
+                      className="relative w-full md:w-1/2 xl:w-1/3"
                     >
                       <div className="relative">
                         <ModernProgressBar
@@ -1031,7 +1036,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.2 }}
-                      className="relative w-1/3"
+                      className="relative w-full md:w-1/2 xl:w-1/3"
                     >
                       <div className="relative">
                         <ModernProgressBar
@@ -1079,7 +1084,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.2 }}
-                      className="relative w-1/3"
+                      className="relative w-full md:w-1/2 xl:w-1/3"
                     >
                       <div className="relative">
                         <ModernProgressBar
@@ -1122,7 +1127,7 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
                   </div>
                 ) : (
                   /* Normal 3-column layout when detail is closed */
-                  <div className="grid grid-cols-3 gap-3 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
                   <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1968,16 +1973,19 @@ const RealTimeMoneyFlow: React.FC<RealTimeMoneyFlowProps> = ({
             </div>
             {timeline.length > 0 && (
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 8, left: 0, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="month" 
-                    tick={{ fontSize: 10 }}
-                    label={{ value: 'חודש', position: 'insideBottom', offset: -5, fontSize: 10 }}
+                    tick={{ fontSize: 12 }}
+                    interval="preserveStartEnd"
+                    minTickGap={12}
+                    label={{ value: 'חודש', position: 'insideBottom', offset: -12, fontSize: 12 }}
                   />
                   <YAxis 
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
+                    tick={{ fontSize: 12 }}
+                    width={60}
+                    tickFormatter={formatAxisK}
                   />
                   <Tooltip 
                     formatter={(value: any) => `₪${value.toLocaleString()}`}

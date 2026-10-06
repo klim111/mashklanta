@@ -231,8 +231,8 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
             <Sparkles className="h-3.5 w-3.5" />
             סיימתם את הסיור
           </span>
-          <h2 className="mt-3 text-title font-black leading-tight">
-            גישה לכל השלבים והכלים לבניית המשכנתא שלכם באמצעות פלטפורמת משכלתנא
+          <h2 className="mt-3 text-title font-black leading-tight text-white">
+            גישה לכל השלבים והכלים לבניית המשכנתא שלכם באמצעות פלטפורמת משכלנתא
           </h2>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <span className="text-5xl font-black">₪{PLATFORM_PROCESS_PRICE}</span>

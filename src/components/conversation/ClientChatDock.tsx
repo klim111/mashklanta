@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import type { ConversationSummary } from '@/lib/conversation';
 import { ConversationWindow } from './ConversationWindow';
 import { useConversationSummary } from './useConversation';
+import type { ComposeRequest } from './useConversation';
 
 type DockMode = 'bar' | 'open';
 
@@ -26,6 +27,8 @@ interface ClientConversationApi {
    * השורה המוקטנת לא מוצגת, והחלון המלא נפתח מעל התפריט
    */
   registerActionsHost: () => () => void;
+  /** פתיחת החלון בטאב המיילים, עם מייל מוכן לשליחה */
+  compose: (request: ComposeRequest) => void;
 }
 
 const ClientConversationContext = createContext<ClientConversationApi | null>(null);
@@ -91,6 +94,15 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
     setMode('open');
   }, [slots]);
 
+  const [composeRequest, setComposeRequest] = useState<ComposeRequest | null>(null);
+  const compose = useCallback(
+    (request: ComposeRequest) => {
+      setComposeRequest(request);
+      openWindow();
+    },
+    [openWindow]
+  );
+
   const api = useMemo<ClientConversationApi>(
     () => ({
       enabled,
@@ -101,8 +113,9 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       toggle: () => (mode === 'open' ? setMode('bar') : openWindow()),
       registerSlot,
       registerActionsHost,
+      compose,
     }),
-    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow]
+    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow, compose]
   );
 
   const dock = enabled ? (
@@ -120,6 +133,8 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       unreadEmails={summary?.unreadEmails}
       mailboxAddress={summary?.mailboxAddress ?? null}
       receivesEmail={summary?.receivesEmail ?? false}
+      composeRequest={composeRequest}
+      onComposeTaken={() => setComposeRequest(null)}
     />
   ) : null;
 

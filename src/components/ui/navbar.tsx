@@ -18,18 +18,18 @@ const NAV_LINKS = [
 ];
 
 const linkClass =
-  "text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105 whitespace-nowrap";
+  "text-button xl:text-base text-gray-700 hover:text-blue-600 font-semibold transition-all duration-300 hover:scale-105 whitespace-nowrap";
 
 export default function NavBar() {
   const { data: session } = useSession();
 
   return (
     <header className="bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100 px-4 md:px-6 py-2 flex justify-between items-center gap-3" {...demoId('nav-root')}>
-      <Link href="/" className="shrink-0" aria-label="משכלתנא — עמוד הבית">
+      <Link href="/" className="shrink-0" aria-label="משכלנתא — עמוד הבית">
         <Mashkalanta variant="nav" autoPlay />
       </Link>
 
-      <nav className="hidden lg:flex items-center gap-5 xl:gap-7" {...demoId('nav-links')}>
+      <nav className="hidden lg:flex min-w-0 items-center gap-3.5 xl:gap-7" {...demoId('nav-links')}>
         {NAV_LINKS.map((item) => (
           <Link key={item.href} href={item.href} className={linkClass} {...demoId(`nav-link-${item.href}`)}>
             {item.label}
@@ -37,14 +37,14 @@ export default function NavBar() {
         ))}
       </nav>
 
-      <div className="hidden lg:flex items-center gap-3">
+      <div className="hidden lg:flex shrink-0 items-center gap-3">
         {session ? (
           <div className="flex items-center gap-3">
             <Link href="/dashboard">
               <Button
                 variant="outline"
                 size="lg"
-                className="font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
+                className="px-5 xl:px-8 font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
               >
                 <Shield className="w-4 h-4 ml-2" />
                 אזור אישי
@@ -68,7 +68,7 @@ export default function NavBar() {
               <Button
                 variant="outline"
                 size="lg"
-                className="font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
+                className="px-5 xl:px-8 font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
               >
                 <LogIn className="w-4 h-4 ml-2" />
                 התחברות
@@ -76,7 +76,7 @@ export default function NavBar() {
             </Link>
 
             <Link href="/auth/register">
-              <Button size="lg" className="font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
+              <Button size="lg" className="px-5 xl:px-8 font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
                 <UserPlus className="w-4 h-4 ml-2" />
                 הרשמה
               </Button>

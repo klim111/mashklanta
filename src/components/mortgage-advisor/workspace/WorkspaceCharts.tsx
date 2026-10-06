@@ -154,13 +154,15 @@ export function WorkspaceCharts({
   split = false,
 }: WorkspaceChartsProps) {
   /**
-   * פריסת אזור הגרפים: שלוש עמודות ברוחב מלא. בעמודה שלצד אזור העבודה (ממסך
-   * רחב) — שתיים, כי העמודה ברוחב חצי מסך.
+   * פריסת אזור הגרפים: 2+1 (הגרף השלישי ברוחב מלא), ושלוש בשורה רק ממסך רחב
+   * מאוד. בעמודה שלצד אזור העבודה (מ-xl, חצי מסך) — אחד בשורה, ומ-2xl שוב 2+1.
    */
   const grid = split
-    ? 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2'
-    : 'grid gap-3 lg:grid-cols-3';
-  const fullRow = split ? 'sm:col-span-2 lg:col-span-3 xl:col-span-2' : 'lg:col-span-3';
+    ? 'grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2'
+    : 'grid gap-3 md:grid-cols-2 2xl:grid-cols-3';
+  const fullRow = split ? 'md:col-span-2 xl:col-span-1 2xl:col-span-2' : 'md:col-span-2 2xl:col-span-3';
+  /** הגרף השלישי בשלישייה – ברוחב מלא כששתי עמודות */
+  const thirdSpan = split ? 'md:col-span-2 xl:col-span-1 2xl:col-span-2' : 'md:col-span-2 2xl:col-span-1';
   const chartHeight = split ? 190 : 230;
   /** בעמודה הצרה ההסבר של כל גרף עובר לאייקון מידע ליד הכותרת, כדי לפנות גובה */
   const compact = split;
@@ -320,6 +322,7 @@ export function WorkspaceCharts({
             assumptions={result.mix.assumptions}
             showForecasts={showForecasts}
             fullRow={fullRow}
+            thirdSpan={thirdSpan}
             chartHeight={chartHeight}
             compact={compact}
           />
@@ -335,8 +338,8 @@ export function WorkspaceCharts({
         >
           <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+            <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
             <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {selectedYear !== null && <ReferenceLine x={selectedYear} stroke="#0f172a" strokeDasharray="4 4" />}
@@ -387,8 +390,8 @@ export function WorkspaceCharts({
           */}
           <ComposedChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+            <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
             <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {selectedYear !== null && <ReferenceLine x={selectedYear} stroke="#0f172a" strokeDasharray="4 4" />}
@@ -442,13 +445,14 @@ export function WorkspaceCharts({
         <ChartPanel
           height={chartHeight}
           compact={compact}
+          className={thirdSpan}
           title="קרן מול ריבית מצטברת"
           hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן."
         >
           <AreaChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }} onClick={handleClick}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+            <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
             <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {selectedYear !== null && <ReferenceLine x={selectedYear} stroke="#0f172a" strokeDasharray="4 4" />}
@@ -538,6 +542,7 @@ function TrackFocusCharts({
   assumptions,
   showForecasts,
   fullRow,
+  thirdSpan,
   chartHeight,
   compact,
 }: {
@@ -546,6 +551,7 @@ function TrackFocusCharts({
   showForecasts: boolean;
   /** מחלקת הרוחב של שורה מלאה בפריסה הנוכחית */
   fullRow: string;
+  thirdSpan: string;
   chartHeight: number;
   compact: boolean;
 }) {
@@ -584,8 +590,8 @@ function TrackFocusCharts({
       <ChartPanel height={chartHeight} compact={compact} title="יתרת החוב במסלול" hint="קצב סילוק הקרן במסלול שנבחר.">
         <LineChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+          <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
           <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Line
@@ -607,8 +613,8 @@ function TrackFocusCharts({
       >
         <ComposedChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+          <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
           <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Area
@@ -644,11 +650,11 @@ function TrackFocusCharts({
         </ComposedChart>
       </ChartPanel>
 
-      <ChartPanel height={chartHeight} compact={compact} title="קרן מול ריבית במסלול" hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן.">
+      <ChartPanel height={chartHeight} compact={compact} className={thirdSpan} title="קרן מול ריבית במסלול" hint="כמה מהקרן נפרעה וכמה ריבית שולמה בכל נקודת זמן.">
         <AreaChart data={rows} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+          <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
           <Tooltip formatter={tooltipFormatter} labelFormatter={labelFormatter} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Area
@@ -761,18 +767,20 @@ function ChartPanel({
   hint,
   height = 230,
   compact = false,
+  className = '',
   children,
 }: {
   title: string;
   hint: string;
   height?: number;
+  className?: string;
   /** ההסבר באייקון מידע ליד הכותרת במקום בשורה מתחתיה */
   compact?: boolean;
   children: React.ReactElement;
 }) {
   if (compact) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className={`min-w-0 rounded-xl border border-slate-200 bg-white p-3 ${className}`}>
         <p className="mb-2 flex items-center gap-1 text-sm font-semibold text-slate-800">
           {title}
           <InfoTip text={hint} label={`הסבר: ${title}`} />
@@ -784,7 +792,7 @@ function ChartPanel({
     );
   }
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
+    <div className={`min-w-0 rounded-xl border border-slate-200 bg-white p-3 ${className}`}>
       <p className="text-sm font-semibold text-slate-800">{title}</p>
       <p className="text-2xs text-slate-500 mb-2 leading-snug">{hint}</p>
       <ResponsiveContainer width="100%" height={height}>

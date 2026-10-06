@@ -128,7 +128,7 @@ export function ToolsHub() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         {tools.map((tool, index) => {
           const Icon = tool.icon;
           return (
@@ -140,11 +140,11 @@ export function ToolsHub() {
               className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg md:p-6"
             >
               <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-l ${tool.gradient}`} />
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start xl:flex-col xl:items-stretch 2xl:flex-row 2xl:items-start">
                 <Link
                   {...demoId(`dash-tool-${tool.id}`)}
                   href={tool.href}
-                  className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-all group-hover:scale-[1.02] hover:bg-blue-700 sm:w-auto sm:min-w-[11.5rem]`}
+                  className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-all group-hover:scale-[1.02] hover:bg-blue-700 sm:w-auto sm:min-w-[11.5rem] xl:w-full 2xl:w-auto`}
                 >
                   <Icon className="h-5 w-5" />
                   {tool.title}

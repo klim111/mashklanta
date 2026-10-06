@@ -30,7 +30,7 @@ export function DemoCatalogSection() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {demos.map((entry, index) => {
           const Icon = entry.icon;
           return (
@@ -52,7 +52,7 @@ export function DemoCatalogSection() {
                 </span>
                 <span className="text-lg font-black leading-snug text-slate-900">{entry.title}</span>
                 <span className="mt-2 flex-1 text-sm leading-relaxed text-slate-500">{entry.description}</span>
-                <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+                <span className="mt-4 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700 transition-colors group-hover:bg-indigo-600 group-hover:text-white">
                   <Play className="h-4 w-4" />
                   הפעילו הדגמה · {entry.minutes} דק׳
                 </span>

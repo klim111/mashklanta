@@ -257,8 +257,8 @@ export function MixComparison({
           >
             <LineChart data={timeline} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+              <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
               <Tooltip formatter={tooltipFormatter} labelFormatter={(l) => `שנה ${l}`} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
               {computed.map((item) => (
@@ -279,8 +279,8 @@ export function MixComparison({
           <Panel title="החזר חודשי לאורך הזמן">
             <LineChart data={timeline} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={compactCurrency} width={42} />
+              <XAxis dataKey="year" tick={{ fontSize: 12 }} interval="preserveStartEnd" minTickGap={8} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={compactCurrency} width={56} />
               <Tooltip formatter={tooltipFormatter} labelFormatter={(l) => `שנה ${l}`} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
               {computed.map((item) => (
