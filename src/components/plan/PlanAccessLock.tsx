@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Lock } from 'lucide-react';
-import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import type { ProcessAccess } from '@/lib/process-access';
 
 /**
- * הכלים נעולים: עברו 30 יום מהתשלום על התהליך, או שהתהליך נפתח בלי תשלום
+ * הכלים נעולים: הסתיים החודש ששולם על התהליך, או שהתהליך נפתח בלי תשלום
  * (למשל מכלי המיחזור). החלון יושב מעל שולחן העבודה ואינו נסגר — הדרך היחידה
  * להמשיך היא לחדש את הגישה. כל מה שהוזן שמור ומחכה.
  */
@@ -31,18 +31,18 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
           <Lock className="h-7 w-7 text-white" />
         </span>
         <h2 id="plan-access-lock-title" className="text-subtitle font-black text-slate-900">
-          {expired ? `${PLATFORM_ACCESS_DAYS} ימי הגישה הסתיימו` : 'התהליך ממתין לתשלום'}
+          {expired ? 'חודש הגישה הסתיים' : 'התהליך ממתין לתשלום'}
         </h2>
         <p className="mt-2 text-info leading-relaxed text-slate-600">
           {expired
-            ? `כל מה שהזנתם שמור. רכשו חבילת גישה נוספת לעוד ${PLATFORM_ACCESS_DAYS} יום, והכלים ייפתחו בדיוק איפה שעצרתם.`
-            : `כדי להמשיך בתהליך פותחים אותו במסלול העצמאי / ההיברידי: גישה מלאה לכל השלבים והכלים ל-${PLATFORM_ACCESS_DAYS} יום.`}
+            ? `כל מה שהזנתם שמור. רכשו חבילת גישה לחודש נוסף, והכלים ייפתחו בדיוק איפה שעצרתם.`
+            : `כדי להמשיך בתהליך פותחים אותו במסלול העצמאי / ההיברידי: גישה מלאה לכל השלבים והכלים לחודש.`}
         </p>
 
         <div className="my-5 rounded-2xl bg-slate-50 py-4">
           <div className="text-4xl font-black text-slate-900">₪{PLATFORM_PROCESS_PRICE}</div>
           <div className="mt-0.5 text-sm font-bold text-slate-500">
-            לעוד {PLATFORM_ACCESS_DAYS} יום · אין חיוב בלי אישור שלכם
+            לחודש נוסף · אין חיוב בלי אישור שלכם
           </div>
         </div>
 

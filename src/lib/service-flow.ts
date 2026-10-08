@@ -11,7 +11,7 @@
  */
 
 import { journeyStages } from '@/data/platform/journey';
-import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_DAYS, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
+import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_PERIOD, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
 
 // ─────────────────────────────── מה רוצים לעשות ───────────────────────────────
 
@@ -102,8 +102,11 @@ export function leadTopicFor(goal: MortgageGoal, service: ServiceType): string {
 /** המסלול העצמאי / ההיברידי — לתהליך משכנתא אחד, לתקופת הגישה */
 export const PLATFORM_PROCESS_PRICE = PROCESS_PRICE;
 
-/** כמה ימים הכלים פתוחים מכל תשלום על תהליך */
-export const PLATFORM_ACCESS_DAYS = PROCESS_ACCESS_DAYS;
+/**
+ * תקופת הגישה מכל תשלום על תהליך: חודש קלנדרי, כלומר מספר הימים בחודש שבו
+ * שולם (src/lib/process-access.ts)
+ */
+export const PLATFORM_ACCESS_PERIOD = PROCESS_ACCESS_PERIOD;
 
 /** כמה תהליכים פתוחים אפשר לנהל במקביל על אותה חבילת גישה */
 export const PLATFORM_MAX_OPEN_PROCESSES = MAX_OPEN_PROCESSES;
@@ -123,7 +126,7 @@ export const PLATFORM_BILLING_NOTES: Array<{ id: string; title: string; descript
   {
     id: 'no-auto',
     title: 'אין חיוב בלי אישור שלכם',
-    description: `הפלטפורמה לא מחייבת שוב מעצמה. כש-${PLATFORM_ACCESS_DAYS} הימים מסתיימים, אתם מחליטים אם להמשיך.`,
+    description: 'הפלטפורמה לא מחייבת שוב מעצמה. לקראת סוף החודש נשלח לכם מייל, ואתם מחליטים אם להמשיך.',
   },
   {
     id: 'range',
@@ -133,7 +136,7 @@ export const PLATFORM_BILLING_NOTES: Array<{ id: string; title: string; descript
   {
     id: 'period',
     title: 'משלמים לתקופה, לא ליום',
-    description: `כל חבילה היא סכום קבוע ל-${PLATFORM_ACCESS_DAYS} יום. סיימתם מוקדם? מצוין, חסכתם זמן. ימים שנשארו בחבילה אינם מוחזרים.`,
+    description: `כל חבילה היא סכום קבוע לחודש. סיימתם מוקדם? מצוין, חסכתם זמן. ימים שנשארו בחבילה אינם מוחזרים.`,
   },
 ];
 
@@ -168,8 +171,8 @@ export const STAGES_TOTAL_PRICE = journeyStages.reduce((sum, stage) => sum + sta
 export const PRICING_PRINCIPLES: Array<{ id: string; title: string; description: string }> = [
   {
     id: 'platform',
-    title: `גישה לפלטפורמה — ₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
-    description: `כל השלבים וכל הכלים פתוחים עד ${PLATFORM_ACCESS_DAYS} יום. צריכים עוד זמן? רוכשים חבילה נוספת באותו מחיר, רק באישור שלכם.`,
+    title: `גישה לפלטפורמה — ₪${PLATFORM_PROCESS_PRICE} לחודש לתהליך משכנתא`,
+    description: `כל השלבים וכל הכלים פתוחים לחודש שלם. צריכים עוד זמן? רוכשים חבילה נוספת באותו מחיר, רק באישור שלכם.`,
   },
   {
     id: 'credit',

@@ -109,7 +109,7 @@ export interface PlanView {
   stages: PlanStageView[];
   /** נתוני כל השלבים יחד, כפי שהטפסים והחישובים צורכים אותם */
   data: PlanData;
-  /** הגישה לכלים בתהליך: 30 יום מכל תשלום, ללא הגבלה בליווי ששולם */
+  /** הגישה לכלים בתהליך: חודש קלנדרי מכל תשלום, ללא הגבלה בליווי ששולם */
   access: ProcessAccess;
 }
 
@@ -330,7 +330,7 @@ export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
 }
 
 /**
- * החבילה הפנויה לפתיחת תהליך חדש בלי תשלום — 30 יום מהתשלום, ורק אם לא
+ * החבילה הפנויה לפתיחת תהליך חדש בלי תשלום — חודש מהתשלום, ורק אם לא
  * הסתיים אחריו אף תהליך של הלקוח.
  */
 export async function newProcessPassFor(
@@ -350,7 +350,7 @@ export async function newProcessPassFor(
 }
 
 /**
- * האם הכלים בתהליך נעולים בפני המשתמש: עברו 30 יום מהתשלום האחרון, או
+ * האם הכלים בתהליך נעולים בפני המשתמש: הסתיים החודש של התשלום האחרון, או
  * שהתהליך נפתח בלי תשלום. יועץ שמלווה את הלקוח אינו ננעל לעולם.
  */
 export async function planLockedFor(userId: string, planId: string): Promise<boolean> {

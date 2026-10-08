@@ -462,7 +462,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           />
         )}
 
-        {/* עברו 30 הימים ויש תהליך שלא הסתיים — הצעה לרכוש חבילת גישה נוספת */}
+        {/* הסתיים חודש הגישה ויש תהליך שלא הסתיים — הצעה לרכוש חבילת גישה נוספת */}
         {data.ready && <AccessExpiredNotice plans={data.plansState.plans} />}
 
         {/*

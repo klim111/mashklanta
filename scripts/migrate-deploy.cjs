@@ -21,6 +21,7 @@ const RETRYABLE_MIGRATIONS = new Set([
   '20260927063000_repair_conversation_email_archive',
   '20261004060000_site_visits_and_signup_drafts',
   '20261008120000_user_tool_data',
+  '20261008150000_hyp_payments',
 ]);
 
 const databaseUrl = process.env.DATABASE_URL;

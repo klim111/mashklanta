@@ -29,7 +29,7 @@ import {
   toggleStage,
 } from '@/lib/advisor-orders';
 import type { AdvisorOrder } from '@/lib/advisor-orders';
-import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
+import { PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
 import type { PaymentDetails } from './useAdvisorOrders';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
@@ -283,7 +283,7 @@ export function AdvisorOrderDialog({
                   </span>
                 )}
                 <span className="mr-2 text-2xs text-slate-500">
-                  כולל גישה מלאה לפלטפורמה ({formatOrderPrice(PLATFORM_PROCESS_PRICE)} ל-{PLATFORM_ACCESS_DAYS} יום) ללא
+                  כולל גישה מלאה לפלטפורמה ({formatOrderPrice(PLATFORM_PROCESS_PRICE)} לחודש) ללא
                   תוספת
                 </span>
               </div>

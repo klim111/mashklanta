@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import type { PlanView } from '@/components/plan/usePlan';
 
 const SEEN_KEY = 'mashklanta:access-expired-seen';
 
 /**
- * התראה בכניסה לאזור האישי: עברו 30 הימים של חבילת הגישה, ויש תהליך שעוד לא
+ * התראה בכניסה לאזור האישי: הסתיים החודש של חבילת הגישה, ויש תהליך שעוד לא
  * הסתיים. ההתראה מופיעה פעם אחת בכל כניסה (לכל הלשונית), ומובילה לרכישת חבילה
  * נוספת. בתוך התהליך עצמו הכלים נעולים בחלון נפרד (PlanAccessLock).
  */
@@ -51,15 +51,15 @@ export function AccessExpiredNotice({ plans }: { plans: PlanView[] }) {
         <DialogTitle className="text-subtitle font-black text-slate-900">תוקף הגישה לפלטפורמה פג</DialogTitle>
         <p className="text-info leading-relaxed text-slate-600">
           {expired.length === 1
-            ? `עברו ${PLATFORM_ACCESS_DAYS} הימים של חבילת הגישה, והתהליך "${first.name}" עוד לא הסתיים.`
-            : `עברו ${PLATFORM_ACCESS_DAYS} הימים של חבילת הגישה, ו-${expired.length} תהליכים שלכם עוד לא הסתיימו.`}{' '}
+            ? `חודש הגישה הסתיים, והתהליך "${first.name}" עוד לא הסתיים.`
+            : `חודש הגישה הסתיים, ו-${expired.length} תהליכים שלכם עוד לא הסתיימו.`}{' '}
           כל מה שהזנתם שמור. כדי להמשיך בדיוק מאותה נקודה, רוכשים חבילת גישה נוספת.
         </p>
 
         <div className="rounded-2xl bg-slate-50 py-4">
           <div className="text-4xl font-black text-slate-900">₪{PLATFORM_PROCESS_PRICE}</div>
           <div className="mt-0.5 text-sm font-bold text-slate-500">
-            לעוד {PLATFORM_ACCESS_DAYS} יום · אין חיוב בלי אישור שלכם
+            לחודש נוסף · אין חיוב בלי אישור שלכם
           </div>
         </div>
 

@@ -3,7 +3,7 @@ import { journeyStages, stagesTotalPrice } from './journey';
 import {
   ADVISORY_TRACK,
   FULL_SERVICE_PRICE,
-  PLATFORM_ACCESS_DAYS,
+  PLATFORM_ACCESS_PERIOD,
   PLATFORM_MAX_OPEN_PROCESSES,
   PLATFORM_PROCESS_PRICE,
   PLATFORM_TYPICAL_TOTAL,
@@ -14,7 +14,7 @@ import {
  * המחירים עצמם וחוקי התמחור יושבים ב-`src/lib/service-flow.ts`, כי גם השרת
  * צריך אותם. כאן רק התוכן השיווקי שנבנה מעליהם.
  */
-export { ADVISORY_TRACK, FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE, PRICING_PRINCIPLES };
+export { ADVISORY_TRACK, FULL_SERVICE_PRICE, PLATFORM_ACCESS_PERIOD, PLATFORM_PROCESS_PRICE, PRICING_PRINCIPLES };
 
 /**
  * הכותרת והפסקה שמעל שני המסלולים — במקום "שלושה מסלולים". אותו נוסח
@@ -50,7 +50,7 @@ export const pricingPlans: PricingPlan[] = [
     name: 'עצמאי / היברידי',
     tagline: 'מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא',
     price: `₪${PLATFORM_PROCESS_PRICE}`,
-    priceNote: `לתהליך משכנתא · גישה מלאה עד ${PLATFORM_ACCESS_DAYS} יום · מקוזז אם תבקשו ליווי`,
+    priceNote: 'לתהליך משכנתא · גישה מלאה לחודש · מקוזז אם תבקשו ליווי',
     icon: Bot,
     gradient: 'from-blue-500 to-cyan-500',
     ring: 'ring-blue-200',
@@ -62,7 +62,7 @@ export const pricingPlans: PricingPlan[] = [
       'תיק מסמכים דיגיטלי וצ׳ק־ליסט לפי סטטוס תעסוקתי',
       'בכל שלב: כפתור "פנו ליועץ משכלנתא" שמעביר אליו את השלב, עם כל מה שכבר הזנתם',
       'שלב שעובר ליועץ מתומחר לפי השלב ומורכבות התיק, ומה ששילמתם על הפלטפורמה מקוזז',
-      `צריכים יותר מ-${PLATFORM_ACCESS_DAYS} יום? מחדשים באותו מחיר`,
+      'צריכים יותר מחודש? מחדשים באותו מחיר, בקישור שנשלח אליכם במייל',
     ],
     bestFor: 'לרוב הלקוחות: בונים לבד ומצרפים יועץ בשלב שבו זה באמת משתלם',
     ctaLabel: 'מתחילים לבד',
@@ -111,7 +111,7 @@ export const comparisonRows: ComparisonRow[] = [
   { capability: 'קיזוז מה ששולם על הפלטפורמה', self: 'כשמצרפים יועץ', full: 'משלב אחד ומעלה' },
   {
     capability: 'עלות',
-    self: `₪${PLATFORM_PROCESS_PRICE} לתהליך · עד ${PLATFORM_ACCESS_DAYS} יום`,
+    self: `₪${PLATFORM_PROCESS_PRICE} לחודש לתהליך`,
     full: 'לפי השלבים ומורכבות התיק',
   },
 ];
@@ -125,7 +125,7 @@ export const pricingFaq: { question: string; answer: string }[] = [
   {
     question: 'כמה עולה הגישה לפלטפורמה ולכמה זמן?',
     answer:
-      `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים עד ${PLATFORM_ACCESS_DAYS} יום. לא הספקתם? רוכשים חבילה נוספת לעוד ${PLATFORM_ACCESS_DAYS} יום באותו מחיר, ורק כשאתם מאשרים: אין חיוב חוזר אוטומטי. תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, כך שהעלות הכוללת נעה בדרך כלל בין ₪${PLATFORM_TYPICAL_TOTAL.min} ל-₪${PLATFORM_TYPICAL_TOTAL.max}. כל חבילה היא סכום קבוע לתקופה, ולכן סיום מוקדם אינו מזכה בהחזר על הימים שנשארו. בתוך החבילה אפשר לנהל עד ${PLATFORM_MAX_OPEN_PROCESSES} תהליכים במקביל, ולפתוח מחדש תהליך שמחקתם בלי תשלום נוסף. תהליך חדש אחרי שתהליך הסתיים נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
+      `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים לחודש. החודש נספר לפי החודש הקלנדרי שבו שילמתם: תשלום באוקטובר פותח 31 יום, ובפברואר 28 או 29. לא הספקתם? לקראת סוף החודש נשלח לכם מייל עם קישור לחידוש לחודש נוסף באותו מחיר, והחיוב מתבצע רק כשאתם מאשרים: אין חיוב חוזר אוטומטי. תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, כך שהעלות הכוללת נעה בדרך כלל בין ₪${PLATFORM_TYPICAL_TOTAL.min} ל-₪${PLATFORM_TYPICAL_TOTAL.max}. כל חבילה היא סכום קבוע לחודש, ולכן סיום מוקדם אינו מזכה בהחזר על הימים שנשארו. בתוך החבילה אפשר לנהל עד ${PLATFORM_MAX_OPEN_PROCESSES} תהליכים במקביל, ולפתוח מחדש תהליך שמחקתם בלי תשלום נוסף. תהליך חדש אחרי שתהליך הסתיים נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
   },
   {
     question: 'כמה עולה המסלול בליווי?',

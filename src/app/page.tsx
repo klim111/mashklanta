@@ -13,7 +13,7 @@ import { GuestStart } from '@/components/service-flow/GuestStart';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
-import { ADVISORY_TRACK, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { ADVISORY_TRACK, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
 import { demoId } from '@/demo/demo-attr';
 
@@ -254,7 +254,7 @@ export default function Home() {
               משלמים על מה שלקחתם — ותמיד מתחת לממוצע בשוק
             </h2>
             <p className="mx-auto max-w-2xl text-base text-slate-100 md:text-lg">
-              גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
+              גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לחודש לתהליך משכנתא. ביקשתם ליווי באמצע? מה ששילמתם מקוזז, והגישה
               המלאה כלולה בכל הזמנת ליווי — לשלב אחד או לכל שלבי התכנון.
             </p>
           </div>
@@ -264,7 +264,7 @@ export default function Home() {
               <div className="text-sm font-bold text-cyan-200">עצמאי / היברידי</div>
               <div className="my-2 text-4xl font-black text-white">₪{PLATFORM_PROCESS_PRICE}</div>
               <div className="text-sm text-slate-100">
-                לתהליך משכנתא, גישה מלאה עד {PLATFORM_ACCESS_DAYS} יום. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים ליועץ משכלנתא
+                לחודש לתהליך משכנתא, גישה מלאה לכל הכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים ליועץ משכלנתא
               </div>
             </Link>
             <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">

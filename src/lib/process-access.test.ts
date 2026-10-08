@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  PROCESS_ACCESS_DAYS,
+  daysInMonthOf,
+  passDays,
   PROCESS_PRICE,
   daysUntil,
   newProcessPass,
@@ -20,9 +21,22 @@ const base = {
 };
 
 describe('passExpiresAt', () => {
-  it('opens the tools for 30 days from the payment', () => {
-    expect(PROCESS_ACCESS_DAYS).toBe(30);
-    expect(passExpiresAt('2026-10-01T00:00:00Z').toISOString()).toBe('2026-10-31T00:00:00.000Z');
+  it('opens the tools for as many days as the calendar month of the payment', () => {
+    // אוקטובר: 31 יום
+    expect(passExpiresAt('2026-10-08T10:00:00Z').toISOString()).toBe('2026-11-08T10:00:00.000Z');
+    // נובמבר: 30 יום
+    expect(passExpiresAt('2026-11-10T10:00:00Z').toISOString()).toBe('2026-12-10T10:00:00.000Z');
+    // פברואר: 28 יום, ובשנה מעוברת 29
+    expect(passDays('2027-02-05T10:00:00Z')).toBe(28);
+    expect(passDays('2028-02-05T10:00:00Z')).toBe(29);
+    // סוף ינואר: 31 יום, גם כשהחודש הבא קצר יותר
+    expect(passExpiresAt('2027-01-31T10:00:00Z').toISOString()).toBe('2027-03-03T10:00:00.000Z');
+  });
+
+  it('decides the month by Israel time', () => {
+    // 1 באפריל 01:00 שעון ישראל = 31 במרץ 22:00 UTC → אפריל, 30 יום
+    expect(daysInMonthOf('2027-03-31T22:00:00Z')).toBe(30);
+    expect(daysInMonthOf('2027-03-31T20:00:00Z')).toBe(31);
   });
 });
 
@@ -34,7 +48,7 @@ describe('daysUntil', () => {
 });
 
 describe('openPass', () => {
-  it('picks the newest payment that is still inside its 30 days', () => {
+  it('picks the newest payment that is still inside its month', () => {
     const now = new Date('2026-10-20T00:00:00Z');
     const old = { id: 'old', createdAt: '2026-08-01T00:00:00Z' };
     const recent = { id: 'recent', createdAt: '2026-10-10T00:00:00Z' };
@@ -47,17 +61,18 @@ describe('openPass', () => {
 describe('processAccess', () => {
   const now = new Date('2026-10-20T00:00:00Z');
 
-  it('is active inside the 30 days and reports what was paid', () => {
+  it('is active inside the month and reports what was paid', () => {
     const access = processAccess(
       { ...base, payments: [{ createdAt: '2026-10-10T00:00:00Z', amountAgorot: PROCESS_PRICE * 100 }] },
       now
     );
     expect(access.state).toBe('ACTIVE');
-    expect(access.daysLeft).toBe(20);
+    // אוקטובר: 31 יום מ-10.10, ומ-20.10 נשארו 21
+    expect(access.daysLeft).toBe(21);
     expect(access.paid).toBe(PROCESS_PRICE);
   });
 
-  it('locks after 30 days until another package is bought', () => {
+  it('locks after the month until another package is bought', () => {
     const opened = { ...base, planCreatedAt: '2026-09-05T00:00:00Z' };
     const expired = processAccess({ ...opened, payments: [{ createdAt: '2026-09-01T00:00:00Z' }] }, now);
     expect(expired.state).toBe('EXPIRED');
@@ -68,7 +83,7 @@ describe('processAccess', () => {
       now
     );
     expect(renewed.state).toBe('ACTIVE');
-    expect(renewed.daysLeft).toBe(29);
+    expect(renewed.daysLeft).toBe(30);
   });
 
   it('asks for payment on a process that was opened without one', () => {
@@ -107,7 +122,7 @@ describe('one package, up to two open processes', () => {
       now
     );
     expect(second.state).toBe('ACTIVE');
-    expect(second.expiresAt).toBe('2026-11-09T00:00:00.000Z');
+    expect(second.expiresAt).toBe('2026-11-10T00:00:00.000Z');
     expect(second.paid).toBe(0);
   });
 

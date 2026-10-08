@@ -16,7 +16,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ADVISORY_TRACK,
   GOAL_LABELS,
-  PLATFORM_ACCESS_DAYS,
   PLATFORM_PROCESS_PRICE,
   SERVICE_CHOICES,
   SERVICE_LABELS,
@@ -39,7 +38,7 @@ const SERVICE_META: Record<ServiceChoice, { icon: LucideIcon; gradient: string; 
     icon: Bot,
     gradient: 'from-blue-500 to-violet-600',
     price: `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
-    priceNote: `${PLATFORM_ACCESS_DAYS} יום גישה מלאה לכל הכלים · מקוזז אם תבקשו ליווי`,
+    priceNote: 'לחודש · גישה מלאה לכל הכלים · מקוזז אם תבקשו ליווי',
   },
   FULL: {
     icon: UserCheck,

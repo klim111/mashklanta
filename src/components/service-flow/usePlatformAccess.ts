@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { passDays } from '@/lib/process-access';
 import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 
 export interface PlatformAccess {
@@ -24,7 +25,7 @@ const NO_ACCESS: PlatformAccess = {
   since: null,
   paid: 0,
   price: PLATFORM_PROCESS_PRICE,
-  accessDays: PLATFORM_ACCESS_DAYS,
+  accessDays: passDays(new Date()),
   passExpiresAt: null,
   openProcesses: 0,
   maxOpenProcesses: MAX_OPEN_PROCESSES,
@@ -51,7 +52,7 @@ export function usePlatformAccess() {
         since: typeof body.since === 'string' ? body.since : null,
         paid: typeof body.paid === 'number' ? body.paid : 0,
         price: typeof body.price === 'number' ? body.price : PLATFORM_PROCESS_PRICE,
-        accessDays: typeof body.accessDays === 'number' ? body.accessDays : PLATFORM_ACCESS_DAYS,
+        accessDays: typeof body.accessDays === 'number' ? body.accessDays : passDays(new Date()),
         passExpiresAt: typeof body.passExpiresAt === 'string' ? body.passExpiresAt : null,
         openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
         maxOpenProcesses: typeof body.maxOpenProcesses === 'number' ? body.maxOpenProcesses : MAX_OPEN_PROCESSES,

@@ -32,7 +32,6 @@ import {
 import { journeyStages } from '@/data/platform/journey';
 import {
   ADVISORY_TRACK,
-  PLATFORM_ACCESS_DAYS,
   PLATFORM_PROCESS_PRICE,
   TRACKS_HEADLINE,
   TRACKS_INTRO,
@@ -119,7 +118,7 @@ export default function PricingPage() {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-balance text-lg leading-relaxed text-slate-100 md:text-xl">
-            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לתהליך משכנתא, עד {PLATFORM_ACCESS_DAYS} יום. רוצים יועץ?
+            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לחודש לתהליך משכנתא. רוצים יועץ?
             במסלול בליווי המחיר נקבע לפי השלבים ומורכבות התיק, מה ששילמתם על הפלטפורמה מקוזז, והגישה המלאה
             כלולה.
           </p>
@@ -471,7 +470,7 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-600">
-            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא עד {PLATFORM_ACCESS_DAYS} יום, ואם צריך
+            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא לחודש, ואם צריך
             עוד זמן, אפשר לרכוש חבילה נוספת באותו מחיר. בכל הזמנת ליווי — משלב בודד ועד כל השלבים — הגישה כלולה, ומה
             ששולם עליה מקוזז.
           </p>

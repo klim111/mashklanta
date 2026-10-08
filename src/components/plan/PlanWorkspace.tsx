@@ -934,7 +934,7 @@ export function PlanWorkspace({
       {/* הוספת משימה, תיק המסמכים, ההתכתבות והחזרה לדאשבורד — תחת כפתור פעולות עגול אחד */}
       <StageActionsMenu planId={plan.id} data={plan.data} stage={stage} tour={tour} />
 
-      {/* עברו 30 יום מהתשלום, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
+      {/* הסתיים החודש ששולם, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
       {!tour && plan.access && processLocked(plan.access) && (
         <PlanAccessLock planId={plan.id} access={plan.access} />
       )}

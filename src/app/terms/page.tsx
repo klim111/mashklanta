@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { LegalDocument, LegalList, LegalSub } from '@/components/legal/LegalDocument';
 import type { LegalSection } from '@/components/legal/LegalDocument';
 import { SITE_CONTACT, operatorDescription } from '@/lib/site-contact';
-import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_DAYS, PROCESS_PRICE } from '@/lib/process-access';
+import { MAX_OPEN_PROCESSES, PROCESS_PRICE } from '@/lib/process-access';
 import { journeyStages } from '@/data/platform/journey';
 
 export const metadata: Metadata = {
@@ -125,12 +125,14 @@ const sections: LegalSection[] = [
             הלקוח מתכנן את המשכנתא בעצמו, בעזרת כל הכלים, ההסברים וההתראות של הפלטפורמה, בלי יועץ אישי.
           </li>
           <li>
-            המחיר: ₪{PROCESS_PRICE} לתהליך משכנתא. כל חבילה פותחת את כל השלבים והכלים לתקופה של עד{' '}
-            {PROCESS_ACCESS_DAYS} יום ממועד הרכישה.
+            המחיר: ₪{PROCESS_PRICE} לתהליך משכנתא. כל חבילה פותחת את כל השלבים והכלים לחודש ממועד
+            הרכישה. מספר הימים בחבילה הוא מספר הימים בחודש הקלנדרי שבו בוצעה הרכישה (למשל 31 יום ברכישה באוקטובר, 28
+            או 29 יום ברכישה בפברואר).
           </li>
           <li>
-            בתום התקופה הכלים ננעלים לעריכה, הנתונים נשמרים, ובכניסה הבאה תוצג הצעה לרכוש חבילה נוספת. אין חידוש
-            אוטומטי ואין חיוב נוסף בלי אישור מפורש של הלקוח.
+            בתום התקופה הכלים ננעלים לעריכה, הנתונים נשמרים, ובכניסה הבאה תוצג הצעה לרכוש חבילה נוספת. לקראת סוף
+            התקופה נשלחת ללקוח תזכורת במייל עם קישור לחידוש. אין חידוש אוטומטי ואין חיוב נוסף בלי אישור מפורש של
+            הלקוח.
           </li>
           <li>
             אפשר לנהל עד {MAX_OPEN_PROCESSES} תהליכים פתוחים במקביל. תהליך שלא הסתיים אפשר למחוק ולפתוח מחדש. פתיחת

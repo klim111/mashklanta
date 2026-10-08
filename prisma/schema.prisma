@@ -157,6 +157,10 @@ model User {
   platformAccessAt DateTime?
   platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
   /**
+   * מעברים לעמוד התשלום של HYP — נפתח לפני התשלום ונסגר כשהלקוח חוזר
+   */
+  paymentCheckouts PaymentCheckout[] @relation("PaymentCheckoutUser")
+  /**
    * המשימות המתוכננות שהלקוח הוסיף לעצמו — מתוך השלבים או מלוח השנה
    */
   clientTasks      ClientTask[]      @relation("ClientTaskOwner")
@@ -1301,8 +1305,27 @@ model PlatformPayment {
   status       String @default("PAID")
 
   /**
+   * מי סלק את התשלום: HYP — תשלום אמיתי במסוף של משכלנתא. ריק — תשלום מלפני
+   * החיבור למסוף.
+   */
+  provider              String?
+  /**
+   * מספר העסקה ב-HYP (`Id` בחזרה מעמוד התשלום) — ייחודי, כדי שאותה עסקה לא
+   * תירשם פעמיים
+   */
+  providerTransactionId String?   @unique
+  /**
+   * מספר החשבונית שהפיקה HYP (`Hesh`), כשהמסוף מפיק חשבוניות
+   */
+  invoiceNumber         String?
+  /**
+   * מתי נשלחה ללקוח התזכורת על סוף החודש של החבילה הזו
+   */
+  reminderSentAt        DateTime?
+
+  /**
    * התהליך שהתשלום פותח. ריק — תשלום שעוד לא נקשר לתהליך, והוא נקשר לתהליך
-   * הבא שנפתח. כל תשלום הוא חבילת גישה ל-30 יום (src/lib/process-access.ts).
+   * הבא שנפתח. כל תשלום הוא חבילת גישה לחודש קלנדרי (src/lib/process-access.ts).
    */
   planId String?
   plan   MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
@@ -1311,6 +1334,45 @@ model PlatformPayment {
 
   @@index([userId, createdAt])
   @@index([planId])
+}
+
+/**
+ * מעבר לעמוד התשלום המאובטח של HYP. נוצר כשהלקוח לוחץ "לתשלום", ונסגר כשהוא
+ * חוזר מ-HYP: בתשלום שאומת מול HYP נוצר PlatformPayment, ובכישלון נשמר קוד
+ * השגיאה. `orderRef` הוא מספר ההזמנה שנשלח ל-HYP ושחוזר ממנה.
+ */
+model PaymentCheckout {
+  id       String @id @default(cuid())
+  orderRef String @unique
+  userId   String
+  user     User   @relation("PaymentCheckoutUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /**
+   * חידוש לתהליך קיים. ריק — חבילה לתהליך הבא שייפתח
+   */
+  planId       String?
+  amountAgorot Int
+  /**
+   * PENDING — הלקוח בעמוד התשלום · PAID — שולם ואומת · FAILED — נדחה או בוטל
+   */
+  status       String  @default("PENDING")
+  /**
+   * לאן הלקוח ממשיך באתר אחרי התשלום
+   */
+  returnPath   String?
+  /**
+   * קוד התשובה של HYP (`CCode`) כשהתשלום לא עבר
+   */
+  failureCode  String?
+  /**
+   * התשלום שנוצר כשהעסקה אומתה
+   */
+  paymentId    String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
 }
 
 // ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────
