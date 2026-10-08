@@ -2,6 +2,8 @@ import { del, get, put } from '@vercel/blob';
 import { prisma } from './db';
 import { buildZip, safeEntryName, uniqueEntryName } from './zip';
 import type { ZipEntry } from './zip';
+import { cleanDocumentMeta } from './document-organize';
+import type { DocumentMeta } from './document-organize';
 
 /**
  * המסמכים התומכים של תהליך משכנתא.
@@ -39,6 +41,10 @@ export interface PlanDocumentView {
   contentType: string;
   size: number;
   uploadedAt: string;
+  /** למי המסמך מיועד, כשהלקוח קבע — אחרת נגזר מהמפתח (`documentCategory`) */
+  category?: string | null;
+  /** השלב שהמסמך שויך אליו, או NONE — אחרת נגזר מהמפתח (`documentStage`) */
+  stage?: string | null;
 }
 
 const documentSelect = {
@@ -50,6 +56,8 @@ const documentSelect = {
   contentType: true,
   size: true,
   uploadedAt: true,
+  category: true,
+  stage: true,
 };
 
 function toView(row: {
@@ -61,6 +69,8 @@ function toView(row: {
   contentType: string;
   size: number;
   uploadedAt: Date;
+  category: string | null;
+  stage: string | null;
 }): PlanDocumentView {
   return { ...row, uploadedAt: row.uploadedAt.toISOString() };
 }
@@ -131,6 +141,8 @@ export interface RecordInput {
   size: number;
   /** הנתיב שהתקבל מ-Blob אחרי ההעלאה */
   blobPath: string;
+  category?: string | null;
+  stage?: string | null;
 }
 
 /**
@@ -167,6 +179,7 @@ export async function recordPlanDocument(
     size: Math.max(0, Math.min(input.size, MAX_DOCUMENT_BYTES)),
     blobPath: input.blobPath,
     uploadedAt: new Date(),
+    ...cleanDocumentMeta(input),
   };
 
   const row = existing
@@ -317,6 +330,25 @@ export async function planDocumentsArchive(
   }
 
   return { archive: buildZip(entries), count: entries.length };
+}
+
+/**
+ * שיוך מסמך לקטגוריה ולשלב — רק בעל התהליך, כמו המחיקה. הקובץ עצמו אינו
+ * משתנה.
+ */
+export async function updatePlanDocumentMeta(
+  userId: string,
+  documentId: string,
+  meta: DocumentMeta
+): Promise<PlanDocumentView | null> {
+  const row = await prisma.planDocument.findUnique({
+    where: { id: documentId },
+    select: { id: true, ownerId: true },
+  });
+  if (!row || row.ownerId !== userId) return null;
+  const data = cleanDocumentMeta(meta);
+  const updated = await prisma.planDocument.update({ where: { id: row.id }, data, select: documentSelect });
+  return toView(updated);
 }
 
 /** מחיקת מסמך — רק בעל התהליך, ותמיד גם מה-Blob */

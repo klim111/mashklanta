@@ -647,6 +647,14 @@ model PlanDocument {
    * הנתיב ב-Vercel Blob. אינו נחשף לדפדפן לעולם
    */
   blobPath    String
+  /**
+   * למי המסמך מיועד: BANK, LAWYER, SELLER או SELF. ריק — נגזר מהמפתח
+   */
+  category    String?
+  /**
+   * השלב שהמסמך משויך אליו, או NONE למסמך כללי. ריק — נגזר מהמפתח
+   */
+  stage       String?
 
   uploadedAt DateTime @default(now())
 
