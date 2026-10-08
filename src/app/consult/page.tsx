@@ -80,11 +80,11 @@ function ConsultForm() {
         body: JSON.stringify({
           topic: selected.topic,
           requestKind: 'GUIDANCE',
-          sourcePath: `/consult?reason=${selected.id}`,
+          sourcePath: `/consult/${selected.id}`,
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
-          notes: [`נשלח מ"היוועצו איתנו": ${selected.label}`, note.trim()].filter(Boolean).join('\n\n'),
+          notes: note.trim() || undefined,
         }),
       });
       if (!response.ok) {

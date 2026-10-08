@@ -17,6 +17,7 @@ const PAGES: Array<[prefix: string, label: string]> = [
   ['/how-it-works', 'איך זה עובד'],
   ['/learn', 'מידע ולמידה'],
   ['/principal-approval', 'אישור עקרוני'],
+  ['/consult', 'היוועצו איתנו בתפריט העליון'],
 ];
 
 export function pageLabel(path: string | null | undefined): string | null {

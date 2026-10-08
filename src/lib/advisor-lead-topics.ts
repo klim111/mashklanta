@@ -15,6 +15,9 @@ export type LeadTopic =
   | 'ADVICE'
   | 'FAMILY_ECONOMY'
   | 'EXPERT_JOIN'
+  | 'CONSULT_BANK_OFFER'
+  | 'CONSULT_REFINANCE'
+  | 'CONSULT_DECLINED'
   | 'OTHER';
 
 const LEAD_TOPICS: readonly LeadTopic[] = [
@@ -30,6 +33,9 @@ const LEAD_TOPICS: readonly LeadTopic[] = [
   'ADVICE',
   'FAMILY_ECONOMY',
   'EXPERT_JOIN',
+  'CONSULT_BANK_OFFER',
+  'CONSULT_REFINANCE',
+  'CONSULT_DECLINED',
   'OTHER',
 ];
 
@@ -49,6 +55,10 @@ export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
   FAMILY_ECONOMY: 'ליווי כלכלת המשפחה · הלוואות, הון עצמי והוצאות',
   // "צרפו מומחה משכלנתא לתהליך" — מטאב אנשי הקשר באזור האישי
   EXPERT_JOIN: 'צירוף מומחה משכלנתא לתהליך',
+  // "היוועצו איתנו" בסרגל העליון
+  CONSULT_BANK_OFFER: 'בדיקת הצעה שהתקבלה מהבנק',
+  CONSULT_REFINANCE: 'בדיקה אם כדאי למחזר',
+  CONSULT_DECLINED: 'לא מאשרים משכנתא, בדיקה מה אפשר לעשות',
   OTHER: 'פנייה כללית',
 };
 
