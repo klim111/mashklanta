@@ -33,16 +33,6 @@ export interface GuestRegistrationDialogProps {
   description?: string;
 }
 
-/** שם משתמש ראשוני מתוך המייל, כדי שלא נבקש מהלקוח שדה נוסף */
-function usernameFromEmail(email: string): string {
-  const base = email
-    .split('@')[0]
-    .toLowerCase()
-    .replace(/[^a-z0-9._֐-׿-]/g, '');
-  const padded = base.length >= 3 ? base : `${base}user`;
-  return padded.slice(0, 24);
-}
-
 export function GuestRegistrationDialog({
   open,
   onOpenChange,
@@ -92,32 +82,17 @@ export function GuestRegistrationDialog({
 
     setBusy(true);
     try {
-      /**
-       * שם המשתמש נגזר מהמייל ולא נשאל מהלקוח, ולכן ייתכן שהוא תפוס בידי חשבון
-       * אחר. במקרה כזה מנסים שוב עם סיומת מספרית, במקום להציג ללקוח שגיאה על
-       * שדה שהוא לא מילא.
-       */
-      const register = (username: string) =>
-        fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: name.trim(),
-            username,
-            email: email.trim(),
-            password,
-            callbackUrl: redirectTo,
-          }),
-        });
-
-      const baseUsername = usernameFromEmail(email);
-      let response = await register(baseUsername);
-      let body = await response.json().catch(() => null);
-      for (let attempt = 1; attempt <= 2 && !response.ok; attempt += 1) {
-        if (!String(body?.error ?? '').includes('שם המשתמש')) break;
-        response = await register(`${baseUsername}${Math.floor(Math.random() * 9000) + 1000}`);
-        body = await response.json().catch(() => null);
-      }
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          callbackUrl: redirectTo,
+        }),
+      });
+      const body = await response.json().catch(() => null);
 
       if (body?.code === 'email-exists') {
         emailStatus.markExists();

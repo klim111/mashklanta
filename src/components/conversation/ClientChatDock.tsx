@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import type { ConversationSummary } from '@/lib/conversation';
 import { ConversationWindow } from './ConversationWindow';
 import { useConversationSummary } from './useConversation';
+import type { ComposeRequest } from './useConversation';
 
 type DockMode = 'bar' | 'open';
 
@@ -19,8 +20,6 @@ interface ClientConversationApi {
   unread: number;
   summary: ConversationSummary | null;
   open: () => void;
-  /** פתיחת החלון בטאב המיילים, עם מייל חדש לכתובת הזו */
-  composeEmail: (to: string) => void;
   toggle: () => void;
   registerSlot: (element: HTMLElement) => () => void;
   /**
@@ -28,6 +27,8 @@ interface ClientConversationApi {
    * השורה המוקטנת לא מוצגת, והחלון המלא נפתח מעל התפריט
    */
   registerActionsHost: () => () => void;
+  /** פתיחת החלון בטאב המיילים, עם מייל מוכן לשליחה */
+  compose: (request: ComposeRequest) => void;
 }
 
 const ClientConversationContext = createContext<ClientConversationApi | null>(null);
@@ -93,14 +94,10 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
     setMode('open');
   }, [slots]);
 
-  /** בקשה לפתוח מייל חדש — `at` מבדיל בין שתי בקשות לאותה כתובת */
-  const [compose, setCompose] = useState<{ to: string; at: number } | null>(null);
-  useEffect(() => {
-    if (mode === 'bar') setCompose(null);
-  }, [mode]);
-  const composeEmail = useCallback(
-    (to: string) => {
-      setCompose({ to, at: Date.now() });
+  const [composeRequest, setComposeRequest] = useState<ComposeRequest | null>(null);
+  const compose = useCallback(
+    (request: ComposeRequest) => {
+      setComposeRequest(request);
       openWindow();
     },
     [openWindow]
@@ -113,12 +110,12 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       unread,
       summary,
       open: openWindow,
-      composeEmail,
       toggle: () => (mode === 'open' ? setMode('bar') : openWindow()),
       registerSlot,
       registerActionsHost,
+      compose,
     }),
-    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow, composeEmail]
+    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow, compose]
   );
 
   const dock = enabled ? (
@@ -136,7 +133,8 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       unreadEmails={summary?.unreadEmails}
       mailboxAddress={summary?.mailboxAddress ?? null}
       receivesEmail={summary?.receivesEmail ?? false}
-      compose={compose}
+      composeRequest={composeRequest}
+      onComposeTaken={() => setComposeRequest(null)}
     />
   ) : null;
 

@@ -489,8 +489,8 @@ export function MortgagePlanningContent({
             onClick={() => handlePropertyTypeSelect(item.type)}
             {...demoId(`mp-property-${index}`)}
           >
-            <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl md:min-h-[280px]">
-              <CardContent className="p-6 text-center h-full flex flex-col justify-between">
+            <Card className="h-full border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white shadow-lg hover:shadow-xl">
+              <CardContent className="p-6 text-center h-full flex flex-col">
                 <div>
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg ${
                     item.color === 'blue' ? 'bg-gradient-to-br from-blue-600 to-blue-700' :

@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Calculator,
   Compass,
+  Contact,
   FolderOpen,
   Gavel,
   Home as HomeIcon,
@@ -34,6 +35,7 @@ import { AccessExpiredNotice } from './AccessExpiredNotice';
 import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
 import { ClientDocumentsSection } from './ClientDocumentsSection';
+import { ContactsSection } from './ContactsSection';
 import { ExpensesSection } from './ExpensesSection';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
@@ -78,6 +80,14 @@ const SECTIONS: SectionMeta[] = [
     description:
       'כל המסמכים שהבנק ידרוש, לפי הפרופיל ובעלות הנכס — מה כבר הוגש, מה חסר, והעלאה במקום אחד.',
     icon: FolderOpen,
+  },
+  {
+    id: 'contacts',
+    label: 'אנשי קשר',
+    title: 'אנשי הקשר שלי',
+    description:
+      'עורך הדין, השמאי, הבנקאי ושאר אנשי המקצוע בעסקה — מה כל אחד עושה ומתי צריך אותו. מי שתשמרו כאן זמין בכל הפלטפורמה ובתיבת המיילים.',
+    icon: Contact,
   },
   {
     id: 'rate-requests',
@@ -402,6 +412,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                   <ClientDocumentsSection data={data} />
                 </div>
               )}
+
+              {section === 'contacts' && <ContactsSection />}
 
               {section === 'rate-requests' && (
                 <div className="space-y-5" {...demoId('dash-rate-requests')}>

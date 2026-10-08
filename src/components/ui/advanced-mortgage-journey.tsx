@@ -476,9 +476,9 @@ export default function AdvancedMortgageJourney({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden">
         {/* Right Panel - Vertical Map */}
-        <div className="w-80 bg-white shadow-2xl overflow-y-auto border-l border-slate-200">
+        <div className="w-full lg:w-72 xl:w-80 shrink-0 max-h-[60vh] lg:max-h-none bg-white shadow-2xl overflow-y-auto border-b lg:border-b-0 lg:border-l border-slate-200">
           <div className="sticky top-0 bg-white z-20 border-b border-slate-200">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-2">
@@ -702,8 +702,8 @@ export default function AdvancedMortgageJourney({
         </div>
 
         {/* Center Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
+        <div className="flex-1 min-w-0 lg:overflow-y-auto">
+          <div className="p-4 sm:p-6 xl:p-8">
             <AnimatePresence mode="wait">
               {showWelcome ? (
                 /* Welcome Screen */
@@ -712,10 +712,10 @@ export default function AdvancedMortgageJourney({
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex items-center justify-center min-h-[600px]"
+                  className="flex items-center justify-center min-h-[400px] lg:min-h-[600px]"
                 >
                   <Card className="max-w-2xl w-full bg-white shadow-2xl border-0 overflow-hidden">
-                    <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-8 text-white">
+                    <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-6 xl:p-8 text-white">
                       <motion.div
                         initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
@@ -725,18 +725,19 @@ export default function AdvancedMortgageJourney({
                         <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-4">
                           <Rocket className="w-10 h-10 text-white" />
                         </div>
-                        <h1 className="text-title font-bold mb-2">ברוכים הבאים למסע המשכנתא</h1>
+                        <h1 className="text-title font-bold mb-2 break-words text-white">ברוכים הבאים למסע המשכנתא</h1>
                         <p className="text-lg text-white/90">נלווה אותך צעד אחר צעד עד לקבלת המשכנתא המושלמת</p>
                       </motion.div>
                     </div>
-                    <CardContent className="p-8">
+                    <CardContent className="p-6 xl:p-8">
                       <div className="space-y-6">
-                        <div className="grid grid-cols-3 gap-4">
+                        {/* ברוחב צר (כולל lg עם שלוש עמודות דף) – הפיצ'רים נערמים */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-4">
                           <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="text-center"
+                            className="text-center min-w-0"
                           >
                             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                               <Target className="w-6 h-6 text-blue-600" />
@@ -748,7 +749,7 @@ export default function AdvancedMortgageJourney({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
-                            className="text-center"
+                            className="text-center min-w-0"
                           >
                             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
                               <FileCheck className="w-6 h-6 text-green-600" />
@@ -760,7 +761,7 @@ export default function AdvancedMortgageJourney({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.5 }}
-                            className="text-center"
+                            className="text-center min-w-0"
                           >
                             <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
                               <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -789,7 +790,7 @@ export default function AdvancedMortgageJourney({
                   </Card>
                 </motion.div>
               ) : (
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
                   {/* Right Module - Step Details */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -1006,8 +1007,8 @@ export default function AdvancedMortgageJourney({
         </div>
 
         {/* Left Panel - Calendar */}
-        <div className="w-96 bg-white shadow-2xl overflow-y-auto border-r border-slate-200">
-          <div className="sticky top-0 bg-white z-20 border-b border-slate-200">
+        <div className="w-full lg:w-80 xl:w-96 shrink-0 bg-white shadow-2xl lg:overflow-y-auto border-t lg:border-t-0 lg:border-r border-slate-200">
+          <div className="lg:sticky top-0 bg-white z-20 border-b border-slate-200">
             <div className="p-6">
               <div className="flex items-center justify-between">
                 <Button

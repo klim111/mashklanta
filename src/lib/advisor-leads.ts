@@ -5,6 +5,9 @@ import type { RequestKind } from './advisor-requests';
 import { ensureClientLinkSafely } from './advisor-link';
 import { emailAdvisorAboutRequest } from './advisor-notify';
 import { pageLabel } from './page-labels';
+import { PLAN_STAGES } from './mortgage-plan';
+import type { PlanStageId } from './mortgage-plan';
+import { journeyStageFor } from '@/data/platform/planStages';
 import { LEAD_TOPIC_LABELS, parseLeadTopic } from './advisor-lead-topics';
 import type { LeadTopic } from './advisor-lead-topics';
 
@@ -33,6 +36,9 @@ export interface AdvisorLeadView {
   requestKindLabel: string | null;
   /** העמוד שממנו נשלחה */
   sourcePath: string | null;
+  /** השלב בתהליך הפעיל של הלקוח כשפנה */
+  stage: string | null;
+  stageLabel: string | null;
   status: 'OPEN' | 'HANDLED' | 'CLOSED';
   clientId: string | null;
   createdAt: string;
@@ -47,12 +53,19 @@ const leadSelect = {
   notes: true,
   requestKind: true,
   sourcePath: true,
+  stage: true,
   status: true,
   clientId: true,
   createdAt: true,
 } satisfies Prisma.AdvisorLeadSelect;
 
 type LeadRow = Prisma.AdvisorLeadGetPayload<{ select: typeof leadSelect }>;
+
+function stageLabel(stage: string | null): string | null {
+  if (!stage || !(PLAN_STAGES as readonly string[]).includes(stage)) return null;
+  const index = PLAN_STAGES.indexOf(stage as PlanStageId);
+  return `שלב ${index + 1} · ${journeyStageFor(stage as PlanStageId).title}`;
+}
 
 function toView(row: LeadRow): AdvisorLeadView {
   const topic = parseLeadTopic(row.topic);
@@ -68,6 +81,8 @@ function toView(row: LeadRow): AdvisorLeadView {
     requestKind: kind,
     requestKindLabel: kind ? REQUEST_KIND_LABELS[kind] : null,
     sourcePath: row.sourcePath,
+    stage: row.stage,
+    stageLabel: stageLabel(row.stage),
     status: row.status as AdvisorLeadView['status'],
     clientId: row.clientId,
     createdAt: row.createdAt.toISOString(),
@@ -120,6 +135,14 @@ export async function createLead(
   // שעשה יופיעו אצלו
   const client = userId ? await ensureClientLinkSafely(userId) : null;
   const requestKind = input.requestKind ?? null;
+  // השלב שבו הלקוח נמצא בתהליך הפעיל — כדי שהיועץ יידע מאיפה הוא פנה
+  const plan = userId
+    ? await prisma.mortgagePlan.findFirst({
+        where: { ownerId: userId, status: 'IN_PROGRESS' },
+        orderBy: { updatedAt: 'desc' },
+        select: { name: true, propertyAddress: true, currentStage: true },
+      })
+    : null;
 
   const row = await prisma.advisorLead.create({
     data: {
@@ -133,6 +156,7 @@ export async function createLead(
       notes: input.notes?.trim() || null,
       requestKind,
       sourcePath: input.sourcePath ?? null,
+      stage: plan?.currentStage ?? null,
     },
     select: leadSelect,
   });
@@ -143,6 +167,8 @@ export async function createLead(
     details: [
       ['נושא', LEAD_TOPIC_LABELS[input.topic]],
       ['נשלחה מהעמוד', pageLabel(input.sourcePath)],
+      ['תהליך', plan ? plan.propertyAddress || plan.name : null],
+      ['שלב בתהליך', stageLabel(plan?.currentStage ?? null)],
       ['חשבון', userId ? 'לקוח רשום' : 'אורח, בלי חשבון'],
     ],
     from: { name, email: emailValid ? email : null, phone: phone || null },

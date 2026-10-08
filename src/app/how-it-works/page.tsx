@@ -165,8 +165,8 @@ export default function HowItWorksPage() {
             </span>
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-100 md:text-xl">
-            משכלתנא היא צומת המפגש בין לקוח ליועץ. אתם בוחרים אילו שלבים לעשות לבד ואילו
+          <p className="mx-auto mb-10 max-w-2xl text-balance text-lg leading-relaxed text-slate-100 md:text-xl">
+            משכלנתא היא צומת המפגש בין לקוח ליועץ. אתם בוחרים אילו שלבים לעשות לבד ואילו
             להעביר ליועץ, משלמים רק על מה שלקחתם — ורואים בכל רגע את ההפרש בין ברירת המחדל
             של הבנק לבין התוצר האמיתי.
           </p>

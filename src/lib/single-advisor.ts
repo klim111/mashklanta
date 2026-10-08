@@ -102,7 +102,16 @@ async function moveReferences(tx: Tx, table: string, fromId: string, toId: strin
           userId,
           id
         );
-        if (keeper) await moveReferences(tx, 'Client', id, keeper.id);
+        if (keeper) {
+          // ליווי אמיתי גובר על כרטיס שנפתח אוטומטית (src/lib/advisor-link.ts)
+          await tx.$executeRawUnsafe(
+            `UPDATE "Client" SET "autoLinked" = false
+              WHERE id = $1 AND EXISTS (SELECT 1 FROM "Client" WHERE id = $2 AND "autoLinked" = false)`,
+            keeper.id,
+            id
+          );
+          await moveReferences(tx, 'Client', id, keeper.id);
+        }
       }
       await tx.$executeRawUnsafe(`DELETE FROM ${t} WHERE id = $1`, id);
     }

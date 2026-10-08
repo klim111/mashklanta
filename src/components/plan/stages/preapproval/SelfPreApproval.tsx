@@ -280,7 +280,10 @@ export function SelfPreApproval({
   };
 
   const conversation = useClientConversation();
-  const emailBanker = conversation?.enabled ? conversation.composeEmail : null;
+  const emailBanker =
+    conversation?.enabled
+      ? (to: string) => conversation.compose({ to: [to], subject: '', text: '' })
+      : null;
   const { meetings } = useClientMeetings();
   const handoffMeeting = useMemo(
     () =>

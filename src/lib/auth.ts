@@ -18,13 +18,13 @@ import {
 import { canonicalSiteOrigin } from "@/lib/auth-url";
 import { cookies } from "next/headers";
 import { sendWelcomeEmail } from "@/lib/client-emails";
+import { ensureClientLinkSafely } from "@/lib/advisor-link";
 import {
   ADVISOR_DEVICE_COOKIE,
   AdvisorLinkError,
   confirmAdvisorLink,
   notifyAdvisorLogin,
 } from "@/lib/advisor-access";
-import { ensureClientLinkSafely } from "@/lib/advisor-link";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
@@ -289,21 +289,7 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async createUser({ user }) {
-      if (!user.email || !user.id) return;
-      const base = user.email
-        .split("@")[0]
-        .replace(/[^a-zA-Z0-9._-]/g, "")
-        .slice(0, 24);
-      if (!base) return;
-      try {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { username: base },
-        });
-      } catch {
-        // שם המשתמש כבר תפוס — נשאר בלי username
-      }
-      await ensureClientLinkSafely(user.id);
+      if (user.id) await ensureClientLinkSafely(user.id);
     },
   },
 };

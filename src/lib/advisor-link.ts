@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { syncStageDocuments } from './clients';
+import { ADVISOR_EMAIL } from './single-advisor';
 
 /**
  * שיוך לקוחות ליועץ.
@@ -20,13 +21,16 @@ export interface PrimaryAdvisor {
   email: string | null;
 }
 
-/** היועץ של הפלטפורמה — חשבון היועץ הראשון שנפתח */
+/**
+ * היועץ של הפלטפורמה: חשבון היועץ היחיד (src/lib/single-advisor.ts), ואם
+ * עדיין לא נוצר — חשבון היועץ הראשון שנפתח. יועצים ישנים מתמזגים לחשבון
+ * היחיד בכניסה הראשונה שלו, יחד עם הלקוחות שלהם.
+ */
 export async function primaryAdvisor(): Promise<PrimaryAdvisor | null> {
-  return prisma.user.findFirst({
-    where: { role: 'ADVISOR' },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true, name: true, email: true },
-  });
+  const select = { id: true, name: true, email: true } as const;
+  const single = await prisma.user.findFirst({ where: { role: 'ADVISOR', email: ADVISOR_EMAIL }, select });
+  if (single) return single;
+  return prisma.user.findFirst({ where: { role: 'ADVISOR' }, orderBy: { createdAt: 'asc' }, select });
 }
 
 export interface ClientLink {
@@ -58,7 +62,8 @@ export async function ensureClientLink(userId: string): Promise<ClientLink | nul
   let clientId: string;
   try {
     const created = await prisma.client.create({
-      data: { advisorId: advisor.id, userId, name: user.name?.trim() || user.email, email: user.email },
+      // אוטומטי — לא ליווי: הכלים בתשלום נשארים סגורים עד שהלקוח משלם
+      data: { advisorId: advisor.id, userId, name: user.name?.trim() || user.email, email: user.email, autoLinked: true },
       select: { id: true },
     });
     clientId = created.id;

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { normalizeEmail, normalizeUsername } from '@/lib/find-user-by-login';
+import { normalizeEmail } from '@/lib/find-user-by-login';
 import { passwordProblem } from '@/lib/password-policy';
 import {
   REGISTRATION_DEVICE_COOKIE,
   VERIFICATION_TTL_MINUTES,
   generateToken,
   startRegistration,
-  usernameTaken,
 } from '@/lib/registration';
 
 export const maxDuration = 30;
@@ -18,15 +17,12 @@ export const maxDuration = 30;
  * המשתמש נוצר ומחובר רק כשהקישור מאושר (ראו src/lib/registration.ts).
  *
  * ההרשמה פתוחה ללקוחות בלבד: שדה role, אם נשלח, מתעלמים ממנו.
+ *
+ * אין שם משתמש נפרד: השם המלא הוא השם שמוצג בכל מקום, והכניסה היא במייל.
+ * שדה username, אם נשלח מטופס ישן, מתעלמים ממנו.
  */
 const registerSchema = z.object({
   email: z.string().trim().email('כתובת מייל לא תקינה').max(254),
-  username: z
-    .string()
-    .trim()
-    .min(3, 'שם המשתמש חייב להכיל לפחות 3 תווים')
-    .max(32, 'שם המשתמש ארוך מדי')
-    .regex(/^[a-zA-Z0-9._֐-׿-]+$/, 'שם המשתמש יכול להכיל אותיות, מספרים, נקודה, מקף וקו תחתון'),
   // 8 תווים, אות, ספרה וסימן, ועד 72 בתים (ראו src/lib/password-policy.ts)
   password: z.string().superRefine((value, ctx) => {
     const problem = passwordProblem(value);
@@ -46,11 +42,6 @@ export async function POST(request: NextRequest) {
 
     const { password, name, callbackUrl } = validation.data;
     const email = normalizeEmail(validation.data.email);
-    const username = normalizeUsername(validation.data.username);
-
-    if (await usernameTaken(username, email)) {
-      return NextResponse.json({ error: 'שם המשתמש הזה כבר תפוס' }, { status: 400 });
-    }
 
     // עוגייה שמזהה את הדפדפן הזה: אישור הקישור מכאן לא ידרוש שוב את הסיסמה
     const deviceToken = request.cookies.get(REGISTRATION_DEVICE_COOKIE)?.value || generateToken();
@@ -58,7 +49,6 @@ export async function POST(request: NextRequest) {
     const result = await startRegistration({
       email,
       name,
-      username,
       password,
       callbackUrl,
       deviceToken,

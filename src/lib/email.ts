@@ -137,24 +137,21 @@ export const emailTemplates = {
   verificationEmail: ({
     name,
     email,
-    username,
     verificationUrl,
     ttlMinutes,
   }: {
     name: string;
     email: string;
-    username: string | null;
     verificationUrl: string;
     ttlMinutes: number;
   }) => {
     const greeting = name ? `שלום ${escapeHtml(name)},` : 'שלום,';
-    const userLine = username ? `<br>שם משתמש: <strong>${escapeHtml(username)}</strong>` : '';
     return {
       subject: `אישור ההרשמה ל${appName()}`,
       html: authEmailShell(
         'אישור כתובת המייל',
         `<p style="margin:0 0 12px;">${greeting}</p>
-         <p style="margin:0 0 12px;">התקבלה בקשה לפתוח חשבון לקוח עבור <strong dir="ltr">${escapeHtml(email)}</strong>.${userLine}</p>
+         <p style="margin:0 0 12px;">התקבלה בקשה לפתוח חשבון לקוח עבור <strong dir="ltr">${escapeHtml(email)}</strong>.</p>
          <p style="margin:0 0 20px;">החשבון ייפתח רק אחרי שתאשרו שהמייל הזה שלכם:</p>
          <div style="text-align:center;margin:0 0 20px;">
            <a href="${verificationUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">אישור ההרשמה</a>
@@ -164,7 +161,7 @@ export const emailTemplates = {
       ),
       text: `${name ? `שלום ${name},` : 'שלום,'}
 
-התקבלה בקשה לפתוח חשבון לקוח ב${appName()} עבור ${email}.${username ? `\nשם משתמש: ${username}` : ''}
+התקבלה בקשה לפתוח חשבון לקוח ב${appName()} עבור ${email}.
 
 לאישור ההרשמה (תקף ל-${ttlMinutes} דקות, לשימוש אחד):
 ${verificationUrl}

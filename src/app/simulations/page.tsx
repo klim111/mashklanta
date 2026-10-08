@@ -206,9 +206,9 @@ export default function SimulationsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   whileHover={{ scale: isComingSoon ? 1 : 1.02, y: isComingSoon ? 0 : -5 }}
-                  className={isComingSoon ? 'opacity-60' : ''}
+                  className={`h-full ${isComingSoon ? 'opacity-60' : ''}`}
                 >
-                  <Card className={`h-full border-2 ${isComingSoon ? 'border-gray-200' : simulation.borderColor} hover:${simulation.borderColor} transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl ${isComingSoon ? '' : 'cursor-pointer'} relative overflow-hidden`}>
+                  <Card className={`h-full flex flex-col border-2 ${isComingSoon ? 'border-gray-200' : simulation.borderColor} hover:${simulation.borderColor} transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl ${isComingSoon ? '' : 'cursor-pointer'} relative overflow-hidden`}>
                     {simulation.recommended && (
                       <div className="absolute top-0 right-0 bg-gradient-to-br from-yellow-400 to-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                         מומלץ
@@ -243,7 +243,7 @@ export default function SimulationsPage() {
                       </CardDescription>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
+                    <CardContent className="flex flex-1 flex-col gap-4">
                       <p className="text-sm text-gray-600 leading-relaxed">
                         {simulation.longDescription}
                       </p>
@@ -260,8 +260,10 @@ export default function SimulationsPage() {
                         </ul>
                       </div>
 
+                      {/* הכפתור נדחף לתחתית כדי שיהיה מיושר בין הכרטיסים */}
+                      <div className="mt-auto pt-2">
                       {!isComingSoon ? (
-                        <Link href={simulation.href}>
+                        <Link href={simulation.href} className="block">
                           <Button className={`w-full bg-gradient-to-r ${simulation.color} hover:opacity-90 text-white shadow-md`}>
                             <Play className="w-4 h-4 ml-2" />
                             התחל סימולציה
@@ -273,6 +275,7 @@ export default function SimulationsPage() {
                           בקרוב...
                         </Button>
                       )}
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>

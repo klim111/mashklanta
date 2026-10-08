@@ -44,6 +44,14 @@ import {
   signingRegistry,
   signingScenario,
 } from './signing-documents';
+import {
+  EMPTY_COLLATERAL,
+  parseCollateral,
+  parseContractAnswer,
+  parsePaymentSchedule,
+  scheduleDefined,
+} from './payment-schedule';
+import type { CollateralFormState, ContractAnswer, PaymentSchedule } from './payment-schedule';
 
 /**
  * סדר השלבים בתהליך. הבקשה לאישור עקרוני קודמת לבניית התמהיל, כי הריביות
@@ -609,7 +617,7 @@ export interface AuctionData {
 }
 
 /** תת-המסכים של שלב החתימה, לפי הסדר שבו עוברים בהם */
-export const SIGNING_SCREENS = ['overview', 'bank-file', 'documents', 'verify'] as const;
+export const SIGNING_SCREENS = ['overview', 'collateral', 'bank-file', 'documents', 'verify'] as const;
 export type SigningScreen = (typeof SIGNING_SCREENS)[number];
 
 /** שלב 5 — החתימה בבנק */
@@ -637,6 +645,15 @@ export interface SigningData {
   bankFile: Record<string, boolean>;
   /** חלון רשימת הבטחונות כבר קפץ פעם אחת */
   collateralShown: boolean;
+  /**
+   * פעימות התשלום למוכר — כלי התכנון של משכנתא חדשה. נשמרות בשלב החתימה כי
+   * שם הן סעיף חובה, אבל נערכות מכל שלב.
+   */
+  paymentSchedule: PaymentSchedule | null;
+  /** התשובה ל"האם כבר חתמתם על חוזה?" שנשאלת בפתיחת משכנתא חדשה */
+  contractAnswer: ContractAnswer | null;
+  /** תת-השלב הראשון: טופס הבטחונות מהבנק והעברתו לעורך הדין */
+  collateral: CollateralFormState;
 }
 
 export interface PlanStageDataMap {
@@ -756,6 +773,9 @@ const EMPTY: PlanData = {
     documents: {},
     bankFile: {},
     collateralShown: false,
+    paymentSchedule: null,
+    contractAnswer: null,
+    collateral: { ...EMPTY_COLLATERAL },
   },
 };
 
@@ -1353,6 +1373,9 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         documents: flagMap(source.documents, ALL_SIGNING_DOCUMENT_KEYS),
         bankFile: prefixedFlags(source.bankFile, 'bank-file:'),
         collateralShown: bool(source.collateralShown),
+        paymentSchedule: parsePaymentSchedule(source.paymentSchedule),
+        contractAnswer: parseContractAnswer(source.contractAnswer),
+        collateral: parseCollateral(source.collateral),
       } as PlanStageDataMap[S];
     }
 
@@ -2054,7 +2077,8 @@ export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
     case 'SIGNING':
       return (
         Boolean(data.SIGNING.bank) &&
-        SIGNING_CHECKS.every((check) => data.SIGNING.checklist[check.key])
+        SIGNING_CHECKS.every((check) => data.SIGNING.checklist[check.key]) &&
+        (!usesPaymentSchedule(data) || scheduleDefined(data.SIGNING.paymentSchedule))
       );
     default:
       return false;
@@ -2103,11 +2127,27 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       if (!data.SIGNING.bank) missing.push('הבנק שאיתו נחתם');
       const open = SIGNING_CHECKS.filter((check) => !data.SIGNING.checklist[check.key]).length;
       if (open > 0) missing.push(`${open} בדיקות חתימה`);
+      if (usesPaymentSchedule(data) && !scheduleDefined(data.SIGNING.paymentSchedule)) {
+        missing.push('הגדרת פעימות התשלום');
+      }
       break;
     }
   }
 
   return missing;
+}
+
+/**
+ * כלי פעימות התשלום שייך למשכנתא חדשה לרכישת נכס: לא למיחזור, ולא למשכנתא
+ * לכל מטרה שאין בה מוכר לשלם לו.
+ */
+export function usesPaymentSchedule(data: Pick<PlanData, 'MIX' | 'ANALYSIS'>): boolean {
+  return planFlowOf(data).kind === 'NEW' && data.ANALYSIS.dealType !== 'any_purpose';
+}
+
+/** פעימות התשלום הוגדרו ואושרו בתהליך הזה */
+export function paymentScheduleDefined(data: PlanData): boolean {
+  return scheduleDefined(data.SIGNING.paymentSchedule);
 }
 
 /**

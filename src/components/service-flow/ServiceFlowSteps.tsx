@@ -68,7 +68,7 @@ export function ServiceFlowSteps({ tone = 'light' }: { tone?: 'light' | 'dark' }
           >
             {step.number}
           </span>
-          <h3 className="text-subtitle font-black">{step.title}</h3>
+          <h3 className={`text-subtitle font-black ${dark ? 'text-white' : 'text-slate-900'}`}>{step.title}</h3>
           <p className={`mt-2 text-sm leading-relaxed ${dark ? 'text-white/70' : 'text-slate-600'}`}>
             {step.description}
           </p>

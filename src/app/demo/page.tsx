@@ -46,7 +46,7 @@ export default function DemoLandingPage() {
             <FlaskConical className="h-3.5 w-3.5" />
             הדגמות אינטראקטיביות · נתונים לדוגמה בלבד
           </span>
-          <h1 className="mt-4 text-title font-black text-slate-900">הכירו את משכלנתא מבפנים</h1>
+          <h1 className="mt-4 text-title font-black text-slate-900">הכירו את הכלים של משכלנתא</h1>
           <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
             ההדגמה מפעילה את הכלים האמיתיים מולכם — לוחצת, מקלידה ומזיזה סליידרים — ומסבירה כל
             פעולה בדרך. בכל רגע אפשר לעצור, לנסות בעצמכם ולהמשיך.
@@ -107,8 +107,8 @@ export default function DemoLandingPage() {
 
         <p className="mt-12 text-center text-sm text-slate-500">
           מעדיפים להתחיל לבד?{' '}
-          <Link href="/" className="font-bold text-blue-600 hover:underline">
-            חזרה לדף הבית ולכלים החינמיים
+          <Link href="/#free-tools" className="font-bold text-blue-600 hover:underline">
+            לכלים החינמיים
           </Link>
         </p>
       </main>

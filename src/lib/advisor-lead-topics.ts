@@ -14,6 +14,7 @@ export type LeadTopic =
   | 'REFINANCE_FULL'
   | 'ADVICE'
   | 'FAMILY_ECONOMY'
+  | 'EXPERT_JOIN'
   | 'OTHER';
 
 const LEAD_TOPICS: readonly LeadTopic[] = [
@@ -28,6 +29,7 @@ const LEAD_TOPICS: readonly LeadTopic[] = [
   'REFINANCE_FULL',
   'ADVICE',
   'FAMILY_ECONOMY',
+  'EXPERT_JOIN',
   'OTHER',
 ];
 
@@ -45,6 +47,8 @@ export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
   ADVICE: 'ייעוץ והכוונה בנושא משכנתא',
   // פנייה ליועץ כלכלת המשפחה — מכלי ההלוואות הצרכניות ומכלי תכנון ההוצאות
   FAMILY_ECONOMY: 'ליווי כלכלת המשפחה · הלוואות, הון עצמי והוצאות',
+  // "צרפו מומחה משכלנתא לתהליך" — מטאב אנשי הקשר באזור האישי
+  EXPERT_JOIN: 'צירוף מומחה משכלנתא לתהליך',
   OTHER: 'פנייה כללית',
 };
 

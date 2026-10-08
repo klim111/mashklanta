@@ -12,7 +12,7 @@ function CheckEmailContent() {
   const via = searchParams.get('via') === 'google' ? 'google' : 'password';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-start justify-center px-4 py-10 sm:items-center sm:p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           <CheckEmailPanel email={email} via={via} sendFailed={searchParams.get('error') === 'send'} />

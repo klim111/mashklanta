@@ -55,6 +55,16 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.client.findUnique({
     where: { advisorId_userId: { advisorId, userId: user.id } },
   });
+  // לקוח שנרשם לבד כבר מופיע ברשימה עם כרטיס אוטומטי — הצירוף הופך אותו ללקוח בליווי
+  if (existing?.autoLinked) {
+    const phone = typeof body?.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;
+    const name = typeof body?.name === 'string' && body.name.trim() ? body.name.trim() : null;
+    await prisma.client.update({
+      where: { id: existing.id },
+      data: { autoLinked: false, ...(name ? { name } : {}), ...(phone ? { phone } : {}) },
+    });
+    return NextResponse.json({ id: existing.id }, { status: 200 });
+  }
   if (existing) {
     return NextResponse.json({ error: 'הלקוח כבר מופיע ברשימה שלך', id: existing.id }, { status: 409 });
   }

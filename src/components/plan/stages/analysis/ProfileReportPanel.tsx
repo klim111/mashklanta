@@ -242,7 +242,7 @@ export function ProfileReportPanel({
                   <span className="rounded-full bg-amber-400 px-3 py-1 text-2xs font-black text-slate-900">דוגמה</span>
                 )}
               </div>
-              <h3 className="mt-3 text-subtitle font-black leading-tight">דוח פרופיל פיננסי</h3>
+              <h3 className="mt-3 text-subtitle font-black leading-tight text-white">דוח פרופיל פיננסי</h3>
               <p className="mt-1 text-sm text-white/80">{planName || 'הפרופיל הפיננסי שלכם'}</p>
               <p className="mt-0.5 text-sm text-white/60">
                 {report.headline} · הופק {date}

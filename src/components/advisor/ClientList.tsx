@@ -284,7 +284,17 @@ function ClientRow({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-900">{client.name}</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+          <span className="truncate">{client.name}</span>
+          {client.selfRegistered && (
+            <span
+              title="נרשם לבד לפלטפורמה. צירוף הלקוח בטופס הוספת לקוח הופך אותו ללקוח בליווי"
+              className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600"
+            >
+              נרשם לבד
+            </span>
+          )}
+        </p>
         <p className="flex flex-wrap items-center gap-x-3 text-[11px] text-slate-500">
           <span className="flex items-center gap-1">
             <Mail className="h-3 w-3" />

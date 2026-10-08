@@ -67,6 +67,7 @@ const planSelect = {
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
   platformPayments: { select: { createdAt: true, amountAgorot: true } },
   advisorOrders: { select: { status: true } },
+  client: { select: { autoLinked: true } },
   owner: {
     select: {
       role: true,
@@ -122,8 +123,10 @@ function accessOf(row: PlanRow): ProcessAccess {
     payments: row.platformPayments,
     ownerPayments: row.owner.platformPayments,
     ownerCompletions: completionsOf(row.owner.mortgagePlans),
-    // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ)
-    hasPaidAdvisory: row.clientId !== null || row.advisorOrders.some((order) => order.status === 'PAID'),
+    // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ). כרטיס
+    // שנפתח אוטומטית ללקוח שנרשם לבד אינו ליווי
+    hasPaidAdvisory:
+      Boolean(row.client && !row.client.autoLinked) || row.advisorOrders.some((order) => order.status === 'PAID'),
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
     ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
   });
@@ -298,7 +301,8 @@ export async function countOpenSelfServicePlans(userId: string): Promise<number>
     where: {
       ownerId: userId,
       status: 'IN_PROGRESS',
-      clientId: null,
+      // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
+      OR: [{ clientId: null }, { client: { autoLinked: true } }],
       advisorOrders: { none: { status: 'PAID' } },
     },
   });
@@ -311,7 +315,7 @@ export async function countOpenSelfServicePlans(userId: string): Promise<number>
 export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true, advisedAs: { select: { id: true }, take: 1 } },
+    select: { role: true, advisedAs: { where: { autoLinked: false }, select: { id: true }, take: 1 } },
   });
   if (!user || user.role === 'ADVISOR' || user.advisedAs.length > 0) return true;
   return (await countOpenSelfServicePlans(userId)) < MAX_OPEN_PROCESSES;

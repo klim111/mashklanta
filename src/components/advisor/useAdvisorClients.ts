@@ -24,6 +24,8 @@ export interface AdvisorClient {
   /** השלב בכלי תכנון המשכנתא — אותם חמישה שלבים שהלקוח רואה אצלו */
   planStage: PlanStageId | null;
   planProgress: number;
+  /** נרשם לבד ומופיע בכרטיס אוטומטי — עדיין לא לקוח בליווי */
+  selfRegistered?: boolean;
   updatedAt: string;
 }
 
