@@ -18,7 +18,7 @@ import { useMarketRates } from '@/hooks/useMarketRates';
 import { mixWithRemainingTerms } from '@/lib/refinance';
 import { AdvisorHelpButton } from '@/components/plan/stages/analysis/AdvisorHelpButton';
 import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
-import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
+import { useClientConversation } from '@/components/conversation/ClientChatDock';
 import { saveRefinanceAsNewPlan } from '@/components/mortgage-refinance/refinancePlan';
 import { RefinanceCheck } from '@/components/refinance-check/RefinanceCheck';
 import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePreviewBar';
@@ -98,6 +98,7 @@ function FullRefinanceTool({ initialMix, banner }: { initialMix?: MortgageMix; b
   const [leadOpen, setLeadOpen] = useState(false);
   /** משתמש רשום מגיע מהאזור האישי, וחוזר אליו */
   const signedIn = status === 'authenticated';
+  const conversation = useClientConversation();
 
   const totalTracksAmount = currentMix.tracks.reduce((sum, track) => sum + track.amount, 0);
   const isMixValid =
@@ -333,9 +334,9 @@ function FullRefinanceTool({ initialMix, banner }: { initialMix?: MortgageMix; b
       />
       <AdvisorLeadDialog open={leadOpen} onOpenChange={setLeadOpen} topic="REFINANCE_HYBRID" />
 
-      {signedIn && (
+      {/* ללקוח מחובר עיגול הפעולות מחזיק את החזרה לדאשבורד; כאן רק למי שאין לו אותו */}
+      {signedIn && !conversation?.enabled && (
         <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden">
-          <ConversationDockSlot />
           <Link
             href="/dashboard"
             aria-label="חזרה לדאשבורד"

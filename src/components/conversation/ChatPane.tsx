@@ -101,7 +101,7 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
               }
             }}
             rows={1}
-            placeholder={role === 'CLIENT' ? 'כתבו הודעה ליועץ…' : 'כתבו הודעה ללקוח…'}
+            placeholder={role === 'CLIENT' ? 'כתבו הודעה לנציג משכלנתא…' : 'כתבו הודעה ללקוח…'}
             className={`max-h-32 min-h-[2.75rem] flex-1 resize-none rounded-xl border-2 border-slate-200 px-3 py-2 text-info text-slate-900 focus:outline-none ${accent.ring}`}
           />
           <button

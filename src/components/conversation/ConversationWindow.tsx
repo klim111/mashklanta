@@ -160,7 +160,7 @@ export function ConversationWindow({
       dir="rtl"
       role="dialog"
       aria-label={title}
-      style={offset && anchor === 'corner' ? { [side]: offset } : undefined}
+      style={offset ? { [side]: offset } : undefined}
       className={`fixed inset-0 z-50 flex flex-col overflow-hidden bg-white text-right sm:inset-auto sm:w-[420px] sm:rounded-2xl sm:border sm:border-slate-200 sm:shadow-2xl sm:shadow-slate-900/20 print:hidden ${
         anchor === 'above-actions'
           ? 'sm:bottom-28 sm:right-5 sm:h-[min(620px,calc(100vh-8.5rem))]'
