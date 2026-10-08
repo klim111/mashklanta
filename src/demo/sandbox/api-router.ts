@@ -121,6 +121,8 @@ export class DemoApiRouter {
   private rateRequests: Record<string, unknown>[] = [];
   private equityPlan: Record<string, unknown> | null = null;
   /** כלי מצב הון ותזרים — נשמר בזיכרון בלבד */
+  /** פניות ליועץ שנשלחו בהדגמה — לשורת "הבקשה הועברה ליועץ" */
+  private leads: Array<Record<string, unknown>> = [];
   private cashFlow: Record<string, unknown> | null = {
     household: 'COUPLE',
     borrowerName: 'דנה',
@@ -219,7 +221,20 @@ export class DemoApiRouter {
     }
     if (path === '/api/platform/access') return json(demoPlatformAccess());
     if (path === '/api/platform/checkout') return json({ ok: true, demo: true });
-    if (path === '/api/advisor-leads') return json({ ok: true, demo: true });
+    if (path === '/api/advisor-leads') {
+      if (method === 'POST') {
+        const body = await this.body(init, input);
+        const lead = {
+          id: this.nextId('demo-lead'),
+          requestKindLabel: typeof body.requestKind === 'string' ? 'בקשת ליווי' : null,
+          topicLabel: 'פנייה ליועץ',
+          createdAt: nowIso(),
+        };
+        this.leads = [lead, ...this.leads];
+        return json(lead, 201);
+      }
+      return json(this.leads);
+    }
 
     // ─── תוכנית ההון העצמי (נשמרת בזיכרון בלבד) ───
     if (path === '/api/equity-plans') {

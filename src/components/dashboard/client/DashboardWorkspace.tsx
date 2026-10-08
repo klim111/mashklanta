@@ -40,17 +40,25 @@ export function DashboardWorkspace({
   equityPlan,
   cashFlow,
   initial = null,
+  request = null,
 }: {
   actions: ReactNode;
   actionsCount: number;
   equityPlan: EquityPlanView | null;
   cashFlow: CashFlowStore;
   initial?: WorkspaceId | null;
+  /** פתיחה מבחוץ, גם כשאותו אזור כבר נבחר קודם — `nonce` משתנה בכל בקשה */
+  request?: { id: WorkspaceId; nonce: number } | null;
 }) {
   const [open, setOpen] = useState<WorkspaceId | null>(initial);
   const ref = useRef<HTMLElement | null>(null);
 
   useEffect(() => setOpen(initial), [initial]);
+  useEffect(() => {
+    if (!request) return;
+    setOpen(request.id);
+    window.requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [request]);
 
   const choose = (id: WorkspaceId | null) => {
     setOpen(id);

@@ -18,6 +18,7 @@ import {
   Layers,
   ListChecks,
   Loader2,
+  PhoneCall,
   MapPin,
   Plus,
   RefreshCw,
@@ -49,6 +50,7 @@ import type { WorkspaceId } from './DashboardWorkspace';
 import { SnapshotFloat } from './SnapshotFloat';
 import type { SnapshotItem } from './SnapshotFloat';
 import { useCashFlow } from '@/components/cash-flow/useCashFlow';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 import type { ClientDashboardData } from './useClientDashboard';
 
 /** "היום" / "מחר", ואחרת יום.חודש — קצר מספיק לתיבת המועד */
@@ -92,7 +94,10 @@ export function OverviewSection({
     ready,
     taskStates,
     scheduleTask,
+    pendingLead,
   } = data;
+  /** בקשה מבחוץ לפתוח אחת משלוש העמודות — למשל מהשורה של הבקשה ליועץ */
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ id: WorkspaceId; nonce: number } | null>(null);
   const { startPlan, busy } = useStartPlan(plansState.start);
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
@@ -106,9 +111,13 @@ export function OverviewSection({
   const summaries = active.map((plan) => summarizePlan(plan, advisorStages[plan.id]));
   const upcoming = upcomingEvents(events, new Date(), 6);
   /** הפגישה הקרובה — ואם אין פגישה, המועד הקרוב ביומן */
-  const nextMeeting = upcoming.find((event) => event.kind === 'meeting') ?? upcoming[0] ?? null;
+  /* כשהיועץ עוד חוזר אליכם, השורה הזו שמורה לפגישה בלבד — מועד אחר לא תופס את מקומה */
+  const nextMeeting =
+    upcoming.find((event) => event.kind === 'meeting') ?? (pendingLead ? null : upcoming[0] ?? null);
   /** כלי מצב ההון והתזרים — נטען כאן כדי שהתקציר בעמודה והכלי הפתוח יחלקו את אותם נתונים */
   const cashFlow = useCashFlow(active[0] ?? null, plansState.ready);
+  /** הקישור להרשמה בתשלום מוצג רק למי שעדיין אין לו גישה פעילה */
+  const { access, ready: accessReady } = usePlatformAccess();
   const urgent = tasks.filter((task) => task.tone === 'urgent').length;
   const lead = summaries[0] ?? null;
 
@@ -174,7 +183,7 @@ export function OverviewSection({
       tone: nextMeeting && !nextMeeting.confirmed ? 'amber' : 'emerald',
       label: 'הפגישה הקרובה',
       value: nextMeeting ? `${shortDayLabel(nextMeeting.at)} ${formatTime(nextMeeting.at)}` : 'אין',
-      hint: nextMeeting ? nextMeeting.title : 'לא נקבעה פגישה',
+      hint: nextMeeting ? nextMeeting.title : pendingLead ? 'היועץ חוזר אליכם לקביעת שיחה' : 'לא נקבעה פגישה',
       onClick: () => onNavigate('agenda'),
     },
     {
@@ -207,6 +216,11 @@ export function OverviewSection({
           <p className="mb-1.5 text-sm font-black text-slate-500">הפגישה הקרובה</p>
           {nextMeeting ? (
             <EventRow event={nextMeeting} onOpen={() => go(nextMeeting.target)} />
+          ) : pendingLead ? (
+            <p className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-violet-900">
+              <PhoneCall className="h-4 w-4 shrink-0 text-violet-600" />
+              <span className="min-w-0 flex-1 !text-right">היועץ חוזר אליכם לקביעת שיחת ייעוץ</span>
+            </p>
           ) : (
             <p className="rounded-xl bg-slate-50 px-3 py-2 text-center text-sm text-slate-500">לא נקבעה פגישה</p>
           )}
@@ -232,7 +246,10 @@ export function OverviewSection({
 
   /** המשימות: שורה אחת — מה שהכי דוחק — והשאר ב"ראה עוד" */
   const taskGroups = groupTasks(tasks);
-  const nextTask = taskGroups.overdue[0] ?? taskGroups.scheduled[0] ?? taskGroups.undated[0] ?? null;
+  // בזמן שהיועץ חוזר אל הלקוח, זו השורה שמופיעה — אלא אם יש משימה באיחור
+  const leadTask = pendingLead ? tasks.find((task) => task.id === `lead-pending:${pendingLead.id}`) ?? null : null;
+  const nextTask =
+    taskGroups.overdue[0] ?? leadTask ?? taskGroups.scheduled[0] ?? taskGroups.undated[0] ?? null;
   const tasksStrip = (
     <section
       data-demo-id="dash-tasks-card"
@@ -367,6 +384,45 @@ export function OverviewSection({
 
   return (
     <div className="grid grid-cols-1 gap-4">
+      {/*
+        הלקוח פנה ליועץ ועוד לא נקבעה פגישה: שורה אחת שאומרת מה קורה עכשיו.
+        כשהיועץ קובע פגישה היא נכנסת ללוח השנה, והשורה הזו יורדת.
+      */}
+      {pendingLead && (
+        <section
+          data-demo-id="dash-lead-pending"
+          className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-violet-200 bg-violet-50 px-4 py-3"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+            <UserCheck className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1 [&>span]:!text-right">
+            <span className="block text-info font-black text-slate-900">
+              {pendingLead.requestKindLabel ? `${pendingLead.requestKindLabel} הועברה ליועץ` : 'הבקשה הועברה ליועץ'}
+            </span>
+            <span className="block text-sm font-medium text-slate-600">
+              היועץ יקבע אתכם שיחת ייעוץ חינם בהקדם. בינתיים אתם מוזמנים להשתמש בכלים של משכלנתא.
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setWorkspaceRequest((current) => ({ id: 'actions', nonce: (current?.nonce ?? 0) + 1 }))}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-button font-black text-white transition-colors hover:bg-blue-700"
+          >
+            <Calculator className="h-4 w-4" />
+            לכלים המהירים
+          </button>
+          {!access.active && accessReady && (
+            <Link
+              href="/dashboard/checkout"
+              className="inline-flex items-center gap-1.5 rounded-xl border-2 border-blue-200 bg-white px-4 py-2 text-button font-black text-blue-700 transition-colors hover:border-blue-400"
+            >
+              להרשמה לפלטפורמה בתשלום
+            </Link>
+          )}
+        </section>
+      )}
+
       {/* המשכנתא ולוח השנה — למעלה, באותו גובה */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DashCard
@@ -516,6 +572,7 @@ export function OverviewSection({
         equityPlan={equityState.plan}
         cashFlow={cashFlow}
         initial={workspace}
+        request={workspaceRequest}
       />
 
       <AdvisorCta variant="row" />
