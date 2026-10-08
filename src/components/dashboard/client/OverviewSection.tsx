@@ -44,6 +44,7 @@ import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
 import { TaskGroupsList } from './TaskGroups';
 import { PlanRecommendations } from './PlanRecommendations';
+import { SavedToolsCard } from './SavedToolsCard';
 import { DashCard } from './ui';
 import type { ClientDashboardData } from './useClientDashboard';
 
@@ -450,6 +451,8 @@ export function OverviewSection({
 
       {/* תוצרי כלי תכנון ההוצאות — זמינים כאן ברגע שהתכנון נשמר בחשבון */}
       <EquityOverviewCard plan={equityState.plan} onOpen={() => onNavigate('expenses')} />
+      {/* מה שהוזן בכלי המיחזור, ההיתכנות וההלוואות — כולל לפני ההרשמה */}
+      <SavedToolsCard />
 
       <AdvisorCta variant="row" />
       <MortgageEntry

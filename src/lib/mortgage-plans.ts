@@ -37,6 +37,7 @@ import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
 import { createEmptyLoan } from './borrower-loans';
+import { analysisFromToolData } from './tool-data';
 import { analysisFromProfile, mergeProfiles, parseClientProfile } from './client-profile';
 import { parseStages } from './advisor-orders';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
@@ -238,7 +239,7 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { profileJson: true },
+    select: { profileJson: true, toolDataJson: true },
   });
 
   let analysisJson: Prisma.InputJsonValue | undefined;
@@ -254,6 +255,13 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
       analysisJson = seedAnalysisFromClient(client) as unknown as Prisma.InputJsonValue;
     } catch {
       // תהליך ריק עדיף על כשל בפתיחה בגלל פענוח
+    }
+  }
+  if (!analysisJson) {
+    try {
+      analysisJson = analysisFromToolData(user?.toolDataJson) as unknown as Prisma.InputJsonValue | undefined;
+    } catch {
+      // כנ"ל — הכלי הפתוח הוא רק נקודת פתיחה
     }
   }
 
