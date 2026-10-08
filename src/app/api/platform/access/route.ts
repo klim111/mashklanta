@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { getPricing } from '@/lib/pricing-store';
 import { MAX_OPEN_PROCESSES, passDays, passExpiresAt } from '@/lib/process-access';
 import { canOpenAnotherPlan, countOpenSelfServicePlans, newProcessPassFor } from '@/lib/mortgage-plans';
 
@@ -37,10 +37,11 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const [pass, openProcesses, canOpenMore] = await Promise.all([
+  const [pass, openProcesses, canOpenMore, pricing] = await Promise.all([
     newProcessPassFor(userId),
     countOpenSelfServicePlans(userId),
     canOpenAnotherPlan(userId),
+    getPricing(),
   ]);
 
   // ליועץ הכלים פתוחים תמיד — הוא הצד שמפעיל אותם
@@ -48,7 +49,7 @@ export async function GET() {
     active: user.role === 'ADVISOR' || pass !== null,
     since: pass?.createdAt.toISOString() ?? null,
     paid: pass ? pass.amountAgorot / 100 : 0,
-    price: PLATFORM_PROCESS_PRICE,
+    price: pricing.platformPrice,
     accessDays: passDays(new Date()),
     passExpiresAt: pass ? passExpiresAt(pass.createdAt).toISOString() : null,
     openProcesses,

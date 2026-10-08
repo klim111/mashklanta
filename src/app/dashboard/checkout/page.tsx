@@ -1,27 +1,19 @@
-"use client";
+'use client';
 
-import { Suspense, useState } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  CreditCard,
-  Loader2,
-  Lock,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-import { PLATFORM_PROCESS_PRICE } from "@/lib/service-flow";
-import { PricingModelStrip } from "@/components/service-flow/PricingModelStrip";
-import { PlatformBillingNotes } from "@/components/service-flow/PlatformBillingNotes";
-import { PLAN_JOURNEY_STAGES } from "@/data/platform/planStages";
+import { Suspense, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, Loader2, Lock, ShieldCheck, Sparkles } from 'lucide-react';
+import { usePricing } from '@/components/pricing/PricingProvider';
+import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
+import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
+import { PLAN_JOURNEY_STAGES } from '@/data/platform/planStages';
 
 function CheckoutBody() {
   const params = useSearchParams();
   /** חידוש הגישה לתהליך שהחודש שלו הסתיים */
-  const renewPlanId = params.get("planId");
+  const renewPlanId = params.get('planId');
+  const { platformPrice } = usePricing();
 
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,38 +22,36 @@ function CheckoutBody() {
     לאן ממשיכים אחרי התשלום: חידוש — חזרה לתהליך שננעל; תהליך חדש — לדאשבורד
     עם המטרה שנבחרה, ומשם התהליך נפתח מיד בשלב הראשון.
   */
-  const goalParam = params.get("goal");
-  const goal = goalParam === "REFINANCE" ? "REFINANCE" : "NEW_MORTGAGE";
+  const goalParam = params.get('goal');
+  const goal = goalParam === 'REFINANCE' ? 'REFINANCE' : 'NEW_MORTGAGE';
   const next = renewPlanId
     ? `/dashboard/plans/${renewPlanId}`
-    : params.get("next") === "plan"
+    : params.get('next') === 'plan'
       ? `/dashboard?goal=${goal}&service=SELF`
-      : "/dashboard";
+      : '/dashboard';
 
   /** מעבר לעמוד התשלום המאובטח של HYP — פרטי הכרטיס מוזנים שם, לא באתר */
   const pay = async () => {
     setBusy(true);
     setServerError(null);
     try {
-      const response = await fetch("/api/platform/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/platform/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           returnPath: next,
           ...(renewPlanId ? { planId: renewPlanId } : {}),
         }),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok || typeof body?.redirectUrl !== "string") {
-        setServerError(
-          body?.error ?? "לא הצלחנו לפתוח את עמוד התשלום. נסו שוב.",
-        );
+      if (!response.ok || typeof body?.redirectUrl !== 'string') {
+        setServerError(body?.error ?? 'לא הצלחנו לפתוח את עמוד התשלום. נסו שוב.');
         setBusy(false);
         return;
       }
       window.location.assign(body.redirectUrl);
     } catch {
-      setServerError("לא הצלחנו לפתוח את עמוד התשלום. נסו שוב.");
+      setServerError('לא הצלחנו לפתוח את עמוד התשלום. נסו שוב.');
       setBusy(false);
     }
   };
@@ -82,12 +72,12 @@ function CheckoutBody() {
             האזור האישי
           </Link>
           <h1 className="mt-3 text-title font-black text-white">
-            {renewPlanId ? "חבילת גישה נוספת" : "מסלול עצמאי / היברידי"}
+            {renewPlanId ? 'חבילת גישה נוספת' : 'מסלול עצמאי / היברידי'}
           </h1>
           <p className="mt-2 max-w-2xl text-info leading-relaxed text-white/70">
             {renewPlanId
-              ? `חבילת גישה נוספת: ₪${PLATFORM_PROCESS_PRICE} לחודש נוסף. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
-              : `₪${PLATFORM_PROCESS_PRICE} לחודש לתהליך משכנתא, עם גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
+              ? `חבילת גישה נוספת: ₪${platformPrice} לחודש נוסף. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
+              : `₪${platformPrice} לחודש לתהליך משכנתא, עם גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
           </p>
         </div>
       </header>
@@ -105,13 +95,12 @@ function CheckoutBody() {
             <div className="space-y-5 p-6">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-info leading-relaxed text-slate-600">
                 <p>
-                  התשלום מתבצע בעמוד התשלום המאובטח של HYP, חברת הסליקה של
-                  משכלנתא. פרטי הכרטיס מוזנים שם ולא עוברים דרך האתר.
+                  התשלום מתבצע בעמוד התשלום המאובטח של HYP, חברת הסליקה של משכלנתא. פרטי הכרטיס מוזנים שם ולא עוברים דרך
+                  האתר.
                 </p>
                 <p className="mt-2">
-                  מיד אחרי התשלום תחזרו לכאן, הגישה תיפתח, ואישור עם חשבונית
-                  יישלח אליכם במייל. החודש נספר לפי החודש הקלנדרי שבו שילמתם: 31
-                  יום באוקטובר, 28 או 29 בפברואר.
+                  מיד אחרי התשלום תחזרו לכאן, הגישה תיפתח, ואישור עם חשבונית יישלח אליכם במייל. החודש נספר לפי החודש
+                  הקלנדרי שבו שילמתם: 31 יום באוקטובר, 28 או 29 בפברואר.
                 </p>
               </div>
 
@@ -127,32 +116,20 @@ function CheckoutBody() {
                 disabled={busy}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
               >
-                {busy ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Lock className="h-5 w-5" />
-                )}
-                לתשלום ₪{PLATFORM_PROCESS_PRICE} בעמוד המאובטח
+                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lock className="h-5 w-5" />}
+                לתשלום ₪{platformPrice} בעמוד המאובטח
               </button>
               <p className="flex items-center justify-center gap-1.5 text-2xs text-slate-400">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 פרטי הכרטיס לא נשמרים באתר. אין חיוב חוזר אוטומטי.
               </p>
               <p className="text-center text-2xs text-slate-400">
-                בתשלום אתם מאשרים את{" "}
-                <Link
-                  href="/terms"
-                  target="_blank"
-                  className="text-blue-600 hover:underline"
-                >
+                בתשלום אתם מאשרים את{' '}
+                <Link href="/terms" target="_blank" className="text-blue-600 hover:underline">
                   תנאי השימוש
-                </Link>{" "}
-                ואת{" "}
-                <Link
-                  href="/privacy"
-                  target="_blank"
-                  className="text-blue-600 hover:underline"
-                >
+                </Link>{' '}
+                ואת{' '}
+                <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline">
                   מדיניות הפרטיות
                 </Link>
                 .
@@ -168,22 +145,14 @@ function CheckoutBody() {
                   גישה מלאה לתהליך משכנתא
                 </div>
                 <div className="mt-1 text-4xl font-black">
-                  ₪{PLATFORM_PROCESS_PRICE}
-                  <span className="text-base font-bold text-white/70">
-                    {" "}
-                    / חודש
-                  </span>
+                  ₪{platformPrice}
+                  <span className="text-base font-bold text-white/70"> / חודש</span>
                 </div>
-                <div className="text-sm text-white/80">
-                  גישה מלאה לחודש · אין חיוב חוזר בלי אישור שלכם
-                </div>
+                <div className="text-sm text-white/80">גישה מלאה לחודש · אין חיוב חוזר בלי אישור שלכם</div>
               </div>
               <ul className="space-y-2 px-6 py-5">
                 {PLAN_JOURNEY_STAGES.map((stage, index) => (
-                  <li
-                    key={stage.id}
-                    className="flex items-center gap-2.5 text-sm text-slate-700"
-                  >
+                  <li key={stage.id} className="flex items-center gap-2.5 text-sm text-slate-700">
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${stage.gradient} text-2xs font-black text-white`}
                     >
@@ -212,9 +181,7 @@ function CheckoutBody() {
             )}
 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="mb-3 text-2xs font-black text-slate-400">
-                כך עובד התמחור
-              </p>
+              <p className="mb-3 text-2xs font-black text-slate-400">כך עובד התמחור</p>
               <PricingModelStrip compact className="!grid-cols-1" />
             </div>
           </aside>

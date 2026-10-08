@@ -108,3 +108,106 @@ ${input.renewUrl}
 סיימתם? אין צורך לעשות דבר. אין חיוב חוזר אוטומטי.`,
   };
 }
+
+function money(amount: number): string {
+  return `₪${amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
+}
+
+export interface PaymentLinkEmailInput {
+  name: string | null;
+  title: string;
+  description: string | null;
+  amount: number;
+  payUrl: string;
+}
+
+/** הקישור לתשלום, כפי שהיועץ שולח אותו ללקוח */
+export function paymentLinkEmail(input: PaymentLinkEmailInput) {
+  const greeting = input.name ? `שלום ${escapeHtml(input.name)},` : 'שלום,';
+  return {
+    subject: `קישור לתשלום: ${input.title}`,
+    html: authEmailShell(
+      'קישור לתשלום',
+      `<p style="margin:0 0 12px;">${greeting}</p>
+         <p style="margin:0 0 16px;">מצורף קישור לתשלום מאובטח עבור <strong>${escapeHtml(input.title)}</strong>.</p>
+         <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:15px;">
+           ${row('שירות', escapeHtml(input.title))}
+           ${input.description ? row('פירוט', escapeHtml(input.description)) : ''}
+           ${row('סכום', money(input.amount))}
+         </table>
+         ${button(input.payUrl, `לתשלום ${money(input.amount)}`)}
+         <p style="margin:0;color:#475569;font-size:14px;">התשלום מתבצע בעמוד התשלום המאובטח של HYP, וחשבונית מס/קבלה נשלחת אליכם במייל אחרי התשלום.</p>`
+    ),
+    text: `${input.name ? `שלום ${input.name},` : 'שלום,'}
+
+קישור לתשלום מאובטח עבור ${input.title}${input.description ? ` (${input.description})` : ''}.
+סכום: ${money(input.amount)}
+
+לתשלום: ${input.payUrl}
+
+חשבונית מס/קבלה נשלחת אליכם במייל אחרי התשלום.`,
+  };
+}
+
+export interface LinkPaidClientInput {
+  name: string | null;
+  title: string;
+  amount: number;
+  paidAt: Date;
+  invoiceNumber: string | null;
+  last4: string | null;
+}
+
+/** אישור ללקוח ששילם בקישור תשלום */
+export function linkPaidClientEmail(input: LinkPaidClientInput) {
+  const greeting = input.name ? `שלום ${escapeHtml(input.name)},` : 'שלום,';
+  const invoiceNote = input.invoiceNumber
+    ? `חשבונית מס/קבלה מספר ${escapeHtml(input.invoiceNumber)} נשלחה אליכם במייל נפרד ממערכת הסליקה HYP.`
+    : 'חשבונית מס/קבלה תישלח אליכם במייל נפרד ממערכת הסליקה HYP.';
+  return {
+    subject: `התשלום התקבל: ${input.title}`,
+    html: authEmailShell(
+      'התשלום התקבל',
+      `<p style="margin:0 0 12px;">${greeting}</p>
+         <p style="margin:0 0 16px;">התשלום עבור <strong>${escapeHtml(input.title)}</strong> התקבל. תודה!</p>
+         <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:15px;">
+           ${row('סכום', money(input.amount))}
+           ${row('תאריך התשלום', hebrewDate(input.paidAt))}
+           ${input.last4 ? row('כרטיס', `<span dir="ltr">**** ${escapeHtml(input.last4)}</span>`) : ''}
+           ${input.invoiceNumber ? row('מספר חשבונית', escapeHtml(input.invoiceNumber)) : ''}
+         </table>
+         <p style="margin:0;color:#475569;font-size:14px;">${invoiceNote}</p>`
+    ),
+    text: `${input.name ? `שלום ${input.name},` : 'שלום,'}
+
+התשלום עבור ${input.title} התקבל: ${money(input.amount)}.
+${invoiceNote}`,
+  };
+}
+
+export interface LinkPaidAdvisorInput {
+  clientName: string | null;
+  clientEmail: string | null;
+  title: string;
+  amount: number;
+  invoiceNumber: string | null;
+  dashboardUrl: string;
+}
+
+/** הודעה ליועץ שלקוח שילם בקישור תשלום */
+export function linkPaidAdvisorEmail(input: LinkPaidAdvisorInput) {
+  const who = input.clientName || input.clientEmail || 'לקוח';
+  return {
+    subject: `התקבל תשלום: ${input.title} · ${money(input.amount)}`,
+    html: authEmailShell(
+      'התקבל תשלום בקישור',
+      `<p style="margin:0 0 16px;"><strong>${escapeHtml(who)}</strong> שילם/ה ${money(input.amount)} עבור ${escapeHtml(input.title)}.</p>
+         <table style="width:100%;border-collapse:collapse;margin:0 0 16px;font-size:15px;">
+           ${input.clientEmail ? row('מייל', `<span dir="ltr">${escapeHtml(input.clientEmail)}</span>`) : ''}
+           ${input.invoiceNumber ? row('מספר חשבונית', escapeHtml(input.invoiceNumber)) : ''}
+         </table>
+         ${button(input.dashboardUrl, 'ללוח היועץ')}`
+    ),
+    text: `${who} שילם/ה ${money(input.amount)} עבור ${input.title}.${input.invoiceNumber ? `\nמספר חשבונית: ${input.invoiceNumber}` : ''}`,
+  };
+}

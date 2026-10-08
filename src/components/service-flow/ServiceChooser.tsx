@@ -14,15 +14,14 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  ADVISORY_TRACK,
   GOAL_LABELS,
-  PLATFORM_PROCESS_PRICE,
   SERVICE_CHOICES,
   SERVICE_LABELS,
 } from '@/lib/service-flow';
 import type { MortgageGoal, ServiceChoice, ServiceType } from '@/lib/service-flow';
 import { TRACKS_HEADLINE, TRACKS_INTRO } from '@/data/platform/pricing';
 import { PricingModelStrip } from './PricingModelStrip';
+import { usePricing } from '@/components/pricing/PricingProvider';
 
 /** מטרה שממנה ממשיכים לבחירת סוג השירות — ייעוץ נשלח ישירות ליועץ */
 type FlowGoal = 'NEW_MORTGAGE' | 'REFINANCE';
@@ -37,13 +36,14 @@ const SERVICE_META: Record<ServiceChoice, { icon: LucideIcon; gradient: string; 
   SELF: {
     icon: Bot,
     gradient: 'from-blue-500 to-violet-600',
-    price: `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
+    // המחירים עצמם מגיעים מהגדרות התמחור, בתוך הרכיב
+    price: '',
     priceNote: 'לחודש · גישה מלאה לכל הכלים · מקוזז אם תבקשו ליווי',
   },
   FULL: {
     icon: UserCheck,
     gradient: 'from-amber-500 to-orange-600',
-    price: ADVISORY_TRACK.priceLabel,
+    price: '',
     priceNote: 'משלב אחד ועד כל השלבים · תמיד מתחת לממוצע בשוק · דמי הפלטפורמה מקוזזים',
   },
 };
@@ -88,6 +88,7 @@ export function ServiceChooser({
   tone = 'light',
   showPricing = true,
 }: ServiceChooserProps) {
+  const pricing = usePricing();
   const [goal, setGoal] = useState<FlowGoal | null>(initialGoal);
 
   useEffect(() => {
@@ -203,7 +204,10 @@ export function ServiceChooser({
 
             <div className="mx-auto mt-8 grid max-w-3xl gap-4 md:grid-cols-2">
               {SERVICE_CHOICES.map((service, index) => {
-                const meta = SERVICE_META[service];
+                const meta = {
+                  ...SERVICE_META[service],
+                  price: service === 'SELF' ? `₪${pricing.platformPrice} לתהליך משכנתא` : pricing.advisory.priceLabel,
+                };
                 const Icon = meta.icon;
                 const labels = SERVICE_LABELS[service];
                 const selfOpen = service === 'SELF' && hasAccess;

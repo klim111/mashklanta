@@ -3,18 +3,26 @@ import { prisma } from './db';
 import { sendEmail } from './email';
 import { canonicalSiteOrigin } from './auth-url';
 import { safeCallbackUrl } from './safe-path';
-import { createPaymentPage, hypConfig, parseReturn, verifyReturn, HYP_APPROVED } from './hyp';
+import { createPaymentPage, hypConfig, parseReturn, verifyReturn, HYP_APPROVED, type HypReturn } from './hyp';
 import { daysUntil, passExpiresAt } from './process-access';
-import { PLATFORM_PROCESS_PRICE } from './service-flow';
+import { getPricingFresh } from './pricing-store';
 import { countOpenSelfServicePlans } from './mortgage-plans';
-import { paymentConfirmationEmail, renewalReminderEmail } from './billing-emails';
+import {
+  linkPaidAdvisorEmail,
+  linkPaidClientEmail,
+  paymentConfirmationEmail,
+  renewalReminderEmail,
+} from './billing-emails';
 import { RENEWAL_LINK_GRACE_DAYS, renewalToken } from './billing-links';
 
 /**
- * החיוב על הגישה לפלטפורמה, מקצה לקצה: פתיחת עמוד התשלום של HYP, רישום
- * התשלום כשהלקוח חוזר ממנו (רק אחרי אימות מול HYP), מייל אישור, ותזכורת לקראת
- * סוף החודש עם קישור לחידוש. אין חיוב אוטומטי: כל חבילה נרכשת כשהלקוח מאשר
- * ומשלם בעצמו.
+ * החיוב מקצה לקצה: פתיחת עמוד התשלום של HYP, רישום התשלום כשהלקוח חוזר ממנו
+ * (רק אחרי אימות מול HYP), מייל אישור, ותזכורת לקראת סוף החודש עם קישור
+ * לחידוש. אין חיוב אוטומטי: כל תשלום מתבצע כשהלקוח מאשר ומשלם בעצמו.
+ *
+ * שני סוגי תשלום עוברים כאן:
+ *  - גישה לפלטפורמה לחודש — במחיר העדכני מהגדרות התמחור (getPricingFresh)
+ *  - קישור תשלום שהיועץ יצר (PaymentLink) — בסכום שנקבע בקישור
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -43,14 +51,32 @@ export class CheckoutError extends Error {
   }
 }
 
+const NOT_ENABLED = 'התשלום המקוון עוד לא הופעל. נסו שוב מאוחר יותר.';
+const SIGN_FAILED = 'לא הצלחנו לפתוח את עמוד התשלום. נסו שוב בעוד כמה דקות.';
+
+/** בקשת עמוד תשלום מ-HYP. כשל מסמן את המעבר כנכשל ומחזיר הודעה ללקוח */
+async function openPaymentPage(
+  orderRef: string,
+  request: { amount: number; description: string; clientName: string; email: string; phone?: string | null }
+): Promise<string> {
+  const config = hypConfig();
+  if (!config) throw new CheckoutError(NOT_ENABLED, 503);
+  try {
+    return await createPaymentPage(config, { order: orderRef, ...request });
+  } catch (error) {
+    console.error('HYP checkout failed:', error instanceof Error ? error.message : error);
+    await prisma.paymentCheckout.update({ where: { orderRef }, data: { status: 'FAILED', failureCode: 'SIGN' } });
+    throw new CheckoutError(SIGN_FAILED, 502);
+  }
+}
+
 /** פתיחת עמוד התשלום לחבילת גישה — מחזיר את הכתובת שאליה מעבירים את הלקוח */
 export async function startCheckout(input: {
   userId: string;
   planId?: string | null;
   returnPath?: string | null;
 }): Promise<string> {
-  const config = hypConfig();
-  if (!config) throw new CheckoutError('התשלום המקוון עוד לא הופעל. נסו שוב מאוחר יותר.', 503);
+  if (!hypConfig()) throw new CheckoutError(NOT_ENABLED, 503);
 
   const user = await prisma.user.findUnique({
     where: { id: input.userId },
@@ -71,39 +97,74 @@ export async function startCheckout(input: {
     planId = plan?.id ?? null;
   }
 
+  // המחיר העדכני מהגדרות התמחור, לא ממטמון — זה הסכום שייגבה
+  const { platformPrice } = await getPricingFresh();
   const checkout = await prisma.paymentCheckout.create({
     data: {
       orderRef: newOrderRef(),
       userId: user.id,
       planId,
-      amountAgorot: PLATFORM_PROCESS_PRICE * 100,
+      amountAgorot: platformPrice * 100,
       returnPath: safeCallbackUrl(input.returnPath),
     },
     select: { orderRef: true },
   });
 
-  try {
-    return await createPaymentPage(config, {
-      order: checkout.orderRef,
-      amount: PLATFORM_PROCESS_PRICE,
-      description: planId ? 'משכלנתא - חידוש גישה לחודש נוסף' : 'משכלנתא - גישה לפלטפורמה לחודש',
-      clientName: user.name || email,
-      email,
+  return openPaymentPage(checkout.orderRef, {
+    amount: platformPrice,
+    description: planId ? 'משכלנתא - חידוש גישה לחודש נוסף' : 'משכלנתא - גישה לפלטפורמה לחודש',
+    clientName: user.name || email,
+    email,
+  });
+}
+
+/**
+ * פתיחת עמוד התשלום לקישור תשלום של היועץ. כשבקישור אין שם או מייל, הלקוח
+ * ממלא אותם בעמוד הקישור — המייל נדרש לאישור ולחשבונית.
+ */
+export async function startLinkCheckout(
+  token: string,
+  payer: { name?: string | null; email?: string | null; phone?: string | null }
+): Promise<string> {
+  if (!hypConfig()) throw new CheckoutError(NOT_ENABLED, 503);
+  const link = await prisma.paymentLink.findUnique({ where: { token } });
+  if (!link || link.status === 'CANCELLED') throw new CheckoutError('הקישור אינו פעיל.', 404);
+  if (link.status === 'PAID') throw new CheckoutError('התשלום בקישור הזה כבר בוצע.', 409);
+
+  const name = (link.clientName || payer.name || '').trim();
+  const email = (link.clientEmail || payer.email || '').trim();
+  if (name.length < 2) throw new CheckoutError('נדרש שם מלא.', 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new CheckoutError('כתובת המייל אינה תקינה.', 400);
+
+  // פרטים שהלקוח מילא נשמרים על הקישור, כדי שיופיעו אצל היועץ ובחשבונית
+  if (!link.clientName || !link.clientEmail || (!link.clientPhone && payer.phone)) {
+    await prisma.paymentLink.update({
+      where: { id: link.id },
+      data: {
+        clientName: link.clientName || name,
+        clientEmail: link.clientEmail || email,
+        clientPhone: link.clientPhone || payer.phone?.trim() || null,
+      },
     });
-  } catch (error) {
-    console.error('HYP checkout failed:', error instanceof Error ? error.message : error);
-    await prisma.paymentCheckout.update({
-      where: { orderRef: checkout.orderRef },
-      data: { status: 'FAILED', failureCode: 'SIGN' },
-    });
-    throw new CheckoutError('לא הצלחנו לפתוח את עמוד התשלום. נסו שוב בעוד כמה דקות.', 502);
   }
+
+  const checkout = await prisma.paymentCheckout.create({
+    data: { orderRef: newOrderRef(), paymentLinkId: link.id, amountAgorot: link.amountAgorot },
+    select: { orderRef: true },
+  });
+  return openPaymentPage(checkout.orderRef, {
+    amount: link.amountAgorot / 100,
+    description: `משכלנתא - ${link.title}`,
+    clientName: name,
+    email,
+    phone: link.clientPhone || payer.phone,
+  });
 }
 
 export type ReturnOutcome =
-  | { outcome: 'paid'; orderRef: string; returnPath: string | null; renewal: boolean }
-  | { outcome: 'failed'; orderRef: string | null; code: string }
-  | { outcome: 'unverified'; orderRef: string | null };
+  | { outcome: 'paid'; orderRef: string; returnPath: string | null; renewal: boolean; linkToken: string | null }
+  | { outcome: 'failed'; orderRef: string | null; code: string; linkToken: string | null }
+  | { outcome: 'unverified'; orderRef: string | null; linkToken: string | null };
 
 /**
  * הלקוח חזר מעמוד התשלום. תשלום נרשם רק כש-HYP אישרה (`CCode=0`), הסכום תואם
@@ -113,9 +174,13 @@ export type ReturnOutcome =
 export async function completeReturn(params: URLSearchParams): Promise<ReturnOutcome> {
   const result = parseReturn(params);
   const checkout = result.order
-    ? await prisma.paymentCheckout.findUnique({ where: { orderRef: result.order } })
+    ? await prisma.paymentCheckout.findUnique({
+        where: { orderRef: result.order },
+        include: { paymentLink: { select: { token: true } } },
+      })
     : null;
-  if (!checkout) return { outcome: 'unverified', orderRef: null };
+  if (!checkout) return { outcome: 'unverified', orderRef: null, linkToken: null };
+  const linkToken = checkout.paymentLink?.token ?? null;
 
   const paid = () =>
     ({
@@ -123,6 +188,7 @@ export async function completeReturn(params: URLSearchParams): Promise<ReturnOut
       orderRef: checkout.orderRef,
       returnPath: checkout.returnPath,
       renewal: checkout.planId !== null,
+      linkToken,
     }) as const;
   if (checkout.status === 'PAID') return paid();
 
@@ -131,31 +197,40 @@ export async function completeReturn(params: URLSearchParams): Promise<ReturnOut
       where: { id: checkout.id, status: 'PENDING' },
       data: { status: 'FAILED', failureCode: result.code.slice(0, 20) || 'unknown' },
     });
-    return { outcome: 'failed', orderRef: checkout.orderRef, code: result.code };
+    return { outcome: 'failed', orderRef: checkout.orderRef, code: result.code, linkToken };
   }
 
   const config = hypConfig();
   if (!config || Math.round(result.amount * 100) !== checkout.amountAgorot || !result.transactionId) {
-    return { outcome: 'unverified', orderRef: checkout.orderRef };
+    return { outcome: 'unverified', orderRef: checkout.orderRef, linkToken };
   }
   if (!(await verifyReturn(config, params).catch(() => false))) {
-    return { outcome: 'unverified', orderRef: checkout.orderRef };
+    return { outcome: 'unverified', orderRef: checkout.orderRef, linkToken };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: checkout.userId },
-    select: { name: true, email: true },
-  });
+  if (checkout.paymentLinkId) await recordLinkPayment(checkout.id, checkout.paymentLinkId, result);
+  else if (checkout.userId) await recordPlatformPayment(checkout.id, checkout.userId, checkout, result);
+  return paid();
+}
+
+/** תשלום על גישה לפלטפורמה שאומת: רשומת תשלום ומייל אישור */
+async function recordPlatformPayment(
+  checkoutId: string,
+  userId: string,
+  checkout: { planId: string | null; amountAgorot: number },
+  result: HypReturn
+): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
 
   const payment = await prisma.$transaction(async (tx) => {
     const claimed = await tx.paymentCheckout.updateMany({
-      where: { id: checkout.id, status: { in: ['PENDING', 'FAILED'] } },
+      where: { id: checkoutId, status: { in: ['PENDING', 'FAILED'] } },
       data: { status: 'PAID', failureCode: null },
     });
     if (claimed.count === 0) return null;
     const created = await tx.platformPayment.create({
       data: {
-        userId: checkout.userId,
+        userId,
         planId: checkout.planId,
         amountAgorot: checkout.amountAgorot,
         holderName: user?.name || user?.email || '',
@@ -166,7 +241,7 @@ export async function completeReturn(params: URLSearchParams): Promise<ReturnOut
         invoiceNumber: result.invoiceNumber,
       },
     });
-    await tx.paymentCheckout.update({ where: { id: checkout.id }, data: { paymentId: created.id } });
+    await tx.paymentCheckout.update({ where: { id: checkoutId }, data: { paymentId: created.id } });
     return created;
   });
 
@@ -185,7 +260,61 @@ export async function completeReturn(params: URLSearchParams): Promise<ReturnOut
       console.error('Payment confirmation email failed:', error)
     );
   }
-  return paid();
+}
+
+/** תשלום בקישור תשלום שאומת: הקישור מסומן כשולם, ומייל ללקוח וליועץ */
+async function recordLinkPayment(checkoutId: string, linkId: string, result: HypReturn): Promise<void> {
+  const now = new Date();
+  const link = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.paymentCheckout.updateMany({
+      where: { id: checkoutId, status: { in: ['PENDING', 'FAILED'] } },
+      data: { status: 'PAID', failureCode: null },
+    });
+    if (claimed.count === 0) return null;
+    const marked = await tx.paymentLink.updateMany({
+      where: { id: linkId, status: 'OPEN' },
+      data: {
+        status: 'PAID',
+        paidAt: now,
+        providerTransactionId: result.transactionId,
+        invoiceNumber: result.invoiceNumber,
+        cardLast4: result.last4 || null,
+      },
+    });
+    // הקישור כבר שולם בעסקה אחרת (או בוטל בינתיים) — העסקה הזו נשארת רשומה על המעבר
+    if (marked.count === 0) return null;
+    return tx.paymentLink.findUnique({ where: { id: linkId } });
+  });
+  if (!link) return;
+
+  const amount = link.amountAgorot / 100;
+  if (link.clientEmail) {
+    const email = linkPaidClientEmail({
+      name: link.clientName,
+      title: link.title,
+      amount,
+      paidAt: now,
+      invoiceNumber: link.invoiceNumber,
+      last4: link.cardLast4,
+    });
+    await sendEmail({ to: link.clientEmail, ...email }).catch((error) =>
+      console.error('Payment link confirmation email failed:', error)
+    );
+  }
+  const advisor = await prisma.user.findUnique({ where: { id: link.createdById }, select: { email: true } });
+  if (advisor?.email) {
+    const email = linkPaidAdvisorEmail({
+      clientName: link.clientName,
+      clientEmail: link.clientEmail,
+      title: link.title,
+      amount,
+      invoiceNumber: link.invoiceNumber,
+      dashboardUrl: `${siteOrigin()}/advisor-dashboard`,
+    });
+    await sendEmail({ to: advisor.email, ...email, replyTo: link.clientEmail || undefined }).catch((error) =>
+      console.error('Payment link advisor email failed:', error)
+    );
+  }
 }
 
 /** הקישור לחידוש שנכנס למייל התזכורת */
@@ -216,6 +345,7 @@ export async function sendRenewalReminders(now = new Date()): Promise<{ sent: nu
     select: { id: true, userId: true, planId: true, createdAt: true, user: { select: { name: true, email: true } } },
   });
 
+  const { platformPrice } = await getPricingFresh();
   const seen = new Set<string>();
   let sent = 0;
   for (const payment of candidates) {
@@ -238,7 +368,7 @@ export async function sendRenewalReminders(now = new Date()): Promise<{ sent: nu
       name: payment.user.name,
       accessUntil,
       daysLeft: daysUntil(accessUntil, now),
-      price: PLATFORM_PROCESS_PRICE,
+      price: platformPrice,
       renewUrl: renewalUrl(payment.userId, payment.planId, accessUntil),
     });
     const result = await sendEmail({ to: payment.user.email, ...email }).catch(() => ({ success: false }));

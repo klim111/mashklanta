@@ -1342,10 +1342,20 @@ model PlatformPayment {
  * השגיאה. `orderRef` הוא מספר ההזמנה שנשלח ל-HYP ושחוזר ממנה.
  */
 model PaymentCheckout {
-  id       String @id @default(cuid())
-  orderRef String @unique
-  userId   String
-  user     User   @relation("PaymentCheckoutUser", fields: [userId], references: [id], onDelete: Cascade)
+  id       String  @id @default(cuid())
+  orderRef String  @unique
+  /**
+   * הלקוח שמשלם על גישה לפלטפורמה. ריק בתשלום דרך קישור תשלום, שאפשר לשלוח גם
+   * למי שאין לו חשבון
+   */
+  userId   String?
+  user     User?   @relation("PaymentCheckoutUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /**
+   * תשלום דרך קישור תשלום שהיועץ יצר (שירות ייעוץ חד־פעמי)
+   */
+  paymentLinkId String?
+  paymentLink   PaymentLink? @relation(fields: [paymentLinkId], references: [id], onDelete: Cascade)
 
   /**
    * חידוש לתהליך קיים. ריק — חבילה לתהליך הבא שייפתח
@@ -1373,6 +1383,71 @@ model PaymentCheckout {
   updatedAt DateTime @updatedAt
 
   @@index([userId, createdAt])
+  @@index([paymentLinkId])
+}
+
+/**
+ * קישור תשלום חד־פעמי שהיועץ יוצר ללקוח — למשל על שירות ייעוץ. הלקוח פותח את
+ * `/pay/<token>`, רואה על מה ועל כמה, ומשלם בעמוד התשלום של HYP. אחרי שהתשלום
+ * אומת הקישור מסומן כשולם, והלקוח והיועץ מקבלים מייל.
+ */
+model PaymentLink {
+  id           String  @id @default(cuid())
+  /**
+   * המזהה בכתובת הקישור — אקראי וארוך, כדי שאי אפשר יהיה לנחש קישורים
+   */
+  token        String  @unique
+  /**
+   * על מה משלמים — שם השירות, כפי שיופיע בעמוד התשלום ובחשבונית
+   */
+  title        String
+  description  String?
+  amountAgorot Int
+  /**
+   * המסלול שממנו נלקח השירות, כשנבחר מסלול
+   */
+  trackId      String?
+
+  clientName  String?
+  clientEmail String?
+  clientPhone String?
+  /**
+   * כרטיס הלקוח אצל היועץ, כשהקישור נוצר ללקוח קיים
+   */
+  clientId    String?
+
+  createdById           String
+  /**
+   * OPEN — ממתין לתשלום · PAID — שולם · CANCELLED — היועץ ביטל
+   */
+  status                String    @default("OPEN")
+  paidAt                DateTime?
+  providerTransactionId String?   @unique
+  invoiceNumber         String?
+  cardLast4             String?
+  /**
+   * מתי נשלח הקישור ללקוח במייל
+   */
+  sentAt                DateTime?
+
+  checkouts PaymentCheckout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdById, createdAt])
+  @@index([status])
+}
+
+/**
+ * המחירים והמסלולים שהיועץ עורך ב"תמחור ומסלולים" — שורה אחת, JSON בצורה של
+ * `PricingConfig` (src/lib/pricing-config.ts)
+ */
+model PricingSettings {
+  id          String   @id @default("default")
+  configJson  Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }
 
 // ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────

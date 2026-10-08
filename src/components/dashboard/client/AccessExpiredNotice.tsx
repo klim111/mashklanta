@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import type { PlanView } from '@/components/plan/usePlan';
 
 const SEEN_KEY = 'mashklanta:access-expired-seen';
@@ -15,6 +15,7 @@ const SEEN_KEY = 'mashklanta:access-expired-seen';
  * נוספת. בתוך התהליך עצמו הכלים נעולים בחלון נפרד (PlanAccessLock).
  */
 export function AccessExpiredNotice({ plans }: { plans: PlanView[] }) {
+  const { platformPrice } = usePricing();
   const expired = plans.filter((plan) => plan.status === 'IN_PROGRESS' && plan.access?.state === 'EXPIRED');
   const key = expired.map((plan) => plan.id).join(',');
   const [open, setOpen] = useState(false);
@@ -57,7 +58,7 @@ export function AccessExpiredNotice({ plans }: { plans: PlanView[] }) {
         </p>
 
         <div className="rounded-2xl bg-slate-50 py-4">
-          <div className="text-4xl font-black text-slate-900">₪{PLATFORM_PROCESS_PRICE}</div>
+          <div className="text-4xl font-black text-slate-900">₪{platformPrice}</div>
           <div className="mt-0.5 text-sm font-bold text-slate-500">
             לחודש נוסף · אין חיוב בלי אישור שלכם
           </div>

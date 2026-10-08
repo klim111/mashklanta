@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { LegalDocument, LegalList, LegalSub } from '@/components/legal/LegalDocument';
 import type { LegalSection } from '@/components/legal/LegalDocument';
 import { SITE_CONTACT, operatorDescription } from '@/lib/site-contact';
-import { MAX_OPEN_PROCESSES, PROCESS_PRICE } from '@/lib/process-access';
+import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
+import { getPricing } from '@/lib/pricing-store';
 import { journeyStages } from '@/data/platform/journey';
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ const Phone = () => (
   </a>
 );
 
-const sections: LegalSection[] = [
+/** הסעיפים, עם מחיר הגישה העדכני מהגדרות התמחור */
+function buildSections(platformPrice: number): LegalSection[] {
+  return [
   {
     id: 'definitions',
     title: 'הגדרות',
@@ -125,7 +128,7 @@ const sections: LegalSection[] = [
             הלקוח מתכנן את המשכנתא בעצמו, בעזרת כל הכלים, ההסברים וההתראות של הפלטפורמה, בלי יועץ אישי.
           </li>
           <li>
-            המחיר: ₪{PROCESS_PRICE} לתהליך משכנתא. כל חבילה פותחת את כל השלבים והכלים לחודש ממועד
+            המחיר: ₪{platformPrice} לחודש לתהליך משכנתא. כל חבילה פותחת את כל השלבים והכלים לחודש ממועד
             הרכישה. מספר הימים בחבילה הוא מספר הימים בחודש הקלנדרי שבו בוצעה הרכישה (למשל 31 יום ברכישה באוקטובר, 28
             או 29 יום ברכישה בפברואר).
           </li>
@@ -400,8 +403,10 @@ const sections: LegalSection[] = [
     ),
   },
 ];
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const { platformPrice } = await getPricing();
   return (
     <LegalDocument
       title="תנאי שימוש"
@@ -411,7 +416,7 @@ export default function TermsPage() {
           היועץ מתחייב לעשות ומה מצופה מכם, איך מתבצע התשלום ואיך מבטלים.
         </p>
       }
-      sections={sections}
+      sections={buildSections(platformPrice)}
     />
   );
 }

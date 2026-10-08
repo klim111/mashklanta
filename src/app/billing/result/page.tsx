@@ -16,6 +16,9 @@ function ResultBody() {
   const status = params.get('status');
   const renewal = params.get('renewal') === '1';
   const next = safeCallbackUrl(params.get('next')) ?? '/dashboard';
+  /** תשלום בקישור תשלום של היועץ — לא קשור לגישה לפלטפורמה */
+  const link = params.get('link');
+  const linkPath = link && /^[A-Za-z0-9_-]{10,64}$/.test(link) ? `/pay/${link}` : null;
 
   const view =
     status === 'paid'
@@ -23,10 +26,12 @@ function ResultBody() {
           icon: <CheckCircle2 className="h-10 w-10 text-emerald-600" />,
           ring: 'border-emerald-200',
           badge: 'bg-emerald-100',
-          title: renewal ? 'הגישה חודשה' : 'התשלום התקבל, הגישה שלכם פעילה',
-          text: 'כל השלבים וכל הכלים פתוחים בפניכם לחודש. אישור התשלום והחשבונית נשלחו אליכם במייל.',
-          cta: renewal ? 'חזרה לתהליך' : 'ממשיכים',
-          href: next,
+          title: linkPath ? 'התשלום התקבל, תודה!' : renewal ? 'הגישה חודשה' : 'התשלום התקבל, הגישה שלכם פעילה',
+          text: linkPath
+            ? 'אישור התשלום והחשבונית נשלחו אליכם במייל.'
+            : 'כל השלבים וכל הכלים פתוחים בפניכם לחודש. אישור התשלום והחשבונית נשלחו אליכם במייל.',
+          cta: linkPath ? 'לאתר משכלנתא' : renewal ? 'חזרה לתהליך' : 'ממשיכים',
+          href: linkPath ? '/' : next,
         }
       : status === 'failed'
         ? {
@@ -36,7 +41,7 @@ function ResultBody() {
             title: 'התשלום לא בוצע',
             text: 'העסקה לא אושרה ולא חויבתם. אפשר לנסות שוב, גם בכרטיס אחר.',
             cta: 'לנסות שוב',
-            href: '/dashboard/checkout',
+            href: linkPath ?? '/dashboard/checkout',
           }
         : {
             icon: <Clock className="h-10 w-10 text-amber-600" />,
@@ -44,8 +49,8 @@ function ResultBody() {
             badge: 'bg-amber-100',
             title: 'לא הצלחנו לאשר את התשלום',
             text: 'לא קיבלנו אישור על התשלום ממערכת הסליקה. אם חויבתם, פנו אלינו ונסדר את זה מיד. אם לא, אפשר לנסות שוב.',
-            cta: 'לאזור האישי',
-            href: '/dashboard',
+            cta: linkPath ? 'חזרה לעמוד התשלום' : 'לאזור האישי',
+            href: linkPath ?? '/dashboard',
           };
 
   return (

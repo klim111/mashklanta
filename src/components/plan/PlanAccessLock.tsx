@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronRight, Lock } from 'lucide-react';
-import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import type { ProcessAccess } from '@/lib/process-access';
 
 /**
@@ -13,6 +13,7 @@ import type { ProcessAccess } from '@/lib/process-access';
  */
 export function PlanAccessLock({ planId, access }: { planId: string; access: ProcessAccess }) {
   const expired = access.state === 'EXPIRED';
+  const { platformPrice } = usePricing();
 
   return (
     <div
@@ -40,7 +41,7 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
         </p>
 
         <div className="my-5 rounded-2xl bg-slate-50 py-4">
-          <div className="text-4xl font-black text-slate-900">₪{PLATFORM_PROCESS_PRICE}</div>
+          <div className="text-4xl font-black text-slate-900">₪{platformPrice}</div>
           <div className="mt-0.5 text-sm font-bold text-slate-500">
             לחודש נוסף · אין חיוב בלי אישור שלכם
           </div>

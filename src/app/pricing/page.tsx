@@ -30,15 +30,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { journeyStages } from '@/data/platform/journey';
-import {
-  ADVISORY_TRACK,
-  PLATFORM_PROCESS_PRICE,
-  TRACKS_HEADLINE,
-  TRACKS_INTRO,
-  comparisonRows,
-  pricingFaq,
-  pricingPlans,
-} from '@/data/platform/pricing';
+import { TRACKS_HEADLINE, TRACKS_INTRO } from '@/data/platform/pricing';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
 
@@ -85,6 +78,7 @@ function CellValue({ value }: { value: boolean | string }) {
 }
 
 export default function PricingPage() {
+  const { platformPrice, advisory, plans, comparisonRows, faq } = usePricing();
   return (
     <div className="min-h-screen bg-white" dir="rtl">
       <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 shadow-sm backdrop-blur-md">
@@ -118,7 +112,7 @@ export default function PricingPage() {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-balance text-lg leading-relaxed text-slate-100 md:text-xl">
-            גישה לפלטפורמה ב-₪{PLATFORM_PROCESS_PRICE} לחודש לתהליך משכנתא. רוצים יועץ?
+            גישה לפלטפורמה ב-₪{platformPrice} לחודש לתהליך משכנתא. רוצים יועץ?
             במסלול בליווי המחיר נקבע לפי השלבים ומורכבות התיק, מה ששילמתם על הפלטפורמה מקוזז, והגישה המלאה
             כלולה.
           </p>
@@ -161,8 +155,12 @@ export default function PricingPage() {
             <p className="text-lg leading-relaxed text-slate-600">{TRACKS_INTRO}</p>
           </motion.div>
 
-          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2 md:items-start">
-            {pricingPlans.map((plan, i) => {
+          <div
+            className={`mx-auto grid gap-6 md:grid-cols-2 md:items-start ${
+              plans.length > 2 ? 'max-w-6xl lg:grid-cols-3' : 'max-w-4xl'
+            }`}
+          >
+            {plans.map((plan, i) => {
               const Icon = plan.icon;
               return (
                 <motion.div
@@ -197,7 +195,7 @@ export default function PricingPage() {
                   <div className="my-6 border-y border-slate-100 py-5">
                     <div
                       className={`font-black text-slate-900 ${
-                        plan.id === 'full' ? 'text-subtitle leading-snug' : 'text-4xl'
+                        plan.price.startsWith('₪') ? 'text-4xl' : 'text-subtitle leading-snug'
                       }`}
                     >
                       {plan.price}
@@ -280,7 +278,7 @@ export default function PricingPage() {
           >
             <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-violet-100 px-4 py-2 text-sm font-bold text-violet-700">
               <UserCheck className="h-4 w-4" />
-              {ADVISORY_TRACK.title}
+              {advisory.title}
             </div>
             <h2 className="mb-5 text-title font-black text-slate-900">איך נקבע מחיר הליווי</h2>
             <p className="text-lg leading-relaxed text-slate-600">
@@ -427,7 +425,7 @@ export default function PricingPage() {
                     <CellValue value={row.self} />
                   </div>
                   <div className="rounded-xl bg-slate-50 px-2 py-2.5 text-center">
-                    <span className="mb-1 block text-2xs font-bold text-slate-600">{ADVISORY_TRACK.title}</span>
+                    <span className="mb-1 block text-2xs font-bold text-slate-600">{advisory.title}</span>
                     <CellValue value={row.full} />
                   </div>
                 </div>
@@ -444,7 +442,7 @@ export default function PricingPage() {
                     <th className="bg-violet-700 px-4 py-4 text-center text-sm font-bold">
                       עצמאי / היברידי
                     </th>
-                    <th className="px-4 py-4 text-center text-sm font-bold">{ADVISORY_TRACK.title}</th>
+                    <th className="px-4 py-4 text-center text-sm font-bold">{advisory.title}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -470,7 +468,7 @@ export default function PricingPage() {
           </div>
 
           <p className="mt-6 text-center text-sm text-slate-600">
-            הגישה לפלטפורמה בסך ₪{PLATFORM_PROCESS_PRICE} פותחת תהליך משכנתא לחודש, ואם צריך
+            הגישה לפלטפורמה בסך ₪{platformPrice} פותחת תהליך משכנתא לחודש, ואם צריך
             עוד זמן, אפשר לרכוש חבילה נוספת באותו מחיר. בכל הזמנת ליווי — משלב בודד ועד כל השלבים — הגישה כלולה, ומה
             ששולם עליה מקוזז.
           </p>
@@ -491,7 +489,7 @@ export default function PricingPage() {
           </motion.div>
 
           <Accordion type="single" collapsible className="w-full">
-            {pricingFaq.map((item, i) => (
+            {faq.map((item, i) => (
               <AccordionItem
                 key={item.question}
                 value={`faq-${i}`}

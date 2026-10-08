@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { PLAN_STAGES } from '@/lib/mortgage-plan';
 import type { PlanStageId } from '@/lib/mortgage-plan';
-import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { STAGE_GUIDE, stageGuideTools } from '@/data/platform/stageGuide';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
@@ -219,6 +219,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
 }
 
 function OfferScreen({ onBack }: { onBack: () => void }) {
+  const { platformPrice } = usePricing();
   return (
     <div className="relative overflow-hidden">
       <div className="relative bg-brand-dark px-6 py-8 text-white md:px-8">
@@ -235,7 +236,7 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
             גישה לכל השלבים והכלים לבניית המשכנתא שלכם באמצעות פלטפורמת משכלנתא
           </h2>
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <span className="text-5xl font-black">₪{PLATFORM_PROCESS_PRICE}</span>
+            <span className="text-5xl font-black">₪{platformPrice}</span>
             <span className="pb-2 text-sm font-bold text-white/70">לחודש לתהליך משכנתא · גישה מלאה</span>
           </div>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">

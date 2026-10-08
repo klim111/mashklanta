@@ -15,6 +15,8 @@ async function handle(req: NextRequest, params: URLSearchParams) {
     if (result.renewal) target.searchParams.set('renewal', '1');
   }
   if (result.outcome === 'failed' && result.code) target.searchParams.set('code', result.code.slice(0, 10));
+  // תשלום בקישור תשלום — "לנסות שוב" חוזר לעמוד הקישור
+  if (result.linkToken) target.searchParams.set('link', result.linkToken);
   return NextResponse.redirect(target, { status: 303 });
 }
 

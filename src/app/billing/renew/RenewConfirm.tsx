@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Loader2, Lock, RefreshCw, ShieldCheck } from 'lucide-react';
-import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 
 /** אישור החידוש ומעבר לעמוד התשלום של HYP */
 export function RenewConfirm({ token }: { token: string | null }) {
+  const { platformPrice } = usePricing();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +58,7 @@ export function RenewConfirm({ token }: { token: string | null }) {
           חידוש הגישה לחודש נוסף
         </div>
         <div className="mt-1 text-4xl font-black">
-          ₪{PLATFORM_PROCESS_PRICE}
+          ₪{platformPrice}
           <span className="text-base font-bold text-white/70"> / חודש</span>
         </div>
       </div>
