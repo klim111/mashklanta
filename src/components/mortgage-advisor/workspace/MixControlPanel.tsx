@@ -20,6 +20,7 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCcw,
+  Save,
   Table2,
   Trash2,
 } from 'lucide-react';
@@ -71,6 +72,15 @@ interface MixControlPanelProps {
   /** המסלול שמוצג כרגע באזור הגרפים */
   focusTrackId?: string | null;
   onFocusTrack?: (trackId: string | null) => void;
+  /** כפתורי התצוגה בכותרת הפאנל — הגדלה למסך מלא, מזעור, מעבר לניתוח */
+  layoutActions?: React.ReactNode;
+  /**
+   * שמירת התמהיל כפי שהוא באזור העבודה. הכפתור מופיע בתחתית הפאנל כשכל סכום
+   * המשכנתא חולק בין המסלולים ויש מה לשמור.
+   */
+  onSaveMix?: () => void;
+  /** הבהוב חד-פעמי של כפתור השמירה אחרי שינוי */
+  flashSave?: boolean;
 }
 
 export function MixControlPanel({
@@ -86,9 +96,10 @@ export function MixControlPanel({
   onAmortization,
   focusTrackId = null,
   onFocusTrack,
+  layoutActions,
+  onSaveMix,
+  flashSave = false,
 }: MixControlPanelProps) {
-  const [newType, setNewType] = useState<TrackType>('fixed_unlinked');
-
   const { mix } = result;
   const fixedShareOk = meetsFixedRequirement(mix);
   const remaining = remainingAmount(mix);
@@ -103,7 +114,7 @@ export function MixControlPanel({
         </div>
       )}
 
-      {!fixedShareOk && (
+      {!fixedShareOk && mix.tracks.length > 0 && (
         <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-2xs leading-relaxed text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <span>
@@ -114,15 +125,35 @@ export function MixControlPanel({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-2xs font-bold text-slate-500">
-          <Layers className="h-3.5 w-3.5" />
-          {mix.tracks.length} מסלולים · {formatShekel(allocated)} מתוך {formatShekel(mix.totalAmount)}
+      {/* סכום המשכנתא וכמה ממנו כבר חולק — מה שהלקוח מחלק בין המסלולים */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-2xs font-bold text-slate-500">סכום המשכנתא</p>
+          <p className="text-lg font-black leading-tight text-blue-700">{formatShekel(mix.totalAmount)}</p>
+        </div>
+        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-2xs font-bold text-slate-600">
+          <Layers className="h-3.5 w-3.5 shrink-0" />
+          {mix.tracks.length} מסלולים · שובצו {formatShekel(allocated)}
+          {remaining > 0 ? (
+            <span className="text-amber-700">· נותרו {formatShekel(remaining)}</span>
+          ) : (
+            mix.tracks.length > 0 && <span className="text-emerald-700">· כל הסכום חולק</span>
+          )}
         </p>
-        <p className="text-2xs text-slate-500">
-          לחיצה על שורת מסלול מציגה אותו באזור הגרפים
-        </p>
+        {layoutActions && <div className="flex flex-wrap items-center gap-1.5">{layoutActions}</div>}
       </div>
+
+      {mix.tracks.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-xs leading-relaxed text-slate-600">
+          עדיין אין מסלולים בתמהיל. הוסיפו מסלול, בחרו לו סוג ריבית ופרמטרים, וקבעו כמה
+          מהמשכנתא הוא מממן — בסכום או באחוזים.
+        </p>
+      ) : (
+        <p className="text-2xs text-slate-500">
+          לחיצה על שם המסלול מציגה אותו באזור הגרפים. אפשר לקבוע לכל מסלול סכום או אחוז
+          מהמשכנתא, והשני מתעדכן בהתאם.
+        </p>
+      )}
 
       <div className="space-y-1.5">
         {result.tracks.map((trackResult, index) => (
@@ -149,34 +180,42 @@ export function MixControlPanel({
           />
         ))}
 
-        {/* הוספת מסלול מוצעת רק כשיש סכום שטרם שובץ — גם היא שורה, לא בלוק */}
-        {remaining > 0 && !locked && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 p-1.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
-              <Plus className="h-4 w-4" />
-            </span>
-            <p className="min-w-[150px] flex-1 text-2xs leading-tight text-amber-900">
-              <span className="font-bold">הוספת מסלול</span> · {formatShekel(remaining)} טרם שובצו
-            </p>
-            <Select value={newType} onValueChange={(value) => setNewType(value as TrackType)}>
-              <SelectTrigger dir="rtl" className="h-7 w-[150px] bg-white text-2xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent dir="rtl" className="text-right">
-                {Object.entries(TRACK_TYPES).map(([key, label]) => (
-                  <SelectItem key={key} value={key} className="pr-7 text-right text-xs">
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" className="h-7 text-2xs" onClick={() => onAddTrack(newType)}>
+        {/*
+          הוספת מסלול פותחת שורה ריקה: הלקוח בוחר בה את סוג הריבית ואת שאר
+          הפרמטרים, וקובע כמה מהמשכנתא המסלול מממן — בסכום או באחוז.
+        */}
+        {!locked && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-blue-300 bg-white p-1.5">
+            <Button size="sm" className="h-8 text-xs" onClick={() => onAddTrack('fixed_unlinked')} {...demoId('ws-add-track')}>
               <Plus className="h-3.5 w-3.5 ml-1" />
-              הוסף על {formatShekel(remaining)}
+              הוסף מסלול
             </Button>
+            <p className="min-w-[150px] flex-1 text-2xs leading-tight text-slate-600">
+              {remaining > 0
+                ? `${formatShekel(remaining)} מהמשכנתא עדיין לא חולקו בין המסלולים`
+                : 'כל סכום המשכנתא חולק. מסלול נוסף נפתח ריק — הקטינו מסלול אחר כדי לפנות לו סכום.'}
+            </p>
           </div>
         )}
       </div>
+
+      {/* כל הסכום חולק — אפשר לשמור את המצב הזה כתמהיל */}
+      {onSaveMix && !locked && mix.tracks.length > 0 && remaining === 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+          <p className="text-2xs font-bold text-emerald-900">
+            כל סכום המשכנתא חולק בין המסלולים.
+          </p>
+          <Button
+            size="sm"
+            className={`h-9 bg-emerald-600 text-xs hover:bg-emerald-700 ${flashSave ? 'save-flash' : ''}`}
+            onClick={onSaveMix}
+            {...demoId('ws-save-state')}
+          >
+            <Save className="h-3.5 w-3.5 ml-1" />
+            שמור מצב זה כתמהיל
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -431,6 +470,21 @@ function TrackControlCard({
             </div>
           </RowField>
 
+          {/* אחוז מסך המשכנתא — עריכתו קובעת את הסכום, ועריכת הסכום מעדכנת אותו */}
+          <RowField label="אחוז מהמשכנתא" className="w-[78px]">
+            <InlineNumberBox
+              value={Math.round(track.percentage * 10) / 10}
+              suffix="%"
+              width="w-[74px]"
+              integer={false}
+              onChange={(value) => {
+                if (totalAmount <= 0) return;
+                const percent = Math.max(0, Math.min(100, value ?? 0));
+                applyAmount(Math.round((totalAmount * percent) / 100));
+              }}
+            />
+          </RowField>
+
           {/* מה שנוגעים בו לעתים רחוקות, ופעולות המסלול */}
           <div className="flex items-center gap-0.5 self-center pt-3">
             <TrackRowMenu
@@ -598,12 +652,15 @@ function InlineNumberBox({
   suffix,
   width,
   max,
+  integer = true,
   onChange,
 }: {
   value: number;
   suffix: string;
   width: string;
   max?: number;
+  /** false — אחוזים עם ספרה אחרי הנקודה */
+  integer?: boolean;
   onChange: (value: number | null) => void;
 }) {
   return (
@@ -611,7 +668,7 @@ function InlineNumberBox({
       className={`${width} flex shrink-0 items-center gap-0.5 rounded-md border border-slate-200 bg-slate-50 px-1 py-0.5 focus-within:border-blue-400 focus-within:bg-white`}
     >
       <NumericInput
-        integer
+        integer={integer}
         max={max}
         className="min-w-0 flex-1 bg-transparent text-center text-xs font-bold text-slate-700 outline-none"
         value={value}

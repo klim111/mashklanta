@@ -108,7 +108,8 @@ type Action =
   | { type: 'load'; mix: WorkspaceMix; constraints?: OptimizationConstraints }
   | { type: 'patchMix'; patch: Partial<WorkspaceMix> }
   | { type: 'setTotalAmount'; amount: number }
-  | { type: 'addTrack'; trackType?: TrackType }
+  /** amount — סכום הפתיחה של המסלול. בלעדיו המסלול מקבל את הסכום שנותר לשבץ */
+  | { type: 'addTrack'; trackType?: TrackType; amount?: number }
   | { type: 'removeTrack'; id: string }
   | { type: 'updateTrack'; id: string; patch: Partial<MortgageTrack> }
   | { type: 'setTrackAmount'; id: string; amount: number }
@@ -215,12 +216,28 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
       // במלואה, המסלול נכנס עם עשירית מהתמהיל שנלקחת יחסית מהמסלולים הקיימים.
       const remaining = remainingAmount(state.mix);
       const allocated = allocatedAmount(state.mix);
+      const years = state.mix.tracks[0]?.years ?? 25;
+      // מסלול שנפתח עם סכום מוגדר — למשל שורה ריקה שהלקוח ממלא בה סכום או אחוז —
+      // לא נוגע במסלולים הקיימים ולא חורג ממה שנותר לשבץ
+      if (action.amount !== undefined) {
+        return withMix(state, {
+          ...state.mix,
+          tracks: [
+            ...state.mix.tracks,
+            createTrack({
+              type,
+              amount: Math.max(0, Math.min(remaining, action.amount)),
+              years,
+              ...defaultRateFor(state, type, 'spitzer'),
+            }),
+          ],
+        });
+      }
       const carve = remaining > 0 ? 0 : allocated * 0.1;
       const tracks = state.mix.tracks.map((t) => ({
         ...t,
         amount: carve > 0 && allocated > 0 ? t.amount - (t.amount / allocated) * carve : t.amount,
       }));
-      const years = state.mix.tracks[0]?.years ?? 25;
       return withMix(state, {
         ...state.mix,
         tracks: [
@@ -463,7 +480,7 @@ export interface MortgageWorkspace {
     load: (mix: WorkspaceMix, constraints?: OptimizationConstraints) => void;
     patchMix: (patch: Partial<WorkspaceMix>) => void;
     setTotalAmount: (amount: number) => void;
-    addTrack: (type?: TrackType) => void;
+    addTrack: (type?: TrackType, amount?: number) => void;
     removeTrack: (id: string) => void;
     updateTrack: (id: string, patch: Partial<MortgageTrack>) => void;
     setTrackAmount: (id: string, amount: number) => void;
@@ -515,7 +532,7 @@ export function useMortgageWorkspace(initialMix?: WorkspaceMix): MortgageWorkspa
     load: (mix, constraints) => dispatch({ type: 'load', mix, constraints }),
     patchMix: (patch) => dispatch({ type: 'patchMix', patch }),
     setTotalAmount: (amount) => dispatch({ type: 'setTotalAmount', amount }),
-    addTrack: (trackType) => dispatch({ type: 'addTrack', trackType }),
+    addTrack: (trackType, amount) => dispatch({ type: 'addTrack', trackType, amount }),
     removeTrack: (id) => dispatch({ type: 'removeTrack', id }),
     updateTrack: (id, patch) => dispatch({ type: 'updateTrack', id, patch }),
     setTrackAmount: (id, amount) => dispatch({ type: 'setTrackAmount', id, amount }),

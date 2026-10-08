@@ -152,6 +152,19 @@ describe('addTrack and removeTrack', () => {
     expect(after.mix.tracks[2].percentage).toBeCloseTo(10, 4);
   });
 
+  it('opens an empty track row without touching the other tracks', () => {
+    const before = run(stateWith([600_000, 400_000]), {
+      type: 'setTrackAmount',
+      id: 't1',
+      amount: 100_000,
+    });
+    const after = run(before, { type: 'addTrack', trackType: 'prime', amount: 0 });
+    expect(after.mix.tracks).toHaveLength(3);
+    expect(after.mix.tracks[2].amount).toBe(0);
+    expect(amountOf(after, 't0')).toBeCloseTo(600_000, 4);
+    expect(remainingAmount(after.mix)).toBeCloseTo(300_000, 4);
+  });
+
   it('turns a removed track into an amount that has to be allocated again', () => {
     const before = stateWith([500_000, 300_000, 200_000]);
     const after = run(before, { type: 'removeTrack', id: 't2' });

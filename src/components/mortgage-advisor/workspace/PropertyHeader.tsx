@@ -102,10 +102,41 @@ export function PropertyHeader({
     setDraftEquity(Math.round(requiredEquityFor(next, dealType)));
   };
 
-  /** ההון העצמי הוא ההפרש מעלות הנכס, ולכן עריכתו משנה את סכום המשכנתא */
+  /**
+   * ההון העצמי הוא ההפרש מעלות הנכס, ולכן עריכתו משנה את סכום המשכנתא. כשעלות
+   * הנכס עוד לא הוזנה, ההון העצמי מצטרף לסכום המשכנתא ויחד הם עלות הנכס — כך
+   * אפשר להזין אותו גם בלי שהפרופיל הפיננסי מולא קודם. אם סכום המשכנתא שהכלי
+   * נפתח איתו גבוה מדי להון הזה, הוא יורד למקסימום שההון מאפשר לסוג העסקה.
+   */
   const commitEquity = (next: number) => {
-    if (propertyValue <= 0) return;
-    onCommitDeal({ totalAmount: Math.max(0, propertyValue - Math.max(0, next)) }, 'equity');
+    const equityValue = Math.max(0, next);
+    if (propertyValue <= 0) {
+      if (equityValue <= 0) return;
+      const maxByEquity = Math.floor((equityValue * ltvLimit) / (100 - ltvLimit));
+      const amount = Math.min(mix.totalAmount, maxByEquity);
+      onCommitDeal(
+        { propertyValue: Math.round(amount + equityValue), totalAmount: amount },
+        'equity'
+      );
+      return;
+    }
+    onCommitDeal({ totalAmount: Math.max(0, propertyValue - equityValue) }, 'equity');
+  };
+
+  /**
+   * עלות נכס שמוזנת לראשונה (כשנכנסו לכלי לפני הפרופיל) לא נחסמת בגלל סכום
+   * המשכנתא ההתחלתי: אם הוא חורג מתקרת המימון, הוא יורד לתקרה של העסקה.
+   */
+  const commitPropertyValue = (next: number) => {
+    const value = Math.max(0, next);
+    if (propertyValue <= 0 && value > 0) {
+      const cap = Math.floor(maxMortgageFor(value, dealType));
+      if (mix.totalAmount > cap + 1) {
+        onCommitDeal({ propertyValue: value, totalAmount: cap }, 'propertyValue');
+        return;
+      }
+    }
+    onCommitDeal({ propertyValue: value }, 'propertyValue');
   };
 
   const applyPendingWithEquity = () => {
@@ -192,7 +223,7 @@ export function PropertyHeader({
           icon={<Home className="h-3.5 w-3.5 text-violet-600" />}
           label="עלות הנכס"
           value={propertyValue}
-          onCommit={(next) => onCommitDeal({ propertyValue: Math.max(0, next) }, 'propertyValue')}
+          onCommit={commitPropertyValue}
           hint={
             propertyValue > 0 && mix.totalAmount > 0
               ? `הון עצמי ${formatShekel(equity)} · מימון ${ltv.toFixed(1)}%`
@@ -207,7 +238,7 @@ export function PropertyHeader({
           hint={
             propertyValue > 0
               ? `נדרש לפחות ${formatShekel(propertyValue - maxMortgage)}`
-              : undefined
+              : 'הזנה תשלים את עלות הנכס: משכנתא + הון עצמי'
           }
         />
         <EditableAmount
