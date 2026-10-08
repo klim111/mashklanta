@@ -1,10 +1,12 @@
 /**
  * הגשה לבנק דרך יועץ משכלנתא, בשלב האישור העקרוני.
  *
- * ליד כל בנק הלקוח בוחר בין "הגשה עצמית" ל"הגשה באמצעות יועץ משכלנתא". בבחירה
- * ביועץ נפתחת אצל היועץ משימה לאותו בנק, ופגישה אחת עם הלקוח להשלמת הפרטים
- * להגשה, שהיועץ רק קובע לה מועד. מכאן הבנקאי המטפל והאישור העקרוני מוזנים בצד
- * היועץ, והלקוח רואה אותם בכרטיס של הבנק.
+ * ליד כל בנק הלקוח בוחר בין "הגשה עצמית" ל"הגשה באמצעות יועץ משכלנתא". הבחירה
+ * ביועץ אינה לבנק אחד: היועץ מטפל בהגשה לכל הבנקים, וכל בנק שהלקוח לא התחיל
+ * בו הגשה עצמית עובר ליועץ. בכל בנק נשארת האפשרות לעבור להגשה עצמית. אצל היועץ
+ * נפתחת משימה אחת, ופגישה אחת עם הלקוח להשלמת הפרטים שהיועץ רק קובע לה מועד.
+ * מכאן הבנקאי המטפל והאישור העקרוני מוזנים בצד היועץ, והלקוח רואה אותם בכרטיס
+ * של הבנק.
  *
  * הקובץ טהור — בלי React ובלי Prisma.
  */
@@ -17,13 +19,23 @@ export const HANDOFF_MEETING_TITLE = 'פגישה להשלמת פרטים להג�
 /** המשימה של היועץ לקבוע את הפגישה — אחת ללקוח, כל עוד היא פתוחה */
 export const HANDOFF_MEETING_TASK_TITLE = 'קבעו מועד לפגישה להשלמת פרטים להגשה לבנקים';
 
-/** המשימה של היועץ לבנק אחד שהלקוח העביר אליו */
-export function handoffTaskTitle(bank: string): string {
-  return `הגשה לאישור עקרוני ב${bank} — הלקוח העביר אליכם`;
+/** המשימה של היועץ: הלקוח העביר אליו את ההגשה לבנקים — אחת ללקוח, כל עוד היא פתוחה */
+export const HANDOFF_TASK_TITLE = 'הגשה לבנקים לאישור עקרוני — הלקוח העביר אליכם';
+
+export function handoffTaskDetails(banks: readonly string[], place: string): string {
+  return `נוצרה משלב "אישור עקרוני" בתהליך "${place}". הלקוח ביקש שיועץ משכלנתא ינהל מולו את ההגשה לבנקים (${banks.join(', ')}). קבעו פגישה להשלמת הפרטים, ואחרי ההגשה הזינו בשלב האישור העקרוני של הלקוח את הבנקאי המטפל ואת תאריך האישור העקרוני של כל בנק.`;
 }
 
-export function handoffTaskDetails(bank: string, place: string): string {
-  return `נוצרה משלב "אישור עקרוני" בתהליך "${place}". הלקוח ביקש שיועץ משכלנתא ינהל מולו את ההגשה ל${bank}. קבעו פגישה להשלמת הפרטים, ואחרי ההגשה הזינו בשלב האישור העקרוני של הלקוח את הבנקאי המטפל ואת תאריך האישור העקרוני.`;
+/**
+ * הבנקים שעוברים ליועץ כשהלקוח בוחר בו: כל בנק ברשימה, חוץ מבנק שהלקוח כבר
+ * התחיל בו הגשה עצמית (עבר לאתר הבנק או קיבל אישור).
+ */
+export function banksToHand(rows: readonly BankPreApproval[], banks: readonly string[]): string[] {
+  return banks.filter((bank) => {
+    const row = rows.find((item) => item.bank === bank) ?? null;
+    if (row?.channel === 'ADVISOR') return true;
+    return !(row?.submittedAt || row?.approved || (row?.channel === 'SELF' && row.documentName));
+  });
 }
 
 /**
@@ -56,7 +68,8 @@ export function withLeadingApproval(data: PreApprovalData): PreApprovalData {
 /**
  * שמירת השלב מהמסך של הלקוח: בבנק שהועבר ליועץ, מה שהיועץ הזין (הבנקאי
  * והאישור) נשאר כפי שהוא בשרת. המסך של הלקוח עלול להחזיק עותק ישן מלפני
- * שהיועץ עדכן, והשמירה שלו לא אמורה למחוק את העדכון.
+ * שהיועץ עדכן, והשמירה שלו לא אמורה למחוק את העדכון. בנק שהלקוח העביר במפורש
+ * להגשה עצמית (`SELF`) — הבחירה שלו נשמרת.
  */
 export function keepAdvisorRows(saved: PreApprovalData, incoming: PreApprovalData): PreApprovalData {
   const handed = saved.bankApprovals.filter((row) => row.channel === 'ADVISOR');
@@ -75,7 +88,7 @@ export function keepAdvisorRows(saved: PreApprovalData, incoming: PreApprovalDat
 
   const bankApprovals = incoming.bankApprovals.map((row) => {
     const kept = handed.find((item) => item.bank === row.bank);
-    return kept ? { ...row, ...advisorOwned(kept) } : row;
+    return kept && row.channel !== 'SELF' ? { ...row, ...advisorOwned(kept) } : row;
   });
   for (const row of handed) {
     if (!bankApprovals.some((item) => item.bank === row.bank)) bankApprovals.push(row);
