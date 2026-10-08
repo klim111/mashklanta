@@ -34,12 +34,13 @@ export default function ExistingMortgagePage() {
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="h-full"
         >
           <Card 
-            className="group relative overflow-hidden border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer h-full"
             onClick={() => setSelectedOption('refinance')}
           >
-            <CardContent className="p-8 text-center h-full flex flex-col justify-center">
+            <CardContent className="p-8 lg:p-10 text-center h-full flex flex-col">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <RefreshCw className="w-10 h-10 text-white" />
               </div>
@@ -49,7 +50,7 @@ export default function ExistingMortgagePage() {
               <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 תן למשכלנתא לשפר את תנאי המשכנתא הנוכחית שלך
               </p>
-              <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
+              <div className="mt-auto flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
                 <span>התחל עכשיו</span>
                 <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -62,12 +63,13 @@ export default function ExistingMortgagePage() {
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="h-full"
         >
           <Card 
-            className="group relative overflow-hidden border border-slate-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-green-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer h-full"
             onClick={() => setSelectedOption('transfer')}
           >
-            <CardContent className="p-8 text-center h-full flex flex-col justify-center">
+            <CardContent className="p-8 lg:p-10 text-center h-full flex flex-col">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-600 to-green-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <TrendingUp className="w-10 h-10 text-white" />
               </div>
@@ -77,7 +79,7 @@ export default function ExistingMortgagePage() {
               <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 תרכוש נכס חדש ותישאר עם המשכנתא הנוכחית שלך
               </p>
-              <div className="flex items-center justify-center text-green-600 group-hover:text-green-700 font-semibold">
+              <div className="mt-auto flex items-center justify-center text-green-600 group-hover:text-green-700 font-semibold">
                 <span>התחל עכשיו</span>
                 <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -123,12 +125,13 @@ export default function ExistingMortgagePage() {
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="h-full"
         >
           <Card 
-            className="group relative overflow-hidden border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-blue-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer h-full"
             onClick={() => setRefinanceOption('reduce-payment')}
           >
-            <CardContent className="p-8 text-center h-full flex flex-col justify-center">
+            <CardContent className="p-8 lg:p-10 text-center h-full flex flex-col">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Banknote className="w-10 h-10 text-white" />
               </div>
@@ -138,7 +141,7 @@ export default function ExistingMortgagePage() {
               <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 נסה למצוא תנאים טובים יותר שיפחיתו את ההחזר החודשי שלך
               </p>
-              <div className="flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
+              <div className="mt-auto flex items-center justify-center text-blue-600 group-hover:text-blue-700 font-semibold">
                 <span>התחל עכשיו</span>
                 <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -151,12 +154,13 @@ export default function ExistingMortgagePage() {
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="h-full"
         >
           <Card 
-            className="group relative overflow-hidden border border-slate-200 hover:border-orange-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer min-h-[400px]"
+            className="group relative overflow-hidden border border-slate-200 hover:border-orange-300 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-xl hover:shadow-2xl cursor-pointer h-full"
             onClick={() => setRefinanceOption('shorten-period')}
           >
-            <CardContent className="p-8 text-center h-full flex flex-col justify-center">
+            <CardContent className="p-8 lg:p-10 text-center h-full flex flex-col">
               <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
                 <Clock className="w-10 h-10 text-white" />
               </div>
@@ -166,7 +170,7 @@ export default function ExistingMortgagePage() {
               <p className="text-slate-600 text-lg leading-relaxed mb-6">
                 קיצור של תקופת המשכנתא גם מקטין את הסכום הכללי שישולם עד תום תקופת המשכנתא
               </p>
-              <div className="flex items-center justify-center text-orange-600 group-hover:text-orange-700 font-semibold">
+              <div className="mt-auto flex items-center justify-center text-orange-600 group-hover:text-orange-700 font-semibold">
                 <span>התחל עכשיו</span>
                 <ArrowRight className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" />
               </div>

@@ -289,21 +289,7 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async createUser({ user }) {
-      if (!user.email || !user.id) return;
-      const base = user.email
-        .split("@")[0]
-        .replace(/[^a-zA-Z0-9._-]/g, "")
-        .slice(0, 24);
-      if (!base) return;
-      try {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { username: base },
-        });
-      } catch {
-        // שם המשתמש כבר תפוס — נשאר בלי username
-      }
-      await ensureClientLinkSafely(user.id);
+      if (user.id) await ensureClientLinkSafely(user.id);
     },
   },
 };

@@ -20,7 +20,6 @@ type Summary =
       status: 'ok';
       maskedEmail: string;
       name: string | null;
-      username: string | null;
       via: 'google' | 'password';
       createdAt: string;
       expiresAt: string;
@@ -149,7 +148,7 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-start justify-center px-4 py-10 sm:items-center sm:p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           <div className="text-center mb-6">
@@ -175,7 +174,7 @@ function VerifyEmailContent() {
               <dl className="space-y-2 rounded-xl bg-slate-50 p-4 text-info text-slate-700">
                 {summary.name && (
                   <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">שם</dt>
+                    <dt className="text-slate-500">שם מלא</dt>
                     <dd className="font-semibold text-slate-900">{summary.name}</dd>
                   </div>
                 )}
@@ -183,12 +182,6 @@ function VerifyEmailContent() {
                   <dt className="text-slate-500">מייל</dt>
                   <dd className="font-semibold text-slate-900" dir="ltr">{summary.maskedEmail}</dd>
                 </div>
-                {summary.username && (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-slate-500">שם משתמש</dt>
-                    <dd className="font-semibold text-slate-900" dir="ltr">{summary.username}</dd>
-                  </div>
-                )}
                 <div className="flex justify-between gap-3">
                   <dt className="text-slate-500">{summary.via === 'google' ? 'נרשם דרך' : 'נרשם ב'}</dt>
                   <dd className="font-semibold text-slate-900">

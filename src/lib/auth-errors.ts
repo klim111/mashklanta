@@ -16,7 +16,7 @@ export function authErrorMessage(code: string | null | undefined): string {
     case "Verification":
       return "פג תוקף הקישור. נסו להתחבר שוב.";
     case "CredentialsSignin":
-      return "שם משתמש או סיסמה שגויים";
+      return "המייל או הסיסמה שגויים";
     case "EmailNotVerified":
       return "עוד לא אישרתם את כתובת המייל. פתחו את הקישור ששלחנו לכם כדי להשלים את ההרשמה.";
     case "GoogleNotAllowed":

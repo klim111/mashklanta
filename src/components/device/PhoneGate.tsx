@@ -25,6 +25,8 @@ const PHONE_READY_PATHS = [
   '/equity-planning',
   '/consumer-loans',
   '/learn',
+  // בקשת ליווי מ"היוועצו איתנו" בסרגל העליון
+  '/consult',
   // מסמכים משפטיים — ההרשמה והתשלום מקשרים אליהם, והם חייבים להיפתח בכל מכשיר
   '/privacy',
   '/terms',

@@ -430,7 +430,8 @@ export function FamilyEconomyValueCard({
       </div>
 
       <div className="space-y-2.5 p-4">
-        <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-3">
+        {/* מספר העמודות נקבע לפי רוחב הכרטיס עצמו: בעמודה צרה הנקודות נערמות, ברחבה הן בשורה */}
+        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-2 p-0">
           {points.map((point) => {
             const Icon = point.icon;
             return (

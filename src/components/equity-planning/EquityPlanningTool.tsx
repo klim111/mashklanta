@@ -888,7 +888,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
                 <h1 className="mt-2 text-title font-black text-white">
                   תכנון הון עצמי והוצאות רכישה
                 </h1>
-                <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/60">
+                <p className="mt-1.5 max-w-2xl text-balance text-sm leading-relaxed text-white/60">
                   כל שקל שצריך להביא עד קבלת המפתח, על ציר זמן אחד: ההון העצמי לפי תקנות בנק ישראל,
                   ההוצאות הנלוות ומועדי התשלום.
                 </p>

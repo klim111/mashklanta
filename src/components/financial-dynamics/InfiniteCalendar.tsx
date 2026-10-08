@@ -84,9 +84,28 @@ export const InfiniteCalendar: React.FC<InfiniteCalendarProps> = ({
   };
 
   return (
-    <div className="relative h-24 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-inner w-full" dir="rtl">
+    <div className="relative bg-white rounded-lg border border-gray-200 overflow-hidden shadow-inner w-full" dir="rtl">
+      {/* Current month/year display - שורה נפרדת מעל הימים */}
+      <div className="flex justify-center border-b border-gray-100 py-1">
+        <div className="text-xs font-semibold text-gray-700 bg-white px-2 py-0.5 rounded">
+          {currentDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 px-1">
+      {/* Navigation arrows - RTL: בצד, מחוץ לרצועת הימים */}
+      <button
+        onClick={() => handleNavigation('backward')}
+        className="shrink-0 w-7 h-7 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 shadow-md z-30"
+        title="יום קודם"
+      >
+        <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+
       {/* Full width container for days */}
-      <div className="relative h-full w-full flex items-center">
+      <div className="relative h-20 flex-1 min-w-0 flex items-center">
         {/* Generate days that fill the entire width */}
         {visibleDays.map((dayDate, index) => {
           const today = new Date();
@@ -122,8 +141,7 @@ export const InfiniteCalendar: React.FC<InfiniteCalendarProps> = ({
               style={{
                 right: `${rightPosition}%`,
                 width: `${dayWidth}%`,
-                height: '100%',
-                minHeight: '96px'
+                height: '100%'
               }}
               onClick={() => handleDayClick(dayDate)}
               title={`${dayDate.toLocaleDateString('he-IL')} ${isPaymentDay ? '(יום תשלום)' : ''}`}
@@ -134,7 +152,7 @@ export const InfiniteCalendar: React.FC<InfiniteCalendarProps> = ({
               </div>
               
               {/* Day number - consistent size */}
-              <div className={`text-base font-bold leading-tight ${isSelected || isToday ? 'text-white' : 'text-gray-900'}`}>
+              <div className={`text-sm lg:text-base font-bold leading-tight ${isSelected || isToday ? 'text-white' : 'text-gray-900'}`}>
                 {dayDate.getDate()}
               </div>
               
@@ -164,30 +182,15 @@ export const InfiniteCalendar: React.FC<InfiniteCalendarProps> = ({
         })}
       </div>
       
-      {/* Navigation arrows - RTL positioned */}
-      <button
-        onClick={() => handleNavigation('backward')}
-        className="absolute right-2 top-1/2 transform -translate-y-1/2 w-7 h-7 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 shadow-md z-30"
-        title="יום קודם"
-      >
-        <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-      
       <button
         onClick={() => handleNavigation('forward')}
-        className="absolute left-2 top-1/2 transform -translate-y-1/2 w-7 h-7 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 shadow-md z-30"
+        className="shrink-0 w-7 h-7 bg-white border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 shadow-md z-30"
         title="יום הבא"
       >
         <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
       </button>
-      
-      {/* Current month/year display - RTL positioned */}
-      <div className="absolute top-2 right-1/2 transform translate-x-1/2 text-xs font-semibold text-gray-700 bg-white px-2 py-1 rounded shadow-sm z-30">
-        {currentDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
       </div>
     </div>
   );

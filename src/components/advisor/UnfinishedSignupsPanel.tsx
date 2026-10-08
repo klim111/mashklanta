@@ -173,9 +173,8 @@ export function UnfinishedSignupsPanel() {
                   </span>
                 </div>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <Field label="שם מלא" value={signup.name} />
-                  <Field label="שם משתמש" value={signup.username} ltr />
                   <Field label="מייל" value={signup.email} ltr />
                 </div>
 

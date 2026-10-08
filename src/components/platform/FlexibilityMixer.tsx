@@ -90,6 +90,8 @@ export default function FlexibilityMixer() {
               transition={{ delay: index * 0.06 }}
               whileTap={{ scale: 0.98 }}
               className={`group relative overflow-hidden rounded-2xl border-2 p-4 text-right shadow-md transition-all ${
+                index === journeyStages.length - 1 ? 'sm:col-span-2 lg:col-span-1' : ''
+              } ${
                 withAdvisor
                   ? 'border-violet-400 bg-violet-50 shadow-violet-100'
                   : 'border-blue-200 bg-blue-50 hover:border-blue-300'

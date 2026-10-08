@@ -15,7 +15,6 @@ import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { ADVISORY_TRACK, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
-import { DemoCatalogSection } from '@/demo/components/DemoCatalogSection';
 import { demoId } from '@/demo/demo-attr';
 
 export default function Home() {
@@ -39,22 +38,25 @@ export default function Home() {
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden bg-hero-soft md:min-h-[100svh] lg:h-screen"
+        className="relative overflow-hidden bg-hero-soft"
         {...demoId('home-hero')}
       >
-        {/* Logo Section - Top */}
-        <div className="relative z-10 flex items-center justify-center px-5 pt-8 md:h-1/5 md:px-0 md:pt-2">
-        <Mashkalanta autoPlay />
+        {/* הראש בנוי כעמודה אחת בזרימה רגילה — לוגו, טקסט, אנימציה, כפתורים — וממלא לפחות
+            את גובה המסך שמתחת לסרגל הניווט. כך אין רכיב שעולה על אחר בשום יחס מסך */}
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center px-5 pb-10 pt-8 md:min-h-[calc(100svh-4rem)] md:px-6 md:pb-12 md:pt-10 lg:pt-12">
+        {/* Logo */}
+        <div className="flex items-center justify-center">
+          <Mashkalanta autoPlay />
         </div>
 
         {/* Title and Subtitle Section */}
-        <div className="relative z-10 flex flex-col items-center justify-start px-5 pt-3 text-center md:h-2/5 md:px-6 md:pt-0">
+        <div className="flex flex-col items-center pt-3 text-center md:pt-6">
                 <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             viewport={{ once: true }}
-            className="mx-auto max-w-md text-base leading-relaxed text-slate-600 md:max-w-4xl md:text-xl"
+            className="mx-auto max-w-md text-balance text-base leading-relaxed text-slate-600 md:max-w-4xl md:text-xl"
             {...demoId('home-hero-title')}
           >
             פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
@@ -63,18 +65,109 @@ export default function Home() {
           </motion.p>
         </div>
 
-        {/* Animation Section - Middle (desktop overlay lives below; keep spacer on md+) */}
-        <div className="relative hidden h-1/5 items-center justify-center md:flex">
-          {/* Animation content will be handled by the carousel below */}
+        {/* קרוסלת היתרונות: במה משלה בזרימת הדף, בין הטקסט לכפתורים, כך שבשום גודל מסך
+            היא לא נכנסת מתחת לטקסט או לכפתורים. הגובה נגזר מהמקום שנשאר במסך */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none relative my-4 hidden min-h-[220px] w-full max-w-3xl flex-1 md:block lg:min-h-[240px] xl:max-h-[460px]"
+        >
+      
+        {/* Slide 1: Transparency & Simplicity */}
+        <div className="absolute inset-0 opacity-0 animate-carousel-slide-1 flex items-center justify-center">
+          <div className="h-full w-full px-4">
+            <svg viewBox="40 40 720 360" className="h-full w-full">
+              {/* Shield Icon */}
+              <path d="M400 50 L350 80 L350 200 Q350 250 400 280 Q450 250 450 200 L450 80 Z" 
+                    fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.6)" strokeWidth="3" className="animate-pulse-glow" />
+            
+              {/* Checkmarks inside shield */}
+              <path d="M370 150 L385 165 L420 130" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" />
+              <path d="M370 180 L385 195 L420 160" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" style={{animationDelay: '0.5s'}} />
+              <path d="M370 210 L385 225 L420 190" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" style={{animationDelay: '1s'}} />
+            
+              {/* Floating Elements */}
+              <circle cx="300" cy="120" r="15" fill="rgba(59, 130, 246, 0.3)" className="animate-float-up" />
+              <rect x="480" y="140" width="30" height="20" rx="5" fill="rgba(99, 102, 241, 0.3)" className="animate-float-up" style={{animationDelay: '0.7s'}} />
+              <polygon points="520,200 540,220 520,240" fill="rgba(139, 92, 246, 0.3)" className="animate-float-up" style={{animationDelay: '1.4s'}} />
+            
+              {/* Title */}
+              <text x="400" y="350" textAnchor="middle" fill="rgba(59, 130, 246, 0.9)" 
+                    fontSize="32" fontWeight="bold">פשטות ושקיפות מלאה</text>
+              <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
+                    fontSize="18">תהליך ברור ללא הפתעות</text>
+            </svg>
+          </div>
         </div>
 
+        {/* Slide 2: Navigation & Guidance — חמשת שלבי המשכנתא */}
+        <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
+          <div className="w-full px-4" dir="rtl">
+            <div className="relative mb-6 lg:mb-10">
+              <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-slate-200 md:block" />
+              <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 overflow-hidden rounded-full md:block">
+                <div className="h-full w-full bg-gradient-to-l from-blue-500 via-violet-500 to-rose-500 animate-draw-line" />
+              </div>
+              <ol className="relative mx-auto grid max-w-xs grid-cols-5 gap-0.5 sm:max-w-md sm:gap-1 md:max-w-none md:gap-2">
+                {journeyStages.map((stage) => (
+                  <li key={stage.id} className="flex flex-col items-center text-center">
+                    <span
+                      className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black text-white shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl sm:text-base md:h-14 md:w-14 md:text-lg ${stage.gradient} animate-pulse-glow`}
+                    >
+                      {stage.number}
+                    </span>
+                    <span className="mt-1.5 text-2xs font-bold leading-tight text-slate-800 sm:mt-3 sm:text-2xs md:text-sm">
+                      {stage.shortTitle}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <p className="text-center text-2xl font-black text-emerald-600 md:text-3xl">
+              ניווט לאורך כל השלבים
+            </p>
+            <p className="mt-1 text-center text-base text-slate-600 md:text-lg">
+              ליווי מקצועי מהתחלה ועד הסוף
+            </p>
+          </div>
+        </div>
+
+        {/* Slide 3: Optimal Mix */}
+        <div className="absolute inset-0 opacity-0 animate-carousel-slide-3 flex items-center justify-center">
+          <div className="h-full w-full px-4">
+            <svg viewBox="40 40 720 360" className="h-full w-full">
+              {/* Multiple Charts Representing Mix */}
+              <rect x="150" y="180" width="100" height="120" rx="10" fill="rgba(168, 85, 247, 0.3)" className="animate-float-up" />
+              <rect x="280" y="160" width="100" height="140" rx="10" fill="rgba(139, 92, 246, 0.4)" className="animate-float-up" style={{animationDelay: '0.5s'}} />
+              <rect x="410" y="140" width="100" height="160" rx="10" fill="rgba(124, 58, 237, 0.5)" className="animate-float-up" style={{animationDelay: '1s'}} />
+              <rect x="540" y="170" width="100" height="130" rx="10" fill="rgba(109, 40, 217, 0.4)" className="animate-float-up" style={{animationDelay: '1.5s'}} />
+            
+              {/* Connecting Lines */}
+              <path d="M200 150 Q300 100 400 120 Q500 100 600 150" 
+                    stroke="rgba(34, 197, 94, 0.6)" strokeWidth="3" fill="none" className="animate-draw-line" />
+            
+              {/* Percentage Labels */}
+              <text x="200" y="170" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">25%</text>
+              <text x="330" y="150" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">35%</text>
+              <text x="460" y="130" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">30%</text>
+              <text x="590" y="160" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">10%</text>
+            
+              {/* Title */}
+              <text x="400" y="350" textAnchor="middle" fill="rgba(168, 85, 247, 0.9)" 
+                    fontSize="32" fontWeight="bold">תמהיל אופטימלי מותאם</text>
+              <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
+                    fontSize="18">התאמה מושלמת לצרכים שלך</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
         {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — לחיצה מחליפה את האנימציה בהדגמה חיה */}
-        <div className="relative z-10 flex items-center justify-center px-5 pt-4 md:pt-0">
-          <HeroDemoButton className="w-full md:w-auto" />
+        <div className="flex w-full items-center justify-center pt-4 md:pt-0">
+          <HeroDemoButton className="w-full max-w-sm md:w-auto md:max-w-none" />
         </div>
 
         {/* Buttons Section - Bottom */}
-        <div className="relative z-10 flex items-center justify-center px-5 pb-10 pt-8 md:min-h-[18%] md:px-6 md:pb-10 md:pt-2">
+        <div className="flex w-full items-center justify-center pt-6 md:pt-5">
           <div className="flex w-full max-w-sm flex-col items-stretch justify-center gap-3 md:max-w-none md:flex-row md:flex-wrap md:gap-4">
             <motion.div
               whileHover={{ scale: 1.05 }}
@@ -113,97 +206,6 @@ export default function Home() {
             </motion.div>
           </div>
         </div>
-
-        {/* Benefits Visualization Carousel - Background (desktop/tablet only so it never covers phone copy) */}
-        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
-          
-          {/* Slide 1: Transparency & Simplicity */}
-          <div className="absolute inset-0 opacity-0 animate-carousel-slide-1 flex items-center justify-center">
-            <div className="max-w-4xl w-full px-8">
-              <svg viewBox="0 0 800 400" className="w-full h-auto">
-                {/* Shield Icon */}
-                <path d="M400 50 L350 80 L350 200 Q350 250 400 280 Q450 250 450 200 L450 80 Z" 
-                      fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.6)" strokeWidth="3" className="animate-pulse-glow" />
-                
-                {/* Checkmarks inside shield */}
-                <path d="M370 150 L385 165 L420 130" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" />
-                <path d="M370 180 L385 195 L420 160" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" style={{animationDelay: '0.5s'}} />
-                <path d="M370 210 L385 225 L420 190" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" style={{animationDelay: '1s'}} />
-                
-                {/* Floating Elements */}
-                <circle cx="300" cy="120" r="15" fill="rgba(59, 130, 246, 0.3)" className="animate-float-up" />
-                <rect x="480" y="140" width="30" height="20" rx="5" fill="rgba(99, 102, 241, 0.3)" className="animate-float-up" style={{animationDelay: '0.7s'}} />
-                <polygon points="520,200 540,220 520,240" fill="rgba(139, 92, 246, 0.3)" className="animate-float-up" style={{animationDelay: '1.4s'}} />
-                
-                {/* Title */}
-                <text x="400" y="350" textAnchor="middle" fill="rgba(59, 130, 246, 0.9)" 
-                      fontSize="32" fontWeight="bold">פשטות ושקיפות מלאה</text>
-                <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                      fontSize="18">תהליך ברור ללא הפתעות</text>
-              </svg>
-            </div>
-          </div>
-
-          {/* Slide 2: Navigation & Guidance — חמשת שלבי המשכנתא */}
-          <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
-            <div className="max-w-4xl w-full px-8" dir="rtl">
-              <div className="relative mb-10">
-                <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-slate-200 md:block" />
-                <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 overflow-hidden rounded-full md:block">
-                  <div className="h-full w-full bg-gradient-to-l from-blue-500 via-violet-500 to-rose-500 animate-draw-line" />
-                </div>
-                <ol className="relative mx-auto grid max-w-xs grid-cols-5 gap-0.5 sm:max-w-md sm:gap-1 md:max-w-none md:gap-2">
-                  {journeyStages.map((stage) => (
-                    <li key={stage.id} className="flex flex-col items-center text-center">
-                      <span
-                        className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black text-white shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl sm:text-base md:h-14 md:w-14 md:text-lg ${stage.gradient} animate-pulse-glow`}
-                      >
-                        {stage.number}
-                      </span>
-                      <span className="mt-1.5 text-2xs font-bold leading-tight text-slate-800 sm:mt-3 sm:text-2xs md:text-sm">
-                        {stage.shortTitle}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              <p className="text-center text-2xl font-black text-emerald-600 md:text-3xl">
-                ניווט לאורך כל השלבים
-              </p>
-              <p className="mt-1 text-center text-base text-slate-600 md:text-lg">
-                ליווי מקצועי מהתחלה ועד הסוף
-              </p>
-            </div>
-          </div>
-
-          {/* Slide 3: Optimal Mix */}
-          <div className="absolute inset-0 opacity-0 animate-carousel-slide-3 flex items-center justify-center">
-            <div className="max-w-4xl w-full px-8">
-              <svg viewBox="0 0 800 400" className="w-full h-auto">
-                {/* Multiple Charts Representing Mix */}
-                <rect x="150" y="180" width="100" height="120" rx="10" fill="rgba(168, 85, 247, 0.3)" className="animate-float-up" />
-                <rect x="280" y="160" width="100" height="140" rx="10" fill="rgba(139, 92, 246, 0.4)" className="animate-float-up" style={{animationDelay: '0.5s'}} />
-                <rect x="410" y="140" width="100" height="160" rx="10" fill="rgba(124, 58, 237, 0.5)" className="animate-float-up" style={{animationDelay: '1s'}} />
-                <rect x="540" y="170" width="100" height="130" rx="10" fill="rgba(109, 40, 217, 0.4)" className="animate-float-up" style={{animationDelay: '1.5s'}} />
-                
-                {/* Connecting Lines */}
-                <path d="M200 150 Q300 100 400 120 Q500 100 600 150" 
-                      stroke="rgba(34, 197, 94, 0.6)" strokeWidth="3" fill="none" className="animate-draw-line" />
-                
-                {/* Percentage Labels */}
-                <text x="200" y="170" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">25%</text>
-                <text x="330" y="150" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">35%</text>
-                <text x="460" y="130" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">30%</text>
-                <text x="590" y="160" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">10%</text>
-                
-                {/* Title */}
-                <text x="400" y="350" textAnchor="middle" fill="rgba(168, 85, 247, 0.9)" 
-                      fontSize="32" fontWeight="bold">תמהיל אופטימלי מותאם</text>
-                <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                      fontSize="18">התאמה מושלמת לצרכים שלך</text>
-              </svg>
-            </div>
-          </div>
         </div>
       </motion.section>
 
@@ -225,11 +227,6 @@ export default function Home() {
           {/* מה תרצו לעשות? — נקודת הכניסה, גם למי שעדיין לא נרשם */}
           <div id="start" className="mt-8 scroll-mt-24 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10" {...demoId('home-start')}>
             <GuestStart />
-          </div>
-
-          {/* הכירו את הכלים — הדגמה חיה לכל כלי, מתוך קטלוג ההדגמות */}
-          <div className="mt-8 rounded-3xl border border-indigo-100 bg-white/95 p-6 shadow-xl backdrop-blur-sm md:p-10">
-            <DemoCatalogSection />
           </div>
         </div>
         </motion.section>

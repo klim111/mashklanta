@@ -32,13 +32,15 @@ export function PricingModelStrip({
 
   if (compact) {
     return (
-      <ul dir="rtl" className={`grid gap-2 sm:grid-cols-2 lg:grid-cols-5 ${className}`}>
-        {PRICING_PRINCIPLES.map((item) => {
+      <ul dir="rtl" className={`grid gap-2 sm:grid-cols-2 xl:grid-cols-5 ${className}`}>
+        {PRICING_PRINCIPLES.map((item, index) => {
           const Icon = ICONS[item.id] ?? Scale;
+          // בשתי עמודות התג החמישי תופס שורה שלמה, כדי שלא יישאר לבד בחצי שורה
+          const lastAlone = index === PRICING_PRINCIPLES.length - 1 && PRICING_PRINCIPLES.length % 2 === 1;
           return (
             <li
               key={item.id}
-              className={`flex items-start gap-2 rounded-2xl px-3 py-2.5 text-xs leading-snug ${
+              className={`flex items-start gap-2 rounded-2xl px-3 py-2.5 text-xs leading-snug ${lastAlone ? 'sm:col-span-2 sm:justify-center xl:col-span-1 xl:justify-start' : ''} ${
                 dark
                   ? 'bg-white/10 text-white/85 ring-1 ring-white/15'
                   : 'bg-white text-slate-700 ring-1 ring-slate-200'
@@ -54,7 +56,7 @@ export function PricingModelStrip({
   }
 
   return (
-    <div dir="rtl" className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-5 ${className}`}>
+    <div dir="rtl" className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 ${className}`}>
       {PRICING_PRINCIPLES.map((item, index) => {
         const Icon = ICONS[item.id] ?? Scale;
         return (
@@ -64,7 +66,7 @@ export function PricingModelStrip({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: index * 0.06 }}
-            className={`flex flex-col rounded-2xl p-5 ${
+            className={`flex flex-col rounded-2xl p-5 ${index === PRICING_PRINCIPLES.length - 1 ? 'sm:col-span-2 lg:col-span-1' : ''} ${
               dark
                 ? 'border border-white/15 bg-white/5 text-white backdrop-blur'
                 : 'border border-slate-200 bg-white text-slate-900 shadow-md'
@@ -80,7 +82,7 @@ export function PricingModelStrip({
             <span className={`mb-1 text-2xs font-black ${dark ? 'text-white/50' : 'text-slate-400'}`}>
               עיקרון {index + 1}
             </span>
-            <h3 className="text-sm font-black leading-snug">{item.title}</h3>
+            <h3 className={`text-sm font-black leading-snug ${dark ? 'text-white' : 'text-slate-900'}`}>{item.title}</h3>
             <p className={`mt-2 text-xs leading-relaxed ${dark ? 'text-white/70' : 'text-slate-600'}`}>
               {item.description}
             </p>
