@@ -4,7 +4,9 @@
  * הקובץ טהור (בלי React ובלי Prisma) וגוזר את ההתקדמות משלושה מקורות שכבר
  * קיימים: קטלוג המסמכים של הפרופיל (שלב 1), האישורים העקרוניים מהבנקים
  * (שלב 3), רשימת מסמכי החתימה של התרחיש שנבחר (שלב 5), ומשימות המסמך שהלקוח
- * הוסיף לעצמו בכל שלב. מסמך שהועלה בכותרת חופשית נספר בשלב שממנו הועלה.
+ * הוסיף לעצמו בכל שלב. מסמך שהועלה בכותרת חופשית, שלא מתוך הרשימה, אינו
+ * נספר: «1 מתוך 6» אומר שאחד מששת המסמכים הנדרשים כבר בתיק, ולא שהועלה קובץ
+ * כלשהו. הוא מופיע בתיק, אבל אינו חלק מהמניין.
  */
 
 import { PLAN_STAGES, preApprovalDocumentGroups } from './mortgage-plan';
@@ -67,6 +69,8 @@ export function documentProgress(
   tasks: readonly ClientTaskView[] = []
 ): DocumentProgress {
   const keys = new Set(documents.map((document) => document.key));
+  /** מפתחות שכבר נספרים כמסמך נדרש — משימה שמולאה בהם לא תיספר פעמיים */
+  const listed = new Set<string>();
 
   const counts: Record<PlanStageId, { done: number; total: number }> = {
     ANALYSIS: { done: 0, total: 0 },
@@ -82,11 +86,13 @@ export function documentProgress(
       .filter((document) => document.required !== false)
       .forEach((document) => {
         counts.ANALYSIS.total += 1;
+        listed.add(document.key);
         if (keys.has(document.key)) counts.ANALYSIS.done += 1;
       });
   });
 
   // שלב 3 — אישורים עקרוניים מהבנקים, עד היעד לשלושה בנקים
+  PRE_APPROVAL_BANKS.forEach((info) => listed.add(preApprovalDocumentKey(info.slug)));
   const approvals = PRE_APPROVAL_BANKS.filter((info) => keys.has(preApprovalDocumentKey(info.slug))).length;
   const approvedRows = data.APPLICATIONS.bankApprovals.filter((row) => row.approved).length;
   counts.APPLICATIONS.total += PRE_APPROVAL_TARGET;
@@ -102,17 +108,21 @@ export function documentProgress(
     });
   }
 
-  // מסמכים בכותרת חופשית ומשימות מסמך — נספרים בשלב שלהם
-  documents.filter(isCustomDocument).forEach((document) => {
-    const stage = customDocumentStage(document);
-    if (!stage) return;
-    counts[stage].total += 1;
-    counts[stage].done += 1;
-  });
+  // משימות מסמך שהלקוח הוסיף לשלב — כל משימה היא מסמך ברשימה. משימה שבוצעה
+  // נספרת כמוגשת, אלא אם המסמך שצורף לה כבר נספר כמסמך נדרש
+  const byId = new Map(documents.map((document) => [document.id, document]));
   tasks
-    .filter((task) => task.kind === 'DOCUMENT' && task.stage && task.status === 'OPEN')
+    .filter((task) => task.kind === 'DOCUMENT' && task.stage)
     .forEach((task) => {
-      counts[task.stage as PlanStageId].total += 1;
+      const row = counts[task.stage as PlanStageId];
+      if (task.status === 'OPEN') {
+        row.total += 1;
+        return;
+      }
+      const attached = task.documentId ? byId.get(task.documentId) : undefined;
+      if (attached && listed.has(attached.key)) return;
+      row.total += 1;
+      row.done += 1;
     });
 
   const stages = PLAN_STAGES.map((stage) => {
