@@ -43,6 +43,7 @@ export const DASHBOARD_SECTIONS = [
   'expenses',
   'cash-flow',
   'documents',
+  'contacts',
   'rate-requests',
   'tools',
   'settings',

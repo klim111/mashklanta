@@ -200,10 +200,27 @@ export function RefinanceCheckResult({
           goal="REFINANCE"
           serviceType="FULL"
           mode="guest"
+          contextNote={checkSummary(result)}
         />
       )}
     </div>
   );
+}
+
+/** תמונת המצב מבדיקת המיחזור, לפנייה ליועץ */
+function checkSummary(result: Result): string {
+  const lines = [
+    `מבדיקת המיחזור · מטרה: ${REFI_CHECK_GOALS[result.goal].title}`,
+    `החזר חודשי היום: ${formatShekel(result.current.payment)}`,
+  ];
+  if (result.improvement && result.proposed) {
+    lines.push(`החזר חודשי מוצע: ${formatShekel(result.proposed.summary.payment)}`);
+    if (result.savings.interest > 0) lines.push(`חיסכון מוערך בריבית: ${formatShekel(result.savings.interest)}`);
+    if (result.savings.months > 0) lines.push(`סיום מוקדם ב-${formatTerm(result.savings.months)}`);
+  } else if (result.reason) {
+    lines.push(`תוצאה: ${result.reason}`);
+  }
+  return lines.join('\n');
 }
 
 function Verdict({ result }: { result: Result }) {

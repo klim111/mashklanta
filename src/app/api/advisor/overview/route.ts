@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { getAdvisorOverview } from '@/lib/advisor';
+import { linkUnlinkedClients } from '@/lib/advisor-link';
 
 /** תמונת המצב של ראש לוח הבקרה: מונים, סדר היום והפגישות הקרובות */
 export async function GET() {
@@ -11,5 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // לקוחות שנרשמו לבד מצטרפים לרשימה של היועץ של הפלטפורמה
+  await linkUnlinkedClients(advisorId);
   return NextResponse.json(await getAdvisorOverview(advisorId));
 }

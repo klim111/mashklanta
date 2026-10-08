@@ -23,8 +23,10 @@ import type {
   PlanStageId,
   PlanStageStatus,
   PlanStatus,
+  PreApprovalData,
   RefinanceMode,
 } from './mortgage-plan';
+import { keepAdvisorRows } from './preapproval-handoff';
 import { saveMix } from './mixes';
 import { MAX_OPEN_PROCESSES, newProcessPass, openPass, processAccess, processLocked } from './process-access';
 import type { ProcessAccess } from './process-access';
@@ -65,6 +67,7 @@ const planSelect = {
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
   platformPayments: { select: { createdAt: true, amountAgorot: true } },
   advisorOrders: { select: { status: true } },
+  client: { select: { autoLinked: true } },
   owner: {
     select: {
       role: true,
@@ -120,8 +123,10 @@ function accessOf(row: PlanRow): ProcessAccess {
     payments: row.platformPayments,
     ownerPayments: row.owner.platformPayments,
     ownerCompletions: completionsOf(row.owner.mortgagePlans),
-    // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ)
-    hasPaidAdvisory: row.clientId !== null || row.advisorOrders.some((order) => order.status === 'PAID'),
+    // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ). כרטיס
+    // שנפתח אוטומטית ללקוח שנרשם לבד אינו ליווי
+    hasPaidAdvisory:
+      Boolean(row.client && !row.client.autoLinked) || row.advisorOrders.some((order) => order.status === 'PAID'),
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
     ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
   });
@@ -296,7 +301,8 @@ export async function countOpenSelfServicePlans(userId: string): Promise<number>
     where: {
       ownerId: userId,
       status: 'IN_PROGRESS',
-      clientId: null,
+      // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
+      OR: [{ clientId: null }, { client: { autoLinked: true } }],
       advisorOrders: { none: { status: 'PAID' } },
     },
   });
@@ -309,7 +315,7 @@ export async function countOpenSelfServicePlans(userId: string): Promise<number>
 export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true, advisedAs: { select: { id: true }, take: 1 } },
+    select: { role: true, advisedAs: { where: { autoLinked: false }, select: { id: true }, take: 1 } },
   });
   if (!user || user.role === 'ADVISOR' || user.advisedAs.length > 0) return true;
   return (await countOpenSelfServicePlans(userId)) < MAX_OPEN_PROCESSES;
@@ -435,7 +441,12 @@ export async function saveStage({
 }: SaveStageInput): Promise<SaveStageResult> {
   if (!(await assertAccess(userId, planId))) return { ok: false };
 
-  const clean = parseStageData(stage, data);
+  let clean = parseStageData(stage, data);
+  // בבנק שהועבר ליועץ, הבנקאי והאישור שהיועץ הזין נשמרים גם מול עותק ישן
+  if (stage === 'APPLICATIONS') {
+    const saved = await loadData(planId);
+    clean = keepAdvisorRows(saved.APPLICATIONS, clean as PreApprovalData) as typeof clean;
+  }
 
   await prisma.mortgagePlanStage.upsert({
     where: { planId_stage: { planId, stage } },
@@ -466,6 +477,39 @@ export async function saveStage({
   await refreshPlan(planId);
   const plan = await getPlanForUser(userId, planId);
   return { ok: true, plan: plan ?? undefined };
+}
+
+/**
+ * עדכון נתוני שלב האישור העקרוני מהשרת — כשהלקוח מעביר בנק ליועץ, וכשהיועץ
+ * מזין את הבנקאי והאישור. מחזיר את הנתונים אחרי העדכון.
+ */
+export async function updateApplicationsStage(
+  planId: string,
+  mutate: (current: PreApprovalData) => PreApprovalData
+): Promise<PreApprovalData> {
+  const current = (await loadData(planId)).APPLICATIONS;
+  const next = parseStageData('APPLICATIONS', mutate(current));
+  await prisma.mortgagePlanStage.upsert({
+    where: { planId_stage: { planId, stage: 'APPLICATIONS' } },
+    create: {
+      planId,
+      stage: 'APPLICATIONS',
+      status: 'IN_PROGRESS',
+      dataJson: next as unknown as Prisma.InputJsonValue,
+    },
+    update: { dataJson: next as unknown as Prisma.InputJsonValue },
+  });
+  await prisma.mortgagePlanStage.updateMany({
+    where: { planId, stage: 'APPLICATIONS', status: 'PENDING' },
+    data: { status: 'IN_PROGRESS' },
+  });
+  await refreshPlan(planId);
+  return next;
+}
+
+/** נתוני שלב האישור העקרוני, כפי שהם שמורים */
+export async function readApplicationsStage(planId: string): Promise<PreApprovalData> {
+  return (await loadData(planId)).APPLICATIONS;
 }
 
 async function loadData(planId: string): Promise<PlanData> {

@@ -48,6 +48,8 @@ export interface ClientListItem {
    */
   planStage: PlanStageId | null;
   planProgress: number;
+  /** נרשם לבד ומופיע ברשימה בכרטיס אוטומטי — עדיין לא לקוח בליווי */
+  selfRegistered: boolean;
   updatedAt: string;
 }
 
@@ -145,6 +147,7 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
     nextMeetingAt: counters.nextMeetingAt.get(row.id)?.toISOString() ?? null,
     planStage: (row.plans[0]?.currentStage as PlanStageId | undefined) ?? null,
     planProgress: row.plans[0]?.progress ?? 0,
+    selfRegistered: row.autoLinked,
     updatedAt: row.updatedAt.toISOString(),
   }));
 }

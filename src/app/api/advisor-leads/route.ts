@@ -3,6 +3,8 @@ import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import { createLead, parseLeadTopic } from '@/lib/advisor-leads';
+import { parseRequestKind } from '@/lib/advisor-requests';
+import { cleanSourcePath } from '@/lib/page-labels';
 
 function clean(value: unknown, max = 200): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -52,6 +54,8 @@ export async function POST(req: NextRequest) {
     phone: clean(body?.phone, 30),
     email,
     notes: clean(body?.notes, 2000) || undefined,
+    requestKind: parseRequestKind(body?.requestKind),
+    sourcePath: cleanSourcePath(body?.sourcePath),
   });
   if (!lead) {
     return NextResponse.json(

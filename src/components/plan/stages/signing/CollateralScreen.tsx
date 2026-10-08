@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import type { PlanData, SigningData } from '@/lib/mortgage-plan';
 import { paymentScheduleDefined, usesPaymentSchedule } from '@/lib/mortgage-plan';
-import type { ConversationContact } from '@/lib/conversation';
 import { paymentScheduleHref } from '@/lib/payment-schedule';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
+import { useContacts } from '@/components/contacts/useContacts';
 import { DocumentUploadDialog } from '../../documents/DocumentUploadDialog';
 import { documentContentUrl } from '../../documents/usePlanDocuments';
 
@@ -48,30 +48,15 @@ export function CollateralScreen({
   const scheduleReady = paymentScheduleDefined(data);
   const conversation = useClientConversation();
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [lawyer, setLawyer] = useState<ConversationContact | null>(null);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
   const setCollateral = (patch: Partial<SigningData['collateral']>) =>
     onChange({ ...value, collateral: { ...collateral, ...patch } });
 
-  /** עורך הדין מהנמענים של תיבת המיילים, אם כבר הוגדר עם כתובת מייל */
-  const loadLawyer = useCallback(async () => {
-    try {
-      const response = await fetch('/api/conversation/emails', { cache: 'no-store' });
-      if (!response.ok) return null;
-      const body = (await response.json()) as { contacts?: ConversationContact[] };
-      const found = body.contacts?.find((contact) => contact.role === 'LAWYER' && Boolean(contact.email)) ?? null;
-      setLawyer(found);
-      return found;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadLawyer();
-  }, [loadLawyer]);
+  /** עורך הדין מאנשי הקשר של הלקוח, אם כבר הוגדר עם כתובת מייל */
+  const { contacts } = useContacts();
+  const lawyer = contacts.find((contact) => contact.role === 'LAWYER' && Boolean(contact.email)) ?? null;
 
   const subject = 'טופס הבטחונות מהבנק — לטיפולך';
   const text = [
@@ -90,8 +75,8 @@ export function CollateralScreen({
     setFailure(null);
     setSending(true);
     try {
-      const target = lawyer ?? (await loadLawyer());
-      if (!target) {
+      const target = lawyer;
+      if (!target?.email) {
         // אין עורך דין בנמענים — תיבת המיילים נפתחת עם הכל מוכן, והתפקיד כבר נבחר
         if (!conversation?.compose) {
           setFailure('תיבת המיילים אינה זמינה כרגע. נסו שוב מהאזור האישי.');

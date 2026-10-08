@@ -1,3 +1,4 @@
+import type { LeadTopic } from '@/lib/advisor-lead-topics';
 import { FileSearch, RefreshCw, ShieldAlert, type LucideIcon } from 'lucide-react';
 
 /**
@@ -15,7 +16,7 @@ export interface ConsultReasonInfo {
   /** שורת הסבר קצרה מתחת לכרטיס */
   hint: string;
   /** נושא הפנייה אצל היועץ */
-  topic: string;
+  topic: LeadTopic;
   icon: LucideIcon;
 }
 
@@ -24,21 +25,21 @@ export const CONSULT_REASONS: readonly ConsultReasonInfo[] = [
     id: 'bank-offer',
     label: 'בדקו הצעה שקיבלתי מהבנק',
     hint: 'קיבלתם אישור עקרוני או הצעת ריביות? נבדוק אם היא טובה ומה אפשר לשפר',
-    topic: 'ADVICE',
+    topic: 'CONSULT_BANK_OFFER',
     icon: FileSearch,
   },
   {
     id: 'refinance',
     label: 'בדקו אם שווה לי למחזר',
     hint: 'נבדוק את המשכנתא הקיימת ונגיד לכם אם מיחזור יחסוך לכם כסף',
-    topic: 'REFINANCE_FULL',
+    topic: 'CONSULT_REFINANCE',
     icon: RefreshCw,
   },
   {
     id: 'declined',
     label: 'לא מאשרים לי משכנתא, תבדקו אם יש מה לעשות',
     hint: 'הבנק סירב או מציע פחות ממה שצריך? נבדוק מה אפשר לעשות',
-    topic: 'FOUND_PROPERTY_REJECTED',
+    topic: 'CONSULT_DECLINED',
     icon: ShieldAlert,
   },
 ];

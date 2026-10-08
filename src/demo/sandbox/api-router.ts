@@ -24,6 +24,8 @@ import type {
   ConversationEmailView,
   RecipientRole,
 } from '@/lib/conversation';
+import { RECIPIENT_ROLES } from '@/lib/conversation';
+import type { ContactView } from '@/lib/contact-roles';
 import {
   DEMO_ADDRESS,
   DEMO_MORTGAGE,
@@ -142,6 +144,8 @@ export class DemoApiRouter {
   private emails: ConversationEmailView[] = demoEmails();
 
   private contacts: ConversationContact[] = [...DEMO_CONTACTS];
+  private contactRows: ContactView[] = [];
+  private expertRequestedAt: string | null = null;
 
   /** קבצים שצורפו בהדגמה — רק השם נשמר, והתצוגה המקדימה היא PDF לדוגמה */
   private demoFiles(value: unknown): AttachmentView[] {
@@ -554,6 +558,43 @@ export class DemoApiRouter {
       const view = this.emails;
       this.emails = this.emails.map((item) => (item.unread ? { ...item, unread: false } : item));
       return json({ emails: view, contacts: this.contacts, folders: this.demoFolders() });
+    }
+    // אנשי הקשר — בהדגמה נשמרים רק בזיכרון של הסיור
+    if (path === '/api/contacts' && method === 'GET') {
+      const custom: ContactView[] = this.contactRows;
+      const bankers: ContactView[] = this.contacts
+        .filter((item) => item.kind === 'BANKER' && !item.recipientId && !custom.some((row) => row.email === item.email))
+        .map((item) => ({ id: `stage:${item.email}`, role: 'BANKER', name: item.name, email: item.email, phone: null, bank: item.bank, fromStage: true }));
+      return json({ contacts: [...custom, ...bankers], advisor: { name: 'רון, יועץ משכלנתא', email: 'ron@mashkalanta.example' }, expertRequestedAt: this.expertRequestedAt });
+    }
+    if (path === '/api/contacts/expert' && method === 'POST') {
+      this.expertRequestedAt = this.expertRequestedAt ?? nowIso();
+      return json({ requestedAt: this.expertRequestedAt }, 201);
+    }
+    const contactMatch = path.match(/^\/api\/contacts(?:\/([^/]+))?$/);
+    if (contactMatch && (method === 'POST' || method === 'PATCH')) {
+      const body = await this.body(init, input);
+      const role = (String(body.role ?? 'OTHER') as RecipientRole);
+      const row: ContactView = {
+        id: contactMatch[1] ?? this.nextId('demo-contact'),
+        role,
+        name: String(body.name ?? '').trim() || RECIPIENT_ROLES[role] || 'איש קשר',
+        email: String(body.email ?? '').trim().toLowerCase() || null,
+        phone: String(body.phone ?? '').trim() || null,
+        bank: role === 'BANKER' ? String(body.bank ?? '').trim() || null : null,
+      };
+      if (!row.email && !row.phone) return json({ error: 'הזינו מייל או טלפון' }, 400);
+      this.contactRows = method === 'PATCH' ? this.contactRows.map((item) => (item.id === row.id ? row : item)) : [...this.contactRows, row];
+      this.contacts = this.contacts.filter((item) => item.recipientId !== row.id);
+      if (row.email) {
+        this.contacts = [...this.contacts, { kind: role === 'BANKER' ? 'BANKER' : 'CONTACT', email: row.email, name: row.name, bank: row.bank, role, recipientId: row.id }];
+      }
+      return json(row, method === 'POST' ? 201 : 200);
+    }
+    if (contactMatch?.[1] && method === 'DELETE') {
+      this.contactRows = this.contactRows.filter((item) => item.id !== contactMatch[1]);
+      this.contacts = this.contacts.filter((item) => item.recipientId !== contactMatch[1]);
+      return json({ ok: true });
     }
     // נמענים שנוספו ידנית, ומסמכים לצירוף — בהדגמה
     if (path === '/api/conversation/recipients' && method === 'POST') {

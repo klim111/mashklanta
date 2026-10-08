@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { AdvisorOrderRequest } from '@/lib/advisor-order-store';
 import type { AdvisorLeadView } from '@/lib/advisor-leads';
+import { pageLabel } from '@/lib/page-labels';
 import { formatOrderPrice } from '@/lib/advisor-orders';
 import { planStageNumber } from '@/lib/mortgage-plan';
 import { EmptyState, SectionCard, StageChip } from './ui';
@@ -179,13 +180,26 @@ function LeadRow({
           <UserRound className="h-4 w-4 text-violet-600" />
           {lead.name}
         </span>
+        {lead.requestKindLabel && (
+          <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-[11px] font-black text-white">
+            {lead.requestKindLabel}
+          </span>
+        )}
         <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-black text-violet-700 ring-1 ring-violet-200">
           {lead.topicLabel}
         </span>
         <span className="mr-auto text-[11px] text-slate-400">
-          {when.toLocaleDateString('he-IL')}
+          {when.toLocaleDateString('he-IL')} ·{' '}
+          {when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
+      {(lead.sourcePath || lead.stageLabel) && (
+        <p className="mt-1 text-[11px] font-semibold text-slate-500">
+          {[lead.sourcePath ? `נשלחה מ${pageLabel(lead.sourcePath)}` : null, lead.stageLabel ? `הלקוח ב${lead.stageLabel}` : null]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] font-semibold text-slate-700">
         {lead.phone && (

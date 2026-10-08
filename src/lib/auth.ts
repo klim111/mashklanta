@@ -18,6 +18,7 @@ import {
 import { canonicalSiteOrigin } from "@/lib/auth-url";
 import { cookies } from "next/headers";
 import { sendWelcomeEmail } from "@/lib/client-emails";
+import { ensureClientLinkSafely } from "@/lib/advisor-link";
 import {
   ADVISOR_DEVICE_COOKIE,
   AdvisorLinkError,
@@ -139,6 +140,8 @@ export const authOptions: NextAuthOptions = {
         });
         // מייל ברוכים הבאים, עם הכתובת האישית. כשל בשליחה לא עוצר את הכניסה
         await sendWelcomeEmail(user.id);
+        // הלקוח משויך מיד ליועץ של הפלטפורמה, ומופיע ברשימת הלקוחות שלו
+        await ensureClientLinkSafely(user.id);
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -282,6 +285,11 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role as string;
       }
       return session;
+    },
+  },
+  events: {
+    async createUser({ user }) {
+      if (user.id) await ensureClientLinkSafely(user.id);
     },
   },
 };

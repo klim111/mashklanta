@@ -18,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { RequestKindPicker, currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
+import type { RequestKind } from '@/lib/advisor-requests';
 
 /**
  * הפנייה ליועץ כלכלת המשפחה של משכלנתא — אותה פנייה מכל הכלים הפתוחים.
@@ -96,6 +98,7 @@ export function FamilyEconomyLeadDialog({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
+  const [kind, setKind] = useState<RequestKind>('GUIDANCE');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -140,6 +143,8 @@ export function FamilyEconomyLeadDialog({
           phone: phone.trim(),
           email: email.trim() || undefined,
           notes,
+          requestKind: kind,
+          sourcePath: currentPagePath(),
         }),
       });
       const body = await response.json().catch(() => null);
@@ -204,6 +209,8 @@ export function FamilyEconomyLeadDialog({
             <p className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3.5 py-2.5 text-[12px] font-bold leading-relaxed text-emerald-900">
               {ADVISOR_COST_NOTE}
             </p>
+
+            <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs font-bold text-slate-600">

@@ -1,5 +1,15 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
+import { REQUEST_KIND_LABELS, parseRequestKind } from './advisor-requests';
+import type { RequestKind } from './advisor-requests';
+import { ensureClientLinkSafely } from './advisor-link';
+import { emailAdvisorAboutRequest } from './advisor-notify';
+import { pageLabel } from './page-labels';
+import { PLAN_STAGES } from './mortgage-plan';
+import type { PlanStageId } from './mortgage-plan';
+import { journeyStageFor } from '@/data/platform/planStages';
+import { LEAD_TOPIC_LABELS, parseLeadTopic } from './advisor-lead-topics';
+import type { LeadTopic } from './advisor-lead-topics';
 
 /**
  * פניות ליווי כלליות מהאזור האישי.
@@ -8,55 +18,8 @@ import { prisma } from './db';
  * כאן כדי לעזור", והיא מחזיקה את פרטי הקשר ואת נושא הפנייה כדי שהיועץ יחזור
  * ללקוח. הנושא הוא הכפתור שממנו נפתחה — כך היועץ יודע מיד במה מדובר.
  */
-export type LeadTopic =
-  | 'FOUND_PROPERTY_REJECTED'
-  | 'FOUND_PROPERTY_DONT_KNOW'
-  | 'FEASIBILITY'
-  | 'EQUITY'
-  | 'FULL_SERVICE'
-  | 'NEW_MORTGAGE_HYBRID'
-  | 'NEW_MORTGAGE_FULL'
-  | 'REFINANCE_HYBRID'
-  | 'REFINANCE_FULL'
-  | 'ADVICE'
-  | 'FAMILY_ECONOMY'
-  | 'OTHER';
-
-const LEAD_TOPICS: readonly LeadTopic[] = [
-  'FOUND_PROPERTY_REJECTED',
-  'FOUND_PROPERTY_DONT_KNOW',
-  'FEASIBILITY',
-  'EQUITY',
-  'FULL_SERVICE',
-  'NEW_MORTGAGE_HYBRID',
-  'NEW_MORTGAGE_FULL',
-  'REFINANCE_HYBRID',
-  'REFINANCE_FULL',
-  'ADVICE',
-  'FAMILY_ECONOMY',
-  'OTHER',
-];
-
-export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
-  FOUND_PROPERTY_REJECTED: 'הבנק סירב לתת אישור עקרוני',
-  FOUND_PROPERTY_DONT_KNOW: 'לא יודע/ת מהיכן להתחיל',
-  FEASIBILITY: 'בדיקת היתכנות לרכישת נכס',
-  EQUITY: 'עזרה בגיוס הון עצמי',
-  FULL_SERVICE: 'מסלול בליווי יועץ משכלנתא',
-  // "מה תרצו לעשות?" — המטרה וסוג השירות שהלקוח בחר
-  NEW_MORTGAGE_HYBRID: 'משכנתא חדשה · ליווי משולב',
-  NEW_MORTGAGE_FULL: 'משכנתא חדשה · מסלול בליווי',
-  REFINANCE_HYBRID: 'מיחזור משכנתא · ליווי משולב',
-  REFINANCE_FULL: 'מיחזור משכנתא · מסלול בליווי',
-  ADVICE: 'ייעוץ והכוונה בנושא משכנתא',
-  // פנייה ליועץ כלכלת המשפחה — מכלי ההלוואות הצרכניות ומכלי תכנון ההוצאות
-  FAMILY_ECONOMY: 'ליווי כלכלת המשפחה · הלוואות, הון עצמי והוצאות',
-  OTHER: 'פנייה כללית',
-};
-
-export function parseLeadTopic(value: unknown): LeadTopic {
-  return LEAD_TOPICS.includes(value as LeadTopic) ? (value as LeadTopic) : 'OTHER';
-}
+export { LEAD_TOPIC_LABELS, parseLeadTopic } from './advisor-lead-topics';
+export type { LeadTopic } from './advisor-lead-topics';
 
 export interface AdvisorLeadView {
   id: string;
@@ -68,6 +31,14 @@ export interface AdvisorLeadView {
   /** ריק כשהפנייה נשלחה עם טלפון בלבד — מכלי שבו המייל אינו חובה */
   email: string | null;
   notes: string | null;
+  /** מה הלקוח ביקש — ריק בפניות ישנות */
+  requestKind: RequestKind | null;
+  requestKindLabel: string | null;
+  /** העמוד שממנו נשלחה */
+  sourcePath: string | null;
+  /** השלב בתהליך הפעיל של הלקוח כשפנה */
+  stage: string | null;
+  stageLabel: string | null;
   status: 'OPEN' | 'HANDLED' | 'CLOSED';
   clientId: string | null;
   createdAt: string;
@@ -80,6 +51,9 @@ const leadSelect = {
   phone: true,
   email: true,
   notes: true,
+  requestKind: true,
+  sourcePath: true,
+  stage: true,
   status: true,
   clientId: true,
   createdAt: true,
@@ -87,8 +61,15 @@ const leadSelect = {
 
 type LeadRow = Prisma.AdvisorLeadGetPayload<{ select: typeof leadSelect }>;
 
+function stageLabel(stage: string | null): string | null {
+  if (!stage || !(PLAN_STAGES as readonly string[]).includes(stage)) return null;
+  const index = PLAN_STAGES.indexOf(stage as PlanStageId);
+  return `שלב ${index + 1} · ${journeyStageFor(stage as PlanStageId).title}`;
+}
+
 function toView(row: LeadRow): AdvisorLeadView {
   const topic = parseLeadTopic(row.topic);
+  const kind = parseRequestKind(row.requestKind);
   return {
     id: row.id,
     topic,
@@ -97,6 +78,11 @@ function toView(row: LeadRow): AdvisorLeadView {
     phone: row.phone,
     email: row.email || null,
     notes: row.notes,
+    requestKind: kind,
+    requestKindLabel: kind ? REQUEST_KIND_LABELS[kind] : null,
+    sourcePath: row.sourcePath,
+    stage: row.stage,
+    stageLabel: stageLabel(row.stage),
     status: row.status as AdvisorLeadView['status'],
     clientId: row.clientId,
     createdAt: row.createdAt.toISOString(),
@@ -114,6 +100,10 @@ export interface CreateLeadInput {
    */
   email?: string;
   notes?: string;
+  /** מה הלקוח סימן — ליווי, פגישה, שאלה או הצעת מחיר */
+  requestKind?: RequestKind | null;
+  /** העמוד שממנו נשלחה הפנייה */
+  sourcePath?: string | null;
 }
 
 /** טלפון ישראלי סביר — לפחות תשע ספרות, בלי תווי הפרדה */
@@ -141,10 +131,16 @@ export async function createLead(
   if (!name) return null;
   if (!emailValid && !hasUsablePhone(phone)) return null;
 
-  const client = userId
-    ? await prisma.client.findFirst({
-        where: { userId },
-        select: { id: true, advisorId: true },
+  // לקוח רשום בלי יועץ משויך עכשיו ליועץ של הפלטפורמה, כדי שהפנייה וכל מה
+  // שעשה יופיעו אצלו
+  const client = userId ? await ensureClientLinkSafely(userId) : null;
+  const requestKind = input.requestKind ?? null;
+  // השלב שבו הלקוח נמצא בתהליך הפעיל — כדי שהיועץ יידע מאיפה הוא פנה
+  const plan = userId
+    ? await prisma.mortgagePlan.findFirst({
+        where: { ownerId: userId, status: 'IN_PROGRESS' },
+        orderBy: { updatedAt: 'desc' },
+        select: { name: true, propertyAddress: true, currentStage: true },
       })
     : null;
 
@@ -152,14 +148,31 @@ export async function createLead(
     data: {
       ownerId: userId,
       advisorId: client?.advisorId ?? null,
-      clientId: client?.id ?? null,
+      clientId: client?.clientId ?? null,
       topic: input.topic,
       name,
       phone: phone || null,
       email: emailValid ? email : '',
       notes: input.notes?.trim() || null,
+      requestKind,
+      sourcePath: input.sourcePath ?? null,
+      stage: plan?.currentStage ?? null,
     },
     select: leadSelect,
+  });
+
+  await emailAdvisorAboutRequest({
+    advisorId: client?.advisorId ?? null,
+    what: requestKind ? REQUEST_KIND_LABELS[requestKind] : 'פנייה חדשה',
+    details: [
+      ['נושא', LEAD_TOPIC_LABELS[input.topic]],
+      ['נשלחה מהעמוד', pageLabel(input.sourcePath)],
+      ['תהליך', plan ? plan.propertyAddress || plan.name : null],
+      ['שלב בתהליך', stageLabel(plan?.currentStage ?? null)],
+      ['חשבון', userId ? 'לקוח רשום' : 'אורח, בלי חשבון'],
+    ],
+    from: { name, email: emailValid ? email : null, phone: phone || null },
+    note: input.notes,
   });
 
   return toView(row);

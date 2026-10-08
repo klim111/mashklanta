@@ -349,6 +349,13 @@ model Client {
 
   notes String?
 
+  /**
+   * הכרטיס נפתח אוטומטית אצל היועץ של הפלטפורמה, ללקוח שנרשם לבד
+   * (src/lib/advisor-link.ts). כרטיס כזה אינו ליווי ואינו פותח את הכלים בלי
+   * תשלום. כשהיועץ מצרף את הלקוח בעצמו, הסימון יורד
+   */
+  autoLinked Boolean @default(false)
+
   // ריביות מהבנקים
   bankRates Json?
 
@@ -796,6 +803,19 @@ model AdvisorLead {
   phone String?
   email String
   notes String?
+  /**
+   * מה הלקוח סימן שהוא מבקש: GUIDANCE / MEETING / QUESTION / QUOTE
+   * (src/lib/advisor-requests.ts). ריק בפניות ישנות
+   */
+  requestKind String?
+  /**
+   * העמוד בפלטפורמה שממנו נשלחה הפנייה
+   */
+  sourcePath  String?
+  /**
+   * השלב בתהליך הפעיל של הלקוח כשהפנייה נשלחה (PlanStage)
+   */
+  stage       String?
 
   status AdvisorLeadStatus @default(OPEN)
 
@@ -1409,7 +1429,11 @@ model ConversationRecipient {
   id           String   @id @default(cuid())
   clientUserId String
   clientUser   User     @relation("ConversationRecipientClient", fields: [clientUserId], references: [id], onDelete: Cascade)
-  email        String
+  /**
+   * ריק כשאיש הקשר נשמר עם טלפון בלבד — ואז הוא לא מופיע כנמען במיילים
+   */
+  email        String?
+  phone        String?
   name         String
   /**
    * מפתח מ-RECIPIENT_ROLES: BANKER, ADVISOR, LAWYER, APPRAISER…

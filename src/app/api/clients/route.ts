@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { listAdvisorClients, syncStageDocuments } from '@/lib/clients';
+import { linkUnlinkedClients } from '@/lib/advisor-link';
 
 /** הלקוחות שהיועץ מלווה */
 export async function GET() {
@@ -12,6 +13,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // לקוחות שנרשמו לבד מצטרפים לרשימה של היועץ של הפלטפורמה
+  await linkUnlinkedClients(userId);
   return NextResponse.json(await listAdvisorClients(userId));
 }
 
@@ -52,6 +55,16 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.client.findUnique({
     where: { advisorId_userId: { advisorId, userId: user.id } },
   });
+  // לקוח שנרשם לבד כבר מופיע ברשימה עם כרטיס אוטומטי — הצירוף הופך אותו ללקוח בליווי
+  if (existing?.autoLinked) {
+    const phone = typeof body?.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;
+    const name = typeof body?.name === 'string' && body.name.trim() ? body.name.trim() : null;
+    await prisma.client.update({
+      where: { id: existing.id },
+      data: { autoLinked: false, ...(name ? { name } : {}), ...(phone ? { phone } : {}) },
+    });
+    return NextResponse.json({ id: existing.id }, { status: 200 });
+  }
   if (existing) {
     return NextResponse.json({ error: 'הלקוח כבר מופיע ברשימה שלך', id: existing.id }, { status: 409 });
   }

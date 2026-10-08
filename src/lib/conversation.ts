@@ -118,6 +118,7 @@ export const RECIPIENT_ROLES = {
   INSURANCE: 'סוכן ביטוח',
   BROKER: 'מתווך',
   ACCOUNTANT: 'רואה חשבון',
+  DEVELOPER: 'קבלן / יזם',
   OTHER: 'אחר',
 } as const;
 
