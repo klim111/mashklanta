@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { AlarmClock, ArrowLeft, Check, Gavel, Lightbulb, TrendingUp, Undo2 } from 'lucide-react';
@@ -30,26 +31,34 @@ export function PlanRecommendations({
   plans,
   states,
   onDone,
+  limit,
 }: {
   plans: AgendaPlan[];
   states: Record<string, ClientTaskState>;
   onDone: (key: string, done: boolean) => void;
+  /** כמה הערות להציג לפני "ראה עוד" — מה שעוד לא בוצע קודם */
+  limit?: number;
 }) {
-  const rows = plans.flatMap((plan) =>
-    planRecommendations(plan).map((recommendation) => ({
-      plan,
-      recommendation,
-      key: `note:${recommendation.key}`,
-    }))
-  );
+  const [expanded, setExpanded] = useState(false);
+  const all = plans
+    .flatMap((plan) =>
+      planRecommendations(plan).map((recommendation) => ({
+        plan,
+        recommendation,
+        key: `note:${recommendation.key}`,
+      }))
+    )
+    .sort((a, b) => Number(Boolean(states[a.key]?.done)) - Number(Boolean(states[b.key]?.done)));
 
-  if (rows.length === 0) return null;
+  if (all.length === 0) return null;
+  const rows = limit && !expanded ? all.slice(0, limit) : all;
+  const hidden = all.length - rows.length;
 
   const multiplePlans = plans.length > 1;
 
   return (
-    <div className="mt-4 border-t border-slate-100 pt-4">
-      <p className="mb-3 text-center text-sm font-black text-slate-500">
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <p className="mb-2 text-center text-sm font-black text-slate-500">
         הערות והמלצות למשכנתא שלכם
       </p>
       <div className="space-y-2">
@@ -61,7 +70,7 @@ export function PlanRecommendations({
               key={key}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex flex-wrap items-start gap-3 rounded-2xl border-2 p-3.5 transition-colors ${
+              className={`flex flex-wrap items-start gap-3 rounded-2xl border-2 px-3.5 py-2.5 transition-colors ${
                 done
                   ? 'border-emerald-200 bg-emerald-50'
                   : recommendation.tone === 'warning'
@@ -135,6 +144,15 @@ export function PlanRecommendations({
           );
         })}
       </div>
+      {limit && all.length > limit && (
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          className="mt-2 text-sm font-black text-blue-600 hover:underline"
+        >
+          {expanded ? 'הצג פחות' : hidden === 1 ? 'ראה עוד הערה' : `ראה עוד ${hidden} הערות`}
+        </button>
+      )}
     </div>
   );
 }

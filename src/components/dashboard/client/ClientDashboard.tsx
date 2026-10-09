@@ -14,6 +14,7 @@ import {
   Gavel,
   Home as HomeIcon,
   LayoutDashboard,
+  LineChart,
   LogOut,
   MessageCircle,
   Settings,
@@ -37,6 +38,7 @@ import { AgendaSection } from './AgendaSection';
 import { ClientDocumentsSection } from './ClientDocumentsSection';
 import { ContactsSection } from './ContactsSection';
 import { ExpensesSection } from './ExpensesSection';
+import { CashFlowTool } from '@/components/cash-flow/CashFlowTool';
 import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
@@ -72,6 +74,14 @@ const SECTIONS: SectionMeta[] = [
     description:
       'ההון העצמי וכל ההוצאות הנלוות עד קבלת המפתח, על ציר זמן אחד. מועדי התשלום נכנסים ללוח השנה שלכם.',
     icon: Wallet,
+  },
+  {
+    id: 'cash-flow',
+    label: 'מצב הון ותזרים',
+    title: 'מצב הון ותזרים',
+    description:
+      'המשכנתא וכל ההלוואות במקום אחד: ההחזר החודשי, יחס ההחזר מההכנסה הפנויה, וכמה נשאר בכל חודש.',
+    icon: LineChart,
   },
   {
     id: 'documents',
@@ -358,11 +368,9 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             <div className="mb-5 text-center" {...demoId('dash-heading')}>
               {section === 'overview' ? (
                 <>
+                  {/* בסקירה הכותרת בשורה אחת — כדי שהמשכנתא ולוח השנה יעלו למעלה */}
+                  <h1 className="text-title font-black text-slate-900">שלום, {firstName}</h1>
                   <p className="text-sm font-bold text-slate-500">{DATE_FORMAT.format(new Date())}</p>
-                  <h1 className="mt-1 text-title font-black text-slate-900">שלום, {firstName}</h1>
-                  <p className="mx-auto mt-2 max-w-2xl text-info leading-relaxed text-slate-600">
-                    {meta.description}
-                  </p>
                 </>
               ) : (
                 <>
@@ -404,6 +412,15 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               {section === 'expenses' && (
                 <div {...demoId('dash-expenses')}>
                   <ExpensesSection />
+                </div>
+              )}
+
+              {section === 'cash-flow' && (
+                <div {...demoId('dash-cash-flow')}>
+                  <CashFlowTool
+                    plan={data.plansState.plans.find((plan) => plan.status === 'IN_PROGRESS') ?? null}
+                    ready={data.plansState.ready}
+                  />
                 </div>
               )}
 
