@@ -108,7 +108,11 @@ export function EmailsPane({
   };
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   /** מה שמגיע עם מייל מוכן: מסמכים לצרף, ותפקיד לטופס "נמען חדש" */
-  const [prefill, setPrefill] = useState<{ documents: ConversationDocument[]; addRole: RecipientRole | null } | null>(null);
+  const [prefill, setPrefill] = useState<{
+    documents: ConversationDocument[];
+    addRole: RecipientRole | null;
+    onSent?: (to: string[]) => void;
+  } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
@@ -116,7 +120,11 @@ export function EmailsPane({
     setView('feed');
     setError(null);
     setDraft({ to: composeRequest.to ?? [], subject: composeRequest.subject, text: composeRequest.text });
-    setPrefill({ documents: composeRequest.documents ?? [], addRole: composeRequest.addRecipientRole ?? null });
+    setPrefill({
+      documents: composeRequest.documents ?? [],
+      addRole: composeRequest.addRecipientRole ?? null,
+      onSent: composeRequest.onSent,
+    });
     onComposeTaken?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composeRequest]);
@@ -175,6 +183,7 @@ export function EmailsPane({
         onRemoveRecipient={removeRecipient}
         onSend={async (files) => {
           if (await send({ ...draft, files })) {
+            prefill?.onSent?.(draft.to);
             setDraft(null);
             setPrefill(null);
           }

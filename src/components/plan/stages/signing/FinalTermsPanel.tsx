@@ -23,7 +23,16 @@ function pickPricedMix(
   mixes: SavedMix[],
   data: PlanData,
   winnerBank: string | null
-): { mix: WorkspaceMix; source: 'quote' | 'final' } | null {
+): { mix: WorkspaceMix; source: 'signed' | 'quote' | 'final' } | null {
+  // התמהיל המתומחר שנבחר לחתימה בשלב המכרז
+  const signed = data.AUCTION.signedMix;
+  if (signed) {
+    const chosen = mixes.find(
+      (item) => (signed.mixRecordId && item.recordId === signed.mixRecordId) || item.mix.id === signed.mixKey
+    );
+    if (chosen) return { mix: chosen.mix, source: 'signed' };
+  }
+
   const quoted = mixes
     .filter((item) => item.mix.quote && (!winnerBank || item.mix.quote.bank === winnerBank))
     .sort((a, b) => (b.mix.quote?.receivedAt ?? '').localeCompare(a.mix.quote?.receivedAt ?? ''));
@@ -40,9 +49,23 @@ function pickPricedMix(
   return locked ? { mix: locked.mix, source: 'final' } : null;
 }
 
-export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: string }) {
+export function FinalTermsPanel({
+  data,
+  planId,
+  title = 'התמהיל המתומחר — מולו משווים את הצעת הבנק',
+  description = 'אלה התנאים שהושגו במכרז הריביות. כל מסלול, כל ריבית וכל תקופה באישור הסופי של הבנק חייבים להיות זהים למה שמופיע כאן.',
+}: {
+  data: PlanData;
+  planId: string;
+  title?: string;
+  description?: string;
+}) {
   const { saved, ready } = useSavedMixes({ planId });
-  const winner = winningOffer(data.AUCTION);
+  const signed = data.AUCTION.signedMix;
+  const manual = winningOffer(data.AUCTION);
+  const winner = signed
+    ? { bank: signed.bank, monthlyPayment: signed.monthlyPayment, averageRate: signed.averageRate, totalPaid: signed.totalPaid }
+    : manual;
 
   /** תמהילים ששויכו לתהליך הזה קודמים; בלעדיהם נופלים לכלל התמהילים של הלקוח */
   const candidates = useMemo(() => {
@@ -68,8 +91,8 @@ export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: stri
   return (
     <Panel
       centered
-      title="התמהיל המתומחר — מולו משווים את הצעת הבנק"
-      description="אלה התנאים שהושגו במכרז הריביות. כל מסלול, כל ריבית וכל תקופה באישור הסופי של הבנק חייבים להיות זהים למה שמופיע כאן."
+      title={title}
+      description={description}
       action={
         headline.bank ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-l from-amber-500 to-orange-600 px-3.5 py-1.5 text-xs font-black text-white">
@@ -114,9 +137,11 @@ export function FinalTermsPanel({ data, planId }: { data: PlanData; planId: stri
               {computed.mix.name || 'התמהיל שנבנה'}
             </span>
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-2xs font-bold text-slate-500">
-              {picked?.source === 'quote'
-                ? 'הריביות התקבלו מהבנק'
-                : 'התמהיל הסופי שננעל בשלב בניית התמהיל'}
+              {picked?.source === 'signed'
+                ? 'התמהיל שנבחר לחתימה במכרז הריביות'
+                : picked?.source === 'quote'
+                  ? 'הריביות התקבלו מהבנק'
+                  : 'התמהיל הסופי שננעל בשלב בניית התמהיל'}
             </span>
           </div>
 

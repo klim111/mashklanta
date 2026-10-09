@@ -46,12 +46,16 @@ import {
 } from './signing-documents';
 import {
   EMPTY_COLLATERAL,
+  EMPTY_TIYULIM,
   parseCollateral,
   parseContractAnswer,
   parsePaymentSchedule,
+  parseTiyulim,
   scheduleDefined,
 } from './payment-schedule';
-import type { CollateralFormState, ContractAnswer, PaymentSchedule } from './payment-schedule';
+import type { CollateralFormState, ContractAnswer, PaymentSchedule, TiyulimFormState } from './payment-schedule';
+import { emptyVisits, parseVisits } from './signing-visits';
+import type { SigningVisits } from './signing-visits';
 
 /**
  * סדר השלבים בתהליך. הבקשה לאישור עקרוני קודמת לבניית התמהיל, כי הריביות
@@ -616,8 +620,11 @@ export interface AuctionData {
   signedMix: SignedMixChoice | null;
 }
 
-/** תת-המסכים של שלב החתימה, לפי הסדר שבו עוברים בהם */
-export const SIGNING_SCREENS = ['overview', 'collateral', 'bank-file', 'documents', 'verify'] as const;
+/**
+ * תת-המסכים של שלב החתימה, לפי הסדר שבו עוברים בהם. מסמכי התיק לפי סוג העסקה
+ * עברו לתיק המסמכים, ואימות התנאים — לתת-השלב של החתימה בבנק.
+ */
+export const SIGNING_SCREENS = ['overview', 'bank-file', 'collateral', 'collateral-submit', 'bank-sign'] as const;
 export type SigningScreen = (typeof SIGNING_SCREENS)[number];
 
 /** שלב 5 — החתימה בבנק */
@@ -652,8 +659,12 @@ export interface SigningData {
   paymentSchedule: PaymentSchedule | null;
   /** התשובה ל"האם כבר חתמתם על חוזה?" שנשאלת בפתיחת משכנתא חדשה */
   contractAnswer: ContractAnswer | null;
-  /** תת-השלב הראשון: טופס הבטחונות מהבנק והעברתו לעורך הדין */
+  /** טופס הבטחונות מהבנק והעברתו לעורך הדין */
   collateral: CollateralFormState;
+  /** טופס טיולים: רשימת המסמכים שהבנק דורש מהרוכשים */
+  tiyulim: TiyulimFormState;
+  /** ההגעות לסניף: הגשת מקורות הבטחונות והחתימה על התיק — העתק של המשימות */
+  visits: SigningVisits;
 }
 
 export interface PlanStageDataMap {
@@ -776,6 +787,8 @@ const EMPTY: PlanData = {
     paymentSchedule: null,
     contractAnswer: null,
     collateral: { ...EMPTY_COLLATERAL },
+    tiyulim: { ...EMPTY_TIYULIM },
+    visits: emptyVisits(),
   },
 };
 
@@ -956,10 +969,16 @@ function parseSignedMix(value: unknown): SignedMixChoice | null {
   };
 }
 
+/** מסכים שהוסרו מהשלב נפתחים במסך שתפס את מקומם */
+const RETIRED_SIGNING_SCREENS: Record<string, SigningScreen> = {
+  documents: 'collateral',
+  verify: 'bank-sign',
+};
+
 function pickSigningScreen(value: unknown): SigningScreen | null {
-  return typeof value === 'string' && (SIGNING_SCREENS as readonly string[]).includes(value)
-    ? (value as SigningScreen)
-    : null;
+  if (typeof value !== 'string') return null;
+  if ((SIGNING_SCREENS as readonly string[]).includes(value)) return value as SigningScreen;
+  return RETIRED_SIGNING_SCREENS[value] ?? null;
 }
 
 function pickEmployment(value: unknown): EmploymentType | null {
@@ -1376,6 +1395,8 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         paymentSchedule: parsePaymentSchedule(source.paymentSchedule),
         contractAnswer: parseContractAnswer(source.contractAnswer),
         collateral: parseCollateral(source.collateral),
+        tiyulim: parseTiyulim(source.tiyulim),
+        visits: parseVisits(source.visits),
       } as PlanStageDataMap[S];
     }
 
@@ -2075,9 +2096,9 @@ export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
       // הצעות היא המסלול הישן, ולכן היא עדיין סוגרת את השלב כשהיא בשימוש.
       return data.AUCTION.signedMix !== null || winningOffer(data.AUCTION) !== null;
     case 'SIGNING':
+      // השלב נסגר כשהחתימה על תיק המשכנתא בבנק סומנה כבוצעה
       return (
-        Boolean(data.SIGNING.bank) &&
-        SIGNING_CHECKS.every((check) => data.SIGNING.checklist[check.key]) &&
+        Boolean(data.SIGNING.visits['bank-sign'].doneAt) &&
         (!usesPaymentSchedule(data) || scheduleDefined(data.SIGNING.paymentSchedule))
       );
     default:
@@ -2124,9 +2145,7 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
       break;
     case 'SIGNING': {
-      if (!data.SIGNING.bank) missing.push('הבנק שאיתו נחתם');
-      const open = SIGNING_CHECKS.filter((check) => !data.SIGNING.checklist[check.key]).length;
-      if (open > 0) missing.push(`${open} בדיקות חתימה`);
+      if (!data.SIGNING.visits['bank-sign'].doneAt) missing.push('סימון שהחתימה על תיק המשכנתא בבנק בוצעה');
       if (usesPaymentSchedule(data) && !scheduleDefined(data.SIGNING.paymentSchedule)) {
         missing.push('הגדרת פעימות התשלום');
       }

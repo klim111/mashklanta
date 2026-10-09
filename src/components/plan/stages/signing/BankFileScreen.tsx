@@ -318,7 +318,7 @@ export function BankFileScreen({
           onClick={onContinue}
           className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
         >
-          למסמכי התיק לחתימה
+          לבטחונות ולטופס טיולים
           <ArrowLeft className="h-4 w-4" />
         </button>
       </div>

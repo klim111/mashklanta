@@ -130,6 +130,8 @@ export interface ComposeRequest {
   text: string;
   documents?: ConversationDocument[];
   addRecipientRole?: RecipientRole;
+  /** נקרא אחרי שהמייל נשלח, עם הנמענים שנבחרו */
+  onSent?: (to: string[]) => void;
 }
 
 export function useConversationEmails(clientUserId: string | null | undefined, enabled: boolean) {
