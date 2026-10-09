@@ -1,5 +1,5 @@
-import type { Loan, LoanCategory } from './types';
-import { annuityPayment, buildAmortSchedule, calculateLoanSummary } from './loanMath';
+import type { ConsolidationPlan, Loan, LoanCategory } from './types';
+import { annuityPayment, buildLoanSchedule } from './loanMath';
 
 /**
  * הנתונים הנגזרים של תיק ההלוואות.
@@ -26,15 +26,18 @@ export function loanCategoryOf(loan: Loan): LoanCategory {
 }
 
 /**
- * צבע קבוע לכל הלוואה, נגזר מהמזהה שלה. כך אותה הלוואה נצבעת אותו צבע בפאנל,
- * בפס ההרכב ובגרפים — גם כששתי הלוואות הן מאותו סוג.
+ * צבע קבוע לכל הלוואה. הלוואה מקבלת את הצבע הפנוי הבא בפעם הראשונה שהיא מוצגת
+ * ושומרת אותו, כך שאותה הלוואה נצבעת אותו צבע בפאנל, בפס ההרכב ובגרפים, ושתי
+ * הלוואות סמוכות לא מקבלות את אותו צבע.
  */
-export function loanColor(loan: Loan): string {
-  let hash = 0;
-  for (let index = 0; index < loan.id.length; index += 1) {
-    hash = (hash * 31 + loan.id.charCodeAt(index)) % 100_000;
-  }
-  return LOAN_PALETTE[hash % LOAN_PALETTE.length];
+const assignedColors = new Map<string, string>();
+
+export function loanColor(loan: { id: string }): string {
+  const existing = assignedColors.get(loan.id);
+  if (existing) return existing;
+  const color = LOAN_PALETTE[assignedColors.size % LOAN_PALETTE.length];
+  assignedColors.set(loan.id, color);
+  return color;
 }
 
 export interface LoanStats {
@@ -44,6 +47,8 @@ export interface LoanStats {
   totalPaid: number;
   /** חלק הריבית מכל התשלומים של ההלוואה */
   interestShare: number;
+  /** מספר התשלומים בפועל — קצר מהתקופה כשיש פירעון מוקדם שמקצר */
+  monthsActual: number;
 }
 
 export interface PortfolioStats {
@@ -62,13 +67,14 @@ export interface PortfolioStats {
 }
 
 export function loanStats(loan: Loan): LoanStats {
-  const summary = calculateLoanSummary(loan);
+  const schedule = buildLoanSchedule(loan);
   return {
     loan,
-    monthlyPayment: summary.monthlyPayment,
-    totalInterest: summary.totalInterest,
-    totalPaid: summary.totalPaid,
-    interestShare: summary.totalPaid > 0 ? summary.totalInterest / summary.totalPaid : 0,
+    monthlyPayment: schedule.paymentInitial,
+    totalInterest: schedule.totalInterest,
+    totalPaid: schedule.totalPaid,
+    interestShare: schedule.totalPaid > 0 ? schedule.totalInterest / schedule.totalPaid : 0,
+    monthsActual: schedule.monthsActual,
   };
 }
 
@@ -90,7 +96,7 @@ export function portfolioStats(loans: Loan[]): PortfolioStats {
     totalInterest,
     totalPaid,
     weightedApr,
-    payoffMonths: loans.reduce((max, loan) => Math.max(max, loan.months), 0),
+    payoffMonths: stats.reduce((max, item) => Math.max(max, item.monthsActual), 0),
     interestShare: totalPaid > 0 ? totalInterest / totalPaid : 0,
     loans: stats,
   };
@@ -117,14 +123,7 @@ export interface PortfolioYearPoint {
 export function portfolioYearlySeries(loans: Loan[]): PortfolioYearPoint[] {
   if (loans.length === 0) return [];
 
-  const schedules = loans.map((loan) => ({
-    loan,
-    rows: buildAmortSchedule({
-      principal: loan.principal,
-      apr: loan.apr,
-      months: loan.months,
-    }).rows,
-  }));
+  const schedules = loans.map((loan) => ({ loan, rows: buildLoanSchedule(loan).rows }));
 
   const horizon = Math.max(...schedules.map((item) => item.rows.length));
   const points: PortfolioYearPoint[] = [];
@@ -241,10 +240,12 @@ export function loanInsights(stats: PortfolioStats, income?: number): LoanInsigh
   if (stats.count === 0) return [];
 
   const insights: LoanInsight[] = [];
+  // השוואה בין הלוואות — היקרה, האיחוד, זו שנגמרת ראשונה — יש לה משמעות רק משתי הלוואות
+  const comparable = stats.count >= 2;
   const sortedByApr = [...stats.loans].sort((a, b) => b.loan.apr - a.loan.apr);
   const costliest = sortedByApr[0];
 
-  insights.push({
+  if (comparable) insights.push({
     id: 'costliest',
     tone: 'alert',
     title: `ההלוואה היקרה שלכם: ${costliest.loan.name} — ${costliest.loan.apr.toFixed(2)}%`,
@@ -258,7 +259,7 @@ export function loanInsights(stats: PortfolioStats, income?: number): LoanInsigh
     detail: `על חוב של ${shekel(stats.totalPrincipal)} תשלמו ${shekel(stats.totalPaid)} — מתוכם ${shekel(stats.totalInterest)} ריבית. זה הסכום שנמצא במשא ומתן.`,
   });
 
-  const potential = savingsPotential(stats);
+  const potential = comparable ? savingsPotential(stats) : null;
   if (potential && potential.interestSaved > 0) {
     insights.push({
       id: 'consolidation',
@@ -285,15 +286,98 @@ export function loanInsights(stats: PortfolioStats, income?: number): LoanInsigh
     });
   }
 
-  const shortest = [...stats.loans].sort((a, b) => a.loan.months - b.loan.months)[0];
-  if (stats.count > 1 && shortest) {
+  const shortest = [...stats.loans].sort((a, b) => a.monthsActual - b.monthsActual)[0];
+  if (comparable && shortest) {
     insights.push({
       id: 'freed-cash',
       tone: 'neutral',
-      title: `בעוד ${shortest.loan.months} חודשים מתפנים ${shekel(shortest.monthlyPayment)} בחודש`,
+      title: `בעוד ${shortest.monthsActual} חודשים מתפנים ${shekel(shortest.monthlyPayment)} בחודש`,
       detail: `${shortest.loan.name} נגמרת ראשונה. הפניית הסכום שמתפנה להלוואה היקרה, במקום להוצאות, מקצרת את כל התיק.`,
     });
   }
 
   return insights;
+}
+
+/* ------------------------------------------------------------------ */
+/* איחוד הלוואות                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface ConsolidationOutcome {
+  /** ההלוואות שנבחרו לאיחוד */
+  selected: Loan[];
+  /** הסכום הכולל שמאוחד */
+  amount: number;
+  /** ההלוואה המאוחדת — רק כשהוזנו ריבית ותקופה */
+  merged: Loan | null;
+  /** התיק כולו היום */
+  before: PortfolioStats;
+  /** התיק כולו אחרי האיחוד — ההלוואות שלא נבחרו נשארות כמו שהן */
+  after: PortfolioStats | null;
+  /** הלוואות התיק אחרי האיחוד, לגרפים */
+  afterLoans: Loan[] | null;
+}
+
+export function consolidationOutcome(loans: Loan[], plan: ConsolidationPlan): ConsolidationOutcome {
+  const selected = loans.filter((loan) => plan.loanIds.includes(loan.id));
+  const rest = loans.filter((loan) => !plan.loanIds.includes(loan.id));
+  const amount = selected.reduce((sum, loan) => sum + loan.principal, 0);
+  const ready =
+    selected.length >= 2 &&
+    amount > 0 &&
+    plan.apr !== null &&
+    plan.apr >= 0 &&
+    plan.months !== null &&
+    plan.months > 0;
+
+  const merged: Loan | null = ready
+    ? {
+        id: 'consolidated',
+        name: 'ההלוואה המאוחדת',
+        principal: amount,
+        apr: plan.apr as number,
+        months: plan.months as number,
+        category: 'bank',
+      }
+    : null;
+  const afterLoans = merged ? [...rest, merged] : null;
+
+  return {
+    selected,
+    amount,
+    merged,
+    before: portfolioStats(loans),
+    after: afterLoans ? portfolioStats(afterLoans) : null,
+    afterLoans,
+  };
+}
+
+/** יתרת החוב החודשית של כמה סדרות הלוואות זו מול זו, לגרף ההשוואה */
+export function balanceComparisonSeries(
+  series: Record<string, Loan[]>
+): Array<Record<string, number>> {
+  const schedules = Object.entries(series).map(([key, loans]) => ({
+    key,
+    rows: loans.map((loan) => buildLoanSchedule(loan).rows),
+  }));
+  const horizon = Math.max(
+    0,
+    ...schedules.flatMap((item) => item.rows.map((rows) => rows.length))
+  );
+  const points: Array<Record<string, number>> = [];
+  for (let month = 0; month <= horizon; month += 1) {
+    if (month % 6 !== 0 && month !== horizon) continue;
+    const point: Record<string, number> = { month };
+    for (const { key, rows } of schedules) {
+      point[key] = Math.round(
+        rows.reduce((sum, list) => {
+          if (month === 0) return sum + (list[0]?.balStart ?? 0);
+          const row = list[month - 1];
+          return sum + (row ? row.balEnd : 0);
+        }, 0)
+      );
+    }
+    points.push(point);
+  }
+  return points;
 }

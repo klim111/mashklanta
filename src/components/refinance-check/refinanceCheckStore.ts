@@ -1,7 +1,8 @@
 /**
- * מה שהאורח הזין בבדיקת המיחזור המהירה נשמר ב-sessionStorage של הלשונית:
- * חזרה מההצצה בכלי המלא מחזירה אותו לתוצאה, וההצצה נפתחת עם המסלולים שכבר
- * הזין. כלום לא נשלח לשרת.
+ * מה שהאורח הזין בבדיקת המיחזור המהירה נשמר בדפדפן (localStorage): חזרה
+ * מההצצה בכלי המלא מחזירה אותו לתוצאה, וההצצה נפתחת עם המסלולים שכבר הזין.
+ * האחסון משותף לכל הלשוניות, כי קישור אישור ההרשמה נפתח בלשונית חדשה — ושם
+ * הנתונים עוברים לחשבון (src/components/tool-data/toolData.ts).
  */
 
 import type { MortgageMix, MortgageTrack } from '@/components/mortgage-advisor/types';
@@ -22,10 +23,13 @@ export interface RefinanceCheckDraft {
 }
 
 const DRAFT_KEY = 'mashklanta:refinance-check';
+/** המשכנתא הנוכחית כפי שהאורח ערך אותה במסך ההצצה של הכלי המלא */
+const MIX_KEY = 'mashklanta:refinance-mix';
 
 export function loadDraft(): RefinanceCheckDraft | null {
   try {
-    const raw = window.sessionStorage.getItem(DRAFT_KEY);
+    // טיוטה מגרסה קודמת, שנשמרה רק ללשונית, עדיין נקראת
+    const raw = window.localStorage.getItem(DRAFT_KEY) ?? window.sessionStorage.getItem(DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as RefinanceCheckDraft;
     return parsed && Array.isArray(parsed.tracks) ? parsed : null;
@@ -36,7 +40,7 @@ export function loadDraft(): RefinanceCheckDraft | null {
 
 export function saveDraft(draft: RefinanceCheckDraft) {
   try {
-    window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch {
     // אחסון חסום (גלישה פרטית) — הכלי ממשיך לעבוד בלי לזכור
   }
@@ -67,4 +71,54 @@ export function draftAsMix(draft: RefinanceCheckDraft | null): MortgageMix | nul
     tracks: mixTracks,
     createdAt: new Date(),
   };
+}
+
+/** תמהיל שנשמר כ-JSON: תאריך היצירה חוזר להיות Date */
+export function reviveMix(value: unknown): MortgageMix | null {
+  if (!value || typeof value !== 'object') return null;
+  const mix = value as MortgageMix;
+  if (!Array.isArray(mix.tracks)) return null;
+  const createdAt = new Date(mix.createdAt as unknown as string);
+  return {
+    ...mix,
+    id: mix.id || 'refinance-current',
+    name: mix.name || 'המשכנתא הנוכחית',
+    totalAmount: Number(mix.totalAmount) || 0,
+    createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
+  };
+}
+
+export function loadGuestMix(): MortgageMix | null {
+  try {
+    const raw = window.localStorage.getItem(MIX_KEY);
+    return raw ? reviveMix(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveGuestMix(mix: MortgageMix) {
+  try {
+    window.localStorage.setItem(MIX_KEY, JSON.stringify(mix));
+  } catch {
+    // אחסון חסום — ההצצה ממשיכה לעבוד בלי לזכור
+  }
+}
+
+/** מה שהאורח הזין בכלי המיחזור: מה שערך בהצצה, ואם לא — המסלולים מהבדיקה המהירה */
+export function guestRefinanceMix(): MortgageMix | null {
+  const mix = loadGuestMix();
+  if (mix && mix.tracks.length > 0) return mix;
+  return draftAsMix(loadDraft());
+}
+
+/** אחרי שהנתונים עברו לחשבון — כדי שמי שייכנס אחר כך מאותו דפדפן לא יקבל אותם */
+export function clearGuestRefinance() {
+  try {
+    window.localStorage.removeItem(DRAFT_KEY);
+    window.localStorage.removeItem(MIX_KEY);
+    window.sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // אין מה לעשות
+  }
 }

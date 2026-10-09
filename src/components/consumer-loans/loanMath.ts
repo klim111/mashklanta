@@ -1,4 +1,4 @@
-import type { AmortRow, Loan, PrepaymentParams } from './types';
+import type { AmortRow, Loan, LoanDraft, LoanPrepayment, PrepaymentParams } from './types';
 
 /**
  * חישוב תשלום חודשי לפי נוסחת האנונה
@@ -135,6 +135,173 @@ export function buildAmortSchedule(params: {
   };
 }
 
+/** הלוואה שכל השדות שלה הוזנו — רק היא נכנסת לחישובים ולדאשבורד */
+export function isCompleteLoan(loan: LoanDraft): loan is Loan {
+  return (
+    loan.principal !== null &&
+    loan.principal > 0 &&
+    loan.apr !== null &&
+    loan.apr >= 0 &&
+    loan.months !== null &&
+    loan.months > 0
+  );
+}
+
+/* ---------------- תאריכים ---------------- */
+
+const DAY_MS = 86_400_000;
+
+function parseDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function toISODate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** האם בהלוואה הוזנו תאריך לקיחה ויום תשלום — רק אז יש לתשלומים תאריכים */
+export function hasLoanDates(loan: { startDate?: string; paymentDay?: number }): boolean {
+  return Boolean(
+    loan.startDate &&
+      parseDate(loan.startDate) &&
+      loan.paymentDay &&
+      loan.paymentDay >= 1 &&
+      loan.paymentDay <= 31
+  );
+}
+
+/**
+ * תאריך התשלום ה-k. התשלום הראשון יורד ביום התשלום שבחודש שאחרי חודש
+ * הלקיחה, וכל תשלום אחריו חודש אחריו. בחודש קצר מיום התשלום, התשלום יורד
+ * ביום האחרון של החודש. k = 0 הוא יום הלקיחה עצמו.
+ */
+export function paymentDate(
+  loan: { startDate?: string; paymentDay?: number },
+  k: number
+): Date | null {
+  if (!hasLoanDates(loan)) return null;
+  const start = parseDate(loan.startDate as string) as Date;
+  if (k <= 0) return start;
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth() + k;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, month, Math.min(loan.paymentDay as number, lastDay)));
+}
+
+export function daysBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / DAY_MS);
+}
+
+/**
+ * פירעון לפי תאריך: התשלום האחרון שיורד עד יום הפירעון (כולל), ומספר הימים
+ * שעברו מאז. פירעון לפי מספר תשלום, או כשאין בהלוואה תאריכים, נפרע ביום
+ * התשלום עצמו — 0 ימים.
+ */
+export function resolvePrepaymentTiming(
+  loan: Pick<Loan, 'startDate' | 'paymentDay' | 'months'>,
+  prepayment: Pick<LoanPrepayment, 'month' | 'date'>
+): { month: number; days: number } {
+  const target = prepayment.date ? parseDate(prepayment.date) : null;
+  if (!target || !hasLoanDates(loan)) return { month: prepayment.month, days: 0 };
+  let k = 0;
+  while (k < loan.months) {
+    const next = paymentDate(loan, k + 1) as Date;
+    if (next.getTime() > target.getTime()) break;
+    k += 1;
+  }
+  const last = paymentDate(loan, k) as Date;
+  return { month: k, days: Math.max(0, daysBetween(last, target)) };
+}
+
+export interface LoanSchedule {
+  rows: AmortRow[];
+  totalInterest: number;
+  /** כל מה שישולם — כולל הפירעונות המוקדמים */
+  totalPaid: number;
+  paymentInitial: number;
+  monthsActual: number;
+  totalPrepaid: number;
+}
+
+/**
+ * לוח הסילוקין של הלוואה, כולל הפירעונות המוקדמים שהוזנו בה.
+ *
+ * הפירעון משולם יחד עם התשלום שנבחר: קודם התשלום הרגיל, ואחריו הסכום
+ * החד-פעמי יורד מהיתרה. ממנו והלאה, בקיצור תקופה ההחזר נשמר וההלוואה נגמרת
+ * מוקדם; בהקטנת החזר ההחזר מחושב מחדש על היתרה לתקופה שנותרה.
+ */
+export function buildLoanSchedule(loan: Loan): LoanSchedule {
+  const r = loan.apr / 100 / 12;
+  const daily = loan.apr / 100 / 365;
+  const paymentInitial = annuityPayment(loan.principal, loan.apr, loan.months);
+  const dated = hasLoanDates(loan);
+  const events = (loan.prepayments ?? [])
+    .map((item) => ({ ...item, ...resolvePrepaymentTiming(loan, item) }))
+    .filter((item) => item.amount > 0 && item.month >= 1 && item.month < loan.months)
+    .sort((a, b) => a.month - b.month || a.days - b.days);
+
+  const rows: AmortRow[] = [];
+  let balance = loan.principal;
+  let payment = paymentInitial;
+  let totalPaid = 0;
+  let totalInterest = 0;
+  let totalPrepaid = 0;
+
+  for (let m = 1; m <= loan.months && balance > 0.005; m += 1) {
+    const balStart = balance;
+    const interest = balance * r;
+    const pay = Math.min(payment, balance + interest);
+    const principalPart = pay - interest;
+    balance = Math.max(0, balance - principalPart);
+
+    // הפירעונות של החודש — לפי הסדר. על כל סכום שנפרע אחרי יום התשלום
+    // משולמת גם הריבית היומית שהצטברה עליו מאז התשלום ועד יום הפירעון
+    const today = events.filter((item) => item.month === m);
+    let prepay = 0;
+    let prepayInterest = 0;
+    for (const item of today) {
+      const applied = Math.min(item.amount, balance - prepay);
+      if (applied <= 0) continue;
+      prepay += applied;
+      prepayInterest += applied * daily * item.days;
+    }
+    balance -= prepay;
+
+    if (prepay > 0 && balance > 0.005) {
+      const mode = today[today.length - 1].mode;
+      if (mode === 'reduce') payment = annuityPayment(balance, loan.apr, loan.months - m);
+    }
+
+    totalPaid += pay + prepay + prepayInterest;
+    totalInterest += interest + prepayInterest;
+    totalPrepaid += prepay;
+    const date = dated ? paymentDate(loan, m) : null;
+    rows.push({
+      m,
+      balStart,
+      pay,
+      interest,
+      principal: principalPart,
+      ...(prepay > 0 ? { prepay } : {}),
+      ...(prepayInterest > 0 ? { prepayInterest } : {}),
+      ...(date ? { date: toISODate(date) } : {}),
+      balEnd: balance,
+    });
+  }
+
+  return {
+    rows,
+    totalInterest,
+    totalPaid,
+    paymentInitial,
+    monthsActual: rows.length,
+    totalPrepaid,
+  };
+}
+
 /**
  * חישוב מהיר של נתוני הלוואה בלי טבלת סילוקין מלאה
  */
@@ -143,6 +310,15 @@ export function calculateLoanSummary(loan: Loan): {
   totalPaid: number;
   totalInterest: number;
 } {
+  if (loan.prepayments?.length) {
+    const schedule = buildLoanSchedule(loan);
+    return {
+      monthlyPayment: schedule.paymentInitial,
+      totalPaid: schedule.totalPaid,
+      totalInterest: schedule.totalInterest,
+    };
+  }
+
   const monthlyPayment = annuityPayment(loan.principal, loan.apr, loan.months);
   const totalPaid = monthlyPayment * loan.months;
   const totalInterest = totalPaid - loan.principal;

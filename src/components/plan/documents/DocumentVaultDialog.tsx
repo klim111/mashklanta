@@ -5,20 +5,16 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   CircleDashed,
-  Download,
-  Eye,
   FileText,
   FolderDown,
   FolderOpen,
   ListChecks,
   Loader2,
   Lock,
-  Trash2,
   Upload,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { formatDate } from '@/lib/advisor-crm';
 import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import { documentProgress } from '@/lib/document-progress';
@@ -29,7 +25,8 @@ import { useClientTasks } from '../tasks/useClientTasks';
 import { planDocumentRequirements } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
-import { documentDownloadUrl, documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
+import { DocumentBrowser } from './DocumentBrowser';
+import { documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
 import { demoId } from '@/demo/demo-attr';
 
 /** ההתקדמות של התהליך — נקראת פעם אחת ומשמשת גם את הכפתור וגם את החלון */
@@ -75,7 +72,7 @@ export function ProgressBar({
  * תיק המסמכים — החלון שנפתח מכל מסך ומכל שלב.
  *
  * למעלה ההתקדמות: לכל שלב שיש בו מסמכים לאסוף, ולכל התהליך. מתחת כל המסמכים
- * שהועלו, עם צפייה ומחיקה, והעלאה של מסמך חדש בכותרת חופשית.
+ * שהועלו, מסודרים לפי קטגוריה ושלב עם חיפוש וסינון, והעלאה של מסמך חדש.
  */
 export function DocumentVaultDialog({
   open,
@@ -91,7 +88,7 @@ export function DocumentVaultDialog({
   /** השלב הפתוח כרגע — מסמך חדש ישויך אליו */
   stage?: PlanStageId | null;
 }) {
-  const { documents, ready, error, busyKey, remove } = usePlanDocuments(planId);
+  const { documents, ready, error, busyKey, remove, updateMeta } = usePlanDocuments(planId);
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -113,11 +110,6 @@ export function DocumentVaultDialog({
     setUploadKey(key);
     setUploadOpen(true);
   };
-
-  const sorted = useMemo(
-    () => [...documents].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)),
-    [documents]
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -255,7 +247,7 @@ export function DocumentVaultDialog({
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
             </div>
-          ) : sorted.length === 0 ? (
+          ) : documents.length === 0 ? (
             <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
               <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />
               <p className="text-sm font-black text-slate-700">עדיין לא הועלו מסמכים</p>
@@ -264,52 +256,17 @@ export function DocumentVaultDialog({
               </p>
             </div>
           ) : (
-            <ul className="mt-4 space-y-2">
-              {sorted.map((document) => (
-                <li
-                  key={document.id}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                    <FileText className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-slate-900">{document.name}</p>
-                    <p className="truncate text-xs text-slate-500">
-                      {document.fileName} · {formatDate(document.uploadedAt)}
-                    </p>
-                  </div>
-                  {!demo && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setViewing(document)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-black text-white hover:bg-blue-700"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        צפייה
-                      </button>
-                      <a
-                        href={documentDownloadUrl(planId, document.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        הורדה
-                      </a>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    disabled={busyKey === document.key}
-                    onClick={() => void remove(document.id, document.key)}
-                    title="מחיקה"
-                    className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:opacity-60"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-4">
+              <DocumentBrowser
+                planId={planId}
+                documents={documents}
+                busyKey={busyKey}
+                demo={demo}
+                onView={setViewing}
+                onRemove={(document) => void remove(document.id, document.key)}
+                onUpdateMeta={(documentId, meta) => void updateMeta(documentId, meta)}
+              />
+            </div>
           )}
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">

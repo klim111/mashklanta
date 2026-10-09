@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { upload } from '@vercel/blob/client';
 import type { PlanDocumentView } from '@/lib/plan-documents';
+import { cleanDocumentMeta } from '@/lib/document-organize';
+import type { DocumentMeta } from '@/lib/document-organize';
 import { demoDocuments, isDemoPlan } from '@/lib/demo-plan';
 
 /**
@@ -88,7 +90,9 @@ export function usePlanDocuments(planId: string | null) {
       name: string,
       file: File,
       /** השם שבו יישמר הקובץ — ברירת המחדל היא השם שבו הועלה */
-      savedFileName?: string
+      savedFileName?: string,
+      /** הקטגוריה והשלב שהלקוח בחר — בלעדיהם הם נגזרים מהמפתח */
+      meta?: DocumentMeta
     ): Promise<PlanDocumentView | null> => {
       if (!planId) {
         setError('אין תהליך לשייך אליו את המסמך');
@@ -107,6 +111,7 @@ export function usePlanDocuments(planId: string | null) {
           contentType: file.type,
           size: file.size,
           uploadedAt: new Date().toISOString(),
+          ...cleanDocumentMeta(meta),
         };
         writeDemo([record, ...readDemo().filter((item) => item.key !== key)]);
         setBusyKey(null);
@@ -130,6 +135,7 @@ export function usePlanDocuments(planId: string | null) {
             contentType: file.type,
             size: file.size,
             blobPath: blob.pathname,
+            ...cleanDocumentMeta(meta),
           }),
         });
         const body = await response.json().catch(() => null);
@@ -171,7 +177,41 @@ export function usePlanDocuments(planId: string | null) {
     [planId, refresh, demo]
   );
 
-  return { documents, ready, error, busyKey, upload: uploadDocument, remove, refresh };
+  /** שיוך מסמך שכבר בתיק לקטגוריה ולשלב */
+  const updateMeta = useCallback(
+    async (documentId: string, meta: DocumentMeta): Promise<boolean> => {
+      if (!planId) return false;
+      const clean = cleanDocumentMeta(meta);
+      if (demo) {
+        writeDemo(readDemo().map((item) => (item.id === documentId ? { ...item, ...clean } : item)));
+        return true;
+      }
+      // התצוגה מתעדכנת מיד, והשרת מאשר ברקע
+      setDocuments((current) => current.map((item) => (item.id === documentId ? { ...item, ...clean } : item)));
+      try {
+        const response = await fetch(`/api/plans/${planId}/documents/${documentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(clean),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          setError(body?.error ?? 'השיוך לא נשמר. נסו שוב.');
+          await refresh();
+          return false;
+        }
+        notifyChanged();
+        return true;
+      } catch {
+        setError('השיוך לא נשמר. נסו שוב.');
+        await refresh();
+        return false;
+      }
+    },
+    [planId, demo, refresh]
+  );
+
+  return { documents, ready, error, busyKey, upload: uploadDocument, remove, refresh, updateMeta };
 }
 
 /** הכתובת המאומתת שממנה נצפה מסמך — תקפה רק למשתמש המחובר */

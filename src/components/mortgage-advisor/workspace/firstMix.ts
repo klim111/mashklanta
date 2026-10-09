@@ -1,8 +1,7 @@
 'use client';
 
-import { DEFAULT_INTEREST_RATES } from '../types';
 import type { DealType } from '../types';
-import { createEmptyMix, createTrack, normalizeMix } from '../engine';
+import { createEmptyMix, normalizeMix } from '../engine';
 import type { WorkspaceMix } from '../engine';
 import { DEFAULT_DEAL_TYPE, maxMortgageFor, mixNameExistsForProperty } from '../propertyContext';
 
@@ -22,12 +21,6 @@ export interface PropertySetup {
  * בכותרת הנכס, וכל המסלולים מתעדכנים יחסית אליו.
  */
 export const DEFAULT_TOTAL_AMOUNT = 1_000_000;
-
-/** התמהיל נפתח עם מסלול קבועה לא צמודה בשליש מהמשכנתא — נקודת הפתיחה המקובלת */
-export const FIRST_TRACK_SHARE = 1 / 3;
-
-/** תקופת ברירת המחדל של המסלול הראשון, בשנים */
-export const FIRST_TRACK_YEARS = 25;
 
 type PropertyKey = Pick<WorkspaceMix, 'propertyAddress' | 'totalAmount'>;
 type NamedMix = { mix: Pick<WorkspaceMix, 'id' | 'name' | 'propertyAddress' | 'totalAmount'> };
@@ -61,9 +54,9 @@ export function nextFreeMixName(property: PropertyKey, existingMixes: NamedMix[]
 }
 
 /**
- * התמהיל שהכלי נפתח איתו: פרטי הנכס והעסקה כפי שהגיעו מהשלבים הקודמים, ומסלול
- * אחד — קבועה לא צמודה בלוח שפיצר, בשליש מסכום המשכנתא. שאר הסכום נשאר גלוי
- * כסכום שנותר לשבץ, כך שהמשתמש ממשיך משם בהוספת מסלולים בתוך הכלי עצמו.
+ * התמהיל שהכלי נפתח איתו: פרטי הנכס והעסקה כפי שהגיעו מהשלבים הקודמים, וסכום
+ * המשכנתא כולו עדיין לא משובץ. אין מסלול ברירת מחדל — הלקוח מוסיף מסלול אחרי
+ * מסלול ובוחר לכל אחד את הסוג, הריבית והסכום או האחוז מהמשכנתא.
  */
 export function createFirstMix(options: {
   seed?: Partial<PropertySetup>;
@@ -88,15 +81,7 @@ export function createFirstMix(options: {
       propertyValue,
       propertyAddress,
       maxMonthlyPayment,
-      tracks: [
-        createTrack({
-          type: 'fixed_unlinked',
-          amortizationType: 'spitzer',
-          amount: Math.round(totalAmount * FIRST_TRACK_SHARE),
-          years: FIRST_TRACK_YEARS,
-          interestRate: DEFAULT_INTEREST_RATES.fixed_unlinked,
-        }),
-      ],
+      tracks: [],
     })
   );
 }

@@ -5,11 +5,13 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   BriefcaseBusiness,
+  Flag,
   HeartHandshake,
   Loader2,
   Mail,
   MapPin,
   Phone,
+  RotateCcw,
   Sparkles,
   UserRound,
 } from 'lucide-react';
@@ -83,6 +85,7 @@ export function ServiceRequestsPanel({
   leadsReady = true,
   onOpenClient,
   onMarkWork,
+  onEndAdvisory,
 }: {
   requests: AdvisorOrderRequest[];
   ready: boolean;
@@ -91,8 +94,10 @@ export function ServiceRequestsPanel({
   leadsReady?: boolean;
   /** מעבר לתיק הלקוח שממנו הגיעה הבקשה */
   onOpenClient?: (clientId: string) => void;
-  /** סימון שהשלב בעבודה והתשלום עליו סודר — נועל את התהליך מפני מחיקה */
+  /** אישור שהתשלום על השלב סודר — פותח ללקוח את הכלים ונועל את התהליך מפני מחיקה */
   onMarkWork?: (orderId: string, inWork: boolean) => Promise<void>;
+  /** סיום הליווי בתהליך (או ביטול הסיום) — הלקוח מקבל הצעה להמשיך לבד */
+  onEndAdvisory?: (planId: string, ended: boolean) => Promise<void>;
 }) {
   if (!ready) {
     return (
@@ -145,6 +150,7 @@ export function ServiceRequestsPanel({
                 request={request}
                 onOpenClient={onOpenClient}
                 onMarkWork={onMarkWork}
+                onEndAdvisory={onEndAdvisory}
               />
             ))}
           </div>
@@ -239,20 +245,22 @@ function RequestRow({
   request,
   onOpenClient,
   onMarkWork,
+  onEndAdvisory,
 }: {
   request: AdvisorOrderRequest;
   onOpenClient?: (clientId: string) => void;
   onMarkWork?: (orderId: string, inWork: boolean) => Promise<void>;
+  onEndAdvisory?: (planId: string, ended: boolean) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const paid = request.paidAt ? new Date(request.paidAt) : null;
   const inWork = request.workStartedAt !== null;
+  const ended = request.advisoryEndedAt !== null;
 
-  const toggleWork = async () => {
-    if (!onMarkWork) return;
+  const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
-      await onMarkWork(request.id, !inWork);
+      await action();
     } finally {
       setBusy(false);
     }
@@ -274,7 +282,9 @@ function RequestRow({
         )}
 
         <span className="mr-auto text-[11px] font-black text-slate-700">
-          {inWork ? (
+          {inWork && ended ? (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">הליווי הסתיים</span>
+          ) : inWork ? (
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">
               בעבודה · התשלום סודר
             </span>
@@ -305,24 +315,55 @@ function RequestRow({
             : `הלקוח ביקש שתבצעו ${request.stages.length} שלבים`}
         </span>
 
-        {onMarkWork && (
+        {onMarkWork && !inWork && (
           <button
             type="button"
             disabled={busy}
-            onClick={() => void toggleWork()}
-            title={
-              inWork
-                ? 'הסרת הסימון תחזיר ללקוח את האפשרות לבטל את התהליך'
-                : 'סימון שהשלב בעבודה אצלכם ושהתשלום עליו סודר — הלקוח לא יוכל למחוק את התהליך'
-            }
-            className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-black transition-colors disabled:opacity-60 ${
-              inWork
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
-            }`}
+            onClick={() => void run(() => onMarkWork(request.id, true))}
+            title="אישור שהתשלום על השלב סודר: ללקוח נפתחים כל הכלים בתהליך עד שתסמנו שהליווי הסתיים, והוא לא יוכל למחוק את התהליך"
+            className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-[11px] font-black text-slate-700 ring-1 ring-slate-300 transition-colors hover:bg-slate-50 disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <BriefcaseBusiness className="h-3 w-3" />}
-            {inWork ? 'בעבודה — לסיום הסימון' : 'סמנו: בעבודה, התשלום סודר'}
+            סמנו: בעבודה, התשלום סודר
+          </button>
+        )}
+
+        {inWork && onEndAdvisory && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(() => onEndAdvisory(request.planId, !ended))}
+            title={
+              ended
+                ? 'ביטול הסיום מחזיר ללקוח את הגישה המלאה דרך הליווי'
+                : 'סיום הליווי: הלקוח מקבל במייל ובפלטפורמה הצעה להמשיך לבד במחיר החודשי'
+            }
+            className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-black transition-colors disabled:opacity-60 ${
+              ended
+                ? 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+            }`}
+          >
+            {busy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : ended ? (
+              <RotateCcw className="h-3 w-3" />
+            ) : (
+              <Flag className="h-3 w-3" />
+            )}
+            {ended ? 'ביטול סיום הליווי' : 'סיום הליווי בתהליך'}
+          </button>
+        )}
+
+        {inWork && !ended && onMarkWork && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run(() => onMarkWork(request.id, false))}
+            title="ביטול אישור שניתן בטעות: הבקשה חוזרת למצב חינמי, והגישה של הלקוח דרך הליווי נסגרת"
+            className="text-[11px] font-bold text-slate-400 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-60"
+          >
+            ביטול האישור
           </button>
         )}
 

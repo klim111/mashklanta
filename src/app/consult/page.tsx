@@ -42,6 +42,12 @@ function ConsultForm() {
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
 
+  // הגיעו מכפתור של מסלול בעמוד התמחור — שם המסלול נכנס להערה ליועץ
+  useEffect(() => {
+    const track = params.get('track')?.trim().slice(0, 60);
+    if (track) setNote((current) => current || `מתעניין/ת במסלול "${track}"`);
+  }, [params]);
+
   // בחירה מהתפריט כשהעמוד כבר פתוח מחליפה את הסיבה
   useEffect(() => {
     const fromUrl = consultReason(params.get('reason'));

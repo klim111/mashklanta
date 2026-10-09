@@ -24,6 +24,8 @@ import {
   Users,
   UserX,
   Activity,
+  CreditCard,
+  Tag,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
@@ -41,6 +43,10 @@ import { useAdvisorClients } from './useAdvisorClients';
 import { useAdvisorOverview, useAdvisorTasks, useMeetings } from './useAdvisorCrm';
 import type { AdvisorClient } from './useAdvisorClients';
 import { SiteAnalyticsPanel } from './SiteAnalyticsPanel';
+import { PricingEditorPanel } from './PricingEditorPanel';
+import { PaymentLinksPanel } from './PaymentLinksPanel';
+import { setAdvisoryEnded } from './advisory-end';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 
@@ -53,6 +59,8 @@ type TabId =
   | 'rate-requests'
   | 'site-visits'
   | 'unfinished-signups'
+  | 'pricing'
+  | 'payment-links'
   | 'settings';
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
@@ -64,6 +72,8 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'rate-requests', label: 'תמהילים שהוגשו לבנקים', icon: Gavel },
   { id: 'site-visits', label: 'ביקורים באתר', icon: Activity },
   { id: 'unfinished-signups', label: 'הרשמות שלא הושלמו', icon: UserX },
+  { id: 'pricing', label: 'תמחור ומסלולים', icon: Tag },
+  { id: 'payment-links', label: 'קישורי תשלום', icon: CreditCard },
   { id: 'settings', label: 'הגדרות', icon: Settings },
 ];
 
@@ -76,6 +86,7 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
  */
 export function AdvisorConsole() {
   const { data: session } = useSession();
+  const { platformPrice } = usePricing();
   const [tab, setTab] = useState<TabId>('clients');
   const [query, setQuery] = useState('');
   const [meetingFor, setMeetingFor] = useState<AdvisorClient | null>(null);
@@ -408,6 +419,13 @@ export function AdvisorConsole() {
                 });
                 await refreshRequests();
               }}
+              onEndAdvisory={async (planId, ended) => {
+                try {
+                  if (await setAdvisoryEnded(planId, ended, platformPrice)) await refreshRequests();
+                } catch {
+                  window.alert('הפעולה לא נשמרה. נסו שוב.');
+                }
+              }}
               onOpenClient={(clientId) => {
                 setFocusClientId(clientId);
                 setTab('clients');
@@ -434,6 +452,10 @@ export function AdvisorConsole() {
           {tab === 'site-visits' && <SiteAnalyticsPanel />}
 
           {tab === 'unfinished-signups' && <UnfinishedSignupsPanel />}
+
+          {tab === 'pricing' && <PricingEditorPanel />}
+
+          {tab === 'payment-links' && <PaymentLinksPanel clients={clients} />}
 
           {tab === 'settings' && (
             <AdvisorSettingsPanel

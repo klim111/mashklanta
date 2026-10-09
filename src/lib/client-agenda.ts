@@ -26,7 +26,14 @@ import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 import type { ClientTaskView } from './client-tasks';
 import { AUTHORIZATION_TASK_KEY, authorizationLettersHref } from './authorization-letters';
 import type { EquityCalendarExpense } from './equity-planning';
-import { formatDay, rateAlertDates, rateAlertStep, rateValidity } from './rate-validity';
+import {
+  RATE_CALENDAR_DAYS,
+  dayKey,
+  formatDay,
+  leadRateValidity,
+  rateCountdownTitle,
+  rateValidity,
+} from './rate-validity';
 import { paymentScheduleHref, scheduleDefined } from './payment-schedule';
 
 /** קידומת המזהה של משימה שהלקוח הוסיף לעצמו — כך הדאשבורד יודע שאפשר לסמן ולמחוק אותה */
@@ -561,37 +568,36 @@ export function planRecommendations(plan: AgendaPlan, now = new Date()): PlanRec
 }
 
 /**
- * ההתראה על תוקף הריביות בבנק שההצעה שלו נבחרה סופית במכרז.
+ * התראה אחת על תוקף הריביות, שמתעדכנת כל יום: כמה ימים נשארו בבנק שנבחר סופית
+ * במכרז (ועד שנבחר — באישור הקרוב לפקוע).
  *
- * היא קופצת כשנשארו 20, 15, 10 ו-5 ימים. המפתח כולל את הסף, ולכן "בוצע" סוגר
- * רק את ההתראה הנוכחית — וכשהספירה חוצה את הסף הבא קופצת התראה חדשה.
+ * עד עשרה ימים לפני הפקיעה המפתח קבוע, ו"בוצע" מסתיר אותה עד אז. מעשרה ימים
+ * המפתח כולל את מספר הימים, ולכן כל יום היא חוזרת עם הספירה של אותו יום —
+ * תמיד שורה אחת, בלי התראות מקבילות.
  */
 function rateAlerts(plan: AgendaPlan, now: Date): PlanRecommendation[] {
-  const final = rateValidity(plan.data, now).find((row) => row.final);
-  if (!final) return [];
+  if (plan.status !== 'IN_PROGRESS') return [];
+  const lead = leadRateValidity(rateValidity(plan.data, now));
+  if (!lead) return [];
 
-  if (final.daysLeft < 0) {
+  if (lead.daysLeft < 0) {
     return [
       {
         key: `${plan.id}:rate-expired`,
-        title: `תוקף הריביות בבנק ${final.bank} פג`,
+        title: rateCountdownTitle(lead),
         hint: 'הבנק רשאי לתמחר מחדש את התמהיל. פנו אליו לחידוש ההצעה לפני שממשיכים לחתימה.',
         tone: 'warning',
       },
     ];
   }
 
-  const step = rateAlertStep(final.daysLeft);
-  if (step === null) return [];
+  const close = lead.daysLeft <= RATE_CALENDAR_DAYS;
   return [
     {
-      key: `${plan.id}:rate-alert-${step}`,
-      title:
-        final.daysLeft === 0
-          ? `היום האחרון לתוקף הריביות בבנק ${final.bank}`
-          : `נשארו ${final.daysLeft} ימים לתוקף הריביות בבנק ${final.bank}`,
-      hint: `הריביות שנבחרו במכרז שמורות עד ${formatDay(final.expiresOn)}. השלימו עד אז את פתיחת התיק והחתימה, אחרת הבנק רשאי לתמחר מחדש.`,
-      tone: 'warning',
+      key: close ? `${plan.id}:rate-days-${lead.daysLeft}` : `${plan.id}:rate-validity`,
+      title: rateCountdownTitle(lead),
+      hint: `הריביות שמורות עד ${formatDay(lead.expiresOn)}. השלימו עד אז את פתיחת התיק והחתימה, אחרת הבנק רשאי לתמחר מחדש.`,
+      tone: close ? 'warning' : 'info',
     },
   ];
 }
@@ -655,35 +661,22 @@ export function buildCalendarEvents(input: AgendaInput, tasks: ClientTask[] = []
         });
       }
       /*
-        תוקף הריביות בכל אישור עקרוני, והתראות 20/15/10/5 הימים של הבנק שנבחר
-        סופית. אחרי החתימה הריביות כבר ננעלו, ואין מה לספור.
+        תוקף הריביות: נקודה אדומה אחת, מעשרה ימים לפני הפקיעה, ביום של היום —
+        והכותרת שלה מתעדכנת כל יום. אחרי החתימה הריביות כבר ננעלו.
       */
       if (plan.status === 'IN_PROGRESS') {
-        rateValidity(plan.data).forEach((row) => {
+        const lead = leadRateValidity(rateValidity(plan.data));
+        if (lead && lead.daysLeft >= 0 && lead.daysLeft <= RATE_CALENDAR_DAYS) {
           events.push({
-            id: `rate-valid:${plan.id}:${row.bank}`,
+            id: `rate-valid:${plan.id}`,
             kind: 'deadline',
-            at: `${row.expiresOn}T09:00:00`,
-            title: row.final
-              ? `תוקף הריביות בבנק ${row.bank} (נבחר סופית)`
-              : `תוקף הריביות בבנק ${row.bank}`,
+            at: `${dayKey(new Date())}T09:00:00`,
+            title: rateCountdownTitle(lead),
             subtitle: label,
             confirmed: true,
             target: { kind: 'href', href: planHref(plan, 'SIGNING') },
           });
-          if (!row.final) return;
-          rateAlertDates(row).forEach((alert) => {
-            events.push({
-              id: `rate-alert:${plan.id}:${alert.days}`,
-              kind: 'deadline',
-              at: `${alert.on}T09:00:00`,
-              title: `נשארו ${alert.days} ימים לתוקף הריביות · בנק ${row.bank}`,
-              subtitle: label,
-              confirmed: true,
-              target: { kind: 'href', href: planHref(plan, 'SIGNING') },
-            });
-          });
-        });
+        }
       }
 
       const signingDate = plan.data.SIGNING.signingDate;

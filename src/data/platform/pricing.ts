@@ -1,20 +1,31 @@
-import { Bot, UserCheck, type LucideIcon } from 'lucide-react';
+import { Bot, Sparkles, UserCheck, type LucideIcon } from 'lucide-react';
 import { journeyStages, stagesTotalPrice } from './journey';
 import {
   ADVISORY_TRACK,
   FULL_SERVICE_PRICE,
-  PLATFORM_ACCESS_DAYS,
+  PLATFORM_ACCESS_PERIOD,
   PLATFORM_MAX_OPEN_PROCESSES,
   PLATFORM_PROCESS_PRICE,
-  PLATFORM_TYPICAL_TOTAL,
   PRICING_PRINCIPLES,
+  platformBillingNotes,
+  pricingPrinciples,
+  typicalTotal,
 } from '@/lib/service-flow';
+import {
+  DEFAULT_PRICING,
+  trackHref,
+  trackPriceLabel,
+  trackPriceNote,
+  visibleTracks,
+  type PricingConfig,
+  type TrackConfig,
+} from '@/lib/pricing-config';
 
 /**
  * המחירים עצמם וחוקי התמחור יושבים ב-`src/lib/service-flow.ts`, כי גם השרת
  * צריך אותם. כאן רק התוכן השיווקי שנבנה מעליהם.
  */
-export { ADVISORY_TRACK, FULL_SERVICE_PRICE, PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE, PRICING_PRINCIPLES };
+export { ADVISORY_TRACK, FULL_SERVICE_PRICE, PLATFORM_ACCESS_PERIOD, PLATFORM_PROCESS_PRICE, PRICING_PRINCIPLES };
 
 /**
  * הכותרת והפסקה שמעל שני המסלולים — במקום "שלושה מסלולים". אותו נוסח
@@ -26,10 +37,11 @@ export const TRACKS_INTRO =
   'הכלים החכמים שלנו ושיטת עבודה מסודרת הופכים את התהליך לפשוט וזורם יותר, וזה מה שמאפשר לנו לתת ליווי מקצועי ברמה הגבוהה ביותר במחיר נמוך בהרבה. ' +
   'המטרה שלנו פשוטה: שתגיעו לבנק חזקים, מבינים ובטוחים, בלי שהמשכנתא תקרע לכם את הכיס עוד לפני שהתחילה.';
 
-export type PlanId = 'self' | 'full';
+export type PlanId = string;
 
 export type PricingPlan = {
   id: PlanId;
+  kind: TrackConfig['kind'];
   name: string;
   tagline: string;
   price: string;
@@ -44,52 +56,31 @@ export type PricingPlan = {
   ctaHref: string;
 };
 
-export const pricingPlans: PricingPlan[] = [
-  {
-    id: 'self',
-    name: 'עצמאי / היברידי',
-    tagline: 'מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא',
-    price: `₪${PLATFORM_PROCESS_PRICE}`,
-    priceNote: `לתהליך משכנתא · גישה מלאה עד ${PLATFORM_ACCESS_DAYS} יום · מקוזז אם תבקשו ליווי`,
-    icon: Bot,
-    gradient: 'from-blue-500 to-cyan-500',
-    ring: 'ring-blue-200',
-    popular: true,
-    features: [
-      'גישה מלאה לכל הכלים והמחשבונים בפלטפורמה',
-      'בונה תמהיל, סלים אחידים ולוחות סילוקין מלאים',
-      'חישוב IRR, סימולציות ריבית ופירעון מוקדם',
-      'תיק מסמכים דיגיטלי וצ׳ק־ליסט לפי סטטוס תעסוקתי',
-      'בכל שלב: כפתור "פנו ליועץ משכלנתא" שמעביר אליו את השלב, עם כל מה שכבר הזנתם',
-      'שלב שעובר ליועץ מתומחר לפי השלב ומורכבות התיק, ומה ששילמתם על הפלטפורמה מקוזז',
-      `צריכים יותר מ-${PLATFORM_ACCESS_DAYS} יום? מחדשים באותו מחיר`,
-    ],
-    bestFor: 'לרוב הלקוחות: בונים לבד ומצרפים יועץ בשלב שבו זה באמת משתלם',
-    ctaLabel: 'מתחילים לבד',
-    ctaHref: '/auth/register',
-  },
-  {
-    id: 'full',
-    name: ADVISORY_TRACK.title,
-    tagline: ADVISORY_TRACK.tagline,
-    price: ADVISORY_TRACK.priceLabel,
-    priceNote: ADVISORY_TRACK.priceNote,
-    icon: UserCheck,
-    gradient: 'from-amber-500 to-orange-600',
-    ring: 'ring-amber-200',
-    features: [
-      'בוחרים כמה ליווי צריך: משלב 1 בלבד, כמה שלבים או כל שלבי תכנון המשכנתא',
-      'יועץ משכנתאות מקצועי מבצע את השלבים שבחרתם',
-      'המחיר הסופי נקבע לפי השלבים שנבחרו ומורכבות התיק',
-      ADVISORY_TRACK.cheaper,
-      ADVISORY_TRACK.credit,
-      'גישה מלאה לפלטפורמה כלולה, ושקיפות מלאה בכל צעד שהיועץ מבצע',
-    ],
-    bestFor: 'למי שרוצה יועץ מקצועי לצידו, בשלב אחד או לאורך כל הדרך',
-    ctaLabel: 'בקשו ליווי',
-    ctaHref: '/#start',
-  },
-];
+const LOOK: Record<TrackConfig['kind'], { icon: LucideIcon; gradient: string; ring: string }> = {
+  PLATFORM: { icon: Bot, gradient: 'from-blue-500 to-cyan-500', ring: 'ring-blue-200' },
+  ADVISORY: { icon: UserCheck, gradient: 'from-amber-500 to-orange-600', ring: 'ring-amber-200' },
+  CUSTOM: { icon: Sparkles, gradient: 'from-violet-500 to-fuchsia-600', ring: 'ring-violet-200' },
+};
+
+/** כרטיסי המסלולים בעמודי התמחור — לפי המסלולים והמחירים שהיועץ הגדיר */
+export function buildPricingPlans(config: PricingConfig): PricingPlan[] {
+  return visibleTracks(config).map((track) => ({
+    id: track.id,
+    kind: track.kind,
+    name: track.name,
+    tagline: track.tagline,
+    price: trackPriceLabel(track, config.platformPrice),
+    priceNote: trackPriceNote(track),
+    ...LOOK[track.kind],
+    popular: track.popular,
+    features: track.features,
+    bestFor: track.bestFor,
+    ctaLabel: track.ctaLabel,
+    ctaHref: trackHref(track),
+  }));
+}
+
+export const pricingPlans: PricingPlan[] = buildPricingPlans(DEFAULT_PRICING);
 
 export type ComparisonRow = {
   capability: string;
@@ -97,7 +88,8 @@ export type ComparisonRow = {
   full: boolean | string;
 };
 
-export const comparisonRows: ComparisonRow[] = [
+export function buildComparisonRows(price: number): ComparisonRow[] {
+  return [
   { capability: 'כלים, מחשבונים וסימולציות', self: true, full: true },
   { capability: 'בניית תמהיל ולוח סילוקין מלא', self: true, full: true },
   { capability: 'תיק מסמכים דיגיטלי ומעקב שלבים', self: true, full: true },
@@ -111,21 +103,26 @@ export const comparisonRows: ComparisonRow[] = [
   { capability: 'קיזוז מה ששולם על הפלטפורמה', self: 'כשמצרפים יועץ', full: 'משלב אחד ומעלה' },
   {
     capability: 'עלות',
-    self: `₪${PLATFORM_PROCESS_PRICE} לתהליך · עד ${PLATFORM_ACCESS_DAYS} יום`,
+    self: `₪${price} לחודש לתהליך`,
     full: 'לפי השלבים ומורכבות התיק',
   },
-];
+  ];
+}
 
-export const pricingFaq: { question: string; answer: string }[] = [
+export const comparisonRows = buildComparisonRows(PLATFORM_PROCESS_PRICE);
+
+export function buildPricingFaq(price: number): { question: string; answer: string }[] {
+  const total = typicalTotal(price);
+  return [
   {
     question: 'מה קורה אם התחלתי לבד ובאמצע הבנתי שאני צריך יועץ?',
     answer:
-      `זה בדיוק המודל. בכל שלב יש כפתור "פנו ליועץ משכלנתא", והשלב עובר אליו — גם אחרי שהתחלתם. מה ששילמתם על הגישה לפלטפורמה (₪${PLATFORM_PROCESS_PRICE}) תמיד מקוזז ממחיר הליווי, כבר מהשלב הראשון שתזמינו. כל הנתונים שהזנתם עוברים ליועץ כמו שהם — הוא ממשיך מהנקודה שבה עצרתם ולא מתחילים מאפס.`,
+      `זה בדיוק המודל. בכל שלב יש כפתור "פנו ליועץ משכלנתא", והשלב עובר אליו — גם אחרי שהתחלתם. מה ששילמתם על הגישה לפלטפורמה (₪${price}) תמיד מקוזז ממחיר הליווי, כבר מהשלב הראשון שתזמינו. כל הנתונים שהזנתם עוברים ליועץ כמו שהם — הוא ממשיך מהנקודה שבה עצרתם ולא מתחילים מאפס.`,
   },
   {
     question: 'כמה עולה הגישה לפלטפורמה ולכמה זמן?',
     answer:
-      `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים עד ${PLATFORM_ACCESS_DAYS} יום. לא הספקתם? רוכשים חבילה נוספת לעוד ${PLATFORM_ACCESS_DAYS} יום באותו מחיר, ורק כשאתם מאשרים: אין חיוב חוזר אוטומטי. תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, כך שהעלות הכוללת נעה בדרך כלל בין ₪${PLATFORM_TYPICAL_TOTAL.min} ל-₪${PLATFORM_TYPICAL_TOTAL.max}. כל חבילה היא סכום קבוע לתקופה, ולכן סיום מוקדם אינו מזכה בהחזר על הימים שנשארו. בתוך החבילה אפשר לנהל עד ${PLATFORM_MAX_OPEN_PROCESSES} תהליכים במקביל, ולפתוח מחדש תהליך שמחקתם בלי תשלום נוסף. תהליך חדש אחרי שתהליך הסתיים נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
+      `₪${price} לתהליך משכנתא (משכנתא חדשה או מיחזור), עם גישה מלאה לכל הכלים לחודש. החודש נספר לפי החודש הקלנדרי שבו שילמתם: תשלום באוקטובר פותח 31 יום, ובפברואר 28 או 29. לא הספקתם? לקראת סוף החודש נשלח לכם מייל עם קישור לחידוש לחודש נוסף באותו מחיר, והחיוב מתבצע רק כשאתם מאשרים: אין חיוב חוזר אוטומטי. תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, כך שהעלות הכוללת נעה בדרך כלל בין ₪${total.min} ל-₪${total.max}. כל חבילה היא סכום קבוע לחודש, ולכן סיום מוקדם אינו מזכה בהחזר על הימים שנשארו. בתוך החבילה אפשר לנהל עד ${PLATFORM_MAX_OPEN_PROCESSES} תהליכים במקביל, ולפתוח מחדש תהליך שמחקתם בלי תשלום נוסף. תהליך חדש אחרי שתהליך הסתיים נרכש בנפרד. בכל הזמנת ליווי הגישה המלאה כלולה במחיר.`,
   },
   {
     question: 'כמה עולה המסלול בליווי?',
@@ -147,6 +144,45 @@ export const pricingFaq: { question: string; answer: string }[] = [
     answer:
       'כל הצעה שהתקבלה נכנסת לפלטפורמה ומושווית על אותו בסיס — אותו תמהיל, אותה תקופה, אותו לוח סילוקין. אתם רואים את העלות הכוללת ואת ה-IRR של כל הצעה זו לצד זו, כולל ההצעה הראשונה שהבנק נתן.',
   },
-];
+  ];
+}
+
+export const pricingFaq = buildPricingFaq(PLATFORM_PROCESS_PRICE);
 
 export { journeyStages, stagesTotalPrice };
+
+/** כל מה שעמודי האתר צריכים לדעת על המחירים, מתוך הגדרות התמחור */
+export interface PricingView {
+  config: PricingConfig;
+  /** מחיר הגישה לפלטפורמה לחודש — זה מה שנגבה ב-HYP */
+  platformPrice: number;
+  typicalTotal: { min: number; max: number };
+  plans: PricingPlan[];
+  principles: ReturnType<typeof pricingPrinciples>;
+  billingNotes: ReturnType<typeof platformBillingNotes>;
+  comparisonRows: ComparisonRow[];
+  faq: { question: string; answer: string }[];
+  /** המסלול בליווי, בשם ובתיאור שהיועץ הגדיר */
+  advisory: { title: string; tagline: string; priceLabel: string; priceNote: string; cheaper: string; credit: string };
+}
+
+export function buildPricingView(config: PricingConfig): PricingView {
+  const price = config.platformPrice;
+  const full = config.tracks.find((track) => track.kind === 'ADVISORY');
+  return {
+    config,
+    platformPrice: price,
+    typicalTotal: typicalTotal(price),
+    plans: buildPricingPlans(config),
+    principles: pricingPrinciples(price),
+    billingNotes: platformBillingNotes(price),
+    comparisonRows: buildComparisonRows(price),
+    faq: buildPricingFaq(price),
+    advisory: {
+      ...ADVISORY_TRACK,
+      title: full?.name || ADVISORY_TRACK.title,
+      tagline: full?.tagline || ADVISORY_TRACK.tagline,
+      priceNote: full?.priceNote || ADVISORY_TRACK.priceNote,
+    },
+  };
+}

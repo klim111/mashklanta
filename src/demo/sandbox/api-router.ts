@@ -13,6 +13,7 @@
 import { PLAN_STAGES, emptyPlanData, stageIndex } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import type { PlanDocumentView } from '@/lib/plan-documents';
+import { cleanDocumentMeta } from '@/lib/document-organize';
 import { demoDocuments, demoPlanData } from '@/lib/demo-plan';
 import type { ClientTaskView } from '@/lib/client-tasks';
 import type { AdvisorMeetingView } from '@/lib/advisor-crm';
@@ -120,9 +121,9 @@ export class DemoApiRouter {
   private profile = demoProfile();
   private rateRequests: Record<string, unknown>[] = [];
   private equityPlan: Record<string, unknown> | null = null;
-  /** כלי מצב הון ותזרים — נשמר בזיכרון בלבד */
   /** פניות ליועץ שנשלחו בהדגמה — לשורת "הבקשה הועברה ליועץ" */
   private leads: Array<Record<string, unknown>> = [];
+  /** כלי מצב הון ותזרים — נשמר בזיכרון בלבד */
   private cashFlow: Record<string, unknown> | null = {
     household: 'COUPLE',
     borrowerName: 'דנה',
@@ -348,6 +349,15 @@ export class DemoApiRouter {
           this.documents = this.documents.filter((doc) => doc.id !== parts[4]);
           return json({ ok: true });
         }
+        if (parts[4] && method === 'PATCH') {
+          const body = await this.body(init, input);
+          const meta = cleanDocumentMeta({
+            category: typeof body.category === 'string' ? body.category : null,
+            stage: typeof body.stage === 'string' ? body.stage : null,
+          });
+          this.documents = this.documents.map((doc) => (doc.id === parts[4] ? { ...doc, ...meta } : doc));
+          return json(this.documents.find((doc) => doc.id === parts[4]) ?? {});
+        }
         if (method === 'POST') {
           const body = await this.body(init, input);
           const record: PlanDocumentView = {
@@ -359,8 +369,12 @@ export class DemoApiRouter {
             contentType: String(body.contentType ?? 'application/pdf'),
             size: Number(body.size ?? 0),
             uploadedAt: nowIso(),
+            ...cleanDocumentMeta({
+              category: typeof body.category === 'string' ? body.category : null,
+              stage: typeof body.stage === 'string' ? body.stage : null,
+            }),
           };
-          this.documents = [record, ...this.documents];
+          this.documents = [record, ...this.documents.filter((doc) => doc.key !== record.key)];
           return json(record, 201);
         }
         return json(this.documents.filter((doc) => doc.planId === plan.id));

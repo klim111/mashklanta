@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -22,7 +22,8 @@ import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
 import { saveRefinanceAsNewPlan } from '@/components/mortgage-refinance/refinancePlan';
 import { RefinanceCheck } from '@/components/refinance-check/RefinanceCheck';
 import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePreviewBar';
-import { draftAsMix, loadDraft } from '@/components/refinance-check/refinanceCheckStore';
+import { guestRefinanceMix, reviveMix, saveGuestMix } from '@/components/refinance-check/refinanceCheckStore';
+import { useToolData } from '@/components/tool-data/toolData';
 import { PhoneBlockedScreen, useIsPhone } from '@/components/device/PhoneGate';
 
 type RefinanceStep = 'tracks' | 'goal';
@@ -41,6 +42,9 @@ const EMPTY_MIX: MortgageMix = {
  * משתמש רשום (וכל הדגמה) מקבל את כלי המיחזור המלא, בלי שינוי. אורח מקבל את
  * בדיקת המיחזור המהירה; ממנה הוא יכול לפתוח את מסך ההצצה (`?view=preview`) —
  * הכלי המלא עם המסלולים שהזין ו-3 שינויים לדפדפן.
+ *
+ * מה שהאורח הזין נשמר בדפדפן, ובכניסה הראשונה אחרי ההרשמה עובר לחשבון: הכלי
+ * של המשתמש הרשום נפתח עם אותם מסלולים, ושומר כל שינוי בחשבון.
  */
 export default function MortgageRefinancePage() {
   return (
@@ -56,7 +60,7 @@ function RefinanceEntry() {
   const isPhone = useIsPhone();
 
   if (status === 'loading') return <div className="min-h-screen bg-slate-50" />;
-  if (status === 'authenticated') return <FullRefinanceTool />;
+  if (status === 'authenticated') return <SignedInTool />;
 
   if (view === 'preview') {
     // הדאשבורד והשלבים אינם מותאמים לטלפון, ולכן גם ההצצה אליהם
@@ -76,17 +80,43 @@ function RefinanceEntry() {
 
 function PreviewTool() {
   const [mix, setMix] = useState<MortgageMix | null | undefined>(undefined);
-  useEffect(() => setMix(draftAsMix(loadDraft())), []);
+  useEffect(() => setMix(guestRefinanceMix()), []);
   if (mix === undefined) return <div className="min-h-screen bg-slate-50" />;
-  return <FullRefinanceTool initialMix={mix ?? undefined} banner={<RefinancePreviewBar />} />;
+  return (
+    <FullRefinanceTool initialMix={mix ?? undefined} banner={<RefinancePreviewBar />} onMixPersist={saveGuestMix} />
+  );
 }
 
-function FullRefinanceTool({ initialMix, banner }: { initialMix?: MortgageMix; banner?: ReactNode } = {}) {
+/** משתמש רשום: המשכנתא הנוכחית נפתחת מהחשבון — כולל מה שהזין לפני שנרשם */
+function SignedInTool() {
+  const { ready, initial, save } = useToolData('refinance', reviveMix);
+  if (!ready) return <div className="min-h-screen bg-slate-50" />;
+  return <FullRefinanceTool initialMix={initial ?? undefined} onMixPersist={save} />;
+}
+
+function FullRefinanceTool({
+  initialMix,
+  banner,
+  onMixPersist,
+}: {
+  initialMix?: MortgageMix;
+  banner?: ReactNode;
+  /** שמירת המשכנתא הנוכחית אחרי כל שינוי — לדפדפן אצל האורח, לחשבון אצל הרשום */
+  onMixPersist?: (mix: MortgageMix) => void;
+} = {}) {
   const { data: session, status } = useSession();
   /** הכלי פתוח לכולם. למשתמש שאינו רשום הוא מוגבל לבדיקה אחת */
   const isGuest = status !== 'loading' && !session;
   const { market } = useMarketRates();
   const [currentMix, setCurrentMix] = useState<MortgageMix>(initialMix ?? EMPTY_MIX);
+  const persistRef = useRef(onMixPersist);
+  persistRef.current = onMixPersist;
+  const firstMix = useRef(currentMix);
+  useEffect(() => {
+    // מה שנפתח כבר שמור — שומרים רק מה שהשתנה מאז
+    if (currentMix === firstMix.current) return;
+    persistRef.current?.(currentMix);
+  }, [currentMix]);
   const [currentStep, setCurrentStep] = useState<RefinanceStep>('tracks');
   const [inputMethod, setInputMethod] = useState<'scan' | 'manual'>('manual');
   const [showScenarioAnalysis, setShowScenarioAnalysis] = useState<MortgageMix | null>(null);

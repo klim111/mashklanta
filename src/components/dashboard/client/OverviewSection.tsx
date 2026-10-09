@@ -35,7 +35,7 @@ import type { AgendaTarget, CalendarEvent, DashboardSection } from '@/lib/client
 import { useStartPlan } from '@/components/plan/StartCard';
 import { MortgageEntry } from '@/components/service-flow/MortgageEntry';
 import { RateValidityDialog } from '@/components/plan/RateValidity';
-import { rateValidity } from '@/lib/rate-validity';
+import { leadRateValidity, rateValidity } from '@/lib/rate-validity';
 import type { RateValidityRow } from '@/lib/rate-validity';
 import { AdvisorCta } from './AdvisorCta';
 import { MiniCalendar, eventTone } from './ClientCalendar';
@@ -44,6 +44,7 @@ import { PlanMixDetail, planMixOf } from './PlanMixDetail';
 import { PlanPeekDialog } from './PlanPeekDialog';
 import { TaskGroupsList } from './TaskGroups';
 import { PlanRecommendations } from './PlanRecommendations';
+import { SavedToolsCard } from './SavedToolsCard';
 import { DashCard } from './ui';
 import { DashboardWorkspace } from './DashboardWorkspace';
 import type { WorkspaceId } from './DashboardWorkspace';
@@ -574,6 +575,8 @@ export function OverviewSection({
         initial={workspace}
         request={workspaceRequest}
       />
+      {/* מה שהוזן בכלי המיחזור, ההיתכנות וההלוואות — כולל לפני ההרשמה */}
+      <SavedToolsCard />
 
       <AdvisorCta variant="row" />
       <MortgageEntry
@@ -650,11 +653,7 @@ function PlanStatusRow({
   const [ratesOpen, setRatesOpen] = useState(false);
   const journey = journeyStageFor(summary.currentStage);
   /* הבנק שנבחר סופית קובע את הספירה שעל הכפתור; עד שנבחר — האישור הקרוב לפקוע */
-  const leadRate =
-    rates.find((row) => row.final) ??
-    [...rates].filter((row) => row.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft)[0] ??
-    rates[0] ??
-    null;
+  const leadRate = leadRateValidity(rates);
   const progress = Math.round((summary.completedStages / summary.stages.length) * 100);
 
   return (
