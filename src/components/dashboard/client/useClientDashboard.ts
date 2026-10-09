@@ -15,7 +15,8 @@ import {
   buildClientTasks,
   clientTaskIdOf,
 } from '@/lib/client-agenda';
-import type { AgendaInput, AgendaRateRequest, ClientTaskState } from '@/lib/client-agenda';
+import type { AgendaInput, AgendaRateRequest, ClientTask, ClientTaskState } from '@/lib/client-agenda';
+import type { OwnLeadView } from '@/lib/advisor-leads';
 import { useClientTaskStates } from './useClientTaskStates';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { isUnassociatedMix } from '@/components/plan/UnassignedMixes';
@@ -137,7 +138,47 @@ export function useClientDashboard() {
     ]
   );
 
-  const tasks = useMemo(() => buildClientTasks(input), [input]);
+  /**
+   * פנייה ליועץ שעדיין מחכה לשיחה. כל עוד היועץ לא קבע פגישה, הדאשבורד אומר
+   * ללקוח שהבקשה הועברה ושהיועץ חוזר אליו — בשורה, במשימות ובלוח השנה.
+   */
+  const [openLeads, setOpenLeads] = useState<OwnLeadView[]>([]);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const response = await fetch('/api/advisor-leads', { cache: 'no-store' });
+        const body = response.ok ? await response.json() : [];
+        setOpenLeads(Array.isArray(body) ? (body as OwnLeadView[]) : []);
+      } catch {
+        setOpenLeads([]);
+      }
+    };
+    void load();
+    window.addEventListener(CONTACTED_ADVISOR_EVENT, load);
+    return () => window.removeEventListener(CONTACTED_ADVISOR_EVENT, load);
+  }, []);
+  const hasUpcomingMeeting = meetingsState.meetings.some(
+    (meeting) =>
+      (meeting.status === 'PROPOSED' || meeting.status === 'CONFIRMED') &&
+      new Date(meeting.startsAt).getTime() >= Date.now() - 60 * 60 * 1000
+  );
+  const pendingLead = hasUpcomingMeeting ? null : openLeads[0] ?? null;
+
+  const tasks = useMemo(() => {
+    const built = buildClientTasks(input);
+    if (!pendingLead) return built;
+    const waiting: ClientTask = {
+      id: `lead-pending:${pendingLead.id}`,
+      title: 'היועץ כבר חוזר אליכם',
+      hint: 'הבקשה הועברה ליועץ, והוא יקבע אתכם שיחת ייעוץ חינם בהקדם. אין מה לעשות מצדכם.',
+      tone: 'info',
+      due: null,
+      scheduled: false,
+      stage: null,
+      target: { kind: 'section', section: 'agenda' },
+    };
+    return [waiting, ...built];
+  }, [input, pendingLead]);
   /* השלבים שהיועץ מטפל בהם — מוצגים בכרטיס «המשכנתא שלי», לא ברשימת המשימות */
   const advisorNotices = useMemo(() => advisorStageNotices(input), [input]);
 
@@ -187,6 +228,7 @@ export function useClientDashboard() {
     taskStates: taskStatesState,
     scheduleTask,
     contactedAdvisor,
+    pendingLead,
     firstVisit,
     ready: plansState.ready && mixesState.ready && meetingsState.ready && requestsReady,
   };

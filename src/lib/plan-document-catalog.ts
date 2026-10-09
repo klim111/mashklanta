@@ -73,10 +73,9 @@ export function planDocumentRequirements(data: PlanData): DocumentRequirement[] 
 /**
  * מה נאסף בתיק מול מה שנדרש.
  *
- * הספירה היא של כל מה שהועלה בפועל, ולא רק של מסמכים שהקטלוג מכיר: אישור
- * עקרוני שנשמר משלב ההגשה, מסמך בכותרת חופשית, ומסמך שהמפתח שלו כבר אינו
- * ברשימה (למשל אחרי שינוי בפרופיל ששינה את רשימת המסמכים) — כולם נספרים.
- * בלי זה התיק היה מציג «0 מתוך N» גם כשיש בו קבצים.
+ * «X מתוך Y» סופר רק את המסמכים שברשימה: מסמך שהועלה בכותרת חופשית או ממקום
+ * אחר אינו אחד מהמסמכים הנדרשים, ולכן הוא נספר בנפרד (`extras`) ומוצג לצד
+ * המניין — כך הוא לא נעלם, אבל גם לא מציג «1 מתוך 6» כשאף מסמך נדרש לא הוגש.
  */
 export function vaultCounts(
   requirements: readonly DocumentRequirement[],
@@ -86,7 +85,7 @@ export function vaultCounts(
   const uploadedKeys = new Set(documents.map((document) => document.key));
   const filled = requirements.filter((requirement) => uploadedKeys.has(requirement.key)).length;
   const extras = [...uploadedKeys].filter((key) => !required.has(key)).length;
-  return { uploaded: filled + extras, total: requirements.length + extras, extras };
+  return { uploaded: filled, total: requirements.length, extras };
 }
 
 /** האם המפתח שייך למסמכי החתימה של תרחיש כלשהו */

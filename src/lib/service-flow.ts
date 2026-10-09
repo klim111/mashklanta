@@ -11,7 +11,7 @@
  */
 
 import { journeyStages } from '@/data/platform/journey';
-import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_DAYS, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
+import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_PERIOD, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
 
 // ─────────────────────────────── מה רוצים לעשות ───────────────────────────────
 
@@ -99,43 +99,56 @@ export function leadTopicFor(goal: MortgageGoal, service: ServiceType): string {
 
 // ─────────────────────────────── חוקי התמחור ───────────────────────────────
 
-/** המסלול העצמאי / ההיברידי — לתהליך משכנתא אחד, לתקופת הגישה */
+/**
+ * מחיר ברירת המחדל של המסלול העצמאי / ההיברידי לחודש. המחיר בפועל נקבע
+ * בהגדרות התמחור של היועץ (src/lib/pricing-config.ts) — באתר דרך usePricing(),
+ * ובשרת דרך getPricing().
+ */
 export const PLATFORM_PROCESS_PRICE = PROCESS_PRICE;
 
-/** כמה ימים הכלים פתוחים מכל תשלום על תהליך */
-export const PLATFORM_ACCESS_DAYS = PROCESS_ACCESS_DAYS;
+/**
+ * תקופת הגישה מכל תשלום על תהליך: חודש קלנדרי, כלומר מספר הימים בחודש שבו
+ * שולם (src/lib/process-access.ts)
+ */
+export const PLATFORM_ACCESS_PERIOD = PROCESS_ACCESS_PERIOD;
 
 /** כמה תהליכים פתוחים אפשר לנהל במקביל על אותה חבילת גישה */
 export const PLATFORM_MAX_OPEN_PROCESSES = MAX_OPEN_PROCESSES;
 
 /** העלות הכוללת של הגישה בתהליך טיפוסי — חודש עד שלושה חודשים */
-export const PLATFORM_TYPICAL_TOTAL = {
-  min: PLATFORM_PROCESS_PRICE * TYPICAL_PROCESS_MONTHS.min,
-  max: PLATFORM_PROCESS_PRICE * TYPICAL_PROCESS_MONTHS.max,
-} as const;
+export function typicalTotal(price: number): { min: number; max: number } {
+  return { min: price * TYPICAL_PROCESS_MONTHS.min, max: price * TYPICAL_PROCESS_MONTHS.max };
+}
+
+export const PLATFORM_TYPICAL_TOTAL = typicalTotal(PLATFORM_PROCESS_PRICE);
 
 /**
  * מה חשוב לדעת על החיוב במסלול העצמאי — בעמוד התמחור, במסך התשלום ובעמוד
  * הבית. נוסח אחד, מקור אחד. הנוסח מרגיע ולא מזהיר: אין הפתעות, העלות צפויה,
- * ותקופה שנפתחה היא סכום קבוע.
+ * ותקופה שנפתחה היא סכום קבוע. המחיר מגיע מהגדרות התמחור (usePricing).
  */
-export const PLATFORM_BILLING_NOTES: Array<{ id: string; title: string; description: string }> = [
-  {
-    id: 'no-auto',
-    title: 'אין חיוב בלי אישור שלכם',
-    description: `הפלטפורמה לא מחייבת שוב מעצמה. כש-${PLATFORM_ACCESS_DAYS} הימים מסתיימים, אתם מחליטים אם להמשיך.`,
-  },
-  {
-    id: 'range',
-    title: `בדרך כלל ₪${PLATFORM_TYPICAL_TOTAL.min} עד ₪${PLATFORM_TYPICAL_TOTAL.max} בסך הכול`,
-    description: `תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, ולכן העלות הכוללת של הגישה נעה בין ₪${PLATFORM_TYPICAL_TOTAL.min} ל-₪${PLATFORM_TYPICAL_TOTAL.max}.`,
-  },
-  {
-    id: 'period',
-    title: 'משלמים לתקופה, לא ליום',
-    description: `כל חבילה היא סכום קבוע ל-${PLATFORM_ACCESS_DAYS} יום. סיימתם מוקדם? מצוין, חסכתם זמן. ימים שנשארו בחבילה אינם מוחזרים.`,
-  },
-];
+export function platformBillingNotes(price: number): Array<{ id: string; title: string; description: string }> {
+  const total = typicalTotal(price);
+  return [
+    {
+      id: 'no-auto',
+      title: 'אין חיוב בלי אישור שלכם',
+      description: 'הפלטפורמה לא מחייבת שוב מעצמה. לקראת סוף החודש נשלח לכם מייל, ואתם מחליטים אם להמשיך.',
+    },
+    {
+      id: 'range',
+      title: `בדרך כלל ₪${total.min} עד ₪${total.max} בסך הכול`,
+      description: `תהליך משכנתא לוקח בדרך כלל בין חודש לשלושה חודשים, ולכן העלות הכוללת של הגישה נעה בין ₪${total.min} ל-₪${total.max}.`,
+    },
+    {
+      id: 'period',
+      title: 'משלמים לתקופה, לא ליום',
+      description: `כל חבילה היא סכום קבוע לחודש. סיימתם מוקדם? מצוין, חסכתם זמן. ימים שנשארו בחבילה אינם מוחזרים.`,
+    },
+  ];
+}
+
+export const PLATFORM_BILLING_NOTES = platformBillingNotes(PLATFORM_PROCESS_PRICE);
 
 /**
  * תקרת המחיר הפנימית לחמשת השלבים יחד. לא מוצגת ללקוחות: במסלול בליווי אין
@@ -163,13 +176,14 @@ export const STAGES_TOTAL_PRICE = journeyStages.reduce((sum, stage) => sum + sta
 
 /**
  * חמשת העקרונות שמוצגים ללקוח בכל מקום שבו מדברים על כסף — בדאשבורד, בעמוד
- * הבית, ב"איך זה עובד" ובתמחור. נוסח אחד, מקור אחד.
+ * הבית, ב"איך זה עובד" ובתמחור. נוסח אחד, מקור אחד. המחיר מגיע מהגדרות התמחור.
  */
-export const PRICING_PRINCIPLES: Array<{ id: string; title: string; description: string }> = [
+export function pricingPrinciples(price: number): Array<{ id: string; title: string; description: string }> {
+  return [
   {
     id: 'platform',
-    title: `גישה לפלטפורמה — ₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא`,
-    description: `כל השלבים וכל הכלים פתוחים עד ${PLATFORM_ACCESS_DAYS} יום. צריכים עוד זמן? רוכשים חבילה נוספת באותו מחיר, רק באישור שלכם.`,
+    title: `גישה לפלטפורמה — ₪${price} לחודש לתהליך משכנתא`,
+    description: `כל השלבים וכל הכלים פתוחים לחודש שלם. צריכים עוד זמן? רוכשים חבילה נוספת באותו מחיר, רק באישור שלכם.`,
   },
   {
     id: 'credit',
@@ -196,6 +210,9 @@ export const PRICING_PRINCIPLES: Array<{ id: string; title: string; description:
       'המחיר נקבע לפי השלבים ומורכבות התיק, והטכנולוגיה של משכלנתא שומרת אותו תמיד מתחת לממוצע בשוק.',
   },
 ];
+}
+
+export const PRICING_PRINCIPLES = pricingPrinciples(PLATFORM_PROCESS_PRICE);
 
 export interface AdvisoryQuoteInput {
   /** מזהי השלבים (מ-journeyStages) שהיועץ יבצע */

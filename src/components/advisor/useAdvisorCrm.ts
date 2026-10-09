@@ -507,6 +507,8 @@ export interface ClientProcessPayload {
   progress: number;
   plans: ClientPlanSummaryView[];
   stages: ClientStageBoardView[];
+  /** הליווי בתהליך — null כשהלקוח במסלול העצמאי */
+  advisory: { active: boolean; endedAt: string | null } | null;
 }
 
 export function useClientProcess(clientId: string, planId?: string) {

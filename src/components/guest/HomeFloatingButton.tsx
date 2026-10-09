@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { Home } from 'lucide-react';
-import { ConversationDockSlot } from '@/components/conversation/ClientChatDock';
+import { useClientConversation } from '@/components/conversation/ClientChatDock';
 
 /**
  * כפתור צף לחזרה לעמוד הבית.
  *
  * הכלים הפתוחים (כושר החזר, מיחזור, הלוואות) הם מסכים ארוכים, ומי שנכנס אליהם
- * מעמוד הבית נשאר בלי דרך חזרה אחרי גלילה. הכפתור נשאר בפינה בכל מסך של הכלי,
- * באותו פורמט של כפתורי הניווט הצפים של המשתמש הרשום ("חזרה לדאשבורד").
+ * מעמוד הבית נשאר בלי דרך חזרה אחרי גלילה. הכפתור נשאר בפינה בכל מסך של הכלי.
+ * ללקוח מחובר הפינה שייכת לעיגול הפעולות (צ׳אט, תיק המסמכים, חזרה לדאשבורד),
+ * ולכן הכפתור לא מוצג לו.
  */
 export function HomeFloatingButton({
   href = '/',
@@ -21,14 +22,14 @@ export function HomeFloatingButton({
   /** צד המסך. ברירת המחדל ימין — הצד שבו אין את כפתור הפנייה ליועץ */
   side?: 'right' | 'left';
 }) {
+  const conversation = useClientConversation();
+  if (side === 'right' && conversation?.enabled) return null;
   return (
     <div
       className={`fixed bottom-5 z-40 flex flex-col gap-2.5 print:hidden ${
         side === 'right' ? 'right-5 items-end' : 'left-5 items-start'
       }`}
     >
-      {/* למשתמש מחובר — שורת ההתכתבות עם היועץ, מעל הכפתור ובאותה פינה */}
-      {side === 'right' && <ConversationDockSlot />}
       <Link
         href={href}
         aria-label={label}

@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
+import { passDays } from '@/lib/process-access';
 import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 
 export interface PlatformAccess {
@@ -24,7 +26,7 @@ const NO_ACCESS: PlatformAccess = {
   since: null,
   paid: 0,
   price: PLATFORM_PROCESS_PRICE,
-  accessDays: PLATFORM_ACCESS_DAYS,
+  accessDays: passDays(new Date()),
   passExpiresAt: null,
   openProcesses: 0,
   maxOpenProcesses: MAX_OPEN_PROCESSES,
@@ -38,7 +40,8 @@ const NO_ACCESS: PlatformAccess = {
  * מתעדכן — בסיס הנתונים הוא מקור האמת היחיד לשאלה "שילם או לא".
  */
 export function usePlatformAccess() {
-  const [access, setAccess] = useState<PlatformAccess>(NO_ACCESS);
+  const { platformPrice } = usePricing();
+  const [access, setAccess] = useState<PlatformAccess>({ ...NO_ACCESS, price: platformPrice });
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -50,8 +53,8 @@ export function usePlatformAccess() {
         active: Boolean(body.active),
         since: typeof body.since === 'string' ? body.since : null,
         paid: typeof body.paid === 'number' ? body.paid : 0,
-        price: typeof body.price === 'number' ? body.price : PLATFORM_PROCESS_PRICE,
-        accessDays: typeof body.accessDays === 'number' ? body.accessDays : PLATFORM_ACCESS_DAYS,
+        price: typeof body.price === 'number' ? body.price : platformPrice,
+        accessDays: typeof body.accessDays === 'number' ? body.accessDays : passDays(new Date()),
         passExpiresAt: typeof body.passExpiresAt === 'string' ? body.passExpiresAt : null,
         openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
         maxOpenProcesses: typeof body.maxOpenProcesses === 'number' ? body.maxOpenProcesses : MAX_OPEN_PROCESSES,
@@ -62,7 +65,7 @@ export function usePlatformAccess() {
     } finally {
       setReady(true);
     }
-  }, []);
+  }, [platformPrice]);
 
   useEffect(() => {
     void refresh();

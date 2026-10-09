@@ -1,6 +1,8 @@
+'use client';
+
 import { CalendarCheck, HandCoins, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { PLATFORM_BILLING_NOTES } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 
 const ICONS: Record<string, LucideIcon> = {
   'no-auto': ShieldCheck,
@@ -26,6 +28,7 @@ export function PlatformBillingNotes({
   className?: string;
 }) {
   const dark = tone === 'dark';
+  const PLATFORM_BILLING_NOTES = usePricing().billingNotes;
   const card = dark
     ? 'border border-white/15 bg-white/5 text-white backdrop-blur'
     : 'border border-slate-200 bg-white text-slate-900';

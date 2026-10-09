@@ -598,6 +598,15 @@ export interface ClientStageView {
   meetings: AdvisorMeetingView[];
 }
 
+/**
+ * הליווי בתהליך: פעיל — ללקוח פתוחים כל הכלים עד שהיועץ מסמן סיום. null כשאין
+ * ליווי בתהליך (הלקוח במסלול העצמאי, ואין בקשת ליווי מאושרת).
+ */
+export interface ClientAdvisoryView {
+  active: boolean;
+  endedAt: string | null;
+}
+
 export interface ClientProcessView {
   /** התהליך שהלוח מוצג עבורו, אם ללקוח כבר יש תהליך פתוח */
   planId: string | null;
@@ -606,6 +615,7 @@ export interface ClientProcessView {
   progress: number;
   plans: ClientPlanSummary[];
   stages: ClientStageView[];
+  advisory: ClientAdvisoryView | null;
 }
 
 /**
@@ -634,6 +644,9 @@ export async function getClientProcess(
       progress: true,
       updatedAt: true,
       stages: { select: { stage: true, status: true, completedAt: true } },
+      advisoryEndedAt: true,
+      client: { select: { autoLinked: true } },
+      advisorOrders: { where: { status: 'PAID' }, select: { id: true }, take: 1 },
     },
   });
 
@@ -673,6 +686,14 @@ export async function getClientProcess(
     };
   });
 
+  // כמו הגישה של הלקוח עצמו (src/lib/mortgage-plans.ts): לקוח שהיועץ מלווה, או
+  // בקשת ליווי שהיועץ אישר שהתשלום עליה סודר
+  const advised = Boolean(active && (!active.client?.autoLinked || active.advisorOrders.length > 0));
+  const advisory: ClientAdvisoryView | null =
+    active && (advised || active.advisoryEndedAt)
+      ? { active: advised && !active.advisoryEndedAt, endedAt: active.advisoryEndedAt?.toISOString() ?? null }
+      : null;
+
   return {
     planId: active?.id ?? null,
     planName: active?.name ?? null,
@@ -680,6 +701,7 @@ export async function getClientProcess(
     progress: active?.progress ?? 0,
     plans,
     stages,
+    advisory,
   };
 }
 

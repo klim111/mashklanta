@@ -54,6 +54,12 @@ model User {
    */
   profileJson   Json?
   /**
+   * מה שהלקוח הזין בכלים הפתוחים — בדיקת מיחזור, מה אני יכול להרשות לעצמי
+   * והלוואות צרכניות — לפי כלי. מה שהוזן לפני ההרשמה עובר לכאן בכניסה
+   * הראשונה, וכך הכלי נפתח עם אותם נתונים בכל מכשיר.
+   */
+  toolDataJson  Json?
+  /**
    * פרטי היועץ לטפסי כתבי ההסמכה של הבנקים: חברת הייעוץ, ח"פ, ת"ז וטלפון.
    * נמלאים מכאן בטופס של כל לקוח שהיועץ מלווה.
    */
@@ -150,6 +156,10 @@ model User {
    */
   platformAccessAt DateTime?
   platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
+  /**
+   * מעברים לעמוד התשלום של HYP — נפתח לפני התשלום ונסגר כשהלקוח חוזר
+   */
+  paymentCheckouts PaymentCheckout[] @relation("PaymentCheckoutUser")
   /**
    * המשימות המתוכננות שהלקוח הוסיף לעצמו — מתוך השלבים או מלוח השנה
    */
@@ -579,6 +589,12 @@ model MortgagePlan {
   completedAt DateTime?
 
   /**
+   * מתי היועץ סימן שהליווי בתהליך הסתיים. עד אז ליווי ששולם ואושר פותח את
+   * הכלים בלי הגבלת זמן; מכאן והלאה הגישה היא לפי חבילות של חודש
+   */
+  advisoryEndedAt DateTime?
+
+  /**
    * התשלומים שפתחו את התהליך — התשלום הראשון והחידושים אחריו
    */
   platformPayments PlatformPayment[]
@@ -647,6 +663,14 @@ model PlanDocument {
    * הנתיב ב-Vercel Blob. אינו נחשף לדפדפן לעולם
    */
   blobPath    String
+  /**
+   * למי המסמך מיועד: BANK, LAWYER, SELLER או SELF. ריק — נגזר מהמפתח
+   */
+  category    String?
+  /**
+   * השלב שהמסמך משויך אליו, או NONE למסמך כללי. ריק — נגזר מהמפתח
+   */
+  stage       String?
 
   uploadedAt DateTime @default(now())
 
@@ -1287,8 +1311,27 @@ model PlatformPayment {
   status       String @default("PAID")
 
   /**
+   * מי סלק את התשלום: HYP — תשלום אמיתי במסוף של משכלנתא. ריק — תשלום מלפני
+   * החיבור למסוף.
+   */
+  provider              String?
+  /**
+   * מספר העסקה ב-HYP (`Id` בחזרה מעמוד התשלום) — ייחודי, כדי שאותה עסקה לא
+   * תירשם פעמיים
+   */
+  providerTransactionId String?   @unique
+  /**
+   * מספר החשבונית שהפיקה HYP (`Hesh`), כשהמסוף מפיק חשבוניות
+   */
+  invoiceNumber         String?
+  /**
+   * מתי נשלחה ללקוח התזכורת על סוף החודש של החבילה הזו
+   */
+  reminderSentAt        DateTime?
+
+  /**
    * התהליך שהתשלום פותח. ריק — תשלום שעוד לא נקשר לתהליך, והוא נקשר לתהליך
-   * הבא שנפתח. כל תשלום הוא חבילת גישה ל-30 יום (src/lib/process-access.ts).
+   * הבא שנפתח. כל תשלום הוא חבילת גישה לחודש קלנדרי (src/lib/process-access.ts).
    */
   planId String?
   plan   MortgagePlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
@@ -1297,6 +1340,120 @@ model PlatformPayment {
 
   @@index([userId, createdAt])
   @@index([planId])
+}
+
+/**
+ * מעבר לעמוד התשלום המאובטח של HYP. נוצר כשהלקוח לוחץ "לתשלום", ונסגר כשהוא
+ * חוזר מ-HYP: בתשלום שאומת מול HYP נוצר PlatformPayment, ובכישלון נשמר קוד
+ * השגיאה. `orderRef` הוא מספר ההזמנה שנשלח ל-HYP ושחוזר ממנה.
+ */
+model PaymentCheckout {
+  id       String  @id @default(cuid())
+  orderRef String  @unique
+  /**
+   * הלקוח שמשלם על גישה לפלטפורמה. ריק בתשלום דרך קישור תשלום, שאפשר לשלוח גם
+   * למי שאין לו חשבון
+   */
+  userId   String?
+  user     User?   @relation("PaymentCheckoutUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /**
+   * תשלום דרך קישור תשלום שהיועץ יצר (שירות ייעוץ חד־פעמי)
+   */
+  paymentLinkId String?
+  paymentLink   PaymentLink? @relation(fields: [paymentLinkId], references: [id], onDelete: Cascade)
+
+  /**
+   * חידוש לתהליך קיים. ריק — חבילה לתהליך הבא שייפתח
+   */
+  planId       String?
+  amountAgorot Int
+  /**
+   * PENDING — הלקוח בעמוד התשלום · PAID — שולם ואומת · FAILED — נדחה או בוטל
+   */
+  status       String  @default("PENDING")
+  /**
+   * לאן הלקוח ממשיך באתר אחרי התשלום
+   */
+  returnPath   String?
+  /**
+   * קוד התשובה של HYP (`CCode`) כשהתשלום לא עבר
+   */
+  failureCode  String?
+  /**
+   * התשלום שנוצר כשהעסקה אומתה
+   */
+  paymentId    String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([paymentLinkId])
+}
+
+/**
+ * קישור תשלום חד־פעמי שהיועץ יוצר ללקוח — למשל על שירות ייעוץ. הלקוח פותח את
+ * `/pay/<token>`, רואה על מה ועל כמה, ומשלם בעמוד התשלום של HYP. אחרי שהתשלום
+ * אומת הקישור מסומן כשולם, והלקוח והיועץ מקבלים מייל.
+ */
+model PaymentLink {
+  id           String  @id @default(cuid())
+  /**
+   * המזהה בכתובת הקישור — אקראי וארוך, כדי שאי אפשר יהיה לנחש קישורים
+   */
+  token        String  @unique
+  /**
+   * על מה משלמים — שם השירות, כפי שיופיע בעמוד התשלום ובחשבונית
+   */
+  title        String
+  description  String?
+  amountAgorot Int
+  /**
+   * המסלול שממנו נלקח השירות, כשנבחר מסלול
+   */
+  trackId      String?
+
+  clientName  String?
+  clientEmail String?
+  clientPhone String?
+  /**
+   * כרטיס הלקוח אצל היועץ, כשהקישור נוצר ללקוח קיים
+   */
+  clientId    String?
+
+  createdById           String
+  /**
+   * OPEN — ממתין לתשלום · PAID — שולם · CANCELLED — היועץ ביטל
+   */
+  status                String    @default("OPEN")
+  paidAt                DateTime?
+  providerTransactionId String?   @unique
+  invoiceNumber         String?
+  cardLast4             String?
+  /**
+   * מתי נשלח הקישור ללקוח במייל
+   */
+  sentAt                DateTime?
+
+  checkouts PaymentCheckout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdById, createdAt])
+  @@index([status])
+}
+
+/**
+ * המחירים והמסלולים שהיועץ עורך ב"תמחור ומסלולים" — שורה אחת, JSON בצורה של
+ * `PricingConfig` (src/lib/pricing-config.ts)
+ */
+model PricingSettings {
+  id          String   @id @default("default")
+  configJson  Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }
 
 // ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────
