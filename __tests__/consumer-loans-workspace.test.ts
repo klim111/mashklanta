@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildLoanSchedule, calculateLoanSummary, isCompleteLoan } from '../src/components/consumer-loans/loanMath';
+import {
+  buildLoanSchedule,
+  calculateLoanSummary,
+  isCompleteLoan,
+  paymentDate,
+  resolvePrepaymentTiming,
+  toISODate,
+} from '../src/components/consumer-loans/loanMath';
 import {
   balanceComparisonSeries,
   consolidationOutcome,
@@ -96,5 +103,44 @@ describe('consolidationOutcome', () => {
     const series = balanceComparisonSeries({ today: loans, after: outcome.afterLoans! });
     expect(series[0]).toMatchObject({ month: 0, today: 250_000, after: 250_000 });
     expect(series.at(-1)!.month).toBe(48);
+  });
+});
+
+describe('loan dates and prepayment by date', () => {
+  const dated = loan({ principal: 100_000, apr: 12, months: 24, startDate: '2026-01-10', paymentDay: 15 });
+
+  it('puts the first payment on the payment day of the next month', () => {
+    expect(toISODate(paymentDate(dated, 1)!)).toBe('2026-02-15');
+    expect(toISODate(paymentDate(dated, 24)!)).toBe('2028-01-15');
+  });
+
+  it('uses the last day of a short month', () => {
+    const endOfMonth = { ...dated, startDate: '2026-01-05', paymentDay: 31 };
+    expect(toISODate(paymentDate(endOfMonth, 1)!)).toBe('2026-02-28');
+    expect(toISODate(paymentDate(endOfMonth, 2)!)).toBe('2026-03-31');
+  });
+
+  it('finds the payment before the date and the days since it', () => {
+    expect(resolvePrepaymentTiming(dated, { month: 0, date: '2026-05-25' })).toEqual({ month: 4, days: 10 });
+    expect(resolvePrepaymentTiming(dated, { month: 0, date: '2026-05-15' })).toEqual({ month: 4, days: 0 });
+  });
+
+  it('charges daily interest on the prepaid amount from the last payment to the date', () => {
+    const byPayment = buildLoanSchedule({
+      ...dated,
+      prepayments: [{ id: 'p', amount: 10_000, month: 4, mode: 'shorten' }],
+    });
+    const byDate = buildLoanSchedule({
+      ...dated,
+      prepayments: [{ id: 'p', amount: 10_000, month: 4, mode: 'shorten', date: '2026-05-25' }],
+    });
+    const daily = (10_000 * 0.12) / 365 * 10;
+    expect(byDate.totalInterest - byPayment.totalInterest).toBeCloseTo(daily, 6);
+    expect(byDate.rows[3]).toMatchObject({ prepay: 10_000, date: '2026-05-15' });
+    expect(byDate.rows[3].prepayInterest).toBeCloseTo(daily, 6);
+  });
+
+  it('keeps the payment number when the loan has no dates', () => {
+    expect(resolvePrepaymentTiming(loan(), { month: 7, date: '2026-05-25' })).toEqual({ month: 7, days: 0 });
   });
 });

@@ -5,16 +5,17 @@
  *
  *  מקור הנתונים של אזור המידע הפיננסי בכלי ההלוואות הצרכניות, ושל חלונית
  *  הריביות לפי מוסד מממן שנפתחת מסימן הקריאה שליד כל שדה ריבית. הכול נמשך
- *  ממאגר הסדרות של בנק ישראל (SDMX); אין ערכי נפילה שנכתבו בקוד.
+ *  מבנק ישראל: מלוח "קו המשווה" וממאגר הסדרות (SDMX); אין ערכי נפילה שנכתבו בקוד.
  *
  *  מקורות:
- *    BIR      — "ריביות וביצועים - לא לדיור": אשראי צרכני חדש למשקי בית
- *               (ללא אוברדראפט וללא בטחון דירה). ממנו נלקחים הריבית הממוצעת,
- *               סכום ההלוואות החדשות בחודש והתקופה הממוצעת בכל המערכת
- *               הבנקאית — ולכל בנק: עוגן ומרווח ממוצעים, והריבית ברבעון
- *               הזול (עד אחוזון 25) וברבעון היקר (מעל אחוזון 75). באותו מבנה
- *               מתפרסם גם סך הגופים החוץ-בנקאיים שמדווחים לרשות להלבנת הון.
- *    CCIR     — אותם נתונים לחברות כרטיסי האשראי (ישראכרט, מקס, כאל).
+ *    קו המשווה — לוח השוואת הריביות של בנק ישראל (ראו boi-equator.ts). ממנו
+ *               נלקחים ממוצע המערכת (ריבית, סכום ההלוואות החדשות בחודש,
+ *               תקופה) ולכל בנק ולכל חברת כרטיסים: עוגן ומרווח ממוצעים,
+ *               והריבית ברבעון הזול (עד אחוזון 25) וברבעון היקר (מעל אחוזון
+ *               75). אלה המספרים שמוצגים באתר הבנק.
+ *    BIR      — "ריביות וביצועים - לא לדיור" במאגר הסדרות: גיבוי כשהלוח לא
+ *               זמין. הפילוח לפי בנק בו נעצר ב-2024.
+ *    CCIR     — אותם נתונים לחברות כרטיסי האשראי (גיבוי; נעצר ב-2025).
  *    DEBT_AGG — מצרפי החוב: יתרת החוב של משקי הבית שלא לדיור לפי המלווה
  *               (בנקים, חברות כרטיסי אשראי, גופים מוסדיים, ממשלה), ויתרת
  *               החח"ד (אוברדראפט) בבנקים. רבעוני, במיליארדי ש"ח.
@@ -27,6 +28,7 @@
  * ============================================================================
  */
 
+import { EQUATOR_MEASURES, EQUATOR_SYSTEM_CODE, fetchEquatorLoans, type EquatorObservation } from './boi-equator';
 import { parseCsv } from './market-rates';
 
 const SDMX_BASE = 'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS';
@@ -63,7 +65,7 @@ const LENDER_SUFFIX = {
   high: 'LR_BIR_4091',
 } as const;
 
-export type LenderKind = 'bank' | 'card' | 'nonbank';
+export type LenderKind = 'bank' | 'card';
 
 export interface LenderDef {
   /** קוד הגוף המדווח בבנק ישראל */
@@ -87,13 +89,16 @@ export const LENDERS: LenderDef[] = [
   { entity: '12002', name: 'ישראכרט', kind: 'card', dataflow: 'CCIR' },
   { entity: '10033', name: 'מקס', kind: 'card', dataflow: 'CCIR' },
   { entity: '10023', name: 'כאל (כרטיסי אשראי לישראל)', kind: 'card', dataflow: 'CCIR' },
-  { entity: '99050', name: 'גופים חוץ-בנקאיים (סך המדווחים לרשות להלבנת הון)', kind: 'nonbank', dataflow: 'BIR' },
 ];
+
+/** קוד המוסד בסדרות: 10001 לבנק לאומי (10), 12002 לישראכרט */
+export function lenderCode(entity: string): string {
+  return entity.length <= 2 ? `${entity}001` : entity;
+}
 
 /** קוד הסדרה של מוסד: BNK_10001_LR_BIR_2155 לבנק, BNK_12002_LR_BIR_2155 לחברת כרטיסים */
 export function lenderSeriesCode(entity: string, suffix: string): string {
-  const prefix = entity.length <= 2 ? `${entity}001` : entity;
-  return `BNK_${prefix}_${suffix}`;
+  return `BNK_${lenderCode(entity)}_${suffix}`;
 }
 
 export interface LenderRate {
@@ -129,6 +134,12 @@ export interface RatePoint {
 
 export interface ConsumerCreditSnapshot {
   fetchedAt: string;
+  /**
+   * מאיפה הגיעו הריביות: 'equator' — לוח "קו המשווה" של בנק ישראל (הנתונים
+   * העדכניים, זהים למה שמוצג באתר הבנק); 'sdmx' — מאגר הסדרות, כגיבוי כשהלוח
+   * לא זמין (הפילוח לפי מוסד שם ישן יותר).
+   */
+  source: 'equator' | 'sdmx';
   /** אשראי צרכני חדש בכל המערכת הבנקאית — החודש האחרון שפורסם */
   system: {
     month: string;
@@ -188,7 +199,8 @@ function latest(series: Map<string, number> | undefined): { value: number; perio
 export function buildConsumerCredit(
   series: SeriesMap,
   boiRate: { value: number; asOf: string } | null,
-  fetchedAt: Date = new Date()
+  fetchedAt: Date = new Date(),
+  equator: EquatorObservation[] = []
 ): ConsumerCreditSnapshot {
   const C = CONSUMER_SERIES;
   const D = DEBT_SERIES;
@@ -200,7 +212,7 @@ export function buildConsumerCredit(
   const at = (code: string, period: string | null) =>
     period ? series.get(code)?.get(period) ?? null : null;
 
-  const system = systemMonth
+  let system: ConsumerCreditSnapshot['system'] = systemMonth
     ? {
         month: systemMonth,
         rate: at(C.rate, systemMonth) !== null ? round2(at(C.rate, systemMonth)!) : null,
@@ -210,7 +222,7 @@ export function buildConsumerCredit(
     : null;
 
   const rateSeries = series.get(C.rate);
-  const rateHistory: RatePoint[] = rateSeries
+  let rateHistory: RatePoint[] = rateSeries
     ? [...rateSeries.keys()].sort().map((month) => ({ month, rate: round2(rateSeries.get(month)!) }))
     : [];
 
@@ -252,7 +264,7 @@ export function buildConsumerCredit(
       }
     : null;
 
-  const lenders: LenderRate[] = [];
+  let lenders: LenderRate[] = [];
   for (const lender of LENDERS) {
     const pick = (suffix: string) => latest(series.get(lenderSeriesCode(lender.entity, suffix)));
     const anchor = pick(LENDER_SUFFIX.anchor);
@@ -277,12 +289,21 @@ export function buildConsumerCredit(
     });
   }
 
+  // הלוח של קו המשווה עדכני יותר ממאגר הסדרות, ולכן כשהוא זמין הוא קובע
+  const fromEquator = equatorFigures(equator);
+  if (fromEquator) {
+    system = fromEquator.system ?? system;
+    if (fromEquator.rateHistory.length > 0) rateHistory = fromEquator.rateHistory;
+    if (fromEquator.lenders.length > 0) lenders = fromEquator.lenders;
+  }
+
   if (!system && !debt && lenders.length === 0) {
     throw new Error('Bank of Israel consumer credit series are missing');
   }
 
   return {
     fetchedAt: fetchedAt.toISOString(),
+    source: fromEquator ? 'equator' : 'sdmx',
     system,
     rateHistory,
     debt,
@@ -290,6 +311,74 @@ export function buildConsumerCredit(
     lenders,
     prime: boiRate ? { value: round2(boiRate.value + PRIME_OVER_BOI), asOf: boiRate.asOf } : null,
   };
+}
+
+/**
+ * הנתונים מלוח קו המשווה: ממוצע המערכת (קוד 99050) לחודש האחרון ולאורך הזמן,
+ * והריביות לכל מוסד בחודש האחרון שלו. הערכים בלוח הם שברים (0.0512 = 5.12%).
+ */
+export function equatorFigures(observations: EquatorObservation[]): {
+  system: ConsumerCreditSnapshot['system'];
+  rateHistory: RatePoint[];
+  lenders: LenderRate[];
+} | null {
+  if (observations.length === 0) return null;
+  const M = EQUATOR_MEASURES;
+  const byLender = new Map<string, Map<string, Map<string, number>>>();
+  for (const { lender, measure, period, value } of observations) {
+    if (!byLender.has(lender)) byLender.set(lender, new Map());
+    const measures = byLender.get(lender)!;
+    if (!measures.has(measure)) measures.set(measure, new Map());
+    measures.get(measure)!.set(period, value);
+  }
+  const pct = (value: number | undefined) => (value === undefined ? null : round2(value * 100));
+  const rateAt = (measures: Map<string, Map<string, number>>, period: string) => {
+    const anchor = measures.get(M.anchor)?.get(period);
+    const margin = measures.get(M.margin)?.get(period);
+    return anchor === undefined || margin === undefined ? null : round2((anchor + margin) * 100);
+  };
+
+  let system: ConsumerCreditSnapshot['system'] = null;
+  let rateHistory: RatePoint[] = [];
+  const systemMeasures = byLender.get(EQUATOR_SYSTEM_CODE);
+  if (systemMeasures) {
+    const months = [...(systemMeasures.get(M.anchor)?.keys() ?? [])].sort();
+    rateHistory = months
+      .map((month) => ({ month, rate: rateAt(systemMeasures, month) }))
+      .filter((point) => point.rate !== null);
+    const month = rateHistory.at(-1)?.month;
+    if (month) {
+      const volume = systemMeasures.get(M.volume)?.get(month);
+      const term = systemMeasures.get(M.term)?.get(month);
+      system = {
+        month,
+        rate: rateAt(systemMeasures, month),
+        volume: volume === undefined ? null : Math.round(volume * 1_000_000_000),
+        termYears: term === undefined ? null : round2(term),
+      };
+    }
+  }
+
+  const lenders: LenderRate[] = [];
+  for (const lender of LENDERS) {
+    const measures = byLender.get(lenderCode(lender.entity));
+    const asOf = [...(measures?.get(M.anchor)?.keys() ?? [])].sort().at(-1);
+    if (!measures || !asOf) continue;
+    lenders.push({
+      entity: lender.entity,
+      name: lender.name,
+      kind: lender.kind,
+      average: rateAt(measures, asOf),
+      anchor: pct(measures.get(M.anchor)?.get(asOf)),
+      margin: pct(measures.get(M.margin)?.get(asOf)),
+      low: pct(measures.get(M.low)?.get(asOf)),
+      high: pct(measures.get(M.high)?.get(asOf)),
+      asOf,
+    });
+  }
+
+  if (!system && lenders.length === 0) return null;
+  return { system, rateHistory, lenders };
 }
 
 // ───────────────────────────── משיכה ─────────────────────────────
@@ -331,11 +420,14 @@ export function consumerCreditUrls(now: Date = new Date()) {
 export async function fetchConsumerCredit(now: Date = new Date()): Promise<ConsumerCreditSnapshot> {
   const urls = consumerCreditUrls(now);
   // כל מקור נמשך בנפרד: כשאחד נכשל, השאר עדיין מוצגים
-  const [system, bankLenders, cardLenders, debt, boi] = await Promise.all(
-    [urls.system, urls.bankLenders, urls.cardLenders, urls.debt, urls.boiRate].map((url) =>
-      fetchText(url).catch(() => '')
-    )
-  );
+  const [[system, bankLenders, cardLenders, debt, boi], equator] = await Promise.all([
+    Promise.all(
+      [urls.system, urls.bankLenders, urls.cardLenders, urls.debt, urls.boiRate].map((url) =>
+        fetchText(url).catch(() => '')
+      )
+    ),
+    fetchEquatorLoans().catch(() => [] as EquatorObservation[]),
+  ]);
 
   const series: SeriesMap = new Map();
   for (const csv of [system, bankLenders, cardLenders, debt]) {
@@ -348,7 +440,7 @@ export async function fetchConsumerCredit(now: Date = new Date()): Promise<Consu
       ? { value: boiSeries.value, asOf: boiSeries.period }
       : null;
 
-  return buildConsumerCredit(series, boiRate, now);
+  return buildConsumerCredit(series, boiRate, now, equator);
 }
 
 // ───────────────────────────── מטמון ─────────────────────────────

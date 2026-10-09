@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { Banknote, CalendarClock, CreditCard, Landmark, Percent, Wallet } from 'lucide-react';
 import type { ConsumerCreditSnapshot } from '@/lib/boi-consumer-credit';
+import { EQUATOR_PAGE_URL } from '@/lib/boi-equator';
 import { formatPeriod, useConsumerCredit } from './useConsumerCredit';
 import { LenderRatesTable } from './RateInfoButton';
 
@@ -148,7 +149,11 @@ function RateChart({ data }: { data: ConsumerCreditSnapshot }) {
   return (
     <ChartCard
       title="הריבית הממוצעת על הלוואות צרכניות חדשות"
-      subtitle="כל המערכת הבנקאית, משקי בית, ללא אוברדראפט וללא בטחון דירה"
+      subtitle={
+        data.source === 'equator'
+          ? 'ממוצע המערכת בקו המשווה: הלוואות חדשות בריבית משתנה (פריים) למשקי בית'
+          : 'כל המערכת הבנקאית, משקי בית, ללא אוברדראפט וללא בטחון דירה'
+      }
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data.rateHistory} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -217,7 +222,7 @@ export function ConsumerCreditMarket() {
               icon: Percent,
               label: 'ריבית ממוצעת להלוואה צרכנית',
               value: `${system.rate.toFixed(2)}%`,
-              hint: `הלוואות חדשות בבנקים · ${formatPeriod(system.month)}`,
+              hint: `ממוצע המערכת · ${formatPeriod(system.month)}`,
             },
           ]
         : []),
@@ -227,7 +232,7 @@ export function ConsumerCreditMarket() {
               icon: Landmark,
               label: 'הלוואות צרכניות חדשות בחודש',
               value: `₪${(system.volume / 1_000_000_000).toFixed(1)} מיליארד`,
-              hint: `בכל המערכת הבנקאית · ${formatPeriod(system.month)}`,
+              hint: `סך המערכת · ${formatPeriod(system.month)}`,
             },
           ]
         : []),
@@ -300,8 +305,8 @@ export function ConsumerCreditMarket() {
               <div className="rounded-3xl border border-white/10 bg-white p-4 text-slate-900 shadow-[0_30px_80px_rgba(0,0,0,0.5)] md:p-6">
                 <h3 className="text-info font-black text-slate-900">ריביות על הלוואות צרכניות לפי מוסד מממן</h3>
                 <p className="mb-3 mt-1 text-sm text-slate-500">
-                  הריבית הממוצעת בכל בנק, בכל חברת כרטיסי אשראי ובגופים החוץ-בנקאיים — ולצידה הריבית
-                  שמתחתיה ניתנו 25% מההלוואות הזולות, ומעליה 25% מהיקרות
+                  הריבית הממוצעת בכל בנק ובכל חברת כרטיסי אשראי, ולצידה הריבית שמתחתיה ניתנו 25%
+                  מההלוואות הזולות ומעליה 25% מהיקרות
                 </p>
                 <div className="overflow-x-auto">
                   <LenderRatesTable compact={false} />
@@ -310,8 +315,20 @@ export function ConsumerCreditMarket() {
             )}
 
             <p className="mt-6 text-center text-2xs leading-relaxed text-slate-400">
-              מקור: בנק ישראל, מאגר הסדרות — &quot;ריביות וביצועים - לא לדיור&quot;, &quot;ריביות וביצועים -
-              חברות כרטיסי אשראי&quot;, &quot;מצרפי החוב והאשראי&quot; ו&quot;ריבית בנק ישראל&quot;.
+              {data.source === 'equator' ? (
+                <>
+                  מקור: בנק ישראל —{' '}
+                  <a href={EQUATOR_PAGE_URL} target="_blank" rel="noreferrer" className="underline hover:text-slate-200">
+                    &quot;קו המשווה&quot;
+                  </a>{' '}
+                  לריביות, ומאגר הסדרות ל&quot;מצרפי החוב והאשראי&quot; ול&quot;ריבית בנק ישראל&quot;.
+                </>
+              ) : (
+                <>
+                  מקור: בנק ישראל, מאגר הסדרות — &quot;ריביות וביצועים - לא לדיור&quot;, &quot;ריביות וביצועים -
+                  חברות כרטיסי אשראי&quot;, &quot;מצרפי החוב והאשראי&quot; ו&quot;ריבית בנק ישראל&quot;.
+                </>
+              )}
             </p>
           </>
         )}

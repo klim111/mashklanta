@@ -5,7 +5,8 @@ import { Banknote, CalendarClock, Download, Percent, Table2, Wallet } from 'luci
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { formatILS } from '@/lib/currency';
 import type { Loan } from './types';
-import { buildLoanSchedule } from './loanMath';
+import { buildLoanSchedule, resolvePrepaymentTiming } from './loanMath';
+import { formatDateIL } from './LoanFields';
 import { AmortChart } from './AmortChart';
 
 /**
@@ -20,19 +21,32 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
     ? buildLoanSchedule({ ...loan, prepayments: [] })
     : schedule;
   const active = schedule !== baseline;
+  const dated = schedule.rows.some((row) => row.date);
 
   const exportToCSV = () => {
-    const headers = ['חודש', 'יתרה תחילת חודש', 'תשלום', 'ריבית', 'קרן', 'פירעון מוקדם', 'יתרה סוף חודש'];
+    const headers = [
+      'חודש',
+      ...(dated ? ['תאריך'] : []),
+      'יתרה תחילת חודש',
+      'תשלום',
+      'ריבית',
+      'קרן',
+      'פירעון מוקדם',
+      'ריבית יומית על הפירעון',
+      'יתרה סוף חודש',
+    ];
     const csvContent = [
       headers.join(','),
       ...schedule.rows.map((row) =>
         [
           row.m,
+          ...(dated ? [row.date ?? ''] : []),
           row.balStart.toFixed(2),
           row.pay.toFixed(2),
           row.interest.toFixed(2),
           row.principal.toFixed(2),
           (row.prepay ?? 0).toFixed(2),
+          (row.prepayInterest ?? 0).toFixed(2),
           row.balEnd.toFixed(2),
         ].join(',')
       ),
@@ -51,7 +65,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
         dir="rtl"
         className="w-[calc(100vw-1.5rem)] max-w-5xl overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl sm:w-full"
       >
-        <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-3.5">
+        <div className="flex items-start gap-3 border-b border-slate-100 py-3.5 pl-5 pr-12">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <Table2 className="h-5 w-5" />
           </span>
@@ -98,10 +112,15 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
             <div className="flex flex-wrap gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-2xs font-bold text-emerald-900">
               <Banknote className="h-3.5 w-3.5" />
               {[...(loan.prepayments ?? [])]
-                .sort((x, y) => x.month - y.month)
+                .map((item) => ({ ...item, timing: resolvePrepaymentTiming(loan, item) }))
+                .sort((x, y) => x.timing.month - y.timing.month || x.timing.days - y.timing.days)
                 .map((item) => (
                   <span key={item.id}>
-                    {formatILS(item.amount)} בתשלום {item.month} ·{' '}
+                    {formatILS(item.amount)}{' '}
+                    {item.date
+                      ? `ב-${formatDateIL(item.date)} (${item.timing.days} ימים אחרי תשלום ${item.timing.month})`
+                      : `בתשלום ${item.month}`}{' '}
+                    ·{' '}
                     {item.mode === 'shorten' ? 'קיצור תקופה' : 'הקטנת החזר'}
                   </span>
                 ))}
@@ -132,6 +151,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                 <thead className="sticky top-0 bg-white text-2xs font-bold text-slate-500 shadow-sm">
                   <tr>
                     <th className="p-2 text-right">חודש</th>
+                    {dated && <th className="p-2 text-right">תאריך</th>}
                     <th className="p-2 text-right">יתרה בתחילת חודש</th>
                     <th className="p-2 text-right">תשלום</th>
                     <th className="p-2 text-right">ריבית</th>
@@ -149,12 +169,18 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                       }`}
                     >
                       <td className="p-2 font-bold text-slate-700">{row.m}</td>
+                      {dated && <td className="whitespace-nowrap p-2 text-slate-500">{formatDateIL(row.date)}</td>}
                       <td className="p-2 text-slate-600">{formatILS(row.balStart)}</td>
                       <td className="p-2 font-bold text-slate-900">{formatILS(row.pay)}</td>
                       <td className="p-2 text-rose-600">{formatILS(row.interest)}</td>
                       <td className="p-2 text-emerald-600">{formatILS(row.principal)}</td>
                       <td className="p-2 font-bold text-emerald-700">
                         {row.prepay ? formatILS(row.prepay) : ''}
+                        {row.prepayInterest ? (
+                          <span className="block text-2xs font-normal text-rose-600">
+                            + ריבית יומית {formatILS(row.prepayInterest)}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="p-2 text-slate-600">{formatILS(row.balEnd)}</td>
                     </tr>

@@ -17,6 +17,12 @@ export interface LoanPrepayment {
   month: number;
   /** shorten = התקופה מתקצרת וההחזר נשמר, reduce = ההחזר קטן והתקופה נשמרת */
   mode: 'shorten' | 'reduce';
+  /**
+   * תאריך הפירעון (YYYY-MM-DD), כשהלקוח בחר לפי תאריך ולא לפי מספר תשלום.
+   * אז month הוא התשלום האחרון שלפניו, ועל הסכום שנפרע משולמת גם הריבית
+   * היומית שהצטברה מאותו תשלום ועד יום הפירעון.
+   */
+  date?: string;
 }
 
 export interface Loan {
@@ -26,6 +32,10 @@ export interface Loan {
   apr: number; // ריבית שנתית נומינלית באחוזים
   months: number; // תקופה בחודשים
   category?: LoanCategory;
+  /** תאריך לקיחת ההלוואה (YYYY-MM-DD) — רשות */
+  startDate?: string;
+  /** היום בחודש שבו יורד התשלום (1–31) — רשות */
+  paymentDay?: number;
   prepayments?: LoanPrepayment[];
 }
 
@@ -40,6 +50,10 @@ export interface LoanDraft {
   apr: number | null;
   months: number | null;
   category?: LoanCategory;
+  /** תאריך לקיחת ההלוואה (YYYY-MM-DD) — רשות */
+  startDate?: string;
+  /** היום בחודש שבו יורד התשלום (1–31) — רשות */
+  paymentDay?: number;
   prepayments?: LoanPrepayment[];
 }
 
@@ -55,6 +69,8 @@ export interface AmortRow {
   balStart: number; // יתרה בתחילת החודש
   pay: number; // תשלום חודשי
   prepay?: number; // פירעון מוקדם ששולם יחד עם התשלום
+  prepayInterest?: number; // ריבית יומית ששולמה על הסכום שנפרע, מהתשלום ועד יום הפירעון
+  date?: string; // תאריך התשלום (YYYY-MM-DD), כשהוזנו תאריך לקיחה ויום תשלום
   interest: number; // חלק הריבית
   principal: number; // חלק הקרן
   balEnd: number; // יתרה בסוף החודש

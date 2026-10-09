@@ -3,19 +3,19 @@
 import React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { LenderKind, LenderRate } from '@/lib/boi-consumer-credit';
+import { EQUATOR_PAGE_URL } from '@/lib/boi-equator';
 import { formatPeriod, useConsumerCredit } from './useConsumerCredit';
 
 /**
  * סימן הקריאה שליד כל שדה ריבית בכלי ההלוואות: לחיצה עליו פותחת את הריביות
  * על הלוואות צרכניות לפי מוסד מממן, כפי שבנק ישראל מפרסם — לכל בנק, לכל חברת
- * כרטיסי אשראי ולסך הגופים החוץ-בנקאיים. לצד הריבית הממוצעת מוצגים הרבעון
+ * כרטיסי אשראי — מאותו מקור שמזין את "קו המשווה" באתר בנק ישראל. לצד הריבית הממוצעת מוצגים הרבעון
  * הזול והרבעון היקר, כדי שהלקוח יראה איפה הריבית שלו עומדת.
  */
 
 const KIND_TITLES: Record<LenderKind, string> = {
   bank: 'בנקים',
   card: 'חברות כרטיסי אשראי',
-  nonbank: 'חוץ-בנקאי',
 };
 
 const pct = (value: number | null) => (value === null ? '—' : `${value.toFixed(2)}%`);
@@ -54,7 +54,7 @@ export function LenderRatesTable({ compact = true }: { compact?: boolean }) {
     );
   }
 
-  const { system, lenders, prime } = state.data;
+  const { system, lenders, prime, source } = state.data;
   const groups = (Object.keys(KIND_TITLES) as LenderKind[])
     .map((kind) => ({ kind, rows: lenders.filter((item) => item.kind === kind) }))
     .filter((group) => group.rows.length > 0);
@@ -63,10 +63,12 @@ export function LenderRatesTable({ compact = true }: { compact?: boolean }) {
     <div className={compact ? 'max-h-[60vh] overflow-y-auto' : ''}>
       {compact && (
         <div className="border-b border-slate-100 px-3 py-2">
-          <p className="text-xs font-black text-slate-900">ריביות על הלוואות צרכניות · בנק ישראל</p>
+          <p className="text-xs font-black text-slate-900">
+            ריביות על הלוואות צרכניות · {source === 'equator' ? 'קו המשווה של בנק ישראל' : 'בנק ישראל'}
+          </p>
           <p className="text-2xs leading-relaxed text-slate-500">
             {system?.rate !== null && system?.rate !== undefined
-              ? `ממוצע המערכת הבנקאית ב${formatPeriod(system.month)}: ${system.rate.toFixed(2)}%. `
+              ? `ממוצע המערכת ב${formatPeriod(system.month)}: ${system.rate.toFixed(2)}%. `
               : ''}
             {prime ? `הפריים היום: ${prime.value.toFixed(2)}%.` : ''}
           </p>
@@ -106,9 +108,19 @@ export function LenderRatesTable({ compact = true }: { compact?: boolean }) {
       </table>
 
       <p className="border-t border-slate-100 px-3 py-2 text-2xs leading-relaxed text-slate-400">
-        ממוצע = עוגן ממוצע + מרווח ממוצע בהלוואות צרכניות חדשות בריבית משתנה (ללא אוברדראפט וללא
-        בטחון דירה). הזולות: הרבעון התחתון; היקרות: הרבעון העליון. בנק ישראל מפרסם את הפילוח לפי
-        מוסד באיחור, ולכן החודש מצוין ליד כל קבוצה.
+        ממוצע = עוגן ממוצע + מרווח ממוצע בהלוואות צרכניות חדשות בריבית משתנה (פריים) למשקי בית.
+        הזולות: הרבעון התחתון; היקרות: הרבעון העליון.{' '}
+        {source === 'equator' ? (
+          <>
+            המקור:{' '}
+            <a href={EQUATOR_PAGE_URL} target="_blank" rel="noreferrer" className="underline hover:text-slate-600">
+              קו המשווה של בנק ישראל
+            </a>
+            .
+          </>
+        ) : (
+          'לוח קו המשווה לא היה זמין, ולכן מוצגים נתוני מאגר הסדרות; החודש מצוין ליד כל קבוצה.'
+        )}
       </p>
     </div>
   );

@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Banknote,
   CalendarClock,
+  CalendarDays,
   Copy,
   Percent,
   Table2,
@@ -21,8 +22,8 @@ import {
 import { formatILS } from '@/lib/currency';
 import type { Loan, LoanCategory, LoanDraft } from './types';
 import { LOAN_CATEGORY_LABELS, loanColor, loanStats } from './loanInsights';
-import { isCompleteLoan } from './loanMath';
-import { ParamRow, valueOrDash } from './LoanFields';
+import { hasLoanDates, isCompleteLoan, paymentDate, toISODate } from './loanMath';
+import { LoanDatesRow, ParamRow, formatDateIL, valueOrDash } from './LoanFields';
 import { RateInfoButton } from './RateInfoButton';
 
 /**
@@ -181,6 +182,18 @@ function LoanControlCard({
           step={1}
           suffix="חודשים"
         />
+        <LoanDatesRow
+          icon={CalendarDays}
+          startDate={loan.startDate}
+          paymentDay={loan.paymentDay}
+          onChange={(next) => onUpdate({ ...loan, ...next })}
+        />
+        {complete && hasLoanDates(loan) && (
+          <p className="text-2xs text-slate-500">
+            תשלום ראשון ב-{formatDateIL(toISODate(paymentDate(loan, 1) as Date))} · תשלום אחרון ב-
+            {formatDateIL(toISODate(paymentDate(loan, loan.months) as Date))}
+          </p>
+        )}
       </div>
 
       {/* התוצאה החיה של ההלוואה */}
@@ -199,7 +212,7 @@ function LoanControlCard({
               className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 py-0.5 pl-0.5 pr-2 text-2xs font-bold text-emerald-900"
             >
               <Banknote className="h-3 w-3" />
-              {formatILS(item.amount)} בתשלום {item.month} ·{' '}
+              {formatILS(item.amount)} {item.date ? `ב-${formatDateIL(item.date)}` : `בתשלום ${item.month}`} ·{' '}
               {item.mode === 'shorten' ? 'קיצור תקופה' : 'הקטנת החזר'}
               <button
                 type="button"
