@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarPlus, FolderOpen, LayoutDashboard, LayoutGrid, MessageCircle, X } from 'lucide-react';
-import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
+import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
 import { DocumentVaultDialog, useDocumentProgress } from './documents/DocumentVaultDialog';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
 import { AddTaskDialog } from './tasks/AddTaskDialog';
@@ -25,10 +25,13 @@ export function StageActionsMenu({
   data,
   stage,
   tour = false,
+  onSigningChange,
 }: {
   planId: string;
   data: PlanData;
   stage: PlanStageId;
+  /** שמירת בחירת סוג העסקה מתיק המסמכים */
+  onSigningChange?: (next: SigningData) => void;
   /** בסיור ההיכרות אין תיק מסמכים ואין התכתבות — רק החזרה לדאשבורד */
   tour?: boolean;
 }) {
@@ -202,6 +205,7 @@ export function StageActionsMenu({
             planId={planId}
             data={data}
             stage={stage}
+            onSigningChange={onSigningChange}
           />
           <AddTaskDialog open={taskOpen} onOpenChange={setTaskOpen} planId={planId} stage={stage} onSubmit={addTask} />
         </>

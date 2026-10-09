@@ -346,7 +346,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
         due: null,
         scheduled: false,
         stage: 'SIGNING',
-        target: { kind: 'href', href: planHref(plan, 'SIGNING') },
+        target: { kind: 'section', section: 'documents' },
       });
     }
 

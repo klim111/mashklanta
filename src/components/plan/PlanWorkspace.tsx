@@ -659,7 +659,13 @@ export function PlanWorkspace({
           {/* תיק המסמכים — זמין מכל שלב, עם ההתקדמות לכל שלב ולכל התהליך */}
           {!tour && (
             <div className="mt-4">
-              <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="header" />
+              <VaultButton
+                planId={plan.id}
+                data={plan.data}
+                stage={stage}
+                variant="header"
+                onSigningChange={(next: SigningData) => updateStage('SIGNING', next)}
+              />
             </div>
           )}
         </div>
@@ -958,7 +964,13 @@ export function PlanWorkspace({
       )}
 
       {/* הוספת משימה, תיק המסמכים, ההתכתבות והחזרה לדאשבורד — תחת כפתור פעולות עגול אחד */}
-      <StageActionsMenu planId={plan.id} data={plan.data} stage={stage} tour={tour} />
+      <StageActionsMenu
+        planId={plan.id}
+        data={plan.data}
+        stage={stage}
+        tour={tour}
+        onSigningChange={(next: SigningData) => updateStage('SIGNING', next)}
+      />
 
       {/* הסתיים החודש ששולם, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
       {!tour && plan.access && processLocked(plan.access) && (

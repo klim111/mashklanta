@@ -9,13 +9,15 @@ import {
   FolderDown,
   FolderOpen,
   ListChecks,
+  Home,
   Loader2,
   Lock,
   Upload,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
+import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
+import { signingDealType } from '@/lib/signing-documents';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import { documentProgress } from '@/lib/document-progress';
 import type { DocumentProgress } from '@/lib/document-progress';
@@ -26,6 +28,7 @@ import { planDocumentRequirements } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { DocumentBrowser } from './DocumentBrowser';
+import { DealTypeDialog } from './DealTypeDialog';
 import { documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
 import { demoId } from '@/demo/demo-attr';
 
@@ -78,8 +81,9 @@ export function DocumentVaultDialog({
   open,
   onOpenChange,
   planId,
-  data,
+  data: incoming,
   stage,
+  onSigningChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,7 +91,36 @@ export function DocumentVaultDialog({
   data: PlanData;
   /** השלב הפתוח כרגע — מסמך חדש ישויך אליו */
   stage?: PlanStageId | null;
+  /**
+   * שמירת בחירת סוג העסקה דרך שולחן העבודה. בלעדיה (באזור האישי) הבחירה
+   * נשמרת ישירות בשלב החתימה.
+   */
+  onSigningChange?: (next: SigningData) => void;
 }) {
+  /** הבחירה האחרונה כשאין שולחן עבודה שמחזיק את הנתונים */
+  const [localSigning, setLocalSigning] = useState<SigningData | null>(null);
+  const data = useMemo(
+    () => (localSigning && !onSigningChange ? { ...incoming, SIGNING: localSigning } : incoming),
+    [incoming, localSigning, onSigningChange]
+  );
+  const [dealOpen, setDealOpen] = useState(false);
+  const deal = signingDealType(data.SIGNING.dealTypeId);
+
+  const changeSigning = (patch: Partial<SigningData>) => {
+    const next = { ...data.SIGNING, ...patch };
+    if (onSigningChange) {
+      onSigningChange(next);
+      return;
+    }
+    setLocalSigning(next);
+    if (isDemoPlan(planId)) return;
+    void fetch(`/api/plans/${planId}/stages/SIGNING`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: next }),
+    }).catch(() => undefined);
+  };
+
   const { documents, ready, error, busyKey, remove, updateMeta } = usePlanDocuments(planId);
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
@@ -161,9 +194,17 @@ export function DocumentVaultDialog({
         </div>
 
         <div className="p-6 md:p-8" {...demoId('vault-list')}>
-          {/* הרשימה המלאה של מה שנדרש — במרכז, מעל כותרת מה שכבר הועלה */}
-          {requirements.length > 0 && (
-            <div className="mb-4 flex justify-center">
+          {/* סוג העסקה והרשימה המלאה של מה שנדרש — במרכז, מעל כותרת מה שכבר הועלה */}
+          <div className="mb-4 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDealOpen(true)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-button font-black text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              <Home className="h-4 w-4" />
+              {deal ? `סוג העסקה: ${deal.short}` : 'בחרו סוג עסקה'}
+            </button>
+            {requirements.length > 0 && (
               <button
                 {...demoId('vault-full-list')}
                 type="button"
@@ -176,8 +217,8 @@ export function DocumentVaultDialog({
                   {submitted.length}/{requirements.length}
                 </span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           <AnimatePresence initial={false}>
             {showList && (
@@ -295,6 +336,7 @@ export function DocumentVaultDialog({
           defaultKey={uploadKey}
         />
         <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
+        <DealTypeDialog open={dealOpen} onOpenChange={setDealOpen} signing={data.SIGNING} onChange={changeSigning} />
       </DialogContent>
     </Dialog>
   );
