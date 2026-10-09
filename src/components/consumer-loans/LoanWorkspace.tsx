@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { formatILS } from '@/lib/currency';
 import { HomeFloatingButton } from '@/components/guest/HomeFloatingButton';
+import { useToolData } from '@/components/tool-data/toolData';
 import type { Loan, LoanPlannerState, OptimizationInput } from './types';
 import { portfolioStats, savingsPotential } from './loanInsights';
 import { LoanControlPanel } from './LoanControlPanel';
@@ -93,9 +94,17 @@ export function LoanWorkspace() {
   >>(null);
   const [ready, setReady] = useState(false);
 
-  /* ---------------- טעינה ושמירה מקומית ---------------- */
+  /**
+   * מה שנשמר בחשבון — כולל הלוואות שהוזנו לפני ההרשמה — כדי שהכלי ייפתח איתן
+   * בכל מכשיר. אורח עובד על אחסון הדפדפן בלבד.
+   */
+  const toolData = useToolData<LoanPlannerState>('consumerLoans', (value) => value as LoanPlannerState);
+  const saveToolData = toolData.save;
+
+  /* ---------------- טעינה ושמירה ---------------- */
 
   useEffect(() => {
+    if (!toolData.ready) return;
     try {
       const fromPlanning = searchParams.get('import') === 'planning';
       const session = fromPlanning ? readConsumerLoansImportSession() : null;
@@ -105,23 +114,35 @@ export function LoanWorkspace() {
         return;
       }
 
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setState(JSON.parse(saved) as LoanPlannerState);
+      if (toolData.initial) {
+        const { loans, selectedForComparison, optimizationInput, monthlyIncome } = toolData.initial;
+        setState({
+          loans,
+          selectedForComparison: selectedForComparison ?? [],
+          optimizationInput: optimizationInput ?? {},
+          monthlyIncome,
+        });
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) setState(JSON.parse(saved) as LoanPlannerState);
+      }
     } catch (error) {
       console.error('שגיאה בטעינת נתוני ההלוואות:', error);
     } finally {
       setReady(true);
     }
-  }, [searchParams]);
+  }, [searchParams, toolData.ready, toolData.initial]);
 
   useEffect(() => {
-    if (importSession) return;
+    // עד שהנתונים נטענו אין מה לשמור — אחרת המצב הריק היה דורס אותם
+    if (importSession || !ready) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('שגיאה בשמירת נתוני ההלוואות:', error);
     }
-  }, [state, importSession]);
+    saveToolData(state);
+  }, [state, importSession, ready, saveToolData]);
 
   const finishImport = useCallback((imported: Loan[]) => {
     setState((prev) => ({ ...prev, loans: [...prev.loans, ...imported] }));

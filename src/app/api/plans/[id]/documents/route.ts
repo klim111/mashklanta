@@ -63,6 +63,8 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       contentType,
       size,
       blobPath,
+      category: typeof body?.category === 'string' ? body.category : null,
+      stage: typeof body?.stage === 'string' ? body.stage : null,
     });
     if (!document) return NextResponse.json({ error: 'ההעלאה נדחתה' }, { status: 403 });
     return NextResponse.json(document, { status: 201 });

@@ -10,6 +10,9 @@ import type { PlanStageId } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { customDocumentKey } from '@/lib/document-progress';
 import type { PlanData } from '@/lib/mortgage-plan';
+import { documentCategory, documentStage } from '@/lib/document-organize';
+import type { DocumentCategory } from '@/lib/document-organize';
+import { CategorySelect, StageSelect } from './DocumentBrowser';
 import { usePlanDocuments } from './usePlanDocuments';
 import { usePlanRequirements } from './usePlanRequirements';
 import { demoId } from '@/demo/demo-attr';
@@ -59,6 +62,9 @@ export function DocumentUploadDialog({
   const [file, setFile] = useState<File | null>(null);
   const [done, setDone] = useState<PlanDocumentView | null>(null);
   const [busy, setBusy] = useState(false);
+  /** הקטגוריה והשלב שהלקוח בחר; ריק — מה שנגזר מסוג המסמך */
+  const [categoryChoice, setCategoryChoice] = useState<DocumentCategory | null>(null);
+  const [stageChoice, setStageChoice] = useState<PlanStageId | 'NONE' | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,6 +76,8 @@ export function DocumentUploadDialog({
     setShowList(false);
     setDone(null);
     setBusy(false);
+    setCategoryChoice(null);
+    setStageChoice(null);
   }, [open, defaultTitle, defaultKey]);
 
   const byKey = useMemo(
@@ -93,6 +101,11 @@ export function DocumentUploadDialog({
   const key = selected ? selected.key : customDocumentKey(stage, title);
   const documentName = selected ? selected.name : title.trim();
   const canUpload = Boolean(selected || title.trim().length >= 2) && file !== null && !busy;
+  /* מסמך שהועלה מתוך שלב משויך לשלב הזה; מסמך מהרשימה — לשלב שלו */
+  const inferred = { key, name: documentName };
+  const category = categoryChoice ?? documentCategory(inferred);
+  const stageValue: PlanStageId | null =
+    stageChoice === 'NONE' ? null : stageChoice ?? (selected ? documentStage(inferred) : stage ?? null);
 
   const pickType = (next: string) => {
     setTypeKey(next);
@@ -105,7 +118,10 @@ export function DocumentUploadDialog({
     setBusy(true);
     try {
       // הקובץ עולה לאחסון הפרטי, והרשומה שחוזרת היא המסמך בתיק הלקוח
-      const record = await upload(key, documentName, file, fileName.trim() || file.name);
+      const record = await upload(key, documentName, file, fileName.trim() || file.name, {
+        category,
+        stage: stageValue ?? 'NONE',
+      });
       if (!record) return;
       setDone(record);
       onUploaded?.(record);
@@ -255,6 +271,18 @@ export function DocumentUploadDialog({
                 />
               </label>
             )}
+
+            {/* למי המסמך מיועד, ולאיזה שלב הוא שייך — כך הוא יסודר בתיק */}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="block text-xs font-bold text-slate-600">
+                קטגוריה
+                <CategorySelect value={category} onChange={setCategoryChoice} className={`mt-1 ${inputClass}`} />
+              </label>
+              <label className="block text-xs font-bold text-slate-600">
+                שיוך לשלב
+                <StageSelect value={stageValue} onChange={setStageChoice} className={`mt-1 ${inputClass}`} />
+              </label>
+            </div>
 
             <input
               ref={input}
