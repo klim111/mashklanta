@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { CHAT_TITLE } from '@/lib/conversation';
 import type { ConversationSummary } from '@/lib/conversation';
+import { ClientActionsMenu } from '@/components/actions/ClientActionsMenu';
 import { ConversationWindow } from './ConversationWindow';
 import { useConversationSummary } from './useConversation';
 import type { ComposeRequest } from './useConversation';
@@ -23,8 +25,8 @@ interface ClientConversationApi {
   toggle: () => void;
   registerSlot: (element: HTMLElement) => () => void;
   /**
-   * מסך שמחזיק את ההתכתבות בתוך תפריט משלו (כפתור הפעולות של שלבי המשכנתא):
-   * השורה המוקטנת לא מוצגת, והחלון המלא נפתח מעל התפריט
+   * מסך שמחזיק את הצ׳אט בתוך תפריט משלו (כפתור הפעולות של שלבי המשכנתא):
+   * עיגול הפעולות הכללי לא מוצג, והחלון המלא נפתח מעל התפריט של המסך
    */
   registerActionsHost: () => () => void;
   /** פתיחת החלון בטאב המיילים, עם מייל מוכן לשליחה */
@@ -37,14 +39,14 @@ const ClientConversationContext = createContext<ClientConversationApi | null>(nu
 const HIDDEN_PREFIXES = ['/advisor', '/auth', '/video-call'];
 
 /**
- * ההתכתבות עם היועץ, בכל מסכי הלקוח המחובר.
+ * הצ׳אט עם נציג משכלנתא, בכל מסכי הלקוח המחובר.
  *
- * הספק יושב בשורש האפליקציה ומחזיק מצב אחד לכל המסכים: שורה מוקטנת שתמיד
- * גלויה בפינה הימנית התחתונה, או חלון מלא. מסך שיש לו עמודת כפתורים צפים
- * (תיק המסמכים, חזרה לדאשבורד) מסמן בה מקום עם `ConversationDockSlot`, והשורה
- * נכנסת לשם — כך השלושה אינם עולים זה על זה. במסך בלי עמודה כזו השורה יושבת
- * בפינה בעצמה. בשלבי המשכנתא ההתכתבות היא פריט בכפתור הפעולות העגול
- * (`registerActionsHost`), ואין שורה.
+ * הספק יושב בשורש האפליקציה ומחזיק מצב אחד לכל המסכים. הכניסה לצ׳אט היא עיגול
+ * הפעולות הכחול בפינה הימנית התחתונה (`ClientActionsMenu`) — אותו עיגול כמו
+ * בשלבי המשכנתא, עם הוספת משימה, תיק המסמכים והחזרה לדאשבורד — והחלון המלא
+ * נפתח מעליו. מסך שיש לו עמודת כפתורים צפים משלו (הדאשבורד, שבו תפריט הצד
+ * תופס את הקצה) מסמן בה מקום עם `ConversationDockSlot`, והעיגול נכנס לשם.
+ * בשלבי המשכנתא העיגול של השלב מחזיק את הצ׳אט (`registerActionsHost`).
  */
 export function ClientConversationProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -103,6 +105,8 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
     [openWindow]
   );
 
+  const toggle = useCallback(() => (mode === 'open' ? setMode('bar') : openWindow()), [mode, openWindow]);
+
   const api = useMemo<ClientConversationApi>(
     () => ({
       enabled,
@@ -110,12 +114,12 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       unread,
       summary,
       open: openWindow,
-      toggle: () => (mode === 'open' ? setMode('bar') : openWindow()),
+      toggle,
       registerSlot,
       registerActionsHost,
       compose,
     }),
-    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow, compose]
+    [enabled, mode, unread, summary, registerSlot, registerActionsHost, openWindow, toggle, compose]
   );
 
   const dock = enabled ? (
@@ -123,12 +127,12 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
       role="CLIENT"
       side="right"
       docked
-      title={summary?.advisorName ? `התכתבות עם ${summary.advisorName}` : 'התכתבות עם היועץ'}
-      subtitle={summary?.advisorName ? 'היועץ המלווה שלכם' : 'יועצי משכלנתא יענו כאן'}
+      title={CHAT_TITLE}
+      subtitle="נציג משכלנתא יענה לכם כאן"
       mode={mode}
       onMode={(next) => (next === 'open' ? openWindow() : setMode('bar'))}
       offset={offset}
-      anchor={inActionsMenu ? 'above-actions' : 'corner'}
+      anchor="above-actions"
       unreadChat={mode === 'open' ? 0 : summary?.unreadChat}
       unreadEmails={summary?.unreadEmails}
       mailboxAddress={summary?.mailboxAddress ?? null}
@@ -138,17 +142,17 @@ export function ClientConversationProvider({ children }: { children: ReactNode }
     />
   ) : null;
 
+  // עיגול הפעולות — חוץ משלבי המשכנתא, שבהם יש עיגול משלהם
+  const menu =
+    enabled && !inActionsMenu ? (
+      <ClientActionsMenu unread={unread} chatOpen={mode === 'open'} onToggleChat={toggle} inline={Boolean(slot)} />
+    ) : null;
+
   return (
     <ClientConversationContext.Provider value={api}>
       {children}
-      {dock &&
-        (mode === 'open' ? (
-          dock
-        ) : inActionsMenu ? null : slot ? (
-          createPortal(dock, slot)
-        ) : (
-          <div className="fixed bottom-5 right-5 z-40 print:hidden">{dock}</div>
-        ))}
+      {enabled && mode === 'open' && dock}
+      {menu && (slot ? createPortal(menu, slot) : menu)}
     </ClientConversationContext.Provider>
   );
 }
@@ -158,8 +162,8 @@ export function useClientConversation(): ClientConversationApi | null {
 }
 
 /**
- * המקום של שורת ההתכתבות בעמודת הכפתורים הצפים של המסך. `contents` — כשאין
- * התכתבות (יועץ, אורח) הוא לא תופס מקום ולא מוסיף רווח בעמודה.
+ * המקום של עיגול הפעולות בעמודת הכפתורים הצפים של המסך. `contents` — כשאין
+ * צ׳אט (יועץ, אורח) הוא לא תופס מקום ולא מוסיף רווח בעמודה.
  */
 export function ConversationDockSlot() {
   const api = useClientConversation();

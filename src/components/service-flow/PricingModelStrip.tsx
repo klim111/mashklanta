@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { BadgePercent, Coins, KeyRound, Route, Scale } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { PRICING_PRINCIPLES } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 
 const ICONS: Record<string, LucideIcon> = {
   platform: KeyRound,
@@ -29,6 +29,7 @@ export function PricingModelStrip({
   className?: string;
 }) {
   const dark = tone === 'dark';
+  const PRICING_PRINCIPLES = usePricing().principles;
 
   if (compact) {
     return (

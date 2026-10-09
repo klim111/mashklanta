@@ -323,7 +323,8 @@ export function MixRow({
         </div>
 
         {/* תת-השורה האחידה: ההחזר החודשי, סך הריבית, סך התשלום ושני מדדי הריבית */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {/* התיבות נשברות לשורה נוספת כשהעמודה צרה, כדי שהמספרים לא יחרגו מהן */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(118px,1fr))] gap-2">
           <RowStat
             icon={<Wallet className="h-3 w-3 text-blue-600" />}
             label="החזר חודשי"
@@ -530,7 +531,7 @@ function RowStat({
   return (
     <div
       title={hint}
-      className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-center"
+      className="flex min-w-0 flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-center"
     >
       <p className="flex items-center gap-1 text-2xs leading-none text-slate-500">
         {icon}
@@ -539,7 +540,7 @@ function RowStat({
         {info && <InfoTip text={info} label={`הסבר על ${label}`} />}
       </p>
       <p
-        className={`mt-0.5 font-bold leading-tight ${
+        className={`mt-0.5 whitespace-nowrap font-bold leading-tight ${
           emphasized ? 'text-info text-blue-600' : 'text-sm text-slate-900'
         }`}
       >

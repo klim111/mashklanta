@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowUpLeft, UserCheck, Wand2 } from 'lucide-react';
 import { journeyStages } from '@/data/platform/journey';
-import { ADVISORY_TRACK, PLATFORM_PROCESS_PRICE } from '@/data/platform/pricing';
+import { usePricing } from '@/components/pricing/PricingProvider';
 
 const RECOMMENDED = ['mix', 'auction'];
 
 export default function FlexibilityMixer() {
+  const { platformPrice, advisory } = usePricing();
   const [advisorStages, setAdvisorStages] = useState<string[]>(RECOMMENDED);
 
   const toggle = (id: string) =>
@@ -148,8 +149,8 @@ export default function FlexibilityMixer() {
             <div className="text-sm font-bold text-white">{headline}</div>
             <div className="mt-1 text-sm leading-relaxed text-slate-200">
               {advisorStages.length === 0
-                ? `₪${PLATFORM_PROCESS_PRICE} לתהליך משכנתא, גישה מלאה לכל הכלים`
-                : `${ADVISORY_TRACK.priceNote}. ${ADVISORY_TRACK.credit}.`}
+                ? `₪${platformPrice} לחודש לתהליך משכנתא, גישה מלאה לכל הכלים`
+                : `${advisory.priceNote}. ${advisory.credit}.`}
             </div>
           </div>
           <Link

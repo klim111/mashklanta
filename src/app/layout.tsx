@@ -3,6 +3,8 @@ import { Assistant } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
 import { A11Y_BOOT_SCRIPT } from '@/components/a11y/a11yConfig';
+import { PricingProvider } from '@/components/pricing/PricingProvider';
+import { getPricing } from '@/lib/pricing-store';
 
 // הגופן היחיד של הפלטפורמה. נטען מקומית בזמן הבנייה ונחשף כמשתנה --font-assistant
 const assistant = Assistant({
@@ -26,11 +28,13 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // המחירים והמסלולים שהיועץ הגדיר — לכל עמודי האתר
+  const pricing = await getPricing();
   return (
     // העדפות הנגישות מוסיפות מחלקות ל-html עוד לפני ההידרציה
     <html lang="he" dir="rtl" className={assistant.variable} suppressHydrationWarning>
@@ -39,9 +43,11 @@ export default function RootLayout({
       </head>
       <body>
         <AccessibilityMenu />
-        <Providers>
-          {children}
-        </Providers>
+        <PricingProvider config={pricing}>
+          <Providers>
+            {children}
+          </Providers>
+        </PricingProvider>
       </body>
     </html>
   );

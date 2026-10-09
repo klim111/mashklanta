@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { LegalDocument, LegalList, LegalSub } from '@/components/legal/LegalDocument';
 import type { LegalSection } from '@/components/legal/LegalDocument';
 import { SITE_CONTACT, operatorDescription } from '@/lib/site-contact';
-import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_DAYS, PROCESS_PRICE } from '@/lib/process-access';
+import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
+import { getPricing } from '@/lib/pricing-store';
 import { journeyStages } from '@/data/platform/journey';
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ const Phone = () => (
   </a>
 );
 
-const sections: LegalSection[] = [
+/** הסעיפים, עם מחיר הגישה העדכני מהגדרות התמחור */
+function buildSections(platformPrice: number): LegalSection[] {
+  return [
   {
     id: 'definitions',
     title: 'הגדרות',
@@ -125,12 +128,14 @@ const sections: LegalSection[] = [
             הלקוח מתכנן את המשכנתא בעצמו, בעזרת כל הכלים, ההסברים וההתראות של הפלטפורמה, בלי יועץ אישי.
           </li>
           <li>
-            המחיר: ₪{PROCESS_PRICE} לתהליך משכנתא. כל חבילה פותחת את כל השלבים והכלים לתקופה של עד{' '}
-            {PROCESS_ACCESS_DAYS} יום ממועד הרכישה.
+            המחיר: ₪{platformPrice} לחודש לתהליך משכנתא. כל חבילה פותחת את כל השלבים והכלים לחודש ממועד
+            הרכישה. מספר הימים בחבילה הוא מספר הימים בחודש הקלנדרי שבו בוצעה הרכישה (למשל 31 יום ברכישה באוקטובר, 28
+            או 29 יום ברכישה בפברואר).
           </li>
           <li>
-            בתום התקופה הכלים ננעלים לעריכה, הנתונים נשמרים, ובכניסה הבאה תוצג הצעה לרכוש חבילה נוספת. אין חידוש
-            אוטומטי ואין חיוב נוסף בלי אישור מפורש של הלקוח.
+            בתום התקופה הכלים ננעלים לעריכה, הנתונים נשמרים, ובכניסה הבאה תוצג הצעה לרכוש חבילה נוספת. לקראת סוף
+            התקופה נשלחת ללקוח תזכורת במייל עם קישור לחידוש. אין חידוש אוטומטי ואין חיוב נוסף בלי אישור מפורש של
+            הלקוח.
           </li>
           <li>
             אפשר לנהל עד {MAX_OPEN_PROCESSES} תהליכים פתוחים במקביל. תהליך שלא הסתיים אפשר למחוק ולפתוח מחדש. פתיחת
@@ -145,7 +150,12 @@ const sections: LegalSection[] = [
             שהוזמנו, והשלבים האחרים נשארים באחריות הלקוח.
           </li>
           <li>
-            המחיר הוא המחיר שהוצג ואושר בעת ההזמנה, והוא כולל גישה מלאה לפלטפורמה לאורך ביצוע השלבים שהוזמנו.
+            המחיר הוא המחיר שהוצג ואושר בעת ההזמנה. מרגע שהיועץ מאשר שהתשלום על השלב התקבל, הוא כולל גישה מלאה
+            לפלטפורמה בתהליך, בלי הגבלת זמן, עד שהיועץ מסמן שהליווי בתהליך הסתיים.
+          </li>
+          <li>
+            כשהליווי מסתיים, הלקוח מקבל במייל ובפלטפורמה הצעה להמשיך לעבוד בכלים במסלול העצמאי, ב-₪{platformPrice}{' '}
+            לחודש. כל הנתונים נשמרים, ואין חיוב בלי אישור מפורש של הלקוח.
           </li>
         </LegalList>
 
@@ -159,7 +169,10 @@ const sections: LegalSection[] = [
             הלקוח לפני תחילת העבודה. בזכות הטכנולוגיה של משכלנתא, המחיר נקבע כך שיהיה נמוך מהמחיר הממוצע בשוק
             לליווי דומה.
           </li>
-          <li>הליווי כולל גישה מלאה לפלטפורמה עד סיום השלבים שהוזמנו.</li>
+          <li>
+            הליווי כולל גישה מלאה לפלטפורמה בתהליך עד שהיועץ מסמן שהליווי הסתיים. לאחר מכן אפשר להמשיך לעבוד
+            בכלים במסלול העצמאי, ב-₪{platformPrice} לחודש.
+          </li>
         </LegalList>
 
         <LegalSub>קיזוז דמי הפלטפורמה</LegalSub>
@@ -398,8 +411,10 @@ const sections: LegalSection[] = [
     ),
   },
 ];
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const { platformPrice } = await getPricing();
   return (
     <LegalDocument
       title="תנאי שימוש"
@@ -409,7 +424,7 @@ export default function TermsPage() {
           היועץ מתחייב לעשות ומה מצופה מכם, איך מתבצע התשלום ואיך מבטלים.
         </p>
       }
-      sections={sections}
+      sections={buildSections(platformPrice)}
     />
   );
 }

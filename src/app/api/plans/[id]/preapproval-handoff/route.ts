@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import {
   advisorHandoffView,
-  handBankToAdvisor,
+  handBanksToAdvisor,
   isPreApprovalBank,
   setHandoffMeeting,
   updateHandoffBank,
@@ -15,7 +15,7 @@ interface RouteContext {
 /**
  * הגשה לבנק דרך יועץ משכלנתא, בשלב האישור העקרוני.
  *
- * POST — הלקוח מעביר בנק ליועץ. GET ו-PATCH — היועץ רואה את הבנקים שהועברו
+ * POST — הלקוח מעביר את ההגשה לבנקים ליועץ. GET ו-PATCH — היועץ רואה את הבנקים שהועברו
  * אליו, קובע מועד לפגישה להשלמת הפרטים, ומזין את הבנקאי והאישור העקרוני.
  */
 export async function POST(req: NextRequest, { params }: RouteContext) {
@@ -28,11 +28,14 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
   const body = await req.json().catch(() => null);
-  if (!isPreApprovalBank(body?.bank)) {
+  // הבנקים שבמסך של הלקוח — כולם עוברים ליועץ, חוץ ממה שכבר הוגש בעצמו
+  const requested: unknown[] = Array.isArray(body?.banks) ? body.banks : body?.bank ? [body.bank] : [];
+  const banks = requested.filter(isPreApprovalBank);
+  if (banks.length === 0) {
     return NextResponse.json({ error: 'בנק לא מוכר' }, { status: 400 });
   }
 
-  const result = await handBankToAdvisor(userId, id, body.bank);
+  const result = await handBanksToAdvisor(userId, id, banks);
   if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(result);
 }

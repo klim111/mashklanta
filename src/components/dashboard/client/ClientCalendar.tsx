@@ -112,8 +112,14 @@ export function MiniCalendar({
           <span key={day}>{day}</span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
-        {days.map((day) => {
+      <div className="grid grid-cols-7 gap-0.5">
+        {/* שבוע שכולו מחוץ לחודש לא מוצג — הלוח נשאר נמוך */}
+        {days
+          .filter((_, index) => {
+            const week = days.slice(index - (index % 7), index - (index % 7) + 7);
+            return week.some((item) => item.getMonth() === anchor.getMonth());
+          })
+          .map((day) => {
           const key = dayKey(day);
           const items = byDay.get(key) ?? [];
           const inMonth = day.getMonth() === anchor.getMonth();
@@ -124,7 +130,7 @@ export function MiniCalendar({
               type="button"
               onClick={() => onSelect(key)}
               title={items.map((item) => item.title).join(', ') || undefined}
-              className={`flex h-10 flex-col items-center justify-center rounded-lg text-info font-bold transition-colors ${
+              className={`flex h-8 flex-col items-center justify-center rounded-lg text-info font-bold transition-colors ${
                 isToday
                   ? 'bg-blue-600 text-white'
                   : inMonth

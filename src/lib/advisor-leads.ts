@@ -190,3 +190,39 @@ export async function listAdvisorLeads(advisorId: string): Promise<AdvisorLeadVi
   });
   return rows.map(toView);
 }
+
+/** מה שהלקוח עצמו רואה על פנייה שלו — בלי פרטי קשר והערות */
+export interface OwnLeadView {
+  id: string;
+  requestKindLabel: string | null;
+  topicLabel: string;
+  createdAt: string;
+}
+
+/**
+ * הפניות הפתוחות של הלקוח — לשורת "הבקשה הועברה ליועץ" בדאשבורד.
+ * כוללות גם פנייה שנשלחה כאורח לפני ההרשמה, עם אותה כתובת מייל.
+ */
+export async function listOwnOpenLeads(userId: string, email: string | null): Promise<OwnLeadView[]> {
+  const rows = await prisma.advisorLead.findMany({
+    where: {
+      status: 'OPEN',
+      OR: [
+        { ownerId: userId },
+        ...(email ? [{ ownerId: null, email: { equals: email, mode: 'insensitive' as const } }] : []),
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+    select: leadSelect,
+  });
+  return rows.map((row) => {
+    const view = toView(row);
+    return {
+      id: view.id,
+      requestKindLabel: view.requestKindLabel,
+      topicLabel: view.topicLabel,
+      createdAt: view.createdAt,
+    };
+  });
+}

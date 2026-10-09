@@ -64,18 +64,35 @@ describe('documentProgress', () => {
     expect(applications?.percent).toBe(100);
   });
 
-  it('מסמך חופשי נספר בשלב שלו, ומשימת מסמך פתוחה מוסיפה יעד', () => {
+  it('מסמך חופשי שאינו מהרשימה אינו נספר, ומשימת מסמך פתוחה מוסיפה יעד', () => {
     const data = emptyPlanData();
-    const uploaded = doc(customDocumentKey('AUCTION', 'הצעה'));
+    const before = documentProgress(data, []);
+    const uploaded = doc(customDocumentKey('ANALYSIS', 'הצעה'));
     const withDoc = documentProgress(data, [uploaded]);
-    const auction = withDoc.stages.find((row) => row.stage === 'AUCTION');
-    expect(auction?.done).toBe(1);
-    expect(auction?.total).toBe(1);
+    // «0 מתוך 6» נשאר «0 מתוך 6» — ולא הופך ל«1 מתוך 7»
+    expect(withDoc.overall).toEqual(before.overall);
 
     const withTask = documentProgress(data, [uploaded], [task({})]);
-    const auctionWithTask = withTask.stages.find((row) => row.stage === 'AUCTION');
-    expect(auctionWithTask?.total).toBe(2);
-    expect(auctionWithTask?.percent).toBe(50);
+    const auction = withTask.stages.find((row) => row.stage === 'AUCTION');
+    expect(auction?.total).toBe(1);
+    expect(auction?.done).toBe(0);
+  });
+
+  it('משימת מסמך שבוצעה נספרת כמוגשת, ולא פעמיים כשמולאה במסמך מהרשימה', () => {
+    const data = emptyPlanData();
+    const free = doc(customDocumentKey('AUCTION', 'הצעה'));
+    const done = documentProgress(data, [free], [task({ status: 'DONE', documentId: free.id })]);
+    const auction = done.stages.find((row) => row.stage === 'AUCTION');
+    expect(auction).toMatchObject({ done: 1, total: 1 });
+
+    const approval = doc('preapproval-leumi');
+    const viaApproval = documentProgress(
+      data,
+      [approval],
+      [task({ stage: 'APPLICATIONS', status: 'DONE', documentId: approval.id })]
+    );
+    const applications = viaApproval.stages.find((row) => row.stage === 'APPLICATIONS');
+    expect(applications).toMatchObject({ done: 1, total: 3 });
   });
 });
 
@@ -94,13 +111,13 @@ describe('ספירת תיק המסמכים', () => {
     });
   });
 
-  it('מסמך שהועלה ואינו ברשימה נספר גם הוא, ולא נעלם מהמניין', () => {
+  it('מסמך שהועלה ואינו ברשימה אינו נספר מתוך הרשימה, אלא בנפרד', () => {
     const requirements = [
       { key: 'b1:identity', name: 'ת"ז', group: 'ל1', stage: 'APPLICATIONS' as const },
     ];
     // אישור עקרוני מהבנק, מסמך בכותרת חופשית, ומפתח שכבר אינו ברשימה
     const documents = [file('pre-approval:leumi'), file('custom:ANALYSIS:x'), file('b1:old-key')];
-    expect(vaultCounts(requirements, documents)).toEqual({ uploaded: 3, total: 4, extras: 3 });
+    expect(vaultCounts(requirements, documents)).toEqual({ uploaded: 0, total: 1, extras: 3 });
   });
 
   it('תיק ריק הוא אפס מתוך מה שנדרש', () => {

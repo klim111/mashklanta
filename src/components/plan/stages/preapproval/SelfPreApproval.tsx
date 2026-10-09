@@ -39,7 +39,7 @@ import { useClientConversation } from '@/components/conversation/ClientChatDock'
 import { useClientMeetings } from '../../advisor/useClientMeetings';
 import type { ClientMeetingView } from '../../advisor/useClientMeetings';
 import type { SubmissionChannel } from '@/lib/mortgage-plan';
-import { HANDOFF_MEETING_TITLE, emptyBankRow, submissionChannelOf } from '@/lib/preapproval-handoff';
+import { HANDOFF_MEETING_TITLE, banksToHand, emptyBankRow, submissionChannelOf } from '@/lib/preapproval-handoff';
 
 const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
 
@@ -240,42 +240,53 @@ export function SelfPreApproval({
     onChange(withApprovals(bankApprovals));
   };
 
-  /** בחירת אופן ההגשה לבנק, או חזרה לבחירה (`null`) כל עוד לא הוגש דבר */
-  const setChannel = (bank: string, channel: SubmissionChannel | null, handedAt?: string) => {
-    const existing = approvalOf(bank);
-    const row: BankPreApproval = {
-      ...(existing ?? emptyBankRow(bank)),
-      channel,
-      ...(handedAt ? { handedAt } : {}),
-    };
-    const bankApprovals = existing
-      ? value.bankApprovals.map((item) => (item.bank === bank ? row : item))
-      : [...value.bankApprovals, row];
+  /** בחירת אופן ההגשה לבנקים, או חזרה לבחירה (`null`) כל עוד לא הוגש דבר */
+  const setChannel = (banks: readonly string[], channel: SubmissionChannel | null, handedAt?: string) => {
+    let bankApprovals = value.bankApprovals;
+    for (const bank of banks) {
+      const existing = bankApprovals.find((item) => item.bank === bank) ?? null;
+      const row: BankPreApproval = {
+        ...(existing ?? emptyBankRow(bank)),
+        channel,
+        ...(handedAt ? { handedAt } : {}),
+      };
+      bankApprovals = existing
+        ? bankApprovals.map((item) => (item.bank === bank ? row : item))
+        : [...bankApprovals, row];
+    }
     lastPushed.current = null;
     onChange(withApprovals(bankApprovals));
   };
 
   /**
-   * "הגשה באמצעות יועץ משכלנתא": השרת רושם את הבנק כמועבר ליועץ, פותח אצלו
-   * משימה ופגישה להשלמת פרטים, ושולח לו מייל. רק אחרי שזה נשמר הכרטיס מתחלף.
+   * "הגשה באמצעות יועץ משכלנתא" — לכל הבנקים יחד: היועץ מטפל בהגשה מול הבנקים,
+   * וכל בנק שהלקוח לא התחיל בו הגשה עצמית עובר אליו. השרת פותח אצל היועץ
+   * משימה ופגישה להשלמת פרטים ושולח לו מייל. רק אחרי שזה נשמר הכרטיסים מתחלפים.
    */
-  const [handing, setHanding] = useState<string | null>(null);
+  const [handing, setHanding] = useState(false);
   const [handError, setHandError] = useState<string | null>(null);
-  const handToAdvisor = async (bank: string) => {
-    setHanding(bank);
+  const handToAdvisor = async () => {
+    const banks = banksToHand(
+      value.bankApprovals,
+      bankList
+        .filter((info) => !byKey.has(preApprovalDocumentKey(info.slug)))
+        .map((info) => info.bank)
+    );
+    if (banks.length === 0) return;
+    setHanding(true);
     setHandError(null);
     try {
       const response = await fetch(`/api/plans/${planId}/preapproval-handoff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bank }),
+        body: JSON.stringify({ banks }),
       });
       if (!response.ok) throw new Error(String(response.status));
-      setChannel(bank, 'ADVISOR', new Date().toISOString());
+      setChannel(banks, 'ADVISOR', new Date().toISOString());
     } catch {
       setHandError('לא הצלחנו להעביר את ההגשה ליועץ. נסו שוב בעוד רגע.');
     } finally {
-      setHanding(null);
+      setHanding(false);
     }
   };
 
@@ -353,7 +364,7 @@ export function SelfPreApproval({
           </p>
         )}
 
-        {anyHanded && <HandoffMeeting meeting={handoffMeeting} />}
+        {anyHanded && <AdvisorHandling meeting={handoffMeeting} />}
 
         <div className={`grid gap-3 ${bankList.length > 1 ? 'md:grid-cols-2' : 'md:max-w-xl md:mx-auto'}`}>
           {bankList.map((info) => (
@@ -365,10 +376,16 @@ export function SelfPreApproval({
                 approvalOf(info.bank),
                 byKey.has(preApprovalDocumentKey(info.slug))
               )}
-              handing={handing === info.bank}
-              onChooseSelf={() => setChannel(info.bank, 'SELF')}
-              onChooseAdvisor={() => void handToAdvisor(info.bank)}
-              onResetChoice={() => setChannel(info.bank, null)}
+              handing={handing}
+              onChooseSelf={() => setChannel([info.bank], 'SELF')}
+              onChooseAdvisor={() => void handToAdvisor()}
+              // כשהיועץ מטפל בהגשה, חזרה מהגשה עצמית מחזירה את הבנק אליו
+              onResetChoice={() =>
+                anyHanded
+                  ? setChannel([info.bank], 'ADVISOR', new Date().toISOString())
+                  : setChannel([info.bank], null)
+              }
+              resetLabel={anyHanded ? 'חזרה לטיפול היועץ' : 'חזרה לבחירה'}
               onEmailBanker={emailBanker}
               uploaded={byKey.get(preApprovalDocumentKey(info.slug)) ?? null}
               busy={busyKey === preApprovalDocumentKey(info.slug) || !ready}
@@ -460,7 +477,7 @@ function BankEmailReminder({
               <p className="mt-2 text-sm leading-relaxed text-amber-900">
                 {personal
                   ? 'כך תשובות הבנק יגיעו לטאב המיילים בהתכתבות וגם לתיבה הרגילה שלכם, ומייל שתשלחו לבנקאי מהפלטפורמה ייצא מאותה כתובת.'
-                  : 'כך תשובות הבנק יגיעו אליכם, ומייל שתשלחו לבנקאי מטאב המיילים בהתכתבות עם היועץ יזוהה אצלו כשייך לבקשה.'}
+                  : 'כך תשובות הבנק יגיעו אליכם, ומייל שתשלחו לבנקאי מטאב המיילים בצ׳אט עם נציג משכלנתא יזוהה אצלו כשייך לבקשה.'}
               </p>
             </div>
 
@@ -548,34 +565,53 @@ function BankerFields({
       <p className={`mt-1 text-2xs font-semibold ${invalid ? 'text-rose-600' : 'text-slate-500'}`}>
         {invalid
           ? 'כתובת המייל אינה תקינה'
-          : 'אפשר לשלוח לבנקאי מייל מטאב המיילים בהתכתבות עם היועץ, והתשובות יישמרו שם.'}
+          : 'אפשר לשלוח לבנקאי מייל מטאב המיילים בצ׳אט עם נציג משכלנתא, והתשובות יישמרו שם.'}
       </p>
     </div>
   );
 }
 
-/** הפגישה עם היועץ להשלמת הפרטים להגשה — ממתינה למועד, או עם התאריך והשעה */
-function HandoffMeeting({ meeting }: { meeting: ClientMeetingView | null }) {
+/**
+ * ההודעה בראש אזור הבנקים כשהיועץ מטפל בהגשה: הוא יגיש מול הבנקים ויחזור
+ * להשלמת הפרטים, ומתחת — הפגישה להשלמת הפרטים, ממתינה למועד או עם התאריך והשעה.
+ */
+function AdvisorHandling({ meeting }: { meeting: ClientMeetingView | null }) {
   const when = meeting ? new Date(meeting.startsAt) : null;
   return (
-    <div className="mb-3 flex items-start gap-3 rounded-2xl border-2 border-violet-200 bg-violet-50 p-3">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
-        <CalendarClock className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p dir="rtl" className="text-info font-black text-violet-950">
-          פגישה עם יועץ משכלנתא להשלמת פרטים להגשה לבנקים
-        </p>
-        {when ? (
-          <p dir="rtl" className="mt-0.5 text-sm font-black text-violet-800">
-            {when.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })} · בשעה{' '}
-            {when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+    <div className="mb-3 space-y-2.5 rounded-2xl border-2 border-violet-200 bg-violet-50 p-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+          <UserRoundCheck className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p dir="rtl" className="text-info font-black text-violet-950">
+            יועץ משכלנתא מטפל בהגשה לבנקים
           </p>
-        ) : (
-          <p dir="rtl" className="mt-0.5 text-sm font-bold text-violet-800">
-            היועץ יקבע מועד לפגישה, והתאריך והשעה יופיעו כאן.
+          <p dir="rtl" className="mt-0.5 text-sm font-bold leading-relaxed text-violet-800">
+            היועץ ידאג להגיש את הבקשה מול הבנקים ויחזור אליכם להשלמת הפרטים. אין צורך להגיש בעצמכם, ואם תרצו
+            להגיש לבנק מסוים לבד — בחרו בו "הגשה עצמית".
           </p>
-        )}
+        </div>
+      </div>
+      <div className="flex items-start gap-3 border-t border-violet-200 pt-2.5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-600">
+          <CalendarClock className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p dir="rtl" className="text-sm font-black text-violet-950">
+            פגישה עם יועץ משכלנתא להשלמת פרטים להגשה לבנקים
+          </p>
+          {when ? (
+            <p dir="rtl" className="mt-0.5 text-sm font-black text-violet-800">
+              {when.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })} · בשעה{' '}
+              {when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          ) : (
+            <p dir="rtl" className="mt-0.5 text-sm font-bold text-violet-800">
+              היועץ יקבע מועד לפגישה, והתאריך והשעה יופיעו כאן.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -642,6 +678,7 @@ function BankCard({
   onChooseSelf,
   onChooseAdvisor,
   onResetChoice,
+  resetLabel,
   onEmailBanker,
   uploaded,
   busy,
@@ -662,6 +699,7 @@ function BankCard({
   onChooseSelf: () => void;
   onChooseAdvisor: () => void;
   onResetChoice: () => void;
+  resetLabel: string;
   /** פתיחת מייל חדש לבנקאי בכלי ההתכתבויות; ריק — אין כלי התכתבות במסך */
   onEmailBanker: ((to: string) => void) | null;
   uploaded: PlanDocumentView | null;
@@ -811,7 +849,7 @@ function BankCard({
                 onClick={onResetChoice}
                 className="text-sm font-bold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
               >
-                חזרה לבחירה
+                {resetLabel}
               </button>
             )}
           </div>
@@ -823,10 +861,22 @@ function BankCard({
       {/* הגשה דרך יועץ משכלנתא */}
       {viaAdvisor && approval && (
         <>
+          {/* במקום הכפתור "הגשה באמצעות יועץ" — היועץ מטפל, ונשארת האפשרות להגיש לבד */}
           {!approved && (
-            <p dir="rtl" className="mt-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold leading-relaxed text-violet-900">
-              יועץ משכלנתא מטפל בהגשה ל{info.bank} ויחזור אליכם להשלמת הפרטים. אין צורך להגיש בעצמכם.
-            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={onChooseSelf}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border-2 border-blue-600 bg-white px-3 py-2 text-button font-black text-blue-700 transition-colors hover:bg-blue-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                הגשה עצמית
+              </button>
+              <span className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-100 px-3 py-2 text-button font-black text-violet-800">
+                <UserRoundCheck className="h-4 w-4" />
+                יועץ משכלנתא מטפל
+              </span>
+            </div>
           )}
           <AdvisorBanker approval={approval} onEmail={onEmailBanker} />
           {approved && validity && (

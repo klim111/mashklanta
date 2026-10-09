@@ -35,6 +35,8 @@ interface AnalysisTabsProps {
   comparePicker?: React.ReactNode;
   /** המודול יושב בעמודה שלצד אזור העבודה — גרפים בשתי עמודות ונמוכים יותר */
   split?: boolean;
+  /** כפתורי פריסה בכותרת המודול — הגדלת הניתוח או חזרה לתצוגה הרגילה */
+  headerActions?: React.ReactNode;
 }
 
 /**
@@ -58,6 +60,7 @@ export function AnalysisTabs({
   onFocusTrack,
   comparePicker,
   split = false,
+  headerActions,
 }: AnalysisTabsProps) {
   const [tab, setTab] = useState<AnalysisTab>('charts');
   /**
@@ -114,6 +117,8 @@ export function AnalysisTabs({
                 )}
               </TabsTrigger>
             </TabsList>
+            <div className="flex flex-wrap items-center gap-1.5">
+            {headerActions}
             {comparePicker && (
               <Button
                 size="sm"
@@ -125,6 +130,7 @@ export function AnalysisTabs({
                 הוסף תמהיל להשוואה
               </Button>
             )}
+            </div>
           </div>
         </CardHeader>
 

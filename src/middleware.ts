@@ -23,6 +23,14 @@ const PUBLIC_API_PREFIXES = [
   '/api/email/inbound',
   // רישום ביקורים ופרטי הרשמה שלא הושלמה — נשלחים גם מדפדפן של מי שלא מחובר
   '/api/track',
+  // החזרה מעמוד התשלום של HYP — התוצאה מאומתת מול HYP לפני שנרשם תשלום
+  '/api/payments/hyp',
+  // אישור חידוש מהקישור החתום שבמייל התזכורת — הקישור עצמו מזהה את הלקוח
+  '/api/billing/renew',
+  // תשלום בקישור תשלום שהיועץ שלח — הקישור עצמו מזהה על מה משלמים
+  '/api/pay',
+  // משימות מתוזמנות של Vercel — הנתיב עצמו בודק את CRON_SECRET
+  '/api/cron',
 ];
 
 function isPublicApi(pathname: string): boolean {

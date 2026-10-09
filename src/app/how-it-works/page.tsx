@@ -28,7 +28,7 @@ import FlexibilityMixer from '@/components/platform/FlexibilityMixer';
 import AnimatedNumber from '@/components/platform/AnimatedNumber';
 import { journeyStages } from '@/data/platform/journey';
 import { platformTools } from '@/data/platform/tools';
-import { PLATFORM_PROCESS_PRICE, pricingPlans } from '@/data/platform/pricing';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import { ServiceFlowSteps } from '@/components/service-flow/ServiceFlowSteps';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 
@@ -101,6 +101,7 @@ const pillars = [
 ];
 
 export default function HowItWorksPage() {
+  const { platformPrice, plans } = usePricing();
   const [activeSection, setActiveSection] = useState('idea');
 
   useEffect(() => {
@@ -214,7 +215,7 @@ export default function HowItWorksPage() {
             {[
               { value: journeyStages.length, suffix: '', label: 'שלבים לבחירה' },
               { value: platformTools.length, suffix: '', label: 'כלים בפלטפורמה' },
-              { value: PLATFORM_PROCESS_PRICE, prefix: '₪', label: 'לתהליך משכנתא — גישה מלאה לפלטפורמה' },
+              { value: platformPrice, prefix: '₪', label: 'לחודש לתהליך משכנתא — גישה מלאה לפלטפורמה' },
               { value: 100, suffix: '%', label: 'מדמי הפלטפורמה מקוזזים כשמזמינים ליווי' },
             ].map((stat, i) => (
               <motion.div
@@ -422,8 +423,10 @@ export default function HowItWorksPage() {
             <FlexibilityMixer />
           </div>
 
-          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
-            {pricingPlans.map((plan, i) => {
+          <div
+            className={`mx-auto grid gap-6 md:grid-cols-2 ${plans.length > 2 ? 'max-w-6xl lg:grid-cols-3' : 'max-w-4xl'}`}
+          >
+            {plans.map((plan, i) => {
               const Icon = plan.icon;
               return (
                 <motion.div
@@ -456,7 +459,7 @@ export default function HowItWorksPage() {
                   <div className="my-6 border-y border-slate-100 py-5">
                     <div
                       className={`font-black text-slate-900 ${
-                        plan.id === 'full' ? 'text-subtitle leading-snug' : 'text-4xl'
+                        plan.price.startsWith('₪') ? 'text-4xl' : 'text-subtitle leading-snug'
                       }`}
                     >
                       {plan.price}

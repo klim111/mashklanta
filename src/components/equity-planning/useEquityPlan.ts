@@ -68,6 +68,45 @@ function hasContent(data: EquityPlanningData): boolean {
   );
 }
 
+function putPlan(next: EquityPlanningData): Promise<Response> {
+  return fetch('/api/equity-plans', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      propertyPrice: next.propertyData.price,
+      targetDate: next.propertyData.targetDate,
+      financingProfile: next.propertyData.financingProfile,
+      usesBroker: next.usesBroker,
+      expenses: next.expenses,
+    }),
+  });
+}
+
+/**
+ * העברת הטיוטה של מי שהזין לפני שנרשם לחשבון שלו, בלי לפתוח את הכלי — כדי
+ * שהסקירה בדאשבורד תציג אותה כבר בכניסה הראשונה. תכנון שכבר שמור בחשבון
+ * אינו נדרס.
+ */
+export async function adoptEquityDraft(): Promise<boolean> {
+  const draft = readDraft();
+  if (!draft || !hasContent(draft)) return false;
+  try {
+    const response = await fetch('/api/equity-plans', { cache: 'no-store' });
+    if (!response.ok) return false;
+    const fromServer = planDataFromView((await response.json()) as EquityPlanView | null);
+    if (fromServer && hasContent(fromServer)) {
+      clearDraft();
+      return false;
+    }
+    if (!(await putPlan(draft)).ok) return false;
+    clearDraft();
+    window.dispatchEvent(new Event(EQUITY_PLAN_CHANGED_EVENT));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * הנתונים של כלי תכנון ההוצאות, עם השמירה שמתאימה למי שמשתמש בו.
  *
@@ -82,6 +121,8 @@ export function useEquityPlan() {
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState<EquitySaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const savedAtRef = useRef<string | null>(null);
+  savedAtRef.current = savedAt;
   /** נטען משרת/מטיוטה — עד שזה קורה אין מה לשמור, כדי לא לדרוס נתונים קיימים */
   const loaded = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,17 +130,7 @@ export function useEquityPlan() {
   const push = useCallback(async (next: EquityPlanningData) => {
     setSaveState('saving');
     try {
-      const response = await fetch('/api/equity-plans', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          propertyPrice: next.propertyData.price,
-          targetDate: next.propertyData.targetDate,
-          financingProfile: next.propertyData.financingProfile,
-          usesBroker: next.usesBroker,
-          expenses: next.expenses,
-        }),
-      });
+      const response = await putPlan(next);
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as EquityPlanView;
       setSaveState('saved');
@@ -178,14 +209,18 @@ export function useEquityPlan() {
     }
 
     // אין מה לשמור עד שהוזן משהו, וגם אין טעם לפתוח רשומה ריקה בבסיס הנתונים
-    if (!hasContent(data) && !savedAt) return;
+    if (!hasContent(data) && !savedAtRef.current) return;
 
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void push(data), 800);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [data, signedIn, push, savedAt]);
+    /*
+      `savedAt` נקרא דרך ref ולא כתלות: כל שמירה מעדכנת אותו, ותלות בו הפעילה
+      שמירה נוספת — לולאה שהציגה "שומר…" כל שנייה.
+    */
+  }, [data, signedIn, push]);
 
   const reset = useCallback(async () => {
     setData(EMPTY_EQUITY_PLAN);

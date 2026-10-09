@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Building2, Gavel, Pencil, RefreshCw } from 'lucide-react';
 import type { MixData, PlanData } from '@/lib/mortgage-plan';
 import { REFINANCE_GOAL_LABELS, mixWithRemainingTerms } from '@/lib/refinance';
@@ -10,6 +10,8 @@ import { calculateMortgageMix, formatCurrency } from '@/components/mortgage-advi
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import { RateRequestDialog } from '@/components/mortgage-advisor/rateRequest/RateRequestDialog';
 import { RefinanceMortgageInput } from '@/components/mortgage-refinance/RefinanceMortgageInput';
+import { reviveMix } from '@/components/refinance-check/refinanceCheckStore';
+import { useToolData } from '@/components/tool-data/toolData';
 import {
   MixResultRow,
   MixRowsHeader,
@@ -62,6 +64,16 @@ export function RefinanceMixStage({
     tracks: [],
     createdAt: new Date(),
   }));
+  /**
+   * המשכנתא הנוכחית שכבר הוזנה בכלי המיחזור — גם לפני ההרשמה — ממלאת את
+   * התהליך החדש, כדי שלא יצטרכו להזין את המסלולים שוב.
+   */
+  const toolData = useToolData('refinance', reviveMix);
+  useEffect(() => {
+    if (!toolData.ready || !toolData.initial) return;
+    const known = toolData.initial;
+    setFirstMix((current) => (current.tracks.length > 0 ? current : known));
+  }, [toolData.ready, toolData.initial]);
 
   const calcs = useMemo(() => {
     if (!refinance) return null;

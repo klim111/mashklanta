@@ -13,13 +13,11 @@ import {
   Legend,
 } from 'recharts';
 import type { Loan } from './types';
-import { buildAmortSchedule } from './loanMath';
+import { buildLoanSchedule } from './loanMath';
 import { formatILS } from '@/lib/currency';
 
 interface AmortChartProps {
   loan: Loan;
-  /** פירעון מוקדם שנבדק — הגרף מצייר את הלוח שאחריו */
-  prepay?: { amount: number; month: number };
   height?: number;
   showLegend?: boolean;
   colors?: {
@@ -77,7 +75,6 @@ function AmortTooltip({ active, payload, label }: AmortTooltipProps) {
 
 export function AmortChart({
   loan,
-  prepay,
   height = 300,
   showLegend = true,
   colors = {
@@ -86,14 +83,8 @@ export function AmortChart({
     interest: '#ef4444',
   },
 }: AmortChartProps) {
-  const schedule = buildAmortSchedule({
-    principal: loan.principal,
-    apr: loan.apr,
-    months: loan.months,
-    prepayAmount: prepay?.amount ?? 0,
-    prepayMonth: prepay?.month ?? 0,
-    mode: 'reduce',
-  });
+  // הלוח כולל את הפירעונות המוקדמים שהוזנו בהלוואה
+  const schedule = buildLoanSchedule(loan);
 
   // נתוני הגרף:
   //   BALANCE_AREA_KEY = יתרת הקרן באותו חודש - מצויר כאזור ירוק תחת קו ירידת הקרן.
@@ -125,7 +116,7 @@ export function AmortChart({
 
   return (
     <div className="w-full space-y-3" dir="rtl">
-      <div style={{ height }}>
+      <div style={{ height }} dir="ltr" className="[&_svg]:[direction:ltr]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={chartData}
