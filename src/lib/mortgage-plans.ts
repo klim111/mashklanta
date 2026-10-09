@@ -63,6 +63,7 @@ const planSelect = {
   mortgageAmount: true,
   monthlyPayment: true,
   completedAt: true,
+  advisoryEndedAt: true,
   createdAt: true,
   updatedAt: true,
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
@@ -128,6 +129,7 @@ function accessOf(row: PlanRow): ProcessAccess {
     // שנפתח אוטומטית ללקוח שנרשם לבד אינו ליווי
     hasPaidAdvisory:
       Boolean(row.client && !row.client.autoLinked) || row.advisorOrders.some((order) => order.status === 'PAID'),
+    advisoryEndedAt: row.advisoryEndedAt,
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
     ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
   });
@@ -301,17 +303,23 @@ async function bindOpenPass(userId: string, planId: string): Promise<void> {
 }
 
 /**
- * תהליכים פתוחים במסלול העצמאי: לא הסתיימו, לא בארכיון, ואין עליהם ליווי.
- * עליהם חלה ההגבלה של שני תהליכים במקביל.
+ * תהליכים פתוחים במסלול העצמאי: לא הסתיימו, לא בארכיון, ואין עליהם ליווי
+ * פעיל — כולל תהליך שהיועץ סימן שהליווי בו הסתיים. עליהם חלה ההגבלה של שני
+ * תהליכים במקביל, ולהם נשלחת התזכורת לקראת סוף החודש.
  */
 export async function countOpenSelfServicePlans(userId: string): Promise<number> {
   return prisma.mortgagePlan.count({
     where: {
       ownerId: userId,
       status: 'IN_PROGRESS',
-      // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
-      OR: [{ clientId: null }, { client: { autoLinked: true } }],
-      advisorOrders: { none: { status: 'PAID' } },
+      OR: [
+        { advisoryEndedAt: { not: null } },
+        {
+          // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
+          OR: [{ clientId: null }, { client: { autoLinked: true } }],
+          advisorOrders: { none: { status: 'PAID' } },
+        },
+      ],
     },
   });
 }

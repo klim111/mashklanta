@@ -8,12 +8,13 @@ import { daysUntil, passExpiresAt } from './process-access';
 import { getPricingFresh } from './pricing-store';
 import { countOpenSelfServicePlans } from './mortgage-plans';
 import {
+  advisoryEndedEmail,
   linkPaidAdvisorEmail,
   linkPaidClientEmail,
   paymentConfirmationEmail,
   renewalReminderEmail,
 } from './billing-emails';
-import { RENEWAL_LINK_GRACE_DAYS, renewalToken } from './billing-links';
+import { RENEWAL_LINK_GRACE_DAYS, renewalToken, type RenewalReason } from './billing-links';
 
 /**
  * החיוב מקצה לקצה: פתיחת עמוד התשלום של HYP, רישום התשלום כשהלקוח חוזר ממנו
@@ -317,14 +318,43 @@ async function recordLinkPayment(checkoutId: string, linkId: string, result: Hyp
   }
 }
 
-/** הקישור לחידוש שנכנס למייל התזכורת */
-export function renewalUrl(userId: string, planId: string | null, accessUntil: Date): string {
+/** הקישור לחידוש שנכנס למייל התזכורת, או למייל על סיום הליווי */
+export function renewalUrl(
+  userId: string,
+  planId: string | null,
+  accessUntil: Date,
+  reason: RenewalReason = 'renewal'
+): string {
   const token = renewalToken({
     userId,
     planId,
     expiresAt: new Date(accessUntil.getTime() + RENEWAL_LINK_GRACE_DAYS * DAY_MS),
+    reason,
   });
   return `${siteOrigin()}/billing/renew?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * היועץ סימן שהליווי בתהליך הסתיים: מייל ללקוח עם הצעה להמשיך לבד במחיר
+ * החודשי העדכני, וקישור שמוביל לעמוד התשלום בלי להתחבר. כישלון בשליחה לא
+ * מבטל את הסימון — אותה הצעה מוצגת ללקוח גם בפלטפורמה.
+ */
+export async function sendAdvisoryEndedOffer(planId: string, endedAt: Date): Promise<boolean> {
+  const plan = await prisma.mortgagePlan.findUnique({
+    where: { id: planId },
+    select: { name: true, ownerId: true, owner: { select: { name: true, email: true, role: true } } },
+  });
+  if (!plan?.owner.email || plan.owner.role === 'ADVISOR') return false;
+  const { platformPrice } = await getPricingFresh();
+  const email = advisoryEndedEmail({
+    name: plan.owner.name,
+    planName: plan.name,
+    price: platformPrice,
+    continueUrl: renewalUrl(plan.ownerId, planId, endedAt, 'advisory-ended'),
+    dashboardUrl: `${siteOrigin()}/dashboard`,
+  });
+  const result = await sendEmail({ to: plan.owner.email, ...email }).catch(() => ({ success: false }));
+  return result.success;
 }
 
 /**

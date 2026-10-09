@@ -589,6 +589,12 @@ model MortgagePlan {
   completedAt DateTime?
 
   /**
+   * מתי היועץ סימן שהליווי בתהליך הסתיים. עד אז ליווי ששולם ואושר פותח את
+   * הכלים בלי הגבלת זמן; מכאן והלאה הגישה היא לפי חבילות של חודש
+   */
+  advisoryEndedAt DateTime?
+
+  /**
    * התשלומים שפתחו את התהליך — התשלום הראשון והחידושים אחריו
    */
   platformPayments PlatformPayment[]

@@ -109,6 +109,37 @@ ${input.renewUrl}
   };
 }
 
+export interface AdvisoryEndedInput {
+  name: string | null;
+  planName: string;
+  price: number;
+  continueUrl: string;
+  dashboardUrl: string;
+}
+
+/** הליווי בתהליך הסתיים — הצעה להמשיך לעבוד בכלים לבד, במחיר החודשי */
+export function advisoryEndedEmail(input: AdvisoryEndedInput) {
+  const greeting = input.name ? `שלום ${escapeHtml(input.name)},` : 'שלום,';
+  return {
+    subject: `הליווי בתהליך הסתיים · אפשר להמשיך ב${appName()} ב-₪${input.price} לחודש`,
+    html: authEmailShell(
+      'הליווי בתהליך הסתיים',
+      `<p style="margin:0 0 12px;">${greeting}</p>
+         <p style="margin:0 0 12px;">היועץ סימן שהליווי בתהליך <strong>${escapeHtml(input.planName)}</strong> הסתיים. תודה שבחרתם בנו!</p>
+         <p style="margin:0 0 20px;">כל מה שהוזן בתהליך שמור. רוצים להמשיך לעבוד בכלים ובמחשבונים? ממשיכים במסלול העצמאי ב-₪${input.price} לחודש. החיוב מתבצע רק אחרי שתאשרו ותשלמו בעמוד התשלום המאובטח.</p>
+         ${button(input.continueUrl, `להמשך ב-₪${input.price} לחודש`)}
+         <p style="margin:0;color:#475569;font-size:14px;">לא צריכים יותר את הכלים? אין צורך לעשות דבר. התהליך נשאר שמור באזור האישי: <a href="${input.dashboardUrl}" style="color:#2563eb;">לאזור האישי</a></p>`
+    ),
+    text: `${input.name ? `שלום ${input.name},` : 'שלום,'}
+
+היועץ סימן שהליווי בתהליך ${input.planName} הסתיים. כל מה שהוזן שמור.
+רוצים להמשיך לעבוד בכלים? ממשיכים במסלול העצמאי ב-₪${input.price} לחודש (החיוב רק אחרי שתאשרו):
+${input.continueUrl}
+
+לא צריכים יותר את הכלים? אין צורך לעשות דבר.`,
+  };
+}
+
 function money(amount: number): string {
   return `₪${amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
 }

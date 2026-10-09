@@ -104,6 +104,54 @@ describe('processAccess', () => {
     expect(processAccess({ ...base, ownerIsAdvisor: true }, now).state).toBe('ACTIVE');
   });
 
+  it('keeps paid advisory open with no time limit until the advisor ends it', () => {
+    // הליווי אושר לפני חודשים, והיועץ עוד לא סימן סיום — עדיין פתוח
+    const advised = { ...base, planCreatedAt: '2026-01-01T00:00:00Z', hasPaidAdvisory: true };
+    const open = processAccess(advised, now);
+    expect(open.state).toBe('ACTIVE');
+    expect(open.expiresAt).toBeNull();
+    expect(open.advisoryEndedAt).toBeNull();
+
+    // היועץ סימן סיום, והלקוח לא שילם על חודש — ננעל, עם הצעה להמשיך לבד
+    const ended = processAccess({ ...advised, advisoryEndedAt: '2026-10-05T00:00:00Z' }, now);
+    expect(ended.state).toBe('UNPAID');
+    expect(processLocked(ended)).toBe(true);
+    expect(ended.advisoryEndedAt).toBe('2026-10-05T00:00:00.000Z');
+  });
+
+  it('after advisory ends, a month paid before it still runs out on its own date', () => {
+    const access = processAccess(
+      {
+        ...base,
+        planCreatedAt: '2026-09-01T00:00:00Z',
+        hasPaidAdvisory: true,
+        advisoryEndedAt: '2026-10-05T00:00:00Z',
+        payments: [{ createdAt: '2026-09-25T00:00:00Z' }],
+      },
+      now
+    );
+    // ספטמבר: 30 יום — פתוח עד 25 באוקטובר, וההצעה להמשך כבר מוצגת
+    expect(access.state).toBe('ACTIVE');
+    expect(access.expiresAt).toBe('2026-10-25T00:00:00.000Z');
+    expect(access.advisoryEndedAt).toBe('2026-10-05T00:00:00.000Z');
+  });
+
+  it('a payment after advisory ended opens a regular month and clears the offer', () => {
+    const access = processAccess(
+      {
+        ...base,
+        planCreatedAt: '2026-09-01T00:00:00Z',
+        hasPaidAdvisory: true,
+        advisoryEndedAt: '2026-10-05T00:00:00Z',
+        payments: [{ createdAt: '2026-10-07T00:00:00Z' }],
+      },
+      now
+    );
+    expect(access.state).toBe('ACTIVE');
+    expect(access.expiresAt).toBe('2026-11-07T00:00:00.000Z');
+    expect(access.advisoryEndedAt).toBeNull();
+  });
+
   it('keeps legacy monthly subscribers open only on processes from before the change', () => {
     expect(
       processAccess({ ...base, ownerHadLegacyAccess: true, planCreatedAt: '2026-09-10T00:00:00Z' }, now).state

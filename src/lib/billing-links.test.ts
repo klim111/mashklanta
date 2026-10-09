@@ -8,7 +8,12 @@ const expiresAt = new Date('2026-12-01T00:00:00Z');
 describe('renewal links', () => {
   it('round-trips the user and process', () => {
     const token = renewalToken({ userId: 'u1', planId: 'p1', expiresAt }, key);
-    expect(readRenewalToken(token, now, key)).toEqual({ userId: 'u1', planId: 'p1', expiresAt });
+    expect(readRenewalToken(token, now, key)).toEqual({ userId: 'u1', planId: 'p1', expiresAt, reason: 'renewal' });
+  });
+
+  it('keeps the reason when the link offers to continue after advisory ended', () => {
+    const token = renewalToken({ userId: 'u1', planId: 'p1', expiresAt, reason: 'advisory-ended' }, key);
+    expect(readRenewalToken(token, now, key)?.reason).toBe('advisory-ended');
   });
 
   it('rejects expired, tampered or foreign-key links', () => {

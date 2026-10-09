@@ -12,6 +12,10 @@
  * התשלום נקשר לתהליך שנפתח ראשון אחריו (`PlatformPayment.planId`), אבל זה רק
  * לצורך הקיזוז אם יוזמן ליווי. הגישה עצמה נגזרת מכל התשלומים של הלקוח.
  *
+ * ליווי: שלב ששולם והיועץ אישר אותו (או לקוח שהיועץ מלווה מלכתחילה) פותח את
+ * כל הכלים בתהליך בלי הגבלת זמן, עד שהיועץ מסמן שהליווי בתהליך הסתיים. מאותו
+ * רגע הגישה שוב לפי החבילות החודשיות, והלקוח מקבל הצעה להמשיך במחיר החודשי.
+ *
  * הקובץ טהור בכוונה: הוא נבדק בבדיקות יחידה ונטען גם בשרת וגם בדפדפן.
  */
 
@@ -139,6 +143,11 @@ export interface ProcessAccess {
   daysLeft: number | null;
   /** סכום התשלומים על התהליך הזה, בשקלים — לקיזוז אם יוזמן ליווי */
   paid: number;
+  /**
+   * מתי היועץ סימן שהליווי בתהליך הסתיים, כל עוד הלקוח לא שילם מאז על המשך —
+   * כדי להציע לו להמשיך לבד. null כשאין סיום כזה, או שהלקוח כבר המשיך
+   */
+  advisoryEndedAt: string | null;
 }
 
 export interface ProcessAccessInput {
@@ -152,6 +161,8 @@ export interface ProcessAccessInput {
   ownerCompletions?: ReadonlyArray<Date | string>;
   /** ליווי ששולם (ליווי מלא או שלבים), או יועץ שמלווה את הלקוח — כולל גישה מלאה לכלים */
   hasPaidAdvisory: boolean;
+  /** מתי היועץ סימן שהליווי בתהליך הסתיים. מאז הליווי כבר לא פותח את הכלים */
+  advisoryEndedAt?: Date | string | null;
   /** בעל התהליך הוא יועץ — אצלו הכלים פתוחים תמיד */
   ownerIsAdvisor: boolean;
   /** בעל התהליך שילם על מנוי חודשי לפני המעבר לתשלום לתהליך */
@@ -160,10 +171,19 @@ export interface ProcessAccessInput {
 
 export function processAccess(input: ProcessAccessInput, now = new Date()): ProcessAccess {
   const paid = input.payments.reduce((sum, payment) => sum + (payment.amountAgorot ?? 0), 0) / 100;
-  const open = (state: ProcessAccessState): ProcessAccess => ({ state, expiresAt: null, daysLeft: null, paid });
+  const advisoryEndedAt = input.advisoryEndedAt ? new Date(input.advisoryEndedAt).toISOString() : null;
+  const open = (state: ProcessAccessState): ProcessAccess => ({
+    state,
+    expiresAt: null,
+    daysLeft: null,
+    paid,
+    advisoryEndedAt,
+  });
 
   if (input.planStatus === 'COMPLETED') return open('COMPLETED');
-  if (input.ownerIsAdvisor || input.hasPaidAdvisory) return open('ACTIVE');
+  if (input.ownerIsAdvisor) return open('ACTIVE');
+  // הליווי פותח את הכלים עד שהיועץ מסמן שהסתיים
+  if (input.hasPaidAdvisory && !advisoryEndedAt) return open('ACTIVE');
 
   const covering = (input.ownerPayments ?? input.payments).filter((payment) =>
     paymentCovers(payment, input.planCreatedAt, input.ownerCompletions ?? [])
@@ -176,6 +196,8 @@ export function processAccess(input: ProcessAccessInput, now = new Date()): Proc
       expiresAt: expiresAt.toISOString(),
       daysLeft: daysUntil(expiresAt, now),
       paid,
+      // תשלום אחרי סיום הליווי הוא ההמשך עצמו — מכאן זו חבילה רגילה
+      advisoryEndedAt: advisoryEndedAt && new Date(last.createdAt) < new Date(advisoryEndedAt) ? advisoryEndedAt : null,
     };
   }
 

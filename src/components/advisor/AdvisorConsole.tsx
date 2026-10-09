@@ -45,6 +45,8 @@ import type { AdvisorClient } from './useAdvisorClients';
 import { SiteAnalyticsPanel } from './SiteAnalyticsPanel';
 import { PricingEditorPanel } from './PricingEditorPanel';
 import { PaymentLinksPanel } from './PaymentLinksPanel';
+import { setAdvisoryEnded } from './advisory-end';
+import { usePricing } from '@/components/pricing/PricingProvider';
 import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 
@@ -84,6 +86,7 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
  */
 export function AdvisorConsole() {
   const { data: session } = useSession();
+  const { platformPrice } = usePricing();
   const [tab, setTab] = useState<TabId>('clients');
   const [query, setQuery] = useState('');
   const [meetingFor, setMeetingFor] = useState<AdvisorClient | null>(null);
@@ -415,6 +418,13 @@ export function AdvisorConsole() {
                   body: JSON.stringify({ orderId, inWork }),
                 });
                 await refreshRequests();
+              }}
+              onEndAdvisory={async (planId, ended) => {
+                try {
+                  if (await setAdvisoryEnded(planId, ended, platformPrice)) await refreshRequests();
+                } catch {
+                  window.alert('הפעולה לא נשמרה. נסו שוב.');
+                }
               }}
               onOpenClient={(clientId) => {
                 setFocusClientId(clientId);

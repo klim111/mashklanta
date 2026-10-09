@@ -1,10 +1,14 @@
 import crypto from 'node:crypto';
 
 /**
- * הקישור לחידוש שנשלח במייל התזכורת. הקישור חתום, כדי שאפשר יהיה לפתוח אותו
- * ישר מהמייל בלי להתחבר, ושאי אפשר יהיה לזייף קישור למשתמש אחר. הקישור רק
- * מוביל לעמוד אישור ומשם לעמוד התשלום של HYP — הוא לא מחייב לבד.
+ * הקישור לחידוש שנשלח במייל התזכורת, ובמייל שנשלח כשהיועץ מסיים את הליווי.
+ * הקישור חתום, כדי שאפשר יהיה לפתוח אותו ישר מהמייל בלי להתחבר, ושאי אפשר
+ * יהיה לזייף קישור למשתמש אחר. הקישור רק מוביל לעמוד אישור ומשם לעמוד התשלום
+ * של HYP — הוא לא מחייב לבד.
  */
+
+/** למה נשלח הקישור — חידוש חודש, או המשך לבד אחרי שהליווי הסתיים */
+export type RenewalReason = 'renewal' | 'advisory-ended';
 
 export interface RenewalLink {
   userId: string;
@@ -12,6 +16,8 @@ export interface RenewalLink {
   planId: string | null;
   /** עד מתי הקישור תקף */
   expiresAt: Date;
+  /** ברירת המחדל: חידוש */
+  reason?: RenewalReason;
 }
 
 /** כמה זמן הקישור תקף אחרי שהחודש מסתיים — מי שחוזר מאוחר עדיין יכול לחדש */
@@ -29,7 +35,12 @@ function signature(payload: string, key: string): string {
 
 export function renewalToken(link: RenewalLink, key = secret()): string {
   const payload = Buffer.from(
-    JSON.stringify({ u: link.userId, p: link.planId, e: Math.floor(link.expiresAt.getTime() / 1000) })
+    JSON.stringify({
+      u: link.userId,
+      p: link.planId,
+      e: Math.floor(link.expiresAt.getTime() / 1000),
+      ...(link.reason === 'advisory-ended' ? { r: 'a' } : {}),
+    })
   ).toString('base64url');
   return `${payload}.${signature(payload, key)}`;
 }
@@ -46,7 +57,12 @@ export function readRenewalToken(token: string | null | undefined, now = new Dat
     if (typeof data?.u !== 'string' || typeof data?.e !== 'number') return null;
     const expiresAt = new Date(data.e * 1000);
     if (expiresAt <= now) return null;
-    return { userId: data.u, planId: typeof data.p === 'string' ? data.p : null, expiresAt };
+    return {
+      userId: data.u,
+      planId: typeof data.p === 'string' ? data.p : null,
+      expiresAt,
+      reason: data.r === 'a' ? 'advisory-ended' : 'renewal',
+    };
   } catch {
     return null;
   }

@@ -11,6 +11,7 @@ import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
 import { StageRail } from '@/components/plan/StageRail';
 import { PLAN_STAGES } from '@/lib/mortgage-plan';
 import type { PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
+import { AdvisoryStatusBar } from '@/components/advisor/AdvisoryStatusBar';
 import { ClientContextRow } from '@/components/advisor/ClientContextRow';
 import { ClientStageWorkspace } from '@/components/advisor/ClientStageWorkspace';
 import { MeetingDialog } from '@/components/advisor/MeetingDialog';
@@ -187,6 +188,10 @@ export default function AdvisorClientPage() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+        {process?.planId && process.advisory && (
+          <AdvisoryStatusBar planId={process.planId} advisory={process.advisory} onChanged={refreshProcess} />
+        )}
+
         <ClientStageWorkspace
           client={client}
           stage={stage}
