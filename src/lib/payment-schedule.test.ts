@@ -102,6 +102,33 @@ describe('signing stage', () => {
     expect(missingForStage('SIGNING', data)).not.toContain('הגדרת פעימות התשלום');
   });
 
+  it('closes stage 5 once the signing at the bank is marked done', () => {
+    const data = emptyPlanData();
+    data.ANALYSIS.dealType = 'any_purpose';
+    expect(stageIsComplete('SIGNING', data)).toBe(false);
+    expect(missingForStage('SIGNING', data)).toContain('סימון שהחתימה על תיק המשכנתא בבנק בוצעה');
+    const parsed = parseStageData('SIGNING', {
+      visits: { 'bank-sign': { date: '2026-11-02', doneAt: '2026-11-02T10:00:00.000Z' }, 'collateral-submit': { date: 'bad' } },
+      tiyulim: { documentId: 'd1', sentTo: 'a@b.co', documentsProvided: true },
+    });
+    expect(parsed.visits['collateral-submit']).toEqual({ date: null, doneAt: null });
+    expect(parsed.tiyulim).toMatchObject({ documentId: 'd1', sentTo: 'a@b.co', documentsProvided: true, sentAt: null });
+    data.SIGNING = parsed;
+    expect(stageIsComplete('SIGNING', data)).toBe(true);
+  });
+
+  it('keeps internal refinance open until the signing is done', () => {
+    const data = emptyPlanData();
+    data.MIX.refinance = { mode: 'INTERNAL' } as typeof data.MIX.refinance;
+    data.AUCTION.signedMix = {
+      mixKey: 'm1', mixRecordId: null, bank: 'לאומי', name: 'x', monthlyPayment: 5000,
+      averageRate: 4, totalInterest: null, totalPaid: null, months: null, chosenAt: '2026-10-01T00:00:00Z',
+    };
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+    data.SIGNING.visits['bank-sign'].doneAt = '2026-11-02T10:00:00.000Z';
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
+  });
+
   it('does not require a schedule for refinance', () => {
     const data = emptyPlanData();
     data.MIX.refinancePending = true;

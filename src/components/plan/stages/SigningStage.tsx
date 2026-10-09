@@ -1,7 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ScanSearch } from 'lucide-react';
+import { ArrowLeft, ScanSearch } from 'lucide-react';
 import { NEW_PLAN_FLOW } from '@/lib/mortgage-plan';
 import type { PlanData, PlanFlow, SigningData, SigningScreen } from '@/lib/mortgage-plan';
 import { SIGNING_VISITS } from '@/lib/signing-visits';
@@ -33,6 +34,7 @@ export function SigningStage({
   onChange,
   flow = NEW_PLAN_FLOW,
   advisorRun = false,
+  lead,
 }: {
   data: PlanData;
   planId: string;
@@ -41,6 +43,11 @@ export function SigningStage({
   flow?: PlanFlow;
   /** יועץ מלווה את שלב החתימה — משנה את תת-השלב של פתיחת התיק */
   advisorRun?: boolean;
+  /**
+   * מסך פתיחה במקום עמוד ההסבר — במיחזור פנימי: אימות ההצעה של הבנק, ואחריו
+   * תת-השלבים של החתימה כמו בשלב 5.
+   */
+  lead?: { label: string; content: ReactNode; continueLabel: string };
 }) {
   const value = data.SIGNING;
   useSigningVisitSync(data, planId, onChange);
@@ -50,12 +57,28 @@ export function SigningStage({
 
   return (
     <div className="space-y-5">
-      <ScreenRail current={screen} visits={value.visits} onSelect={go} />
+      <ScreenRail current={screen} visits={value.visits} firstLabel={lead?.label} onSelect={go} />
 
       <AnimatePresence mode="wait" initial={false}>
         {screen === 'overview' ? (
           <motion.div key="overview" {...reveal}>
-            <StageIntro stage="SIGNING" flow={flow} onStart={() => go('bank-file')} />
+            {lead ? (
+              <div className="space-y-5">
+                {lead.content}
+                <div className="flex justify-start">
+                  <button
+                    type="button"
+                    onClick={() => go('bank-file')}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
+                  >
+                    {lead.continueLabel}
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <StageIntro stage="SIGNING" flow={flow} onStart={() => go('bank-file')} />
+            )}
           </motion.div>
         ) : screen === 'bank-file' ? (
           <motion.div key="bank-file" {...reveal}>
@@ -124,14 +147,16 @@ export function SigningStage({
 function ScreenRail({
   current,
   visits,
+  firstLabel,
   onSelect,
 }: {
   current: SigningScreen;
   visits: SigningData['visits'];
+  firstLabel?: string;
   onSelect: (screen: SigningScreen) => void;
 }) {
   const items: Array<{ id: SigningScreen; label: string; done?: boolean }> = [
-    { id: 'overview', label: 'על השלב' },
+    { id: 'overview', label: firstLabel ?? 'על השלב' },
     { id: 'bank-file', label: 'אישור לבנק לפתיחת תיק' },
     { id: 'collateral', label: 'בטחונות וטופס טיולים' },
     { id: 'collateral-submit', label: SIGNING_VISITS['collateral-submit'].short, done: Boolean(visits['collateral-submit'].doneAt) },

@@ -6,7 +6,7 @@
  * עומד — וזה בדיוק מה שהמודול הזה מייצר. הפירוט המלא נשאר זמין מאחורי כפתור.
  */
 
-import { analyzeProfile, SIGNING_CHECKS, winningOffer } from './mortgage-plan';
+import { analyzeProfile, winningOffer } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 
 export interface SnapshotItem {
@@ -132,7 +132,8 @@ export function stageSnapshot(
 
     case 'SIGNING': {
       const signing = data.SIGNING;
-      const checks = SIGNING_CHECKS.filter((check) => signing.checklist[check.key]).length;
+      const visitLabel = (key: 'collateral-submit' | 'bank-sign') =>
+        signing.visits[key].doneAt ? 'בוצע' : signing.visits[key].date ? `נקבע ל-${date(signing.visits[key].date)}` : null;
       return {
         headline: done
           ? 'המשכנתא נחתמה'
@@ -143,10 +144,7 @@ export function stageSnapshot(
           { label: 'הבנק', value: signing.bank },
           { label: 'תאריך חתימה', value: date(signing.signingDate) },
           { label: 'החזר חודשי בחוזה', value: shekel(signing.finalMonthlyPayment) },
-          {
-            label: 'בדיקות שהושלמו',
-            value: `${checks} מתוך ${SIGNING_CHECKS.length}`,
-          },
+          { label: 'הגשת הבטחונות בסניף', value: visitLabel('collateral-submit') },
         ],
       };
     }

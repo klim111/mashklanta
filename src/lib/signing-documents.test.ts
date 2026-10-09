@@ -74,7 +74,8 @@ describe('שמירת הבחירה בשלב החתימה', () => {
       documents: { [collected]: true },
     });
 
-    expect(value.screen).toBe('documents');
+    // מסך המסמכים עבר לתיק המסמכים; מי שנשאר עליו נפתח בבטחונות
+    expect(value.screen).toBe('collateral');
     expect(value.dealTypeId).toBe('second_hand');
     expect(value.registryId).toBe('rmi');
     expect(value.scenarioId).toBe('used_rmi_lease');

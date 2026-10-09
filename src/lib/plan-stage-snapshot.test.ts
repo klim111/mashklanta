@@ -110,10 +110,13 @@ describe('תמונת המצב של השלב', () => {
     expect(snapshot.items[0].value).toBeNull();
   });
 
-  it('שלב החתימה סופר את הבדיקות שהושלמו', () => {
-    const snapshot = stageSnapshot('SIGNING', filled());
-    const checks = snapshot.items.find((item) => item.label === 'בדיקות שהושלמו')?.value;
-    expect(checks).toMatch(/^0 מתוך \d+$/);
+  it('שלב החתימה מראה את הגשת הבטחונות בסניף', () => {
+    const data = filled();
+    const item = () =>
+      stageSnapshot('SIGNING', data).items.find((row) => row.label === 'הגשת הבטחונות בסניף')?.value;
+    expect(item()).toBeNull();
+    data.SIGNING.visits['collateral-submit'] = { date: '2026-11-02', doneAt: '2026-11-02T08:00:00.000Z' };
+    expect(item()).toBe('בוצע');
   });
 
   it('שלב שנסגר מדווח על כך בכותרת', () => {

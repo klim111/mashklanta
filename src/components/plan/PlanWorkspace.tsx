@@ -877,14 +877,40 @@ export function PlanWorkspace({
                     }
                   />
                 )}
-                {stage === 'AUCTION' && (
+                {stage === 'AUCTION' && !internalRefinance && (
                   <AuctionStage
                     data={plan.data}
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
                     advisorRun={advisorRun}
-                    banks={internalRefinance && refinance ? [refinance.bank] : undefined}
                     refinance={refinance}
+                  />
+                )}
+                {/*
+                  במיחזור פנימי זה השלב האחרון: אימות ההצעה של הבנק, ואחריו
+                  תת-השלבים של החתימה בדיוק כמו בשלב 5 של משכנתא חדשה.
+                */}
+                {stage === 'AUCTION' && internalRefinance && (
+                  <SigningStage
+                    data={plan.data}
+                    planId={plan.id}
+                    onChange={(next: SigningData) => updateStage('SIGNING', next)}
+                    flow={flow}
+                    advisorRun={advisorRun}
+                    lead={{
+                      label: 'אימות ההצעה',
+                      continueLabel: 'לאישור לבנק לפתיחת תיק',
+                      content: (
+                        <AuctionStage
+                          data={plan.data}
+                          planId={plan.id}
+                          onChange={(next: AuctionData) => updateStage('AUCTION', next)}
+                          advisorRun={advisorRun}
+                          banks={refinance ? [refinance.bank] : undefined}
+                          refinance={refinance}
+                        />
+                      ),
+                    }}
                   />
                 )}
                 {stage === 'SIGNING' && (

@@ -2094,7 +2094,9 @@ export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
     case 'AUCTION':
       // מה שסוגר את השלב הוא בחירת התמהיל שהולכים איתו לחתימה. הזנה ידנית של
       // הצעות היא המסלול הישן, ולכן היא עדיין סוגרת את השלב כשהיא בשימוש.
-      return data.AUCTION.signedMix !== null || winningOffer(data.AUCTION) !== null;
+      if (!(data.AUCTION.signedMix !== null || winningOffer(data.AUCTION) !== null)) return false;
+      // במיחזור פנימי זה השלב האחרון, ובו גם החתימה בבנק — כמו בשלב 5
+      return !internalRefinance(data) || Boolean(data.SIGNING.visits['bank-sign'].doneAt);
     case 'SIGNING':
       // השלב נסגר כשהחתימה על תיק המשכנתא בבנק סומנה כבוצעה
       return (
@@ -2142,7 +2144,12 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       break;
     }
     case 'AUCTION':
-      missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
+      if (!data.AUCTION.signedMix && !winningOffer(data.AUCTION)) {
+        missing.push('בחירת התמהיל המתומחר שהולכים איתו לחתימה');
+      }
+      if (internalRefinance(data) && !data.SIGNING.visits['bank-sign'].doneAt) {
+        missing.push('סימון שהחתימה על תיק המשכנתא בבנק בוצעה');
+      }
       break;
     case 'SIGNING': {
       if (!data.SIGNING.visits['bank-sign'].doneAt) missing.push('סימון שהחתימה על תיק המשכנתא בבנק בוצעה');
@@ -2154,6 +2161,12 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
   }
 
   return missing;
+}
+
+/** מיחזור פנימי: השלב האחרון שלו (אימות ההצעה) כולל גם את תת-השלבים של החתימה */
+export function internalRefinance(data: Pick<PlanData, 'MIX'>): boolean {
+  const flow = planFlowOf(data);
+  return flow.kind === 'REFINANCE' && flow.refinanceMode === 'INTERNAL';
 }
 
 /**
