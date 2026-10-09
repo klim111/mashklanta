@@ -5,6 +5,20 @@
  */
 export type LoanCategory = 'bank' | 'credit' | 'car' | 'family' | 'other';
 
+/**
+ * פירעון מוקדם בתוך הלוואה — אותו רעיון של פרעון מוקדם במסלול בבונה התמהילים:
+ * סכום חד-פעמי שמשולם יחד עם תשלום מסוים, ואחריו ההלוואה מתקצרת או שההחזר
+ * החודשי קטן.
+ */
+export interface LoanPrepayment {
+  id: string;
+  amount: number;
+  /** מספר התשלום שאיתו משולם הפירעון (1 = התשלום הראשון) */
+  month: number;
+  /** shorten = התקופה מתקצרת וההחזר נשמר, reduce = ההחזר קטן והתקופה נשמרת */
+  mode: 'shorten' | 'reduce';
+}
+
 export interface Loan {
   id: string;
   name: string;
@@ -12,12 +26,35 @@ export interface Loan {
   apr: number; // ריבית שנתית נומינלית באחוזים
   months: number; // תקופה בחודשים
   category?: LoanCategory;
+  prepayments?: LoanPrepayment[];
+}
+
+/**
+ * הלוואה כפי שהיא בפאנל השליטה: הלוואה חדשה נפתחת בלי ערכים, וכל שדה נשאר
+ * ריק עד שהלקוח מזין אותו. רק הלוואה שכל שלושת השדות שלה מולאו נכנסת לחישובים.
+ */
+export interface LoanDraft {
+  id: string;
+  name: string;
+  principal: number | null;
+  apr: number | null;
+  months: number | null;
+  category?: LoanCategory;
+  prepayments?: LoanPrepayment[];
+}
+
+/** איחוד הלוואות: אילו הלוואות מאוחדות, ובאיזו ריבית ותקופה (ריקים עד שהוזנו) */
+export interface ConsolidationPlan {
+  loanIds: string[];
+  apr: number | null;
+  months: number | null;
 }
 
 export interface AmortRow {
   m: number; // מספר החודש
   balStart: number; // יתרה בתחילת החודש
   pay: number; // תשלום חודשי
+  prepay?: number; // פירעון מוקדם ששולם יחד עם התשלום
   interest: number; // חלק הריבית
   principal: number; // חלק הקרן
   balEnd: number; // יתרה בסוף החודש
@@ -68,7 +105,7 @@ export interface OptimizationResult {
 }
 
 export interface LoanPlannerState {
-  loans: Loan[];
+  loans: LoanDraft[];
   selectedForComparison: string[];
   optimizationInput: Partial<OptimizationInput>;
   /**
@@ -76,4 +113,8 @@ export interface LoanPlannerState {
    * ההחזר, אותו יחס שהבנק בוחן כשהוא שוקל משכנתא.
    */
   monthlyIncome?: number;
+  /** האיחוד שהלקוח בנה — כשהוא קיים מופיעים טאבי האיחוד */
+  consolidation?: ConsolidationPlan;
+  /** האם טאבי האסטרטגיה פתוחים */
+  strategyOpen?: boolean;
 }

@@ -1,47 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
-import { CalendarClock, Download, Percent, Table2, Wallet } from 'lucide-react';
+import React from 'react';
+import { Banknote, CalendarClock, Download, Percent, Table2, Wallet } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
-import { Slider } from '@/components/ui/slider';
 import { formatILS } from '@/lib/currency';
 import type { Loan } from './types';
-import { buildAmortSchedule } from './loanMath';
+import { buildLoanSchedule } from './loanMath';
 import { AmortChart } from './AmortChart';
 
 /**
  * לוח הסילוקין של הלוואה בודדת — הצלילה לפרטים מתוך הכלי.
  *
- * מציג את הגרף והטבלה זה ליד זה, עם אפשרות להוסיף פירעון מוקדם בחודש מסוים
- * ולראות מיד מה הוא עושה לריבית, לתשלום ולתקופה. הטבלה מיוצאת ל-CSV.
+ * מציג את הגרף והטבלה, כולל הפירעונות המוקדמים שהוזנו בתיבת ההלוואה — הם
+ * מסומנים בטבלה, והתשלומים שאחריהם מחושבים לפיהם. הטבלה מיוצאת ל-CSV.
  */
 export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void }) {
-  const [prepayAmount, setPrepayAmount] = useState(0);
-  const [prepayMonth, setPrepayMonth] = useState(1);
-  const [prepayEnabled, setPrepayEnabled] = useState(false);
-
-  const active = prepayEnabled && prepayAmount > 0;
-
-  const baseline = buildAmortSchedule({
-    principal: loan.principal,
-    apr: loan.apr,
-    months: loan.months,
-  });
-
-  const schedule = active
-    ? buildAmortSchedule({
-        principal: loan.principal,
-        apr: loan.apr,
-        months: loan.months,
-        prepayAmount,
-        prepayMonth,
-        mode: 'reduce',
-      })
-    : baseline;
+  const schedule = buildLoanSchedule(loan);
+  const baseline = loan.prepayments?.length
+    ? buildLoanSchedule({ ...loan, prepayments: [] })
+    : schedule;
+  const active = schedule !== baseline;
 
   const exportToCSV = () => {
-    const headers = ['חודש', 'יתרה תחילת חודש', 'תשלום', 'ריבית', 'קרן', 'יתרה סוף חודש'];
+    const headers = ['חודש', 'יתרה תחילת חודש', 'תשלום', 'ריבית', 'קרן', 'פירעון מוקדם', 'יתרה סוף חודש'];
     const csvContent = [
       headers.join(','),
       ...schedule.rows.map((row) =>
@@ -51,6 +32,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
           row.pay.toFixed(2),
           row.interest.toFixed(2),
           row.principal.toFixed(2),
+          (row.prepay ?? 0).toFixed(2),
           row.balEnd.toFixed(2),
         ].join(',')
       ),
@@ -111,63 +93,25 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
             />
           </div>
 
-          {/* פירעון מוקדם */}
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-700">
-              <input
-                type="checkbox"
-                checked={prepayEnabled}
-                onChange={(event) => setPrepayEnabled(event.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300"
-              />
-              בדיקת פירעון מוקדם
-              <span className="font-normal text-slate-400">
-                (הקרן קטנה, התקופה נשמרת והתשלום החודשי יורד)
-              </span>
-            </label>
-
-            {prepayEnabled && (
-              <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
-                <div>
-                  <p className="mb-1 text-2xs font-bold text-slate-600">סכום הפירעון</p>
-                  <FormattedNumberValueInput
-                    value={prepayAmount || ''}
-                    onValueChange={setPrepayAmount}
-                    placeholder="0"
-                    aria-label="סכום הפירעון המוקדם"
-                    className="h-8 w-32 text-xs"
-                  />
-                </div>
-                <div>
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <span className="text-2xs font-bold text-slate-600">חודש הפירעון</span>
-                    <span className="mr-auto text-xs font-black text-slate-900">
-                      חודש {prepayMonth}
-                    </span>
-                  </div>
-                  <div dir="ltr">
-                    <Slider
-                      dir="ltr"
-                      value={[Math.min(prepayMonth, loan.months)]}
-                      onValueChange={([value]) => setPrepayMonth(Math.round(value))}
-                      min={1}
-                      max={Math.max(1, loan.months)}
-                      step={1}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* הפירעונות המוקדמים שהוזנו בהלוואה */}
+          {active && (
+            <div className="flex flex-wrap gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-2xs font-bold text-emerald-900">
+              <Banknote className="h-3.5 w-3.5" />
+              {[...(loan.prepayments ?? [])]
+                .sort((x, y) => x.month - y.month)
+                .map((item) => (
+                  <span key={item.id}>
+                    {formatILS(item.amount)} בתשלום {item.month} ·{' '}
+                    {item.mode === 'shorten' ? 'קיצור תקופה' : 'הקטנת החזר'}
+                  </span>
+                ))}
+            </div>
+          )}
 
           {/* הגרף */}
           <div className="rounded-xl border border-slate-200 bg-white p-2.5">
             <p className="mb-1 text-xs font-bold text-slate-800">ירידת הקרן והריבית המצטברת</p>
-            <AmortChart
-              loan={loan}
-              prepay={active ? { amount: prepayAmount, month: prepayMonth } : undefined}
-              height={200}
-            />
+            <AmortChart loan={loan} height={200} />
           </div>
 
           {/* הטבלה */}
@@ -192,6 +136,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                     <th className="p-2 text-right">תשלום</th>
                     <th className="p-2 text-right">ריבית</th>
                     <th className="p-2 text-right">קרן</th>
+                    <th className="p-2 text-right">פירעון מוקדם</th>
                     <th className="p-2 text-right">יתרה בסוף חודש</th>
                   </tr>
                 </thead>
@@ -200,7 +145,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                     <tr
                       key={row.m}
                       className={`border-t border-slate-100 ${
-                        active && row.m === prepayMonth ? 'bg-amber-50' : 'hover:bg-slate-50'
+                        row.prepay ? 'bg-emerald-50' : 'hover:bg-slate-50'
                       }`}
                     >
                       <td className="p-2 font-bold text-slate-700">{row.m}</td>
@@ -208,6 +153,9 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                       <td className="p-2 font-bold text-slate-900">{formatILS(row.pay)}</td>
                       <td className="p-2 text-rose-600">{formatILS(row.interest)}</td>
                       <td className="p-2 text-emerald-600">{formatILS(row.principal)}</td>
+                      <td className="p-2 font-bold text-emerald-700">
+                        {row.prepay ? formatILS(row.prepay) : ''}
+                      </td>
                       <td className="p-2 text-slate-600">{formatILS(row.balEnd)}</td>
                     </tr>
                   ))}

@@ -1,4 +1,4 @@
-import type { AmortRow, Loan, PrepaymentParams } from './types';
+import type { AmortRow, Loan, LoanDraft, PrepaymentParams } from './types';
 
 /**
  * חישוב תשלום חודשי לפי נוסחת האנונה
@@ -135,6 +135,91 @@ export function buildAmortSchedule(params: {
   };
 }
 
+/** הלוואה שכל השדות שלה הוזנו — רק היא נכנסת לחישובים ולדאשבורד */
+export function isCompleteLoan(loan: LoanDraft): loan is Loan {
+  return (
+    loan.principal !== null &&
+    loan.principal > 0 &&
+    loan.apr !== null &&
+    loan.apr >= 0 &&
+    loan.months !== null &&
+    loan.months > 0
+  );
+}
+
+export interface LoanSchedule {
+  rows: AmortRow[];
+  totalInterest: number;
+  /** כל מה שישולם — כולל הפירעונות המוקדמים */
+  totalPaid: number;
+  paymentInitial: number;
+  monthsActual: number;
+  totalPrepaid: number;
+}
+
+/**
+ * לוח הסילוקין של הלוואה, כולל הפירעונות המוקדמים שהוזנו בה.
+ *
+ * הפירעון משולם יחד עם התשלום שנבחר: קודם התשלום הרגיל, ואחריו הסכום
+ * החד-פעמי יורד מהיתרה. ממנו והלאה, בקיצור תקופה ההחזר נשמר וההלוואה נגמרת
+ * מוקדם; בהקטנת החזר ההחזר מחושב מחדש על היתרה לתקופה שנותרה.
+ */
+export function buildLoanSchedule(loan: Loan): LoanSchedule {
+  const r = loan.apr / 100 / 12;
+  const paymentInitial = annuityPayment(loan.principal, loan.apr, loan.months);
+  const events = [...(loan.prepayments ?? [])]
+    .filter((item) => item.amount > 0 && item.month >= 1 && item.month < loan.months)
+    .sort((a, b) => a.month - b.month);
+
+  const rows: AmortRow[] = [];
+  let balance = loan.principal;
+  let payment = paymentInitial;
+  let totalPaid = 0;
+  let totalInterest = 0;
+  let totalPrepaid = 0;
+
+  for (let m = 1; m <= loan.months && balance > 0.005; m += 1) {
+    const balStart = balance;
+    const interest = balance * r;
+    const pay = Math.min(payment, balance + interest);
+    const principalPart = pay - interest;
+    balance = Math.max(0, balance - principalPart);
+
+    const today = events.filter((item) => item.month === m);
+    let prepay = 0;
+    for (const item of today) prepay += item.amount;
+    prepay = Math.min(prepay, balance);
+    balance -= prepay;
+
+    if (prepay > 0 && balance > 0.005) {
+      const mode = today[today.length - 1].mode;
+      if (mode === 'reduce') payment = annuityPayment(balance, loan.apr, loan.months - m);
+    }
+
+    totalPaid += pay + prepay;
+    totalInterest += interest;
+    totalPrepaid += prepay;
+    rows.push({
+      m,
+      balStart,
+      pay,
+      interest,
+      principal: principalPart,
+      ...(prepay > 0 ? { prepay } : {}),
+      balEnd: balance,
+    });
+  }
+
+  return {
+    rows,
+    totalInterest,
+    totalPaid,
+    paymentInitial,
+    monthsActual: rows.length,
+    totalPrepaid,
+  };
+}
+
 /**
  * חישוב מהיר של נתוני הלוואה בלי טבלת סילוקין מלאה
  */
@@ -143,6 +228,15 @@ export function calculateLoanSummary(loan: Loan): {
   totalPaid: number;
   totalInterest: number;
 } {
+  if (loan.prepayments?.length) {
+    const schedule = buildLoanSchedule(loan);
+    return {
+      monthlyPayment: schedule.paymentInitial,
+      totalPaid: schedule.totalPaid,
+      totalInterest: schedule.totalInterest,
+    };
+  }
+
   const monthlyPayment = annuityPayment(loan.principal, loan.apr, loan.months);
   const totalPaid = monthlyPayment * loan.months;
   const totalInterest = totalPaid - loan.principal;
