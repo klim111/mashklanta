@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  blankInstallment,
   draftSchedule,
-  orderInstallments,
+  equityPaidBeforeBank,
+  insertInstallment,
+  requiredEquityBeforeBank,
   parsePaymentSchedule,
   scheduleDefined,
   scheduleIssues,
@@ -31,11 +34,32 @@ describe('draftSchedule', () => {
 describe('scheduleIssues', () => {
   const base = (): PaymentSchedule => draftSchedule(1_000_000, 600_000);
 
-  it('rejects equity paid after bank money', () => {
+  it('allows equity after bank money when no percentage is required', () => {
     const schedule = base();
-    schedule.installments = [...schedule.installments.slice(1), schedule.installments[0]];
-    expect(scheduleIssues(schedule).map((issue) => issue.kind)).toContain('order');
-    expect(orderInstallments(schedule.installments).at(-1)?.source).toBe('BANK');
+    schedule.installments = [schedule.installments.at(-1)!, ...schedule.installments.slice(0, -1)];
+    expect(schedule.installments[0].source).toBe('BANK');
+    expect(scheduleIssues(schedule)).toEqual([]);
+  });
+
+  it('alerts when less equity than the bank requires is paid before the bank money', () => {
+    const schedule = { ...base(), bankRequiredEquityPercent: 50 };
+    expect(requiredEquityBeforeBank(schedule)).toBe(200_000);
+    expect(scheduleIssues(schedule)).toEqual([]);
+
+    // רק הפעימה הראשונה (100,000) לפני הבנק
+    const bankRow = schedule.installments.at(-1)!;
+    schedule.installments = [schedule.installments[0], bankRow, ...schedule.installments.slice(1, -1)];
+    expect(equityPaidBeforeBank(schedule)).toBe(100_000);
+    const issue = scheduleIssues(schedule).find((item) => item.kind === 'bank-required-equity');
+    expect(issue?.message).toContain('50%');
+    expect(issue?.message).toContain('100,000');
+  });
+
+  it('inserts new equity before the first bank installment', () => {
+    const schedule = base();
+    const added = insertInstallment(schedule.installments, blankInstallment('EQUITY'));
+    expect(added.at(-1)?.source).toBe('BANK');
+    expect(insertInstallment(schedule.installments, blankInstallment('BANK')).at(-1)?.source).toBe('BANK');
   });
 
   it('checks the equity and bank totals against the split', () => {

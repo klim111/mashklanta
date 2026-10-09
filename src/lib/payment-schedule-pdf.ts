@@ -3,14 +3,15 @@ import type { PDFFont, PDFPage, RGB } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { pdfTextOrder } from './authorization-pdf';
 import {
-  BANK_LAST_EXPLANATION,
+  BANK_EQUITY_EXPLANATION,
+  FULL_EQUITY_NOTE,
   LAWYER_NOTES,
-  PAYMENT_SOURCE_LABELS,
+  equityPaidBeforeBank,
   equityShare,
+  requiredEquityBeforeBank,
   scheduleIssues,
   sumBySource,
 } from './payment-schedule';
-import type { PaymentInstallment } from './payment-schedule';
 import { formatDueDate, installmentLabel, shekelText } from './payment-schedule-report';
 import type { ScheduleReportInput } from './payment-schedule-report';
 
@@ -30,9 +31,7 @@ const INK = rgb(0.06, 0.09, 0.16);
 const MUTED = rgb(0.39, 0.45, 0.55);
 const LINE = rgb(0.89, 0.91, 0.94);
 const EQUITY = rgb(0.05, 0.58, 0.53);
-const EQUITY_SOFT = rgb(0.94, 0.99, 0.98);
 const BANK = rgb(0.15, 0.39, 0.92);
-const BANK_SOFT = rgb(0.94, 0.96, 1);
 const DARK = rgb(0.06, 0.09, 0.16);
 const WHITE = rgb(1, 1, 1);
 const NOTE_BG = rgb(1, 0.98, 0.92);
@@ -150,7 +149,7 @@ export async function scheduleReportPdf(input: ScheduleReportInput, fontBytes: U
   w.right('פעימות התשלום למוכר', RIGHT, w.y, 22, INK);
   w.y -= 20;
   for (const line of w.wrap(
-    `${propertyAddress || title}. קודם פעימות ההון העצמי, אחריהן פעימות כספי המשכנתא.`,
+    `${propertyAddress || title}. הפעימות לפי הסדר בחוזה, וליד כל אחת מקור הכסף שלה.`,
     RIGHT - LEFT,
     11
   )) {
@@ -191,33 +190,27 @@ export async function scheduleReportPdf(input: ScheduleReportInput, fontBytes: U
   };
   header();
 
-  const section = (heading: string, color: RGB, soft: RGB, rows: PaymentInstallment[], offset: number) => {
-    if (w.ensure(30 + 40)) header();
-    w.rect(LEFT, w.y - 24, RIGHT - LEFT, 24, soft);
-    w.right(heading, RIGHT - 8, w.y - 16, 12, color);
-    w.y -= 24;
-    rows.forEach((item, index) => {
-      const conditionLines = w.wrap(
-        [item.dueDate ? `${formatDueDate(item.dueDate)}.` : '', item.condition].filter(Boolean).join(' '),
-        COLUMNS.condition[1] - 12,
-        9.5
-      );
-      const payeeLines = w.wrap(item.payee || '—', COLUMNS.payee[1] - 12, 9.5);
-      const height = Math.max(conditionLines.length, payeeLines.length) * 13 + 14;
-      if (w.ensure(height)) header();
-      const top = w.y - 15;
-      w.rect(RIGHT - 3, w.y - height, 3, height, color);
-      w.right(installmentLabel(offset + index), COLUMNS.number[0] - 8, top, 10.5, INK);
-      payeeLines.forEach((line, i) => w.right(line, COLUMNS.payee[0] - 6, top - i * 13, 9.5, INK));
-      conditionLines.forEach((line, i) => w.right(line, COLUMNS.condition[0] - 6, top - i * 13, 9.5, INK));
-      w.left(shekelText(item.amount), COLUMNS.amount[0] - COLUMNS.amount[1] + 6, top, 10.5, INK);
-      w.y -= height;
-      w.rule(w.y);
-    });
-  };
-
-  const equityRows = schedule.installments.filter((item) => item.source === 'EQUITY');
-  const bankRows = schedule.installments.filter((item) => item.source === 'BANK');
+  schedule.installments.forEach((item, index) => {
+    const fromEquity = item.source === 'EQUITY';
+    const color = fromEquity ? EQUITY : BANK;
+    const conditionLines = w.wrap(
+      [item.dueDate ? `${formatDueDate(item.dueDate)}.` : '', item.condition].filter(Boolean).join(' '),
+      COLUMNS.condition[1] - 12,
+      9.5
+    );
+    const payeeLines = w.wrap(item.payee || '—', COLUMNS.payee[1] - 12, 9.5);
+    const height = Math.max(conditionLines.length, payeeLines.length, 2) * 13 + 14;
+    if (w.ensure(height)) header();
+    const top = w.y - 15;
+    w.rect(RIGHT - 3, w.y - height, 3, height, color);
+    w.right(installmentLabel(index), COLUMNS.number[0] - 8, top, 10.5, INK);
+    w.right(fromEquity ? 'הון עצמי' : 'כספי הבנק', COLUMNS.number[0] - 8, top - 13, 8.5, color);
+    payeeLines.forEach((line, i) => w.right(line, COLUMNS.payee[0] - 6, top - i * 13, 9.5, INK));
+    conditionLines.forEach((line, i) => w.right(line, COLUMNS.condition[0] - 6, top - i * 13, 9.5, INK));
+    w.left(shekelText(item.amount), COLUMNS.amount[0] - COLUMNS.amount[1] + 6, top, 10.5, INK);
+    w.y -= height;
+    w.rule(w.y);
+  });
 
   const subtotal = (label: string, value: number, color: RGB) => {
     if (w.ensure(24)) header();
@@ -227,12 +220,8 @@ export async function scheduleReportPdf(input: ScheduleReportInput, fontBytes: U
     w.rule(w.y, LINE, 1.4);
   };
 
-  section(`שלב א׳: פעימות מההון העצמי · מקור הכסף: ${PAYMENT_SOURCE_LABELS.EQUITY}`, EQUITY, EQUITY_SOFT, equityRows, 0);
-  subtotal(`סיכום ביניים: הון עצמי (${percent(equity, price)} מהעסקה)`, sumBySource(schedule, 'EQUITY'), EQUITY);
-  if (bankRows.length) {
-    section('שלב ב׳: פעימות מכספי המשכנתא · מקור הכסף: משכנתא', BANK, BANK_SOFT, bankRows, equityRows.length);
-    subtotal(`סיכום ביניים: משכנתא (${percent(bank, price)} מהעסקה)`, sumBySource(schedule, 'BANK'), BANK);
-  }
+  subtotal(`סך הכל מההון העצמי (${percent(equity, price)} מהעסקה)`, sumBySource(schedule, 'EQUITY'), EQUITY);
+  subtotal(`סך הכל מכספי המשכנתא (${percent(bank, price)} מהעסקה)`, sumBySource(schedule, 'BANK'), BANK);
 
   w.ensure(32);
   w.rect(LEFT, w.y - 30, RIGHT - LEFT, 30, DARK);
@@ -265,7 +254,22 @@ export async function scheduleReportPdf(input: ScheduleReportInput, fontBytes: U
 
   const issues = scheduleIssues(schedule);
   if (issues.length) box('הלוח עוד לא תקין', issues.map((issue) => issue.message), BAD_BG, BAD_FG);
-  box('למה כספי הבנק מועברים אחרונים', [BANK_LAST_EXPLANATION], INFO_BG, INFO_FG);
+  const required = requiredEquityBeforeBank(schedule);
+  const hasBank = schedule.installments.some((item) => item.source === 'BANK');
+  box(
+    'ההון העצמי שהבנק דורש לפני כספי המשכנתא',
+    [
+      required === null
+        ? 'האחוז שהבנק דורש עוד לא הוזן בכלי. בררו אותו מול הבנק.'
+        : `הבנק דורש ${schedule.bankRequiredEquityPercent}% מההון העצמי (${shekelText(required)}) לפני הפעימה הראשונה מכספי המשכנתא.${
+            hasBank ? ` לפי הלוח משולמים עד אליה ${shekelText(equityPaidBeforeBank(schedule))} מההון העצמי.` : ''
+          }`,
+      BANK_EQUITY_EXPLANATION,
+      `שימו לב: ${FULL_EQUITY_NOTE}`,
+    ],
+    INFO_BG,
+    INFO_FG
+  );
   box('לבדיקה עם עורך הדין', [...LAWYER_NOTES], NOTE_BG, NOTE_FG);
 
   const stamp = new Intl.DateTimeFormat('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(generatedAt);
