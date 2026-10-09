@@ -33,6 +33,17 @@ export interface AnchorSpreadRateProps {
   compact?: boolean;
   disabled?: boolean;
   className?: string;
+  /** מחלקות לשדות עצמם, במקום ברירת המחדל — לטפסים בעיצוב אחר */
+  fieldClassName?: string;
+  /** מחלקות לכותרות השדות (עוגן, מרווח, ריבית) */
+  labelClassName?: string;
+  /** מחלקות לסימני + ו-= שבין השדות, כדי ליישר אותם לגובה השדה */
+  operatorClassName?: string;
+  /**
+   * ריבית 0 נחשבת "עוד לא הוזנה": השדות נשארים ריקים במקום להציג 0 ומרווח
+   * שלילי בגובה העוגן. מתאים למסלול חדש בטופס הזנה.
+   */
+  blankWhenZero?: boolean;
 }
 
 const FIELD_CLASS =
@@ -50,7 +61,13 @@ export function AnchorSpreadRate({
   compact = false,
   disabled = false,
   className = '',
+  fieldClassName,
+  labelClassName,
+  operatorClassName,
+  blankWhenZero = false,
 }: AnchorSpreadRateProps) {
+  const empty = blankWhenZero && rate === 0 && (spread === null || spread === undefined);
+  const baseField = fieldClassName ?? (compact ? COMPACT_FIELD_CLASS : FIELD_CLASS);
   /*
     מסלול בלי עוגן — קבועה, זכאות, מענק ומט"ח — מקבל שדה ריבית אחד ותו לא.
     הריבית בהם נסגרת מול הבנק או נקבעת בתקנות, ואין מה לפרק לעוגן ולמרווח;
@@ -60,8 +77,8 @@ export function AnchorSpreadRate({
     return (
       <div className={`relative ${className}`}>
         <NumericInput
-          className={`${compact ? COMPACT_FIELD_CLASS : FIELD_CLASS} pl-7 text-left font-bold`}
-          value={rate}
+          className={`${baseField} pl-7 text-left font-bold`}
+          value={empty ? null : rate}
           disabled={disabled}
           onChange={(value) => onChange({ rate: value ?? 0 })}
           aria-label={rateLabel}
@@ -86,7 +103,7 @@ export function AnchorSpreadRate({
     onChange({ rate: next, spread: roundRate(next - anchor.rate) });
   };
 
-  const field = compact ? COMPACT_FIELD_CLASS : FIELD_CLASS;
+  const field = baseField;
   const sourceNote =
     anchor.source === 'boi'
       ? `${anchor.label} · נמשך מבנק ישראל${anchor.asOf ? ` · ${anchor.asOf}` : ''}`
@@ -97,10 +114,12 @@ export function AnchorSpreadRate({
     כותרת אחת משותפת עם הנוסחה. בתצוגת השורה הכותרות קטנות כמו של שאר השדות
     בשורת המסלול, כדי שהשדות יישארו מיושרים לגובה השכנים.
   */
-  const labelClass = compact
-    ? 'mb-0.5 block truncate text-center text-2xs font-medium leading-none text-slate-500'
-    : 'flex items-center justify-center gap-1 text-center text-2xs font-medium text-slate-600';
-  const operatorClass = `h-3 w-3 shrink-0 text-slate-400 ${compact ? 'mb-2' : 'mb-2.5'}`;
+  const labelClass =
+    labelClassName ??
+    (compact
+      ? 'mb-0.5 block truncate text-center text-2xs font-medium leading-none text-slate-500'
+      : 'flex items-center justify-center gap-1 text-center text-2xs font-medium text-slate-600');
+  const operatorClass = `h-3 w-3 shrink-0 text-slate-400 ${operatorClassName ?? (compact ? 'mb-2' : 'mb-2.5')}`;
 
   return (
     <div className={`${compact ? '' : 'space-y-1.5'} ${className}`}>
@@ -125,7 +144,7 @@ export function AnchorSpreadRate({
           <span className={labelClass}>מרווח</span>
           <NumericInput
             className={`${field} text-left`}
-            value={effectiveSpread}
+            value={empty ? null : effectiveSpread}
             disabled={disabled}
             allowNegative
             onChange={setSpread}
@@ -137,12 +156,12 @@ export function AnchorSpreadRate({
         <Equal className={operatorClass} aria-hidden />
 
         <label className="min-w-0">
-          <span className={`${labelClass} font-bold text-slate-700`}>
+          <span className={labelClassName ? labelClass : `${labelClass} font-bold text-slate-700`}>
             ריבית
           </span>
           <NumericInput
             className={`${field} text-left font-bold`}
-            value={rate}
+            value={empty ? null : rate}
             disabled={disabled}
             onChange={setRate}
             aria-label={rateLabel}

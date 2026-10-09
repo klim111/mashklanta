@@ -3,25 +3,22 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Calculator, RefreshCw, PieChart, Building2, CalendarClock } from 'lucide-react';
+import { Plus, RefreshCw, PieChart, Building2, Landmark } from 'lucide-react';
 import type { MortgageMix, MortgageTrack, MortgageBank } from '@/components/mortgage-advisor/types';
-import { MORTGAGE_BANKS, DEFAULT_INTEREST_RATES } from '@/components/mortgage-advisor/types';
-import { MortgageTrackCard } from '@/components/mortgage-advisor/MortgageTrackCard';
+import { MORTGAGE_BANKS, TRACK_TYPES } from '@/components/mortgage-advisor/types';
 import { RefinanceAnalysis } from '@/components/mortgage-refinance/RefinanceAnalysis';
 import { formatCurrency, calculateMortgageMix } from '@/components/mortgage-advisor/mortgageCalculations';
 import { MarketRateNotice, RegistrationInvite } from '@/components/mortgage-refinance/RefinanceNotices';
+import { CurrentTrackRow, type CurrentTrackPatch } from '@/components/refinance-check/CurrentTrackRow';
+import { monthlyPayment } from '@/lib/refinance-check';
 import {
   DEFAULT_PAYMENT_DAY,
   clampPaymentDay,
   endDateFromMonths,
   findAboveMarketTracks,
-  formatPaymentDate,
   mixWithRemainingTerms,
-  remainingPayments,
+  parseIsoDate,
   toDateInputValue,
   trackRemainingMonths,
 } from '@/lib/refinance';
@@ -76,8 +73,7 @@ export function RefinanceMortgageInput({
   saveContext = 'tool',
   onRefinanceSaveDone,
 }: RefinanceMortgageInputProps) {
-  const { tracks, totalAmount, bank } = mix;
-  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const { tracks, bank } = mix;
   const [mixSummaryRevealed, setMixSummaryRevealed] = useState(initialSummaryRevealed);
 
   const hideMixSummary = () => {
@@ -85,19 +81,29 @@ export function RefinanceMortgageInput({
     onMixSummaryRevealedChange?.(false);
   };
 
-  const updateMix = (patch: Partial<MortgageMix>, resetSummary = false) => {
-    onMixChange({ ...mix, ...patch });
-    if (resetSummary) hideMixSummary();
-  };
-
   const sumTrackAmounts = (trackList: MortgageTrack[]) =>
     trackList.reduce((sum, track) => sum + track.amount, 0);
 
+  /*
+    כמו בבדיקת המיחזור לאורח, גובה המשכנתא הוא סכום היתרות שהוזנו במסלולים —
+    אין סכום כולל נפרד שצריך לאזן מולו. גם האחוז של כל מסלול נגזר מכך.
+  */
+  const setTracks = (nextTracks: MortgageTrack[]) => {
+    const total = sumTrackAmounts(nextTracks);
+    onMixChange({
+      ...mix,
+      tracks: nextTracks.map((track) => ({
+        ...track,
+        percentage: total > 0 ? (track.amount / total) * 100 : 0,
+      })),
+      totalAmount: total,
+    });
+    hideMixSummary();
+  };
+
   const handlePerTrackModeToggle = () => {
     const next = !perTrackRefinanceEnabled;
-    if (next) {
-      onMixChange({ ...mix, totalAmount: sumTrackAmounts(tracks) });
-    } else {
+    if (!next) {
       hideMixSummary();
       onReadyForGoalChange?.(false);
     }
@@ -109,101 +115,74 @@ export function RefinanceMortgageInput({
     onProceedToRefinanceOptions?.();
   };
 
-  const addTrack = (preferredAmount?: number) => {
-    const allocated = sumTrackAmounts(tracks);
-    const remainingAmount = perTrackRefinanceEnabled ? 0 : totalAmount - allocated;
-    const suggestedAmount =
-      preferredAmount !== undefined
-        ? Math.max(1, preferredAmount)
-        : perTrackRefinanceEnabled
-          ? 100000
-          : Math.max(100000, remainingAmount);
-
-    // ברירת המחדל של מועדי התשלום: יום החיוב המקובל, וסיום בעוד עשרים שנה.
-    // הלקוח מדייק את התאריך בכרטיס המסלול, ומשם נגזרת התקופה שנותרה בפועל.
-    const defaultPaymentDay = tracks[0]?.paymentDay ?? DEFAULT_PAYMENT_DAY;
-    const defaultEndDate = toDateInputValue(endDateFromMonths(240, defaultPaymentDay));
-
+  const addTrack = () => {
+    // ברירת המחדל של מועדי התשלומים: יום החיוב של המסלולים האחרים, וסיום בעוד
+    // עשרים שנה. הלקוח מדייק את החודש והשנה בשורת המסלול.
+    const paymentDay = tracks[0]?.paymentDay ?? DEFAULT_PAYMENT_DAY;
+    const used = new Set(tracks.map((track) => track.type));
+    const type = NEW_TRACK_ORDER.find((option) => !used.has(option)) ?? 'fixed_unlinked';
     const newTrack: MortgageTrack = {
       id: `track-${Date.now()}`,
       name: `מסלול ${tracks.length + 1}`,
-      type: 'fixed_unlinked',
-      amount: suggestedAmount,
-      percentage: totalAmount > 0 ? (suggestedAmount / totalAmount) * 100 : 0,
-      interestRate: DEFAULT_INTEREST_RATES.fixed_unlinked,
+      type,
+      amount: 0,
+      percentage: 0,
+      interestRate: 0,
       years: 20,
       amortizationType: 'spitzer',
-      endDate: defaultEndDate,
-      paymentDay: defaultPaymentDay,
+      endDate: toDateInputValue(endDateFromMonths(240, paymentDay)),
+      paymentDay,
+      ...(type === 'variable_linked' || type === 'variable_unlinked' ? { variablePeriod: 5 } : {}),
     };
-
-    const nextTracks = [...tracks, newTrack];
-    updateMix(
-      {
-        tracks: nextTracks,
-        ...(perTrackRefinanceEnabled ? { totalAmount: sumTrackAmounts(nextTracks) } : {}),
-      },
-      true
-    );
-    setEditingTrackId(newTrack.id);
+    setTracks([...tracks, newTrack]);
   };
 
-  const updateTrack = (updatedTrack: MortgageTrack) => {
-    const nextTracks = tracks.map((track) => (track.id === updatedTrack.id ? updatedTrack : track));
-    updateMix(
-      {
-        tracks: nextTracks,
-        ...(perTrackRefinanceEnabled ? { totalAmount: sumTrackAmounts(nextTracks) } : {}),
-      },
-      true
-    );
-    setEditingTrackId(null);
+  const patchTrack = (track: MortgageTrack, patch: CurrentTrackPatch & { paymentDay?: number }) => {
+    const next: MortgageTrack = { ...track };
+    if (patch.type) next.type = patch.type;
+    if (patch.balance !== undefined) next.amount = patch.balance;
+    if (patch.rate !== undefined) next.interestRate = patch.rate;
+    if (patch.spread !== undefined) {
+      if (patch.spread === null) delete next.rateSpread;
+      else next.rateSpread = patch.spread;
+    }
+    if (patch.variablePeriod !== undefined) next.variablePeriod = patch.variablePeriod;
+    if (patch.endYear !== undefined || patch.endMonth !== undefined || patch.paymentDay !== undefined) {
+      const end = trackEnd(track);
+      const day = clampPaymentDay(patch.paymentDay ?? track.paymentDay ?? DEFAULT_PAYMENT_DAY);
+      next.paymentDay = day;
+      next.endDate = toDateInputValue(
+        new Date(patch.endYear ?? end.year, (patch.endMonth ?? end.month) - 1, day)
+      );
+      next.years = Math.max(1 / 12, trackRemainingMonths(next) / 12);
+    }
+    setTracks(tracks.map((t) => (t.id === track.id ? next : t)));
   };
 
-  const deleteTrack = (id: string) => {
-    const nextTracks = tracks.filter((track) => track.id !== id);
-    updateMix(
-      {
-        tracks: nextTracks,
-        ...(perTrackRefinanceEnabled ? { totalAmount: sumTrackAmounts(nextTracks) } : {}),
-      },
-      true
-    );
-    if (editingTrackId === id) setEditingTrackId(null);
-  };
+  const deleteTrack = (id: string) => setTracks(tracks.filter((track) => track.id !== id));
 
   const totalTracksAmount = sumTrackAmounts(tracks);
-  const effectiveTotal = perTrackRefinanceEnabled ? totalTracksAmount : totalAmount;
-  /*
-    סיכום המשכנתא נפתח רק כשכל הסכום שהוזן למעלה חולק בין המסלולים. כל עוד
-    נותרה יתרה — ולו קטנה — התמהיל אינו המשכנתא המלאה, וכל מה שיחושב עליו
-    יהיה חלקי. לכן הכפתור מוצג כבוי עם הסכום שנותר לשבץ, במקום להיעלם.
-  */
-  const isAmountBalanced =
-    totalAmount > 0 && tracks.length > 0 && Math.abs(totalTracksAmount - totalAmount) < 1;
-  const showSummarizeButton = !perTrackRefinanceEnabled && !mixSummaryRevealed && tracks.length > 0;
-  const showPerTrackRefinanceButton =
-    perTrackRefinanceEnabled &&
-    tracks.length > 0 &&
-    editingTrackId === null &&
-    !readyForGoal;
-  const amountDifference = totalAmount - totalTracksAmount;
-  const remainingToComplete = Math.max(0, Math.round(amountDifference));
-  const excessToReduce = Math.max(0, Math.round(-amountDifference));
-  const showCompletionCta =
-    !perTrackRefinanceEnabled && totalAmount > 0 && remainingToComplete >= 1000;
-  const showReductionCta =
-    !perTrackRefinanceEnabled && totalAmount > 0 && excessToReduce >= 1000;
-  const canAddFirstTrack = !!bank && (perTrackRefinanceEnabled || totalAmount > 0);
+  const tracksComplete =
+    tracks.length > 0 && tracks.every((track) => track.amount > 0 && track.interestRate > 0);
+  const totalMonthlyPayment = tracks.reduce(
+    (sum, track) =>
+      track.amount > 0 && track.interestRate > 0
+        ? sum + monthlyPayment(track.amount, track.interestRate, trackRemainingMonths(track))
+        : sum,
+    0
+  );
+  const canSummarize = tracksComplete && !!bank;
+  const showSummarizeButton = !perTrackRefinanceEnabled && !mixSummaryRevealed;
+  const showPerTrackRefinanceButton = perTrackRefinanceEnabled && !readyForGoal;
 
   useEffect(() => {
-    if (!isAmountBalanced && mixSummaryRevealed && !perTrackRefinanceEnabled) {
+    if (!tracksComplete && mixSummaryRevealed && !perTrackRefinanceEnabled) {
       setMixSummaryRevealed(false);
       onMixSummaryRevealedChange?.(false);
       onReadyForGoalChange?.(false);
     }
   }, [
-    isAmountBalanced,
+    tracksComplete,
     mixSummaryRevealed,
     perTrackRefinanceEnabled,
     onMixSummaryRevealedChange,
@@ -240,135 +219,24 @@ export function RefinanceMortgageInput({
     onMixSummaryRevealedChange?.(true);
   };
 
-  const reduceLastTrackByExcess = () => {
-    if (tracks.length === 0 || excessToReduce <= 0) return;
-    const lastTrack = tracks[tracks.length - 1];
-    const nextAmount = Math.max(1, lastTrack.amount - excessToReduce);
-    updateTrack({
-      ...lastTrack,
-      amount: nextAmount,
-      percentage: totalAmount > 0 ? (nextAmount / totalAmount) * 100 : 0,
-    });
-  };
+  const summaryShown = mixSummaryRevealed && tracksComplete && !perTrackRefinanceEnabled;
 
-  const summaryShown = mixSummaryRevealed && isAmountBalanced && !perTrackRefinanceEnabled;
-
-  return (
-    <div className="space-y-6" dir="rtl">
-      <AnimatePresence mode="wait" initial={false}>
-        {summaryShown ? (
-          <motion.div
-            key="mix-header"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35 }}
-            className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-1 text-center"
-          >
-            <span className="text-xs text-slate-500">המשכנתא הנוכחית</span>
-            <Building2 className="h-4 w-4 text-blue-600" />
-            <h2 className="text-subtitle font-bold text-slate-900">{bank}</h2>
-            <span className="text-slate-300">·</span>
-            <p className="text-base font-semibold text-blue-600">{formatCurrency(effectiveTotal)}</p>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="mix-input"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.35 }}
-            className="overflow-hidden"
-          >
-      <Card>
-        <CardHeader className="text-center pb-2">
-          <CardTitle className="text-2xl text-slate-900">נתוני המשכנתא</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="bank">בנק</Label>
-              <Select
-                value={bank ?? ''}
-                onValueChange={(value) => updateMix({ bank: value as MortgageBank }, true)}
-              >
-                <SelectTrigger
-                  id="bank"
-                  {...demoId('refi-bank')}
-                  dir="rtl"
-                  className="[&>span:first-of-type]:flex-1 [&>span:first-of-type]:text-right"
-                >
-                  <SelectValue placeholder="בחר בנק" />
-                </SelectTrigger>
-                <SelectContent dir="rtl" className="text-right">
-                  {MORTGAGE_BANKS.map((bankOption) => (
-                    <SelectItem
-                      key={bankOption}
-                      value={bankOption}
-                      className="pr-8 pl-2 text-right [&>span:first-child]:right-2 [&>span:first-child]:left-auto"
-                    >
-                      {bankOption}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="totalAmount">סכום הקרן בכל המסלולים (₪)</Label>
-              <div className="flex items-center gap-2">
-                <FormattedNumberValueInput
-                  id="totalAmount"
-                  {...demoId('refi-total')}
-                  value={perTrackRefinanceEnabled ? effectiveTotal : totalAmount}
-                  onValueChange={(value) => updateMix({ totalAmount: value }, true)}
-                  placeholder="סך המשכנתא"
-                  disabled={perTrackRefinanceEnabled}
-                  className="h-10 flex-1 text-center"
-                />
-                <Button
-                  type="button"
-                  variant={perTrackRefinanceEnabled ? 'default' : 'outline'}
-                  className={cn(
-                    'h-10 shrink-0 px-3 text-sm',
-                    perTrackRefinanceEnabled && 'bg-blue-600 hover:bg-blue-700'
-                  )}
-                  onClick={handlePerTrackModeToggle}
-                  {...demoId('refi-per-track')}
-                >
-                  <RefreshCw className="h-4 w-4 ml-1.5 shrink-0" />
-                  <span className="hidden sm:inline">בדוק מיחזור לכל מסלול</span>
-                  <span className="sm:hidden">מיחזור למסלול</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-        </CardContent>
-      </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {tracks.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Calculator className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-subtitle font-semibold text-slate-600 mb-2">אין מסלולים</h3>
-            <p className="text-slate-500 mb-6">התחל בהוספת המסלול הראשון של המשכנתא הנוכחית</p>
-            <Button onClick={() => addTrack()} className="px-6 py-3" disabled={!canAddFirstTrack} {...demoId('refi-add-track')}>
-              <Plus className="h-5 w-5 ml-2" />
-              הוסף מסלול ראשון
-            </Button>
-            {!canAddFirstTrack && (
-              <p className="text-sm text-slate-500 mt-3">
-                {perTrackRefinanceEnabled
-                  ? 'יש לבחור בנק לפני הוספת מסלול'
-                  : 'יש לבחור בנק ולהזין סכום משכנתא, או להפעיל "בדוק מיחזור לכל מסלול"'}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : summaryShown ? (
+  if (summaryShown) {
+    return (
+      <div className="space-y-6" dir="rtl">
+        <motion.div
+          key="mix-header"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-1 text-center"
+        >
+          <span className="text-xs text-slate-500">המשכנתא הנוכחית</span>
+          <Building2 className="h-4 w-4 text-blue-600" />
+          <h2 className="text-subtitle font-bold text-slate-900">{bank}</h2>
+          <span className="text-slate-300">·</span>
+          <p className="text-base font-semibold text-blue-600">{formatCurrency(totalTracksAmount)}</p>
+        </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -385,130 +253,225 @@ export function RefinanceMortgageInput({
             onSaveDone={onRefinanceSaveDone}
           />
         </motion.div>
-      ) : (
-        <>
-          {/* מועדי סיום התשלומים — הבסיס לחישוב מה שנותר לשלם */}
-          {tracks.length > 0 && (
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-blue-600" />
-                  <p className="text-sm font-bold text-blue-900">מועדי התשלומים במשכנתא הקיימת</p>
-                </div>
-                <p className="text-xs text-blue-800">
-                  ההחזר וסך הריבית מחושבים לפי הזמן שנותר בפועל עד סוף כל מסלול. עדכנו בכל מסלול את
-                  תאריך התשלום האחרון ואת יום החיוב בחודש כדי שהמספרים יהיו מדויקים.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" dir="rtl">
+      {/* ריבית גבוהה מהממוצע בשוק — הזדמנות למיחזור */}
+      {market && aboveMarketFindings.length > 0 && (
+        <MarketRateNotice findings={aboveMarketFindings} market={market} />
+      )}
+
+      {isGuest && tracks.length > 0 && <RegistrationInvite compact />}
+
+      <AnimatePresence initial={false}>
+        <motion.section
+          key="tracks-input"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid gap-5 lg:grid-cols-[1fr_300px]"
+        >
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-subtitle font-black text-slate-900">המסלולים במשכנתא היום</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  מהדוח השנתי או מדוח יתרות לסילוק: סוג המסלול, היתרה, הריבית ומועד התשלום האחרון.
                 </p>
-                <ul className="grid gap-1 sm:grid-cols-2">
-                  {tracks.map((track) => {
-                    const dates = remainingPayments({
-                      endDate: track.endDate,
-                      paymentDay: track.paymentDay,
-                    });
-                    return (
-                      <li key={`dates-${track.id}`} className="text-2xs text-blue-900">
-                        <span className="font-semibold">{track.name}</span> · נותרו{' '}
-                        {trackRemainingMonths(track)} תשלומים · אחרון{' '}
-                        {formatPaymentDate(dates.lastPaymentDate)} · חיוב ב-
-                        {clampPaymentDay(track.paymentDay ?? DEFAULT_PAYMENT_DAY)} לחודש
-                      </li>
-                    );
-                  })}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </div>
 
-          {/* ריבית גבוהה מהממוצע בשוק — הזדמנות למיחזור */}
-          {market && aboveMarketFindings.length > 0 && (
-            <MarketRateNotice findings={aboveMarketFindings} market={market} />
-          )}
-
-          {isGuest && tracks.length > 0 && <RegistrationInvite compact />}
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {tracks.map((track, index) => (
-              <React.Fragment key={track.id}>
-                <div {...demoId(`refi-track-${index}`)}>
-                  <MortgageTrackCard
-                    track={track}
-                    totalMortgageAmount={effectiveTotal || totalAmount || 1}
-                    onUpdate={updateTrack}
-                    onDelete={deleteTrack}
-                    isEditing={editingTrackId === track.id}
-                    onStartEditing={() => setEditingTrackId(track.id)}
-                    termMode="end-date"
-                  />
-                </div>
-
-                {showCompletionCta && index === tracks.length - 1 && (
-                  <Card className="border-2 border-dashed border-blue-300 bg-blue-50">
-                    <CardContent className="h-full flex items-center justify-center p-6">
-                      <Button
-                        onClick={() => addTrack(remainingToComplete)}
-                        className="h-auto min-h-10 max-w-full whitespace-normal px-4 py-3 text-sm leading-snug"
+            <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <label className="block">
+                <span className="block text-2xs font-bold text-slate-500">הבנק שבו המשכנתא</span>
+                <Select value={bank ?? ''} onValueChange={(value) => onMixChange({ ...mix, bank: value as MortgageBank })}>
+                  <SelectTrigger
+                    id="bank"
+                    {...demoId('refi-bank')}
+                    dir="rtl"
+                    className="mt-1 h-11 rounded-xl border-slate-300 bg-white text-info font-semibold [&>span:first-of-type]:flex-1 [&>span:first-of-type]:text-right"
+                  >
+                    <SelectValue placeholder="בחרו בנק" />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl" className="text-right">
+                    {MORTGAGE_BANKS.map((bankOption) => (
+                      <SelectItem
+                        key={bankOption}
+                        value={bankOption}
+                        className="pr-8 pl-2 text-right [&>span:first-child]:right-2 [&>span:first-child]:left-auto"
                       >
-                        <Plus className="h-5 w-5 ml-2 shrink-0" />
-                        הוסף מסלול להשלמת {formatCurrency(remainingToComplete)} לגובה ההלוואה
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        {bankOption}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <Button
+                type="button"
+                variant={perTrackRefinanceEnabled ? 'default' : 'outline'}
+                className={cn(
+                  'h-11 shrink-0 rounded-xl px-3 text-sm',
+                  perTrackRefinanceEnabled && 'bg-blue-600 hover:bg-blue-700'
                 )}
+                onClick={handlePerTrackModeToggle}
+                {...demoId('refi-per-track')}
+              >
+                <RefreshCw className="h-4 w-4 ml-1.5 shrink-0" />
+                בדוק מיחזור לכל מסלול
+              </Button>
+            </div>
 
-                {showReductionCta && index === tracks.length - 1 && (
-                  <Card className="border-2 border-dashed border-amber-300 bg-amber-50">
-                    <CardContent className="h-full flex items-center justify-center p-6">
-                      <Button
-                        onClick={reduceLastTrackByExcess}
-                        variant="outline"
-                        className="h-auto min-h-10 max-w-full whitespace-normal border-amber-400 px-4 py-3 text-sm leading-snug text-amber-800 hover:bg-amber-100"
-                      >
-                        הפחת מהמסלול האחרון {formatCurrency(excessToReduce)} כדי להגיע לגובה ההלוואה
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </React.Fragment>
-            ))}
+            <ul className="mt-5 space-y-3">
+              {tracks.map((track, index) => {
+                const end = trackEnd(track);
+                const months = trackRemainingMonths(track);
+                const day = clampPaymentDay(track.paymentDay ?? DEFAULT_PAYMENT_DAY);
+                return (
+                  <div key={track.id} {...demoId(`refi-track-${index}`)}>
+                    <CurrentTrackRow
+                      index={index}
+                      typeOptions={TRACK_TYPE_OPTIONS}
+                      value={{
+                        type: track.type,
+                        balance: track.amount,
+                        rate: track.interestRate,
+                        spread: track.rateSpread,
+                        variablePeriod: track.variablePeriod,
+                        endYear: end.year,
+                        endMonth: end.month,
+                      }}
+                      onChange={(patch) => patchTrack(track, patch)}
+                      onDelete={() => deleteTrack(track.id)}
+                      footer={
+                        <>
+                          <span className="text-slate-500">נותרו {months} תשלומים</span>
+                          {track.amount > 0 && track.interestRate > 0 && (
+                            <span className="text-slate-500">
+                              החזר {formatCurrency(monthlyPayment(track.amount, track.interestRate, months))} בחודש
+                            </span>
+                          )}
+                          <label className="inline-flex items-center gap-1 text-slate-500">
+                            חיוב ב-
+                            <select
+                              aria-label="יום החיוב בחודש"
+                              value={day}
+                              onChange={(e) => patchTrack(track, { paymentDay: Number(e.target.value) })}
+                              className="h-6 rounded-md border border-slate-300 bg-white px-1 text-2xs font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
+                            >
+                              {PAYMENT_DAYS.map((d) => (
+                                <option key={d} value={d}>
+                                  {d}
+                                </option>
+                              ))}
+                            </select>
+                            לחודש
+                          </label>
+                        </>
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </ul>
+
+            {tracks.length === 0 && (
+              <p className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                התחילו בהוספת המסלול הראשון של המשכנתא הנוכחית
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={addTrack}
+              {...demoId('refi-add-track')}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/60 py-3 text-button font-bold text-blue-700 transition-colors hover:bg-blue-50"
+            >
+              <Plus className="h-4 w-4" />
+              הוספת מסלול
+            </button>
           </div>
 
-          {showSummarizeButton && (
-            <div className="flex flex-col items-center gap-2">
+          <aside className="flex flex-col gap-4">
+            <div className="rounded-3xl bg-brand-dark p-5 text-white shadow-xl">
+              <div className="flex items-center gap-2 text-sm font-bold text-cyan-200">
+                <Landmark className="h-4 w-4" />
+                המשכנתא היום{bank ? ` · ${bank}` : ''}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-2xs text-slate-300">יתרה</div>
+                  <div className="text-xl font-black tabular-nums">{formatCurrency(totalTracksAmount)}</div>
+                </div>
+                <div>
+                  <div className="text-2xs text-slate-300">החזר חודשי</div>
+                  <div className="text-xl font-black tabular-nums">{formatCurrency(totalMonthlyPayment)}</div>
+                </div>
+              </div>
+            </div>
+
+            {showSummarizeButton && (
               <Button
                 type="button"
                 {...demoId('refi-summarize')}
                 onClick={revealMixSummary}
-                disabled={!isAmountBalanced}
-                className="px-8 py-6 text-cta h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400"
+                disabled={!canSummarize}
+                className="h-auto w-full gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-cta font-black text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-white disabled:shadow-none"
               >
-                <PieChart className="h-8 w-8" />
-                <span className="font-bold">סכם משכנתא נוכחית</span>
+                <PieChart className="h-5 w-5" />
+                סכם משכנתא נוכחית
               </Button>
-              {!isAmountBalanced && (
-                <p className="text-center text-xs font-semibold text-slate-500">
-                  {remainingToComplete > 0
-                    ? `כדי לסכם, שבצו את יתרת הסכום במסלולים — נותרו ${formatCurrency(remainingToComplete)}`
-                    : `סכום המסלולים חורג מגובה המשכנתא ב-${formatCurrency(excessToReduce)}`}
-                </p>
-              )}
-            </div>
-          )}
+            )}
 
-          {showPerTrackRefinanceButton && (
-            <div className="flex justify-center">
+            {showPerTrackRefinanceButton && (
               <Button
                 type="button"
                 {...demoId('refi-check-options')}
                 onClick={handlePerTrackRefinanceCheck}
-                className="px-8 py-6 text-cta h-auto flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!canSummarize}
+                className="h-auto w-full gap-2 rounded-2xl bg-blue-600 px-5 py-3.5 text-cta font-black text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-white disabled:shadow-none"
               >
-                <RefreshCw className="h-8 w-8" />
-                <span className="font-bold">בדוק אפשרויות מיחזור</span>
+                <RefreshCw className="h-5 w-5" />
+                בדוק אפשרויות מיחזור
               </Button>
-            </div>
-          )}
-        </>
-      )}
+            )}
+
+            {!canSummarize && (showSummarizeButton || showPerTrackRefinanceButton) && (
+              <p className="text-center text-2xs text-slate-500">
+                {!bank ? 'בחרו את הבנק שבו המשכנתא, ' : ''}
+                {tracksComplete ? '' : 'מלאו יתרה וריבית בכל מסלול '}
+                כדי להמשיך
+              </p>
+            )}
+          </aside>
+        </motion.section>
+      </AnimatePresence>
     </div>
   );
+}
+
+const TRACK_TYPE_OPTIONS = (Object.keys(TRACK_TYPES) as MortgageTrack['type'][]).map((type) => ({
+  value: type,
+  label: TRACK_TYPES[type],
+}));
+
+/** סדר ההצעה של סוג מסלול חדש — כמו בבדיקת המיחזור לאורח */
+const NEW_TRACK_ORDER: MortgageTrack['type'][] = [
+  'prime',
+  'fixed_unlinked',
+  'fixed_linked',
+  'variable_linked',
+  'variable_unlinked',
+  'eligibility',
+];
+
+const PAYMENT_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+/** החודש והשנה של התשלום האחרון במסלול */
+function trackEnd(track: Pick<MortgageTrack, 'endDate' | 'years' | 'paymentDay'>): { year: number; month: number } {
+  const date =
+    parseIsoDate(track.endDate) ??
+    endDateFromMonths(Math.max(1, Math.round((track.years || 20) * 12)), track.paymentDay ?? DEFAULT_PAYMENT_DAY);
+  return { year: date.getFullYear(), month: date.getMonth() + 1 };
 }
