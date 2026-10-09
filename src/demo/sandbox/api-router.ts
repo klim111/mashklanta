@@ -121,6 +121,27 @@ export class DemoApiRouter {
   private profile = demoProfile();
   private rateRequests: Record<string, unknown>[] = [];
   private equityPlan: Record<string, unknown> | null = null;
+  /** כלי מצב הון ותזרים — נשמר בזיכרון בלבד */
+  /** פניות ליועץ שנשלחו בהדגמה — לשורת "הבקשה הועברה ליועץ" */
+  private leads: Array<Record<string, unknown>> = [];
+  private cashFlow: Record<string, unknown> | null = {
+    household: 'COUPLE',
+    borrowerName: 'דנה',
+    partnerName: 'אורי',
+    incomes: {
+      borrower: [{ id: 'demo-inc-1', label: 'משכורת נטו', amount: 18_000 }],
+      partner: [
+        { id: 'demo-inc-2', label: 'משכורת נטו', amount: 12_500 },
+        { id: 'demo-inc-3', label: 'שכר דירה מיחידה', amount: 1_500 },
+      ],
+    },
+    mortgage: { amount: 1_500_000, rate: 5, years: 25, payment: null },
+    loans: [
+      { id: 'demo-loan-1', name: 'הלוואת רכב', amount: 120_000, rate: 6.5, months: 48, payment: null },
+      { id: 'demo-loan-2', name: 'הלוואה לשיפוץ', amount: 60_000, rate: 4.75, months: 14, payment: null },
+      { id: 'demo-loan-3', name: 'כרטיס אשראי', amount: null, rate: null, months: 22, payment: 650 },
+    ],
+  };
   private orders: Record<string, unknown>[] = [];
   private chat: ChatMessageView[] = demoChat();
   private emails: ConversationEmailView[] = demoEmails();
@@ -201,7 +222,20 @@ export class DemoApiRouter {
     }
     if (path === '/api/platform/access') return json(demoPlatformAccess());
     if (path === '/api/platform/checkout') return json({ ok: true, demo: true });
-    if (path === '/api/advisor-leads') return json({ ok: true, demo: true });
+    if (path === '/api/advisor-leads') {
+      if (method === 'POST') {
+        const body = await this.body(init, input);
+        const lead = {
+          id: this.nextId('demo-lead'),
+          requestKindLabel: typeof body.requestKind === 'string' ? 'בקשת ליווי' : null,
+          topicLabel: 'פנייה ליועץ',
+          createdAt: nowIso(),
+        };
+        this.leads = [lead, ...this.leads];
+        return json(lead, 201);
+      }
+      return json(this.leads);
+    }
 
     // ─── תוכנית ההון העצמי (נשמרת בזיכרון בלבד) ───
     if (path === '/api/equity-plans') {
@@ -215,6 +249,13 @@ export class DemoApiRouter {
         return json({ ok: true });
       }
       return json(this.equityPlan);
+    }
+
+    if (path === '/api/cash-flow') {
+      if (method === 'PUT') {
+        this.cashFlow = { ...(await this.body(init, input)), updatedAt: nowIso() };
+      }
+      return json(this.cashFlow);
     }
 
     // ─── תהליכי משכנתא ───
