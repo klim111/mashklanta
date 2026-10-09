@@ -131,7 +131,7 @@ export function MixControlPanel({
           <p className="text-2xs font-bold text-slate-500">סכום המשכנתא</p>
           <p className="text-lg font-black leading-tight text-blue-700">{formatShekel(mix.totalAmount)}</p>
         </div>
-        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-2xs font-bold text-slate-600">
+        <p className="flex min-w-[160px] flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-2xs font-bold text-slate-600">
           <Layers className="h-3.5 w-3.5 shrink-0" />
           {mix.tracks.length} מסלולים · שובצו {formatShekel(allocated)}
           {remaining > 0 ? (

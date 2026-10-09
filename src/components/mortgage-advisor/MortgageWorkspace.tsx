@@ -1293,7 +1293,7 @@ export function MortgageWorkspace({
               : `grid grid-cols-1 items-start gap-3 ${
                   layout === 'analysis'
                     ? 'xl:grid-cols-[minmax(0,7fr)_minmax(0,13fr)]'
-                    : 'xl:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]'
+                    : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
                 }`
           }
           role={layout === 'editor' ? 'dialog' : undefined}
