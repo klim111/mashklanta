@@ -8,13 +8,15 @@ import { journeyStageFor } from '@/data/platform/planStages';
 import { PLATFORM_PROCESS_PRICE, platformMonthsSince } from './service-flow';
 import { ensureClientLinkSafely } from './advisor-link';
 import { emailAdvisorAboutRequest } from './advisor-notify';
+import { sendAdvisoryEndedOffer } from './billing';
 
 /**
  * שכבת הגישה להזמנות הליווי.
  *
  * ההזמנה נוצרת כשהלקוח לוחץ "תן ליועץ משכלנתא לעשות לך את העבודה" ובוחר את
- * השלבים, ומקבלת סטטוס "שולם" רק אחרי מסך התשלום ואישור התנאים. ברגע התשלום
- * נפתחת ליועץ משימה לכל שלב שהוזמן, כך שהבקשה מופיעה אצלו באזור שלו.
+ * השלבים, ומקבלת סטטוס "שולם" רק כשהיועץ מאשר שהתשלום עליה סודר
+ * (`markOrderInWork`). מאותו רגע הליווי פותח ללקוח את כל הכלים בתהליך, עד
+ * שהיועץ מסמן שהליווי הסתיים (`setPlanAdvisoryEnded`).
  */
 
 const orderSelect = {
@@ -124,64 +126,6 @@ export async function createOrder(
       note: note?.trim() || null,
     },
     select: orderSelect,
-  });
-
-  return toView(row);
-}
-
-export interface PaymentInput {
-  /** אישור התנאים — בלעדיו אין חיוב */
-  termsAccepted: boolean;
-  payerName?: string;
-  /** ארבע ספרות אחרונות בלבד. פרטי הכרטיס עצמם אינם נשמרים */
-  cardLast4?: string;
-  paymentRef?: string;
-}
-
-/**
- * סימון ההזמנה כשולמה, ופתיחת המשימות אצל היועץ.
- *
- * החיוב עצמו נעשה מול ספק הסליקה; כאן נשמרת רק האסמכתה. בלי אישור תנאים אין
- * תשלום, ולכן הקריאה נדחית.
- */
-export async function payOrder(
-  userId: string,
-  orderId: string,
-  input: PaymentInput
-): Promise<AdvisorOrder | null> {
-  if (!input.termsAccepted) return null;
-
-  const existing = await prisma.advisorServiceOrder.findFirst({
-    where: { id: orderId, ownerId: userId, status: 'PENDING_PAYMENT' },
-    select: {
-      id: true,
-      planId: true,
-      advisorId: true,
-      clientId: true,
-      stagesJson: true,
-      plan: { select: { name: true, propertyAddress: true } },
-    },
-  });
-  if (!existing) return null;
-
-  const now = new Date();
-  const row = await prisma.advisorServiceOrder.update({
-    where: { id: orderId },
-    data: {
-      status: 'PAID',
-      paidAt: now,
-      termsAcceptedAt: now,
-      payerName: input.payerName?.trim() || null,
-      cardLast4: input.cardLast4?.replace(/\D/g, '').slice(-4) || null,
-      paymentRef: input.paymentRef?.trim() || `manual-${now.getTime().toString(36)}`,
-    },
-    select: orderSelect,
-  });
-
-  await notifyAdvisor(existing.advisorId, existing.clientId, parseStages(existing.stagesJson), {
-    planName: existing.plan?.name ?? 'תהליך משכנתא',
-    propertyAddress: existing.plan?.propertyAddress ?? null,
-    paid: true,
   });
 
   return toView(row);
@@ -305,6 +249,8 @@ export interface AdvisorOrderRequest extends AdvisorOrder {
   clientName: string;
   planName: string;
   propertyAddress: string | null;
+  /** מתי היועץ סימן שהליווי בתהליך הסתיים */
+  advisoryEndedAt: string | null;
 }
 
 /**
@@ -323,7 +269,7 @@ export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrd
       clientId: true,
       client: { select: { name: true } },
       owner: { select: { name: true, email: true } },
-      plan: { select: { name: true, propertyAddress: true } },
+      plan: { select: { name: true, propertyAddress: true, advisoryEndedAt: true } },
     },
   });
 
@@ -333,15 +279,17 @@ export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrd
     clientName: row.client?.name ?? row.owner?.name ?? row.owner?.email ?? 'לקוח',
     planName: row.plan?.name ?? 'תהליך משכנתא',
     propertyAddress: row.plan?.propertyAddress ?? null,
+    advisoryEndedAt: row.plan?.advisoryEndedAt?.toISOString() ?? null,
   }));
 }
 
 /**
- * היועץ מסמן שהוא התחיל לעבוד על השלב, אחרי שהתשלום עליו סודר מולו.
+ * היועץ מאשר שהתשלום על השלב סודר ושהוא עובד עליו.
  *
- * מרגע זה הבקשה נחשבת משולמת, והלקוח אינו יכול למחוק את התהליך — העבודה כבר
- * שולמה ומתבצעת. הסימון הפיך: `inWork: false` מחזיר את הבקשה למצב חינמי,
- * למשל כשהיועץ סיים את השלב.
+ * מרגע זה הבקשה נחשבת משולמת: ללקוח נפתחים כל הכלים בתהליך בלי הגבלת זמן,
+ * והוא אינו יכול למחוק את התהליך. אישור של שלב בתהליך שהליווי בו כבר הסתיים
+ * פותח את הליווי מחדש. `inWork: false` מבטל אישור שניתן בטעות ומחזיר את הבקשה
+ * למצב חינמי; סיום הליווי עצמו הוא `setPlanAdvisoryEnded`, ששומר את התשלום.
  */
 export async function markOrderInWork(
   advisorId: string,
@@ -350,11 +298,18 @@ export async function markOrderInWork(
 ): Promise<AdvisorOrder | null> {
   const existing = await prisma.advisorServiceOrder.findFirst({
     where: { id: orderId, OR: [{ advisorId }, { advisorId: null }], status: { in: ['REQUESTED', 'PAID'] } },
-    select: { id: true },
+    select: { id: true, planId: true, workStartedAt: true },
   });
   if (!existing) return null;
 
   const now = new Date();
+  // אישור חדש — לא סימון חוזר של שלב שכבר אושר
+  if (inWork && !existing.workStartedAt) {
+    await prisma.mortgagePlan.updateMany({
+      where: { id: existing.planId, advisoryEndedAt: { not: null } },
+      data: { advisoryEndedAt: null },
+    });
+  }
   const row = await prisma.advisorServiceOrder.update({
     where: { id: orderId },
     // בקשה שלא שויכה עוברת ליועץ שהתחיל לעבוד עליה
@@ -364,6 +319,44 @@ export async function markOrderInWork(
     select: orderSelect,
   });
   return toView(row);
+}
+
+/**
+ * היועץ מסמן שהליווי בתהליך הסתיים, או מבטל את הסימון.
+ *
+ * הבקשות ששולמו נשארות משולמות — זה התיעוד של מה שהלקוח שילם. מה שמשתנה הוא
+ * הגישה: הכלים בתהליך כבר לא פתוחים דרך הליווי, אלא לפי חבילות החודש
+ * (src/lib/process-access.ts). בסימון נשלח ללקוח מייל עם הצעה להמשיך במחיר
+ * החודשי, ואותה הצעה מוצגת לו בפלטפורמה כשהוא נכנס לתהליך.
+ */
+export async function setPlanAdvisoryEnded(
+  advisorId: string,
+  planId: string,
+  ended: boolean
+): Promise<{ advisoryEndedAt: string | null; emailed: boolean } | null> {
+  const plan = await prisma.mortgagePlan.findFirst({
+    where: {
+      id: planId,
+      OR: [{ client: { advisorId } }, { advisorOrders: { some: { advisorId } } }],
+    },
+    select: { id: true, advisoryEndedAt: true },
+  });
+  if (!plan) return null;
+
+  if (!ended) {
+    if (plan.advisoryEndedAt) {
+      await prisma.mortgagePlan.update({ where: { id: planId }, data: { advisoryEndedAt: null } });
+    }
+    return { advisoryEndedAt: null, emailed: false };
+  }
+
+  // סימון חוזר אינו שולח את המייל שוב
+  if (plan.advisoryEndedAt) return { advisoryEndedAt: plan.advisoryEndedAt.toISOString(), emailed: false };
+
+  const now = new Date();
+  await prisma.mortgagePlan.update({ where: { id: planId }, data: { advisoryEndedAt: now } });
+  const emailed = await sendAdvisoryEndedOffer(planId, now).catch(() => false);
+  return { advisoryEndedAt: now.toISOString(), emailed };
 }
 
 /**

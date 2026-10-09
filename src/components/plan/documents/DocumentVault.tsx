@@ -63,7 +63,7 @@ export function DocumentVault({
   };
 
   const byKey = new Map(documents.map((document) => [document.key, document]));
-  const { uploaded, total } = vaultCounts(requirements, documents);
+  const { uploaded, total, extras: extraCount } = vaultCounts(requirements, documents);
   const skipped = mode === 'SELF_SUBMIT' || mode === 'LATER';
 
   /*
@@ -146,6 +146,12 @@ export function DocumentVault({
 
       <p className="mt-4 text-center text-info font-black text-slate-700">
         {uploaded} מתוך {total} מסמכים הועלו
+        {extraCount > 0 && (
+          <span className="font-bold text-slate-500">
+            {' '}
+            · ועוד {extraCount === 1 ? 'מסמך נוסף אחד' : `${extraCount} מסמכים נוספים`} מחוץ לרשימה
+          </span>
+        )}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-2">

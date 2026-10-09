@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
-import { validateCheckout } from '@/lib/platform-access';
-import { PLATFORM_ACCESS_DAYS, PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
-import { passExpiresAt } from '@/lib/process-access';
+import { CheckoutError, startCheckout } from '@/lib/billing';
 
 /**
- * רכישת חבילת גישה — ₪49 ל-30 יום.
+ * רכישת חבילת גישה — ₪49 לחודש קלנדרי.
  *
- * פרטי הכרטיס מאומתים כאן ולא נשמרים: ברשומת התשלום נשארים רק המותג וארבע
- * הספרות האחרונות, ואין חיוב חוזר — כל חבילה נרכשת ביוזמת הלקוח. בלי `planId`
- * התשלום נקשר לתהליך הבא שייפתח; עם `planId` זו חבילה נוספת לתהליך קיים. בשני
- * המקרים החבילה פותחת ל-30 יום את כל התהליכים הפתוחים של הלקוח.
+ * הלקוח משלם בעמוד התשלום המאובטח של HYP, ופרטי הכרטיס לא עוברים דרך האתר:
+ * כאן רק נפתח המעבר לתשלום, והתשובה היא הכתובת שאליה הדפדפן עובר. התשלום
+ * נרשם כשהלקוח חוזר מ-HYP (`/api/payments/hyp/return`). בלי `planId` החבילה
+ * נקשרת לתהליך הבא שייפתח; עם `planId` זו חבילה נוספת לתהליך קיים. אין חיוב
+ * חוזר — כל חבילה נרכשת ביוזמת הלקוח.
  */
 export async function POST(req: NextRequest) {
   const session = await getServerAuth();
@@ -28,53 +26,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
-  const validation = validateCheckout({
-    holderName: String(body?.holderName ?? ''),
-    email: String(body?.email ?? ''),
-    phone: typeof body?.phone === 'string' ? body.phone : undefined,
-    idNumber: typeof body?.idNumber === 'string' ? body.idNumber : undefined,
-    cardNumber: String(body?.cardNumber ?? ''),
-    expiry: String(body?.expiry ?? ''),
-    cvv: String(body?.cvv ?? ''),
-  });
-
-  if (!validation.ok || !validation.card) {
-    return NextResponse.json({ error: 'פרטי התשלום אינם תקינים', errors: validation.errors }, { status: 400 });
-  }
-
-  // חידוש: רק לתהליך של המשתמש עצמו
-  let planId: string | null = null;
-  if (typeof body?.planId === 'string' && body.planId) {
-    const plan = await prisma.mortgagePlan.findFirst({
-      where: { id: body.planId, ownerId: userId },
-      select: { id: true },
-    });
-    if (!plan) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    planId = plan.id;
-  }
-
-  const payment = await prisma.platformPayment.create({
-    data: {
+  try {
+    const redirectUrl = await startCheckout({
       userId,
-      planId,
-      amountAgorot: PLATFORM_PROCESS_PRICE * 100,
-      holderName: String(body.holderName).trim(),
-      cardBrand: validation.card.brand,
-      cardLast4: validation.card.last4,
-    },
-    select: { createdAt: true },
-  });
-
-  return NextResponse.json(
-    {
-      active: true,
-      since: payment.createdAt.toISOString(),
-      planId,
-      price: PLATFORM_PROCESS_PRICE,
-      accessDays: PLATFORM_ACCESS_DAYS,
-      passExpiresAt: passExpiresAt(payment.createdAt).toISOString(),
-      receipt: { brand: validation.card.brand, last4: validation.card.last4, amount: PLATFORM_PROCESS_PRICE },
-    },
-    { status: 201 }
-  );
+      planId: typeof body?.planId === 'string' && body.planId ? body.planId : null,
+      returnPath: typeof body?.returnPath === 'string' ? body.returnPath : null,
+    });
+    return NextResponse.json({ redirectUrl }, { status: 201 });
+  } catch (error) {
+    if (error instanceof CheckoutError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
 }

@@ -54,6 +54,7 @@ import { GuestRegistrationDialog } from '@/components/guest/GuestRegistrationDia
 import { RegisterTeaserCarousel } from '@/components/guest/RegisterTeaserCarousel';
 import { useSliderEngagement } from '@/hooks/use-slider-engagement';
 import { demoId } from '@/demo/demo-attr';
+import { useToolData } from '@/components/tool-data/toolData';
 
 type UserData = MortgagePlanningUserData;
 
@@ -223,6 +224,15 @@ export function MortgagePlanningContent({
   profileReadyRef.current = onProfileReady;
   const initialRef = useRef(initialPayload);
   const [hydrated, setHydrated] = useState(false);
+  /**
+   * מה שנשמר בחשבון — כולל מה שהוזן כאן לפני ההרשמה — כדי שהכלי ייפתח עם
+   * אותם נתונים בכל מכשיר. אורח עובד על אחסון הדפדפן בלבד.
+   */
+  const toolData = useToolData<{ userData?: Record<string, unknown>; currentStep?: string }>(
+    'affordability',
+    (value) => value as { userData?: Record<string, unknown>; currentStep?: string }
+  );
+  const saveToolData = toolData.save;
 
   // Entry flow from home page (?flow=affordability|existing|refinance)
   useEffect(() => {
@@ -263,10 +273,12 @@ export function MortgagePlanningContent({
       return;
     }
 
-    const savedData = localStorage.getItem('mortgagePlanningData');
-    if (savedData) {
+    // מחכים לחשבון, כדי לא להציג טופס ריק ואז להחליף אותו בנתונים השמורים
+    if (!toolData.ready) return;
+    const savedData = toolData.initial ? null : localStorage.getItem('mortgagePlanningData');
+    if (toolData.initial || savedData) {
       try {
-        const parsedData = JSON.parse(savedData);
+        const parsedData = toolData.initial ?? JSON.parse(savedData!);
         const migrated = migrateMortgagePlanningUserData({
           ...defaultMortgagePlanningUserData(),
           ...parsedData.userData,
@@ -282,7 +294,7 @@ export function MortgagePlanningContent({
       }
     }
     setHydrated(true);
-  }, [searchParams, embedded]);
+  }, [searchParams, embedded, toolData.ready, toolData.initial]);
 
   // Load analyzed terms if available
   useEffect(() => {
@@ -331,9 +343,10 @@ export function MortgagePlanningContent({
     if (!hydrated) return;
     if (!embedded) {
       localStorage.setItem('mortgagePlanningData', JSON.stringify({ userData, currentStep }));
+      saveToolData({ userData: userData as unknown as Record<string, unknown>, currentStep });
     }
     persistRef.current?.({ userData, currentStep });
-  }, [userData, currentStep, hydrated, embedded]);
+  }, [userData, currentStep, hydrated, embedded, saveToolData]);
 
   // Check capital sufficiency when property price or own capital changes
   useEffect(() => {

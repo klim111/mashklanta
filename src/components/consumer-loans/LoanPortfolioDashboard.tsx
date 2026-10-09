@@ -46,19 +46,20 @@ export function LoanPortfolioDashboard({
   stats,
   monthlyIncome,
   onMonthlyIncomeChange,
-  selectedIds,
-  onToggleSelect,
 }: {
+  /** רק הלוואות שכל השדות שלהן הוזנו */
   loans: Loan[];
   stats: PortfolioStats;
   monthlyIncome?: number;
   onMonthlyIncomeChange: (value: number) => void;
-  selectedIds: string[];
-  onToggleSelect: (id: string) => void;
 }) {
   const series = React.useMemo(() => portfolioYearlySeries(loans), [loans]);
   const insights = React.useMemo(() => loanInsights(stats, monthlyIncome), [stats, monthlyIncome]);
-  const ratio = paymentToIncome(stats.monthlyPayment, monthlyIncome ?? 0);
+  const has = stats.count > 0;
+  const ratio = has ? paymentToIncome(stats.monthlyPayment, monthlyIncome ?? 0) : null;
+  // בלי הלוואה מלאה הגרף נשאר עם צירים ריקים — בלי קווים
+  const chartData: Array<Record<string, number | null>> =
+    series.length > 0 ? (series as unknown as Array<Record<string, number>>) : EMPTY_SERIES;
 
   return (
     <div className="space-y-2.5">
@@ -68,40 +69,39 @@ export function LoanPortfolioDashboard({
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
             <p className="text-sm font-bold leading-tight text-slate-900">התיק שלכם היום</p>
             <p className="text-2xs text-slate-500">
-              {stats.count} הלוואות · מתעדכן עם כל תזוזה בפאנל
+              {has ? `${stats.count} הלוואות · מתעדכן עם כל תזוזה בפאנל` : 'יתמלא תוך כדי הזנת ההלוואות'}
             </p>
           </div>
-          <Cell icon={Coins} label="סך חוב" value={formatILS(stats.totalPrincipal)} />
-          <Cell icon={Wallet} label="החזר חודשי" value={formatILS(stats.monthlyPayment)} emphasized />
-          <Cell icon={Banknote} label="סך ריבית" value={formatILS(stats.totalInterest)} />
-          <Cell icon={Percent} label="ריבית משוקללת" value={`${stats.weightedApr.toFixed(2)}%`} />
+          <Cell icon={Coins} label="סך חוב" value={has ? formatILS(stats.totalPrincipal) : '—'} />
+          <Cell icon={Wallet} label="החזר חודשי" value={has ? formatILS(stats.monthlyPayment) : '—'} emphasized />
+          <Cell icon={Banknote} label="סך ריבית" value={has ? formatILS(stats.totalInterest) : '—'} />
+          <Cell icon={Percent} label="ריבית משוקללת" value={has ? `${stats.weightedApr.toFixed(2)}%` : '—'} />
           <Cell
             icon={CalendarClock}
             label="סיום התשלומים"
-            value={`${stats.payoffMonths} ח׳${
-              stats.payoffMonths >= 12 ? ` · ${(stats.payoffMonths / 12).toFixed(1)} ש׳` : ''
-            }`}
+            value={
+              has
+                ? `${stats.payoffMonths} ח׳${
+                    stats.payoffMonths >= 12 ? ` · ${(stats.payoffMonths / 12).toFixed(1)} ש׳` : ''
+                  }`
+                : '—'
+            }
           />
         </div>
 
-        {/* הרכב התיק — לחיצה על מקטע מסמנת את ההלוואה להשוואה */}
+        {/* הרכב התיק */}
         {stats.totalPrincipal > 0 && (
           <div>
             <div className="flex h-6 overflow-hidden rounded-lg border border-slate-200">
               {loans.map((loan) => {
                 const share = (loan.principal / stats.totalPrincipal) * 100;
                 if (share <= 0) return null;
-                const active = selectedIds.includes(loan.id);
                 return (
-                  <button
+                  <span
                     key={loan.id}
-                    type="button"
-                    onClick={() => onToggleSelect(loan.id)}
                     title={`${loan.name} · ${formatILS(loan.principal)} · ${loan.apr.toFixed(2)}%`}
                     style={{ width: `${share}%`, backgroundColor: loanColor(loan) }}
-                    className={`min-w-[6px] transition-opacity ${
-                      active ? 'opacity-100 ring-2 ring-inset ring-white' : 'opacity-75 hover:opacity-100'
-                    }`}
+                    className="min-w-[6px] opacity-80 transition-[width] duration-500"
                   />
                 );
               })}
@@ -227,79 +227,139 @@ export function LoanPortfolioDashboard({
       )}
 
       {/* הגרפים */}
-      {series.length > 1 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-          <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
-            <p className="text-xs font-bold text-slate-800">החוב לאורך הזמן</p>
-            <p className="text-2xs text-slate-500">
-              יתרת החוב יורדת, הריבית המצטברת עולה — וההחזר החודשי קטן בכל פעם שהלוואה נגמרת
-            </p>
-          </div>
-          <div className="h-52 w-full" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={series} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="loanBalanceFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis
-                  dataKey="year"
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
-                  tickFormatter={(value: number) => `${value}`}
-                />
-                {/* שני סולמות: יתרות וריבית באלפים, וההחזר החודשי בסולם שלו */}
-                <YAxis
-                  yAxisId="amount"
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
-                  tickFormatter={(value: number) => `${Math.round(value / 1000)}K`}
-                />
-                <YAxis
-                  yAxisId="payment"
-                  orientation="right"
-                  tick={{ fontSize: 10, fill: '#059669' }}
-                  tickFormatter={(value: number) => `${Math.round(value / 1000)}K`}
-                />
-                <Tooltip content={<PortfolioTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area
-                  yAxisId="amount"
-                  type="monotone"
-                  dataKey="balance"
-                  name="יתרת חוב"
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  fill="url(#loanBalanceFill)"
-                />
-                <Line
-                  yAxisId="amount"
-                  type="monotone"
-                  dataKey="cumulativeInterest"
-                  name="ריבית מצטברת"
-                  stroke="#e11d48"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  yAxisId="payment"
-                  type="stepAfter"
-                  dataKey="monthlyPayment"
-                  name="החזר חודשי"
-                  stroke="#059669"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 3"
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="mt-1 text-2xs text-slate-400">
-            הציר האופקי: שנים מהיום · הסולם הימני: ההחזר החודשי
+      {stats.count >= 2 && <LoanBreakdownTable stats={stats} />}
+
+      {/* הגרף מוצג תמיד — בלי הלוואות מלאות הוא צירים ריקים */}
+      <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+        <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
+          <p className="text-xs font-bold text-slate-800">החוב לאורך הזמן</p>
+          <p className="text-2xs text-slate-500">
+            יתרת החוב יורדת, הריבית המצטברת עולה — וההחזר החודשי קטן בכל פעם שהלוואה נגמרת
           </p>
         </div>
-      )}
+        <div className="h-52 w-full [&_svg]:[direction:ltr]" dir="ltr">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+              <defs>
+                <linearGradient id="loanBalanceFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="year"
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                tickFormatter={(value: number) => `${value}`}
+              />
+              {/* שני סולמות: יתרות וריבית באלפים, וההחזר החודשי בסולם שלו */}
+              <YAxis
+                yAxisId="amount"
+                domain={series.length > 0 ? [0, 'auto'] : [0, 100_000]}
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
+                tickFormatter={(value: number) => `${Math.round(value / 1000)}K`}
+              />
+              <YAxis
+                yAxisId="payment"
+                domain={series.length > 0 ? [0, 'auto'] : [0, 5_000]}
+                orientation="right"
+                tick={{ fontSize: 10, fill: '#059669' }}
+                tickFormatter={(value: number) => `${Math.round(value / 1000)}K`}
+              />
+              <Tooltip content={<PortfolioTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area
+                yAxisId="amount"
+                type="monotone"
+                dataKey="balance"
+                name="יתרת חוב"
+                stroke="#2563eb"
+                strokeWidth={2}
+                fill="url(#loanBalanceFill)"
+              />
+              <Line
+                yAxisId="amount"
+                type="monotone"
+                dataKey="cumulativeInterest"
+                name="ריבית מצטברת"
+                stroke="#e11d48"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                yAxisId="payment"
+                type="stepAfter"
+                dataKey="monthlyPayment"
+                name="החזר חודשי"
+                stroke="#059669"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                dot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="mt-1 text-2xs text-slate-400">
+          הציר האופקי: שנים מהיום · הסולם הימני: ההחזר החודשי
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** צירים ריקים לפני שהוזנה הלוואה מלאה — חמש שנים בלי ערכים */
+const EMPTY_SERIES: Array<Record<string, number | null>> = [1, 2, 3, 4, 5].map((year) => ({
+  year,
+  balance: null,
+  cumulativeInterest: null,
+  monthlyPayment: null,
+}));
+
+/** ההלוואות זו מול זו — מוצג רק משתי הלוואות, כשיש מה להשוות */
+function LoanBreakdownTable({ stats }: { stats: PortfolioStats }) {
+  const rows = [...stats.loans].sort((a, b) => b.loan.apr - a.loan.apr);
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <p className="border-b border-slate-100 px-2.5 py-2 text-xs font-bold text-slate-800">
+        ההלוואות זו מול זו
+        <span className="mr-1.5 font-normal text-slate-400">מהריבית הגבוהה לנמוכה</span>
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-2xs">
+          <thead className="bg-slate-50 font-bold text-slate-500">
+            <tr>
+              <th className="p-2 text-right">הלוואה</th>
+              <th className="p-2 text-right">ריבית</th>
+              <th className="p-2 text-right">החזר חודשי</th>
+              <th className="p-2 text-right">סך ריבית</th>
+              <th className="p-2 text-right">תשלומים</th>
+              <th className="p-2 text-right">חלק מהחוב</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item) => (
+              <tr key={item.loan.id} className="border-t border-slate-100">
+                <td className="p-2 font-bold text-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: loanColor(item.loan) }} />
+                    {item.loan.name}
+                  </span>
+                </td>
+                <td className="p-2 text-slate-700">{item.loan.apr.toFixed(2)}%</td>
+                <td className="p-2 font-bold text-blue-700">{formatILS(item.monthlyPayment)}</td>
+                <td className="p-2 text-rose-600">{formatILS(item.totalInterest)}</td>
+                <td className="p-2 text-slate-700">{item.monthsActual}</td>
+                <td className="p-2 text-slate-700">
+                  {stats.totalPrincipal > 0
+                    ? Math.round((item.loan.principal / stats.totalPrincipal) * 100)
+                    : 0}
+                  %
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

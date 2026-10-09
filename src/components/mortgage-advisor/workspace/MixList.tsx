@@ -32,16 +32,12 @@ interface MixListProps {
   others: SavedMix[];
   comparedIds: string[];
   address?: string;
-  expanded: boolean;
   /** תרחיש ריבית או מדד פעיל — הנתונים בשורה מוצגים לפי התרחיש */
   scenarioActive?: boolean;
   /** פעולות התמהיל כולו, מוצגות בשורה של התמהיל שבניתוח */
   activeActions?: React.ReactNode;
-  /** פירוט התמהיל שבניתוח לעריכה */
+  /** פאנל העריכה של התמהיל שבעבודה — פתוח תמיד, בלי לחיצה על חץ */
   editor: React.ReactNode;
-  /** מה שמוצג במקום הפאנל כשעוד לא נבחר תמהיל לניתוח */
-  editorPlaceholder?: React.ReactNode;
-  onToggleExpanded: () => void;
   onActivate: (item: SavedMix) => void;
   onToggleCompare: (id: string) => void;
   onRenameActive: (name: string) => boolean | void;
@@ -111,12 +107,9 @@ export function MixList({
   others,
   comparedIds,
   address,
-  expanded,
   scenarioActive = false,
   activeActions,
   editor,
-  editorPlaceholder,
-  onToggleExpanded,
   onActivate,
   onToggleCompare,
   onRenameActive,
@@ -278,7 +271,7 @@ export function MixList({
                 className="flex items-center gap-1.5 text-xs font-black text-blue-900"
                 title={
                   buildLabel
-                    ? 'הוסיפו מסלול אחרי מסלול עד שכל סכום המשכנתא משובץ — ואז התמהיל נשמר אוטומטית'
+                    ? 'הוסיפו מסלול אחרי מסלול עד שכל סכום המשכנתא משובץ — ואז שומרים את המצב כתמהיל'
                     : comparedItems.length > 0
                       ? 'הטבלה והגרפים שמתחת מציגים את כל התמהילים שבאזור העבודה'
                       : 'התמהיל שנפתח לניתוח ולעריכה'
@@ -313,18 +306,11 @@ export function MixList({
               selected
               selectionLocked
               onToggleSelect={() => undefined}
-              expanded={expanded}
-              showExpandIcon
-              onClick={pendingRenameId === activeResult.mix.id ? undefined : onToggleExpanded}
+              showExpandIcon={false}
               onRename={onRenameActive}
               startRenaming={pendingRenameId === activeResult.mix.id}
               requireName={pendingRenameId === activeResult.mix.id}
               namePlaceholder="תנו שם לתמהיל החדש"
-              hint={
-                pendingRenameId === activeResult.mix.id
-                  ? 'תנו שם לתמהיל כדי להמשיך לערוך אותו'
-                  : 'לחצו לעריכת המסלולים'
-              }
               note={scenarioActive ? 'תרחיש פעיל' : undefined}
               onRequestQuote={() =>
                 setQuoteTarget({ mix: activeResult.mix, summary: activeResult.summary })
@@ -358,13 +344,10 @@ export function MixList({
               }
             />
             </div>
-            {expanded ? (
-              <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
-                {editor}
-              </div>
-            ) : (
-              editorPlaceholder && <div className="mt-2">{editorPlaceholder}</div>
-            )}
+            {/* התמהיל שבעבודה פתוח תמיד לעריכה — בלי ללחוץ קודם על השורה או על חץ */}
+            <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
+              {editor}
+            </div>
 
             {/*
               התמהילים שסומנו להשוואה אינם מוצגים כאן יותר. הם מוזנים ישירות

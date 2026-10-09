@@ -37,6 +37,7 @@ import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import type { DealType } from '@/components/mortgage-advisor/types';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
 import { createEmptyLoan } from './borrower-loans';
+import { analysisFromToolData } from './tool-data';
 import { analysisFromProfile, mergeProfiles, parseClientProfile } from './client-profile';
 import { parseStages } from './advisor-orders';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
@@ -62,6 +63,7 @@ const planSelect = {
   mortgageAmount: true,
   monthlyPayment: true,
   completedAt: true,
+  advisoryEndedAt: true,
   createdAt: true,
   updatedAt: true,
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
@@ -108,7 +110,7 @@ export interface PlanView {
   stages: PlanStageView[];
   /** נתוני כל השלבים יחד, כפי שהטפסים והחישובים צורכים אותם */
   data: PlanData;
-  /** הגישה לכלים בתהליך: 30 יום מכל תשלום, ללא הגבלה בליווי ששולם */
+  /** הגישה לכלים בתהליך: חודש קלנדרי מכל תשלום, ללא הגבלה בליווי ששולם */
   access: ProcessAccess;
 }
 
@@ -127,6 +129,7 @@ function accessOf(row: PlanRow): ProcessAccess {
     // שנפתח אוטומטית ללקוח שנרשם לבד אינו ליווי
     hasPaidAdvisory:
       Boolean(row.client && !row.client.autoLinked) || row.advisorOrders.some((order) => order.status === 'PAID'),
+    advisoryEndedAt: row.advisoryEndedAt,
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
     ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
   });
@@ -238,7 +241,7 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { profileJson: true },
+    select: { profileJson: true, toolDataJson: true },
   });
 
   let analysisJson: Prisma.InputJsonValue | undefined;
@@ -254,6 +257,13 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
       analysisJson = seedAnalysisFromClient(client) as unknown as Prisma.InputJsonValue;
     } catch {
       // תהליך ריק עדיף על כשל בפתיחה בגלל פענוח
+    }
+  }
+  if (!analysisJson) {
+    try {
+      analysisJson = analysisFromToolData(user?.toolDataJson) as unknown as Prisma.InputJsonValue | undefined;
+    } catch {
+      // כנ"ל — הכלי הפתוח הוא רק נקודת פתיחה
     }
   }
 
@@ -293,17 +303,23 @@ async function bindOpenPass(userId: string, planId: string): Promise<void> {
 }
 
 /**
- * תהליכים פתוחים במסלול העצמאי: לא הסתיימו, לא בארכיון, ואין עליהם ליווי.
- * עליהם חלה ההגבלה של שני תהליכים במקביל.
+ * תהליכים פתוחים במסלול העצמאי: לא הסתיימו, לא בארכיון, ואין עליהם ליווי
+ * פעיל — כולל תהליך שהיועץ סימן שהליווי בו הסתיים. עליהם חלה ההגבלה של שני
+ * תהליכים במקביל, ולהם נשלחת התזכורת לקראת סוף החודש.
  */
 export async function countOpenSelfServicePlans(userId: string): Promise<number> {
   return prisma.mortgagePlan.count({
     where: {
       ownerId: userId,
       status: 'IN_PROGRESS',
-      // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
-      OR: [{ clientId: null }, { client: { autoLinked: true } }],
-      advisorOrders: { none: { status: 'PAID' } },
+      OR: [
+        { advisoryEndedAt: { not: null } },
+        {
+          // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
+          OR: [{ clientId: null }, { client: { autoLinked: true } }],
+          advisorOrders: { none: { status: 'PAID' } },
+        },
+      ],
     },
   });
 }
@@ -322,7 +338,7 @@ export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
 }
 
 /**
- * החבילה הפנויה לפתיחת תהליך חדש בלי תשלום — 30 יום מהתשלום, ורק אם לא
+ * החבילה הפנויה לפתיחת תהליך חדש בלי תשלום — חודש מהתשלום, ורק אם לא
  * הסתיים אחריו אף תהליך של הלקוח.
  */
 export async function newProcessPassFor(
@@ -342,7 +358,7 @@ export async function newProcessPassFor(
 }
 
 /**
- * האם הכלים בתהליך נעולים בפני המשתמש: עברו 30 יום מהתשלום האחרון, או
+ * האם הכלים בתהליך נעולים בפני המשתמש: הסתיים החודש של התשלום האחרון, או
  * שהתהליך נפתח בלי תשלום. יועץ שמלווה את הלקוח אינו ננעל לעולם.
  */
 export async function planLockedFor(userId: string, planId: string): Promise<boolean> {

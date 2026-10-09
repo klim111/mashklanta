@@ -60,11 +60,19 @@ paymentNew = annuityPayment(balanceNew, apr, remainingMonths)
 - `loanMath.ts` — אנונה, לוח סילוקין, יתרה ופירעון מוקדם
 - `optimizer.ts` — אוולנץ׳, תרחישי איחוד ובחירת התוכנית המובילה
 - `loanInsights.ts` — נתוני התיק, סדרות לגרפים, יחס החזר ותובנות
-- `LoanWorkspace.tsx` — הקומפוננטה הראשית: כותרת, ניווט וחלקי הכלי
-- `LoanControlPanel.tsx` — פאנל השליטה (כרטיס לכל הלוואה)
-- `LoanPortfolioDashboard.tsx` — דאשבורד התיק
-- `LoanComparison.tsx` — השוואה, איחוד, פירעון מוקדם וגרפים
-- `LoanStrategyPanel.tsx` — שילובים ואופטימיזציה
+- `LoanWorkspace.tsx` — הקומפוננטה הראשית: מסך אחד עם פאנל שליטה ודאשבורד.
+  לשוניות "איחוד" ו"אסטרטגיה" נוצרות רק כשהלקוח בוחר בהן, ונעלמות כשמסירים אותן
+- `LoanFields.tsx` — שורת פרמטר: תווית, שדה הזנה וסליידר בעמודות שוות, בלי ערך ברירת מחדל
+- `LoanControlPanel.tsx` — פאנל השליטה (כרטיס לכל הלוואה, כולל פירעונות מוקדמים)
+- `LoanPrepaymentDialog.tsx` — פירעון מוקדם מתשלום שהלקוח בוחר (קיצור תקופה או הקטנת החזר)
+- `LoanPortfolioDashboard.tsx` — דאשבורד התיק (ריק עד שמזינים הלוואה)
+- `LoanConsolidation.tsx` — בחירת ההלוואות לאיחוד, פאנל האיחוד והדאשבורד שלו
+- `LoanStrategy.tsx` — מזומן זמין והוצאה צפויה: האסטרטגיה המובילה
+- `ScenarioRow.tsx` — שורת "היום מול אחרי" המשותפת לאיחוד ולאסטרטגיה
+- `RateInfoButton.tsx` — כפתור "!" ליד כל שדה ריבית: ריביות לפי מוסד מממן מבנק ישראל
+- `ConsumerCreditMarket.tsx` — אזור נתוני השוק בתחתית העמוד (חוב, ריביות, מוסדות)
+- `useConsumerCredit.ts` — טעינת נתוני בנק ישראל מ-`/api/boi/consumer-credit`
+  (הנתונים נשלפים ב-`src/lib/boi-consumer-credit.ts`)
 - `AmortTable.tsx` / `AmortChart.tsx` — לוח הסילוקין והגרף שלו
 - `LoanPlanningImportWizard.tsx` — ייבוא ההלוואות מהפרופיל הפיננסי
 - `FamilyEconomyAdvisor.tsx` — הכפתור הצף, כרטיס הערך וטופס הפנייה ליועץ
@@ -77,3 +85,6 @@ npm test
 
 `__tests__/loanMath.test.ts` ו-`__tests__/optimizer.test.ts` מכסים את חישובי
 האנונה, אלגוריתם האוולנץ׳, תרחישי האופטימיזציה והפירעון המוקדם.
+`__tests__/consumer-loans-workspace.test.ts` מכסה הלוואה חלקית, פירעונות מוקדמים
+בלוח, התובנות שמופיעות רק משתי הלוואות, ואיחוד. `__tests__/boi-consumer-credit.test.ts`
+מכסה את פענוח הנתונים מבנק ישראל.

@@ -1,8 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FolderOpen, Loader2, MapPin } from 'lucide-react';
+import { FolderOpen, Loader2, MapPin, Tags } from 'lucide-react';
 import { DocumentVault } from '@/components/plan/documents/DocumentVault';
+import { DocumentBrowser } from '@/components/plan/documents/DocumentBrowser';
+import { DocumentViewerDialog } from '@/components/plan/documents/DocumentViewerDialog';
+import { usePlanDocuments } from '@/components/plan/documents/usePlanDocuments';
+import type { PlanDocumentView } from '@/lib/plan-documents';
+import { isDemoPlan } from '@/lib/demo-plan';
 import { planHeadline } from '@/lib/client-agenda';
 import type { DocumentsMode } from '@/lib/mortgage-plan';
 import type { ClientDashboardData } from './useClientDashboard';
@@ -70,6 +75,8 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
         </DashCard>
       )}
 
+      <OrganizedDocuments planId={plan.id} />
+
       <DocumentVault
         planId={plan.id}
         data={plan.data}
@@ -78,5 +85,31 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
         hideModes
       />
     </div>
+  );
+}
+
+/** כל מה שבתיק לפי קטגוריה ושלב, עם חיפוש וסינון — מעל רשימת הדרישות */
+function OrganizedDocuments({ planId }: { planId: string }) {
+  const { documents, ready, busyKey, remove, updateMeta } = usePlanDocuments(planId);
+  const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
+
+  if (!ready || documents.length === 0) return null;
+
+  return (
+    <DashCard
+      title={`כל המסמכים בתיק (${documents.length})`}
+      icon={<Tags className="h-5 w-5 text-blue-600" />}
+    >
+      <DocumentBrowser
+        planId={planId}
+        documents={documents}
+        busyKey={busyKey}
+        demo={isDemoPlan(planId)}
+        onView={setViewing}
+        onRemove={(document) => void remove(document.id, document.key)}
+        onUpdateMeta={(documentId, meta) => void updateMeta(documentId, meta)}
+      />
+      <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
+    </DashCard>
   );
 }

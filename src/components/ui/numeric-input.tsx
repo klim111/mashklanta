@@ -14,6 +14,11 @@ type NumericInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | '
   /** מתיר ערך שלילי — למרווח מתחת לעוגן, למשל */
   allowNegative?: boolean;
   max?: number;
+  /**
+   * ערך שמוקלד מעל max מוחלף ב-max גם בשדה עצמו, ולא רק בערך שמועבר הלאה —
+   * כך השדה לא מציג מספר שהכלי לא מקבל.
+   */
+  clampDraftToMax?: boolean;
 };
 
 /** כמה ספרות יש עד מיקום הסמן — כדי להחזיר אותו למקומו אחרי הוספת פסיקים */
@@ -49,6 +54,7 @@ export function NumericInput({
   integer = false,
   allowNegative = false,
   max,
+  clampDraftToMax = false,
   className,
   onFocus,
   onBlur,
@@ -118,6 +124,13 @@ export function NumericInput({
             onChange(null);
             return;
           }
+          if (clampDraftToMax && max !== undefined && parsed > max) {
+            const capped = formatNumberInput(String(Math.round(max)));
+            setDraft(capped);
+            pendingCaret.current = capped.length;
+            onChange(max);
+            return;
+          }
           onChange(max !== undefined ? Math.min(parsed, max) : parsed);
           return;
         }
@@ -127,6 +140,11 @@ export function NumericInput({
         const parsed = parseDecimalInput(next, { allowNegative });
         if (parsed === null || !Number.isFinite(parsed)) {
           onChange(null);
+          return;
+        }
+        if (clampDraftToMax && max !== undefined && parsed > max) {
+          setDraft(String(max));
+          onChange(max);
           return;
         }
         onChange(max !== undefined ? Math.min(parsed, max) : parsed);

@@ -174,8 +174,10 @@ export function MixStage({
         defaultEvents={prepayments}
         onActiveMix={(item) => {
           const current = mixState.current;
-          if (current.finalLocked && current.mixKey && current.mixKey !== item.mix.id) return;
-          persist.current(toMixData(item, notes.current, current.finalLocked && current.mixKey === item.mix.id));
+          // התמהיל הסופי נקבע רק בבחירה בו (onSelectFinal). שמירה שחזרה מהשרת אחרי
+          // הבחירה — למשל עם שם ישן — לא דורסת את מה שנבחר
+          if (current.finalLocked && current.mixKey) return;
+          persist.current(toMixData(item, notes.current));
         }}
         onSelectFinal={(item) => persist.current(toMixData(item, notes.current, true))}
         onReopenFinal={(item) =>

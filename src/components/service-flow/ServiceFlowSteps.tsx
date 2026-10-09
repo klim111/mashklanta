@@ -3,11 +3,12 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, Bot, Compass, Handshake, Home, RefreshCw, UserCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
 
 type Chip = { icon: LucideIcon; label: string; tone: string };
 
-const STEPS: Array<{ number: number; title: string; description: string; chips: Chip[] }> = [
+function steps(price: number): Array<{ number: number; title: string; description: string; chips: Chip[] }> {
+  return [
   {
     number: 1,
     title: 'מה תרצו לעשות?',
@@ -23,7 +24,7 @@ const STEPS: Array<{ number: number; title: string; description: string; chips: 
     title: 'כמה עזרה תרצו?',
     description: 'מתחילים לבד עם כל הכלים ומעבירים ליועץ כל שלב שתרצו, או בוחרים מסלול בליווי משלב 1 ועד כל שלבי התכנון.',
     chips: [
-      { icon: Bot, label: `עצמאי / היברידי · ₪${PLATFORM_PROCESS_PRICE} לתהליך`, tone: 'bg-blue-100 text-blue-700' },
+      { icon: Bot, label: `עצמאי / היברידי · ₪${price} לחודש`, tone: 'bg-blue-100 text-blue-700' },
       { icon: UserCheck, label: 'בליווי · מחיר לפי השלבים והתיק', tone: 'bg-amber-100 text-amber-800' },
     ],
   },
@@ -35,10 +36,12 @@ const STEPS: Array<{ number: number; title: string; description: string; chips: 
     chips: [],
   },
 ];
+}
 
 /** שלושת הצעדים של הזרימה — לעמודי "איך זה עובד" והתמחור */
 export function ServiceFlowSteps({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const dark = tone === 'dark';
+  const STEPS = steps(usePricing().platformPrice);
   return (
     <div dir="rtl" className="grid gap-4 md:grid-cols-3">
       {STEPS.map((step, index) => (

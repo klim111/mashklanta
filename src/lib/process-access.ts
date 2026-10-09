@@ -1,15 +1,20 @@
 /**
  * הגישה בתשלום לתהליך משכנתא — מסלול עצמאי / היברידי.
  *
- * כל תשלום הוא חבילת גישה ל-30 יום. בתוך החבילה אפשר לפתוח, למחוק ולפתוח
- * מחדש תהליכים בלי תשלום נוסף, עד שני תהליכים פתוחים במקביל, ומועד התפוגה
- * נשאר של התשלום — פתיחה מחדש אינה מאפסת את 30 הימים. תהליך שהסתיים סוגר את
- * החבילה לתהליכים חדשים: תהליך שנפתח אחרי סיום דורש תשלום חדש, גם בתוך 30
- * הימים. תהליך פתוח שעברו 30 יום מהתשלום האחרון ננעל עד לרכישת חבילה נוספת,
- * והחבילה הנוספת פותחת את כל התהליכים הפתוחים של הלקוח.
+ * כל תשלום הוא חבילת גישה לחודש קלנדרי: מספר הימים בחבילה הוא מספר הימים
+ * בחודש שבו שולמה (31 באוקטובר, 28 או 29 בפברואר). בתוך החבילה אפשר לפתוח,
+ * למחוק ולפתוח מחדש תהליכים בלי תשלום נוסף, עד שני תהליכים פתוחים במקביל,
+ * ומועד התפוגה נשאר של התשלום — פתיחה מחדש אינה מאפסת את החודש. תהליך שהסתיים
+ * סוגר את החבילה לתהליכים חדשים: תהליך שנפתח אחרי סיום דורש תשלום חדש, גם
+ * בתוך החודש. תהליך פתוח שהחודש שלו הסתיים ננעל עד לרכישת חבילה נוספת, והחבילה
+ * הנוספת פותחת את כל התהליכים הפתוחים של הלקוח.
  *
  * התשלום נקשר לתהליך שנפתח ראשון אחריו (`PlatformPayment.planId`), אבל זה רק
  * לצורך הקיזוז אם יוזמן ליווי. הגישה עצמה נגזרת מכל התשלומים של הלקוח.
+ *
+ * ליווי: שלב ששולם והיועץ אישר אותו (או לקוח שהיועץ מלווה מלכתחילה) פותח את
+ * כל הכלים בתהליך בלי הגבלת זמן, עד שהיועץ מסמן שהליווי בתהליך הסתיים. מאותו
+ * רגע הגישה שוב לפי החבילות החודשיות, והלקוח מקבל הצעה להמשיך במחיר החודשי.
  *
  * הקובץ טהור בכוונה: הוא נבדק בבדיקות יחידה ונטען גם בשרת וגם בדפדפן.
  */
@@ -17,8 +22,8 @@
 /** מחיר המסלול העצמאי / ההיברידי — לתהליך משכנתא אחד */
 export const PROCESS_PRICE = 49;
 
-/** כמה ימים הכלים פתוחים מכל תשלום */
-export const PROCESS_ACCESS_DAYS = 30;
+/** תקופת הגישה מכל תשלום, כפי שהיא כתובה ללקוח */
+export const PROCESS_ACCESS_PERIOD = 'חודש';
 
 /** כמה תהליכים פתוחים (שלא הסתיימו) מותר לנהל במקביל במסלול העצמאי */
 export const MAX_OPEN_PROCESSES = 2;
@@ -38,8 +43,31 @@ export interface PaymentLike {
   createdAt: Date | string;
 }
 
+/** אזור הזמן שלפיו נקבע באיזה חודש קלנדרי בוצע התשלום */
+const BILLING_TIME_ZONE = 'Asia/Jerusalem';
+
+/**
+ * כמה ימים יש בחודש הקלנדרי של מועד מסוים, לפי שעון ישראל — תשלום ב-1 באפריל
+ * באחת בלילה שעון ישראל שייך לאפריל (30 יום), גם אם ב-UTC זה עוד 31 במרץ.
+ */
+export function daysInMonthOf(at: Date | string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: BILLING_TIME_ZONE,
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(new Date(at));
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/** כמה ימים פותח תשלום שמתבצע במועד מסוים — מספר הימים בחודש שבו שולם */
+export function passDays(paidAt: Date | string): number {
+  return daysInMonthOf(paidAt);
+}
+
 export function passExpiresAt(paidAt: Date | string): Date {
-  return new Date(new Date(paidAt).getTime() + PROCESS_ACCESS_DAYS * DAY_MS);
+  return new Date(new Date(paidAt).getTime() + passDays(paidAt) * DAY_MS);
 }
 
 /** כמה ימים נשארו עד מועד — מעוגל למעלה, ואפס כשהמועד עבר */
@@ -60,7 +88,7 @@ function latest<T extends PaymentLike>(payments: readonly T[]): T | null {
  * האם תשלום פותח את הכלים בתהליך שנפתח במועד `planCreatedAt`.
  *
  * תשלום שבוצע אחרי שהתהליך נפתח הוא חידוש, והוא פותח אותו. תשלום שבוצע לפני
- * כן פותח את התהליך רק אם התהליך נפתח בתוך 30 הימים של התשלום, ולא הסתיים
+ * כן פותח את התהליך רק אם התהליך נפתח בתוך החודש של התשלום, ולא הסתיים
  * בינתיים אף תהליך של הלקוח — סיום תהליך סוגר את החבילה לתהליכים חדשים.
  */
 export function paymentCovers(
@@ -79,8 +107,8 @@ export function paymentCovers(
 }
 
 /**
- * החבילה שמאפשרת לפתוח עכשיו תהליך חדש בלי לשלם: תשלום שעוד לא עברו ממנו 30
- * יום, ושלא הסתיים אחריו אף תהליך. כשיש כמה, נבחר החדש ביותר. הגבלת שני
+ * החבילה שמאפשרת לפתוח עכשיו תהליך חדש בלי לשלם: תשלום שהחודש שלו עוד לא
+ * הסתיים, ושלא הסתיים אחריו אף תהליך. כשיש כמה, נבחר החדש ביותר. הגבלת שני
  * התהליכים הפתוחים נבדקת בנפרד, מול התהליכים עצמם.
  */
 export function newProcessPass<T extends PaymentLike>(
@@ -92,7 +120,7 @@ export function newProcessPass<T extends PaymentLike>(
 }
 
 /**
- * כרטיס כניסה פנוי: תשלום שעדיין לא נקשר לתהליך ושעוד לא עברו 30 יום ממנו.
+ * כרטיס כניסה פנוי: תשלום שעדיין לא נקשר לתהליך ושהחודש שלו עוד לא הסתיים.
  * מקבלים רק תשלומים שאינם קשורים לתהליך. כשיש כמה, נבחר החדש ביותר.
  */
 export function openPass<T extends PaymentLike>(unbound: readonly T[], now = new Date()): T | null {
@@ -102,7 +130,7 @@ export function openPass<T extends PaymentLike>(unbound: readonly T[], now = new
 
 /**
  * - `ACTIVE` — הכלים פתוחים
- * - `EXPIRED` — עברו 30 יום מהתשלום האחרון, צריך לרכוש חבילה נוספת
+ * - `EXPIRED` — הסתיים החודש של התשלום האחרון, צריך לרכוש חבילה נוספת
  * - `UNPAID` — תהליך שנפתח בלי תשלום (למשל מכלי המיחזור), צריך לשלם כדי להמשיך
  * - `COMPLETED` — התהליך הסתיים בחתימה; נשאר פתוח לצפייה
  */
@@ -115,6 +143,11 @@ export interface ProcessAccess {
   daysLeft: number | null;
   /** סכום התשלומים על התהליך הזה, בשקלים — לקיזוז אם יוזמן ליווי */
   paid: number;
+  /**
+   * מתי היועץ סימן שהליווי בתהליך הסתיים, כל עוד הלקוח לא שילם מאז על המשך —
+   * כדי להציע לו להמשיך לבד. null כשאין סיום כזה, או שהלקוח כבר המשיך
+   */
+  advisoryEndedAt: string | null;
 }
 
 export interface ProcessAccessInput {
@@ -128,6 +161,8 @@ export interface ProcessAccessInput {
   ownerCompletions?: ReadonlyArray<Date | string>;
   /** ליווי ששולם (ליווי מלא או שלבים), או יועץ שמלווה את הלקוח — כולל גישה מלאה לכלים */
   hasPaidAdvisory: boolean;
+  /** מתי היועץ סימן שהליווי בתהליך הסתיים. מאז הליווי כבר לא פותח את הכלים */
+  advisoryEndedAt?: Date | string | null;
   /** בעל התהליך הוא יועץ — אצלו הכלים פתוחים תמיד */
   ownerIsAdvisor: boolean;
   /** בעל התהליך שילם על מנוי חודשי לפני המעבר לתשלום לתהליך */
@@ -136,10 +171,19 @@ export interface ProcessAccessInput {
 
 export function processAccess(input: ProcessAccessInput, now = new Date()): ProcessAccess {
   const paid = input.payments.reduce((sum, payment) => sum + (payment.amountAgorot ?? 0), 0) / 100;
-  const open = (state: ProcessAccessState): ProcessAccess => ({ state, expiresAt: null, daysLeft: null, paid });
+  const advisoryEndedAt = input.advisoryEndedAt ? new Date(input.advisoryEndedAt).toISOString() : null;
+  const open = (state: ProcessAccessState): ProcessAccess => ({
+    state,
+    expiresAt: null,
+    daysLeft: null,
+    paid,
+    advisoryEndedAt,
+  });
 
   if (input.planStatus === 'COMPLETED') return open('COMPLETED');
-  if (input.ownerIsAdvisor || input.hasPaidAdvisory) return open('ACTIVE');
+  if (input.ownerIsAdvisor) return open('ACTIVE');
+  // הליווי פותח את הכלים עד שהיועץ מסמן שהסתיים
+  if (input.hasPaidAdvisory && !advisoryEndedAt) return open('ACTIVE');
 
   const covering = (input.ownerPayments ?? input.payments).filter((payment) =>
     paymentCovers(payment, input.planCreatedAt, input.ownerCompletions ?? [])
@@ -152,6 +196,8 @@ export function processAccess(input: ProcessAccessInput, now = new Date()): Proc
       expiresAt: expiresAt.toISOString(),
       daysLeft: daysUntil(expiresAt, now),
       paid,
+      // תשלום אחרי סיום הליווי הוא ההמשך עצמו — מכאן זו חבילה רגילה
+      advisoryEndedAt: advisoryEndedAt && new Date(last.createdAt) < new Date(advisoryEndedAt) ? advisoryEndedAt : null,
     };
   }
 
