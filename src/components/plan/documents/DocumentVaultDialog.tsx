@@ -5,11 +5,11 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   CircleDashed,
+  CheckCircle2,
   FileText,
   FolderDown,
   FolderOpen,
   ListChecks,
-  Home,
   Loader2,
   Lock,
   Upload,
@@ -17,7 +17,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
-import { signingDealType } from '@/lib/signing-documents';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import { documentProgress } from '@/lib/document-progress';
 import type { DocumentProgress } from '@/lib/document-progress';
@@ -28,7 +27,7 @@ import { planDocumentRequirements } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { DocumentBrowser } from './DocumentBrowser';
-import { DealTypeDialog } from './DealTypeDialog';
+import { ScenarioPicker, resolveSelection } from '../stages/signing/ScenarioPicker';
 import { documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
 import { demoId } from '@/demo/demo-attr';
 
@@ -103,8 +102,11 @@ export function DocumentVaultDialog({
     () => (localSigning && !onSigningChange ? { ...incoming, SIGNING: localSigning } : incoming),
     [incoming, localSigning, onSigningChange]
   );
-  const [dealOpen, setDealOpen] = useState(false);
-  const deal = signingDealType(data.SIGNING.dealTypeId);
+  /** בחירת סוג העסקה פתוחה בתוך התיק */
+  const [picking, setPicking] = useState(false);
+  /** הרשימה הושתלה עכשיו — ההודעה אומרת זאת במפורש */
+  const [justPlanted, setJustPlanted] = useState(false);
+  const { deal, scenario } = resolveSelection(data.SIGNING);
 
   const changeSigning = (patch: Partial<SigningData>) => {
     const next = { ...data.SIGNING, ...patch };
@@ -126,8 +128,6 @@ export function DocumentVaultDialog({
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadKey, setUploadKey] = useState<string | null>(null);
-  /** הרשימה המלאה של מה שהבנק ידרוש — סגורה עד שמבקשים אותה */
-  const [showList, setShowList] = useState(false);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
   const demo = isDemoPlan(planId);
 
@@ -136,8 +136,8 @@ export function DocumentVaultDialog({
     () => new Map(documents.map((document) => [document.key, document])),
     [documents]
   );
-  const pending = requirements.filter((requirement) => !byKey.has(requirement.key));
-  const submitted = requirements.filter((requirement) => byKey.has(requirement.key));
+  /** המסמכים של סוג העסקה שנבחר */
+  const dealRequirements = requirements.filter((requirement) => requirement.stage === 'SIGNING');
 
   const openUpload = (key: string | null) => {
     setUploadKey(key);
@@ -194,34 +194,28 @@ export function DocumentVaultDialog({
         </div>
 
         <div className="p-6 md:p-8" {...demoId('vault-list')}>
-          {/* סוג העסקה והרשימה המלאה של מה שנדרש — במרכז, מעל כותרת מה שכבר הועלה */}
-          <div className="mb-4 flex flex-wrap justify-center gap-2">
+          {/*
+            רשימת המסמכים לפי סוג העסקה: בוחרים כאן, בתוך התיק, את סוג העסקה,
+            והמסמכים שהבנק ידרוש בעסקה כזו "מושתלים" בתיק כמסמכים להעלאה.
+          */}
+          <div className="mb-4 flex justify-center">
             <button
+              {...demoId('vault-plant-list')}
               type="button"
-              onClick={() => setDealOpen(true)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-2.5 text-button font-black text-white shadow-sm transition-colors hover:bg-blue-700"
+              onClick={() => setPicking((current) => !current)}
+              className={`inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-button font-black transition-colors ${
+                scenario
+                  ? 'border-2 border-slate-200 bg-white text-slate-800 hover:border-blue-300 hover:bg-blue-50/40'
+                  : 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+              }`}
             >
-              <Home className="h-4 w-4" />
-              {deal ? `סוג העסקה: ${deal.short}` : 'בחרו סוג עסקה'}
+              <ListChecks className="h-4 w-4" />
+              {scenario ? 'החלפת סוג העסקה' : 'השתילו את רשימת המסמכים המתאימה לעסקה שלכם בתיק'}
             </button>
-            {requirements.length > 0 && (
-              <button
-                {...demoId('vault-full-list')}
-                type="button"
-                onClick={() => setShowList((current) => !current)}
-                className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-5 py-2.5 text-button font-black text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40"
-              >
-                <ListChecks className="h-4 w-4 text-blue-600" />
-                רשימת המסמכים המלאה
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs text-slate-600">
-                  {submitted.length}/{requirements.length}
-                </span>
-              </button>
-            )}
           </div>
 
           <AnimatePresence initial={false}>
-            {showList && (
+            {picking && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -229,31 +223,56 @@ export function DocumentVaultDialog({
                 transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
-                <div className="mb-4 space-y-4 rounded-2xl border-2 border-slate-200 bg-slate-50 p-4">
-                  <RequirementList
-                    title="עדיין לא הוגשו"
-                    icon={<CircleDashed className="h-4 w-4 text-slate-400" />}
-                    rows={pending.map((requirement) => ({
-                      key: requirement.key,
-                      name: requirement.name,
-                      note: requirement.group,
-                    }))}
-                    onPick={openUpload}
-                  />
-                  <RequirementList
-                    title="כבר הוגשו"
-                    icon={<FileText className="h-4 w-4 text-emerald-600" />}
-                    rows={submitted.map((requirement) => ({
-                      key: requirement.key,
-                      name: requirement.name,
-                      note: byKey.get(requirement.key)?.fileName ?? requirement.group,
-                    }))}
-                    onPick={openUpload}
+                <div className="mb-4 rounded-2xl border-2 border-blue-100 bg-slate-50 p-3">
+                  <ScenarioPicker
+                    value={{
+                      dealTypeId: data.SIGNING.dealTypeId,
+                      registryId: data.SIGNING.registryId,
+                      scenarioId: data.SIGNING.scenarioId,
+                    }}
+                    onChange={(next) => {
+                      changeSigning(next);
+                      // נבחר תרחיש — הרשימה הושתלה, והבחירה נסגרת
+                      if (next.scenarioId) {
+                        setPicking(false);
+                        setJustPlanted(true);
+                      }
+                    }}
                   />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+
+          {scenario && deal && !picking && (
+            <div className="mb-4 space-y-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 p-4">
+              <p dir="rtl" className="flex items-start justify-center gap-2 text-center text-sm font-black text-emerald-900">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                {justPlanted ? 'הושתלה בתיק המסמכים' : 'בתיק המסמכים'} רשימת המסמכים של {deal.short} · {scenario.short}:{' '}
+                {dealRequirements.length} מסמכים שהבנק ידרוש
+              </p>
+              <RequirementList
+                title="עדיין לא הוגשו"
+                icon={<CircleDashed className="h-4 w-4 text-slate-400" />}
+                rows={dealRequirements
+                  .filter((requirement) => !byKey.has(requirement.key))
+                  .map((requirement) => ({ key: requirement.key, name: requirement.name, note: requirement.note ?? '' }))}
+                onPick={openUpload}
+              />
+              <RequirementList
+                title="כבר הוגשו"
+                icon={<FileText className="h-4 w-4 text-emerald-600" />}
+                rows={dealRequirements
+                  .filter((requirement) => byKey.has(requirement.key))
+                  .map((requirement) => ({
+                    key: requirement.key,
+                    name: requirement.name,
+                    note: byKey.get(requirement.key)?.fileName ?? '',
+                  }))}
+                onPick={openUpload}
+              />
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-black text-slate-900">כל המסמכים שהעליתם ({documents.length})</h3>
@@ -336,7 +355,6 @@ export function DocumentVaultDialog({
           defaultKey={uploadKey}
         />
         <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
-        <DealTypeDialog open={dealOpen} onOpenChange={setDealOpen} signing={data.SIGNING} onChange={changeSigning} />
       </DialogContent>
     </Dialog>
   );

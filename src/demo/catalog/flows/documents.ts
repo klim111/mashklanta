@@ -37,8 +37,8 @@ const flow: DemoFlow = {
     {
       id: 'full-list',
       title: 'מה הבנק ידרוש',
-      caption: 'הרשימה המלאה מותאמת ללווים ולעסקה: תלושים, דפי בנק, אישורי יתרה — מה שכבר הוגש ומה שעדיין חסר. מכל שורה מעלים ישירות את המסמך.',
-      actions: [{ type: 'click', target: 'vault-full-list', optional: true }],
+      caption: 'בוחרים בתוך התיק את סוג העסקה, ורשימת המסמכים שהבנק ידרוש בעסקה כזו מושתלת בתיק: מה שכבר הוגש ומה שעדיין חסר. מכל שורה מעלים ישירות את המסמך.',
+      actions: [{ type: 'click', target: 'vault-plant-list', optional: true }],
       target: 'vault-list',
       spotlight: { side: 'top' },
       duration: 6500,
