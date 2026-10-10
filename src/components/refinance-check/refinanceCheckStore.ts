@@ -63,6 +63,8 @@ export function draftAsMix(draft: RefinanceCheckDraft | null): MortgageMix | nul
     amortizationType: 'spitzer',
     endDate: toDateInputValue(endDateFromMonths(track.months, DEFAULT_PAYMENT_DAY)),
     paymentDay: DEFAULT_PAYMENT_DAY,
+    ...(typeof track.spread === 'number' && Number.isFinite(track.spread) ? { rateSpread: track.spread } : {}),
+    ...(track.variablePeriod ? { variablePeriod: track.variablePeriod } : {}),
   }));
   return {
     id: 'refinance-current',

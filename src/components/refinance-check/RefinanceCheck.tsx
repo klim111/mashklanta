@@ -53,6 +53,7 @@ import { formatNumberInput, parseFormattedNumberInput, sanitizeDecimalInput } fr
 import { cn } from '@/lib/utils';
 import { loadDraft, saveDraft, type RefinanceCheckDraft } from './refinanceCheckStore';
 import { RefinanceCheckResult } from './RefinanceCheckResult';
+import { CurrentTrackRow } from './CurrentTrackRow';
 import { formatShekel, formatRate, formatMonth } from './format';
 
 type Step = RefinanceCheckDraft['step'];
@@ -437,8 +438,7 @@ function IncomeStep({
 // ───────────────────────────── מסלולים ─────────────────────────────
 
 const NOW = new Date();
-const YEARS = Array.from({ length: 31 }, (_, i) => NOW.getFullYear() + i);
-const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+const TRACK_TYPE_OPTIONS = TRACK_TYPE_ORDER.map((type) => ({ value: type, label: TRACK_TYPE_LABELS[type] }));
 
 function endOf(months: number): { year: number; month: number } {
   const date = new Date(NOW.getFullYear(), NOW.getMonth() + months, 1);
@@ -487,97 +487,43 @@ function TracksStep({
             const above = average !== null && track.rate > average + 0.1;
             const end = endOf(track.months);
             return (
-              <motion.li
+              <CurrentTrackRow
                 key={track.id}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-black text-slate-700">מסלול {index + 1}</span>
-                  {tracks.length > 1 && (
-                    <button
-                      type="button"
-                      aria-label={`מחיקת מסלול ${index + 1}`}
-                      onClick={() => onTracks(tracks.filter((t) => t.id !== track.id))}
-                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1.1fr_0.8fr_1.3fr]">
-                  <label className="block">
-                    <span className="text-2xs font-bold text-slate-500">סוג המסלול</span>
-                    <select
-                      value={track.type}
-                      onChange={(e) => update(track.id, { type: e.target.value as RefiCheckTrackType })}
-                      className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-info font-semibold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    >
-                      {TRACK_TYPE_ORDER.map((type) => (
-                        <option key={type} value={type}>
-                          {TRACK_TYPE_LABELS[type]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-2xs font-bold text-slate-500">יתרה לסילוק</span>
-                    <MoneyInput
-                      value={track.balance}
-                      onChange={(value) => update(track.id, { balance: value })}
-                      placeholder="₪"
-                      className="mt-1"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-2xs font-bold text-slate-500">ריבית היום</span>
-                    <RateInput value={track.rate} onChange={(value) => update(track.id, { rate: value })} className="mt-1" />
-                  </label>
-                  <div className="block">
-                    <span className="text-2xs font-bold text-slate-500">תשלום אחרון</span>
-                    <div className="mt-1 flex gap-1.5">
-                      <select
-                        aria-label="חודש התשלום האחרון"
-                        value={end.month}
-                        onChange={(e) =>
-                          update(track.id, { months: clampMonths(monthsUntil(end.year, Number(e.target.value), NOW)) })
-                        }
-                        className="h-11 w-[4.25rem] shrink-0 rounded-xl border border-slate-300 bg-white px-2 text-info font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
-                      >
-                        {MONTHS.map((m) => (
-                          <option key={m} value={m}>
-                            {String(m).padStart(2, '0')}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label="שנת התשלום האחרון"
-                        value={end.year}
-                        onChange={(e) =>
-                          update(track.id, { months: clampMonths(monthsUntil(Number(e.target.value), end.month, NOW)) })
-                        }
-                        className="h-11 min-w-[5.5rem] flex-1 rounded-xl border border-slate-300 bg-white px-2 text-info font-semibold text-slate-900 focus:border-blue-500 focus:outline-none"
-                      >
-                        {YEARS.map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs">
-                  <span className="text-slate-500">נותרו {formatTerm(track.months)}</span>
-                  {track.balance > 0 && track.rate > 0 && (
-                    <span className="text-slate-500">
-                      החזר {formatShekel(monthlyPayment(track.balance, track.rate, track.months))} בחודש
-                    </span>
-                  )}
-                  {market.status === 'ready' && (
-                    average !== null ? (
+                index={index}
+                typeOptions={TRACK_TYPE_OPTIONS}
+                value={{
+                  type: track.type,
+                  balance: track.balance,
+                  rate: track.rate,
+                  spread: track.spread,
+                  variablePeriod: track.variablePeriod,
+                  endYear: end.year,
+                  endMonth: end.month,
+                }}
+                onChange={(patch) => {
+                  const next: Partial<RefiCheckTrack> = {};
+                  if (patch.type) next.type = patch.type as RefiCheckTrackType;
+                  if (patch.balance !== undefined) next.balance = patch.balance;
+                  if (patch.rate !== undefined) next.rate = patch.rate;
+                  if (patch.spread !== undefined) next.spread = patch.spread ?? undefined;
+                  if (patch.variablePeriod !== undefined) next.variablePeriod = patch.variablePeriod;
+                  if (patch.endYear !== undefined || patch.endMonth !== undefined) {
+                    next.months = clampMonths(
+                      monthsUntil(patch.endYear ?? end.year, patch.endMonth ?? end.month, NOW)
+                    );
+                  }
+                  update(track.id, next);
+                }}
+                onDelete={tracks.length > 1 ? () => onTracks(tracks.filter((t) => t.id !== track.id)) : undefined}
+                footer={
+                  <>
+                    <span className="text-slate-500">נותרו {formatTerm(track.months)}</span>
+                    {track.balance > 0 && track.rate > 0 && (
+                      <span className="text-slate-500">
+                        החזר {formatShekel(monthlyPayment(track.balance, track.rate, track.months))} בחודש
+                      </span>
+                    )}
+                    {market.status === 'ready' && average !== null && (
                       <span
                         className={cn(
                           'rounded-full px-2 py-0.5 font-bold',
@@ -587,19 +533,10 @@ function TracksStep({
                         ממוצע בנק ישראל {formatRate(average)}
                         {track.rate > 0 && above && ' · אתם מעל הממוצע'}
                       </span>
-                    ) : track.type === 'prime' && averages?.primeAnchor ? (
-                      <span className="rounded-full bg-slate-200/70 px-2 py-0.5 font-bold text-slate-600">
-                        הפריים היום {formatRate(averages.primeAnchor)}
-                        {track.rate > 0 && ` · המרווח שלכם ${signed(track.rate - averages.primeAnchor)}`}
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-slate-200/70 px-2 py-0.5 font-bold text-slate-600">
-                        בנק ישראל אינו מפרסם ממוצע למסלול זה
-                      </span>
-                    )
-                  )}
-                </div>
-              </motion.li>
+                    )}
+                  </>
+                }
+              />
             );
           })}
         </ul>
@@ -662,11 +599,6 @@ function clampMonths(months: number): number {
   return Math.min(MAX_TERM_MONTHS, Math.max(1, months));
 }
 
-function signed(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
-  return `${rounded >= 0 ? '+' : '−'}${Math.abs(rounded).toFixed(2)}%`;
-}
-
 // ───────────────────────────── שדות וכפתורים ─────────────────────────────
 
 const INPUT_CLASS =
@@ -698,34 +630,6 @@ function MoneyInput({
         className={cn(INPUT_CLASS, 'pl-8 text-right')}
       />
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">₪</span>
-    </div>
-  );
-}
-
-function RateInput({ value, onChange, className }: { value: number; onChange: (value: number) => void; className?: string }) {
-  const [text, setText] = useState(value > 0 ? String(value) : '');
-  useEffect(() => {
-    // ערך שהשתנה מבחוץ (טעינת טיוטה) — מעדכנים את הטקסט רק כשהוא שונה באמת
-    if (Number(text.replace(',', '.')) !== value) setText(value > 0 ? String(value) : '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-  return (
-    <div className={cn('relative', className)}>
-      <input
-        type="text"
-        inputMode="decimal"
-        dir="ltr"
-        value={text}
-        onChange={(e) => {
-          const clean = sanitizeDecimalInput(e.target.value);
-          setText(clean);
-          const parsed = Number(clean);
-          onChange(Number.isFinite(parsed) ? Math.min(19.99, parsed) : 0);
-        }}
-        placeholder="4.5"
-        className={cn(INPUT_CLASS, 'pl-8 text-right')}
-      />
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
     </div>
   );
 }

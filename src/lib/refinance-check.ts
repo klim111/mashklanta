@@ -87,6 +87,10 @@ export interface RefiCheckTrack {
   rate: number;
   /** כמה תשלומים נותרו */
   months: number;
+  /** המרווח מעל העוגן של בנק ישראל, כשהריבית הוזנה כעוגן ומרווח */
+  spread?: number;
+  /** תחנת היציאה של מסלול משתנה, בשנים — קובעת את העוגן */
+  variablePeriod?: number;
 }
 
 export interface RefiCheckLoan {
