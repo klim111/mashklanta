@@ -1,6 +1,7 @@
 'use client';
 
 import { CONTACTS_CHANGED_EVENT, notifyContactsChanged } from '@/components/contacts/useContacts';
+import type { RequestKind } from '@/lib/advisor-requests';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AdvisorInboxRow,
@@ -80,16 +81,20 @@ export function useChat(clientUserId: string | null | undefined, enabled: boolea
   usePolling(() => void refresh(), 8000, enabled);
 
   const send = useCallback(
-    async (body: string, files: readonly OutgoingFileRef[] = []): Promise<boolean> => {
+    async (
+      body: string,
+      files: readonly OutgoingFileRef[] = [],
+      request?: { requestKind: RequestKind; sourcePath?: string }
+    ): Promise<boolean> => {
       const text = body.trim();
-      if (!text && files.length === 0) return false;
+      if (!text && files.length === 0 && !request) return false;
       setSending(true);
       setError(null);
       try {
         const response = await fetch('/api/conversation/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ body: text, files, clientUserId: clientUserId ?? undefined }),
+          body: JSON.stringify({ body: text, files, clientUserId: clientUserId ?? undefined, ...request }),
         });
         if (!response.ok) {
           setError(await readError(response, 'ההודעה לא נשלחה'));

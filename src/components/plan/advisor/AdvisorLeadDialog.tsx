@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { CheckCircle2, HeartHandshake, Loader2, Mail, Phone, Send, User } from 'lucide-react';
+import { CheckCircle2, HeartHandshake, Loader2, Mail, MessageCircle, Phone, Send, User } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,14 +13,27 @@ import {
 import { LEAD_TOPIC_LABELS } from '@/lib/advisor-lead-topics';
 import type { LeadTopic } from '@/lib/advisor-lead-topics';
 import type { RequestKind } from '@/lib/advisor-requests';
+import { useClientConversation } from '@/components/conversation/ClientChatDock';
 import { RequestKindPicker, currentPagePath } from './RequestKindPicker';
 
 /** סימון מקומי שנשלחה פנייה ליועץ — כדי שהדאשבורד לא יציג יותר מסך פתיחה */
 export const CONTACTED_ADVISOR_KEY = 'mashklanta:contacted-advisor';
 export const CONTACTED_ADVISOR_EVENT = 'mashklanta:contacted-advisor-changed';
 
+/** הכפתור בטופס של לקוח רשום — לפי מה שהכפתור שפתח אותו מבקש */
+export const MEMBER_SUBMIT_LABELS: Record<RequestKind, string> = {
+  GUIDANCE: 'בקשו ליווי',
+  MEETING: 'בקשו פגישה',
+  QUESTION: 'שלחו את השאלה',
+  QUOTE: 'בקשו הצעת מחיר',
+};
+
 /**
  * טופס פנייה לליווי — "אל דאגה, יועצי משכלנתא כאן כדי לעזור".
+ *
+ * לקוח רשום לא נשאל על מה שכבר ידוע עליו (שם, מייל, טלפון) ולא על סוג
+ * הפנייה, שנקבע לפי הכפתור: רק הערה חופשית לא חובה, וכפתור אחד. הפנייה
+ * מופיעה אצל היועץ ונכתבת גם בצ׳אט עם נציג משכלנתא. אורח ממלא פרטים ובוחר סוג.
  *
  * אותו טופס משמש בכל נקודות הפנייה: מהאזור האישי (סירוב, לא יודע מהיכן להתחיל,
  * היתכנות) ומתוך השלבים (גיוס הון עצמי). הנושא נקבע לפי הכפתור שממנו נפתח, כדי
@@ -30,12 +43,17 @@ export function AdvisorLeadDialog({
   open,
   onOpenChange,
   topic,
+  requestKind = 'GUIDANCE',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   topic: LeadTopic;
+  /** מה הכפתור שפתח את הטופס מבקש — ללקוח רשום אין בחירה */
+  requestKind?: RequestKind;
 }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const member = status === 'authenticated' && session?.user?.role !== 'ADVISOR' && Boolean(session?.user?.email);
+  const conversation = useClientConversation();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -51,12 +69,12 @@ export function AdvisorLeadDialog({
     setEmail(session?.user?.email ?? '');
     setPhone('');
     setNotes('');
-    setKind('GUIDANCE');
+    setKind(requestKind);
     setSent(false);
     setError(null);
-  }, [open, session?.user?.name, session?.user?.email]);
+  }, [open, session?.user?.name, session?.user?.email, requestKind]);
 
-  const ready = name.trim().length > 1 && /\d{6,}/.test(phone.replace(/\D/g, '')) && email.includes('@');
+  const ready = member || (name.trim().length > 1 && /\d{6,}/.test(phone.replace(/\D/g, '')) && email.includes('@'));
 
   const submit = async () => {
     if (!ready) return;
@@ -66,7 +84,11 @@ export function AdvisorLeadDialog({
       const response = await fetch('/api/advisor-leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, name, phone, email, notes, requestKind: kind, sourcePath: currentPagePath() }),
+        body: JSON.stringify(
+          member
+            ? { topic, notes, requestKind: requestKind, sourcePath: currentPagePath() }
+            : { topic, name, phone, email, notes, requestKind: kind, sourcePath: currentPagePath() }
+        ),
       });
       if (!response.ok) throw new Error(String(response.status));
       // הדאשבורד מציג מסך פתיחה אחר אחרי הפנייה הראשונה ליועץ
@@ -100,7 +122,9 @@ export function AdvisorLeadDialog({
           <DialogDescription className="text-center">
             {sent
               ? 'הפנייה נשלחה. יועץ משכלנתא יחזור אליכם בהקדם.'
-              : `השאירו פרטים ונחזור אליכם. נושא הפנייה: ${LEAD_TOPIC_LABELS[topic]}.`}
+              : member
+                ? `נושא הפנייה: ${LEAD_TOPIC_LABELS[topic]}. הבקשה נשלחת עם פרטי החשבון שלכם, ותופיע גם בצ׳אט עם נציג משכלנתא.`
+                : `השאירו פרטים ונחזור אליכם. נושא הפנייה: ${LEAD_TOPIC_LABELS[topic]}.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -110,58 +134,83 @@ export function AdvisorLeadDialog({
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </span>
             <p className="text-sm font-bold text-slate-700">
-              קיבלנו את הפנייה שלכם, והיא כבר מופיעה אצל היועצים. נדבר בקרוב.
+              {member
+                ? 'קיבלנו את הפנייה, והיא כבר אצל היועץ. ההמשך מתנהל בצ׳אט עם נציג משכלנתא.'
+                : 'קיבלנו את הפנייה שלכם, והיא כבר מופיעה אצל היועצים. נדבר בקרוב.'}
             </p>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="mt-2 rounded-2xl bg-blue-600 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
-            >
-              סגירה
-            </button>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {member && conversation?.enabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    conversation.open();
+                  }}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  לצ׳אט
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className={
+                  member && conversation?.enabled
+                    ? 'rounded-2xl border-2 border-slate-200 px-6 py-2.5 text-button font-black text-slate-700 transition-colors hover:bg-slate-50'
+                    : 'rounded-2xl bg-blue-600 px-6 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700'
+                }
+              >
+                סגירה
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <RequestKindPicker value={kind} onChange={setKind} />
+            {!member && (
+              <>
+                <RequestKindPicker value={kind} onChange={setKind} />
 
-            <label className="block">
-              <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                <User className="h-3.5 w-3.5" />
-                שם מלא
-              </span>
-              <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="ישראל ישראלי" />
-            </label>
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                    <User className="h-3.5 w-3.5" />
+                    שם מלא
+                  </span>
+                  <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="ישראל ישראלי" />
+                </label>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                  <Phone className="h-3.5 w-3.5" />
-                  טלפון
-                </span>
-                <input
-                  className={field}
-                  dir="ltr"
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="050-0000000"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                  <Mail className="h-3.5 w-3.5" />
-                  אימייל
-                </span>
-                <input
-                  className={field}
-                  dir="ltr"
-                  inputMode="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                />
-              </label>
-            </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                      <Phone className="h-3.5 w-3.5" />
+                      טלפון
+                    </span>
+                    <input
+                      className={field}
+                      dir="ltr"
+                      inputMode="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="050-0000000"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                      <Mail className="h-3.5 w-3.5" />
+                      אימייל
+                    </span>
+                    <input
+                      className={field}
+                      dir="ltr"
+                      inputMode="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                    />
+                  </label>
+                </div>
+              </>
+            )}
 
             <label className="block">
               <span className="mb-1 block text-xs font-bold text-slate-600">
@@ -190,7 +239,7 @@ export function AdvisorLeadDialog({
               }`}
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              שליחת הפנייה
+              {member ? MEMBER_SUBMIT_LABELS[requestKind] : 'שליחת הפנייה'}
             </button>
           </div>
         )}

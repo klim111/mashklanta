@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Loader2, MessageSquareText, Send, UserRound } from 'lucide-react';
+import { CheckCircle2, Loader2, MessageSquareText, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { GOAL_LABELS, SERVICE_LABELS, leadTopicFor } from '@/lib/service-flow';
 import type { MortgageGoal, ServiceType } from '@/lib/service-flow';
 import {
   CONTACTED_ADVISOR_EVENT,
   CONTACTED_ADVISOR_KEY,
+  MEMBER_SUBMIT_LABELS,
 } from '@/components/plan/advisor/AdvisorLeadDialog';
 import { RequestKindPicker, currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
 import type { RequestKind } from '@/lib/advisor-requests';
@@ -19,10 +20,11 @@ export interface GuidanceRequestDialogProps {
   goal: MortgageGoal;
   serviceType: ServiceType;
   /**
-   * אורח מזין את פרטיו; משתמש רשום שולח עם פרטי החשבון ויכול רק להוסיף
-   * טלפון והערה.
+   * אורח מזין את פרטיו ובוחר סוג פנייה; משתמש רשום שולח עם פרטי החשבון,
+   * בלי שאלות על מה שכבר ידוע, ויכול רק להוסיף הערה.
    */
   mode: 'guest' | 'member';
+  /** לא בשימוש עוד — לקוח רשום שולח עם פרטי החשבון, בלי להציג אותם */
   memberName?: string;
   memberEmail?: string;
   /** מה הלקוח כבר הזין בכלי שממנו פנה — מצורף לפנייה, כדי שהיועץ יראה אותו */
@@ -44,8 +46,6 @@ export function GuidanceRequestDialog({
   goal,
   serviceType,
   mode,
-  memberName,
-  memberEmail,
   contextNote,
 }: GuidanceRequestDialogProps) {
   const [name, setName] = useState('');
@@ -77,9 +77,9 @@ export function GuidanceRequestDialog({
           topic: leadTopicFor(goal, serviceType),
           name: mode === 'guest' ? name : undefined,
           email: mode === 'guest' ? email : undefined,
-          phone: phone || undefined,
+          phone: mode === 'guest' ? phone || undefined : undefined,
           notes: [contextNote, note.trim()].filter(Boolean).join('\n') || undefined,
-          requestKind: kind,
+          requestKind: mode === 'guest' ? kind : 'GUIDANCE',
           sourcePath: currentPagePath(),
         }),
       });
@@ -121,8 +121,9 @@ export function GuidanceRequestDialog({
             </DialogTitle>
             <p className="mt-3 text-sm leading-relaxed text-slate-500">
               הבקשה ל{SERVICE_LABELS[serviceType].title} ({GOAL_LABELS[goal].title}) נרשמה אצל היועצים
-              שלנו, עם ההערה שלכם אם הוספתם. בינתיים אפשר להמשיך לעבוד בפלטפורמה — כל מה שתזינו
-              יעמוד לרשות היועץ.
+              שלנו, עם ההערה שלכם אם הוספתם.{' '}
+              {mode === 'member' && 'היא מופיעה גם בצ׳אט עם נציג משכלנתא, ושם ימשיך הקשר. '}
+              בינתיים אפשר להמשיך לעבוד בפלטפורמה — כל מה שתזינו יעמוד לרשות היועץ.
             </p>
             <button
               type="button"
@@ -148,19 +149,7 @@ export function GuidanceRequestDialog({
               </div>
             </div>
 
-            {mode === 'member' ? (
-              <div className="mb-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
-                  <UserRound className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 text-sm">
-                  <p className="font-bold text-slate-900">הבקשה תישלח עם פרטי החשבון שלכם</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {memberName || 'ללא שם'} · {memberEmail}
-                  </p>
-                </div>
-              </div>
-            ) : (
+            {mode === 'guest' && (
               <div className="mb-4 grid gap-3 sm:grid-cols-2">
                 <label className="text-xs font-bold text-slate-600">
                   שם מלא
@@ -189,22 +178,26 @@ export function GuidanceRequestDialog({
               </div>
             )}
 
-            <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
+            {mode === 'guest' && (
+              <>
+                <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
 
-            <label className="block text-xs font-bold text-slate-600">
-              טלפון לחזרה <span className="font-normal text-slate-400">(רשות)</span>
-              <input
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                className={`mt-1 ${inputClass}`}
-                placeholder="050-0000000"
-                autoComplete="tel"
-                dir="ltr"
-                inputMode="tel"
-              />
-            </label>
+                <label className="block text-xs font-bold text-slate-600">
+                  טלפון לחזרה <span className="font-normal text-slate-400">(רשות)</span>
+                  <input
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    className={`mt-1 ${inputClass}`}
+                    placeholder="050-0000000"
+                    autoComplete="tel"
+                    dir="ltr"
+                    inputMode="tel"
+                  />
+                </label>
+              </>
+            )}
 
-            <label className="mt-3 block text-xs font-bold text-slate-600">
+            <label className={`${mode === 'guest' ? 'mt-3' : ''} block text-xs font-bold text-slate-600`}>
               הערה ליועץ <span className="font-normal text-slate-400">(רשות)</span>
               <textarea
                 value={note}
@@ -236,7 +229,7 @@ export function GuidanceRequestDialog({
                 className="inline-flex items-center gap-2 rounded-xl bg-violet-600 hover:bg-violet-700 px-6 py-2.5 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                שליחת הבקשה ליועץ
+                {mode === 'member' ? MEMBER_SUBMIT_LABELS.GUIDANCE : 'שליחת הבקשה ליועץ'}
               </button>
             </div>
           </form>

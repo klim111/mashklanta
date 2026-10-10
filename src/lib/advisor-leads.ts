@@ -5,6 +5,7 @@ import type { RequestKind } from './advisor-requests';
 import { ensureClientLinkSafely } from './advisor-link';
 import { emailAdvisorAboutRequest } from './advisor-notify';
 import { pageLabel } from './page-labels';
+import { recordRequestInChat } from './conversation-store';
 import { PLAN_STAGES } from './mortgage-plan';
 import type { PlanStageId } from './mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
@@ -104,6 +105,11 @@ export interface CreateLeadInput {
   requestKind?: RequestKind | null;
   /** העמוד שממנו נשלחה הפנייה */
   sourcePath?: string | null;
+  /**
+   * לקוח רשום: הפנייה נכתבת גם בצ׳אט שלו עם היועץ, כהודעה ממנו. `false` —
+   * כשהפנייה נשלחה מהצ׳אט עצמו, וההודעה כבר שם.
+   */
+  inChat?: boolean;
 }
 
 /** טלפון ישראלי סביר — לפחות תשע ספרות, בלי תווי הפרדה */
@@ -125,7 +131,7 @@ export async function createLead(
   input: CreateLeadInput
 ): Promise<AdvisorLeadView | null> {
   const name = input.name.trim();
-  const phone = (input.phone ?? '').trim();
+  let phone = (input.phone ?? '').trim();
   const email = (input.email ?? '').trim().toLowerCase();
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!name) return null;
@@ -134,6 +140,11 @@ export async function createLead(
   // לקוח רשום בלי יועץ משויך עכשיו ליועץ של הפלטפורמה, כדי שהפנייה וכל מה
   // שעשה יופיעו אצלו
   const client = userId ? await ensureClientLinkSafely(userId) : null;
+  // לקוח רשום לא נשאל שוב על מה שכבר ידוע — הטלפון מכרטיס הלקוח, אם יש
+  if (client && !phone) {
+    const card = await prisma.client.findUnique({ where: { id: client.clientId }, select: { phone: true } });
+    phone = card?.phone?.trim() ?? '';
+  }
   const requestKind = input.requestKind ?? null;
   // השלב שבו הלקוח נמצא בתהליך הפעיל — כדי שהיועץ יידע מאיפה הוא פנה
   const plan = userId
@@ -174,6 +185,15 @@ export async function createLead(
     from: { name, email: emailValid ? email : null, phone: phone || null },
     note: input.notes,
   });
+
+  if (client && userId && input.inChat !== false) {
+    const lines = [
+      `${requestKind ? REQUEST_KIND_LABELS[requestKind] : 'פנייה ליועץ'} · ${LEAD_TOPIC_LABELS[input.topic]}`,
+      pageLabel(input.sourcePath) ? `נשלחה מ: ${pageLabel(input.sourcePath)}` : null,
+      input.notes?.trim() ? `\n${input.notes.trim()}` : null,
+    ];
+    await recordRequestInChat(userId, lines.filter(Boolean).join('\n'));
+  }
 
   return toView(row);
 }
