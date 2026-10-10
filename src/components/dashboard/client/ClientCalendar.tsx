@@ -143,7 +143,14 @@ export function MiniCalendar({
                 {items.slice(0, 3).map((item) => (
                   <span
                     key={item.id}
-                    className={`h-1.5 w-1.5 rounded-full ${isToday ? 'bg-white' : eventTone(item).dot}`}
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      /* מועד חשוב נשאר אדום גם ביום של היום — למשל תוקף הריביות שעומד לפוג */
+                      isToday
+                        ? item.kind === 'deadline'
+                          ? 'bg-rose-500 ring-1 ring-white'
+                          : 'bg-white'
+                        : eventTone(item).dot
+                    }`}
                   />
                 ))}
               </span>

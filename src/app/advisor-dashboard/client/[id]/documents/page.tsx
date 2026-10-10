@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientDocumentsPanel } from '@/components/advisor/ClientDocumentsPanel';
 import { ClientUploadedDocuments } from '@/components/advisor/ClientUploadedDocuments';
+import { ClientLeadFiles } from '@/components/advisor/LeadFiles';
 import { ClientAuthorizationLetters } from '@/components/advisor/ClientAuthorizationLetters';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
 
@@ -109,6 +110,7 @@ export default function ClientDocumentsPage() {
         {tab === 'documents' ? (
           <div className="space-y-4">
             <ClientUploadedDocuments clientId={clientId} />
+            <ClientLeadFiles clientId={clientId} />
             <ClientDocumentsPanel
               documents={client.documents}
               stage={client.stage}

@@ -11,7 +11,11 @@ import { GOAL_LABELS, isServiceType } from '@/lib/service-flow';
 import type { MortgageGoal, ServiceType } from '@/lib/service-flow';
 import { ServiceChooser } from './ServiceChooser';
 import { GuidanceRequestDialog } from './GuidanceRequestDialog';
+import { OneProcessNotice, extraProcessCheckoutHref } from './OneProcessNotice';
+import type { OpenProcess } from './OneProcessNotice';
 import { usePlatformAccess } from './usePlatformAccess';
+import type { PlatformAccess } from './usePlatformAccess';
+import { deletePlanRequest } from '@/components/plan/usePlan';
 
 type FlowGoal = 'NEW_MORTGAGE' | 'REFINANCE';
 
@@ -31,6 +35,8 @@ export interface MortgageEntryProps {
   /** המשך בחירה שנעשתה לפני ההתחברות או לפני התשלום (`?goal=&service=`) */
   initialGoal?: FlowGoal | null;
   autoService?: ServiceType | null;
+  /** מחיקת תהליך קודם מתוך ההתרעה — מרשימת התהליכים של הדאשבורד, כדי שתתעדכן */
+  deletePlan?: (planId: string) => Promise<string | null>;
 }
 
 const GOAL_ICONS: Record<MortgageGoal, { icon: LucideIcon; gradient: string }> = {
@@ -68,14 +74,16 @@ export function MortgageEntry({
   onOpenChange,
   initialGoal = null,
   autoService = null,
+  deletePlan = deletePlanRequest,
 }: MortgageEntryProps) {
   const router = useRouter();
   const { data: session } = useSession();
-  const { access, ready: accessReady } = usePlatformAccess();
+  const { access, ready: accessReady, refresh: refreshAccess } = usePlatformAccess();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogGoal, setDialogGoal] = useState<FlowGoal | null>(initialGoal);
   const [request, setRequest] = useState<{ goal: MortgageGoal; service: ServiceType } | null>(null);
-  const [limitOpen, setLimitOpen] = useState(false);
+  /** תהליך פתוח שעוד לא הסתיים — ההתרעה שהתשלום הוא עבור תהליך אחד */
+  const [notice, setNotice] = useState<{ goal: FlowGoal; plans: OpenProcess[] } | null>(null);
   const [refinanceBusy, setRefinanceBusy] = useState(false);
   const autoHandled = useRef(false);
 
@@ -85,15 +93,15 @@ export function MortgageEntry({
     else setDialogOpen(next);
   };
 
-  const onSelf = (goal: FlowGoal) => {
+  const onSelf = (goal: FlowGoal, current: PlatformAccess = access) => {
     setOpen(false);
-    // עד שני תהליכים פתוחים במקביל — לא שולחים לתשלום כשאין מקום לתהליך נוסף
-    if (!access.canOpenMore) {
-      setLimitOpen(true);
+    // כל תשלום הוא עבור תהליך אחד: עם תהליך שלא הסתיים משלמים על תהליך נוסף או מוחקים את הקודם
+    if (!current.canOpenMore) {
+      setNotice({ goal, plans: current.openPlans });
       return;
     }
     // עוד לא שולם — ₪49 לתהליך, ומשם חוזרים לכאן והתהליך נפתח
-    if (!access.active) {
+    if (!current.active) {
       router.push(`/dashboard/checkout?next=plan&goal=${goal}`);
       return;
     }
@@ -105,6 +113,17 @@ export function MortgageEntry({
     onStart();
   };
 
+  /** התהליך הקודם נמחק — אם התפנה מקום, התהליך החדש נפתח מיד (או עובר לתשלום) */
+  const afterDelete = async (goal: FlowGoal) => {
+    const next = await refreshAccess();
+    if (next.canOpenMore) {
+      setNotice(null);
+      onSelf(goal, next);
+    } else {
+      setNotice({ goal, plans: next.openPlans });
+    }
+  };
+
   const startRefinance = async () => {
     setRefinanceBusy(true);
     try {
@@ -114,7 +133,8 @@ export function MortgageEntry({
         body: JSON.stringify({ kind: 'REFINANCE' }),
       });
       if (res.status === 409) {
-        setLimitOpen(true);
+        const body = (await res.json().catch(() => null)) as { openPlans?: OpenProcess[] } | null;
+        setNotice({ goal: 'REFINANCE', plans: Array.isArray(body?.openPlans) ? body.openPlans : access.openPlans });
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -157,24 +177,18 @@ export function MortgageEntry({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={limitOpen} onOpenChange={setLimitOpen}>
-        <DialogContent dir="rtl" className="max-w-md rounded-3xl bg-white p-6 text-center">
-          <DialogTitle className="text-subtitle font-black text-slate-900">
-            יש לכם כבר {access.openProcesses} תהליכים פתוחים
-          </DialogTitle>
-          <p className="text-info leading-relaxed text-slate-600">
-            אפשר לנהל עד {access.maxOpenProcesses} תהליכים במקביל. כדי לפתוח תהליך חדש, סיימו או מחקו אחד
-            מהתהליכים הפתוחים באזור האישי.
-          </p>
-          <button
-            type="button"
-            onClick={() => setLimitOpen(false)}
-            className="text-button mt-2 rounded-2xl bg-blue-600 px-5 py-3 font-black text-white hover:bg-blue-700"
-          >
-            הבנתי
-          </button>
-        </DialogContent>
-      </Dialog>
+      <OneProcessNotice
+        open={notice !== null}
+        onOpenChange={(next) => {
+          if (!next) setNotice(null);
+        }}
+        plans={notice?.plans ?? []}
+        goal={notice?.goal ?? 'NEW_MORTGAGE'}
+        price={access.price}
+        onPay={() => router.push(extraProcessCheckoutHref(notice?.goal ?? 'NEW_MORTGAGE'))}
+        deletePlan={deletePlan}
+        onDeleted={() => afterDelete(notice?.goal ?? 'NEW_MORTGAGE')}
+      />
 
       {request && (
         <GuidanceRequestDialog
@@ -215,8 +229,9 @@ export function MortgageEntry({
                       setRequest({ goal, service: 'GUIDANCE' });
                       return;
                     }
-                    // שילמו כבר — התהליך נפתח ישר, בלי מסך המסלולים
-                    if (access.active) {
+                    // שילמו כבר — התהליך נפתח ישר, בלי מסך המסלולים. יש תהליך שלא הסתיים ואין
+                    // תשלום פנוי — ישר להתרעה שהתשלום הוא עבור תהליך אחד
+                    if (access.active || !access.canOpenMore) {
                       onSelf(goal);
                       return;
                     }

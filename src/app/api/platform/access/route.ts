@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getPricing } from '@/lib/pricing-store';
-import { MAX_OPEN_PROCESSES, passDays, passExpiresAt } from '@/lib/process-access';
-import { canOpenAnotherPlan, countOpenSelfServicePlans, newProcessPassFor } from '@/lib/mortgage-plans';
+import { passDays, passExpiresAt } from '@/lib/process-access';
+import { canOpenAnotherPlan, listOpenSelfServicePlans, newProcessPassFor } from '@/lib/mortgage-plans';
+import type { OpenProcessSummary } from '@/lib/mortgage-plans';
 
 export interface PlatformAccessView {
   /**
-   * האם אפשר לפתוח עכשיו תהליך משכנתא בלי לשלם: יש תשלום שהחודש שלו עוד לא
-   * הסתיים, ולא הסתיים אחריו אף תהליך. סיום תהליך מחייב תשלום על התהליך הבא.
+   * האם אפשר לפתוח עכשיו תהליך משכנתא בלי לשלם: יש תשלום פנוי — שאינו קשור
+   * לתהליך (תשלום על תהליך נוסף, או של תהליך שנמחק) — שהחודש שלו עוד לא הסתיים.
    */
   active: boolean;
   since: string | null;
@@ -18,10 +19,13 @@ export interface PlatformAccessView {
   accessDays: number;
   /** עד מתי הגישה הפנויה בתוקף */
   passExpiresAt: string | null;
-  /** תהליכים פתוחים במסלול העצמאי, ומה המקסימום במקביל */
+  /** התהליכים הפתוחים במסלול העצמאי — כל אחד מהם תופס תשלום */
   openProcesses: number;
-  maxOpenProcesses: number;
-  /** האם מותר לפתוח עוד תהליך, בלי קשר לתשלום */
+  openPlans: OpenProcessSummary[];
+  /**
+   * האם מותר לפתוח עכשיו תהליך נוסף. כשלא — יש תהליך פתוח ואין תשלום פנוי,
+   * וצריך לשלם על תהליך נוסף או למחוק את הקודם
+   */
   canOpenMore: boolean;
 }
 
@@ -37,9 +41,9 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const [pass, openProcesses, canOpenMore, pricing] = await Promise.all([
+  const [pass, openPlans, canOpenMore, pricing] = await Promise.all([
     newProcessPassFor(userId),
-    countOpenSelfServicePlans(userId),
+    listOpenSelfServicePlans(userId),
     canOpenAnotherPlan(userId),
     getPricing(),
   ]);
@@ -52,8 +56,8 @@ export async function GET() {
     price: pricing.platformPrice,
     accessDays: passDays(new Date()),
     passExpiresAt: pass ? passExpiresAt(pass.createdAt).toISOString() : null,
-    openProcesses,
-    maxOpenProcesses: MAX_OPEN_PROCESSES,
+    openProcesses: openPlans.length,
+    openPlans,
     canOpenMore,
   };
   return NextResponse.json(view);

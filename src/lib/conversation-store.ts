@@ -188,7 +188,8 @@ export type PostChatResult = { ok: true; message: ChatMessageView } | { ok: fals
 export async function postChatMessage(
   access: ConversationAccess,
   rawBody: unknown,
-  rawFiles?: unknown
+  rawFiles?: unknown,
+  options: { notify?: boolean } = {}
 ): Promise<PostChatResult> {
   const body = typeof rawBody === 'string' ? rawBody.trim().slice(0, MAX_CHAT_LENGTH) : '';
   const refs = parseOutgoingFiles(rawFiles);
@@ -217,8 +218,23 @@ export async function postChatMessage(
   const preview = [body, files.length > 0 ? `מצורף: ${files.join(', ')}` : ''].filter(Boolean).join('\n');
   // לקוח שכותב ליועץ משויך אליו, כדי שיופיע ברשימת הלקוחות שלו
   if (access.viewerRole === 'CLIENT') await ensureClientLinkSafely(access.clientUserId);
-  if (waiting === 0) void notifyNewMessage(access, preview).catch(() => {});
+  if (waiting === 0 && options.notify !== false) void notifyNewMessage(access, preview).catch(() => {});
   return { ok: true, message: toMessageView(row) };
+}
+
+/**
+ * פנייה ליועץ שהלקוח שלח מכפתור באתר נכתבת גם בצ׳אט, כהודעה ממנו — כך כל
+ * הפניות שלו נמצאות במקום אחד, והיועץ עונה עליהן שם. בלי מייל נוסף: על
+ * הפנייה עצמה היועץ כבר מקבל מייל. כשל כאן לא מפיל את הפנייה.
+ */
+export async function recordRequestInChat(clientUserId: string, body: string): Promise<void> {
+  try {
+    await prisma.conversationMessage.create({
+      data: { clientUserId, authorId: clientUserId, authorRole: 'CLIENT', body: body.slice(0, MAX_CHAT_LENGTH) },
+    });
+  } catch (error) {
+    console.error('[conversation] recording the request in the chat failed:', error);
+  }
 }
 
 /** קובץ שצורף להודעת צ'אט — אם מי שמבקש רשאי לראות את השיחה */

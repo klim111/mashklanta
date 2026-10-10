@@ -1,9 +1,10 @@
 /**
  * פעימות התשלום למוכר — כלי התכנון של משכנתא חדשה.
  *
- * מחיר הנכס מתחלק לשני מקורות: ההון העצמי ומשכנתא מהבנק. הבנק מעביר את כספי
- * המשכנתא רק אחרי שהוכח לו שכל ההון העצמי שולם ושהבטחונות לטובתו נרשמו, ולכן
- * בכל לוח תשלומים תקין כל הפעימות מההון העצמי קודמות לפעימה הראשונה מהבנק.
+ * מחיר הנכס מתחלק לשני מקורות: ההון העצמי ומשכנתא מהבנק. לפני שהבנק מעביר את
+ * כספי המשכנתא הוא דורש שחלק מההון העצמי כבר שולם — האחוז משתנה מבנק לבנק,
+ * ולכן הלקוח מזין אותו. הכלי בודק שעד הפעימה הראשונה מהבנק משולם לפחות החלק
+ * הזה, ואינו מחייב לשלם את כל ההון העצמי לפני הבנק.
  *
  * הקובץ טהור: הוא נטען גם בשרת (לניקוי הנתונים לפני שמירה ולבדיקת סגירת שלב
  * החתימה) וגם בדפדפן, ולכן אינו מייבא את mortgage-plan, את Prisma או את React.
@@ -34,6 +35,11 @@ export interface PaymentSchedule {
   propertyPrice: number | null;
   /** סכום המשכנתא — מתחיל מסכום המשכנתא בפרופיל */
   bankAmount: number | null;
+  /**
+   * כמה אחוזים מההון העצמי הבנק דורש שישולמו לפני שהוא מעביר את כספי המשכנתא
+   * (לפתיחת תיק המשכנתא). ריק — עוד לא הוזן, ואין בדיקה.
+   */
+  bankRequiredEquityPercent: number | null;
   installments: PaymentInstallment[];
   /** הלקוח אישר את הפעימות. עריכה אחרי האישור מבטלת אותו */
   confirmedAt: string | null;
@@ -68,7 +74,7 @@ export type ScheduleIssueKind =
   | 'empty'
   | 'amount'
   | 'payee'
-  | 'order'
+  | 'bank-required-equity'
   | 'equity-total'
   | 'bank-total'
   | 'no-bank';
@@ -110,16 +116,15 @@ export function scheduleIssues(schedule: PaymentSchedule): ScheduleIssue[] {
   });
 
   const firstBank = schedule.installments.findIndex((item) => item.source === 'BANK');
-  if (firstBank >= 0) {
-    schedule.installments.slice(firstBank).forEach((item, offset) => {
-      if (item.source === 'EQUITY') {
-        issues.push({
-          kind: 'order',
-          message: `פעימה ${firstBank + offset + 1} מההון העצמי מופיעה אחרי כספי הבנק. כל ההון העצמי משולם לפני הפעימה הראשונה מהבנק`,
-          installmentId: item.id,
-        });
-      }
-    });
+  const required = requiredEquityBeforeBank(schedule);
+  if (firstBank >= 0 && required !== null) {
+    const paidBefore = equityPaidBeforeBank(schedule);
+    if (paidBefore + TOLERANCE < required) {
+      issues.push({
+        kind: 'bank-required-equity',
+        message: `הבנק דורש ${schedule.bankRequiredEquityPercent}% מההון העצמי (${shekel(required)}) לפני הפעימה הראשונה מהבנק. עד אליה משולמים ${shekel(paidBefore)}, ולכן צריך לשלם עוד ${shekel(required - paidBefore)} מההון העצמי לפני פעימה ${firstBank + 1}`,
+      });
+    }
   }
 
   if (price > 0) {
@@ -157,15 +162,29 @@ export function scheduleDefined(schedule: PaymentSchedule | null | undefined): b
   return Boolean(schedule && schedule.confirmedAt && scheduleIssues(schedule).length === 0);
 }
 
-/**
- * סדר תקין: כל פעימות ההון העצמי ואחריהן כל פעימות הבנק, כל קבוצה בסדר שבו
- * הלקוח הזין אותה.
- */
-export function orderInstallments(installments: PaymentInstallment[]): PaymentInstallment[] {
-  return [
-    ...installments.filter((item) => item.source === 'EQUITY'),
-    ...installments.filter((item) => item.source === 'BANK'),
-  ];
+/** ההון העצמי שמשולם לפני הפעימה הראשונה מהבנק (כולו, כשאין פעימה מהבנק) */
+export function equityPaidBeforeBank(schedule: Pick<PaymentSchedule, 'installments'>): number {
+  const firstBank = schedule.installments.findIndex((item) => item.source === 'BANK');
+  const before = firstBank < 0 ? schedule.installments : schedule.installments.slice(0, firstBank);
+  return before.filter((item) => item.source === 'EQUITY').reduce((total, item) => total + (item.amount ?? 0), 0);
+}
+
+/** הסכום מההון העצמי שהבנק דורש לפני כספי המשכנתא; null — האחוז לא הוזן */
+export function requiredEquityBeforeBank(
+  schedule: Pick<PaymentSchedule, 'propertyPrice' | 'bankAmount' | 'bankRequiredEquityPercent'>
+): number | null {
+  const percent = schedule.bankRequiredEquityPercent;
+  const equity = equityShare(schedule);
+  if (percent === null || percent <= 0 || equity === null) return null;
+  return Math.round((equity * Math.min(percent, 100)) / 100);
+}
+
+/** פעימה חדשה מההון העצמי נכנסת לפני הפעימה הראשונה מהבנק; מהבנק — בסוף */
+export function insertInstallment(installments: PaymentInstallment[], item: PaymentInstallment): PaymentInstallment[] {
+  if (item.source === 'BANK') return [...installments, item];
+  const firstBank = installments.findIndex((row) => row.source === 'BANK');
+  if (firstBank < 0) return [...installments, item];
+  return [...installments.slice(0, firstBank), item, ...installments.slice(firstBank)];
 }
 
 // ───────────────────────────── לוח התחלתי ─────────────────────────────
@@ -230,12 +249,19 @@ export function draftSchedule(propertyPrice: number | null, bankAmount: number |
       amount: bank,
       payee: 'המוכר (או בנק המוכר, לסילוק המשכנתא שלו)',
       condition:
-        'אחרי ששולם כל ההון העצמי ונרשמו הבטחונות לטובת הבנק, לפי מכתב ההוראות הבלתי חוזרות, כנגד מסירת החזקה',
+        'אחרי ששולם חלק ההון העצמי שהבנק דורש ונרשמו הבטחונות לטובתו, לפי מכתב ההוראות הבלתי חוזרות, כנגד מסירת החזקה',
       dueDate: null,
     });
   }
 
-  return { propertyPrice: price, bankAmount: bank, installments, confirmedAt: null, updatedAt: null };
+  return {
+    propertyPrice: price,
+    bankAmount: bank,
+    bankRequiredEquityPercent: null,
+    installments,
+    confirmedAt: null,
+    updatedAt: null,
+  };
 }
 
 // ───────────────────────────── קריאה מהשרת ─────────────────────────────
@@ -248,6 +274,12 @@ function cleanAmount(value: unknown): number | null {
   const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
   if (!Number.isFinite(parsed) || parsed < 0) return null;
   return Math.round(Math.min(parsed, 1_000_000_000));
+}
+
+function cleanPercent(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' && value !== '' ? Number(value) : NaN;
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(Math.min(parsed, 100) * 10) / 10;
 }
 
 function cleanDate(value: unknown): string | null {
@@ -279,6 +311,7 @@ export function parsePaymentSchedule(value: unknown): PaymentSchedule | null {
   return {
     propertyPrice: cleanAmount(source.propertyPrice),
     bankAmount: cleanAmount(source.bankAmount),
+    bankRequiredEquityPercent: cleanPercent(source.bankRequiredEquityPercent),
     installments,
     confirmedAt: cleanStamp(source.confirmedAt),
     updatedAt: cleanStamp(source.updatedAt),
@@ -292,8 +325,8 @@ export function parseContractAnswer(value: unknown): ContractAnswer | null {
 // ───────────────────────────── טופס הבטחונות ─────────────────────────────
 
 /**
- * תת-השלב הראשון של החתימה: טופס הבטחונות ("טופס טיולים") שהבנק מנפיק אחרי
- * אישור התיק, והעברתו לעורך הדין.
+ * טופס הבטחונות שהבנק מנפיק אחרי אישור התיק: מה שעורך הדין והמוכרים צריכים
+ * להמציא לבנק (רישום הבטחונות, מכתב ההוראות). מועבר לעורך הדין.
  */
 export interface CollateralFormState {
   /** המסמך בתיק המסמכים */
@@ -326,21 +359,61 @@ export function parseCollateral(value: unknown): CollateralFormState {
   };
 }
 
+// ───────────────────────────── טופס טיולים ─────────────────────────────
+
+/**
+ * טופס טיולים: רשימת המסמכים שהבנק דורש מהרוכשים להמציא לאישור תיק המשכנתא.
+ * הלקוח מעלה אותו, שולח למי שצריך (בלי נמען קבוע) ומסמן שהמסמכים הומצאו.
+ */
+export interface TiyulimFormState {
+  documentId: string | null;
+  fileName: string | null;
+  /** מתי נשלח במייל, ולאיזו כתובת */
+  sentAt: string | null;
+  sentTo: string | null;
+  /** הלקוח סימן שכל המסמכים שברשימה הומצאו לבנק */
+  documentsProvided: boolean;
+}
+
+export const EMPTY_TIYULIM: TiyulimFormState = {
+  documentId: null,
+  fileName: null,
+  sentAt: null,
+  sentTo: null,
+  documentsProvided: false,
+};
+
+export function parseTiyulim(value: unknown): TiyulimFormState {
+  if (!value || typeof value !== 'object') return { ...EMPTY_TIYULIM };
+  const source = value as Record<string, unknown>;
+  return {
+    documentId: typeof source.documentId === 'string' && source.documentId ? source.documentId.slice(0, 60) : null,
+    fileName: cleanText(source.fileName, 160) || null,
+    sentAt: cleanStamp(source.sentAt),
+    sentTo: cleanText(source.sentTo, 200) || null,
+    documentsProvided: source.documentsProvided === true,
+  };
+}
+
 // ───────────────────────────── נוסחים ─────────────────────────────
 
-/** למה כספי הבנק תמיד אחרונים — מוצג בכלי ובדוח */
-export const BANK_LAST_EXPLANATION =
-  'הבנק מעביר את כספי המשכנתא רק אחרי שהוכח לו שכל ההון העצמי שולם למוכר, ושהבטחונות לטובתו נרשמו (הערת אזהרה או משכון לטובת הבנק, ומכתב הוראות בלתי חוזרות חתום בידי המוכר). לכן כל הפעימות מההון העצמי באות לפני הפעימה הראשונה מהבנק, ואין להתחייב בחוזה לתשלום מההון העצמי אחריה.';
+/** ההון העצמי שהבנק דורש לפני כספי המשכנתא — מוצג בכלי ובדוח */
+export const BANK_EQUITY_EXPLANATION =
+  'לפני שהבנק מעביר את כספי המשכנתא הוא דורש שחלק מההון העצמי כבר שולם למוכר. האחוז משתנה מבנק לבנק, ולכן הזינו את האחוז שהבנק שלכם דורש: המערכת תתריע אם עד הפעימה הראשונה מהבנק לא שולם מספיק מההון העצמי.';
 
-/** ההערות לעבודה מול עורך הדין — בכלי, בדוח ובתת-השלב של טופס הבטחונות */
+/** ההערה על בנקים שדורשים את כל ההון העצמי קודם */
+export const FULL_EQUITY_NOTE =
+  'יש מקרים שבהם הבנק ידרוש לשלם קודם את כל ההון העצמי, לפני כספי המשכנתא. ודאו זאת מול הבנק: מרבית הבנקים היום מגלים גמישות בנושא.';
+
+/** ההערות לעבודה מול עורך הדין — בכלי, בדוח ובתת-השלב של הבטחונות */
 export const LAWYER_NOTES: readonly string[] = [
   'ודאו יחד עם עורך הדין שפריסת התשלומים בחוזה תואמת לפעימות שהוגדרו כאן: אותם סכומים, אותו סדר ואותם תנאים.',
   'ודאו שהפעימות מכספי הבנק כתובות כך גם במכתב ההוראות הבלתי חוזרות שעליו חותם מוכר הנכס: לאיזה חשבון, באיזה סכום ובאיזה שלב.',
-  'כשהבנק מנפיק את טופס הבטחונות ("טופס טיולים"), העבירו אותו לעורך הדין: הוא דואג לרישום הבטחונות ולחתימת המוכר על מכתב ההוראות.',
+  'כשהבנק מנפיק את טופס הבטחונות, העבירו אותו לעורך הדין: הוא דואג יחד עם המוכרים לרישום הבטחונות ולחתימת המוכר על מכתב ההוראות.',
 ];
 
 export const CONTRACT_REMINDER =
-  'חשוב להגדיר בחוזה את פעימות התשלום כך שיעמדו בדרישות הבנקים והרגולציה: כל ההון העצמי משולם קודם, וכספי המשכנתא מועברים אחרונים.';
+  'חשוב להגדיר בחוזה את פעימות התשלום כך שיעמדו בדרישות הבנק: לפני הפעימה הראשונה מכספי המשכנתא צריך לשלם את חלק ההון העצמי שהבנק דורש.';
 
 // ───────────────────────────── קישורים ─────────────────────────────
 

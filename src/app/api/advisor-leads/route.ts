@@ -5,6 +5,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { createLead, listOwnOpenLeads, parseLeadTopic } from '@/lib/advisor-leads';
 import { parseRequestKind } from '@/lib/advisor-requests';
 import { cleanSourcePath } from '@/lib/page-labels';
+import { parseLeadFileRefs, resolveLeadFiles } from '@/lib/lead-files';
 
 function clean(value: unknown, max = 200): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -57,6 +58,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // קבצים שצורפו (טופס הצעה מהבנק, דוח יתרות) — נבדקים מול חנות הקבצים
+  const files = await resolveLeadFiles(parseLeadFileRefs(body?.files));
+  if (!files.ok) return NextResponse.json({ error: files.error }, { status: files.status });
+
   const lead = await createLead(userId, {
     topic: parseLeadTopic(body?.topic),
     name,
@@ -65,6 +70,7 @@ export async function POST(req: NextRequest) {
     notes: clean(body?.notes, 2000) || undefined,
     requestKind: parseRequestKind(body?.requestKind),
     sourcePath: cleanSourcePath(body?.sourcePath),
+    files: files.files,
   });
   if (!lead) {
     return NextResponse.json(

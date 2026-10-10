@@ -1,16 +1,18 @@
 /**
  * הגישה בתשלום לתהליך משכנתא — מסלול עצמאי / היברידי.
  *
- * כל תשלום הוא חבילת גישה לחודש קלנדרי: מספר הימים בחבילה הוא מספר הימים
- * בחודש שבו שולמה (31 באוקטובר, 28 או 29 בפברואר). בתוך החבילה אפשר לפתוח,
- * למחוק ולפתוח מחדש תהליכים בלי תשלום נוסף, עד שני תהליכים פתוחים במקביל,
- * ומועד התפוגה נשאר של התשלום — פתיחה מחדש אינה מאפסת את החודש. תהליך שהסתיים
- * סוגר את החבילה לתהליכים חדשים: תהליך שנפתח אחרי סיום דורש תשלום חדש, גם
- * בתוך החודש. תהליך פתוח שהחודש שלו הסתיים ננעל עד לרכישת חבילה נוספת, והחבילה
- * הנוספת פותחת את כל התהליכים הפתוחים של הלקוח.
+ * כל תשלום הוא עבור תהליך משכנתא אחד (משכנתא חדשה או מיחזור), לחודש קלנדרי:
+ * מספר הימים בחבילה הוא מספר הימים בחודש שבו שולמה (31 באוקטובר, 28 או 29
+ * בפברואר). התשלום נקשר לתהליך שנפתח אחריו (`PlatformPayment.planId`), ומאז
+ * הוא פותח רק אותו. חידוש מתהליך נקשר לאותו תהליך.
  *
- * התשלום נקשר לתהליך שנפתח ראשון אחריו (`PlatformPayment.planId`), אבל זה רק
- * לצורך הקיזוז אם יוזמן ליווי. הגישה עצמה נגזרת מכל התשלומים של הלקוח.
+ * לקוח עם תהליך פתוח שמבקש לפתוח עוד אחד צריך תשלום פנוי — תשלום על תהליך
+ * נוסף, או התשלום של תהליך שמחק: מחיקת תהליך שלא הסתיים משחררת את התשלום שלו
+ * (`onDelete: SetNull`), ותהליך חדש בתוך אותו חודש נפתח עליו בלי תשלום נוסף,
+ * עם אותו מועד תפוגה. תשלום של תהליך שהסתיים אינו משתחרר.
+ *
+ * תהליכים שנפתחו לפני `ONE_PROCESS_PER_PAYMENT_SINCE` נשארים בכלל הקודם: כל
+ * תשלום של הלקוח פותח אותם (`paymentCovers`).
  *
  * ליווי: שלב ששולם והיועץ אישר אותו (או לקוח שהיועץ מלווה מלכתחילה) פותח את
  * כל הכלים בתהליך בלי הגבלת זמן, עד שהיועץ מסמן שהליווי בתהליך הסתיים. מאותו
@@ -25,9 +27,6 @@ export const PROCESS_PRICE = 49;
 /** תקופת הגישה מכל תשלום, כפי שהיא כתובה ללקוח */
 export const PROCESS_ACCESS_PERIOD = 'חודש';
 
-/** כמה תהליכים פתוחים (שלא הסתיימו) מותר לנהל במקביל במסלול העצמאי */
-export const MAX_OPEN_PROCESSES = 2;
-
 /** כמה זמן לוקח תהליך משכנתא בדרך כלל, בחודשים — לחישוב טווח העלות הכוללת */
 export const TYPICAL_PROCESS_MONTHS = { min: 1, max: 3 } as const;
 
@@ -38,6 +37,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * חודשי ממשיך בהם כרגיל, בלי נעילה.
  */
 export const PROCESS_PRICING_SINCE = new Date('2026-09-23T00:00:00Z');
+
+/**
+ * מתי עבר כל תשלום לתהליך אחד בלבד. קודם חבילה אחת פתחה עד שני תהליכים
+ * במקביל, ותהליכים שנפתחו כך ממשיכים לפי הכלל הקודם עד שהחודש שלהם נגמר.
+ */
+export const ONE_PROCESS_PER_PAYMENT_SINCE = new Date('2026-10-10T00:00:00Z');
 
 export interface PaymentLike {
   createdAt: Date | string;
@@ -85,7 +90,8 @@ function latest<T extends PaymentLike>(payments: readonly T[]): T | null {
 }
 
 /**
- * האם תשלום פותח את הכלים בתהליך שנפתח במועד `planCreatedAt`.
+ * הכלל הקודם (תהליכים שנפתחו לפני `ONE_PROCESS_PER_PAYMENT_SINCE`): האם תשלום
+ * של הלקוח פותח את הכלים בתהליך שנפתח במועד `planCreatedAt`.
  *
  * תשלום שבוצע אחרי שהתהליך נפתח הוא חידוש, והוא פותח אותו. תשלום שבוצע לפני
  * כן פותח את התהליך רק אם התהליך נפתח בתוך החודש של התשלום, ולא הסתיים
@@ -107,21 +113,9 @@ export function paymentCovers(
 }
 
 /**
- * החבילה שמאפשרת לפתוח עכשיו תהליך חדש בלי לשלם: תשלום שהחודש שלו עוד לא
- * הסתיים, ושלא הסתיים אחריו אף תהליך. כשיש כמה, נבחר החדש ביותר. הגבלת שני
- * התהליכים הפתוחים נבדקת בנפרד, מול התהליכים עצמם.
- */
-export function newProcessPass<T extends PaymentLike>(
-  payments: readonly T[],
-  completions: ReadonlyArray<Date | string>,
-  now = new Date()
-): T | null {
-  return latest(payments.filter((payment) => paymentCovers(payment, now, completions)));
-}
-
-/**
- * כרטיס כניסה פנוי: תשלום שעדיין לא נקשר לתהליך ושהחודש שלו עוד לא הסתיים.
- * מקבלים רק תשלומים שאינם קשורים לתהליך. כשיש כמה, נבחר החדש ביותר.
+ * תשלום פנוי לפתיחת תהליך חדש: תשלום שאינו קשור לתהליך (תשלום על תהליך נוסף,
+ * או של תהליך שנמחק) ושהחודש שלו עוד לא הסתיים. מקבלים רק תשלומים שאינם
+ * קשורים לתהליך. כשיש כמה, נבחר החדש ביותר.
  */
 export function openPass<T extends PaymentLike>(unbound: readonly T[], now = new Date()): T | null {
   const valid = unbound.filter((payment) => passExpiresAt(payment.createdAt) > now);
@@ -153,11 +147,11 @@ export interface ProcessAccess {
 export interface ProcessAccessInput {
   planStatus: string;
   planCreatedAt: Date | string;
-  /** התשלומים שנקשרו לתהליך הזה — לחישוב מה ששולם עליו */
+  /** התשלומים שנקשרו לתהליך הזה — מהם נגזרת הגישה, ומהם מה ששולם עליו */
   payments: ReadonlyArray<PaymentLike & { amountAgorot?: number }>;
-  /** כל התשלומים של בעל התהליך — מהם נגזרת הגישה. ברירת המחדל: `payments` */
+  /** כל התשלומים של בעל התהליך — לתהליכים שנפתחו בכלל הקודם. ברירת המחדל: `payments` */
   ownerPayments?: ReadonlyArray<PaymentLike>;
-  /** מתי הסתיימו התהליכים של בעל התהליך */
+  /** מתי הסתיימו התהליכים של בעל התהליך — לכלל הקודם */
   ownerCompletions?: ReadonlyArray<Date | string>;
   /** ליווי ששולם (ליווי מלא או שלבים), או יועץ שמלווה את הלקוח — כולל גישה מלאה לכלים */
   hasPaidAdvisory: boolean;
@@ -185,9 +179,13 @@ export function processAccess(input: ProcessAccessInput, now = new Date()): Proc
   // הליווי פותח את הכלים עד שהיועץ מסמן שהסתיים
   if (input.hasPaidAdvisory && !advisoryEndedAt) return open('ACTIVE');
 
-  const covering = (input.ownerPayments ?? input.payments).filter((payment) =>
-    paymentCovers(payment, input.planCreatedAt, input.ownerCompletions ?? [])
-  );
+  // כל תשלום פותח את התהליך שהוא קשור אליו. תהליך מהכלל הקודם — כל תשלום של הלקוח
+  const covering =
+    new Date(input.planCreatedAt) < ONE_PROCESS_PER_PAYMENT_SINCE
+      ? (input.ownerPayments ?? input.payments).filter((payment) =>
+          paymentCovers(payment, input.planCreatedAt, input.ownerCompletions ?? [])
+        )
+      : input.payments;
   const last = latest(covering);
   if (last) {
     const expiresAt = passExpiresAt(last.createdAt);

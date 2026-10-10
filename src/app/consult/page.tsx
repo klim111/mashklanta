@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertCircle, CheckCircle2, Loader2, MessageCircle, Send } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Loader2, MessageCircle, Send } from 'lucide-react';
+import { LeadFileUpload, useLeadFiles } from '@/components/consult/LeadFileUpload';
 import NavBar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
 import {
@@ -41,6 +42,7 @@ function ConsultForm() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const leadFiles = useLeadFiles();
 
   // הגיעו מכפתור של מסלול בעמוד התמחור — שם המסלול נכנס להערה ליועץ
   useEffect(() => {
@@ -78,6 +80,11 @@ function ConsultForm() {
       return;
     }
 
+    if (leadFiles.uploading) {
+      setError('הקובץ עדיין עולה. רגע אחד ונסו שוב');
+      return;
+    }
+
     setSending(true);
     try {
       const response = await fetch('/api/advisor-leads', {
@@ -91,6 +98,8 @@ function ConsultForm() {
           phone: phone.trim(),
           email: email.trim(),
           notes: note.trim() || undefined,
+          // רק המסמך של הסיבה שנבחרה עכשיו
+          files: selected.upload ? leadFiles.refs : [],
         }),
       });
       if (!response.ok) {
@@ -220,16 +229,22 @@ function ConsultForm() {
             required
           />
         </label>
-        <label className="block text-sm font-bold text-slate-700 sm:col-span-2">
-          כמה מילים ליועץ <span className="font-normal text-slate-400">(רשות)</span>
-          <textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            className={`mt-1.5 min-h-[96px] ${inputClass}`}
-            placeholder="למשל: קיבלנו אישור עקרוני מבנק לאומי ורוצים לדעת אם הריביות טובות"
-            maxLength={1500}
-          />
-        </label>
+        {selected.upload ? (
+          <div className="sm:col-span-2">
+            <LeadFileUpload title={selected.upload.title} hint={selected.upload.hint} state={leadFiles} />
+          </div>
+        ) : (
+          <label className="block text-sm font-bold text-slate-700 sm:col-span-2">
+            כמה מילים ליועץ <span className="font-normal text-slate-400">(רשות)</span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              className={`mt-1.5 min-h-[96px] ${inputClass}`}
+              placeholder="למשל: הבנק אישר רק 60% מימון, ואנחנו צריכים 70%"
+              maxLength={1500}
+            />
+          </label>
+        )}
       </div>
 
       {error && (
@@ -263,6 +278,13 @@ export default function ConsultPage() {
         <NavBar />
       </div>
       <main className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-14">
+        <Link
+          href="/"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-button font-bold text-slate-600 transition-colors hover:bg-white hover:text-blue-700"
+        >
+          <ArrowRight className="h-4 w-4" />
+          חזרה לדף הבית
+        </Link>
         <Suspense fallback={null}>
           <ConsultForm />
         </Suspense>

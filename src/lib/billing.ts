@@ -4,9 +4,9 @@ import { sendEmail } from './email';
 import { canonicalSiteOrigin } from './auth-url';
 import { safeCallbackUrl } from './safe-path';
 import { createPaymentPage, hypConfig, parseReturn, verifyReturn, HYP_APPROVED, type HypReturn } from './hyp';
-import { daysUntil, passExpiresAt } from './process-access';
+import { ONE_PROCESS_PER_PAYMENT_SINCE, daysUntil, passExpiresAt } from './process-access';
 import { getPricingFresh } from './pricing-store';
-import { countOpenSelfServicePlans } from './mortgage-plans';
+import { countOpenSelfServicePlans, isOpenSelfServicePlan } from './mortgage-plans';
 import {
   advisoryEndedEmail,
   linkPaidAdvisorEmail,
@@ -358,9 +358,9 @@ export async function sendAdvisoryEndedOffer(planId: string, endedAt: Date): Pro
 }
 
 /**
- * תזכורות לקראת סוף החודש: לכל לקוח שהחבילה האחרונה שלו (ששולמה ב-HYP)
- * מסתיימת בתוך שלושה ימים, ויש לו תהליך פתוח במסלול העצמאי. כל חבילה מקבלת
- * תזכורת אחת. רץ פעם ביום (vercel.json).
+ * תזכורות לקראת סוף החודש: לכל תהליך פתוח במסלול העצמאי שהחבילה האחרונה שלו
+ * (ששולמה ב-HYP) מסתיימת בתוך שלושה ימים. כל תשלום הוא עבור תהליך אחד, ולכן
+ * התזכורת היא לתהליך. כל חבילה מקבלת תזכורת אחת. רץ פעם ביום (vercel.json).
  */
 export async function sendRenewalReminders(now = new Date()): Promise<{ sent: number; checked: number }> {
   // החודש הארוך ביותר הוא 31 יום — חבילה ישנה מזה כבר הסתיימה
@@ -372,30 +372,50 @@ export async function sendRenewalReminders(now = new Date()): Promise<{ sent: nu
       createdAt: { gte: new Date(now.getTime() - 31 * DAY_MS) },
     },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, userId: true, planId: true, createdAt: true, user: { select: { name: true, email: true } } },
+    select: {
+      id: true,
+      userId: true,
+      planId: true,
+      createdAt: true,
+      plan: { select: { name: true, createdAt: true } },
+      user: { select: { name: true, email: true } },
+    },
   });
 
   const { platformPrice } = await getPricingFresh();
   const seen = new Set<string>();
   let sent = 0;
   for (const payment of candidates) {
-    if (seen.has(payment.userId)) continue;
-    seen.add(payment.userId);
+    // תשלום שאינו קשור לתהליך פותח רק תהליכים מהכלל הקודם — כל תשלום של הלקוח
+    const key = payment.planId ?? `user:${payment.userId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
     const accessUntil = passExpiresAt(payment.createdAt);
     const left = accessUntil.getTime() - now.getTime();
     if (left <= 0 || left > REMINDER_DAYS_BEFORE * DAY_MS) continue;
 
-    // חבילה חדשה יותר (גם כזו שכבר קיבלה תזכורת) — אין מה להזכיר
+    // חבילה חדשה יותר על אותו תהליך (גם כזו שכבר קיבלה תזכורת) — אין מה להזכיר.
+    // בתהליך מהכלל הקודם כל חבילה של הלקוח פותחת אותו
+    const legacy = !payment.plan || payment.plan.createdAt < ONE_PROCESS_PER_PAYMENT_SINCE;
     const newer = await prisma.platformPayment.count({
-      where: { userId: payment.userId, status: 'PAID', createdAt: { gt: payment.createdAt } },
+      where: {
+        userId: payment.userId,
+        status: 'PAID',
+        createdAt: { gt: payment.createdAt },
+        ...(legacy ? {} : { planId: payment.planId }),
+      },
     });
     if (newer > 0) continue;
-    if ((await countOpenSelfServicePlans(payment.userId)) === 0) continue;
+    const open = payment.planId
+      ? await isOpenSelfServicePlan(payment.planId)
+      : (await countOpenSelfServicePlans(payment.userId, ONE_PROCESS_PER_PAYMENT_SINCE)) > 0;
+    if (!open) continue;
     if (!payment.user.email) continue;
 
     const email = renewalReminderEmail({
       name: payment.user.name,
+      planName: payment.plan?.name ?? null,
       accessUntil,
       daysLeft: daysUntil(accessUntil, now),
       price: platformPrice,

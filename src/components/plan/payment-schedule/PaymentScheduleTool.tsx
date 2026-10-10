@@ -28,14 +28,17 @@ import {
 import { NumericInput } from '@/components/ui/numeric-input';
 import { isPlanStage, usesPaymentSchedule } from '@/lib/mortgage-plan';
 import {
-  BANK_LAST_EXPLANATION,
+  BANK_EQUITY_EXPLANATION,
+  FULL_EQUITY_NOTE,
   LAWYER_NOTES,
   MAX_INSTALLMENTS,
   blankInstallment,
   draftSchedule,
+  equityPaidBeforeBank,
   equityShare,
-  orderInstallments,
+  insertInstallment,
   paymentScheduleReportHref,
+  requiredEquityBeforeBank,
   scheduleDefined,
   scheduleIssues,
   sumBySource,
@@ -51,11 +54,11 @@ const inputClass =
 /**
  * כלי תכנון פעימות התשלום למוכר, למשכנתא חדשה.
  *
- * הלוח מתחיל מהפרופיל הפיננסי — מחיר הנכס וסכום המשכנתא — ובנוי כמו טבלת
- * הפעימות: קודם הפעימות מההון העצמי, אחריהן הפעימות מכספי הבנק. הלקוח עורך,
- * מוסיף ומוחק פעימות; הכלי לא מאפשר פעימה מההון העצמי אחרי כספי הבנק, ובודק
- * שהסכומים מתחלקים בדיוק בין ההון העצמי לבנק ומסתכמים במחיר הנכס. אחרי האישור
- * מפיקים דוח PDF ועמוד HTML לעורך הדין.
+ * הלוח מתחיל מהפרופיל הפיננסי — מחיר הנכס וסכום המשכנתא — והוא רשימה אחת של
+ * פעימות לפי הסדר, כל אחת מההון העצמי או מכספי הבנק. הלקוח עורך, מוסיף, מוחק
+ * ומזיז פעימות, ומזין את אחוז ההון העצמי שהבנק דורש לפני כספי המשכנתא: הכלי
+ * מתריע כשעד הפעימה הראשונה מהבנק לא שולם מספיק, ובודק שהסכומים מתחלקים בדיוק
+ * בין ההון העצמי לבנק. אחרי האישור מפיקים דוח PDF ועמוד HTML לעורך הדין.
  */
 export function PaymentScheduleTool({ planId }: { planId: string }) {
   const { plan, ready, error, saveState, updateStage } = usePlan(planId);
@@ -87,8 +90,9 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
   const equityTarget = equityShare(schedule) ?? 0;
   const equityPaid = sumBySource(schedule, 'EQUITY');
   const bankPaid = sumBySource(schedule, 'BANK');
-  const equityRows = schedule.installments.filter((item) => item.source === 'EQUITY');
-  const bankRows = schedule.installments.filter((item) => item.source === 'BANK');
+  const requiredBefore = requiredEquityBeforeBank(schedule);
+  const paidBefore = equityPaidBeforeBank(schedule);
+  const firstBank = schedule.installments.findIndex((item) => item.source === 'BANK');
   const issueIds = new Set(issues.map((issue) => issue.installmentId).filter(Boolean));
 
   useEffect(() => {
@@ -135,23 +139,22 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
   const addInstallment = (source: PaymentSource) => {
     if (schedule.installments.length >= MAX_INSTALLMENTS) return;
     const item = blankInstallment(source);
-    // פעימה מההון העצמי נכנסת תמיד לפני כספי הבנק
+    // פעימה חדשה מההון העצמי נכנסת לפני כספי הבנק; אפשר להזיז אותה אחר כך
     const remaining =
       source === 'EQUITY' ? Math.max(0, equityTarget - equityPaid) : Math.max(0, bankTotal - bankPaid);
     item.amount = remaining > 0 ? remaining : null;
-    save({ ...schedule, installments: orderInstallments([...schedule.installments, item]) });
+    save({ ...schedule, installments: insertInstallment(schedule.installments, item) });
   };
 
   const removeInstallment = (id: string) =>
     save({ ...schedule, installments: schedule.installments.filter((item) => item.id !== id) });
 
-  /** הזזה בתוך אותה קבוצה בלבד — פעימה מההון העצמי לא עוברת אל אחרי הבנק */
+  /** הזזה ברשימה כולה: הסדר הוא סדר התשלומים בחוזה */
   const move = (id: string, direction: -1 | 1) => {
     const list = [...schedule.installments];
     const index = list.findIndex((item) => item.id === id);
     const target = index + direction;
     if (index < 0 || target < 0 || target >= list.length) return;
-    if (list[target].source !== list[index].source) return;
     [list[index], list[target]] = [list[target], list[index]];
     save({ ...schedule, installments: list });
   };
@@ -259,7 +262,7 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
 
         {/* מחיר הנכס והחלוקה */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div dir="rtl" className="grid gap-4 md:grid-cols-3">
+          <div dir="rtl" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <AmountField
               label="מחיר הנכס בחוזה"
               value={schedule.propertyPrice}
@@ -276,6 +279,30 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
                 {formatShekel(equityTarget)}
               </div>
             </div>
+            <label className="block">
+              <span dir="rtl" className="mb-1.5 block text-xs font-bold text-slate-600">
+                אחוז מההון העצמי שהבנק דורש לפני כספי המשכנתא
+              </span>
+              <div dir="rtl" className="relative">
+                <NumericInput
+                  value={schedule.bankRequiredEquityPercent}
+                  onChange={(value) =>
+                    save({
+                      ...schedule,
+                      bankRequiredEquityPercent: value === null ? null : Math.min(100, Math.max(0, Math.round(value * 10) / 10)),
+                    })
+                  }
+                  placeholder="לפי דרישת הבנק"
+                  className={`${inputClass} pl-9 font-black`}
+                />
+                <span dir="rtl" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+              </div>
+              {requiredBefore !== null && (
+                <span dir="rtl" className="mt-1 block text-right text-2xs font-bold text-slate-500">
+                  {formatShekel(requiredBefore)} לפני הפעימה הראשונה מהבנק
+                </span>
+              )}
+            </label>
           </div>
 
           {price > 0 && (
@@ -318,46 +345,40 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
           )}
         </section>
 
-        {/* שלב א׳ — הון עצמי */}
-        <InstallmentGroup
-          source="EQUITY"
-          title="שלב א׳: פעימות מההון העצמי"
-          rows={equityRows}
-          offset={0}
-          paid={equityPaid}
-          target={equityTarget}
-          issueIds={issueIds}
-          onChange={setInstallment}
-          onRemove={removeInstallment}
-          onMove={move}
-          onAdd={() => addInstallment('EQUITY')}
-          onBalance={() => balance('EQUITY')}
-          full={schedule.installments.length >= MAX_INSTALLMENTS}
-        />
-
-        {/* למה הבנק אחרון */}
+        {/* ההון העצמי שהבנק דורש */}
         <div dir="rtl" className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3.5">
           <Landmark className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
-          <div>
-            <p dir="rtl" className="text-sm font-black text-blue-950">כספי הבנק תמיד מועברים אחרונים</p>
-            <p dir="rtl" className="mt-0.5 text-sm leading-relaxed text-blue-900">{BANK_LAST_EXPLANATION}</p>
+          <div className="min-w-0 flex-1">
+            <p dir="rtl" className="text-right text-sm font-black text-blue-950">כמה הון עצמי הבנק דורש לפני כספי המשכנתא</p>
+            <p dir="rtl" className="mt-0.5 text-right text-sm leading-relaxed text-blue-900">{BANK_EQUITY_EXPLANATION}</p>
+            <p dir="rtl" className="mt-1.5 text-right text-sm leading-relaxed text-blue-900">
+              <span className="font-black">שימו לב: </span>
+              {FULL_EQUITY_NOTE}
+            </p>
+            {requiredBefore !== null && firstBank >= 0 && (
+              <p
+                dir="rtl"
+                className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-right text-sm font-black ${
+                  paidBefore + 1 >= requiredBefore ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {paidBefore + 1 >= requiredBefore ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                עד הפעימה הראשונה מהבנק: {formatShekel(paidBefore)} מההון העצמי, הבנק דורש {formatShekel(requiredBefore)}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* שלב ב׳ — הבנק */}
-        <InstallmentGroup
-          source="BANK"
-          title="שלב ב׳: פעימות מכספי המשכנתא"
-          rows={bankRows}
-          offset={equityRows.length}
-          paid={bankPaid}
-          target={bankTotal}
+        <InstallmentList
+          rows={schedule.installments}
+          equity={{ paid: equityPaid, target: equityTarget }}
+          bank={{ paid: bankPaid, target: bankTotal }}
           issueIds={issueIds}
           onChange={setInstallment}
           onRemove={removeInstallment}
           onMove={move}
-          onAdd={() => addInstallment('BANK')}
-          onBalance={() => balance('BANK')}
+          onAdd={addInstallment}
+          onBalance={balance}
           full={schedule.installments.length >= MAX_INSTALLMENTS}
         />
 
@@ -403,7 +424,7 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
               className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-900"
             >
               <CheckCircle2 className="h-4 w-4" />
-              הסכומים תואמים: ההון העצמי וכספי הבנק מסתכמים בדיוק במחיר הנכס, וכספי הבנק אחרונים.
+              הסכומים תואמים: ההון העצמי וכספי הבנק מסתכמים בדיוק במחיר הנכס.
             </motion.p>
           )}
         </AnimatePresence>
@@ -498,13 +519,10 @@ function AmountField({
   );
 }
 
-function InstallmentGroup({
-  source,
-  title,
+function InstallmentList({
   rows,
-  offset,
-  paid,
-  target,
+  equity,
+  bank,
   issueIds,
   onChange,
   onRemove,
@@ -513,150 +531,180 @@ function InstallmentGroup({
   onBalance,
   full,
 }: {
-  source: PaymentSource;
-  title: string;
   rows: PaymentInstallment[];
-  offset: number;
-  paid: number;
-  target: number;
+  equity: { paid: number; target: number };
+  bank: { paid: number; target: number };
   issueIds: Set<string | undefined>;
   onChange: (id: string, patch: Partial<PaymentInstallment>) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
-  onAdd: () => void;
-  onBalance: () => void;
+  onAdd: (source: PaymentSource) => void;
+  onBalance: (source: PaymentSource) => void;
   full: boolean;
 }) {
-  const equity = source === 'EQUITY';
-  const gap = target - paid;
-  const tone = equity
-    ? { band: 'bg-teal-50 text-teal-800', border: 'border-r-teal-600', icon: Wallet, button: 'text-teal-700 hover:bg-teal-50' }
-    : { band: 'bg-blue-50 text-blue-800', border: 'border-r-blue-600', icon: Banknote, button: 'text-blue-700 hover:bg-blue-50' };
-  const Icon = tone.icon;
+  const groups: { source: PaymentSource; label: string; paid: number; target: number; tone: string; button: string }[] = [
+    { source: 'EQUITY', label: 'הון עצמי', ...equity, tone: 'text-teal-800', button: 'text-teal-700 hover:bg-teal-50' },
+    { source: 'BANK', label: 'כספי הבנק', ...bank, tone: 'text-blue-800', button: 'text-blue-700 hover:bg-blue-50' },
+  ];
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <header className={`flex flex-wrap items-center justify-between gap-2 px-5 py-3 ${tone.band}`}>
-        <span className="flex items-center gap-2 text-base font-black">
-          <Icon className="h-5 w-5" />
-          {title}
-        </span>
-        <span dir="rtl" className="text-sm font-bold">
-          {formatShekel(paid)} מתוך {formatShekel(target)}
+      <header dir="rtl" className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 px-5 py-3">
+        <span className="text-base font-black text-slate-900">פעימות התשלום לפי הסדר בחוזה</span>
+        <span className="flex flex-wrap gap-3 text-sm font-bold">
+          {groups.map((group) => (
+            <span key={group.source} dir="rtl" className={group.tone}>
+              {group.label}: {formatShekel(group.paid)} מתוך {formatShekel(group.target)}
+            </span>
+          ))}
         </span>
       </header>
 
       {rows.length === 0 && (
-        <p dir="rtl" className="px-5 py-4 text-sm text-slate-500">
-          {equity ? 'עוד אין פעימות מההון העצמי.' : 'עוד אין פעימה מכספי המשכנתא.'}
-        </p>
+        <p dir="rtl" className="px-5 py-4 text-right text-sm text-slate-500">עוד אין פעימות.</p>
       )}
 
       <ul className="divide-y divide-slate-100">
-        {rows.map((item, index) => (
-          <li
-            key={item.id}
-            className={`grid gap-3 border-r-4 px-4 py-4 md:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1.6fr)_10rem_auto] md:items-start ${tone.border} ${
-              issueIds.has(item.id) ? 'bg-rose-50/60' : ''
-            }`}
-          >
-            <span dir="rtl" className="pt-2 text-base font-black text-slate-900">פעימה {offset + index + 1}</span>
-            <label className="block">
-              <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-500">למי מועבר</span>
-              <input
-                value={item.payee}
-                maxLength={160}
-                onChange={(event) => onChange(item.id, { payee: event.target.value })}
-                placeholder="המוכר, נאמנות אצל עו״ד…"
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
-              <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-500">באיזה שלב / במה מותנה</span>
-              <textarea
-                value={item.condition}
-                maxLength={600}
-                rows={2}
-                onChange={(event) => onChange(item.id, { condition: event.target.value })}
-                placeholder="למשל: תוך 14 ימים מרישום הערת האזהרה"
-                className={`${inputClass} resize-y`}
-              />
-              <input
-                type="date"
-                value={item.dueDate ?? ''}
-                onChange={(event) => onChange(item.id, { dueDate: event.target.value || null })}
-                aria-label="תאריך משוער"
-                className={`${inputClass} mt-1.5 cursor-pointer text-sm`}
-              />
-            </label>
-            <label className="block">
-              <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-500">סכום</span>
-              <div dir="rtl" className="relative">
-                <NumericInput
-                  integer
-                  value={item.amount}
-                  onChange={(value) => onChange(item.id, { amount: value })}
-                  className={`${inputClass} pl-8 font-black`}
-                />
-                <span dir="rtl" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₪</span>
+        {rows.map((item, index) => {
+          const fromEquity = item.source === 'EQUITY';
+          return (
+            <li
+              key={item.id}
+              className={`grid gap-3 border-r-4 px-4 py-4 md:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1.6fr)_10rem_auto] md:items-start ${
+                fromEquity ? 'border-r-teal-600' : 'border-r-blue-600'
+              } ${issueIds.has(item.id) ? 'bg-rose-50/60' : ''}`}
+            >
+              <div className="space-y-1.5">
+                <span dir="rtl" className="block pt-2 text-right text-base font-black text-slate-900">פעימה {index + 1}</span>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label="מקור הכסף">
+                  {(['EQUITY', 'BANK'] as const).map((source) => {
+                    const active = item.source === source;
+                    return (
+                      <button
+                        key={source}
+                        type="button"
+                        onClick={() => !active && onChange(item.id, { source, payee: item.payee || (source === 'BANK' ? 'המוכר' : '') })}
+                        aria-pressed={active}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-black transition-colors ${
+                          active
+                            ? source === 'EQUITY'
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-blue-600 text-white'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {source === 'EQUITY' ? <Wallet className="h-3 w-3" /> : <Banknote className="h-3 w-3" />}
+                        {source === 'EQUITY' ? 'הון עצמי' : 'בנק'}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </label>
-            <div className="flex items-center gap-1 md:flex-col md:pt-5">
-              <button
-                type="button"
-                onClick={() => onMove(item.id, -1)}
-                disabled={index === 0}
-                aria-label="הקדמה"
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onMove(item.id, 1)}
-                disabled={index === rows.length - 1}
-                aria-label="דחייה"
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
-              >
-                <ArrowDown className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onRemove(item.id)}
-                aria-label="מחיקת הפעימה"
-                className="rounded-lg p-1.5 text-slate-300 hover:bg-rose-50 hover:text-rose-600"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </li>
-        ))}
+              <label className="block">
+                <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-500">למי מועבר</span>
+                <input
+                  value={item.payee}
+                  maxLength={160}
+                  onChange={(event) => onChange(item.id, { payee: event.target.value })}
+                  placeholder="המוכר, נאמנות אצל עו״ד…"
+                  className={inputClass}
+                />
+              </label>
+              <label className="block">
+                <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-500">באיזה שלב / במה מותנה</span>
+                <textarea
+                  value={item.condition}
+                  maxLength={600}
+                  rows={2}
+                  onChange={(event) => onChange(item.id, { condition: event.target.value })}
+                  placeholder="למשל: תוך 14 ימים מרישום הערת האזהרה"
+                  className={`${inputClass} resize-y`}
+                />
+                <input
+                  type="date"
+                  value={item.dueDate ?? ''}
+                  onChange={(event) => onChange(item.id, { dueDate: event.target.value || null })}
+                  aria-label="תאריך משוער"
+                  className={`${inputClass} mt-1.5 cursor-pointer text-sm`}
+                />
+              </label>
+              <label className="block">
+                <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-500">סכום</span>
+                <div dir="rtl" className="relative">
+                  <NumericInput
+                    integer
+                    value={item.amount}
+                    onChange={(value) => onChange(item.id, { amount: value })}
+                    className={`${inputClass} pl-8 font-black`}
+                  />
+                  <span dir="rtl" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₪</span>
+                </div>
+              </label>
+              <div className="flex items-center gap-1 md:flex-col md:pt-5">
+                <button
+                  type="button"
+                  onClick={() => onMove(item.id, -1)}
+                  disabled={index === 0}
+                  aria-label="הקדמה"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(item.id, 1)}
+                  disabled={index === rows.length - 1}
+                  aria-label="דחייה"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-30"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(item.id)}
+                  aria-label="מחיקת הפעימה"
+                  className="rounded-lg p-1.5 text-slate-300 hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
-      <footer className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-3">
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={full}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-button font-black transition-colors disabled:opacity-40 ${tone.button}`}
-        >
-          <Plus className="h-4 w-4" />
-          {equity ? 'הוספת פעימה מההון העצמי' : 'הוספת פעימה מכספי הבנק'}
-        </button>
-        {rows.length > 0 && Math.abs(gap) > 1 && (
-          <>
-            <span className={`text-sm font-bold ${gap > 0 ? 'text-amber-700' : 'text-rose-700'}`}>
-              {gap > 0 ? `נותרו ${formatShekel(gap)} לחלוקה` : `${formatShekel(-gap)} מעבר לסכום`}
-            </span>
-            <button
-              type="button"
-              onClick={onBalance}
-              className="rounded-lg px-2 py-1 text-sm font-black text-slate-600 underline-offset-2 hover:underline"
-            >
-              התאמה בפעימה האחרונה
-            </button>
-          </>
-        )}
+      <footer className="space-y-2 border-t border-slate-100 px-4 py-3">
+        {groups.map((group) => {
+          const gap = group.target - group.paid;
+          const has = rows.some((item) => item.source === group.source);
+          return (
+            <div key={group.source} className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onAdd(group.source)}
+                disabled={full}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-button font-black transition-colors disabled:opacity-40 ${group.button}`}
+              >
+                <Plus className="h-4 w-4" />
+                {group.source === 'EQUITY' ? 'הוספת פעימה מההון העצמי' : 'הוספת פעימה מכספי הבנק'}
+              </button>
+              {has && Math.abs(gap) > 1 && (
+                <>
+                  <span dir="rtl" className={`text-sm font-bold ${gap > 0 ? 'text-amber-700' : 'text-rose-700'}`}>
+                    {gap > 0 ? `נותרו ${formatShekel(gap)} לחלוקה` : `${formatShekel(-gap)} מעבר לסכום`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onBalance(group.source)}
+                    className="rounded-lg px-2 py-1 text-sm font-black text-slate-600 underline-offset-2 hover:underline"
+                  >
+                    התאמה בפעימה האחרונה
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
       </footer>
     </section>
   );

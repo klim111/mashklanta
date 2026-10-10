@@ -57,6 +57,11 @@ export interface ServiceChooserProps {
    * משכנתא חדשה או מיחזור פותחת את התהליך מיד, בלי מסך המסלולים.
    */
   hasAccess?: boolean;
+  /**
+   * אורח בעמוד הבית: משכנתא חדשה או מיחזור מובילים ישר להרשמה (דרך onSelf),
+   * בלי מסך המסלולים והתמחור
+   */
+  goalsGoToSignup?: boolean;
   /** פתיחה ישירה במסך סוג השירות, למשל אחרי חזרה מההרשמה */
   initialGoal?: FlowGoal | null;
   /** המסלול העצמאי — פותח את הכלי (או את הסיור) */
@@ -81,6 +86,7 @@ export function ServiceChooser({
   title = 'מה תרצו לעשות?',
   subtitle,
   hasAccess = false,
+  goalsGoToSignup = false,
   initialGoal = null,
   onSelf,
   onAdvisor,
@@ -108,7 +114,7 @@ export function ServiceChooser({
       return;
     }
     // שילמו כבר — אין מסלול לבחור, התהליך נפתח ישר בשלב הראשון
-    if (hasAccess) {
+    if (hasAccess || goalsGoToSignup) {
       onSelf(next);
       return;
     }
@@ -172,7 +178,9 @@ export function ServiceChooser({
                         ? 'שלחו בקשה ליועץ'
                         : hasAccess
                           ? 'התחילו את התהליך'
-                          : 'המשיכו לבחירת המסלול'}
+                          : goalsGoToSignup
+                            ? 'הירשמו והתחילו'
+                            : 'המשיכו לבחירת המסלול'}
                       <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                     </span>
                   </motion.button>

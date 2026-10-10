@@ -8,6 +8,8 @@ import { chatAttachmentUrl, useChat } from './useConversation';
 import { accentFor } from './ConversationWindow';
 import { EmailAttachments } from './EmailAttachments';
 import { AttachButton, PendingFiles, useOutgoingFiles } from './OutgoingFiles';
+import { REQUEST_KINDS, REQUEST_KIND_CHOICES } from '@/lib/advisor-requests';
+import type { RequestKind } from '@/lib/advisor-requests';
 
 const TIME = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit' });
 const DAY = new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -26,10 +28,12 @@ function dayLabel(iso: string): string {
 export function ChatPane({ role, clientUserId }: { role: ConversationRole; clientUserId?: string | null }) {
   const { messages, ready, sending, error, send } = useChat(clientUserId, true);
   const [draft, setDraft] = useState('');
+  /** סוג פנייה שהלקוח סימן — ההודעה נפתחת גם כפנייה אצל היועץ */
+  const [kind, setKind] = useState<RequestKind | null>(null);
   const outgoing = useOutgoingFiles(clientUserId);
   const list = useRef<HTMLDivElement>(null);
   const accent = accentFor(role);
-  const canSend = (draft.trim() || outgoing.refs.length > 0) && !outgoing.uploading && !outgoing.failed;
+  const canSend = (draft.trim() || outgoing.refs.length > 0 || kind) && !outgoing.uploading && !outgoing.failed;
 
   useEffect(() => {
     list.current?.scrollTo({ top: list.current.scrollHeight });
@@ -37,8 +41,10 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
 
   const submit = async () => {
     if (!canSend) return;
-    if (await send(draft, outgoing.refs)) {
+    const request = kind ? { requestKind: kind, sourcePath: window.location.pathname } : undefined;
+    if (await send(draft, outgoing.refs, request)) {
       setDraft('');
+      setKind(null);
       outgoing.reset();
     }
   };
@@ -57,7 +63,7 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
             </p>
             <p className="mt-1 text-sm leading-relaxed text-slate-500">
               {role === 'CLIENT'
-                ? 'ההודעה נשמרת כאן, והיועץ מקבל התראה במייל. התשובה תופיע בחלון הזה.'
+                ? 'ההודעה נשמרת כאן, והיועץ מקבל התראה במייל. אפשר לסמן סוג פנייה ולצרף מסמך מהתיק או מהמחשב.'
                 : 'הודעה שתכתבו תופיע ללקוח באזור האישי, והוא יקבל התראה במייל.'}
             </p>
           </div>
@@ -89,6 +95,30 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
         <div className="mb-1.5 empty:hidden">
           <PendingFiles outgoing={outgoing} />
         </div>
+        {role === 'CLIENT' && (
+          <div role="radiogroup" aria-label="סוג הפנייה" className="mb-1.5 flex flex-wrap items-center gap-1.5 px-1">
+            <span className="text-2xs font-bold text-slate-500">סוג הפנייה (לא חובה):</span>
+            {REQUEST_KINDS.map((item) => {
+              const active = item === kind;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setKind(active ? null : item)}
+                  className={`rounded-full border px-2.5 py-0.5 text-2xs font-black transition-colors ${
+                    active
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700'
+                  }`}
+                >
+                  {REQUEST_KIND_CHOICES[item]}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <AttachButton outgoing={outgoing} clientUserId={clientUserId} />
           <textarea

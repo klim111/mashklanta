@@ -22,7 +22,7 @@ export function ConsultSentNotice({ onPrefill }: { onPrefill: (prefill: ConsultP
         הבקשה שלכם נשלחה ליועץ משכלנתא
       </div>
       <p className="mt-2 text-sm leading-relaxed text-slate-700">
-        היועץ יחזור אליכם בהקדם. בינתיים פתחו חשבון בפלטפורמה, ושם תוכלו:
+        היועץ יחזור אליכם בהקדם. למעקב אחרי סטטוס הפנייה הירשמו למשכלנתא. בחשבון תוכלו גם:
       </p>
       <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
         <li className="flex items-start gap-2">

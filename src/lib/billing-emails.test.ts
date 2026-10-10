@@ -32,6 +32,19 @@ describe('billing emails', () => {
     expect(email.html).not.toContain('<b>x</b>');
   });
 
+  it('names the process whose month is ending', () => {
+    const email = renewalReminderEmail({
+      name: null,
+      planName: 'דירה <ברמת גן>',
+      accessUntil: new Date('2026-11-08T10:00:00Z'),
+      daysLeft: 1,
+      price: 49,
+      renewUrl: 'https://mashkalanta.com/billing/renew?token=abc',
+    });
+    expect(email.html).toContain('לתהליך <strong>דירה &lt;ברמת גן&gt;</strong>');
+    expect(email.text).toContain('לתהליך "דירה <ברמת גן>"');
+  });
+
   it('offers to continue alone at the monthly price after advisory ends', () => {
     const email = advisoryEndedEmail({
       name: 'דנה <b>',

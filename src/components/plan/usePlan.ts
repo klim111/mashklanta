@@ -114,15 +114,30 @@ export async function createRefinancePlan(refinance: unknown, mix: unknown): Pro
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refinance, mix }),
   });
-  if (!response.ok) throw new Error(`failed to create refinance plan: ${response.status}`);
+  if (!response.ok) throw await planCreateErrorOf(response);
   return readPlan(response);
 }
 
-/** פתיחת תהליך נדחתה. `userMessage` — הסבר ללקוח כשהשרת נתן כזה (למשל הגבלת התהליכים הפתוחים) */
+/**
+ * פתיחת תהליך נדחתה. `userMessage` — הסבר ללקוח כשהשרת נתן כזה. `openPlans` —
+ * כשהתשלום הוא עבור תהליך אחד ויש תהליך שעוד לא הסתיים: התהליכים שאפשר למחוק
+ */
 export class PlanCreateError extends Error {
-  constructor(readonly userMessage: string | null) {
+  constructor(
+    readonly userMessage: string | null,
+    readonly openPlans: { id: string; name: string }[] = []
+  ) {
     super(userMessage ?? 'failed to create plan');
   }
+}
+
+async function planCreateErrorOf(response: Response): Promise<PlanCreateError> {
+  const body = await response.json().catch(() => null);
+  if (response.status !== 409) return new PlanCreateError(null);
+  return new PlanCreateError(
+    typeof body?.error === 'string' ? body.error : null,
+    Array.isArray(body?.openPlans) ? body.openPlans : []
+  );
 }
 
 export async function createPlan(name?: string): Promise<PlanView> {
@@ -131,10 +146,7 @@ export async function createPlan(name?: string): Promise<PlanView> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(name ? { name } : {}),
   });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new PlanCreateError(typeof body?.error === 'string' && response.status === 409 ? body.error : null);
-  }
+  if (!response.ok) throw await planCreateErrorOf(response);
   return readPlan(response);
 }
 

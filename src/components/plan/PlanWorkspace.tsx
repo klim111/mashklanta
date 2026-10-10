@@ -659,7 +659,13 @@ export function PlanWorkspace({
           {/* תיק המסמכים — זמין מכל שלב, עם ההתקדמות לכל שלב ולכל התהליך */}
           {!tour && (
             <div className="mt-4">
-              <VaultButton planId={plan.id} data={plan.data} stage={stage} variant="header" />
+              <VaultButton
+                planId={plan.id}
+                data={plan.data}
+                stage={stage}
+                variant="header"
+                onSigningChange={(next: SigningData) => updateStage('SIGNING', next)}
+              />
             </div>
           )}
         </div>
@@ -877,14 +883,40 @@ export function PlanWorkspace({
                     }
                   />
                 )}
-                {stage === 'AUCTION' && (
+                {stage === 'AUCTION' && !internalRefinance && (
                   <AuctionStage
                     data={plan.data}
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
                     advisorRun={advisorRun}
-                    banks={internalRefinance && refinance ? [refinance.bank] : undefined}
                     refinance={refinance}
+                  />
+                )}
+                {/*
+                  במיחזור פנימי זה השלב האחרון: אימות ההצעה של הבנק, ואחריו
+                  תת-השלבים של החתימה בדיוק כמו בשלב 5 של משכנתא חדשה.
+                */}
+                {stage === 'AUCTION' && internalRefinance && (
+                  <SigningStage
+                    data={plan.data}
+                    planId={plan.id}
+                    onChange={(next: SigningData) => updateStage('SIGNING', next)}
+                    flow={flow}
+                    advisorRun={advisorRun}
+                    lead={{
+                      label: 'אימות ההצעה',
+                      continueLabel: 'לאישור לבנק לפתיחת תיק',
+                      content: (
+                        <AuctionStage
+                          data={plan.data}
+                          planId={plan.id}
+                          onChange={(next: AuctionData) => updateStage('AUCTION', next)}
+                          advisorRun={advisorRun}
+                          banks={refinance ? [refinance.bank] : undefined}
+                          refinance={refinance}
+                        />
+                      ),
+                    }}
                   />
                 )}
                 {stage === 'SIGNING' && (
@@ -932,7 +964,13 @@ export function PlanWorkspace({
       )}
 
       {/* הוספת משימה, תיק המסמכים, ההתכתבות והחזרה לדאשבורד — תחת כפתור פעולות עגול אחד */}
-      <StageActionsMenu planId={plan.id} data={plan.data} stage={stage} tour={tour} />
+      <StageActionsMenu
+        planId={plan.id}
+        data={plan.data}
+        stage={stage}
+        tour={tour}
+        onSigningChange={(next: SigningData) => updateStage('SIGNING', next)}
+      />
 
       {/* הסתיים החודש ששולם, או שהתהליך לא שולם — הכלים נעולים עד לחידוש */}
       {!tour && plan.access && processLocked(plan.access) && (

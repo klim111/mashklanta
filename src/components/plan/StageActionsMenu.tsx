@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { CalendarPlus, FolderOpen, LayoutDashboard, MessageCircle } from 'lucide-react';
-import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
+import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
 import { DocumentVaultDialog, useDocumentProgress } from './documents/DocumentVaultDialog';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
-import { CHAT_TITLE } from '@/lib/conversation';
+import { CHAT_MENU_LABEL } from '@/lib/conversation';
 import { CountBadge, FloatingActions } from '@/components/actions/FloatingActions';
 import type { FloatingAction } from '@/components/actions/FloatingActions';
 import { AddTaskDialog } from './tasks/AddTaskDialog';
@@ -24,10 +24,13 @@ export function StageActionsMenu({
   data,
   stage,
   tour = false,
+  onSigningChange,
 }: {
   planId: string;
   data: PlanData;
   stage: PlanStageId;
+  /** שמירת בחירת סוג העסקה מתיק המסמכים */
+  onSigningChange?: (next: SigningData) => void;
   /** בסיור ההיכרות אין תיק מסמכים ואין צ׳אט — רק החזרה לדאשבורד */
   tour?: boolean;
 }) {
@@ -52,12 +55,11 @@ export function StageActionsMenu({
       onClick: () => setTaskOpen(true),
     });
   }
-  items.push({ key: 'dashboard', label: 'חזרה לדאשבורד', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' });
   if (!tour) {
     items.push({
       key: 'chat',
       // חלון הצ׳אט המלא יושב בדיוק מעל העיגול
-      label: chatOpen ? 'הקטנת הצ׳אט' : CHAT_TITLE,
+      label: chatOpen ? 'הקטנת הצ׳אט' : CHAT_MENU_LABEL,
       icon: <MessageCircle className="h-6 w-6" />,
       badge: unread > 0 ? <CountBadge value={unread} /> : null,
       onClick: () => conversation?.toggle(),
@@ -75,6 +77,8 @@ export function StageActionsMenu({
       demo: 'vault-button',
     });
   }
+  // החזרה לדאשבורד הכי למטה, צמודה לעיגול
+  items.push({ key: 'dashboard', label: 'חזרה לדאשבורד', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' });
 
   return (
     <>
@@ -93,6 +97,7 @@ export function StageActionsMenu({
             planId={planId}
             data={data}
             stage={stage}
+            onSigningChange={onSigningChange}
           />
           <AddTaskDialog open={taskOpen} onOpenChange={setTaskOpen} planId={planId} stage={stage} onSubmit={addTask} />
         </>

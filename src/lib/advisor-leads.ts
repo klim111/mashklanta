@@ -5,11 +5,15 @@ import type { RequestKind } from './advisor-requests';
 import { ensureClientLinkSafely } from './advisor-link';
 import { emailAdvisorAboutRequest } from './advisor-notify';
 import { pageLabel } from './page-labels';
+import { recordRequestInChat } from './conversation-store';
 import { PLAN_STAGES } from './mortgage-plan';
 import type { PlanStageId } from './mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { LEAD_TOPIC_LABELS, parseLeadTopic } from './advisor-lead-topics';
 import type { LeadTopic } from './advisor-lead-topics';
+import type { StoredAttachment } from './conversation';
+import { leadFileViews, storedLeadFiles } from './lead-files';
+import type { LeadFileView } from './lead-file-paths';
 
 /**
  * פניות ליווי כלליות מהאזור האישי.
@@ -41,6 +45,8 @@ export interface AdvisorLeadView {
   stageLabel: string | null;
   status: 'OPEN' | 'HANDLED' | 'CLOSED';
   clientId: string | null;
+  /** קבצים שהלקוח צירף, למשל טופס הצעה מהבנק */
+  files: LeadFileView[];
   createdAt: string;
 }
 
@@ -56,6 +62,7 @@ const leadSelect = {
   stage: true,
   status: true,
   clientId: true,
+  files: true,
   createdAt: true,
 } satisfies Prisma.AdvisorLeadSelect;
 
@@ -85,6 +92,7 @@ function toView(row: LeadRow): AdvisorLeadView {
     stageLabel: stageLabel(row.stage),
     status: row.status as AdvisorLeadView['status'],
     clientId: row.clientId,
+    files: leadFileViews(row.files),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -104,6 +112,13 @@ export interface CreateLeadInput {
   requestKind?: RequestKind | null;
   /** העמוד שממנו נשלחה הפנייה */
   sourcePath?: string | null;
+  /**
+   * לקוח רשום: הפנייה נכתבת גם בצ׳אט שלו עם היועץ, כהודעה ממנו. `false` —
+   * כשהפנייה נשלחה מהצ׳אט עצמו, וההודעה כבר שם.
+   */
+  inChat?: boolean;
+  /** קבצים שהלקוח צירף, אחרי בדיקה מול חנות הקבצים (resolveLeadFiles) */
+  files?: StoredAttachment[];
 }
 
 /** טלפון ישראלי סביר — לפחות תשע ספרות, בלי תווי הפרדה */
@@ -125,7 +140,7 @@ export async function createLead(
   input: CreateLeadInput
 ): Promise<AdvisorLeadView | null> {
   const name = input.name.trim();
-  const phone = (input.phone ?? '').trim();
+  let phone = (input.phone ?? '').trim();
   const email = (input.email ?? '').trim().toLowerCase();
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!name) return null;
@@ -134,6 +149,11 @@ export async function createLead(
   // לקוח רשום בלי יועץ משויך עכשיו ליועץ של הפלטפורמה, כדי שהפנייה וכל מה
   // שעשה יופיעו אצלו
   const client = userId ? await ensureClientLinkSafely(userId) : null;
+  // לקוח רשום לא נשאל שוב על מה שכבר ידוע — הטלפון מכרטיס הלקוח, אם יש
+  if (client && !phone) {
+    const card = await prisma.client.findUnique({ where: { id: client.clientId }, select: { phone: true } });
+    phone = card?.phone?.trim() ?? '';
+  }
   const requestKind = input.requestKind ?? null;
   // השלב שבו הלקוח נמצא בתהליך הפעיל — כדי שהיועץ יידע מאיפה הוא פנה
   const plan = userId
@@ -157,6 +177,7 @@ export async function createLead(
       requestKind,
       sourcePath: input.sourcePath ?? null,
       stage: plan?.currentStage ?? null,
+      ...(input.files && input.files.length > 0 ? { files: input.files as unknown as Prisma.InputJsonValue } : {}),
     },
     select: leadSelect,
   });
@@ -170,10 +191,20 @@ export async function createLead(
       ['תהליך', plan ? plan.propertyAddress || plan.name : null],
       ['שלב בתהליך', stageLabel(plan?.currentStage ?? null)],
       ['חשבון', userId ? 'לקוח רשום' : 'אורח, בלי חשבון'],
+      ['קבצים מצורפים', input.files?.length ? input.files.map((file) => file.fileName).join(', ') : null],
     ],
     from: { name, email: emailValid ? email : null, phone: phone || null },
     note: input.notes,
   });
+
+  if (client && userId && input.inChat !== false) {
+    const lines = [
+      `${requestKind ? REQUEST_KIND_LABELS[requestKind] : 'פנייה ליועץ'} · ${LEAD_TOPIC_LABELS[input.topic]}`,
+      pageLabel(input.sourcePath) ? `נשלחה מ: ${pageLabel(input.sourcePath)}` : null,
+      input.notes?.trim() ? `\n${input.notes.trim()}` : null,
+    ];
+    await recordRequestInChat(userId, lines.filter(Boolean).join('\n'));
+  }
 
   return toView(row);
 }
@@ -226,3 +257,21 @@ export async function listOwnOpenLeads(userId: string, email: string | null): Pr
     };
   });
 }
+
+/**
+ * קובץ שצורף לפנייה, לצפייה אצל היועץ: הפנייה שויכה אליו או שעדיין לא שויכה
+ * לאף יועץ (כמו ברשימת הפניות).
+ */
+export async function leadFileForAdvisor(
+  advisorId: string,
+  leadId: string,
+  fileId: string
+): Promise<StoredAttachment | null> {
+  const lead = await prisma.advisorLead.findFirst({
+    where: { id: leadId, OR: [{ advisorId }, { advisorId: null }] },
+    select: { files: true },
+  });
+  if (!lead) return null;
+  return storedLeadFiles(lead.files).find((file) => file.id === fileId) ?? null;
+}
+

@@ -47,22 +47,32 @@ function planWithFinalBank(receivedDaysAgo: number): AgendaPlan {
 }
 
 describe('rate validity alerts', () => {
-  it('stays quiet while more than 20 days are left', () => {
-    const keys = planRecommendations(planWithFinalBank(2)).map((row) => row.key);
-    expect(keys.some((key) => key.includes('rate-'))).toBe(false);
+  it('keeps one alert that counts the days left', () => {
+    const rate = planRecommendations(planWithFinalBank(2)).filter((row) => row.key.includes('rate-'));
+    expect(rate).toHaveLength(1);
+    expect(rate[0].key).toBe('p1:rate-validity');
+    expect(rate[0].title).toBe('תוקף הריביות בבנק לאומי פג בעוד 22 ימים');
+    expect(rate[0].tone).toBe('info');
   });
 
-  it('pops the alert of the threshold just crossed, for the final bank', () => {
-    const [first] = planRecommendations(planWithFinalBank(12));
-    expect(first.key).toBe('p1:rate-alert-15');
-    expect(first.title).toBe('נשארו 12 ימים לתוקף הריביות בבנק לאומי');
+  it('turns into a daily alert from ten days before expiry', () => {
+    const [first] = planRecommendations(planWithFinalBank(17));
+    expect(first.key).toBe('p1:rate-days-7');
+    expect(first.title).toBe('תוקף הריביות בבנק לאומי פג בעוד 7 ימים');
+    expect(first.tone).toBe('warning');
   });
 
-  it('puts every approval expiry and the final bank alerts in the calendar', () => {
+  it('shows no calendar dot until ten days are left', () => {
     const events = buildCalendarEvents({ ...EMPTY_AGENDA_INPUT, plans: [planWithFinalBank(0)] });
-    const ids = events.map((event) => event.id);
-    expect(ids).toContain('rate-valid:p1:לאומי');
-    expect(ids).toContain('rate-valid:p1:דיסקונט');
-    expect(ids.filter((id) => id.startsWith('rate-alert:p1:'))).toHaveLength(4);
+    expect(events.filter((event) => event.id.startsWith('rate-'))).toHaveLength(0);
+  });
+
+  it('puts one red dot on today from ten days before expiry', () => {
+    const events = buildCalendarEvents({ ...EMPTY_AGENDA_INPUT, plans: [planWithFinalBank(14)] });
+    const rate = events.filter((event) => event.id.startsWith('rate-'));
+    expect(rate).toHaveLength(1);
+    expect(rate[0].kind).toBe('deadline');
+    expect(rate[0].title).toBe('תוקף הריביות בבנק לאומי פג בעוד 10 ימים');
+    expect(new Date(rate[0].at).toDateString()).toBe(new Date().toDateString());
   });
 });

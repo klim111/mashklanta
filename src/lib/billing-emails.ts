@@ -78,6 +78,8 @@ ${invoiceNote}
 
 export interface RenewalReminderInput {
   name: string | null;
+  /** התהליך שהחודש שלו מסתיים — כל תשלום הוא עבור תהליך אחד */
+  planName?: string | null;
   accessUntil: Date;
   daysLeft: number;
   price: number;
@@ -89,19 +91,21 @@ export function renewalReminderEmail(input: RenewalReminderInput) {
   const greeting = input.name ? `שלום ${escapeHtml(input.name)},` : 'שלום,';
   const accessUntil = hebrewDate(input.accessUntil);
   const when = input.daysLeft <= 1 ? 'מחר' : `בעוד ${input.daysLeft} ימים`;
+  const plan = input.planName ? ` לתהליך <strong>${escapeHtml(input.planName)}</strong>` : '';
+  const planText = input.planName ? ` לתהליך "${input.planName}"` : '';
   return {
     subject: `חודש הגישה ב${appName()} מסתיים ${when}`,
     html: authEmailShell(
       'חודש הגישה מסתיים בקרוב',
       `<p style="margin:0 0 12px;">${greeting}</p>
-         <p style="margin:0 0 12px;">חודש הגישה שלכם לפלטפורמה מסתיים ב-<strong>${accessUntil}</strong>. אחרי התאריך הזה הכלים ננעלים לעריכה, וכל מה שהזנתם נשמר.</p>
+         <p style="margin:0 0 12px;">חודש הגישה שלכם${plan || ' לפלטפורמה'} מסתיים ב-<strong>${accessUntil}</strong>. אחרי התאריך הזה הכלים ננעלים לעריכה, וכל מה שהזנתם נשמר.</p>
          <p style="margin:0 0 20px;">צריכים עוד זמן? אפשר לחדש לחודש נוסף ב-₪${input.price}. החיוב מתבצע רק אחרי שתאשרו ותשלמו בעמוד התשלום המאובטח.</p>
          ${button(input.renewUrl, 'אישור חידוש לחודש נוסף')}
          <p style="margin:0;color:#475569;font-size:14px;">סיימתם? אין צורך לעשות דבר. אין חיוב חוזר אוטומטי.</p>`
     ),
     text: `${input.name ? `שלום ${input.name},` : 'שלום,'}
 
-חודש הגישה שלכם ב${appName()} מסתיים ב-${accessUntil}.
+חודש הגישה שלכם${planText} ב${appName()} מסתיים ב-${accessUntil}.
 לחידוש לחודש נוסף ב-₪${input.price} (החיוב רק אחרי שתאשרו):
 ${input.renewUrl}
 

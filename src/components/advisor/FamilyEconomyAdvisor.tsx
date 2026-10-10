@@ -92,7 +92,8 @@ export function FamilyEconomyLeadDialog({
   context?: AdvisorLeadContext;
 }) {
   const { data: session, status } = useSession();
-  const isMember = status === 'authenticated' && !!session?.user;
+  // לקוח רשום לא נשאל על פרטים שכבר ידועים ולא על סוג הפנייה — רק הערה
+  const isMember = status === 'authenticated' && !!session?.user && session.user.role !== 'ADVISOR';
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -114,7 +115,7 @@ export function FamilyEconomyLeadDialog({
   }, [open, session?.user?.name, session?.user?.email]);
 
   const digits = phone.replace(/\D/g, '');
-  const ready = name.trim().length > 1 && digits.length >= 9;
+  const ready = isMember || (name.trim().length > 1 && digits.length >= 9);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -139,11 +140,9 @@ export function FamilyEconomyLeadDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: 'FAMILY_ECONOMY',
-          name: name.trim(),
-          phone: phone.trim(),
-          email: email.trim() || undefined,
+          ...(isMember ? {} : { name: name.trim(), phone: phone.trim(), email: email.trim() || undefined }),
           notes,
-          requestKind: kind,
+          requestKind: isMember ? 'GUIDANCE' : kind,
           sourcePath: currentPagePath(),
         }),
       });
@@ -210,49 +209,53 @@ export function FamilyEconomyLeadDialog({
               {ADVISOR_COST_NOTE}
             </p>
 
-            <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
+            {!isMember && (
+              <>
+                <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-bold text-slate-600">
-                שם מלא
-                <input
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className={`mt-1 ${inputClass}`}
-                  placeholder="איך לפנות אליכם"
-                  autoComplete="name"
-                />
-              </label>
-              <label className="text-xs font-bold text-slate-600">
-                טלפון
-                <input
-                  required
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  className={`mt-1 ${inputClass}`}
-                  placeholder="050-0000000"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  dir="ltr"
-                />
-              </label>
-            </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-bold text-slate-600">
+                    שם מלא
+                    <input
+                      required
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      className={`mt-1 ${inputClass}`}
+                      placeholder="איך לפנות אליכם"
+                      autoComplete="name"
+                    />
+                  </label>
+                  <label className="text-xs font-bold text-slate-600">
+                    טלפון
+                    <input
+                      required
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      className={`mt-1 ${inputClass}`}
+                      placeholder="050-0000000"
+                      autoComplete="tel"
+                      inputMode="tel"
+                      dir="ltr"
+                    />
+                  </label>
+                </div>
 
-            <label className="mt-3 block text-xs font-bold text-slate-600">
-              אימייל <span className="font-normal text-slate-400">(רשות)</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={`mt-1 ${inputClass}`}
-                placeholder="name@example.com"
-                autoComplete="email"
-                dir="ltr"
-              />
-            </label>
+                <label className="mt-3 block text-xs font-bold text-slate-600">
+                  אימייל <span className="font-normal text-slate-400">(רשות)</span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className={`mt-1 ${inputClass}`}
+                    placeholder="name@example.com"
+                    autoComplete="email"
+                    dir="ltr"
+                  />
+                </label>
+              </>
+            )}
 
-            <label className="mt-3 block text-xs font-bold text-slate-600">
+            <label className={`${isMember ? '' : 'mt-3'} block text-xs font-bold text-slate-600`}>
               מה חשוב שהיועץ ידע <span className="font-normal text-slate-400">(רשות)</span>
               <textarea
                 value={note}
@@ -267,7 +270,8 @@ export function FamilyEconomyLeadDialog({
             {isMember && (
               <p className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
                 <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                הפנייה תישלח עם חשבון משכלנתא שלכם, כך שהיועץ יראה גם את מה שהזנתם בתהליך
+                הפנייה תישלח עם חשבון משכלנתא שלכם ותופיע גם בצ׳אט עם נציג משכלנתא, כך שהיועץ יראה
+                גם את מה שהזנתם בתהליך
               </p>
             )}
 
@@ -292,7 +296,7 @@ export function FamilyEconomyLeadDialog({
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-emerald-600 to-teal-600 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                שליחת הפנייה ליועץ
+                {isMember ? 'בקשו ליווי' : 'שליחת הפנייה ליועץ'}
               </button>
             </div>
           </form>

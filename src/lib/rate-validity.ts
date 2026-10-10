@@ -4,7 +4,7 @@
  * הריביות שבנק נוקב באישור עקרוני שמורות ללקוח 24 ימים מיום קבלת האישור. עד
  * אז צריך להשלים את המשכנתא — אחרי זה הבנק רשאי לתמחר מחדש. הקובץ גוזר, לכל
  * אישור עקרוני שהתקבל, את מועד פקיעת הריביות וכמה ימים נשארו עד אליו; ומזה
- * את ההתראות של 20, 15, 10 ו-5 ימים לבנק שההצעה שלו נבחרה כסופית במכרז.
+ * התראה אחת שמתעדכנת כל יום, ונקודה אדומה בלוח השנה מעשרה ימים לפני הפקיעה.
  *
  * הקובץ טהור — בלי React ובלי Prisma — כדי שישמש את השלבים, את הדאשבורד ואת
  * לוח השנה באותה צורה, ושאפשר יהיה לבדוק אותו ישירות.
@@ -136,6 +136,30 @@ export function rateValidityTone(daysLeft: number): RateValidityTone {
   if (daysLeft <= 5) return 'urgent';
   if (daysLeft <= 10) return 'soon';
   return 'ok';
+}
+
+/** מכמה ימים לפני הפקיעה נכנסת לוח השנה נקודה אדומה, שמתעדכנת כל יום */
+export const RATE_CALENDAR_DAYS = 10;
+
+/**
+ * האישור שהספירה שלו מוצגת ללקוח: הבנק שנבחר סופית במכרז, ועד שנבחר — האישור
+ * שהכי קרוב לפקוע (ואם כולם פגו, הראשון). כך יש תמיד ספירה אחת בלבד.
+ */
+export function leadRateValidity(rows: RateValidityRow[]): RateValidityRow | null {
+  return (
+    rows.find((row) => row.final) ??
+    rows.filter((row) => row.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft)[0] ??
+    rows[0] ??
+    null
+  );
+}
+
+/** "תוקף הריביות בבנק לאומי פג בעוד 7 ימים" — לשורה ולנקודה בלוח השנה */
+export function rateCountdownTitle(row: RateValidityRow): string {
+  if (row.daysLeft < 0) return `תוקף הריביות בבנק ${row.bank} פג`;
+  if (row.daysLeft === 0) return `היום האחרון לתוקף הריביות בבנק ${row.bank}`;
+  if (row.daysLeft === 1) return `תוקף הריביות בבנק ${row.bank} פג מחר`;
+  return `תוקף הריביות בבנק ${row.bank} פג בעוד ${row.daysLeft} ימים`;
 }
 
 /** מועד ההתראה של כל סף — לשיבוץ בלוח השנה */

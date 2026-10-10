@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  blankInstallment,
   draftSchedule,
-  orderInstallments,
+  equityPaidBeforeBank,
+  insertInstallment,
+  requiredEquityBeforeBank,
   parsePaymentSchedule,
   scheduleDefined,
   scheduleIssues,
@@ -31,11 +34,32 @@ describe('draftSchedule', () => {
 describe('scheduleIssues', () => {
   const base = (): PaymentSchedule => draftSchedule(1_000_000, 600_000);
 
-  it('rejects equity paid after bank money', () => {
+  it('allows equity after bank money when no percentage is required', () => {
     const schedule = base();
-    schedule.installments = [...schedule.installments.slice(1), schedule.installments[0]];
-    expect(scheduleIssues(schedule).map((issue) => issue.kind)).toContain('order');
-    expect(orderInstallments(schedule.installments).at(-1)?.source).toBe('BANK');
+    schedule.installments = [schedule.installments.at(-1)!, ...schedule.installments.slice(0, -1)];
+    expect(schedule.installments[0].source).toBe('BANK');
+    expect(scheduleIssues(schedule)).toEqual([]);
+  });
+
+  it('alerts when less equity than the bank requires is paid before the bank money', () => {
+    const schedule = { ...base(), bankRequiredEquityPercent: 50 };
+    expect(requiredEquityBeforeBank(schedule)).toBe(200_000);
+    expect(scheduleIssues(schedule)).toEqual([]);
+
+    // רק הפעימה הראשונה (100,000) לפני הבנק
+    const bankRow = schedule.installments.at(-1)!;
+    schedule.installments = [schedule.installments[0], bankRow, ...schedule.installments.slice(1, -1)];
+    expect(equityPaidBeforeBank(schedule)).toBe(100_000);
+    const issue = scheduleIssues(schedule).find((item) => item.kind === 'bank-required-equity');
+    expect(issue?.message).toContain('50%');
+    expect(issue?.message).toContain('100,000');
+  });
+
+  it('inserts new equity before the first bank installment', () => {
+    const schedule = base();
+    const added = insertInstallment(schedule.installments, blankInstallment('EQUITY'));
+    expect(added.at(-1)?.source).toBe('BANK');
+    expect(insertInstallment(schedule.installments, blankInstallment('BANK')).at(-1)?.source).toBe('BANK');
   });
 
   it('checks the equity and bank totals against the split', () => {
@@ -76,6 +100,33 @@ describe('signing stage', () => {
     expect(missingForStage('SIGNING', data)).toContain('הגדרת פעימות התשלום');
     data.SIGNING.paymentSchedule = schedule;
     expect(missingForStage('SIGNING', data)).not.toContain('הגדרת פעימות התשלום');
+  });
+
+  it('closes stage 5 once the signing at the bank is marked done', () => {
+    const data = emptyPlanData();
+    data.ANALYSIS.dealType = 'any_purpose';
+    expect(stageIsComplete('SIGNING', data)).toBe(false);
+    expect(missingForStage('SIGNING', data)).toContain('סימון שהחתימה על תיק המשכנתא בבנק בוצעה');
+    const parsed = parseStageData('SIGNING', {
+      visits: { 'bank-sign': { date: '2026-11-02', doneAt: '2026-11-02T10:00:00.000Z' }, 'collateral-submit': { date: 'bad' } },
+      tiyulim: { documentId: 'd1', sentTo: 'a@b.co', documentsProvided: true },
+    });
+    expect(parsed.visits['collateral-submit']).toEqual({ date: null, doneAt: null });
+    expect(parsed.tiyulim).toMatchObject({ documentId: 'd1', sentTo: 'a@b.co', documentsProvided: true, sentAt: null });
+    data.SIGNING = parsed;
+    expect(stageIsComplete('SIGNING', data)).toBe(true);
+  });
+
+  it('keeps internal refinance open until the signing is done', () => {
+    const data = emptyPlanData();
+    data.MIX.refinance = { mode: 'INTERNAL' } as typeof data.MIX.refinance;
+    data.AUCTION.signedMix = {
+      mixKey: 'm1', mixRecordId: null, bank: 'לאומי', name: 'x', monthlyPayment: 5000,
+      averageRate: 4, totalInterest: null, totalPaid: null, months: null, chosenAt: '2026-10-01T00:00:00Z',
+    };
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+    data.SIGNING.visits['bank-sign'].doneAt = '2026-11-02T10:00:00.000Z';
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
   });
 
   it('does not require a schedule for refinance', () => {

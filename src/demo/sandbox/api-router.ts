@@ -121,9 +121,9 @@ export class DemoApiRouter {
   private profile = demoProfile();
   private rateRequests: Record<string, unknown>[] = [];
   private equityPlan: Record<string, unknown> | null = null;
-  /** כלי מצב הון ותזרים — נשמר בזיכרון בלבד */
   /** פניות ליועץ שנשלחו בהדגמה — לשורת "הבקשה הועברה ליועץ" */
   private leads: Array<Record<string, unknown>> = [];
+  /** כלי מצב הון ותזרים — נשמר בזיכרון בלבד */
   private cashFlow: Record<string, unknown> | null = {
     household: 'COUPLE',
     borrowerName: 'דנה',

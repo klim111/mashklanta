@@ -113,6 +113,9 @@ export interface ConversationContact {
 /** שם הצ׳אט של הלקוח בכל המסכים — בלי שם היועץ */
 export const CHAT_TITLE = 'צ׳אט עם נציג משכלנתא';
 
+/** הפריט של הצ׳אט בעיגול הפעולות — שם יש גם את תיבת המיילים */
+export const CHAT_MENU_LABEL = 'צ׳אט/מייל';
+
 export const RECIPIENT_ROLES = {
   BANKER: 'בנקאי',
   ADVISOR: 'יועץ',

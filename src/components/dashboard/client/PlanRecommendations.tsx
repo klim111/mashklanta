@@ -15,7 +15,7 @@ const ICONS: Record<string, typeof Gavel> = {
 
 function iconFor(recommendation: PlanRecommendation) {
   const suffix = recommendation.key.split(':').pop() ?? '';
-  // התראות תוקף הריביות: rate-alert-20, rate-alert-15 … ו-rate-expired
+  // ההתראה על תוקף הריביות: rate-validity, rate-days-7 … ו-rate-expired
   if (suffix.startsWith('rate-')) return AlarmClock;
   return ICONS[suffix] ?? Lightbulb;
 }

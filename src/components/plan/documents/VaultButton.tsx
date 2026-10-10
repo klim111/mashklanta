@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { FolderOpen } from 'lucide-react';
-import type { PlanData, PlanStageId } from '@/lib/mortgage-plan';
+import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { DocumentVaultDialog, ProgressBar, useDocumentProgress } from './DocumentVaultDialog';
 import { demoId } from '@/demo/demo-attr';
@@ -19,18 +19,28 @@ export function VaultButton({
   data,
   stage = null,
   variant = 'header',
+  onSigningChange,
 }: {
   planId: string;
   data: PlanData;
   stage?: PlanStageId | null;
   variant?: 'header' | 'sidebar' | 'compact';
+  /** שמירת בחירת סוג העסקה דרך שולחן העבודה */
+  onSigningChange?: (next: SigningData) => void;
 }) {
   const [open, setOpen] = useState(false);
   const { progress } = useDocumentProgress(planId, data);
   const relevant = progress.stages.filter((row) => row.relevant);
 
   const dialog = (
-    <DocumentVaultDialog open={open} onOpenChange={setOpen} planId={planId} data={data} stage={stage} />
+    <DocumentVaultDialog
+      open={open}
+      onOpenChange={setOpen}
+      planId={planId}
+      data={data}
+      stage={stage}
+      onSigningChange={onSigningChange}
+    />
   );
 
   if (variant === 'compact') {

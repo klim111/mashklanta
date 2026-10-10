@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { CalendarPlus, FolderOpen, LayoutDashboard, Loader2, MessageCircle } from 'lucide-react';
-import { CHAT_TITLE } from '@/lib/conversation';
+import { CHAT_MENU_LABEL } from '@/lib/conversation';
 import { fetchPlans } from '@/components/plan/usePlan';
 import type { PlanView } from '@/components/plan/usePlan';
 import { DocumentVaultDialog } from '@/components/plan/documents/DocumentVaultDialog';
@@ -68,6 +68,20 @@ export function ClientActionsMenu({
 
   const items: FloatingAction[] = [
     { key: 'task', label: 'הוספת משימה', icon: <CalendarPlus className="h-6 w-6" />, onClick: () => void openTask() },
+    {
+      key: 'chat',
+      label: chatOpen ? 'הקטנת הצ׳אט' : CHAT_MENU_LABEL,
+      icon: <MessageCircle className="h-6 w-6" />,
+      badge: unread > 0 ? <CountBadge value={unread} /> : null,
+      onClick: onToggleChat,
+    },
+    {
+      key: 'vault',
+      label: 'תיק המסמכים',
+      icon: loadingPlan ? <Loader2 className="h-6 w-6 animate-spin" /> : <FolderOpen className="h-6 w-6" />,
+      onClick: () => void openVault(),
+    },
+    // החזרה לדאשבורד הכי למטה, צמודה לעיגול
     onDashboard
       ? {
           key: 'dashboard',
@@ -79,19 +93,6 @@ export function ClientActionsMenu({
           },
         }
       : { key: 'dashboard', label: 'חזרה לדאשבורד', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' },
-    {
-      key: 'chat',
-      label: chatOpen ? 'הקטנת הצ׳אט' : CHAT_TITLE,
-      icon: <MessageCircle className="h-6 w-6" />,
-      badge: unread > 0 ? <CountBadge value={unread} /> : null,
-      onClick: onToggleChat,
-    },
-    {
-      key: 'vault',
-      label: 'תיק המסמכים',
-      icon: loadingPlan ? <Loader2 className="h-6 w-6 animate-spin" /> : <FolderOpen className="h-6 w-6" />,
-      onClick: () => void openVault(),
-    },
   ];
 
   return (

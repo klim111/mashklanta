@@ -7,6 +7,10 @@ import { Layers, Trash2 } from 'lucide-react';
 import { formatShekel, NumberField } from './ui';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import { usePricing } from '@/components/pricing/PricingProvider';
+import { OneProcessNotice, extraProcessCheckoutHref } from '@/components/service-flow/OneProcessNotice';
+import type { OpenProcess } from '@/components/service-flow/OneProcessNotice';
+import { deletePlanRequest } from './usePlan';
 
 /**
  * תמהילים שנשמרו בלי נכס.
@@ -50,9 +54,13 @@ function UnassignedMixes({
   onDelete: (mixId: string) => void;
 }) {
   const router = useRouter();
+  const { platformPrice } = usePricing();
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** יש תהליך שעוד לא הסתיים — התשלום הוא עבור תהליך אחד. נשמר גם מה שחיכה לשיוך, כדי לנסות שוב אחרי המחיקה */
+  const [blocked, setBlocked] = useState<{ plans: OpenProcess[]; retry: () => void } | null>(null);
 
-  const attach = async (mix: SavedMix, deal: { address: string; value: number | null; amount: number | null }) => {
+  type Deal = { address: string; value: number | null; amount: number | null };
+  const attach = async (mix: SavedMix, deal: Deal) => {
     if (!mix.recordId) return;
     setBusyId(mix.recordId);
     try {
@@ -66,6 +74,14 @@ function UnassignedMixes({
           mortgageAmount: deal.amount,
         }),
       });
+      if (response.status === 409) {
+        const body = await response.json().catch(() => null);
+        setBlocked({
+          plans: Array.isArray(body?.openPlans) ? body.openPlans : [],
+          retry: () => void attach(mix, deal),
+        });
+        return;
+      }
       if (!response.ok) throw new Error('failed');
       const plan = await response.json();
       router.push(`/dashboard/plans/${plan.id}`);
@@ -90,6 +106,22 @@ function UnassignedMixes({
 
   return (
     <div className="grid gap-4">
+      <OneProcessNotice
+        open={blocked !== null}
+        onOpenChange={(next) => {
+          if (!next) setBlocked(null);
+        }}
+        plans={blocked?.plans ?? []}
+        goal="NEW_MORTGAGE"
+        price={platformPrice}
+        onPay={() => router.push(extraProcessCheckoutHref('NEW_MORTGAGE', '/dashboard#rate-requests'))}
+        deletePlan={deletePlanRequest}
+        onDeleted={() => {
+          const retry = blocked?.retry;
+          setBlocked(null);
+          retry?.();
+        }}
+      />
       {mixes.map((mix) => (
         <UnassignedMixCard
           key={mix.mix.id}

@@ -1,8 +1,10 @@
 import {
-  BANK_LAST_EXPLANATION,
+  BANK_EQUITY_EXPLANATION,
+  FULL_EQUITY_NOTE,
   LAWYER_NOTES,
-  PAYMENT_SOURCE_LABELS,
+  equityPaidBeforeBank,
   equityShare,
+  requiredEquityBeforeBank,
   scheduleIssues,
   sumBySource,
 } from './payment-schedule';
@@ -10,8 +12,9 @@ import type { PaymentInstallment, PaymentSchedule } from './payment-schedule';
 
 /**
  * דוח פעימות התשלום כעמוד HTML עצמאי — אותו עיצוב כמו טבלת הפעימות שהוכנה
- * קודם: סיכום עם חלוקת המחיר, טבלה אחת בשני חלקים (הון עצמי ואחריו כספי
- * הבנק), וההערות לעורך הדין. העמוד נפתח מהפלטפורמה ואפשר להוריד אותו כקובץ
+ * קודם: סיכום עם חלוקת המחיר, טבלה אחת של הפעימות לפי הסדר בחוזה (כל פעימה
+ * מסומנת במקור הכסף שלה), ההון העצמי שהבנק דורש לפני כספי המשכנתא, וההערות
+ * לעורך הדין. העמוד נפתח מהפלטפורמה ואפשר להוריד אותו כקובץ
  * ולשלוח לעורך הדין.
  */
 
@@ -57,36 +60,37 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
   const price = schedule.propertyPrice ?? 0;
   const bank = schedule.bankAmount ?? 0;
   const equity = equityShare(schedule) ?? 0;
-  const equityRows = schedule.installments.filter((item) => item.source === 'EQUITY');
-  const bankRows = schedule.installments.filter((item) => item.source === 'BANK');
   const issues = scheduleIssues(schedule);
   const equityWidth = price ? (equity / price) * 100 : 0;
+  const equityPaid = sumBySource(schedule, 'EQUITY');
+  const bankPaid = sumBySource(schedule, 'BANK');
+  const required = requiredEquityBeforeBank(schedule);
+  const paidBefore = equityPaidBeforeBank(schedule);
+  const hasBank = schedule.installments.some((item) => item.source === 'BANK');
 
-  const row = (item: PaymentInstallment, index: number) => `
-        <tr class="item">
-          <td class="pay">${installmentLabel(index)}</td>
+  const row = (item: PaymentInstallment, index: number) => {
+    const kind = item.source === 'EQUITY' ? 'equity' : 'mortgage';
+    return `
+        <tr class="item ${kind}">
+          <td class="pay">${installmentLabel(index)}<span class="tag ${kind}">${item.source === 'EQUITY' ? 'הון עצמי' : 'כספי הבנק'}</span></td>
           <td class="to">${escapeHtml(item.payee || '—')}</td>
           <td class="when">${item.dueDate ? `<b>${formatDueDate(item.dueDate)}.</b> ` : ''}${escapeHtml(item.condition || '')}</td>
           <td class="num amount">${shekelText(item.amount)}</td>
         </tr>`;
+  };
 
-  const section = (
-    kind: 'equity' | 'mortgage',
-    heading: string,
-    rows: PaymentInstallment[],
-    offset: number,
-    subtotal: number,
-    target: number
-  ) => `
-      <tbody class="${kind}">
-        <tr class="section ${kind}">
-          <th colspan="4" scope="rowgroup">${heading}<span class="step">${rows.length} ${rows.length === 1 ? 'פעימה' : 'פעימות'}</span><span class="src">מקור הכסף: ${kind === 'equity' ? PAYMENT_SOURCE_LABELS.EQUITY : 'משכנתא'}</span></th>
-        </tr>${rows.map((item, index) => row(item, offset + index)).join('')}
-        <tr class="subtotal">
-          <td colspan="3">סיכום ביניים: ${kind === 'equity' ? 'הון עצמי' : 'משכנתא'} <span class="share">(${percent(target, price)} מהעסקה)</span></td>
-          <td class="num">${shekelText(subtotal)}</td>
-        </tr>
-      </tbody>`;
+  const subtotal = (kind: 'equity' | 'mortgage', label: string, paid: number, target: number) => `
+        <tr class="subtotal ${kind}">
+          <td colspan="3">${label} <span class="share">(${percent(target, price)} מהעסקה)</span></td>
+          <td class="num">${shekelText(paid)}</td>
+        </tr>`;
+
+  const requiredText =
+    required === null
+      ? 'האחוז שהבנק דורש עוד לא הוזן בכלי. בררו אותו מול הבנק.'
+      : `הבנק דורש ${schedule.bankRequiredEquityPercent}% מההון העצמי (${shekelText(required)}) לפני הפעימה הראשונה מכספי המשכנתא. ${
+          hasBank ? `לפי הלוח משולמים עד אליה ${shekelText(paidBefore)} מההון העצמי.` : ''
+        }`;
 
   const stamp = new Intl.DateTimeFormat('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(generatedAt);
 
@@ -148,14 +152,17 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
   .section .step { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; border: 1px solid currentColor; margin-inline-start: 8px; vertical-align: 2px; }
   .section .src { font-weight: 500; font-size: 13px; color: var(--muted); margin-inline-start: 8px; }
   .pay { white-space: nowrap; font-weight: 800; font-size: 16px; }
-  tbody.equity td:first-child { border-inline-start: 4px solid var(--equity); }
-  tbody.mortgage td:first-child { border-inline-start: 4px solid var(--mortgage); }
+  tr.item.equity td:first-child { border-inline-start: 4px solid var(--equity); }
+  tr.item.mortgage td:first-child { border-inline-start: 4px solid var(--mortgage); }
+  .tag { display: block; width: max-content; margin-top: 4px; font-size: 12px; font-weight: 700; padding: 0 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .tag.equity { color: var(--equity); }
+  .tag.mortgage { color: var(--mortgage); }
   .to { font-weight: 600; }
   .when b { font-weight: 800; }
   .amount { font-weight: 800; font-size: 16px; }
   tr.subtotal td { font-weight: 800; border-bottom: 2px solid var(--line); }
-  tbody.equity tr.subtotal td { color: var(--equity); }
-  tbody.mortgage tr.subtotal td { color: var(--mortgage); }
+  tr.subtotal.equity td { color: var(--equity); }
+  tr.subtotal.mortgage td { color: var(--mortgage); }
   tr.subtotal td:first-child { border-inline-start-color: transparent; }
   tr.subtotal .share { font-weight: 600; color: var(--muted); font-size: 13px; }
   tfoot td { background: var(--total-bg); color: var(--total-fg); font-weight: 800; font-size: 17px; padding: 16px 14px; border: 0; }
@@ -176,8 +183,8 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
     thead { display: none; }
     table, tbody, tfoot, tr, td, th { display: block; }
     tr.item { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "pay amount" "to to" "when when"; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-    tbody.equity tr.item { border-inline-start: 4px solid var(--equity); }
-    tbody.mortgage tr.item { border-inline-start: 4px solid var(--mortgage); }
+    tr.item.equity { border-inline-start: 4px solid var(--equity); }
+    tr.item.mortgage { border-inline-start: 4px solid var(--mortgage); }
     tr.item td { padding: 0; border: 0; }
     tr.item .pay { grid-area: pay; }
     tr.item .amount { grid-area: amount; }
@@ -196,7 +203,7 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
   <header>
     <div class="eyebrow">לוח תשלומים לפי החוזה · משכלנתא</div>
     <h1>פעימות התשלום למוכר</h1>
-    <p class="lead">${escapeHtml(propertyAddress || title)}. התשלומים מסודרים לפי סדר הזמנים: קודם פעימות ההון העצמי, אחריהן פעימות כספי המשכנתא.</p>
+    <p class="lead">${escapeHtml(propertyAddress || title)}. התשלומים מסודרים לפי סדר הזמנים בחוזה, וליד כל פעימה מקור הכסף שלה.</p>
   </header>
 
   <section class="summary" aria-label="סיכום">
@@ -218,8 +225,9 @@ export function scheduleReportHtml({ schedule, title, propertyAddress, generated
           <th scope="col" class="num" style="width:15%">סכום</th>
         </tr>
       </thead>
-${section('equity', 'שלב א׳: פעימות מההון העצמי', equityRows, 0, sumBySource(schedule, 'EQUITY'), equity)}
-${bankRows.length ? section('mortgage', 'שלב ב׳: פעימות מכספי המשכנתא', bankRows, equityRows.length, sumBySource(schedule, 'BANK'), bank) : ''}
+      <tbody>${schedule.installments.map(row).join('')}
+${subtotal('equity', 'סך הכל מההון העצמי', equityPaid, equity)}${subtotal('mortgage', 'סך הכל מכספי המשכנתא', bankPaid, bank)}
+      </tbody>
       <tfoot>
         <tr>
           <td colspan="3">סך הכל <span class="split">· ${shekelText(sumBySource(schedule, 'EQUITY'))} הון עצמי + ${shekelText(sumBySource(schedule, 'BANK'))} משכנתא</span></td>
@@ -236,8 +244,10 @@ ${bankRows.length ? section('mortgage', 'שלב ב׳: פעימות מכספי ה
   }
 
   <aside class="box info">
-    <h2>למה כספי הבנק מועברים אחרונים</h2>
-    <p>${escapeHtml(BANK_LAST_EXPLANATION)}</p>
+    <h2>ההון העצמי שהבנק דורש לפני כספי המשכנתא</h2>
+    <p>${escapeHtml(requiredText)}</p>
+    <p>${escapeHtml(BANK_EQUITY_EXPLANATION)}</p>
+    <p><b>שימו לב:</b> ${escapeHtml(FULL_EQUITY_NOTE)}</p>
   </aside>
 
   <aside class="box note">

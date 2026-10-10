@@ -840,6 +840,11 @@ model AdvisorLead {
    * השלב בתהליך הפעיל של הלקוח כשהפנייה נשלחה (PlanStage)
    */
   stage       String?
+  /**
+   * קבצים שהלקוח צירף לפנייה (טופס הצעה מהבנק, דוח יתרות): מערך של
+   * { id, fileName, contentType, size, blob }. הנתיב בחנות הקבצים אינו נשלח לדפדפן
+   */
+  files       Json?
 
   status AdvisorLeadStatus @default(OPEN)
 
