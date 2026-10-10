@@ -15,7 +15,6 @@ import {
   LogIn,
   Maximize2,
   Minimize2,
-  BarChart3,
   Save,
   Settings2,
   ShieldAlert,
@@ -263,9 +262,9 @@ export function MortgageWorkspace({
   }, [marketRates]);
 
   /**
-   * פריסת המסך: אזור העבודה והניתוח זה לצד זה ('split'); אזור העבודה מוגדל
-   * למסך מלא כחלון, והניתוח מתחתיו ('editor'); או הניתוח מוגדל ואזור העבודה
-   * מצטמצם לצידו ('analysis').
+   * פריסת המסך: אזור העבודה והדאשבורד זה לצד זה ('split'); אזור העבודה לבדו
+   * במסך מלא ('editor'); הדאשבורד לבדו במסך מלא ('analysis'); או שניהם זה
+   * לצד זה במסך מלא ('wide').
    */
   const [layout, setLayout] = useState<'split' | 'editor' | 'analysis' | 'wide'>('split');
   /**
@@ -274,7 +273,7 @@ export function MortgageWorkspace({
    */
   const [editorOpen, setEditorOpen] = useState(true);
   useEffect(() => {
-    if (layout !== 'editor' && layout !== 'wide') return;
+    if (layout === 'split') return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (event: KeyboardEvent) => {
@@ -1116,50 +1115,51 @@ export function MortgageWorkspace({
   }, [finalCandidateId, selectFinalMix]);
 
   /**
-   * כפתורי הפריסה — בכותרת פאנל השליטה, בכותרת הניתוח ובסרגל של המסך המלא.
-   * כל מקום מציג רק את המעברים שהגיוניים ממנו.
+   * פס הכותרת שבראש אזור העבודה ובראש הדאשבורד, ובו כפתורי ההגדלה: הגדלת
+   * האזור לבדו למסך מלא, הגדלת שני האזורים יחד, ומזעור חזרה לתצוגה הרגילה.
    */
-  const layoutButtons = (
-    where: 'panel' | 'analysis' | 'editor-bar' | 'toolbar'
-  ): React.ReactNode => {
-    const button = (
-      key: string,
-      target: typeof layout,
-      icon: React.ReactNode,
-      label: string,
-      primary = false
-    ) => (
+  const areaBar = (area: 'editor' | 'analysis'): React.ReactNode => {
+    const title = area === 'editor' ? 'אזור העבודה' : 'דאשבורד וניתוח';
+    const own = layout === area;
+    const button = (target: typeof layout, label: string, primary = false) => (
       <Button
-        key={key}
+        key={label}
         size="sm"
         variant={primary ? 'default' : 'outline'}
         className="h-8 text-xs"
         onClick={() => setLayout(target)}
       >
-        {icon}
+        {target === 'split' ? (
+          <Minimize2 className="h-3.5 w-3.5 ml-1" />
+        ) : (
+          <Maximize2 className="h-3.5 w-3.5 ml-1" />
+        )}
         {label}
       </Button>
     );
-    const grow = <Maximize2 className="h-3.5 w-3.5 ml-1" />;
-    const shrink = <Minimize2 className="h-3.5 w-3.5 ml-1" />;
-    const chart = <BarChart3 className="h-3.5 w-3.5 ml-1" />;
-
-    if (where === 'editor-bar') {
-      return layout === 'wide'
-        ? [button('split', 'split', shrink, 'מזער', true)]
-        : [
-            button('analysis', 'analysis', chart, 'ראה ניתוח'),
-            button('split', 'split', shrink, 'מזער', true),
-          ];
-    }
-    if (where === 'toolbar') {
-      return layout === 'wide' ? null : button('wide', 'wide', grow, 'הגדל את שני האזורים');
-    }
-    if (layout === 'editor' || layout === 'wide') return null;
-    if (where === 'panel') return button('editor', 'editor', grow, 'הגדל למסך מלא');
-    return layout === 'analysis'
-      ? button('split', 'split', shrink, 'תצוגה רגילה')
-      : button('analysis', 'analysis', grow, 'הגדל ניתוח');
+    const buttons =
+      layout === 'wide'
+        ? [button('split', 'מזער', true)]
+        : own
+          ? [button('wide', 'הגדל את שני האזורים'), button('split', 'מזער', true)]
+          : [
+              button(area, area === 'editor' ? 'הגדל אזור עבודה' : 'הגדל דאשבורד'),
+              button('wide', 'הגדל את שני האזורים'),
+            ];
+    return (
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur ${
+          layout === 'split' ? '' : 'sticky top-0 z-20'
+        }`}
+        {...demoId(area === 'editor' ? 'ws-editor-bar' : 'ws-analysis-bar')}
+      >
+        <p className="text-sm font-black text-slate-900">
+          {title}
+          {layout !== 'split' && <span className="mr-2 text-2xs font-medium text-slate-500">במסך מלא</span>}
+        </p>
+        <div className="flex flex-wrap items-center gap-1.5">{buttons}</div>
+      </div>
+    );
   };
 
   // עד שמתברר איזה תמהיל נפתח — שמור, טיוטה או תמהיל ראשון חדש — לא מוצג מסך ביניים
@@ -1179,8 +1179,6 @@ export function MortgageWorkspace({
             </Link>
           </Button>
           )}
-
-          {layoutButtons('toolbar')}
 
           <Popover>
             <PopoverTrigger asChild>
@@ -1297,38 +1295,26 @@ export function MortgageWorkspace({
         */}
         <div
           className={
-            layout === 'editor'
-              ? 'fixed inset-0 z-50 space-y-3 overflow-y-auto bg-slate-50 p-3 sm:p-4'
-              : layout === 'wide'
-                ? 'fixed inset-0 z-50 grid grid-cols-1 content-start items-start gap-3 overflow-y-auto bg-slate-50 p-3 sm:p-4 lg:grid-cols-2'
-                : `grid grid-cols-1 items-start gap-3 ${
-                  layout === 'analysis'
-                    ? 'xl:grid-cols-[minmax(0,7fr)_minmax(0,13fr)]'
-                    : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+            layout === 'split'
+              ? 'grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+              : `fixed inset-0 z-50 grid grid-cols-1 content-start items-start gap-3 overflow-y-auto bg-slate-50 p-3 sm:p-4 ${
+                  layout === 'wide' ? 'lg:grid-cols-2' : ''
                 }`
           }
-          role={layout === 'editor' || layout === 'wide' ? 'dialog' : undefined}
-          aria-modal={layout === 'editor' || layout === 'wide' ? true : undefined}
+          role={layout === 'split' ? undefined : 'dialog'}
+          aria-modal={layout === 'split' ? undefined : true}
           aria-label={
             layout === 'editor'
               ? 'אזור העבודה במסך מלא'
-              : layout === 'wide'
-                ? 'אזור העבודה והדאשבורד במסך מלא'
-                : undefined
+              : layout === 'analysis'
+                ? 'הדאשבורד במסך מלא'
+                : layout === 'wide'
+                  ? 'אזור העבודה והדאשבורד במסך מלא'
+                  : undefined
           }
         >
-        {(layout === 'editor' || layout === 'wide') && (
-          <div className="sticky -top-3 z-10 col-span-full -mx-3 -mt-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-top-4 sm:-mx-4 sm:-mt-4 sm:px-4">
-            <p className="text-sm font-black text-slate-900">
-              {layout === 'wide' ? 'אזור העבודה והדאשבורד במסך מלא' : 'אזור העבודה במסך מלא'}
-              <span className="mr-2 text-2xs font-medium text-slate-500">
-                {layout === 'wide' ? 'המסלולים מימין, הניתוח משמאל' : 'הניתוח והגרפים מתחת לפאנל'}
-              </span>
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5">{layoutButtons('editor-bar')}</div>
-          </div>
-        )}
-        <div className={`min-w-0 space-y-3 ${layout === 'analysis' ? 'order-last xl:order-none' : ''}`}>
+        <div className={`min-w-0 space-y-3 ${layout === 'analysis' ? 'hidden' : ''}`}>
+        {areaBar('editor')}
         {/* כל התמהילים של הנכס באותה תצוגה; זה שבניתוח בראש הרשימה */}
         <div {...demoId('ws-mix-list')}>
         <MixList
@@ -1432,7 +1418,6 @@ export function MortgageWorkspace({
               onAmortization={(trackId: string) => setAmortizationTarget({ trackId })}
               focusTrackId={focusTrackId}
               onFocusTrack={setFocusTrackId}
-              layoutActions={layoutButtons('panel')}
               onSaveMix={buildingNewMix || dirty ? saveCurrentMix : undefined}
               flashSave={flashSave}
             />
@@ -1494,12 +1479,15 @@ export function MortgageWorkspace({
         <div
           className={`min-w-0 space-y-3 ${
             layout === 'editor'
-              ? ''
-              : layout === 'wide'
-                ? 'lg:sticky lg:top-12 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-1'
-                : 'xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pb-1'
+              ? 'hidden'
+              : layout === 'analysis'
+                ? ''
+                : layout === 'wide'
+                  ? 'lg:sticky lg:top-0 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-1'
+                  : 'xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pb-1'
           }`}
         >
+        {areaBar('analysis')}
         {/* דאשבורד: מצב התמהיל שבפאנל, ומה השתנה מאז שנפתח */}
         <div className="space-y-2">
           <StateBlocksRow
@@ -1549,7 +1537,6 @@ export function MortgageWorkspace({
             ) : null
           }
           split={layout === 'split' || layout === 'wide'}
-          headerActions={layoutButtons('analysis')}
         />
         </div>
         </div>
