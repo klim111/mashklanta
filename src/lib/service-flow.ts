@@ -28,7 +28,7 @@ export const GOAL_LABELS: Record<MortgageGoal, { title: string; description: str
     description: 'יש כבר משכנתא — בודקים אם אפשר לשפר תנאים, החזר או תקופה',
   },
   ADVICE: {
-    title: 'לקבל ייעוץ והכוונה בנושא משכנתא',
+    title: 'לקבל ייעוץ והכוונה',
     description: 'עדיין לא בטוחים מה נכון לכם — יועץ יחזור אליכם ויכוון',
   },
 };

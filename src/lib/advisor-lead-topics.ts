@@ -18,6 +18,8 @@ export type LeadTopic =
   | 'CONSULT_BANK_OFFER'
   | 'CONSULT_REFINANCE'
   | 'CONSULT_DECLINED'
+  | 'HOME_NEW_MORTGAGE'
+  | 'HOME_REFINANCE'
   | 'OTHER';
 
 const LEAD_TOPICS: readonly LeadTopic[] = [
@@ -36,6 +38,8 @@ const LEAD_TOPICS: readonly LeadTopic[] = [
   'CONSULT_BANK_OFFER',
   'CONSULT_REFINANCE',
   'CONSULT_DECLINED',
+  'HOME_NEW_MORTGAGE',
+  'HOME_REFINANCE',
   'OTHER',
 ];
 
@@ -59,6 +63,9 @@ export const LEAD_TOPIC_LABELS: Record<LeadTopic, string> = {
   CONSULT_BANK_OFFER: 'בדיקת הצעה שהתקבלה מהבנק',
   CONSULT_REFINANCE: 'בדיקה אם כדאי למחזר',
   CONSULT_DECLINED: 'לא מאשרים משכנתא, בדיקה מה אפשר לעשות',
+  // "לקבל ייעוץ והכוונה" בעמוד הבית
+  HOME_NEW_MORTGAGE: 'ליווי בלקיחת משכנתא חדשה',
+  HOME_REFINANCE: 'ליווי במיחזור או גרירה',
   OTHER: 'פנייה כללית',
 };
 

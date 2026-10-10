@@ -10,6 +10,9 @@ import type { PlanStageId } from './mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { LEAD_TOPIC_LABELS, parseLeadTopic } from './advisor-lead-topics';
 import type { LeadTopic } from './advisor-lead-topics';
+import type { StoredAttachment } from './conversation';
+import { leadFileViews, storedLeadFiles } from './lead-files';
+import type { LeadFileView } from './lead-file-paths';
 
 /**
  * פניות ליווי כלליות מהאזור האישי.
@@ -41,6 +44,8 @@ export interface AdvisorLeadView {
   stageLabel: string | null;
   status: 'OPEN' | 'HANDLED' | 'CLOSED';
   clientId: string | null;
+  /** קבצים שהלקוח צירף, למשל טופס הצעה מהבנק */
+  files: LeadFileView[];
   createdAt: string;
 }
 
@@ -56,6 +61,7 @@ const leadSelect = {
   stage: true,
   status: true,
   clientId: true,
+  files: true,
   createdAt: true,
 } satisfies Prisma.AdvisorLeadSelect;
 
@@ -85,6 +91,7 @@ function toView(row: LeadRow): AdvisorLeadView {
     stageLabel: stageLabel(row.stage),
     status: row.status as AdvisorLeadView['status'],
     clientId: row.clientId,
+    files: leadFileViews(row.files),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -104,6 +111,8 @@ export interface CreateLeadInput {
   requestKind?: RequestKind | null;
   /** העמוד שממנו נשלחה הפנייה */
   sourcePath?: string | null;
+  /** קבצים שהלקוח צירף, אחרי בדיקה מול חנות הקבצים (resolveLeadFiles) */
+  files?: StoredAttachment[];
 }
 
 /** טלפון ישראלי סביר — לפחות תשע ספרות, בלי תווי הפרדה */
@@ -157,6 +166,7 @@ export async function createLead(
       requestKind,
       sourcePath: input.sourcePath ?? null,
       stage: plan?.currentStage ?? null,
+      ...(input.files && input.files.length > 0 ? { files: input.files as unknown as Prisma.InputJsonValue } : {}),
     },
     select: leadSelect,
   });
@@ -170,6 +180,7 @@ export async function createLead(
       ['תהליך', plan ? plan.propertyAddress || plan.name : null],
       ['שלב בתהליך', stageLabel(plan?.currentStage ?? null)],
       ['חשבון', userId ? 'לקוח רשום' : 'אורח, בלי חשבון'],
+      ['קבצים מצורפים', input.files?.length ? input.files.map((file) => file.fileName).join(', ') : null],
     ],
     from: { name, email: emailValid ? email : null, phone: phone || null },
     note: input.notes,
@@ -226,3 +237,21 @@ export async function listOwnOpenLeads(userId: string, email: string | null): Pr
     };
   });
 }
+
+/**
+ * קובץ שצורף לפנייה, לצפייה אצל היועץ: הפנייה שויכה אליו או שעדיין לא שויכה
+ * לאף יועץ (כמו ברשימת הפניות).
+ */
+export async function leadFileForAdvisor(
+  advisorId: string,
+  leadId: string,
+  fileId: string
+): Promise<StoredAttachment | null> {
+  const lead = await prisma.advisorLead.findFirst({
+    where: { id: leadId, OR: [{ advisorId }, { advisorId: null }] },
+    select: { files: true },
+  });
+  if (!lead) return null;
+  return storedLeadFiles(lead.files).find((file) => file.id === fileId) ?? null;
+}
+

@@ -18,6 +18,8 @@ export interface ConsultReasonInfo {
   /** נושא הפנייה אצל היועץ */
   topic: LeadTopic;
   icon: LucideIcon;
+  /** אזור העלאת מסמך במקום ההערה החופשית — כשהיועץ צריך מסמך כדי לבדוק */
+  upload?: { title: string; hint: string };
 }
 
 export const CONSULT_REASONS: readonly ConsultReasonInfo[] = [
@@ -27,6 +29,10 @@ export const CONSULT_REASONS: readonly ConsultReasonInfo[] = [
     hint: 'קיבלתם אישור עקרוני או הצעת ריביות? נבדוק אם היא טובה ומה אפשר לשפר',
     topic: 'CONSULT_BANK_OFFER',
     icon: FileSearch,
+    upload: {
+      title: 'טופס ההצעה מהבנק',
+      hint: 'האישור העקרוני או הצעת הריביות שקיבלתם. PDF או צילום, עד 3 קבצים',
+    },
   },
   {
     id: 'refinance',
@@ -34,6 +40,10 @@ export const CONSULT_REASONS: readonly ConsultReasonInfo[] = [
     hint: 'נבדוק את המשכנתא הקיימת ונגיד לכם אם מיחזור יחסוך לכם כסף',
     topic: 'CONSULT_REFINANCE',
     icon: RefreshCw,
+    upload: {
+      title: 'דוח היתרות של המשכנתא הנוכחית',
+      hint: 'מבקשים אותו מהבנק או מורידים מאתר הבנק. PDF או צילום, עד 3 קבצים',
+    },
   },
   {
     id: 'declined',

@@ -21,6 +21,7 @@ import { pageLabel } from '@/lib/page-labels';
 import { formatOrderPrice } from '@/lib/advisor-orders';
 import { planStageNumber } from '@/lib/mortgage-plan';
 import { EmptyState, SectionCard, StageChip } from './ui';
+import { LeadFilesList } from './LeadFiles';
 
 /**
  * בקשות הליווי שלקוחות שילמו עליהן.
@@ -235,6 +236,13 @@ function LeadRow({
       {lead.notes && (
         <p className="mt-2 rounded-xl bg-white/70 px-3 py-2 text-[12px] leading-relaxed text-slate-600">
           {lead.notes}
+        </p>
+      )}
+
+      <LeadFilesList lead={lead} />
+      {!lead.clientId && (
+        <p className="mt-2 text-[11px] font-bold text-amber-700">
+          לקוח מתעניין, עדיין לא נרשם. כשיירשם עם אותו מייל, הפנייה והקבצים יעברו לכרטיס שלו
         </p>
       )}
     </div>

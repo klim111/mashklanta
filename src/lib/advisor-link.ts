@@ -77,6 +77,12 @@ export async function ensureClientLink(userId: string): Promise<ClientLink | nul
   }
 
   await attachOrphans(userId, clientId, advisor.id);
+  // פניות ששלח כאורח, לפני שנרשם, עם אותה כתובת מייל — עוברות לכרטיס שלו,
+  // יחד עם הקבצים שצירף
+  await prisma.advisorLead.updateMany({
+    where: { ownerId: null, clientId: null, email: user.email.trim().toLowerCase() },
+    data: { ownerId: userId, clientId, advisorId: advisor.id },
+  });
   return { clientId, advisorId: advisor.id };
 }
 

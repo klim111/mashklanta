@@ -6,15 +6,17 @@ import { useSession } from 'next-auth/react';
 import type { MortgageGoal, ServiceType } from '@/lib/service-flow';
 import { ServiceChooser } from './ServiceChooser';
 import { GuidanceRequestDialog } from './GuidanceRequestDialog';
+import { GuestAdviceDialog } from './GuestAdviceDialog';
 
 type FlowGoal = 'NEW_MORTGAGE' | 'REFINANCE';
 
 /**
  * "מה תרצו לעשות?" בעמוד הבית.
  *
- * אורח שבוחר במסלול העצמאי נשלח להרשמה, והבחירה שלו ממשיכה אוטומטית באזור
- * האישי אחרי ההתחברות. אורח שבוחר בליווי או בייעוץ ממלא את פרטיו והבקשה
- * מגיעה ליועצים. משתמש מחובר מקבל את אותה זרימה בדיוק, בלי טופס פרטים.
+ * אורח שבוחר משכנתא חדשה או מיחזור נשלח ישר להרשמה, והבחירה שלו ממשיכה
+ * אוטומטית באזור האישי אחרי ההתחברות. אורח שבוחר "לקבל ייעוץ והכוונה" ממלא
+ * פנייה קצרה (GuestAdviceDialog) ועובר אחריה להרשמה. משתמש מחובר ממשיך לבחירת
+ * המסלול כמו קודם.
  */
 export function GuestStart({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const router = useRouter();
@@ -37,11 +39,25 @@ export function GuestStart({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
       <ServiceChooser
         tone={tone}
         onSelf={onSelf}
+        goalsGoToSignup={!signedIn}
         onAdvisor={(goal, service) => setRequest({ goal, service })}
-        subtitle="בחרו את המטרה, ומיד אחריה — כמה עזרה תרצו בדרך. במסלול העצמאי / ההיברידי נפתח לכם חשבון והתהליך מתחיל מיד; בליווי או בייעוץ יועץ חוזר אליכם."
+        subtitle={
+          signedIn
+            ? 'בחרו את המטרה, ומיד אחריה — כמה עזרה תרצו בדרך. במסלול העצמאי / ההיברידי התהליך מתחיל מיד; בליווי או בייעוץ יועץ חוזר אליכם.'
+            : 'משכנתא חדשה או מיחזור? נרשמים ומתחילים מיד. רוצים קודם לדבר עם יועץ? שלחו פנייה ונחזור אליכם.'
+        }
       />
 
-      {request && (
+      {request && !signedIn && request.goal === 'ADVICE' && (
+        <GuestAdviceDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setRequest(null);
+          }}
+        />
+      )}
+
+      {request && (signedIn || request.goal !== 'ADVICE') && (
         <GuidanceRequestDialog
           open
           onOpenChange={(open) => {
