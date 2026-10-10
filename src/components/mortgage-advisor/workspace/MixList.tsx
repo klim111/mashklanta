@@ -38,6 +38,15 @@ interface MixListProps {
   activeActions?: React.ReactNode;
   /** פאנל העריכה של התמהיל שבעבודה — פתוח תמיד, בלי לחיצה על חץ */
   editor: React.ReactNode;
+  /**
+   * הסיכום של התמהיל (שורת התמהיל) מוצג רק אחרי שהתמהיל נשמר. לפני כן אזור
+   * העבודה מציג רק את סכום המשכנתא ואת הוספת המסלולים.
+   */
+  showSummary?: boolean;
+  /** שורות המסלולים פתוחות מתחת לסיכום */
+  editorOpen?: boolean;
+  /** לחיצה על הסיכום פותחת או סוגרת את שורות המסלולים */
+  onToggleEditor?: () => void;
   onActivate: (item: SavedMix) => void;
   onToggleCompare: (id: string) => void;
   onRenameActive: (name: string) => boolean | void;
@@ -110,6 +119,9 @@ export function MixList({
   scenarioActive = false,
   activeActions,
   editor,
+  showSummary = true,
+  editorOpen = true,
+  onToggleEditor,
   onActivate,
   onToggleCompare,
   onRenameActive,
@@ -296,6 +308,7 @@ export function MixList({
                 </Button>
               )}
             </div>
+            {showSummary && (
             <div {...demoId('ws-active-mix')}>
             <MixRow
               key={activeResult.mix.id}
@@ -306,7 +319,10 @@ export function MixList({
               selected
               selectionLocked
               onToggleSelect={() => undefined}
-              showExpandIcon={false}
+              expanded={editorOpen}
+              showExpandIcon
+              onClick={pendingRenameId === activeResult.mix.id ? undefined : onToggleEditor}
+              hint={editorOpen ? undefined : 'לחצו על הסיכום כדי לפתוח את שורות המסלולים'}
               onRename={onRenameActive}
               startRenaming={pendingRenameId === activeResult.mix.id}
               requireName={pendingRenameId === activeResult.mix.id}
@@ -344,10 +360,15 @@ export function MixList({
               }
             />
             </div>
-            {/* התמהיל שבעבודה פתוח תמיד לעריכה — בלי ללחוץ קודם על השורה או על חץ */}
-            <div className="mt-2 overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm">
-              {editor}
-            </div>
+            )}
+            {/* שורות המסלולים — ישר בתמהיל חדש, ובתמהיל שמור אחרי לחיצה על הסיכום */}
+            {(editorOpen || !showSummary) && (
+              <div
+                className={`${showSummary ? 'mt-2' : ''} overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm`}
+              >
+                {editor}
+              </div>
+            )}
 
             {/*
               התמהילים שסומנו להשוואה אינם מוצגים כאן יותר. הם מוזנים ישירות

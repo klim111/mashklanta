@@ -267,9 +267,14 @@ export function MortgageWorkspace({
    * למסך מלא כחלון, והניתוח מתחתיו ('editor'); או הניתוח מוגדל ואזור העבודה
    * מצטמצם לצידו ('analysis').
    */
-  const [layout, setLayout] = useState<'split' | 'editor' | 'analysis'>('split');
+  const [layout, setLayout] = useState<'split' | 'editor' | 'analysis' | 'wide'>('split');
+  /**
+   * שורות המסלולים של תמהיל שמור מקופלות מתחת לסיכום שלו, ולחיצה על הסיכום
+   * פותחת אותן. תמהיל חדש — או עותק שנפתח לעריכה — נפתח ישר על השורות.
+   */
+  const [editorOpen, setEditorOpen] = useState(true);
   useEffect(() => {
-    if (layout !== 'editor') return;
+    if (layout !== 'editor' && layout !== 'wide') return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (event: KeyboardEvent) => {
@@ -338,6 +343,7 @@ export function MortgageWorkspace({
       // נקודת הייחוס של "מה השתנה" היא התמהיל כפי שנפתח כאן
       setPanelBaseline(withCap);
       setFocusTrackId(null);
+      setEditorOpen(false);
       setPhase('ready');
     },
     [actions, withProfileCap, marketRates]
@@ -480,12 +486,14 @@ export function MortgageWorkspace({
       // טיוטה שלא הגיעה לשמירה ממשיכה להיחשב תמהיל בבנייה, ותישמר כשתכוסה במלואה
       if (!saved.some((item) => item.mix.id === draft.mix.id)) setNewMixId(draft.mix.id);
       openMix(draft.mix, draft.constraints);
+      setEditorOpen(true);
       return;
     }
 
     const first = createFirstMix({ seed: defaultSetupSeed, existingMixes: saved });
     setNewMixId(first.id);
     openMix(first);
+    setEditorOpen(true);
   }, [ready, initialMix, embedded, defaultSetupSeed, saved, openMix]);
 
   const persistMix = useCallback(
@@ -561,22 +569,10 @@ export function MortgageWorkspace({
   ]);
 
   /**
-   * תמהיל חדש לא נשמר מאליו: כשכל סכום המשכנתא חולק בין המסלולים מופיע בתחתית
-   * הפאנל "שמור מצב זה כתמהיל", והשמירה היא נקודת ה"נוצר" שלו. מכאן הוא תמהיל
-   * רגיל לכל דבר — מופיע בתמהילים השמורים ונשאר פתוח לעריכה באזור העבודה.
-   * השמירה עצמה היא `saveCurrentMix`.
-   *
-   * שמירת המצב הנוכחי כתמהיל חדש: המקור נשאר כמו שנשמר, והעותק עם השינויים
-   * עולה לאזור העבודה עם שדה שם ריק.
+   * תמהיל חדש לא נשמר מאליו: כשכל סכום המשכנתא חולק בין המסלולים, במקום
+   * "הוסף מסלול" מופיע "שמור תמהיל", והשמירה היא נקודת ה"נוצר" שלו. אחריה
+   * מוצג הסיכום, ולחיצה עליו פותחת שוב את שורות המסלולים.
    */
-  const saveAsNewMix = useCallback(() => {
-    const clone = cloneWorkspaceMix(mix, { name: '' });
-    setPendingCloneId(clone.id);
-    openMix(clone);
-    setFlashSave(false);
-    void save(clone).then((stored) => notifyActive(stored));
-  }, [mix, openMix, save, notifyActive]);
-
   /**
    * שמירת התמהיל שבעבודה כמו שהוא — כפתור "שמור תמהיל" של הלקוח. אחרי השמירה
    * מוצגת ההודעה "התמהיל נשמר", וכפתור "טען תמהיל" מודגש פעם אחת כדי להראות
@@ -586,6 +582,8 @@ export function MortgageWorkspace({
     if (phase !== 'ready' || mix.tracks.length === 0 || mix.locked) return;
     persistMix(mix);
     setSavedSignature(signatureOf(mix));
+    // אחרי השמירה מופיע הסיכום, והמסלולים מתקפלים מתחתיו עד שלוחצים עליו
+    setEditorOpen(false);
     if (newMixId === mix.id) {
       setNewMixId(null);
       // תמהיל חדש שנשמר הופך לנקודת הייחוס של "מה השתנה" — לפניו לא היה כלום
@@ -743,6 +741,7 @@ export function MortgageWorkspace({
       const clone = cloneWorkspaceMix(source, { name: '' });
       setPendingCloneId(clone.id);
       openMix(clone);
+      setEditorOpen(true);
       void save(clone).then((stored) => notifyActive(stored));
     },
     [keepCurrentMix, openMix, save, notifyActive]
@@ -854,6 +853,7 @@ export function MortgageWorkspace({
       const next = createFirstMix({ seed: seed ?? defaultSetupSeed, existingMixes: saved });
       setNewMixId(next.id);
       openMix(next);
+      setEditorOpen(true);
     },
     [keepCurrentMix, defaultSetupSeed, saved, openMix]
   );
@@ -1119,7 +1119,9 @@ export function MortgageWorkspace({
    * כפתורי הפריסה — בכותרת פאנל השליטה, בכותרת הניתוח ובסרגל של המסך המלא.
    * כל מקום מציג רק את המעברים שהגיוניים ממנו.
    */
-  const layoutButtons = (where: 'panel' | 'analysis' | 'editor-bar'): React.ReactNode => {
+  const layoutButtons = (
+    where: 'panel' | 'analysis' | 'editor-bar' | 'toolbar'
+  ): React.ReactNode => {
     const button = (
       key: string,
       target: typeof layout,
@@ -1143,12 +1145,17 @@ export function MortgageWorkspace({
     const chart = <BarChart3 className="h-3.5 w-3.5 ml-1" />;
 
     if (where === 'editor-bar') {
-      return [
-        button('analysis', 'analysis', chart, 'ראה ניתוח'),
-        button('split', 'split', shrink, 'מזער', true),
-      ];
+      return layout === 'wide'
+        ? [button('split', 'split', shrink, 'מזער', true)]
+        : [
+            button('analysis', 'analysis', chart, 'ראה ניתוח'),
+            button('split', 'split', shrink, 'מזער', true),
+          ];
     }
-    if (layout === 'editor') return null;
+    if (where === 'toolbar') {
+      return layout === 'wide' ? null : button('wide', 'wide', grow, 'הגדל את שני האזורים');
+    }
+    if (layout === 'editor' || layout === 'wide') return null;
     if (where === 'panel') return button('editor', 'editor', grow, 'הגדל למסך מלא');
     return layout === 'analysis'
       ? button('split', 'split', shrink, 'תצוגה רגילה')
@@ -1172,6 +1179,8 @@ export function MortgageWorkspace({
             </Link>
           </Button>
           )}
+
+          {layoutButtons('toolbar')}
 
           <Popover>
             <PopoverTrigger asChild>
@@ -1290,22 +1299,30 @@ export function MortgageWorkspace({
           className={
             layout === 'editor'
               ? 'fixed inset-0 z-50 space-y-3 overflow-y-auto bg-slate-50 p-3 sm:p-4'
-              : `grid grid-cols-1 items-start gap-3 ${
+              : layout === 'wide'
+                ? 'fixed inset-0 z-50 grid grid-cols-1 content-start items-start gap-3 overflow-y-auto bg-slate-50 p-3 sm:p-4 lg:grid-cols-2'
+                : `grid grid-cols-1 items-start gap-3 ${
                   layout === 'analysis'
                     ? 'xl:grid-cols-[minmax(0,7fr)_minmax(0,13fr)]'
                     : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
                 }`
           }
-          role={layout === 'editor' ? 'dialog' : undefined}
-          aria-modal={layout === 'editor' ? true : undefined}
-          aria-label={layout === 'editor' ? 'אזור העבודה במסך מלא' : undefined}
+          role={layout === 'editor' || layout === 'wide' ? 'dialog' : undefined}
+          aria-modal={layout === 'editor' || layout === 'wide' ? true : undefined}
+          aria-label={
+            layout === 'editor'
+              ? 'אזור העבודה במסך מלא'
+              : layout === 'wide'
+                ? 'אזור העבודה והדאשבורד במסך מלא'
+                : undefined
+          }
         >
-        {layout === 'editor' && (
-          <div className="sticky -top-3 z-10 -mx-3 -mt-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-top-4 sm:-mx-4 sm:-mt-4 sm:px-4">
+        {(layout === 'editor' || layout === 'wide') && (
+          <div className="sticky -top-3 z-10 col-span-full -mx-3 -mt-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-top-4 sm:-mx-4 sm:-mt-4 sm:px-4">
             <p className="text-sm font-black text-slate-900">
-              אזור העבודה במסך מלא
+              {layout === 'wide' ? 'אזור העבודה והדאשבורד במסך מלא' : 'אזור העבודה במסך מלא'}
               <span className="mr-2 text-2xs font-medium text-slate-500">
-                הניתוח והגרפים מתחת לפאנל
+                {layout === 'wide' ? 'המסלולים מימין, הניתוח משמאל' : 'הניתוח והגרפים מתחת לפאנל'}
               </span>
             </p>
             <div className="flex flex-wrap items-center gap-1.5">{layoutButtons('editor-bar')}</div>
@@ -1320,6 +1337,9 @@ export function MortgageWorkspace({
           comparedIds={state.comparedIds}
           address={mix.propertyAddress}
           scenarioActive={scenarioActive}
+          showSummary={!buildingNewMix}
+          editorOpen={editorOpen || buildingNewMix}
+          onToggleEditor={() => setEditorOpen((open) => !open)}
           onActivate={openSavedMix}
           onToggleCompare={toggleCompared}
           onRenameActive={renameActiveMix}
@@ -1413,7 +1433,7 @@ export function MortgageWorkspace({
               focusTrackId={focusTrackId}
               onFocusTrack={setFocusTrackId}
               layoutActions={layoutButtons('panel')}
-              onSaveMix={buildingNewMix ? saveCurrentMix : dirty ? saveAsNewMix : undefined}
+              onSaveMix={buildingNewMix || dirty ? saveCurrentMix : undefined}
               flashSave={flashSave}
             />
           }
@@ -1475,7 +1495,9 @@ export function MortgageWorkspace({
           className={`min-w-0 space-y-3 ${
             layout === 'editor'
               ? ''
-              : 'xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pb-1'
+              : layout === 'wide'
+                ? 'lg:sticky lg:top-12 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-1'
+                : 'xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pb-1'
           }`}
         >
         {/* דאשבורד: מצב התמהיל שבפאנל, ומה השתנה מאז שנפתח */}
@@ -1526,7 +1548,7 @@ export function MortgageWorkspace({
               />
             ) : null
           }
-          split={layout === 'split'}
+          split={layout === 'split' || layout === 'wide'}
           headerActions={layoutButtons('analysis')}
         />
         </div>

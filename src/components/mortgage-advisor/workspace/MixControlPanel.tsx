@@ -17,7 +17,8 @@ import {
   BarChart3,
   Layers,
   Lock,
-  MoreHorizontal,
+  Pencil,
+  Check,
   Plus,
   RefreshCcw,
   Save,
@@ -182,38 +183,41 @@ export function MixControlPanel({
 
         {/*
           הוספת מסלול פותחת שורה ריקה: הלקוח בוחר בה את סוג הריבית ואת שאר
-          הפרמטרים, וקובע כמה מהמשכנתא המסלול מממן — בסכום או באחוז.
+          הפרמטרים, וקובע כמה מהמשכנתא המסלול מממן — בסכום או באחוז. כשכל הסכום
+          חולק אין מה להוסיף, ובמקום הכפתור מופיעה שמירת התמהיל.
         */}
-        {!locked && (
+        {!locked && (remaining > 0 || mix.tracks.length === 0) && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-blue-300 bg-white p-1.5">
             <Button size="sm" className="h-8 text-xs" onClick={() => onAddTrack('fixed_unlinked')} {...demoId('ws-add-track')}>
               <Plus className="h-3.5 w-3.5 ml-1" />
               הוסף מסלול
             </Button>
             <p className="min-w-[150px] flex-1 text-2xs leading-tight text-slate-600">
-              {remaining > 0
-                ? `${formatShekel(remaining)} מהמשכנתא עדיין לא חולקו בין המסלולים`
-                : 'כל סכום המשכנתא חולק. מסלול נוסף נפתח ריק — הקטינו מסלול אחר כדי לפנות לו סכום.'}
+              {formatShekel(remaining)} מהמשכנתא עדיין לא חולקו בין המסלולים
             </p>
           </div>
         )}
       </div>
 
-      {/* כל הסכום חולק — אפשר לשמור את המצב הזה כתמהיל */}
-      {onSaveMix && !locked && mix.tracks.length > 0 && remaining === 0 && (
+      {!locked && mix.tracks.length > 0 && remaining === 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-          <p className="text-2xs font-bold text-emerald-900">
-            כל סכום המשכנתא חולק בין המסלולים.
-          </p>
-          <Button
-            size="sm"
-            className={`h-9 bg-emerald-600 text-xs hover:bg-emerald-700 ${flashSave ? 'save-flash' : ''}`}
-            onClick={onSaveMix}
-            {...demoId('ws-save-state')}
-          >
-            <Save className="h-3.5 w-3.5 ml-1" />
-            שמור מצב זה כתמהיל
-          </Button>
+          <p className="text-2xs font-bold text-emerald-900">כל סכום המשכנתא חולק בין המסלולים.</p>
+          {onSaveMix ? (
+            <Button
+              size="sm"
+              className={`h-9 bg-emerald-600 text-xs hover:bg-emerald-700 ${flashSave ? 'save-flash' : ''}`}
+              onClick={onSaveMix}
+              {...demoId('ws-save-state')}
+            >
+              <Save className="h-3.5 w-3.5 ml-1" />
+              שמור תמהיל
+            </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-700">
+              <Check className="h-3.5 w-3.5" />
+              התמהיל שמור
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -292,11 +296,10 @@ function TrackControlCard({
 
   return (
     /*
-      מסלול אחד = שורה אחת.
-      כל מה שהיה בכרטיס נשאר כאן ופתוח לעריכה, אבל פרוש לרוחב במקום לגובה: כך
-      כמה מסלולים תופסים את הגובה שכרטיס בודד תפס קודם, ומה שנחסך נשאר לדאשבורד
-      באותו מסך. מה שנדרש לעתים רחוקות — שם המסלול, שער המט"ח והפעולות על
-      המסלול — יושב בתפריט שנפתח מקצה השורה.
+      מסלול אחד = כרטיס בשורות מלאות, באותו סדר בכל רוחב (גם בחלון המוגדל):
+      לוח סילוקין וסוג ריבית; סכום ואחוז מהתמהיל; עוגן, מרווח וריבית; תקופה
+      ולצידה הכפתורים לוח סילוקין ופרעון מוקדם. השדות מתפרסים שווה לאורך
+      השורה, וכפתור המחיקה יושב למטה בצד שמאל.
     */
     <div
       className={`rounded-lg border bg-white transition-colors ${
@@ -304,26 +307,25 @@ function TrackControlCard({
       }`}
       {...demoId(`ws-track-${index}`)}
     >
-      <fieldset disabled={locked} className="disabled:opacity-70">
-        <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5 p-1.5">
-          {/* זהות המסלול — לחיצה מציגה אותו באזור הגרפים; מתחתיה שני מדדי הריבית */}
-          <div className="flex min-w-[170px] flex-1 flex-col gap-0.5">
+      <fieldset disabled={locked} className="space-y-2 p-2 text-right disabled:opacity-70">
+        {/* כותרת ותת-כותרת — לחיצה מציגה את המסלול באזור הגרפים */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             disabled={false}
             onClick={onFocus}
             title="הצגת המסלול באזור הגרפים"
-            className="flex items-center gap-1.5 rounded-md px-1 py-0.5 text-right transition-colors hover:bg-slate-50"
+            className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-0.5 text-right transition-colors hover:bg-slate-50"
           >
             <span
               className="h-8 w-1.5 shrink-0 rounded-full"
               style={{ backgroundColor: trackColor(track.type) }}
             />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-bold leading-tight text-slate-900">
-                {TRACK_TYPES[track.type]}
+            <span className="min-w-0 flex-1 !text-right">
+              <span className="block truncate text-xs font-bold leading-tight text-slate-900 !text-right">
+                {track.name || TRACK_TYPES[track.type]}
               </span>
-              <span className="block truncate text-2xs leading-tight text-slate-500">
+              <span className="block truncate text-2xs leading-tight text-slate-500 !text-right">
                 {formatShekel(track.amount)} · {track.percentage.toFixed(1)}% ·{' '}
                 {formatPercentage(effectiveRate)}
                 {rateShifted && <span className="text-amber-600"> (בתרחיש)</span>} ·{' '}
@@ -338,7 +340,7 @@ function TrackControlCard({
               <BarChart3 className="h-3.5 w-3.5" />
             </span>
           </button>
-          <div className="flex flex-wrap items-center gap-1 px-1 text-2xs leading-none text-slate-600">
+          <div className="flex flex-wrap items-center gap-1 text-2xs leading-none text-slate-600">
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5">
               ממוצעת <b className="text-slate-900">{formatPercentage(result.averageRate)}</b>
               <InfoTip text={RATE_EXPLANATIONS.trackAverage} label="הסבר על הריבית הממוצעת" align="start" />
@@ -348,16 +350,18 @@ function TrackControlCard({
               <InfoTip text={RATE_EXPLANATIONS.trackIrr} label="הסבר על הריבית המתואמת" align="start" />
             </span>
           </div>
-          </div>
+        </div>
 
-          <RowField label="לוח סילוקין" className="w-[118px]">
+        {/* לוח סילוקין וסוג ריבית */}
+        <div className={`grid gap-2 ${track.type.includes('variable') ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <RowField label="לוח סילוקין">
             <Select
               value={track.amortizationType || 'spitzer'}
               onValueChange={(value) =>
                 patchWithName({ amortizationType: value as MortgageTrack['amortizationType'] })
               }
             >
-              <SelectTrigger dir="rtl" className="h-7 text-2xs [&>span:first-of-type]:text-right">
+              <SelectTrigger dir="rtl" className="h-8 text-xs [&>span:first-of-type]:text-right">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl" className="text-right">
@@ -370,12 +374,12 @@ function TrackControlCard({
             </Select>
           </RowField>
 
-          <RowField label="סוג מסלול" className="w-[134px]">
+          <RowField label="סוג ריבית">
             <Select
               value={track.type}
               onValueChange={(value) => patchWithName({ type: value as MortgageTrack['type'] })}
             >
-              <SelectTrigger dir="rtl" className="h-7 text-2xs [&>span:first-of-type]:text-right">
+              <SelectTrigger dir="rtl" className="h-8 text-xs [&>span:first-of-type]:text-right">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent dir="rtl" className="text-right">
@@ -389,12 +393,12 @@ function TrackControlCard({
           </RowField>
 
           {track.type.includes('variable') && (
-            <RowField label="תחנת יציאה" className="w-[92px]">
+            <RowField label="תחנת יציאה">
               <Select
                 value={String(track.variablePeriod ?? 5)}
                 onValueChange={(value) => patchWithName({ variablePeriod: Number(value) })}
               >
-                <SelectTrigger dir="rtl" className="h-7 text-2xs [&>span:first-of-type]:text-right">
+                <SelectTrigger dir="rtl" className="h-8 text-xs [&>span:first-of-type]:text-right">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent dir="rtl" className="text-right">
@@ -407,49 +411,12 @@ function TrackControlCard({
               </Select>
             </RowField>
           )}
+        </div>
 
-          {/* ריבית — עוגן מבנק ישראל ועוד המרווח של הבנק */}
-          <RowField
-            label={rateBreakdown.anchor ? undefined : 'ריבית שנתית'}
-            className={rateBreakdown.anchor ? 'w-[212px]' : 'w-[80px]'}
-          >
-            <AnchorSpreadRate
-              compact
-              anchor={rateBreakdown.anchor}
-              spread={track.rateSpread ?? rateBreakdown.spread}
-              rate={track.interestRate}
-              onRefreshAnchor={refreshMarketRates}
-              onChange={({ rate, spread }) =>
-                patchWithName({ interestRate: rate, rateSpread: spread })
-              }
-            />
-          </RowField>
-
-          <RowField label="תקופה" className="w-[124px]">
-            <div className="flex items-center gap-1">
-              <Slider
-                {...demoId(`ws-track-${index}-term`)}
-                dir="ltr"
-                className="min-w-0 flex-1"
-                value={[months]}
-                onValueChange={([value]) => patchWithName({ years: value / 12 })}
-                min={TRACK_TERM_MONTHS_MIN}
-                max={TRACK_TERM_MONTHS_MAX}
-                step={1}
-              />
-              <InlineNumberBox
-                value={months}
-                suffix="ח׳"
-                width="w-[58px]"
-                onChange={(value) =>
-                  patchWithName({ years: clampTrackTermMonths(value ?? months) / 12 })
-                }
-              />
-            </div>
-          </RowField>
-
-          <RowField label="סכום במסלול" className="w-[168px]">
-            <div className="flex items-center gap-1">
+        {/* הסכום במסלול והאחוז שלו מכלל התמהיל — עריכה של אחד מעדכנת את השני */}
+        <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-2">
+          <RowField label="סכום במסלול">
+            <div className="flex items-center gap-2">
               <Slider
                 {...demoId(`ws-track-${index}-amount`)}
                 dir="ltr"
@@ -463,19 +430,18 @@ function TrackControlCard({
               <InlineNumberBox
                 value={Math.round(track.amount)}
                 suffix="₪"
-                width="w-[92px]"
+                width="w-[110px]"
                 max={Math.max(maxAmount, 0)}
                 onChange={(value) => applyAmount(value ?? 0)}
               />
             </div>
           </RowField>
 
-          {/* אחוז מסך המשכנתא — עריכתו קובעת את הסכום, ועריכת הסכום מעדכנת אותו */}
-          <RowField label="אחוז מהמשכנתא" className="w-[78px]">
+          <RowField label="אחוז מהתמהיל">
             <InlineNumberBox
               value={Math.round(track.percentage * 10) / 10}
               suffix="%"
-              width="w-[74px]"
+              width="w-full"
               integer={false}
               onChange={(value) => {
                 if (totalAmount <= 0) return;
@@ -484,37 +450,69 @@ function TrackControlCard({
               }}
             />
           </RowField>
+        </div>
 
-          {/* מה שנוגעים בו לעתים רחוקות, ופעולות המסלול */}
-          <div className="flex items-center gap-0.5 self-center pt-3">
-            <TrackRowMenu
-              track={track}
-              months={months}
-              maxAmount={maxAmount}
-              locked={locked}
-              allowRefinance={allowRefinance}
-              onUpdate={onUpdate}
-              onPatchWithName={patchWithName}
-              onPrepay={onPrepay}
-              onRefinance={onRefinance}
-              onAmortization={onAmortization}
+        {/* ריבית — עוגן מבנק ישראל ועוד המרווח של הבנק */}
+        <div className={`grid gap-2 ${isForeign ? 'grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : 'grid-cols-1'}`}>
+          <RowField label={rateBreakdown.anchor ? undefined : 'ריבית שנתית'}>
+            <AnchorSpreadRate
+              compact
+              anchor={rateBreakdown.anchor}
+              spread={track.rateSpread ?? rateBreakdown.spread}
+              rate={track.interestRate}
+              onRefreshAnchor={refreshMarketRates}
+              onChange={({ rate, spread }) =>
+                patchWithName({ interestRate: rate, rateSpread: spread })
+              }
             />
-            {removable && (
-              <button
-                type="button"
-                onClick={onRemove}
-                title="הסרת המסלול"
-                className="rounded-md p-1.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+          </RowField>
+          {isForeign && (
+            <RowField label={`שער ${track.type === 'dollar' ? 'דולר' : 'יורו'}`}>
+              <NumericInput
+                className="h-7 w-full rounded-md border border-input bg-transparent px-2 text-2xs shadow-sm"
+                value={track.exchangeRate ?? null}
+                onChange={(exchangeRate) => onUpdate({ exchangeRate: exchangeRate ?? 0 })}
+              />
+            </RowField>
+          )}
+        </div>
+
+        {/* תקופה, ולצידה הפעולות על המסלול — ככפתורים גלויים */}
+        <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-2">
+          <RowField label="תקופה">
+            <div className="flex items-center gap-2">
+              <Slider
+                {...demoId(`ws-track-${index}-term`)}
+                dir="ltr"
+                className="min-w-0 flex-1"
+                value={[months]}
+                onValueChange={([value]) => patchWithName({ years: value / 12 })}
+                min={TRACK_TERM_MONTHS_MIN}
+                max={TRACK_TERM_MONTHS_MAX}
+                step={1}
+              />
+              <InlineNumberBox
+                value={months}
+                suffix="ח׳"
+                width="w-[64px]"
+                onChange={(value) =>
+                  patchWithName({ years: clampTrackTermMonths(value ?? months) / 12 })
+                }
+              />
+            </div>
+          </RowField>
+          <div className={`grid gap-1.5 ${allowRefinance ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <ActionButton icon={Table2} label="לוח סילוקין" onClick={onAmortization} />
+            <ActionButton icon={Banknote} label="פרעון מוקדם" onClick={onPrepay} disabled={locked} />
+            {allowRefinance && (
+              <ActionButton icon={RefreshCcw} label="מחזור" onClick={onRefinance} />
             )}
           </div>
         </div>
 
-        {/* התרעות — מתחת לשורה, ברוחב מלא, ורק כשיש מה לומר */}
+        {/* התרעות — ברוחב מלא, ורק כשיש מה לומר */}
         {(notice || (isFixed && missingFixed > 0)) && (
-          <div className="space-y-0.5 border-t border-slate-100 px-2 py-1">
+          <div className="space-y-0.5 border-t border-slate-100 pt-1">
             {isFixed && missingFixed > 0 && (
               <p className="text-2xs text-amber-700">
                 חסרים {formatShekel(missingFixed)} בריבית קבועה לדרישת בנק ישראל
@@ -528,6 +526,22 @@ function TrackControlCard({
             )}
           </div>
         )}
+
+        {/* שם המסלול מימין, מחיקה למטה בצד שמאל */}
+        <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-1.5">
+          <TrackNameMenu track={track} locked={locked} onUpdate={onUpdate} />
+          {removable && (
+            <button
+              type="button"
+              onClick={onRemove}
+              title="הסרת המסלול"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-bold text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              מחק מסלול
+            </button>
+          )}
+        </div>
       </fieldset>
     </div>
   );
@@ -547,7 +561,7 @@ function RowField({
   return (
     <label className={`${className} min-w-0 shrink-0`}>
       {label && (
-        <span className="mb-0.5 block truncate text-2xs font-medium leading-none text-slate-500">
+        <span className="mb-0.5 block truncate text-2xs font-medium leading-none text-slate-500 !text-right">
           {label}
         </span>
       )}
@@ -557,84 +571,40 @@ function RowField({
 }
 
 /**
- * התפריט שבקצה שורת המסלול.
- *
- * כאן יושב מה שלא נוגעים בו בכל שינוי — שם המסלול ושער המט"ח — ולצידו פעולות
- * המסלול. שום יכולת לא ירדה; היא רק יצאה מהשורה כדי שהשורה תישאר שורה.
+ * שם המסלול — נפתח לעריכה מהשורה התחתונה של הכרטיס. ברירת המחדל היא שם
+ * שנגזר מסוג המסלול ומלוח הסילוקין.
  */
-function TrackRowMenu({
+function TrackNameMenu({
   track,
-  months,
-  maxAmount,
   locked,
-  allowRefinance,
   onUpdate,
-  onPatchWithName,
-  onPrepay,
-  onRefinance,
-  onAmortization,
 }: {
   track: MortgageTrack;
-  months: number;
-  maxAmount: number;
   locked: boolean;
-  allowRefinance: boolean;
   onUpdate: (patch: Partial<MortgageTrack>) => void;
-  onPatchWithName: (patch: Partial<MortgageTrack>) => void;
-  onPrepay: () => void;
-  onRefinance: () => void;
-  onAmortization: () => void;
 }) {
-  const isForeign = track.type === 'dollar' || track.type === 'euro';
-
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="שם המסלול ופעולות נוספות"
-          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          disabled={locked}
+          title="שינוי שם המסלול"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <Pencil className="h-3.5 w-3.5" />
+          שם המסלול
         </button>
       </PopoverTrigger>
-      <PopoverContent dir="rtl" align="end" className="w-64 space-y-2 p-2.5">
-        <div className="space-y-1">
-          <span className="text-2xs font-medium text-slate-500">שם המסלול</span>
-          <Input
-            disabled={locked}
-            className="h-8 text-2xs"
-            value={track.name}
-            onChange={(event) => onUpdate({ name: event.target.value })}
-            placeholder={autoTrackName(track)}
-          />
-        </div>
-
-        {isForeign && (
-          <div className="space-y-1">
-            <span className="text-2xs font-medium text-slate-500">
-              שער {track.type === 'dollar' ? 'דולר' : 'יורו'}
-            </span>
-            <NumericInput
-              disabled={locked}
-              className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-2xs shadow-sm"
-              value={track.exchangeRate ?? null}
-              onChange={(exchangeRate) => onUpdate({ exchangeRate: exchangeRate ?? 0 })}
-            />
-          </div>
-        )}
-
-        <p className="text-2xs leading-snug text-slate-400">
-          {formatDuration(months)} · עד {formatShekel(maxAmount)} לשיבוץ במסלול הזה
-        </p>
-
-        <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-2">
-          <ActionButton icon={Banknote} label="פרעון מוקדם" onClick={onPrepay} disabled={locked} />
-          <ActionButton icon={Table2} label="לוח החזרים" onClick={onAmortization} />
-          {allowRefinance && (
-            <ActionButton icon={RefreshCcw} label="מחזור" onClick={onRefinance} />
-          )}
-        </div>
+      <PopoverContent dir="rtl" align="start" className="w-64 space-y-1 p-2.5">
+        <span className="text-2xs font-medium text-slate-500">שם המסלול</span>
+        <Input
+          disabled={locked}
+          className="h-8 text-2xs"
+          value={track.name}
+          onChange={(event) => onUpdate({ name: event.target.value })}
+          placeholder={autoTrackName(track)}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -695,7 +665,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-2xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+      className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 text-2xs font-bold text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50"
     >
       <Icon className="h-3 w-3" />
       {label}
