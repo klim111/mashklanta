@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { parseClientProfile, profileToJson } from '@/lib/client-profile';
+import { parseClientProfile, profileToJson, withRegisteredName } from '@/lib/client-profile';
 import type { ClientProfile } from '@/lib/client-profile';
 import { normalizeUsername } from '@/lib/find-user-by-login';
 import { passwordProblem } from '@/lib/password-policy';
@@ -12,7 +12,7 @@ function toResponse(
   user: { name: string | null; email: string | null; username: string | null; profileJson: unknown }
 ): ClientProfile {
   return {
-    ...parseClientProfile(user.profileJson),
+    ...withRegisteredName(parseClientProfile(user.profileJson), user.name),
     name: user.name ?? '',
     email: user.email ?? '',
     username: user.username ?? '',

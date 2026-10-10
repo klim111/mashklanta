@@ -38,7 +38,7 @@ import type { DealType } from '@/components/mortgage-advisor/types';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
 import { createEmptyLoan } from './borrower-loans';
 import { analysisFromToolData } from './tool-data';
-import { analysisFromProfile, mergeProfiles, parseClientProfile } from './client-profile';
+import { analysisFromProfile, mergeProfiles, parseClientProfile, withRegisteredName } from './client-profile';
 import { parseStages } from './advisor-orders';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
@@ -72,6 +72,7 @@ const planSelect = {
   client: { select: { autoLinked: true } },
   owner: {
     select: {
+      name: true,
       role: true,
       platformAccessAt: true,
       // הגישה נגזרת מכל התשלומים של הלקוח ומהתהליכים שסיים (src/lib/process-access.ts)
@@ -147,6 +148,10 @@ function assignStage(data: PlanData, stage: PlanStageId, raw: unknown): void {
 function collectData(row: PlanRow): PlanData {
   const data = emptyPlanData();
   row.stages.forEach((stage) => assignStage(data, stage.stage as PlanStageId, stage.dataJson));
+  // הפרופיל הפיננסי נפתח עם השם שאיתו הלקוח נרשם (לא בתהליך שיועץ פתח לעצמו)
+  if (row.owner.role !== 'ADVISOR') {
+    data.ANALYSIS = withRegisteredName(data.ANALYSIS, row.owner.name);
+  }
   return data;
 }
 

@@ -43,6 +43,7 @@ import { OverviewSection } from './OverviewSection';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
 import { ConversationDockSlot, useClientConversation } from '@/components/conversation/ClientChatDock';
+import { CHAT_TITLE } from '@/lib/conversation';
 
 interface SectionMeta {
   id: DashboardSection;
@@ -160,7 +161,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const [entryOpen, setEntryOpen] = useState(false);
   const [entryGoal, setEntryGoal] = useState<'NEW_MORTGAGE' | 'REFINANCE' | null>(null);
   const [entryService, setEntryService] = useState<ServiceType | null>(null);
-  /** ההתכתבות עם היועץ — השורה המוקטנת והחלון יושבים בשורש האפליקציה, בכל המסכים */
+  /** הצ׳אט עם נציג משכלנתא — העיגול והחלון יושבים בשורש האפליקציה, בכל המסכים */
   const conversation = useClientConversation();
   const chatUnread = conversation?.unread ?? 0;
   const openChat = useRef(conversation?.open);
@@ -223,7 +224,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
       }
     >
       <MessageCircle className="h-5 w-5 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-right">התכתבות עם היועץ</span>
+      <span className={`min-w-0 flex-1 text-right ${tone === 'sidebar' ? 'leading-tight' : 'truncate'}`}>{CHAT_TITLE}</span>
       {/* מה שהגיע ועוד לא נקרא — גלוי כאן גם כשחלון ההתכתבות לא נפתח */}
       {chatUnread > 0 && (
         <span className="relative flex shrink-0">
@@ -483,22 +484,12 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         {data.ready && <AccessExpiredNotice plans={data.plansState.plans} />}
 
         {/*
-          הכפתורים הצפים של הפינה הימנית: שורת ההתכתבות, ומתחתיה החזרה לדאשבורד
-          המלא — זמינה תמיד, גם אחרי גלילה, מכל אזור שנכנסים אליו
+          עיגול הפעולות של הלקוח (צ׳אט, תיק המסמכים, משימה, חזרה לסקירה) — זמין
+          תמיד, גם אחרי גלילה. במסך רחב תפריט הצד תופס את הקצה הימני, והעיגול
+          יושב משמאלו
         */}
-        {/* במסך רחב תפריט הצד תופס את הקצה הימני — העמודה יושבת משמאלו */}
         <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden lg:right-[calc(272px+1.25rem)]">
           <ConversationDockSlot />
-          {section !== 'overview' && (
-            <button
-              type="button"
-              onClick={() => navigate('overview')}
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
-            >
-              <LayoutDashboard className="h-5 w-5" />
-              חזרה לדאשבורד
-            </button>
-          )}
         </div>
       </div>
     </div>
