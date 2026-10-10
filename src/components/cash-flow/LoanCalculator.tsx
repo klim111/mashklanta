@@ -14,11 +14,40 @@ import type { CashFlowLoan, CashFlowState, CashFlowSummary, LoanTerms, SolveFor 
 import { MiniNumber, SHEKEL, ToolPanel } from './fields';
 
 const TARGETS: { id: SolveFor; label: string }[] = [
-  { id: 'payment', label: 'החזר חודשי' },
   { id: 'amount', label: 'סכום' },
   { id: 'months', label: 'תקופה' },
   { id: 'rate', label: 'ריבית' },
+  { id: 'payment', label: 'החזר חודשי' },
 ];
+
+const DEFAULT_LOCKS: SolveFor[] = ['amount', 'rate'];
+
+/**
+ * שינוי של פרמטר אחד: הפרמטרים הנעולים נשארים, ומחושב מחדש פרמטר פתוח אחר —
+ * קודם זה שחושב בפעם הקודמת, ואחריו זה שנערך הכי מזמן. כשאף פרמטר פתוח לא
+ * פותר את המשוואה, הוא מתרוקן וההודעה "אין פתרון" מוצגת.
+ */
+export function recalcLoanTerms(
+  terms: LoanTerms,
+  key: SolveFor,
+  value: number | null,
+  locks: SolveFor[],
+  computed: SolveFor,
+  recent: SolveFor[]
+): { terms: LoanTerms; computed: SolveFor } {
+  const next: LoanTerms = { ...terms, [key]: value };
+  const open = TARGETS.map((item) => item.id).filter((id) => id !== key && !locks.includes(id));
+  if (!open.length) return { terms: next, computed };
+  const byAge = [...open].sort((a, b) => recent.indexOf(a) - recent.indexOf(b));
+  const candidates = open.includes(computed) ? [computed, ...byAge.filter((id) => id !== computed)] : byAge;
+  for (const candidate of candidates) {
+    const solved = solveLoan({ ...next, [candidate]: null }, candidate);
+    if (solved !== null && Number.isFinite(solved) && solved > 0) {
+      return { terms: { ...next, [candidate]: solved }, computed: candidate };
+    }
+  }
+  return { terms: { ...next, [candidates[0]]: null }, computed: candidates[0] };
+}
 
 export interface CalculatorPreset {
   loan: CashFlowLoan;
@@ -27,8 +56,8 @@ export interface CalculatorPreset {
 }
 
 /**
- * מחשבון הלוואה מהיר: מזינים שלושה מתוך ארבעה — סכום, תקופה, ריבית, החזר —
- * והרביעי מחושב. "בדיקה ל-18 חודשים" מראה מה קורה כשמקצרים את ההלוואה כך שלא
+ * מחשבון הלוואה מהיר: ארבעה פרמטרים — סכום, תקופה, ריבית, החזר. נועלים את מה
+ * שצריך להישאר קבוע, וכל שינוי מחשב מחדש את הפרמטרים הפתוחים. "בדיקה ל-18 חודשים" מראה מה קורה כשמקצרים את ההלוואה כך שלא
  * תיכנס לחישוב כושר ההחזר למשכנתא.
  */
 export function LoanCalculator({
@@ -42,8 +71,17 @@ export function LoanCalculator({
   preset: CalculatorPreset | null;
   onSchedule: (title: string, terms: { amount: number; rate: number; months: number }) => void;
 }) {
-  const [terms, setTerms] = useState<LoanTerms>({ amount: 200_000, months: 24, rate: 4.75, payment: null });
-  const [target, setTarget] = useState<SolveFor>('payment');
+  const [terms, setTerms] = useState<LoanTerms>(() => ({
+    amount: 200_000,
+    months: 24,
+    rate: 4.75,
+    payment: solveLoan({ amount: 200_000, months: 24, rate: 4.75, payment: null }, 'payment'),
+  }));
+  const [locks, setLocks] = useState<SolveFor[]>(DEFAULT_LOCKS);
+  /** הפרמטר שחושב בפעם האחרונה — מודגש כתוצאה */
+  const [computed, setComputed] = useState<SolveFor>('payment');
+  /** סדר העריכות של הלקוח, מהישנה לחדשה */
+  const [recent, setRecent] = useState<SolveFor[]>(['amount', 'rate', 'months']);
   const [editing, setEditing] = useState<CashFlowLoan | null>(null);
   const [check18, setCheck18] = useState(false);
 
@@ -51,19 +89,40 @@ export function LoanCalculator({
     if (!preset) return;
     const { loan } = preset;
     setEditing(loan);
-    setTerms({ amount: loan.amount, months: loan.months, rate: loan.rate, payment: loan.payment });
-    setTarget(loan.amount && loan.rate !== null && loan.months ? 'payment' : 'amount');
+    const target: SolveFor = loan.amount && loan.rate !== null && loan.months ? 'payment' : 'amount';
+    const base = { amount: loan.amount, months: loan.months, rate: loan.rate, payment: loan.payment };
+    setTerms({ ...base, [target]: solveLoan({ ...base, [target]: null }, target) });
+    setComputed(target);
+    setLocks(target === 'payment' ? DEFAULT_LOCKS : ['payment', 'rate']);
+    setRecent(['amount', 'rate', 'months', 'payment'].filter((id) => id !== target) as SolveFor[]);
     setCheck18(false);
   }, [preset]);
 
-  const solved = solveLoan(terms, target);
-  const full = {
-    amount: target === 'amount' ? solved : terms.amount,
-    months: target === 'months' ? solved : terms.months,
-    rate: target === 'rate' ? solved : terms.rate,
-    payment: target === 'payment' ? solved : terms.payment,
-  };
+  const full = terms;
   const ready = full.amount && full.months && full.rate !== null && full.payment;
+  const openKeys = TARGETS.map((item) => item.id).filter((id) => !locks.includes(id));
+
+  const edit = (key: SolveFor, next: number | null) => {
+    const result = recalcLoanTerms(terms, key, next, locks, computed, recent);
+    setTerms(result.terms);
+    setComputed(result.computed);
+    setRecent((current) => [...current.filter((id) => id !== key), key]);
+  };
+
+  const toggleLock = (key: SolveFor) => {
+    if (locks.includes(key)) {
+      setLocks(locks.filter((id) => id !== key));
+      return;
+    }
+    // לפחות פרמטר אחד נשאר פתוח, כדי שיהיה מה לחשב
+    if (openKeys.length <= 1) return;
+    const nextLocks = [...locks, key];
+    setLocks(nextLocks);
+    if (computed === key) {
+      const free = TARGETS.map((item) => item.id).filter((id) => !nextLocks.includes(id));
+      setComputed(free.sort((a, b) => recent.indexOf(a) - recent.indexOf(b))[0]);
+    }
+  };
   const totalPaid = ready ? full.payment! * full.months! : 0;
   const long = !!full.months && full.months > LONG_LOAN_MONTHS;
 
@@ -102,26 +161,34 @@ export function LoanCalculator({
       title={editing ? `מחשבון · ${editing.name || 'הלוואה מהרשימה'}` : 'מחשבון הלוואה מהיר'}
       icon={<Sparkles className="h-5 w-5 text-violet-600" />}
       action={
-        <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="מה לחשב">
-          <span className="px-1.5 text-2xs font-bold text-slate-500">לחשב את</span>
-          {TARGETS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="radio"
-              aria-checked={target === item.id}
-              onClick={() => {
-                // הערך שחושב עד עכשיו הופך לקבוע, והפרמטר שנבחר ישתחרר
-                setTerms({ ...(full as LoanTerms), [item.id]: null });
-                setTarget(item.id);
-              }}
-              className={`rounded-lg px-2.5 py-1 text-sm font-black transition-colors ${
-                target === item.id ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="נעילת פרמטרים">
+          <span className="px-1.5 text-2xs font-bold text-slate-500">לחשב את כל הפרמטרים האחרים בשינוי, חוץ מהנעולים:</span>
+          {TARGETS.map((item) => {
+            const locked = locks.includes(item.id);
+            const lastOpen = !locked && openKeys.length <= 1;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={locked}
+                disabled={lastOpen}
+                title={
+                  lastOpen
+                    ? 'פרמטר אחד לפחות נשאר פתוח לחישוב'
+                    : locked
+                      ? `${item.label} נעול. לחיצה משחררת`
+                      : `נעילת ${item.label}: לא ישתנה כשמשנים פרמטר אחר`
+                }
+                onClick={() => toggleLock(item.id)}
+                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-black transition-colors disabled:cursor-not-allowed ${
+                  locked ? 'bg-white text-slate-800 shadow-sm' : 'text-blue-700 hover:bg-white/60'
+                }`}
+              >
+                {locked ? <Lock className="h-3.5 w-3.5" aria-hidden /> : <Unlock className="h-3.5 w-3.5" aria-hidden />}
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       }
     >
@@ -133,27 +200,39 @@ export function LoanCalculator({
             ['rate', 'ריבית שנתית', '%', false],
             ['payment', 'החזר חודשי', '₪', true],
           ] as const
-        ).map(([key, label, suffix, integer]) => (
-          <div key={key} className="relative">
-            <MiniNumber
-              label={label}
-              value={target === key ? value(key) : terms[key]}
-              suffix={suffix}
-              integer={integer}
-              tone={target === key ? 'result' : 'input'}
-              onChange={(next) => {
-                if (target === key) return;
-                setTerms((current) => ({ ...current, [key]: next }));
-              }}
-            />
-            <span className="pointer-events-none absolute left-1 top-0 text-slate-300" aria-hidden>
-              {target === key ? <Unlock className="h-3 w-3 text-blue-500" /> : <Lock className="h-3 w-3" />}
-            </span>
-          </div>
-        ))}
+        ).map(([key, label, suffix, integer]) => {
+          const locked = locks.includes(key);
+          // הפרמטר הפתוח היחיד הוא תוצאה בלבד — אין מה לחשב במקומו
+          const resultOnly = !locked && openKeys.length <= 1;
+          return (
+            <div key={key} className="relative">
+              <MiniNumber
+                label={label}
+                value={computed === key ? value(key) : terms[key]}
+                suffix={suffix}
+                integer={integer}
+                tone={computed === key && !locked ? 'result' : 'input'}
+                onChange={(next) => {
+                  if (resultOnly) return;
+                  edit(key, next);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => toggleLock(key)}
+                disabled={!locked && openKeys.length <= 1}
+                aria-pressed={locked}
+                aria-label={locked ? `שחרור ${label}` : `נעילת ${label}`}
+                className="absolute left-0.5 top-0 rounded p-0.5 text-slate-400 hover:text-slate-700 disabled:cursor-not-allowed"
+              >
+                {locked ? <Lock className="h-3 w-3 text-amber-600" /> : <Unlock className="h-3 w-3 text-blue-500" />}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
-      {target !== 'payment' && solved === null && (terms.amount || terms.payment) ? (
+      {terms[computed] === null && TARGETS.every((item) => item.id === computed || terms[item.id] !== null) ? (
         <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
           אין פתרון לנתונים האלה. למשל, החזר שלא מכסה אפילו את הריבית לא יסלק את ההלוואה לעולם.
         </p>
