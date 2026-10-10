@@ -106,7 +106,7 @@ export default function Testimonials() {
   const [selectedTestimonial, setSelectedTestimonial] = useState<number | null>(null)
 
   return (
-    <section className="py-20 px-4 bg-gray-50">
+    <section className="py-20 px-4 bg-slate-50">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -126,11 +126,11 @@ export default function Testimonials() {
             <span>המלצות לקוחות</span>
           </motion.div>
           
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">
+          <h2 className="text-title font-bold mb-6 text-slate-900">
             מה הלקוחות שלנו אומרים
           </h2>
           
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
             הצטרפו ל-1,200+ משפחות שכבר חסכו מאות אלפי שקלים 
             וקיבלו את המשכנתא המושלמת עבורן
           </p>
@@ -180,16 +180,16 @@ export default function Testimonials() {
                     </div>
                   </div>
                   <motion.div
-                    className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"
+                    className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center"
                     whileHover={{ rotate: 360 }}
                     transition={{ duration: 0.6 }}
                   >
-                    <Quote className="w-6 h-6 text-gray-400" />
+                    <Quote className="w-6 h-6 text-slate-400" />
                   </motion.div>
                 </CardHeader>
                 
                 <CardContent className="text-right">
-                  <p className="text-gray-700 leading-relaxed mb-6 text-lg">
+                  <p className="text-slate-700 leading-relaxed mb-6 text-lg">
                     "{testimonial.content}"
                   </p>
                   
@@ -219,8 +219,8 @@ export default function Testimonials() {
                   </AnimatePresence>
                   
                   <div className="mt-6">
-                    <p className="font-bold text-gray-900 text-lg">{testimonial.name}</p>
-                    <p className="text-gray-600">{testimonial.role}</p>
+                    <p className="font-bold text-slate-900 text-lg">{testimonial.name}</p>
+                    <p className="text-slate-600">{testimonial.role}</p>
                   </div>
                   
                   <Button
@@ -247,7 +247,7 @@ export default function Testimonials() {
           viewport={{ once: true }}
           className="mt-20"
         >
-          <Card className="max-w-6xl mx-auto p-8 bg-white border-2 border-gray-200 shadow-2xl">
+          <Card className="max-w-6xl mx-auto p-8 bg-white border-2 border-slate-200 shadow-2xl">
             <CardHeader className="text-center">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -260,7 +260,7 @@ export default function Testimonials() {
                 <span>המספרים מדברים בעד עצמם</span>
               </motion.div>
               
-              <h3 className="text-3xl font-bold mb-6 text-gray-900">
+              <h3 className="text-subtitle font-bold mb-6 text-slate-900">
                 התוצאות שלנו
               </h3>
             </CardHeader>
@@ -323,7 +323,7 @@ export default function Testimonials() {
                           <stat.icon className="w-8 h-8 text-white" />
                         </motion.div>
                         <div className={`text-3xl font-bold ${stat.color} mb-2`}>{stat.number}</div>
-                        <div className="text-gray-600 font-medium">{stat.label}</div>
+                        <div className="text-slate-600 font-medium">{stat.label}</div>
                       </CardContent>
                     </Card>
                   </motion.div>

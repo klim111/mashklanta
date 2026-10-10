@@ -1,0 +1,229 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { AlertCircle, ArrowLeft, LayoutDashboard, Loader2, Mail, Sparkles, User } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
+import { PasswordField } from '@/components/auth/PasswordField';
+import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
+import { passwordProblem } from '@/lib/password-policy';
+import { useSignupDraft } from '@/components/analytics/useSignupDraft';
+import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
+
+/**
+ * ההרשמה שנפתחת מתוך הכלים הפתוחים.
+ *
+ * הלקוח שסיים לשחק עם הכלי ורוצה להמשיך לתכנון ולקיחת המשכנתא לא נשלח לעמוד
+ * הרשמה נפרד — הוא נפתח כאן, מעל התוצאות שהוא כבר רואה. עם השליחה נשלח אליו
+ * מייל עם קישור אימות; רק אישור הקישור יוצר את החשבון ופותח את הדאשבורד,
+ * ישר ליעד שממנו נרשם.
+ */
+
+const inputClass =
+  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+
+export interface GuestRegistrationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** הכתובת שנפתחת אחרי ההרשמה — ברירת המחדל: האזור האישי */
+  redirectTo?: string;
+  title?: string;
+  description?: string;
+}
+
+export function GuestRegistrationDialog({
+  open,
+  onOpenChange,
+  redirectTo = '/dashboard',
+  title = 'עוד שלב אחד — ונמשיך לתכנון ולקיחת המשכנתא',
+  description = 'פתיחת חשבון לוקחת פחות מדקה, והיא חינמית. נשלח לכם מייל לאישור, ומיד אחריו נפתח האזור האישי עם כל שלבי התהליך, והנתונים שהזנתם בכלי ממשיכים איתכם.',
+}: GuestRegistrationDialogProps) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const emailStatus = useEmailExists(email);
+  // מה שהוקלד נשמר כבר עכשיו, כדי שהיועץ יראה גם הרשמה שלא הושלמה (בלי הסיסמה)
+  const draft = useSignupDraft('guest-dialog', { name, email });
+
+  // כל פתיחה מתחילה נקייה, כדי שלא יוצג אישור של הרשמה קודמת
+  useEffect(() => {
+    if (!open) return;
+    setError(null);
+    setBusy(false);
+    setDone(false);
+  }, [open]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+
+    if (name.trim().length < 2) {
+      setError('השם חייב להכיל לפחות 2 תווים');
+      return;
+    }
+    if (!email.includes('@')) {
+      setError('כתובת המייל אינה תקינה');
+      return;
+    }
+    if (emailStatus.exists) {
+      setError('כבר קיים משתמש עם המייל הזה');
+      return;
+    }
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          callbackUrl: redirectTo,
+        }),
+      });
+      const body = await response.json().catch(() => null);
+
+      if (body?.code === 'email-exists') {
+        emailStatus.markExists();
+        setError('כבר קיים משתמש עם המייל הזה');
+        return;
+      }
+      if (!response.ok) {
+        setError(body?.error ?? 'ההרשמה נכשלה. נסו שוב.');
+        return;
+      }
+
+      draft.markSubmitted();
+      setDone(true);
+    } catch {
+      setError('ההרשמה נכשלה. בדקו את החיבור ונסו שוב.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        dir="rtl"
+        className="w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-3xl border-0 bg-white p-0 text-right shadow-2xl sm:w-full"
+      >
+        {done ? (
+          <div className="px-8 py-10">
+            <DialogTitle className="sr-only">בדקו את תיבת המייל</DialogTitle>
+            <DialogDescription className="sr-only">שלחנו קישור לאישור ההרשמה</DialogDescription>
+            <CheckEmailPanel email={email.trim().toLowerCase()} />
+          </div>
+        ) : (
+          <form onSubmit={submit} className="p-6 md:p-7">
+            <div className="mb-4 flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <DialogTitle className="text-lg font-black leading-snug text-slate-900">
+                  {title}
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-sm leading-relaxed text-slate-500">
+                  {description}
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-xs font-bold text-blue-900">
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              אחרי אישור המייל נפתח הדאשבורד של האזור האישי, עם חמשת שלבי התהליך
+            </div>
+
+            <label className="block text-xs font-bold text-slate-600">
+              שם מלא
+              <span className="relative mt-1 block">
+                <User className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  className={`${inputClass} pr-9`}
+                  placeholder="איך לפנות אליכם"
+                  autoComplete="name"
+                />
+              </span>
+            </label>
+
+            <label className="mt-3 block text-xs font-bold text-slate-600">
+              אימייל
+              <span className="relative mt-1 block">
+                <Mail className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className={`${inputClass} pr-9`}
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  dir="ltr"
+                />
+              </span>
+            </label>
+            {emailStatus.exists && <EmailExistsNotice email={email} callbackUrl={redirectTo} />}
+
+            <div className="mt-3 text-xs font-bold text-slate-600">
+              סיסמה
+              <div className="mt-1 font-normal">
+                <PasswordField value={password} onChange={setPassword} required />
+              </div>
+            </div>
+
+            {error && (
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
+              הרשמה והמשך לאזור האישי
+            </button>
+
+            <SignupDraftNotice className="mt-3 text-center" />
+
+            <div className="my-4 flex items-center gap-3">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span className="text-2xs font-bold text-slate-400">או</span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <GoogleAuthButton label="הרשמה עם Google" callbackUrl={redirectTo} />
+
+            <p className="mt-4 text-center text-xs text-slate-500">
+              כבר יש לכם חשבון?{' '}
+              <Link
+                href={`/auth/login?callbackUrl=${encodeURIComponent(redirectTo)}`}
+                className="font-black text-blue-600 hover:underline"
+              >
+                התחברו והמשיכו לאזור האישי
+              </Link>
+            </p>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

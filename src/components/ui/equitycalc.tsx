@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
+import { parseFormattedNumberInput } from "@/lib/currency";
 import { Calculator } from "lucide-react";
 import Link from "next/link";
 
@@ -41,12 +43,11 @@ export default function CapitalPlanningCalculator() {
   };
 
   const totalExpenses = expenses.reduce((sum, exp) => {
-    const num = parseFloat(exp.amount);
-    return sum + (isNaN(num) ? 0 : num);
+    return sum + parseFormattedNumberInput(exp.amount);
   }, 0);
 
-  const numericPrice = parseFloat(propertyPrice) || 0;
-  const numericEquity = parseFloat(equity) || 0;
+  const numericPrice = parseFormattedNumberInput(propertyPrice);
+  const numericEquity = parseFormattedNumberInput(equity);
 
   const getMinEquity = () => {
     let minEquityPercent = 0.5;
@@ -72,7 +73,7 @@ export default function CapitalPlanningCalculator() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">מחשבון הון עצמי</h1>
+        <h1 className="text-title font-bold">מחשבון הון עצמי</h1>
         <Link href="/equity-planning">
           <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Calculator className="w-4 h-4 ml-2" />
@@ -98,26 +99,24 @@ export default function CapitalPlanningCalculator() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div>
           <label className="block mb-1 text-right">מחיר הנכס</label>
-          <Input
+          <FormattedNumberInput
             className="text-right"
             placeholder="₪"
             value={propertyPrice}
-            type="number"
-            onChange={(e) => setPropertyPrice(e.target.value)}
+            onValueChange={setPropertyPrice}
           />
         </div>
 
         <div>
           <label className="block mb-1 text-right">הון עצמי</label>
-          <Input
+          <FormattedNumberInput
             className="text-right"
             placeholder="₪"
-            type="number"
             value={equity}
-            onChange={(e) => setEquity(e.target.value)}
+            onValueChange={setEquity}
           />
           {propertyPrice && selectedType && minEquity > 0 && (
-            <p className="text-sm mt-1 text-gray-600 text-right">
+            <p className="text-sm mt-1 text-slate-600 text-right">
               הון עצמי מינימלי נדרש:{" "}
               <span className="font-bold text-rose-600">
                 {minEquity.toLocaleString("he-IL", {
@@ -133,18 +132,18 @@ export default function CapitalPlanningCalculator() {
 
       {/* טבלת הוצאות */}
       <div className="overflow-x-auto">
-        <table className="table-auto w-full border-collapse border border-gray-300 text-right">
-          <thead className="bg-gray-100">
+        <table className="table-auto w-full border-collapse border border-slate-300 text-right">
+          <thead className="bg-slate-100">
             <tr>
-              <th className="border border-gray-300 p-2">תאריך</th>
-              <th className="border border-gray-300 p-2">עלות</th>
-              <th className="border border-gray-300 p-2">תיאור</th>
+              <th className="border border-slate-300 p-2">תאריך</th>
+              <th className="border border-slate-300 p-2">עלות</th>
+              <th className="border border-slate-300 p-2">תיאור</th>
             </tr>
           </thead>
           <tbody>
             {expenses.map((row, index) => (
               <tr key={row.description}>
-                <td className="border border-gray-300 p-2">
+                <td className="border border-slate-300 p-2">
                   <Input
                     type="date"
                     className="text-right"
@@ -152,21 +151,20 @@ export default function CapitalPlanningCalculator() {
                     onChange={(e) => handleDateChange(index, e.target.value)}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">
-                  <Input
-                    type="number"
+                <td className="border border-slate-300 p-2">
+                  <FormattedNumberInput
                     className="text-right"
                     value={row.amount}
-                    onChange={(e) => handleAmountChange(index, e.target.value)}
+                    onValueChange={(value) => handleAmountChange(index, value)}
                   />
                 </td>
-                <td className="border border-gray-300 p-2">{row.description}</td>
+                <td className="border border-slate-300 p-2">{row.description}</td>
               </tr>
             ))}
-            <tr className="font-bold bg-gray-50">
-              <td className="border border-gray-300 p-2" />
-              <td className="border border-gray-300 p-2">{totalExpenses.toLocaleString()}</td>
-              <td className="border border-gray-300 p-2">סה"כ</td>
+            <tr className="font-bold bg-slate-50">
+              <td className="border border-slate-300 p-2" />
+              <td className="border border-slate-300 p-2">{totalExpenses.toLocaleString()}</td>
+              <td className="border border-slate-300 p-2">סה"כ</td>
             </tr>
           </tbody>
         </table>

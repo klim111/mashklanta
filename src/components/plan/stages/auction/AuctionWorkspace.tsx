@@ -1,0 +1,349 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { BadgePercent, Lock, X } from 'lucide-react';
+import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
+import { computeMix, formatDuration } from '@/components/mortgage-advisor/engine';
+import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
+import { BankPricingRow } from './BankPricingRow';
+import { AdvisorOffersList } from './AdvisorOffersList';
+import { BankFilterRow } from './BankFilterRow';
+import { OffersStatsRow } from './AuctionSummaryRows';
+import { OfferComparisonArea } from './OfferComparisonArea';
+import { PricedDashboard } from './PricedDashboard';
+import { TrackStrip } from './TrackStrip';
+import {
+  banksWithOffers,
+  cheapestOfBank,
+  costliestPricedMix,
+  filterByBanks,
+  interestSpread,
+  monthlySpread,
+  pricedMixesFor,
+  toggleBank,
+  winningPricedMix,
+} from './pricedMixes';
+import type { PricedMix } from './pricedMixes';
+import { PanelBadge, StagePanel } from './ui';
+
+/**
+ * מי מסתכל על המסך, ומה מותר לו.
+ *
+ * `self` — הלקוח מנהל את המכרז בעצמו: הוא מזין את הריביות ובוחר את התמהיל
+ * לחתימה. `advised` — הלקוח קנה ליווי: הוא רואה את התמהיל ואת ההצעות שהיועץ
+ * שידר לו, ובוחר ביניהן, אבל אינו מזין ריביות. `advisor` — היועץ עובד על תיק
+ * הלקוח: אותו מסך בדיוק כמו אצל הלקוח, בתוספת שידור ההצעה אליו.
+ */
+export type AuctionRole = 'self' | 'advised' | 'advisor';
+
+interface AuctionWorkspaceProps {
+  role: AuctionRole;
+  /** התמהיל הסופי שנבחר בשלב 3 — המבנה שכל הבנקים מתמחרים */
+  finalMix: SavedMix;
+  /** כל התמהילים השמורים שמהם נגזרות ההצעות */
+  savedMixes: SavedMix[];
+  /** ההצעה שנבחרה כתמהיל הסופי לחתימה */
+  signedMixKey?: string | null;
+  onSelectForSigning?: (mixId: string) => void;
+  onSavePriced?: (quoted: WorkspaceMix) => Promise<void> | void;
+  onRemovePriced?: (mixId: string) => void;
+  /** שידור הצעה מתומחרת ללקוח — קיים רק אצל היועץ */
+  onBroadcast?: (item: PricedMix) => void;
+  /** ההצעות שכבר שודרו ללקוח, לסימון בשורה */
+  broadcastIds?: readonly string[];
+  /**
+   * גם לקוח שקנה ליווי יכול להביא הצעה שהשיג בעצמו. היא נשמרת ומתנהגת בדיוק
+   * כמו כל הצעה אחרת, ולכן ההזנה נפתחת בכפתור ולא יושבת פתוחה על המסך.
+   */
+  allowSelfEntry?: boolean;
+  /** הבנקים שנתנו אישור עקרוני בשלב הקודם — הם שנפתחים לתמחור כברירת מחדל */
+  approvedBanks?: readonly string[];
+  /** `approvedBanks` הם היחידים שאפשר להתמחר מולם — מיחזור פנימי, בנק אחד */
+  lockBanks?: boolean;
+  /** ניסוח האזורים. ברירת המחדל היא מכרז ריביות של משכנתא חדשה */
+  copy?: Partial<AuctionCopy>;
+}
+
+/**
+ * הניסוח של אזורי המסך.
+ *
+ * במכרז של משכנתא חדשה מתמחרים כמה בנקים ומחפשים את הזולה; במיחזור פנימי
+ * מתמחר בנק אחד, וההשוואה היא מול המשכנתא הקיימת ולא בין הצעות. המבנה זהה,
+ * ולכן מה שמשתנה הוא הטקסט בלבד.
+ */
+export interface AuctionCopy {
+  pricingTitle: string;
+  pricingDescription: string;
+  featuredTitle: string;
+  featuredDescription: string;
+  /** התווית שעל ההצעה שמוצגת */
+  offerBadge: { label: string; everyOffer?: boolean };
+  signLabel?: { badge: string; button: string; confirm: string };
+}
+
+/**
+ * מסך שלב התמחור.
+ *
+ * המסך בנוי מלמעלה למטה לפי מה שדחוף לדעת: קודם ההצעה הזולה שיש כרגע, אחריה
+ * מצב ההתמחרות, אחר כך המבנה שכולם מתמחרים, אחריו מה כל בנק נתן עליו, ולבסוף
+ * דאשבורד שפותח הצעה אחת במלואה. זהו אותו מסך בדיוק אצל הלקוח ואצל היועץ
+ * שעובד על התיק שלו — ההבדל היחיד הוא שליועץ יש כפתור שידור, וללקוח שקנה
+ * ליווי אין הזנת ריביות.
+ */
+export function AuctionWorkspace({
+  role,
+  finalMix,
+  savedMixes,
+  signedMixKey,
+  onSelectForSigning,
+  onSavePriced,
+  onRemovePriced,
+  onBroadcast,
+  broadcastIds = [],
+  allowSelfEntry = false,
+  approvedBanks = [],
+  lockBanks = false,
+  copy,
+}: AuctionWorkspaceProps) {
+  const [banks, setBanks] = useState<string[]>([]);
+  /** ההצעה שפתוחה בדאשבורד. null — הזולה ביותר, שנבחרת אוטומטית */
+  const [featuredId, setFeaturedId] = useState<string | null>(null);
+  /** הבנק שהעכבר נמצא עליו — הפסים של התמהיל מציגים את הריביות שלו */
+  const [hoveredBank, setHoveredBank] = useState<string | null>(null);
+  /** הזנת ריביות עצמאית, אצל לקוח שקנה ליווי */
+  const [selfEntryOpen, setSelfEntryOpen] = useState(false);
+
+  const baseResult = useMemo(() => computeMix(finalMix.mix), [finalMix.mix]);
+  const priced = useMemo(
+    () => pricedMixesFor(savedMixes, finalMix.mix.id),
+    [savedMixes, finalMix.mix.id]
+  );
+  const visible = useMemo(() => filterByBanks(priced, banks), [priced, banks]);
+  const available = useMemo(() => banksWithOffers(priced), [priced]);
+
+  /* ההצעה הזולה נגזרת מכל ההצעות ולא מהמסוננות: השורה העליונה אומרת מה הטוב
+     ביותר שיש על השולחן, ולא מה הטוב ביותר מבין מה שסומן כרגע. */
+  const winner = useMemo(() => winningPricedMix(priced), [priced]);
+  const costliest = useMemo(() => costliestPricedMix(priced), [priced]);
+
+  const featured = useMemo(() => {
+    const chosen = featuredId ? priced.find((item) => item.mix.id === featuredId) : null;
+    // הצעה שנמחקה או שעדיין לא נבחרה — נופלים לזולה ביותר
+    return chosen ?? winner;
+  }, [featuredId, priced, winner]);
+
+  // הצעה חדשה שנכנסת ומשנה את הזוכה מתעדכנת מיד, כל עוד לא נבחרה הצעה ידנית
+  useEffect(() => {
+    if (featuredId && !priced.some((item) => item.mix.id === featuredId)) setFeaturedId(null);
+  }, [featuredId, priced]);
+
+  const offersPerBank = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of priced) counts[item.bank] = (counts[item.bank] ?? 0) + 1;
+    return counts;
+  }, [priced]);
+
+  const takenNames = useMemo(() => savedMixes.map((item) => item.mix.name), [savedMixes]);
+  const canPrice = (role === 'self' || role === 'advisor') && Boolean(onSavePriced);
+
+  /** הריביות של הבנק שהעכבר עליו, להצצה בתוך הפסים */
+  const previewRates = useMemo(() => {
+    if (!hoveredBank) return null;
+    const offer = cheapestOfBank(priced, hoveredBank);
+    if (!offer) return null;
+
+    const rates: Record<string, number> = {};
+    for (const track of offer.mix.tracks) rates[track.id] = track.interestRate;
+    return { rates, order: offer.mix.tracks.map((track) => track.interestRate) };
+  }, [hoveredBank, priced]);
+
+  /** לחיצה על שם בנק בשורת הסיכום — פותחת את ההצעה שלו בדאשבורד */
+  const onSelectBank = (bank: string) => {
+    const offer = cheapestOfBank(priced, bank);
+    if (offer) setFeaturedId(offer.mix.id);
+  };
+
+  /** לחיצה על שם בנק מסננת אליו וגם מעלה את ההצעה הזולה שלו לדאשבורד */
+  const onToggleBankChip = (bank: string) => {
+    setBanks((current) => {
+      const next = toggleBank(current, bank);
+      if (next.includes(bank)) {
+        const cheapest = cheapestOfBank(priced, bank);
+        if (cheapest) setFeaturedId(cheapest.mix.id);
+      } else if (featured?.bank === bank) {
+        // ביטול הסימון של הבנק שההצעה שלו פתוחה מחזיר את הדאשבורד לזולה ביותר
+        setFeaturedId(null);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* הזנת ריביות עצמאית, בליווי — נפתחת בכפתור ואינה יושבת על המסך */}
+      {role === 'advised' && allowSelfEntry && onSavePriced && (
+        <div className="space-y-3">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setSelfEntryOpen((open) => !open)}
+              className={`inline-flex items-center gap-2 rounded-2xl border-2 px-5 py-2.5 text-sm font-black transition-colors ${
+                selfEntryOpen
+                  ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'border-violet-300 bg-violet-50 text-violet-800 hover:bg-violet-100'
+              }`}
+            >
+              {selfEntryOpen ? <X className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
+              {selfEntryOpen ? 'סגירת ההזנה' : 'הזן ריביות מהצעה שקיבלת עצמאית'}
+            </button>
+          </div>
+
+          {selfEntryOpen && (
+            <StagePanel
+              title="הזנת ריביות מהצעה שהשגתם בעצמכם"
+              description="ההצעה תישמר בדיוק כמו הצעה שהיועץ הזין: היא תופיע בשורת הבנקים, בדאשבורד ובהשוואה, ותיכנס לחישוב ההצעה הזולה."
+            >
+              <BankPricingRow
+                mix={finalMix.mix}
+                takenNames={takenNames}
+                offersPerBank={offersPerBank}
+                approvedBanks={approvedBanks}
+                onSave={async (quoted) => {
+                  await onSavePriced(quoted);
+                  setSelfEntryOpen(false);
+                }}
+              />
+            </StagePanel>
+          )}
+        </div>
+      )}
+
+      {/* 1. המבנה שכל הבנקים מתמחרים — בלי ריביות, כי הן מה שעוד לא ידוע */}
+      <StagePanel
+        tone="locked"
+        badge={
+          <PanelBadge>
+            <Lock className="h-3.5 w-3.5" />
+            נעול לשינויים
+          </PanelBadge>
+        }
+        title="התמהיל שהולך לתמחור"
+        description="המבנה נקבע בשלב בניית התמהיל: מסלולים, סכומים ותקופות. כל בנק מתמחר בדיוק אותו — וזו הסיבה שאפשר להשוות בין ההצעות."
+      >
+        <TrackStrip tracks={finalMix.mix.tracks} variant="structure" preview={previewRates} />
+
+        <p className="mt-3 text-center text-sm font-bold text-slate-600">
+          {formatShekel(finalMix.mix.totalAmount)} · {finalMix.mix.tracks.length} מסלולים ·{' '}
+          {formatDuration(finalMix.summary.months)}
+        </p>
+      </StagePanel>
+
+      {/* 2. מצב ההתמחרות */}
+      <OffersStatsRow
+        offers={priced.length}
+        banks={available}
+        monthlyGap={monthlySpread(priced)}
+        interestGap={interestSpread(priced)}
+        formatMoney={formatShekel}
+        activeBank={featured?.bank ?? null}
+        onHoverBank={setHoveredBank}
+        onSelectBank={priced.length > 0 ? onSelectBank : undefined}
+      />
+
+      {/* שורת הבנקים להזנת ריביות — רק למי שמזין */}
+      {canPrice && onSavePriced && (
+        <StagePanel
+          title={copy?.pricingTitle ?? 'הזנת הריביות מהבנקים'}
+          description={
+            copy?.pricingDescription ??
+            (approvedBanks.length > 0
+              ? 'הבנקים שנתנו אישור עקרוני פתוחים כאן לתמחור. לחיצה על שם בנק פותחת את טבלת הריביות שלו, ואחרי השמירה ההצעה מצטרפת לשורת הבנקים שמתחת.'
+              : 'לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת.')
+          }
+        >
+          <BankPricingRow
+            mix={finalMix.mix}
+            takenNames={takenNames}
+            offersPerBank={offersPerBank}
+            approvedBanks={approvedBanks}
+            lockBanks={lockBanks}
+            onSave={onSavePriced}
+          />
+        </StagePanel>
+      )}
+
+      {/* 3. רשימת העבודה של היועץ — קיימת רק אצלו, ולא במסך של הלקוח */}
+      {role === 'advisor' && onBroadcast && (
+        <StagePanel
+          badge={
+            priced.length > 0 ? (
+              <PanelBadge tone="emerald">{priced.length} הצעות</PanelBadge>
+            ) : undefined
+          }
+          title="ההצעות שהזנתם"
+          description="כל הצעה שנשמרה, עם הריביות שתומחרו לכל מסלול. שידור מעביר אותה ללקוח, ולחיצה על שורה פותחת אותה בדאשבורד שמתחת."
+        >
+          <AdvisorOffersList
+            items={visible}
+            broadcastIds={broadcastIds}
+            onBroadcast={onBroadcast}
+            onRemove={onRemovePriced}
+            winnerId={winner?.mix.id ?? null}
+            featuredId={featured?.mix.id ?? null}
+            onFeature={setFeaturedId}
+          />
+        </StagePanel>
+      )}
+
+      {/* 4. שורת הבנקים — הדרך להחליף את ההצעה שמוצגת בדאשבורד */}
+      {available.length > 0 && (
+        <BankFilterRow
+          banks={available}
+          counts={offersPerBank}
+          selectedBanks={banks}
+          onToggleBank={onToggleBankChip}
+          onClearBanks={() => {
+            setBanks([]);
+            setFeaturedId(null);
+          }}
+        />
+      )}
+
+      {/* 5. הדאשבורד — ההצעה שנבחרה, פתוחה במלואה */}
+      <StagePanel
+        title={
+          copy?.featuredTitle ??
+          (featured && featured.mix.id === winner?.mix.id
+            ? 'ההצעה הזולה ביותר — במלואה'
+            : 'ההצעה שבחרתם — במלואה')
+        }
+        description={
+          copy?.featuredDescription ??
+          'התמהיל, המספרים והגרפים של ההצעה שמוצגת. לחיצה על בנק באחד האזורים שלמעלה מחליפה אותה.'
+        }
+      >
+        <div className="space-y-4">
+          <PricedDashboard
+            featured={featured}
+            baseResult={baseResult}
+            winnerId={winner?.mix.id ?? null}
+            signedMixKey={signedMixKey ?? null}
+            onSelectForSigning={onSelectForSigning}
+            offerBadge={copy?.offerBadge}
+            signLabel={copy?.signLabel}
+            emptyHint={
+              role === 'advised'
+                ? 'היועץ פונה לבנקים. ההצעה הראשונה שהוא ישדר אליכם תיפתח כאן במלואה, בלי צורך לרענן את הדף.'
+                : 'כשתתקבל ההצעה הראשונה היא תיפתח כאן במלואה — כל המסלולים, המספרים והגרפים.'
+            }
+          />
+
+          {!lockBanks && (
+            <OfferComparisonArea cheapest={winner} featured={featured} costliest={costliest} />
+          )}
+        </div>
+      </StagePanel>
+    </div>
+  );
+}

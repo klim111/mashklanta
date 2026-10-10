@@ -1,16 +1,15 @@
 'use client';
 
 import NavBar from '@/components/ui/navbar';
-import EquityPlanningTool from '@/components/ui/equity-planning-tool';
+import EquityPlanningTool from '@/components/equity-planning/EquityPlanningTool';
 
 export default function EquityPlanningPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
-      {/* Navigation */}
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100">
+    <div className="min-h-screen bg-slate-50">
+      <div className="relative z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-sm">
         <NavBar />
       </div>
-      
+
       <EquityPlanningTool />
     </div>
   );

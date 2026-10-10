@@ -7,7 +7,7 @@ import { FileText, ShieldCheck, Home, Banknote, CheckCircle } from "lucide-react
 export default function Map() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10" dir="rtl">
-      <h1 className="text-3xl font-bold mb-8 text-center">🏡 מסע המשכנתא שלך</h1>
+      <h1 className="text-title font-bold mb-8 text-center">🏡 מסע המשכנתא שלך</h1>
 
       <Accordion type="multiple" className="space-y-4">
         {/* שלב 1 */}
