@@ -1098,15 +1098,10 @@ function SaveBadge({
     );
   }
 
-  if (state === 'saving') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-2xs font-black text-white/70">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        שומר…
-      </span>
-    );
-  }
-
+  /*
+    השמירה רצה ברקע אחרי כל שינוי, בלי אנימציה. התג מופיע באנימציה פעם אחת
+    בכניסה לדף ונשאר קבוע — רק כשל בשמירה משנה אותו.
+  */
   if (state === 'error') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 px-3 py-1 text-2xs font-black text-rose-200">
@@ -1117,9 +1112,14 @@ function SaveBadge({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-2xs font-black text-emerald-200">
+    <motion.span
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.35 }}
+      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-2xs font-black text-emerald-200"
+    >
       <Cloud className="h-3.5 w-3.5" />
-      {savedAt ? 'נשמר בחשבון שלכם' : 'נשמר אוטומטית בחשבון'}
-    </span>
+      {savedAt || state === 'saving' ? 'נשמר בחשבון שלכם' : 'נשמר אוטומטית בחשבון'}
+    </motion.span>
   );
 }

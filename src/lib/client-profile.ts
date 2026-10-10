@@ -217,6 +217,26 @@ export function applyProfileToAnalysis(
   };
 }
 
+/** "ישראל ישראלי כהן" → שם פרטי "ישראל", שם משפחה "ישראלי כהן" */
+export function splitFullName(fullName: string | null | undefined): { firstName: string; lastName: string } {
+  const parts = (fullName ?? '').trim().split(/\s+/).filter(Boolean);
+  return { firstName: parts[0] ?? '', lastName: parts.slice(1).join(' ') };
+}
+
+/**
+ * שם הלווה הראשי כברירת מחדל: השם המלא שאיתו הלקוח נרשם, כל עוד לא הוזן שם
+ * אחר. הלקוח יכול לשנות אותו, ושם שהוזן לא נדרס (בקשת בעל האתר, 2026-10-08).
+ */
+export function withRegisteredName<T extends { firstName: string; lastName: string }>(
+  data: T,
+  registeredName: string | null | undefined
+): T {
+  if (data.firstName.trim() || data.lastName.trim()) return data;
+  const { firstName, lastName } = splitFullName(registeredName);
+  if (!firstName) return data;
+  return { ...data, firstName, lastName };
+}
+
 export function analysisFromProfile(profile: ClientProfileFinancials): AnalysisData {
   return applyProfileToAnalysis(emptyStageData('ANALYSIS'), profile);
 }

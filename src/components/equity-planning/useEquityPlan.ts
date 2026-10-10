@@ -121,6 +121,8 @@ export function useEquityPlan() {
   const [ready, setReady] = useState(false);
   const [saveState, setSaveState] = useState<EquitySaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const savedAtRef = useRef<string | null>(null);
+  savedAtRef.current = savedAt;
   /** נטען משרת/מטיוטה — עד שזה קורה אין מה לשמור, כדי לא לדרוס נתונים קיימים */
   const loaded = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -207,14 +209,18 @@ export function useEquityPlan() {
     }
 
     // אין מה לשמור עד שהוזן משהו, וגם אין טעם לפתוח רשומה ריקה בבסיס הנתונים
-    if (!hasContent(data) && !savedAt) return;
+    if (!hasContent(data) && !savedAtRef.current) return;
 
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void push(data), 800);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [data, signedIn, push, savedAt]);
+    /*
+      `savedAt` נקרא דרך ref ולא כתלות: כל שמירה מעדכנת אותו, ותלות בו הפעילה
+      שמירה נוספת — לולאה שהציגה "שומר…" כל שנייה.
+    */
+  }, [data, signedIn, push]);
 
   const reset = useCallback(async () => {
     setData(EMPTY_EQUITY_PLAN);

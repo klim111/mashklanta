@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
-import { createLead, parseLeadTopic } from '@/lib/advisor-leads';
+import { createLead, listOwnOpenLeads, parseLeadTopic } from '@/lib/advisor-leads';
 import { parseRequestKind } from '@/lib/advisor-requests';
 import { cleanSourcePath } from '@/lib/page-labels';
 
 function clean(value: unknown, max = 200): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+/** הפניות הפתוחות של הלקוח המחובר — לדאשבורד */
+export async function GET() {
+  const session = await getServerAuth();
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json([], { status: 200 });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  return NextResponse.json(await listOwnOpenLeads(userId, user?.email ?? null));
 }
 
 /**

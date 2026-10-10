@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { emptyPlanData } from './mortgage-plan';
 import type { PreApprovalData } from './mortgage-plan';
-import { emptyBankRow, keepAdvisorRows, submissionChannelOf } from './preapproval-handoff';
+import { banksToHand, emptyBankRow, keepAdvisorRows, submissionChannelOf } from './preapproval-handoff';
 
 function applications(rows: PreApprovalData['bankApprovals']): PreApprovalData {
   return { ...emptyPlanData().APPLICATIONS, bankApprovals: rows };
@@ -53,5 +53,24 @@ describe('keepAdvisorRows', () => {
   it('leaves self-submitted banks to the client', () => {
     const incoming = applications([{ ...emptyBankRow('לאומי'), channel: 'SELF', bankerName: 'רון' }]);
     expect(keepAdvisorRows(applications([]), incoming)).toBe(incoming);
+  });
+});
+
+describe('banksToHand', () => {
+  it('hands every bank except those the client already submitted to', () => {
+    const rows = [
+      { ...emptyBankRow('לאומי'), channel: 'SELF' as const, submittedAt: '2026-10-01' },
+      { ...emptyBankRow('הפועלים'), channel: 'SELF' as const },
+      { ...emptyBankRow('דיסקונט'), channel: 'ADVISOR' as const },
+    ];
+    expect(banksToHand(rows, ['לאומי', 'הפועלים', 'מזרחי', 'דיסקונט'])).toEqual(['הפועלים', 'מזרחי', 'דיסקונט']);
+  });
+});
+
+describe('keepAdvisorRows and the client switching a bank to self submission', () => {
+  it('keeps the switch to self submission', () => {
+    const saved = applications([{ ...emptyBankRow('מזרחי'), channel: 'ADVISOR', bankerName: 'דנה' }]);
+    const incoming = applications([{ ...emptyBankRow('מזרחי'), channel: 'SELF' }]);
+    expect(keepAdvisorRows(saved, incoming).bankApprovals[0].channel).toBe('SELF');
   });
 });

@@ -11,7 +11,8 @@ import {
   HANDOFF_MEETING_TITLE,
   emptyBankRow,
   handoffTaskDetails,
-  handoffTaskTitle,
+  HANDOFF_TASK_TITLE,
+  banksToHand,
   withLeadingApproval,
 } from './preapproval-handoff';
 
@@ -34,15 +35,15 @@ export interface HandoffResult {
 }
 
 /**
- * הלקוח בחר "הגשה באמצעות יועץ משכלנתא" לבנק אחד. הבנק נרשם כמועבר ליועץ,
- * אצל היועץ נפתחת משימה לבנק (בלי כפילות כל עוד אחת פתוחה), ומשימה אחת לקבוע
- * פגישה להשלמת פרטים — רק אם אין כבר משימה כזו פתוחה או פגישה שנקבעה. היועץ
- * מקבל מייל על הבקשה.
+ * הלקוח בחר "הגשה באמצעות יועץ משכלנתא". הבנקים שבמסך שלו נרשמים כמועברים
+ * ליועץ — חוץ מבנק שכבר התחיל בו הגשה עצמית. אצל היועץ נפתחת משימה אחת
+ * (בלי כפילות כל עוד היא פתוחה), ומשימה אחת לקבוע פגישה להשלמת פרטים — רק אם
+ * אין כבר משימה כזו פתוחה או פגישה שנקבעה. היועץ מקבל מייל על הבקשה.
  */
-export async function handBankToAdvisor(
+export async function handBanksToAdvisor(
   userId: string,
   planId: string,
-  bank: string
+  requested: readonly string[]
 ): Promise<HandoffResult | null> {
   const plan = await prisma.mortgagePlan.findFirst({
     where: { id: planId, ownerId: userId },
@@ -56,17 +57,21 @@ export async function handBankToAdvisor(
   if (!plan) return null;
 
   const now = new Date().toISOString();
+  let handed: string[] = [];
   const data = await updateApplicationsStage(planId, (current) => {
-    const existing = current.bankApprovals.find((row) => row.bank === bank) ?? null;
-    if (existing?.channel === 'ADVISOR') return current;
-    const row: BankPreApproval = { ...(existing ?? emptyBankRow(bank)), channel: 'ADVISOR', handedAt: now };
-    return {
-      ...current,
-      bankApprovals: existing
-        ? current.bankApprovals.map((item) => (item.bank === bank ? row : item))
-        : [...current.bankApprovals, row],
-    };
+    handed = banksToHand(current.bankApprovals, requested);
+    let bankApprovals = current.bankApprovals;
+    for (const bank of handed) {
+      const existing = bankApprovals.find((row) => row.bank === bank) ?? null;
+      if (existing?.channel === 'ADVISOR') continue;
+      const row: BankPreApproval = { ...(existing ?? emptyBankRow(bank)), channel: 'ADVISOR', handedAt: now };
+      bankApprovals = existing
+        ? bankApprovals.map((item) => (item.bank === bank ? row : item))
+        : [...bankApprovals, row];
+    }
+    return { ...current, bankApprovals };
   });
+  if (handed.length === 0) return { data, advisorLinked: false };
 
   const link = plan.client
     ? { clientId: plan.client.id, advisorId: plan.client.advisorId }
@@ -74,7 +79,7 @@ export async function handBankToAdvisor(
   if (!link) return { data, advisorLinked: false };
 
   const place = plan.propertyAddress || plan.name;
-  const title = handoffTaskTitle(bank);
+  const title = HANDOFF_TASK_TITLE;
   const [bankTask, meetingTask, meeting] = await Promise.all([
     prisma.advisorTask.findFirst({
       where: { clientId: link.clientId, title, status: LIVE_TASK },
@@ -97,15 +102,15 @@ export async function handBankToAdvisor(
         clientId: link.clientId,
         stage: 'APPLICATIONS',
         title,
-        details: handoffTaskDetails(bank, place),
+        details: handoffTaskDetails(handed, place),
       },
     });
     await emailAdvisorAboutRequest({
       advisorId: link.advisorId,
-      what: `בקשה להגשה ל${bank} דרך יועץ`,
+      what: 'בקשה להגשה לבנקים דרך יועץ',
       details: [
         ['שלב', 'אישור עקרוני'],
-        ['בנק', bank],
+        ['בנקים', handed.join(', ')],
         ['תהליך', place],
       ],
       from: { name: plan.owner.name, email: plan.owner.email },

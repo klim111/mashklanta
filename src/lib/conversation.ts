@@ -110,6 +110,9 @@ export interface ConversationContact {
 }
 
 /** התפקידים שאפשר לבחור לנמען שמוסיפים מתיבת המיילים */
+/** שם הצ׳אט של הלקוח בכל המסכים — בלי שם היועץ */
+export const CHAT_TITLE = 'צ׳אט עם נציג משכלנתא';
+
 export const RECIPIENT_ROLES = {
   BANKER: 'בנקאי',
   ADVISOR: 'יועץ',
