@@ -28,7 +28,7 @@ import type {
 } from './mortgage-plan';
 import { keepAdvisorRows } from './preapproval-handoff';
 import { saveMix } from './mixes';
-import { MAX_OPEN_PROCESSES, newProcessPass, openPass, processAccess, processLocked } from './process-access';
+import { openPass, processAccess, processLocked } from './process-access';
 import type { ProcessAccess } from './process-access';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -295,7 +295,8 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
 
 /**
  * קשירת תשלום פנוי לתהליך שנפתח עכשיו. כל תשלום פותח תהליך אחד, ולכן תהליך
- * שנפתח בלי תשלום פנוי נשאר בלי גישה עד שישולם עליו.
+ * שנפתח בלי תשלום פנוי נשאר בלי גישה עד שישולם עליו. תשלום פנוי הוא תשלום
+ * שאינו קשור לתהליך: תשלום על תהליך נוסף, או של תהליך שנמחק לפני שהסתיים.
  */
 async function bindOpenPass(userId: string, planId: string): Promise<void> {
   const unbound = await prisma.platformPayment.findMany({
@@ -308,30 +309,51 @@ async function bindOpenPass(userId: string, planId: string): Promise<void> {
 }
 
 /**
- * תהליכים פתוחים במסלול העצמאי: לא הסתיימו, לא בארכיון, ואין עליהם ליווי
- * פעיל — כולל תהליך שהיועץ סימן שהליווי בו הסתיים. עליהם חלה ההגבלה של שני
- * תהליכים במקביל, ולהם נשלחת התזכורת לקראת סוף החודש.
+ * תהליך פתוח במסלול העצמאי: לא הסתיים, לא בארכיון, ואין עליו ליווי פעיל —
+ * כולל תהליך שהיועץ סימן שהליווי בו הסתיים. כל תהליך כזה תופס תשלום.
  */
-export async function countOpenSelfServicePlans(userId: string): Promise<number> {
-  return prisma.mortgagePlan.count({
-    where: {
-      ownerId: userId,
-      status: 'IN_PROGRESS',
-      OR: [
-        { advisoryEndedAt: { not: null } },
-        {
-          // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
-          OR: [{ clientId: null }, { client: { autoLinked: true } }],
-          advisorOrders: { none: { status: 'PAID' } },
-        },
-      ],
+const OPEN_SELF_SERVICE = {
+  status: 'IN_PROGRESS',
+  OR: [
+    { advisoryEndedAt: { not: null } },
+    {
+      // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
+      OR: [{ clientId: null }, { client: { autoLinked: true } }],
+      advisorOrders: { none: { status: 'PAID' } },
     },
+  ],
+} satisfies Prisma.MortgagePlanWhereInput;
+
+export interface OpenProcessSummary {
+  id: string;
+  name: string;
+}
+
+/** התהליכים הפתוחים של הלקוח במסלול העצמאי, מהחדש לישן */
+export async function listOpenSelfServicePlans(userId: string): Promise<OpenProcessSummary[]> {
+  return prisma.mortgagePlan.findMany({
+    where: { ownerId: userId, ...OPEN_SELF_SERVICE },
+    orderBy: { updatedAt: 'desc' },
+    select: { id: true, name: true },
   });
 }
 
+/** כמה תהליכים פתוחים יש ללקוח במסלול העצמאי — או רק כאלה שנפתחו לפני מועד */
+export async function countOpenSelfServicePlans(userId: string, createdBefore?: Date): Promise<number> {
+  return prisma.mortgagePlan.count({
+    where: { ownerId: userId, ...OPEN_SELF_SERVICE, ...(createdBefore ? { createdAt: { lt: createdBefore } } : {}) },
+  });
+}
+
+export async function isOpenSelfServicePlan(planId: string): Promise<boolean> {
+  return (await prisma.mortgagePlan.count({ where: { id: planId, ...OPEN_SELF_SERVICE } })) > 0;
+}
+
 /**
- * האם המשתמש רשאי לפתוח עוד תהליך: עד שני תהליכים פתוחים במקביל. יועץ אינו
- * מוגבל, וגם לקוח שיועץ כבר מלווה אותו — תהליכי הליווי אינם חלק מהחבילה.
+ * האם המשתמש רשאי לפתוח עכשיו תהליך נוסף. כל תשלום הוא עבור תהליך אחד: מי
+ * שיש לו תהליך פתוח שעוד לא הסתיים צריך תשלום פנוי — לשלם על תהליך נוסף, או
+ * למחוק את התהליך הקודם. מי שאין לו תהליך פתוח פותח תהליך, וכשאין תשלום פנוי
+ * התהליך ממתין לתשלום. יועץ אינו מוגבל, וגם לקוח שיועץ מלווה אותו.
  */
 export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
@@ -339,27 +361,22 @@ export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
     select: { role: true, advisedAs: { where: { autoLinked: false }, select: { id: true }, take: 1 } },
   });
   if (!user || user.role === 'ADVISOR' || user.advisedAs.length > 0) return true;
-  return (await countOpenSelfServicePlans(userId)) < MAX_OPEN_PROCESSES;
+  if ((await countOpenSelfServicePlans(userId)) === 0) return true;
+  return (await newProcessPassFor(userId)) !== null;
 }
 
 /**
- * החבילה הפנויה לפתיחת תהליך חדש בלי תשלום — חודש מהתשלום, ורק אם לא
- * הסתיים אחריו אף תהליך של הלקוח.
+ * התשלום הפנוי לפתיחת תהליך חדש בלי תשלום נוסף: תשלום שאינו קשור לתהליך
+ * ושהחודש שלו עוד לא הסתיים.
  */
 export async function newProcessPassFor(
   userId: string
 ): Promise<{ createdAt: Date; amountAgorot: number } | null> {
-  const [payments, completed] = await Promise.all([
-    prisma.platformPayment.findMany({
-      where: { userId, status: 'PAID' },
-      select: { createdAt: true, amountAgorot: true },
-    }),
-    prisma.mortgagePlan.findMany({
-      where: { ownerId: userId, completedAt: { not: null } },
-      select: { completedAt: true },
-    }),
-  ]);
-  return newProcessPass(payments, completionsOf(completed));
+  const unbound = await prisma.platformPayment.findMany({
+    where: { userId, planId: null, status: 'PAID' },
+    select: { createdAt: true, amountAgorot: true },
+  });
+  return openPass(unbound);
 }
 
 /**

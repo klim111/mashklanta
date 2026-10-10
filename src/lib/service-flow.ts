@@ -11,7 +11,7 @@
  */
 
 import { journeyStages } from '@/data/platform/journey';
-import { MAX_OPEN_PROCESSES, PROCESS_ACCESS_PERIOD, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
+import { PROCESS_ACCESS_PERIOD, PROCESS_PRICE, TYPICAL_PROCESS_MONTHS } from './process-access';
 
 // ─────────────────────────────── מה רוצים לעשות ───────────────────────────────
 
@@ -111,9 +111,6 @@ export const PLATFORM_PROCESS_PRICE = PROCESS_PRICE;
  * שולם (src/lib/process-access.ts)
  */
 export const PLATFORM_ACCESS_PERIOD = PROCESS_ACCESS_PERIOD;
-
-/** כמה תהליכים פתוחים אפשר לנהל במקביל על אותה חבילת גישה */
-export const PLATFORM_MAX_OPEN_PROCESSES = MAX_OPEN_PROCESSES;
 
 /** העלות הכוללת של הגישה בתהליך טיפוסי — חודש עד שלושה חודשים */
 export function typicalTotal(price: number): { min: number; max: number } {

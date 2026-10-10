@@ -481,7 +481,13 @@ export function OverviewSection({
               עדיין אין משכנתא או מיחזור פעילים — נקודת ההתחלה יושבת כאן, בתוך
               הכרטיס עצמו: "מה תרצו לעשות?" עם כל הכפתורים והפעולות שמתחתיו.
             */
-            <MortgageEntry variant="hero" onStart={startPlan} busy={busy} hasPlans={completed.length > 0} />
+            <MortgageEntry
+              variant="hero"
+              onStart={startPlan}
+              busy={busy}
+              hasPlans={completed.length > 0}
+              deletePlan={plansState.remove}
+            />
           ) : (
             <div className="space-y-3">
               {(plansOpen ? summaries : summaries.slice(0, 1)).map((summary, index) => (
@@ -587,6 +593,7 @@ export function OverviewSection({
         onStart={startPlan}
         busy={busy}
         hasPlans={plansState.plans.length > 0}
+        deletePlan={plansState.remove}
       />
       {peekDialog}
       {planToDelete && (

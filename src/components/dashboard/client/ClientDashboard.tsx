@@ -294,6 +294,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             onStart={startPlan}
             busy={startBusy}
             hasPlans={data.plansState.plans.length > 0}
+            deletePlan={data.plansState.remove}
           />
           <AdvisorCta variant="sidebar" />
           <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2">
@@ -475,6 +476,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             onStart={startPlan}
             busy={startBusy}
             hasPlans={data.plansState.plans.length > 0}
+            deletePlan={data.plansState.remove}
             initialGoal={entryGoal}
             autoService={entryService}
           />

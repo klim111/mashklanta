@@ -13,6 +13,11 @@ function CheckoutBody() {
   const params = useSearchParams();
   /** חידוש הגישה לתהליך שהחודש שלו הסתיים */
   const renewPlanId = params.get('planId');
+  /** תשלום על תהליך נוסף, כשיש כבר תהליך שעוד לא הסתיים — כל תשלום הוא עבור תהליך אחד */
+  const extra = !renewPlanId && params.get('extra') === '1';
+  /** חזרה לכלי שממנו הגיעו (למשל כלי המיחזור), במקום פתיחת התהליך מהדאשבורד */
+  const backParam = params.get('back');
+  const back = backParam && backParam.startsWith('/') && !backParam.startsWith('//') ? backParam : null;
   const { platformPrice } = usePricing();
 
   const [serverError, setServerError] = useState<string | null>(null);
@@ -26,9 +31,7 @@ function CheckoutBody() {
   const goal = goalParam === 'REFINANCE' ? 'REFINANCE' : 'NEW_MORTGAGE';
   const next = renewPlanId
     ? `/dashboard/plans/${renewPlanId}`
-    : params.get('next') === 'plan'
-      ? `/dashboard?goal=${goal}&service=SELF`
-      : '/dashboard';
+    : back ?? (params.get('next') === 'plan' ? `/dashboard?goal=${goal}&service=SELF` : '/dashboard');
 
   /** מעבר לעמוד התשלום המאובטח של HYP — פרטי הכרטיס מוזנים שם, לא באתר */
   const pay = async () => {
@@ -72,12 +75,14 @@ function CheckoutBody() {
             האזור האישי
           </Link>
           <h1 className="mt-3 text-title font-black text-white">
-            {renewPlanId ? 'חבילת גישה נוספת' : 'מסלול עצמאי / היברידי'}
+            {renewPlanId ? 'חבילת גישה נוספת' : extra ? 'תשלום על תהליך משכנתא נוסף' : 'מסלול עצמאי / היברידי'}
           </h1>
           <p className="mt-2 max-w-2xl text-info leading-relaxed text-white/70">
             {renewPlanId
               ? `חבילת גישה נוספת: ₪${platformPrice} לחודש נוסף. כל מה שהזנתם שמור, והכלים נפתחים מיד אחרי התשלום בדיוק איפה שעצרתם.`
-              : `₪${platformPrice} לחודש לתהליך משכנתא, עם גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
+              : extra
+                ? `כל תשלום הוא עבור תהליך משכנתא אחד. ₪${platformPrice} לחודש לתהליך הנוסף, עם גישה מלאה לכל השלבים והכלים. התהליך הקיים נשאר כמו שהוא, עם הגישה ששולמה עליו.`
+                : `₪${platformPrice} לחודש לתהליך משכנתא, עם גישה מלאה לכל השלבים והכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים את הטיפול ליועץ משכלנתא. מה ששילמתם מקוזז ממחיר הליווי.`}
           </p>
         </div>
       </header>

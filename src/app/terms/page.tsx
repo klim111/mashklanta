@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { LegalDocument, LegalList, LegalSub } from '@/components/legal/LegalDocument';
 import type { LegalSection } from '@/components/legal/LegalDocument';
 import { SITE_CONTACT, operatorDescription } from '@/lib/site-contact';
-import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 import { getPricing } from '@/lib/pricing-store';
 import { journeyStages } from '@/data/platform/journey';
 
@@ -138,8 +137,10 @@ function buildSections(platformPrice: number): LegalSection[] {
             הלקוח.
           </li>
           <li>
-            אפשר לנהל עד {MAX_OPEN_PROCESSES} תהליכים פתוחים במקביל. תהליך שלא הסתיים אפשר למחוק ולפתוח מחדש. פתיחת
-            תהליך חדש אחרי שתהליך הושלם מחייבת רכישה חדשה, גם אם נותרו ימים בחבילה.
+            כל תשלום הוא עבור תהליך משכנתא אחד (משכנתא חדשה או מיחזור). כדי לפתוח תהליך נוסף כשתהליך קודם עוד לא
+            הסתיים, משלמים על התהליך הנוסף בנפרד, או מוחקים את התהליך הקודם. תהליך שנמחק בתוך החודש משחרר את התשלום
+            שלו, ותהליך חדש נפתח עליו עד סוף אותו חודש. פתיחת תהליך חדש אחרי שתהליך הושלם מחייבת רכישה חדשה, גם אם
+            נותרו ימים בחבילה.
           </li>
         </LegalList>
 

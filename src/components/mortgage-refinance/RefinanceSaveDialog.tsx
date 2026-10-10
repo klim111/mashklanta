@@ -21,6 +21,10 @@ import {
   mixStatsOf,
   snapshotOf,
 } from '@/components/mortgage-refinance/RefinanceResultsDashboard';
+import { PlanCreateError, deletePlanRequest } from '@/components/plan/usePlan';
+import { usePricing } from '@/components/pricing/PricingProvider';
+import { OneProcessNotice, extraProcessCheckoutHref } from '@/components/service-flow/OneProcessNotice';
+import type { OpenProcess } from '@/components/service-flow/OneProcessNotice';
 import type { RefinanceSaveOutcome, RefinanceSavePayload } from './refinancePlan';
 
 type Phase = 'review' | 'saving' | 'saved' | 'error';
@@ -53,12 +57,16 @@ export function RefinanceSaveDialog({
   const [phase, setPhase] = useState<Phase>('review');
   const [outcome, setOutcome] = useState<RefinanceSaveOutcome | null>(null);
   const [quoteOpen, setQuoteOpen] = useState(false);
+  /** יש תהליך שעוד לא הסתיים — התשלום הוא עבור תהליך אחד, וצריך לשלם על נוסף או למחוק את הקודם */
+  const [blockedBy, setBlockedBy] = useState<OpenProcess[] | null>(null);
+  const { platformPrice } = usePricing();
 
   useEffect(() => {
     if (!open) return;
     setPhase('review');
     setOutcome(null);
     setQuoteOpen(false);
+    setBlockedBy(null);
   }, [open]);
 
   if (!payload) return null;
@@ -75,7 +83,12 @@ export function RefinanceSaveDialog({
       const result = await onConfirm(payload);
       setOutcome(result);
       setPhase('saved');
-    } catch {
+    } catch (failure) {
+      if (failure instanceof PlanCreateError && failure.openPlans.length > 0) {
+        setBlockedBy(failure.openPlans);
+        setPhase('review');
+        return;
+      }
       setPhase('error');
     }
   };
@@ -212,6 +225,27 @@ export function RefinanceSaveDialog({
             </>
           )}
         </div>
+
+        <OneProcessNotice
+          open={blockedBy !== null}
+          onOpenChange={(next) => {
+            if (!next) setBlockedBy(null);
+          }}
+          plans={blockedBy ?? []}
+          goal="REFINANCE"
+          price={platformPrice}
+          onPay={() =>
+            window.location.assign(
+              extraProcessCheckoutHref('REFINANCE', `${window.location.pathname}${window.location.search}`)
+            )
+          }
+          deletePlan={deletePlanRequest}
+          onDeleted={() => {
+            // התהליך הקודם נמחק — השמירה נשלחת שוב, והתהליך החדש נפתח על התשלום שהתפנה
+            setBlockedBy(null);
+            void confirm();
+          }}
+        />
 
         {outcome && (
           <RateRequestDialog

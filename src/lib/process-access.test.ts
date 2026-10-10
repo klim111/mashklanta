@@ -4,7 +4,7 @@ import {
   passDays,
   PROCESS_PRICE,
   daysUntil,
-  newProcessPass,
+  ONE_PROCESS_PER_PAYMENT_SINCE,
   openPass,
   passExpiresAt,
   processAccess,
@@ -160,60 +160,86 @@ describe('processAccess', () => {
   });
 });
 
-describe('one package, up to two open processes', () => {
+describe('one payment, one process', () => {
   const now = new Date('2026-10-20T00:00:00Z');
-  const paid = { createdAt: '2026-10-10T00:00:00Z' };
+  const paid = { createdAt: '2026-10-12T00:00:00Z' };
+  const opened = { ...base, planCreatedAt: '2026-10-12T01:00:00Z' };
 
-  it('opens a second process on the same package, with the same expiry', () => {
+  it('opens only the process the payment is bound to', () => {
+    expect(new Date(opened.planCreatedAt) >= ONE_PROCESS_PER_PAYMENT_SINCE).toBe(true);
+    const own = processAccess({ ...opened, payments: [paid], ownerPayments: [paid] }, now);
+    expect(own.state).toBe('ACTIVE');
+    expect(own.expiresAt).toBe('2026-11-12T00:00:00.000Z');
+
+    // תהליך שני שנפתח אחרי אותו תשלום — לא נפתח עליו, צריך לשלם עליו בנפרד
     const second = processAccess(
-      { ...base, planCreatedAt: '2026-10-15T00:00:00Z', ownerPayments: [paid], ownerCompletions: [] },
+      { ...base, planCreatedAt: '2026-10-15T00:00:00Z', payments: [], ownerPayments: [paid], ownerCompletions: [] },
+      now
+    );
+    expect(second.state).toBe('UNPAID');
+    expect(processLocked(second)).toBe(true);
+  });
+
+  it('a payment freed by deleting its process opens a new one with the same expiry', () => {
+    // התשלום מתהליך שנמחק נקשר לתהליך החדש
+    const reopened = processAccess({ ...base, planCreatedAt: '2026-10-18T00:00:00Z', payments: [paid] }, now);
+    expect(reopened.state).toBe('ACTIVE');
+    expect(reopened.expiresAt).toBe('2026-11-12T00:00:00.000Z');
+  });
+
+  it('a free payment is one that is unbound and still inside its month', () => {
+    expect(openPass([paid], now)).toBe(paid);
+    expect(openPass([], now)).toBeNull();
+    expect(openPass([paid], new Date('2026-11-12T00:00:00Z'))).toBeNull();
+  });
+
+  it('a renewal reopens only its own process', () => {
+    const later = new Date('2026-11-20T00:00:00Z');
+    const renewal = { createdAt: '2026-11-15T00:00:00Z' };
+    const renewed = processAccess({ ...opened, payments: [paid, renewal], ownerPayments: [paid, renewal] }, later);
+    expect(renewed.state).toBe('ACTIVE');
+    expect(renewed.expiresAt).toBe('2026-12-15T00:00:00.000Z');
+
+    const other = processAccess(
+      { ...base, planCreatedAt: '2026-10-13T00:00:00Z', payments: [], ownerPayments: [paid, renewal] },
+      later
+    );
+    expect(other.state).toBe('UNPAID');
+  });
+});
+
+describe('processes opened before one payment per process', () => {
+  const now = new Date('2026-10-20T00:00:00Z');
+  const paid = { createdAt: '2026-10-01T00:00:00Z' };
+
+  it('keep opening on any payment of the owner, as before', () => {
+    const second = processAccess(
+      { ...base, planCreatedAt: '2026-10-05T00:00:00Z', ownerPayments: [paid], ownerCompletions: [] },
       now
     );
     expect(second.state).toBe('ACTIVE');
-    expect(second.expiresAt).toBe('2026-11-10T00:00:00.000Z');
+    expect(second.expiresAt).toBe('2026-11-01T00:00:00.000Z');
     expect(second.paid).toBe(0);
   });
 
-  it('lets a new process open free until a process completes, then asks for payment', () => {
-    expect(newProcessPass([paid], [], now)).toBe(paid);
-    expect(newProcessPass([paid], ['2026-10-12T00:00:00Z'], now)).toBeNull();
-    // סיום שקרה לפני התשלום אינו סוגר את החבילה
-    expect(newProcessPass([paid], ['2026-10-05T00:00:00Z'], now)).toBe(paid);
-
+  it('a completion after the payment still closes the package to later processes', () => {
     const afterCompletion = processAccess(
       {
         ...base,
-        planCreatedAt: '2026-10-15T00:00:00Z',
+        planCreatedAt: '2026-10-08T00:00:00Z',
         ownerPayments: [paid],
-        ownerCompletions: ['2026-10-12T00:00:00Z'],
+        ownerCompletions: ['2026-10-03T00:00:00Z'],
       },
       now
     );
     expect(afterCompletion.state).toBe('UNPAID');
   });
 
-  it('keeps a process that was already open when another one completed', () => {
-    const sibling = processAccess(
-      {
-        ...base,
-        planCreatedAt: '2026-10-11T00:00:00Z',
-        ownerPayments: [paid],
-        ownerCompletions: ['2026-10-12T00:00:00Z'],
-      },
-      now
-    );
-    expect(sibling.state).toBe('ACTIVE');
-  });
-
-  it('does not open a process started after the package ran out', () => {
-    expect(newProcessPass([paid], [], new Date('2026-11-10T00:00:00Z'))).toBeNull();
-  });
-
-  it('reopens every open process when another package is bought', () => {
+  it('reopen on a later payment of the owner', () => {
     const later = new Date('2026-11-20T00:00:00Z');
     const renewal = { createdAt: '2026-11-15T00:00:00Z' };
     const access = processAccess(
-      { ...base, planCreatedAt: '2026-10-15T00:00:00Z', ownerPayments: [paid, renewal], ownerCompletions: [] },
+      { ...base, planCreatedAt: '2026-10-05T00:00:00Z', ownerPayments: [paid, renewal], ownerCompletions: [] },
       later
     );
     expect(access.state).toBe('ACTIVE');

@@ -6,9 +6,9 @@ import {
   createPlanFromMix,
   createRefinancePlan,
   createEmptyRefinancePlan,
+  listOpenSelfServicePlans,
   listPlansForUser,
 } from '@/lib/mortgage-plans';
-import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 import { assignMixDeal, getMixForUser } from '@/lib/mixes';
 import { sanitizeMix } from '@/components/mortgage-advisor/engine';
 import { rateLimit } from '@/lib/rate-limit';
@@ -40,12 +40,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // עד שני תהליכים פתוחים במקביל. תהליך שנמחק או הסתיים מפנה מקום
+  // כל תשלום הוא עבור תהליך אחד: עם תהליך פתוח צריך לשלם על תהליך נוסף או למחוק את הקודם
   if (!(await canOpenAnotherPlan(userId))) {
     return NextResponse.json(
       {
-        error: `אפשר לנהל עד ${MAX_OPEN_PROCESSES} תהליכים פתוחים במקביל. כדי לפתוח תהליך חדש, סיימו או מחקו אחד מהתהליכים הפתוחים.`,
-        reason: 'max-open',
+        error:
+          'התשלום הוא עבור תהליך משכנתא אחד. כדי לפתוח תהליך נוסף, מחקו את התהליך שעוד לא הסתיים או שלמו על תהליך נוסף.',
+        reason: 'needs-payment',
+        openPlans: await listOpenSelfServicePlans(userId),
       },
       { status: 409 }
     );

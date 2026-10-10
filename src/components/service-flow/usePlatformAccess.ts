@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { usePricing } from '@/components/pricing/PricingProvider';
 import { passDays } from '@/lib/process-access';
-import { MAX_OPEN_PROCESSES } from '@/lib/process-access';
 
 export interface PlatformAccess {
   /** יש חבילת גישה פנויה לפתיחת תהליך משכנתא בלי תשלום נוסף */
@@ -16,8 +15,12 @@ export interface PlatformAccess {
   accessDays: number;
   passExpiresAt: string | null;
   openProcesses: number;
-  maxOpenProcesses: number;
-  /** עד שני תהליכים פתוחים במקביל — כשמלא, צריך לסיים או למחוק תהליך */
+  /** התהליכים הפתוחים במסלול העצמאי, מהחדש לישן */
+  openPlans: { id: string; name: string }[];
+  /**
+   * כל תשלום הוא עבור תהליך אחד: עם תהליך פתוח ובלי תשלום פנוי, צריך לשלם על
+   * תהליך נוסף או למחוק את הקודם
+   */
   canOpenMore: boolean;
 }
 
@@ -29,7 +32,7 @@ const NO_ACCESS: PlatformAccess = {
   accessDays: passDays(new Date()),
   passExpiresAt: null,
   openProcesses: 0,
-  maxOpenProcesses: MAX_OPEN_PROCESSES,
+  openPlans: [],
   canOpenMore: true,
 };
 
@@ -44,12 +47,13 @@ export function usePlatformAccess() {
   const [access, setAccess] = useState<PlatformAccess>({ ...NO_ACCESS, price: platformPrice });
   const [ready, setReady] = useState(false);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<PlatformAccess> => {
+    let next = NO_ACCESS;
     try {
       const response = await fetch('/api/platform/access', { cache: 'no-store' });
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as Partial<PlatformAccess>;
-      setAccess({
+      next = {
         active: Boolean(body.active),
         since: typeof body.since === 'string' ? body.since : null,
         paid: typeof body.paid === 'number' ? body.paid : 0,
@@ -57,14 +61,15 @@ export function usePlatformAccess() {
         accessDays: typeof body.accessDays === 'number' ? body.accessDays : passDays(new Date()),
         passExpiresAt: typeof body.passExpiresAt === 'string' ? body.passExpiresAt : null,
         openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
-        maxOpenProcesses: typeof body.maxOpenProcesses === 'number' ? body.maxOpenProcesses : MAX_OPEN_PROCESSES,
+        openPlans: Array.isArray(body.openPlans) ? body.openPlans : [],
         canOpenMore: body.canOpenMore !== false,
-      });
+      };
     } catch {
-      setAccess(NO_ACCESS);
-    } finally {
-      setReady(true);
+      // בלי תשובה מהשרת — כאילו לא שולם, והמסך שולח לתשלום
     }
+    setAccess(next);
+    setReady(true);
+    return next;
   }, [platformPrice]);
 
   useEffect(() => {
