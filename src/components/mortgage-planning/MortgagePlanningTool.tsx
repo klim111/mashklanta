@@ -55,6 +55,9 @@ import { RegisterTeaserCarousel } from '@/components/guest/RegisterTeaserCarouse
 import { useSliderEngagement } from '@/hooks/use-slider-engagement';
 import { demoId } from '@/demo/demo-attr';
 import { useToolData } from '@/components/tool-data/toolData';
+import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
+import { touchGuestData } from '@/components/guest/guestData';
+import { affordabilityHasContent } from '@/lib/tool-data';
 
 type UserData = MortgagePlanningUserData;
 
@@ -343,10 +346,12 @@ export function MortgagePlanningContent({
     if (!hydrated) return;
     if (!embedded) {
       localStorage.setItem('mortgagePlanningData', JSON.stringify({ userData, currentStep }));
-      saveToolData({ userData: userData as unknown as Record<string, unknown>, currentStep });
+      const saved = { userData: userData as unknown as Record<string, unknown>, currentStep };
+      saveToolData(saved);
+      if (!toolData.signedIn && affordabilityHasContent(saved)) touchGuestData();
     }
     persistRef.current?.({ userData, currentStep });
-  }, [userData, currentStep, hydrated, embedded, saveToolData]);
+  }, [userData, currentStep, hydrated, embedded, saveToolData, toolData.signedIn]);
 
   // Check capital sufficiency when property price or own capital changes
   useEffect(() => {
@@ -2645,6 +2650,12 @@ export function MortgagePlanningContent({
 
       {/* חזרה לעמוד הבית — זמינה בכל מסך של הכלי, גם אחרי גלילה */}
       {!embedded && <HomeFloatingButton />}
+      {!embedded && (
+        <GuestSaveNotice
+          tool="affordability"
+          hasData={hydrated && affordabilityHasContent({ userData })}
+        />
+      )}
 
       {/* ההרשמה שממשיכה לאזור האישי, והקרוסלה שמציגה מה מחכה שם */}
       {!embedded && (

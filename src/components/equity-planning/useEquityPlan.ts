@@ -9,6 +9,7 @@ import {
   sanitizeExpenses,
 } from '@/lib/equity-planning';
 import type { EquityPlanView, EquityPlanningData } from '@/lib/equity-planning';
+import { expireGuestData, touchGuestData } from '@/components/guest/guestData';
 
 /** הטיוטה של מי שעדיין לא נרשם — נשמרת בדפדפן בלבד, ועוברת לחשבון בהרשמה */
 export const EQUITY_DRAFT_KEY = 'mashklanta:equity-planning-draft';
@@ -22,6 +23,7 @@ export const EQUITY_PLAN_CHANGED_EVENT = 'mashklanta:equity-plan-changed';
 export type EquitySaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 function readDraft(): EquityPlanningData | null {
+  expireGuestData();
   try {
     const raw = window.localStorage.getItem(EQUITY_DRAFT_KEY);
     if (!raw) return null;
@@ -48,6 +50,7 @@ function readDraft(): EquityPlanningData | null {
 function writeDraft(data: EquityPlanningData) {
   try {
     window.localStorage.setItem(EQUITY_DRAFT_KEY, JSON.stringify(data));
+    if (hasContent(data)) touchGuestData();
   } catch {
     // דפדפן שחוסם אחסון מקומי — הנתונים נשארים בזיכרון המסך בלבד
   }
@@ -61,7 +64,7 @@ function clearDraft() {
   }
 }
 
-function hasContent(data: EquityPlanningData): boolean {
+export function hasContent(data: EquityPlanningData): boolean {
   return (
     data.propertyData.price > 0 ||
     data.expenses.some((expense) => expense.amount > 0 || expense.description.trim().length > 0)

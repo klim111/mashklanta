@@ -62,7 +62,8 @@ import {
 import { MonthCalendar } from './MonthCalendar';
 import type { DayMarker } from './MonthCalendar';
 import { EquityGuestDialog, GuestSaveNotice, useEquityGuestGate } from './EquityGuestGate';
-import { useEquityPlan } from './useEquityPlan';
+import { hasContent, useEquityPlan } from './useEquityPlan';
+import { GuestSaveNotice as GuestRegisterNotice } from '@/components/guest/GuestSaveNotice';
 import {
   HE_DATE,
   HE_MONTH,
@@ -970,6 +971,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
       <EquityGuestDialog open={gate.promptOpen} onClose={gate.closePrompt} />
       <FamilyEconomyLeadDialog open={leadOpen} onOpenChange={setLeadOpen} context={leadContext} />
       <FamilyEconomyFloatingCta context={leadContext} />
+      {!embedded && <GuestRegisterNotice tool="equity" hasData={ready && !signedIn && hasContent(data)} />}
     </div>
   );
 }

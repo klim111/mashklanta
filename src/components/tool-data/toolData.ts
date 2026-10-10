@@ -6,6 +6,7 @@ import { TOOL_DATA_KEYS, TOOL_HAS_CONTENT } from '@/lib/tool-data';
 import type { AccountToolData, ToolDataKey } from '@/lib/tool-data';
 import { clearGuestRefinance, guestRefinanceMix } from '@/components/refinance-check/refinanceCheckStore';
 import { adoptEquityDraft } from '@/components/equity-planning/useEquityPlan';
+import { expireGuestData } from '@/components/guest/guestData';
 
 /**
  * מה שהלקוח הזין בכלים הפתוחים, בין הדפדפן לחשבון (src/lib/tool-data.ts).
@@ -36,6 +37,8 @@ function readLocalJson(key: string): unknown {
 
 /** מה שהאורח הזין בכלי הזה בדפדפן הנוכחי, אם הזין משהו */
 export function readGuestToolData(key: ToolDataKey): unknown {
+  // מה שהאורח הזין לפני זמן רב כבר לא נשמר (src/components/guest/guestData.ts)
+  expireGuestData();
   const value = GUEST_SOURCES[key].read();
   return TOOL_HAS_CONTENT[key](value) ? value : null;
 }
