@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -18,8 +19,8 @@ import {
   X,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { RequestKindPicker, currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
-import type { RequestKind } from '@/lib/advisor-requests';
+import { currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
+import { saveConsultPrefill } from '@/lib/consult-reasons';
 
 /**
  * הפנייה ליועץ כלכלת המשפחה של משכלנתא — אותה פנייה מכל הכלים הפתוחים.
@@ -70,7 +71,7 @@ export interface AdvisorLeadContext {
 }
 
 const DEFAULT_INTRO =
-  'השאירו שם וטלפון, ויועץ יחזור אליכם עם קריאה ראשונה של ההלוואות שהזנתם כאן — מה יקר, מה כדאי לאחד או לסגור, ואיך לנצל טוב יותר את הכסף שברשותכם.';
+  'השאירו שם, טלפון ומייל, ויועץ יחזור אליכם עם קריאה ראשונה של ההלוואות שהזנתם כאן — מה יקר, מה כדאי לאחד או לסגור, ואיך לנצל טוב יותר את הכסף שברשותכם.';
 
 const DEFAULT_CONFIRMATION =
   'הבקשה מופיעה אצל יועצי משכלנתא כבקשת ליווי, יחד עם תמונת ההלוואות שהזנתם כאן — כך שהשיחה מתחילה מהנתונים שלכם ולא מאפס. בינתיים אפשר להמשיך לעבוד בכלי.';
@@ -91,6 +92,7 @@ export function FamilyEconomyLeadDialog({
   onOpenChange: (open: boolean) => void;
   context?: AdvisorLeadContext;
 }) {
+  const router = useRouter();
   const { data: session, status } = useSession();
   // לקוח רשום לא נשאל על פרטים שכבר ידועים ולא על סוג הפנייה — רק הערה
   const isMember = status === 'authenticated' && !!session?.user && session.user.role !== 'ADVISOR';
@@ -99,7 +101,6 @@ export function FamilyEconomyLeadDialog({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
-  const [kind, setKind] = useState<RequestKind>('GUIDANCE');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -115,12 +116,14 @@ export function FamilyEconomyLeadDialog({
   }, [open, session?.user?.name, session?.user?.email]);
 
   const digits = phone.replace(/\D/g, '');
-  const ready = isMember || (name.trim().length > 1 && digits.length >= 9);
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  // אורח עובר אחרי השליחה להרשמה, והמייל מקשר את הפנייה לחשבון שיפתח
+  const ready = isMember || (name.trim().length > 1 && digits.length >= 9 && emailValid);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!ready) {
-      setError('נדרשים שם ומספר טלפון לחזרה');
+      setError('נדרשים שם, טלפון לחזרה וכתובת מייל');
       return;
     }
 
@@ -140,15 +143,22 @@ export function FamilyEconomyLeadDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: 'FAMILY_ECONOMY',
-          ...(isMember ? {} : { name: name.trim(), phone: phone.trim(), email: email.trim() || undefined }),
+          ...(isMember ? {} : { name: name.trim(), phone: phone.trim(), email: email.trim() }),
           notes,
-          requestKind: isMember ? 'GUIDANCE' : kind,
+          // מי שלחץ על ייעוץ בכלכלת המשפחה כבר אמר מה הוא רוצה — אין לשאול שוב
+          requestKind: 'GUIDANCE',
           sourcePath: currentPagePath(),
         }),
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         setError(body?.error ?? 'שליחת הפנייה נכשלה. נסו שוב.');
+        return;
+      }
+      if (!isMember) {
+        // אורח: למעקב אחרי הפנייה ולשימוש בכל הכלים — להרשמה, עם השם והמייל ממולאים
+        saveConsultPrefill({ name: name.trim(), email: email.trim() });
+        router.push('/auth/register?from=consult');
         return;
       }
       setSent(true);
@@ -211,8 +221,6 @@ export function FamilyEconomyLeadDialog({
 
             {!isMember && (
               <>
-                <RequestKindPicker value={kind} onChange={setKind} className="mb-4" />
-
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="text-xs font-bold text-slate-600">
                     שם מלא
@@ -241,8 +249,9 @@ export function FamilyEconomyLeadDialog({
                 </div>
 
                 <label className="mt-3 block text-xs font-bold text-slate-600">
-                  אימייל <span className="font-normal text-slate-400">(רשות)</span>
+                  אימייל
                   <input
+                    required
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
