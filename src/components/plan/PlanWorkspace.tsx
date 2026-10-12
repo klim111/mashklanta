@@ -192,7 +192,7 @@ export function PlanWorkspace({
   /** סוג המיחזור שנבחר כרגע ונשמר — עד שהשרת פותח את השלב הבא */
   const [choosingMode, setChoosingMode] = useState<RefinanceMode | null>(null);
   const orders = useAdvisorOrders(planId);
-  const { meetings } = useClientMeetings();
+  const { meetings, refresh: refreshMeetings } = useClientMeetings();
   /** הריביות הממוצעות בשוק — לכלי המיחזור בתוך התהליך */
   const { market } = useMarketRates();
 
@@ -397,6 +397,7 @@ export function PlanWorkspace({
       status={statuses[stage]}
       advisorName={advisorName}
       meeting={stageMeeting}
+      onMeetingChanged={refreshMeetings}
       detailsOpen={showingDetails}
       onToggleDetails={toggleStageDetails}
     />

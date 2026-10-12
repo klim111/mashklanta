@@ -2,6 +2,8 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import {
   PLAN_STAGES,
+  answerMeeting,
+  meetingAwaits,
   meetingIsLive,
   taskIsClosed,
 } from './advisor-crm';
@@ -11,6 +13,8 @@ import type {
   AdvisorRateDefaultView,
   AdvisorTaskStatus,
   AdvisorTaskView,
+  MeetingAnswer,
+  MeetingParty,
   MeetingStatus,
   MixCategoryView,
   NoteVisibility,
@@ -283,6 +287,7 @@ const meetingSelect = {
   location: true,
   note: true,
   status: true,
+  proposedBy: true,
   respondedAt: true,
   client: { select: { name: true, email: true } },
   advisor: { select: { name: true, email: true } },
@@ -304,6 +309,7 @@ function toMeetingView(row: MeetingRow): AdvisorMeetingView {
     location: row.location,
     note: row.note,
     status: row.status as MeetingStatus,
+    proposedBy: row.proposedBy as MeetingParty,
     respondedAt: row.respondedAt?.toISOString() ?? null,
   };
 }
@@ -357,6 +363,8 @@ export async function createMeeting(input: {
       durationMinutes: input.durationMinutes ?? 45,
       location: input.location ?? null,
       note: input.note ?? null,
+      status: 'PROPOSED',
+      proposedBy: 'ADVISOR',
     },
     select: meetingSelect,
   });
@@ -364,8 +372,8 @@ export async function createMeeting(input: {
 }
 
 /**
- * שינוי מועד או ביטול — פעולות של היועץ. שינוי מועד מחזיר את הפגישה למצב
- * "מתוכננת", כי האישור הקודם של הלקוח היה למועד אחר.
+ * שינוי פרטים, מועד או ביטול — פעולות של היועץ. מועד חדש הוא הצעה של היועץ:
+ * הפגישה חוזרת להמתנה לאישור הלקוח, כי האישור הקודם היה למועד אחר.
  */
 export async function updateMeeting(
   advisorId: string,
@@ -393,6 +401,7 @@ export async function updateMeeting(
   if (input.startsAt !== undefined) {
     data.startsAt = input.startsAt;
     data.status = 'PROPOSED';
+    data.proposedBy = 'ADVISOR';
     data.respondedAt = null;
   }
   if (input.status !== undefined) data.status = input.status;
@@ -406,25 +415,37 @@ export async function updateMeeting(
 }
 
 /**
- * תשובת הלקוח להצעת הפגישה. רק הלקוח שהפגישה נקבעה איתו יכול לענות, ולכן
- * הבדיקה היא מול חשבון המשתמש שמאחורי רשומת הליווי.
+ * תשובה של אחד הצדדים לפגישה: אישור, הצעת מועד אחר או דחייה. הכלל עצמו
+ * ב-answerMeeting; כאן רק מוודאים שהמשיב הוא באמת צד לפגישה — היועץ שקבע
+ * אותה, או הלקוח שמאחורי רשומת הליווי.
  */
-export async function respondToMeeting(
+export async function answerMeetingAs(
+  party: MeetingParty,
   userId: string,
   meetingId: string,
-  accepted: boolean
-): Promise<AdvisorMeetingView | null> {
+  answer: MeetingAnswer
+): Promise<AdvisorMeetingView | null | 'invalid'> {
   const existing = await prisma.advisorMeeting.findFirst({
-    where: { id: meetingId, client: { userId } },
-    select: { id: true },
+    where:
+      party === 'ADVISOR' ? { id: meetingId, advisorId: userId } : { id: meetingId, client: { userId } },
+    select: { status: true, proposedBy: true },
   });
   if (!existing) return null;
+
+  const next = answerMeeting(
+    { status: existing.status as MeetingStatus, proposedBy: existing.proposedBy as MeetingParty },
+    party,
+    answer
+  );
+  if (!next) return 'invalid';
 
   const row = await prisma.advisorMeeting.update({
     where: { id: meetingId },
     data: {
-      status: accepted ? 'CONFIRMED' : 'DECLINED',
-      respondedAt: new Date(),
+      status: next.status,
+      proposedBy: next.proposedBy,
+      respondedAt: next.respondedAt,
+      ...(next.startsAt ? { startsAt: next.startsAt } : {}),
     },
     select: meetingSelect,
   });
@@ -717,6 +738,8 @@ export interface AdvisorOverview {
   overdueTasks: number;
   /** פגישות שהוצעו וממתינות לאישור הלקוח */
   awaitingConfirmation: number;
+  /** פגישות שהלקוח הציע להן מועד, וממתינות לאישור היועץ */
+  awaitingAdvisor: number;
   /** המשימות שהיועץ קבע להיום */
   todayTasks: AdvisorTaskView[];
   /** משימות שעבר מועדן ועדיין פתוחות */
@@ -763,7 +786,10 @@ export async function getAdvisorOverview(advisorId: string): Promise<AdvisorOver
       (task) => task.dueDate !== null && new Date(task.dueDate) < now
     ).length,
     awaitingConfirmation: meetings.filter(
-      (meeting) => meeting.status === 'PROPOSED' && new Date(meeting.startsAt) >= now
+      (meeting) => meetingAwaits(meeting, 'CLIENT') && new Date(meeting.startsAt) >= now
+    ).length,
+    awaitingAdvisor: meetings.filter(
+      (meeting) => meetingAwaits(meeting, 'ADVISOR') && new Date(meeting.startsAt) >= now
     ).length,
     todayTasks: tasks.filter(
       (task) =>

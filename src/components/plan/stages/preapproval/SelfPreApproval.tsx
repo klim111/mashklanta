@@ -38,6 +38,8 @@ import { RateCountdown } from '../../RateValidity';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
 import { useClientMeetings } from '../../advisor/useClientMeetings';
 import type { ClientMeetingView } from '../../advisor/useClientMeetings';
+import { ClientMeetingAnswer, sendMeetingReply } from '../../advisor/ClientMeetingAnswer';
+import { meetingStatusLabel } from '@/lib/advisor-crm';
 import type { SubmissionChannel } from '@/lib/mortgage-plan';
 import { HANDOFF_MEETING_TITLE, banksToHand, emptyBankRow, submissionChannelOf } from '@/lib/preapproval-handoff';
 
@@ -295,7 +297,7 @@ export function SelfPreApproval({
     conversation?.enabled
       ? (to: string) => conversation.compose({ to: [to], subject: '', text: '' })
       : null;
-  const { meetings } = useClientMeetings();
+  const { meetings, refresh: refreshMeetings } = useClientMeetings();
   const handoffMeeting = useMemo(
     () =>
       meetings
@@ -364,7 +366,7 @@ export function SelfPreApproval({
           </p>
         )}
 
-        {anyHanded && <AdvisorHandling meeting={handoffMeeting} />}
+        {anyHanded && <AdvisorHandling meeting={handoffMeeting} onMeetingChanged={refreshMeetings} />}
 
         <div className={`grid gap-3 ${bankList.length > 1 ? 'md:grid-cols-2' : 'md:max-w-xl md:mx-auto'}`}>
           {bankList.map((info) => (
@@ -575,7 +577,13 @@ function BankerFields({
  * ההודעה בראש אזור הבנקים כשהיועץ מטפל בהגשה: הוא יגיש מול הבנקים ויחזור
  * להשלמת הפרטים, ומתחת — הפגישה להשלמת הפרטים, ממתינה למועד או עם התאריך והשעה.
  */
-function AdvisorHandling({ meeting }: { meeting: ClientMeetingView | null }) {
+function AdvisorHandling({
+  meeting,
+  onMeetingChanged,
+}: {
+  meeting: ClientMeetingView | null;
+  onMeetingChanged: () => void;
+}) {
   const when = meeting ? new Date(meeting.startsAt) : null;
   return (
     <div className="mb-3 space-y-2.5 rounded-2xl border-2 border-violet-200 bg-violet-50 p-3">
@@ -605,11 +613,28 @@ function AdvisorHandling({ meeting }: { meeting: ClientMeetingView | null }) {
             <p dir="rtl" className="mt-0.5 text-sm font-black text-violet-800">
               {when.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })} · בשעה{' '}
               {when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+              {meeting && (
+                <span className="mr-2 rounded-full bg-white px-2 py-0.5 text-2xs font-black text-violet-700">
+                  {meetingStatusLabel(meeting, 'CLIENT')}
+                </span>
+              )}
             </p>
           ) : (
             <p dir="rtl" className="mt-0.5 text-sm font-bold text-violet-800">
               היועץ יקבע מועד לפגישה, והתאריך והשעה יופיעו כאן.
             </p>
+          )}
+          {meeting && (
+            <div className="mt-2">
+              <ClientMeetingAnswer
+                meeting={meeting}
+                onAnswer={async (reply) => {
+                  const failure = await sendMeetingReply(meeting.id, reply);
+                  onMeetingChanged();
+                  return failure;
+                }}
+              />
+            </div>
           )}
         </div>
       </div>

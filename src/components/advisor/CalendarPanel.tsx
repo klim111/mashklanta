@@ -80,7 +80,7 @@ export function CalendarPanel({
     includeClosed: true,
     clientId: clientFilter || undefined,
   });
-  const { meetings: allMeetings, ready: meetingsReady, propose, cancel } = useMeetings();
+  const { meetings: allMeetings, ready: meetingsReady, propose, answer, cancel } = useMeetings();
 
   // פגישה תמיד שייכת ללקוח, ולכן סינון ל"בלי שיוך" משאיר משימות בלבד
   const meetings = useMemo(() => {
@@ -350,6 +350,11 @@ export function CalendarPanel({
                         await cancel(meeting.id);
                         onChanged?.();
                       }}
+                      onAnswer={async (reply) => {
+                        const failure = await answer(meeting.id, reply);
+                        onChanged?.();
+                        return failure;
+                      }}
                     />
                   ))}
                 </div>
@@ -407,6 +412,11 @@ export function CalendarPanel({
                       onCancel={async () => {
                         await cancel(item.meeting.id);
                         onChanged?.();
+                      }}
+                      onAnswer={async (reply) => {
+                        const failure = await answer(item.meeting.id, reply);
+                        onChanged?.();
+                        return failure;
                       }}
                     />
                   ) : (

@@ -297,16 +297,18 @@ export function AdvisorConsole() {
               <AgendaCard
                 icon={<AlarmClock className="h-4 w-4" />}
                 label="דורש תשומת לב"
-                value={`${overview.overdueTasks + overview.awaitingConfirmation}`}
+                value={`${overview.overdueTasks + overview.awaitingAdvisor + overview.awaitingConfirmation}`}
                 hint={
-                  overview.overdueTasks > 0
+                  overview.awaitingAdvisor > 0
+                    ? `${overview.awaitingAdvisor} פגישות שהלקוח הציע להן מועד ממתינות לאישורך`
+                    : overview.overdueTasks > 0
                     ? `${overview.overdueTasks} משימות באיחור`
                     : overview.awaitingConfirmation > 0
                       ? `${overview.awaitingConfirmation} פגישות ממתינות לאישור הלקוח`
                       : 'הכול מעודכן'
                 }
-                tone={overview.overdueTasks > 0 ? 'alert' : 'default'}
-                onClick={() => setTab('tasks')}
+                tone={overview.overdueTasks > 0 || overview.awaitingAdvisor > 0 ? 'alert' : 'default'}
+                onClick={() => setTab(overview.awaitingAdvisor > 0 ? 'calendar' : 'tasks')}
               />
             </div>
 
