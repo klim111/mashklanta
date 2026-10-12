@@ -51,6 +51,7 @@ import {
 } from '@/lib/refinance-check';
 import { formatNumberInput, parseFormattedNumberInput, sanitizeDecimalInput } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
 import { loadDraft, saveDraft, type RefinanceCheckDraft } from './refinanceCheckStore';
 import { RefinanceCheckResult } from './RefinanceCheckResult';
 import { CurrentTrackRow } from './CurrentTrackRow';
@@ -159,8 +160,11 @@ export function RefinanceCheck() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1].id);
   };
 
+  const hasData = income > 0 || loans.length > 0 || tracks.some((track) => track.balance > 0);
+
   return (
     <div dir="rtl" className="mx-auto w-full max-w-5xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+      <GuestSaveNotice tool="refinance" hasData={hydrated && hasData} />
       <header className="text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-black text-emerald-800">
           <Sparkles className="h-3.5 w-3.5" />
