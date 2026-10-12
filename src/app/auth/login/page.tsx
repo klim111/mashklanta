@@ -5,9 +5,11 @@ import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, AlertCircle, Loader2, Home } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
+import { authHref, safeCallbackPath } from '@/lib/auth-url';
+import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
 
 function LoginForm() {
   const router = useRouter();
@@ -18,6 +20,13 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [unverified, setUnverified] = useState(false);
   const [resendNotice, setResendNotice] = useState('');
+  // היעד שממנו הגיעו למסך — נשמר גם במעבר להרשמה ול"שכחתי סיסמה"
+  // קישור כמו `/dashboard#chat` שנפתח בלי התחברות: המידלוור מעביר לכאן עם
+  // callbackUrl=/dashboard, והדפדפן משאיר את ה-#chat בכתובת — מצרפים אותו בחזרה
+  const [hash, setHash] = useState('');
+  useEffect(() => setHash(window.location.hash), []);
+  const requested = safeCallbackPath(searchParams.get('callbackUrl'));
+  const callbackUrl = requested && !requested.includes('#') && hash ? `${requested}${hash}` : requested;
 
   useEffect(() => {
     const oauthError = authErrorMessage(searchParams.get('error'));
@@ -46,17 +55,14 @@ function LoginForm() {
         const response = await fetch('/api/auth/session');
         const session = await response.json();
         
-        const callbackUrl = searchParams.get('callbackUrl');
-        const safeCallback =
-          callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') ? callbackUrl : null;
         if (session?.user?.role === 'ADVISOR') {
           router.push('/advisor-dashboard');
         } else {
-          router.push(safeCallback ?? '/dashboard');
+          router.push(callbackUrl ?? '/dashboard');
         }
       }
     } catch (error) {
-      setError('אירעה שגיאה בהתחברות');
+      setError('אירעה שגיאה בהתחברות. נסו שוב.');
     } finally {
       setIsLoading(false);
     }
@@ -84,11 +90,7 @@ function LoginForm() {
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-                <Home className="w-8 h-8 text-white" />
-              </div>
-            </Link>
+            <AuthLogo />
             <h1 className="text-title font-bold text-slate-900">התחברות</h1>
             <p className="text-slate-600 mt-2">ברוכים השבים למשכלנתא</p>
           </div>
@@ -158,10 +160,10 @@ function LoginForm() {
 
             <div className="flex items-center justify-between">
               <Link
-                href={`/auth/forgot-password${email.includes('@') ? `?email=${encodeURIComponent(email.trim())}` : ''}`}
+                href={authHref('/auth/forgot-password', callbackUrl, { email: email.includes('@') ? email.trim() : null })}
                 className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
               >
-                שכחת סיסמה?
+                שכחתם סיסמה?
               </Link>
             </div>
 
@@ -173,10 +175,10 @@ function LoginForm() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  מתחבר...
+                  מתחברים...
                 </>
               ) : (
-                'התחבר'
+                'התחברות'
               )}
             </button>
           </form>
@@ -193,35 +195,26 @@ function LoginForm() {
 
           <GoogleAuthButton
             label="התחברות עם Google"
-            callbackUrl={searchParams.get('callbackUrl') || '/dashboard'}
+            callbackUrl={callbackUrl ?? '/dashboard'}
             autoStart={searchParams.get('google') === '1'}
           />
 
           {/* Register Link */}
           <div className="mt-8 text-center">
             <p className="text-slate-600">
-              עדיין אין לך חשבון?{' '}
+              עדיין אין לכם חשבון?{' '}
               <Link
-                href="/auth/register"
+                href={authHref('/auth/register', callbackUrl)}
                 className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
-                הירשם עכשיו
+                הירשמו עכשיו
               </Link>
             </p>
           </div>
 
         </div>
 
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Link
-            href="/"
-            className="text-slate-600 hover:text-slate-800 transition-colors inline-flex items-center gap-2"
-          >
-            <Home className="w-4 h-4" />
-            חזרה לדף הבית
-          </Link>
-        </div>
+        <BackHomeLink />
       </motion.div>
     </div>
   );

@@ -359,9 +359,25 @@ export function MixList({
                 </>
               }
             />
+            {onToggleEditor && (
+              <Button
+                type="button"
+                size="sm"
+                variant={editorOpen ? 'outline' : 'default'}
+                className="mt-2 h-10 w-full text-sm font-bold"
+                onClick={onToggleEditor}
+                aria-expanded={editorOpen}
+                {...demoId('ws-open-tracks')}
+              >
+                <ChevronDown
+                  className={`h-4 w-4 ml-1.5 transition-transform ${editorOpen ? 'rotate-180' : ''}`}
+                />
+                {editorOpen ? 'סגור מסלולי תמהיל' : 'פתח מסלולי תמהיל'}
+              </Button>
+            )}
             </div>
             )}
-            {/* שורות המסלולים — ישר בתמהיל חדש, ובתמהיל שמור אחרי לחיצה על הסיכום */}
+            {/* שורות המסלולים — ישר בתמהיל חדש, ובתמהיל שמור אחרי לחיצה על הסיכום או על הכפתור */}
             {(editorOpen || !showSummary) && (
               <div
                 className={`${showSummary ? 'mt-2' : ''} overflow-visible rounded-2xl border border-blue-200 bg-white shadow-sm`}

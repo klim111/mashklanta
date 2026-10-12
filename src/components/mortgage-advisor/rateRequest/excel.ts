@@ -151,7 +151,7 @@ export function rateRequestSheets(doc: RateRequestDocument): XlsxSheet[] {
   const date = formatRateRequestDate(doc.createdAt);
   const bank = doc.details.bankName?.trim();
 
-  rows.push({ cells: wide(titleStyle, `משכלתנא · ${doc.title}`), height: 38 });
+  rows.push({ cells: wide(titleStyle, `משכלנתא · ${doc.title}`), height: 38 });
   mergeWide();
 
   rows.push({
@@ -378,7 +378,7 @@ export function rateRequestSheets(doc: RateRequestDocument): XlsxSheet[] {
   rows.push({ cells: [] });
 
   const footer =
-    `המסמך הופק בתאריך ${date} באמצעות מערכת משכלתנא, אסמכתה ${doc.reference}. ` +
+    `המסמך הופק בתאריך ${date} באמצעות מערכת משכלנתא, אסמכתה ${doc.reference}. ` +
     'עמודות הריבית וההחזר החודשי הושארו ריקות במתכוון לצורך תמחור הבנק, וההצעה שתתקבל תושווה להצעות בנקים נוספים על אותו מבנה תמהיל בדיוק.';
   rows.push({ cells: wide(footStyle, footer), height: paragraphHeight(footer) });
   mergeWide();

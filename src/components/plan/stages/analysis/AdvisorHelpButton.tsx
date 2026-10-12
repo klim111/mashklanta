@@ -102,6 +102,8 @@ export function AdvisorHelpButton({
               )}
               <Link
                 href="/how-it-works#journey"
+                target="_blank"
+                rel="noopener"
                 className="flex items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-slate-900"
               >
                 מה היועץ עושה בשלב הזה

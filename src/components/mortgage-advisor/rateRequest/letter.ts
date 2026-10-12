@@ -383,7 +383,7 @@ export function rateRequestBodyHtml(doc: RateRequestDocument): string {
       <div class="rr-brand">
         <div class="rr-logo">מ</div>
         <div>
-          <p class="rr-brand-name">משכלתנא</p>
+          <p class="rr-brand-name">משכלנתא</p>
           <p class="rr-brand-tag">תכנון וליווי משכנתאות</p>
         </div>
       </div>
@@ -425,7 +425,7 @@ export function rateRequestBodyHtml(doc: RateRequestDocument): string {
     ${signatureHtml(doc)}
 
     <div class="rr-foot">
-      המסמך הופק בתאריך ${escapeHtml(date)} באמצעות מערכת משכלתנא, אסמכתה ${escapeHtml(
+      המסמך הופק בתאריך ${escapeHtml(date)} באמצעות מערכת משכלנתא, אסמכתה ${escapeHtml(
         doc.reference
       )}.
       עמודות הריבית וההחזר החודשי הושארו ריקות במתכוון לצורך תמחור הבנק. הסכומים והתקופות מעוגלים לצורך הצגה,

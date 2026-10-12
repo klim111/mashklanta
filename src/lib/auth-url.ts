@@ -111,3 +111,49 @@ export function runtimeOrigin(headers: HeaderLookup): string | null {
   // בלי NEXTAUTH_URL, next-auth נופל לברירת המחדל של פיתוח מקומי
   return normalizeAuthUrl(process.env.NEXTAUTH_URL) ?? "http://localhost:3000";
 }
+
+/** הכתובת הציבורית של האתר, כשאף משתנה סביבה לא מגדיר אחרת */
+export const PUBLIC_SITE_ORIGIN = "https://mashkalanta.com";
+
+/**
+ * כתובת הבסיס לקישורים שיוצאים ללקוח (במייל): הכתובת הרשמית מהסביבה, אחריה
+ * כתובת הבקשה, ובסוף כתובת האתר — localhost רק בפיתוח מקומי, כדי שמייל לא
+ * יצא אף פעם עם קישור שלא נפתח אצל הלקוח.
+ */
+export function publicSiteOrigin(requestOrigin?: string | null): string {
+  return (
+    canonicalSiteOrigin() ??
+    normalizeAuthUrl(requestOrigin) ??
+    (process.env.NODE_ENV === "development" ? "http://localhost:3000" : PUBLIC_SITE_ORIGIN)
+  );
+}
+
+/**
+ * רק נתיב יחסי באתר (`/dashboard#chat`) — כדי שפרמטר `callbackUrl` לא יוכל
+ * לשלוח את הגולש לאתר אחר. מחזיר null לכל ערך אחר.
+ */
+export function safeCallbackPath(value: string | null | undefined): string | null {
+  if (typeof value !== "string" || !value) return null;
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  // רווחים ותווי בקרה נמחקים בפענוח הכתובת, ו-"/\t/x.com" היה הופך ל-"//x.com"
+  if (/[\s\u0000-\u001f\u007f]/.test(value)) return null;
+  if (value.length > 500) return null;
+  return value;
+}
+
+/**
+ * קישור לעמוד התחברות / הרשמה / שכחתי סיסמה שממשיך לשאת את היעד המקורי
+ * (`callbackUrl`) ופרמטרים נוספים כמו המייל שכבר הוקלד.
+ */
+export function authHref(
+  path: string,
+  callbackUrl?: string | null,
+  extra: Record<string, string | null | undefined> = {}
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(extra)) if (value) params.set(key, value);
+  const safe = safeCallbackPath(callbackUrl);
+  if (safe) params.set("callbackUrl", safe);
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}

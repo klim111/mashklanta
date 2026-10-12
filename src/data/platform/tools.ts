@@ -3,21 +3,14 @@ import {
   BookOpen,
   Calculator,
   CreditCard,
-  FileCheck2,
   FolderOpen,
-  GaugeCircle,
   Home,
-  Layers,
   LayoutDashboard,
-  LineChart,
-  Map,
   Wallet,
   RefreshCw,
   Save,
-  Scale,
   SlidersHorizontal,
   Video,
-  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -68,6 +61,10 @@ export const toolCategories: {
   },
 ];
 
+/**
+ * הכלים שמוצגים בעמוד "איך זה עובד" ובסיור בתהליך. כל קישור מוביל לכלי הנוכחי:
+ * הכלים החינמיים פתוחים לכולם, והכלים שבאזור האישי מבקשים מאורח להתחבר.
+ */
 export const platformTools: PlatformTool[] = [
   // ── תכנון וכדאיות ───────────────────────────────────────────────
   {
@@ -115,11 +112,11 @@ export const platformTools: PlatformTool[] = [
     stageId: 'analysis',
   },
   {
-    id: 'financial-dynamics',
-    title: 'דינמיקה פיננסית',
+    id: 'cash-flow',
+    title: 'מצב הון ותזרים',
     description:
-      'סימולציה חיה של התזרים המשפחתי — נזילות, חוב, חיסכון ונכסים — לאורך שנות המשכנתא.',
-    href: '/financial-dynamics',
+      'המשכנתא וכל ההלוואות במקום אחד באזור האישי: ההחזר החודשי, יחס ההחזר מההכנסה הפנויה, וכמה נשאר בכל חודש.',
+    href: '/dashboard#cash-flow',
     icon: Activity,
     category: 'planning',
     gradient: 'from-indigo-600 to-violet-700',
@@ -129,91 +126,34 @@ export const platformTools: PlatformTool[] = [
   // ── תמהיל וריביות ───────────────────────────────────────────────
   {
     id: 'custom-mix',
-    title: 'בונה תמהיל אישי',
+    title: 'בניית תמהיל',
     description:
-      'שאלון פרופיל סיכון שמתרגם את ההעדפות שלכם לתמהיל מסלולים מומלץ — עם רגישות להחזר ולעליית ריבית.',
-    href: '/custom-mix-builder',
+      'הרכבת מסלולי המשכנתא עם לוח סילוקין מלא, החזר חודשי וסך הריבית — והשוואה מול הסלים האחידים ומול תמהילים אחרים.',
+    href: '/dashboard/mix-planner',
     icon: SlidersHorizontal,
     category: 'mix',
     gradient: 'from-violet-600 to-purple-700',
     stageId: 'mix',
-    badge: 'הכי מבוקש',
-  },
-  {
-    id: 'uniform-mixes',
-    title: 'סלים אחידים',
-    description:
-      'שלושת הסלים שכל בנק חייב להציע לפי בנק ישראל — בסיס ההשוואה ההוגן בין ההצעות שתקבלו.',
-    href: '/uniform-mixes',
-    icon: Layers,
-    category: 'mix',
-    gradient: 'from-purple-600 to-fuchsia-700',
-    stageId: 'mix',
-  },
-  {
-    id: 'advisor-workspace',
-    title: 'שולחן העבודה של היועץ',
-    description:
-      'הכלי המקצועי במלואו: בניית מסלולים, לוחות סילוקין, פירעונות מוקדמים, IRR והשוואה גרפית בין תמהילים.',
-    href: '/mortgage-advisor',
-    icon: Wrench,
-    category: 'mix',
-    gradient: 'from-blue-600 to-indigo-700',
-    stageId: 'auction',
-    badge: 'כלי היועצים',
   },
   {
     id: 'saved-mixes',
     title: 'תמהילים שמורים',
     description:
-      'כל הגרסאות שבניתם וכל ההצעות שקיבלתם מהבנקים במקום אחד — להשוואה זו מול זו בכל רגע.',
-    href: '/saved-mixes',
+      'מכתבי הבקשה ששלחתם לבנקים, ההצעות שהתקבלו עליהם והתמהילים שבניתם — במקום אחד באזור האישי.',
+    href: '/dashboard#rate-requests',
     icon: Save,
     category: 'mix',
     gradient: 'from-teal-600 to-cyan-700',
     stageId: 'auction',
   },
-  {
-    id: 'simulations',
-    title: 'סימולציות פיננסיות',
-    description:
-      'מה קורה אם הריבית תעלה ב-2%? אם תפרעו 200 אלף בעוד 5 שנים? תרחישים מלאים לפני שחותמים.',
-    href: '/simulations',
-    icon: LineChart,
-    category: 'mix',
-    gradient: 'from-indigo-600 to-blue-700',
-    stageId: 'mix',
-  },
 
   // ── תהליך וניירת ────────────────────────────────────────────────
-  {
-    id: 'application',
-    title: 'בקשת משכנתא חכמה',
-    description:
-      'תהליך מונחה להגשת הבקשה: אבני דרך, ריכוז עלויות, מיזוג הצעות וסימולציית זעזוע ריבית.',
-    href: '/mortgage-application',
-    icon: FileCheck2,
-    category: 'process',
-    gradient: 'from-emerald-600 to-green-700',
-    stageId: 'applications',
-  },
-  {
-    id: 'journey-map',
-    title: 'מפת תהליך אינטראקטיבית',
-    description:
-      'כל שלבי המשכנתא על ציר זמן אחד — מה קורה עכשיו, מה הבא בתור ואילו מסמכים נדרשים בכל שלב.',
-    href: '/interactive-mortgage-journey',
-    icon: Map,
-    category: 'process',
-    gradient: 'from-cyan-600 to-teal-700',
-    stageId: 'applications',
-  },
   {
     id: 'documents',
     title: 'תיק מסמכים דיגיטלי',
     description:
-      'העלאה וסריקה חכמה של תלושים, דפי בנק ואישורים — צ׳ק־ליסט שמתעדכן לפי הסטטוס התעסוקתי שלכם.',
-    href: '/dashboard',
+      'כל המסמכים שהבנק ידרוש, לפי הפרופיל ובעלות הנכס — מה כבר הוגש, מה חסר, והעלאה במקום אחד.',
+    href: '/dashboard#documents',
     icon: FolderOpen,
     category: 'process',
     gradient: 'from-slate-600 to-gray-700',
@@ -221,10 +161,10 @@ export const platformTools: PlatformTool[] = [
   },
   {
     id: 'video-call',
-    title: 'שיחת וידאו עם היועץ',
+    title: 'פגישות עם היועץ',
     description:
-      'פגישה מאובטחת מתוך הפלטפורמה, כשהתמהיל והמסמכים פתוחים מול שני הצדדים באותו מסך.',
-    href: '/dashboard',
+      'הפגישות עם היועץ והמועדים החשובים בתהליך, בלוח השנה שבאזור האישי — לצד המשימות שממתינות לכם.',
+    href: '/dashboard#agenda',
     icon: Video,
     category: 'process',
     gradient: 'from-rose-600 to-pink-700',
@@ -243,17 +183,6 @@ export const platformTools: PlatformTool[] = [
     gradient: 'from-blue-600 to-indigo-700',
   },
   {
-    id: 'mortgage-dashboard',
-    title: 'דשבורד המשכנתא שלי',
-    description:
-      'מעקב אחרי המשכנתא הפעילה: יתרות לפי מסלול, לוח סילוקין, ריבית משוקללת ותחזית להמשך.',
-    href: '/mortgage-dashboard',
-    icon: GaugeCircle,
-    category: 'tracking',
-    gradient: 'from-emerald-600 to-teal-700',
-    stageId: 'signing',
-  },
-  {
     id: 'refinance',
     title: 'מיחזור משכנתא',
     description:
@@ -262,16 +191,6 @@ export const platformTools: PlatformTool[] = [
     icon: RefreshCw,
     category: 'tracking',
     gradient: 'from-purple-600 to-violet-700',
-  },
-  {
-    id: 'existing-mortgage',
-    title: 'פעולות על משכנתא קיימת',
-    description:
-      'פירעון מוקדם, החלפת מסלול או שינוי תקופה — לבדוק את ההשפעה לפני שפונים לבנק.',
-    href: '/existing-mortgage',
-    icon: Scale,
-    category: 'tracking',
-    gradient: 'from-amber-600 to-orange-700',
   },
   {
     id: 'learn',

@@ -20,23 +20,23 @@ export interface PlanStageTools {
 export const PLAN_STAGE_TOOLS: Record<PlanStageId, PlanStageTools> = {
   ANALYSIS: {
     essential: ['affordability'],
-    optional: ['equity', 'consumer-loans', 'financial-dynamics'],
+    optional: ['equity', 'consumer-loans', 'cash-flow'],
   },
   MIX: {
-    essential: ['advisor-workspace', 'custom-mix'],
-    optional: ['uniform-mixes', 'simulations', 'learn'],
+    essential: ['custom-mix'],
+    optional: ['saved-mixes', 'learn'],
   },
   APPLICATIONS: {
-    essential: ['application', 'documents'],
-    optional: ['uniform-mixes', 'consumer-loans', 'journey-map', 'video-call'],
+    essential: ['documents'],
+    optional: ['consumer-loans', 'video-call'],
   },
   AUCTION: {
-    essential: ['advisor-workspace', 'saved-mixes'],
-    optional: ['uniform-mixes', 'simulations'],
+    essential: ['saved-mixes', 'custom-mix'],
+    optional: ['video-call'],
   },
   SIGNING: {
-    essential: ['advisor-workspace', 'mortgage-dashboard'],
-    optional: ['journey-map', 'refinance'],
+    essential: ['documents'],
+    optional: ['dashboard', 'refinance'],
   },
 };
 

@@ -46,13 +46,13 @@ const afterSigning = [
   {
     title: 'מעקב יתרות ותחזיות',
     description: 'רואים בכל רגע כמה נשאר בכל מסלול, מה הריבית המשוקללת, ואיך לוח הסילוקין ייראה בשנים הבאות.',
-    href: '/mortgage-dashboard',
-    label: 'דשבורד המשכנתא',
+    href: '/dashboard',
+    label: 'האזור האישי',
   },
   {
     title: 'ניירת ומסמכים',
     description: 'תיק דיגיטלי אחד לכל המסמכים — מהבקשה ועד הביטוחים — עם התראות כשמסמך פג תוקף.',
-    href: '/dashboard',
+    href: '/dashboard#documents',
     label: 'תיק המסמכים',
   },
   {

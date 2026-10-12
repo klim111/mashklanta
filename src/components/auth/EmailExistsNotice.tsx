@@ -64,7 +64,7 @@ export function EmailExistsNotice({ email, callbackUrl }: { email: string; callb
           כניסה לחשבון
         </Link>
         <Link
-          href={`/auth/forgot-password?email=${encodeURIComponent(value)}`}
+          href={`/auth/forgot-password?${login.toString()}`}
           className="font-bold text-blue-700 hover:underline"
         >
           שכחתי סיסמה

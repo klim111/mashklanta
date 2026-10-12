@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BarChart3,
@@ -18,8 +17,12 @@ import {
   Wallet,
 } from 'lucide-react';
 import { formatILS } from '@/lib/currency';
-import { HomeFloatingButton } from '@/components/guest/HomeFloatingButton';
+import { ReturnLink } from '@/components/navigation/ReturnLink';
+import { defaultMortgagePlanningUserData } from '@/lib/mortgage-affordability';
+import { migrateMortgagePlanningUserData } from '@/lib/borrower-loans';
 import { useToolData } from '@/components/tool-data/toolData';
+import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
+import { touchGuestData } from '@/components/guest/guestData';
 import type {
   ConsolidationPlan,
   Loan,
@@ -46,6 +49,7 @@ import {
 import {
   clearConsumerLoansImportSession,
   readConsumerLoansImportSession,
+  startConsumerLoansImport,
 } from '@/lib/consumer-loans-import';
 
 /**
@@ -89,6 +93,7 @@ function normalizeState(value: Partial<LoanPlannerState> | null | undefined): Lo
 const newId = (prefix: string) => `${prefix}-${Date.now()}-${Math.round(Math.random() * 1e4)}`;
 
 export function LoanWorkspace() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [state, setState] = useState<LoanPlannerState>(() => normalizeState(null));
   const [controlView, setControlView] = useState<View>('portfolio');
@@ -144,7 +149,8 @@ export function LoanWorkspace() {
       console.error('שגיאה בשמירת נתוני ההלוואות:', error);
     }
     saveToolData(state);
-  }, [state, importSession, ready, saveToolData]);
+    if (!toolData.signedIn && state.loans.length > 0) touchGuestData();
+  }, [state, importSession, ready, saveToolData, toolData.signedIn]);
 
   const finishImport = useCallback((imported: Loan[]) => {
     setState((prev) => ({ ...prev, loans: [...prev.loans, ...imported] }));
@@ -156,6 +162,33 @@ export function LoanWorkspace() {
     clearConsumerLoansImportSession();
     setImportSession(null);
   }, []);
+
+  /**
+   * ייבוא ההלוואות שהוזנו בכלי כושר ההחזר בדפדפן הזה — ישר לאשף הייבוא.
+   * כשאין שם הלוואות, פותחים את כלי כושר ההחזר כדי להזין אותן.
+   */
+  const importFromPlanning = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('mortgagePlanningData');
+      const saved = raw ? (JSON.parse(raw) as { userData?: Record<string, unknown> }) : null;
+      if (saved?.userData) {
+        const userData = migrateMortgagePlanningUserData({
+          ...defaultMortgagePlanningUserData(),
+          ...saved.userData,
+        });
+        if (startConsumerLoansImport(userData)) {
+          const session = readConsumerLoansImportSession();
+          if (session) {
+            setImportSession(session);
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('שגיאה בייבוא ההלוואות מכלי כושר ההחזר:', error);
+    }
+    router.push('/mortgage-planning?flow=affordability');
+  }, [router]);
 
   /* ---------------- נתונים נגזרים ---------------- */
 
@@ -334,6 +367,11 @@ export function LoanWorkspace() {
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
       <div className="container mx-auto px-3 py-4 pb-10 sm:px-6 sm:py-6">
+        {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
+        <div className="mb-3">
+          <ReturnLink />
+        </div>
+
         {/* כותרת הכלי */}
         <div className="mb-3 flex flex-wrap items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg">
@@ -407,7 +445,7 @@ export function LoanWorkspace() {
                         onRemovePrepayment={removePrepayment}
                         onShowAmortization={setAmortLoan}
                       >
-                        {state.loans.length === 0 && <EmptyIntro />}
+                        {state.loans.length === 0 && <EmptyIntro onImport={importFromPlanning} />}
 
                         {/* הכפתורים שמתחת להלוואות */}
                         <div className="flex flex-wrap gap-2">
@@ -546,9 +584,9 @@ export function LoanWorkspace() {
 
       <FamilyEconomyLeadDialog open={leadOpen} onOpenChange={setLeadOpen} context={leadContext} />
 
-      {/* הכפתורים הצפים: פנייה ליועץ בשמאל, חזרה לדף הבית בימין */}
+      {/* הכפתור הצף: פנייה ליועץ. החזרה — בקישור שבראש הכלי */}
       <FamilyEconomyFloatingCta context={leadContext} />
-      <HomeFloatingButton />
+      <GuestSaveNotice tool="consumer-loans" hasData={ready && state.loans.length > 0} />
     </div>
   );
 }
@@ -648,7 +686,7 @@ function SectionTitle({
   );
 }
 
-function EmptyIntro() {
+function EmptyIntro({ onImport }: { onImport: () => void }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 text-center">
       <span className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow">
@@ -659,13 +697,14 @@ function EmptyIntro() {
         הוסיפו כל התחייבות חודשית — הלוואה בנקאית, חוץ-בנקאית, כרטיס אשראי, רכב או הלוואה מהמשפחה —
         והזינו לה קרן, ריבית ותקופה.
       </p>
-      <Link
-        href="/mortgage-planning?flow=affordability"
+      <button
+        type="button"
+        onClick={onImport}
         className="mt-2 inline-flex items-center gap-1.5 text-2xs font-bold text-blue-700 hover:underline"
       >
         <Import className="h-3.5 w-3.5" />
         הזנתי את ההלוואות בכלי כושר ההחזר — לייבוא משם
-      </Link>
+      </button>
     </div>
   );
 }

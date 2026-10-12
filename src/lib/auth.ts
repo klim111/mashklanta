@@ -53,7 +53,7 @@ async function pendingGoogleCallbackUrl(): Promise<string | null> {
       jar.get("__Secure-next-auth.callback-url")?.value ?? jar.get("next-auth.callback-url")?.value;
     if (!raw) return null;
     const url = new URL(raw, "http://local");
-    return safeCallbackUrl(`${url.pathname}${url.search}`);
+    return safeCallbackUrl(`${url.pathname}${url.search}${url.hash}`);
   } catch {
     return null;
   }
@@ -239,16 +239,19 @@ export const authOptions: NextAuthOptions = {
         return true;
       }
 
+      const callbackUrl = await pendingGoogleCallbackUrl();
       const result = await startRegistration({
         email,
         name: profile?.name ?? null,
         image: (profile as { picture?: string } | undefined)?.picture ?? null,
         provider: "google",
         providerAccountId: account.providerAccountId,
-        callbackUrl: await pendingGoogleCallbackUrl(),
+        callbackUrl,
         requestOrigin: canonicalSiteOrigin(),
       });
       const params = new URLSearchParams({ via: "google", email });
+      // היעד המקורי ממשיך גם לקישורי "התחברו" / "הירשמו מחדש" שבמסך הבדיקה
+      if (callbackUrl) params.set("callbackUrl", callbackUrl);
       if (result.status === "email-failed") params.set("error", "send");
       return `/auth/check-email?${params.toString()}`;
     },

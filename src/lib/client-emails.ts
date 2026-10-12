@@ -1,6 +1,7 @@
 import { prisma } from './db';
-import { authEmailShell, escapeHtml, sendEmail } from './email';
-import { canonicalSiteOrigin } from './auth-url';
+import { authEmailShell, emailButton, escapeHtml, sendEmail } from './email';
+import { publicSiteOrigin } from './auth-url';
+import { SITE_CONTACT } from './site-contact';
 import { clientMailboxAddress } from './conversation-store';
 import type { PlanKind } from './mortgage-plan';
 
@@ -12,15 +13,15 @@ import type { PlanKind } from './mortgage-plan';
 
 const appName = () => process.env.PUBLIC_APP_NAME || 'משכלנתא';
 
+/** כתובת האתר לקישורים במייל — אף פעם לא ריקה, כדי שהכפתור לא יהיה קישור יחסי שבור */
 function siteOrigin(): string {
-  return (canonicalSiteOrigin() || process.env.NEXTAUTH_URL || '').replace(/\/$/, '');
+  return publicSiteOrigin().replace(/\/$/, '');
 }
 
-function button(href: string, label: string): string {
-  return `<div style="text-align:center;margin:24px 0;">
-    <a href="${href}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">${label}</a>
-  </div>`;
-}
+const button = emailButton;
+
+/** פרטי הקשר — בגרסת הטקסט של המייל (בגרסת ה-HTML הם בתחתית המעטפת) */
+const contactText = `\n\nשאלות? ${SITE_CONTACT.phone} · ${SITE_CONTACT.email}`;
 
 function list(items: string[]): string {
   return `<ul style="margin:0 0 16px;padding:0 20px 0 0;">${items
@@ -78,7 +79,7 @@ export function welcomeEmail({ name, mailbox, origin }: { name: string | null; m
     ${button(`${origin}/dashboard`, 'כניסה לאזור האישי')}
     <p style="margin:0;color:#475569;font-size:14px;">יש שאלה? אפשר לכתוב לנו בצ'אט באזור האישי.</p>`;
   const html = authEmailShell('ברוכים הבאים', body);
-  return { subject: `ברוכים הבאים ל${appName()}`, html, text: plainText(body) };
+  return { subject: `ברוכים הבאים ל${appName()}`, html, text: plainText(body) + contactText };
 }
 
 export function processStartEmail({
@@ -121,7 +122,7 @@ export function processStartEmail({
     ${button(url, 'המשך התהליך')}
     <p style="margin:0;color:#475569;font-size:14px;">רוצים עזרה? יועץ משכלנתא זמין בצ'אט, מכל מסך בפלטפורמה.</p>`;
   const html = authEmailShell(refinance ? 'נפתח תהליך מיחזור' : 'נפתח תהליך משכנתא', body);
-  return { subject: `התהליך "${planName}" נפתח`, html, text: plainText(body) };
+  return { subject: `התהליך "${planName}" נפתח`, html, text: plainText(body) + contactText };
 }
 
 /** מייל ברוכים הבאים ללקוח שהחשבון שלו נפתח עכשיו */

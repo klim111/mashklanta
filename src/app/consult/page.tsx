@@ -4,10 +4,11 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertCircle, ArrowRight, CheckCircle2, Loader2, MessageCircle, Send } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, MessageCircle, Send } from 'lucide-react';
 import { LeadFileUpload, useLeadFiles } from '@/components/consult/LeadFileUpload';
 import NavBar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
+import { ReturnLink } from '@/components/navigation/ReturnLink';
 import {
   CONSULT_REASONS,
   consultReason,
@@ -132,7 +133,7 @@ function ConsultForm() {
           href="/dashboard"
           className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-cta text-white shadow-lg transition-colors hover:bg-blue-700 sm:w-auto"
         >
-          לאזור האישי
+          האזור האישי
         </Link>
       </div>
     );
@@ -278,13 +279,10 @@ export default function ConsultPage() {
         <NavBar />
       </div>
       <main className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-14">
-        <Link
-          href="/"
-          className="mb-4 inline-flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-button font-bold text-slate-600 transition-colors hover:bg-white hover:text-blue-700"
-        >
-          <ArrowRight className="h-4 w-4" />
-          חזרה לדף הבית
-        </Link>
+        {/* אורח חוזר לדף הבית, לקוח מחובר לאזור האישי, ומי שהגיע מתהליך — לתהליך */}
+        <Suspense fallback={null}>
+          <ReturnLink className="mb-4 rounded-xl px-2 py-1.5 text-slate-600 hover:bg-white hover:text-blue-700" />
+        </Suspense>
         <Suspense fallback={null}>
           <ConsultForm />
         </Suspense>

@@ -1,18 +1,26 @@
+import { SITE_CONTACT } from "./site-contact";
+
+/** "בטלפון 050-882-2207 או במייל info@mashkalanta.com" — לכל הודעה שמפנה לתמיכה */
+export const SUPPORT_CONTACT_TEXT = `בטלפון ${SITE_CONTACT.phone} או במייל ${SITE_CONTACT.email}`;
+
+/** כשההתחברות עם Google אינה זמינה כרגע — בלי פרטים טכניים, עם דרך להמשיך */
+export const GOOGLE_UNAVAILABLE_MESSAGE = `ההתחברות עם Google אינה זמינה כרגע. אפשר להתחבר עם מייל וסיסמה, או לפנות אלינו ${SUPPORT_CONTACT_TEXT}.`;
+
 /** הודעות שגיאה בעברית לשגיאות NextAuth / OAuth שחוזרות ב-query או מ-signIn. */
 export function authErrorMessage(code: string | null | undefined): string {
   switch (code) {
     case "OAuthSignin":
     case "OAuthCallback":
-      return "ההתחברות עם Google נכשלה. בדקו שמפתחות Google מוגדרים ושה-Redirect URI נכון.";
+      return `ההתחברות עם Google נכשלה. נסו שוב, התחברו עם מייל וסיסמה, או פנו אלינו ${SUPPORT_CONTACT_TEXT}.`;
     case "OAuthCreateAccount":
     case "Callback":
       return "לא ניתן ליצור חשבון מ-Google. נסו שוב או הירשמו עם מייל.";
     case "OAuthAccountNotLinked":
-      return "המייל הזה כבר רשום אצלנו בדרך אחרת. התחברו עם סיסמה, או פנו לתמיכה לקישור החשבון.";
+      return `המייל הזה כבר רשום אצלנו בדרך אחרת. התחברו עם סיסמה, או פנו אלינו ${SUPPORT_CONTACT_TEXT} לקישור החשבון.`;
     case "AccessDenied":
       return "הגישה נדחתה. יש לאשר את ההרשאות בחלון של Google.";
     case "Configuration":
-      return "התחברות עם Google עדיין לא הוגדרה בשרת. חסרים מפתחות OAuth.";
+      return GOOGLE_UNAVAILABLE_MESSAGE;
     case "Verification":
       return "פג תוקף הקישור. נסו להתחבר שוב.";
     case "CredentialsSignin":

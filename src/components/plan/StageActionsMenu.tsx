@@ -78,7 +78,7 @@ export function StageActionsMenu({
     });
   }
   // החזרה לדאשבורד הכי למטה, צמודה לעיגול
-  items.push({ key: 'dashboard', label: 'חזרה לדאשבורד', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' });
+  items.push({ key: 'dashboard', label: 'חזרה לאזור האישי', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' });
 
   return (
     <>
@@ -86,7 +86,7 @@ export function StageActionsMenu({
         items={items}
         unread={unread}
         menuId="stage-actions"
-        ariaLabel="פתיחת תפריט הפעולות: הוספת משימה, תיק המסמכים, צ׳אט וחזרה לדאשבורד"
+        ariaLabel="פתיחת תפריט הפעולות: הוספת משימה, תיק המסמכים, צ׳אט וחזרה לאזור האישי"
       />
 
       {!tour && (

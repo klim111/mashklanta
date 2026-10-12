@@ -50,6 +50,7 @@ import {
 } from '@/components/advisor/FamilyEconomyAdvisor';
 import type { AdvisorLeadContext } from '@/components/advisor/FamilyEconomyAdvisor';
 import { AllocationDonut } from './AllocationDonut';
+import { ReturnLink } from '@/components/navigation/ReturnLink';
 import { ExpensesTable } from './ExpensesTable';
 import {
   EQUITY_ADVISOR_CARD_TITLE,
@@ -62,7 +63,8 @@ import {
 import { MonthCalendar } from './MonthCalendar';
 import type { DayMarker } from './MonthCalendar';
 import { EquityGuestDialog, GuestSaveNotice, useEquityGuestGate } from './EquityGuestGate';
-import { useEquityPlan } from './useEquityPlan';
+import { hasContent, useEquityPlan } from './useEquityPlan';
+import { GuestSaveNotice as GuestRegisterNotice } from '@/components/guest/GuestSaveNotice';
 import {
   HE_DATE,
   HE_MONTH,
@@ -876,6 +878,12 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
       </div>
 
       <div className="relative mx-auto max-w-[1400px]">
+        {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
+        {!embedded && (
+          <div className="mb-3">
+            <ReturnLink tone="light" />
+          </div>
+        )}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-2xs font-black text-white/80">
@@ -970,6 +978,7 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
       <EquityGuestDialog open={gate.promptOpen} onClose={gate.closePrompt} />
       <FamilyEconomyLeadDialog open={leadOpen} onOpenChange={setLeadOpen} context={leadContext} />
       <FamilyEconomyFloatingCta context={leadContext} />
+      {!embedded && <GuestRegisterNotice tool="equity" hasData={ready && !signedIn && hasContent(data)} />}
     </div>
   );
 }

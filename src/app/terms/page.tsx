@@ -387,7 +387,8 @@ function buildSections(platformPrice: number): LegalSection[] {
     title: 'נגישות',
     body: (
       <p>
-        אנחנו פועלים להנגיש את הפלטפורמה לאנשים עם מוגבלות, לפי תקנות שוויון זכויות לאנשים עם מוגבלות. נתקלתם
+        אנחנו פועלים להנגיש את הפלטפורמה לאנשים עם מוגבלות, לפי תקנות שוויון זכויות לאנשים עם מוגבלות. הפירוט
+        המלא ב<Link href="/accessibility" className="text-blue-700 hover:underline">הצהרת הנגישות</Link>. נתקלתם
         בקושי? כתבו לנו ל-<Email /> ונטפל בהקדם.
       </p>
     ),

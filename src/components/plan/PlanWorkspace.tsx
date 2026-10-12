@@ -8,7 +8,6 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
-  ChevronLeft,
   ChevronRight,
   Cloud,
   CloudOff,
@@ -277,8 +276,8 @@ export function PlanWorkspace({
           href="/dashboard"
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-bold text-white"
         >
+          <ChevronRight className="h-4 w-4" />
           חזרה לאזור האישי
-          <ChevronLeft className="h-4 w-4" />
         </Link>
       </div>
     );
@@ -702,10 +701,10 @@ export function PlanWorkspace({
               </div>
             </div>
             <Link
-              href="/mortgage-dashboard"
+              href="/dashboard"
               className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-emerald-700"
             >
-              למעקב אחרי המשכנתא
+              למעקב באזור האישי
             </Link>
           </motion.div>
         )}

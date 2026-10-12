@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { GOOGLE_UNAVAILABLE_MESSAGE } from "@/lib/auth-errors";
 
 /** תשובת `/api/auth-diagnostics` — מצב ההתחברות עם גוגל בבקשה הנוכחית. */
 type GoogleOAuthStatus = {
@@ -58,9 +59,9 @@ export function GoogleAuthButton({
       const status: GoogleOAuthStatus | null = response.ok ? await response.json() : null;
 
       if (status && !status.configured) {
-        setError(
-          "התחברות עם Google לא זמינה בסביבה הזו. יש להגדיר את GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET, ולוודא שהם משויכים לסביבה שממנה נטען העמוד — משתנה שמוגדר ל-Production בלבד אינו מגיע לדפלוי של Preview."
-        );
+        // הסיבה הטכנית (מפתחות GOOGLE_CLIENT_ID / SECRET שלא הוגדרו לסביבה) נכתבת ללוג בלבד
+        console.warn("[auth] Google sign-in is not configured for this deployment");
+        setError(GOOGLE_UNAVAILABLE_MESSAGE);
         return;
       }
 

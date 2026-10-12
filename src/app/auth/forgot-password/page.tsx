@@ -3,7 +3,9 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, Home, KeyRound, Loader2, Mail, MailCheck } from 'lucide-react';
+import { AlertCircle, KeyRound, Loader2, Mail, MailCheck } from 'lucide-react';
+import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
+import { authHref, safeCallbackPath } from '@/lib/auth-url';
 
 /** "שכחתי סיסמה": הלקוח מזין את המייל ומקבל קישור לבחירת סיסמה חדשה */
 function ForgotPasswordForm() {
@@ -12,6 +14,8 @@ function ForgotPasswordForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // היעד שממנו הגיעו להתחברות — נשמר גם ב"חזרה להתחברות"
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'));
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -41,9 +45,9 @@ function ForgotPasswordForm() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           <div className="text-center mb-6">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-600">
+            <AuthLogo>
               {sentTo ? <MailCheck className="h-8 w-8 text-white" /> : <KeyRound className="h-8 w-8 text-white" />}
-            </div>
+            </AuthLogo>
             <h1 className="text-title font-bold text-slate-900">{sentTo ? 'בדקו את תיבת המייל' : 'שכחתי סיסמה'}</h1>
             <p className="mt-2 text-info text-slate-600">
               {sentTo
@@ -109,17 +113,14 @@ function ForgotPasswordForm() {
 
           <p className="mt-6 border-t border-slate-200 pt-4 text-center text-sm text-slate-600">
             נזכרתם?{' '}
-            <Link href="/auth/login" className="font-semibold text-blue-600 hover:text-blue-700">
+            <Link
+              href={authHref('/auth/login', callbackUrl, { email: email.includes('@') ? email.trim() : null })}
+              className="font-semibold text-blue-600 hover:text-blue-700">
               חזרה להתחברות
             </Link>
           </p>
         </div>
-        <div className="mt-6 text-center">
-          <Link href="/" className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800">
-            <Home className="h-4 w-4" />
-            חזרה לדף הבית
-          </Link>
-        </div>
+        <BackHomeLink />
       </div>
     </div>
   );

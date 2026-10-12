@@ -335,7 +335,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
           due: validUntil,
           scheduled: false,
           stage: 'APPLICATIONS',
-          target: { kind: 'href', href: planHref(plan, 'AUCTION') },
+          target: { kind: 'href', href: planHref(plan, 'APPLICATIONS') },
         });
       }
     }
@@ -393,7 +393,7 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
           due: null,
           scheduled: false,
           stage: 'AUCTION',
-          target: { kind: 'href', href: planHref(plan, 'AUCTION') },
+          target: { kind: 'href', href: planHref(plan, 'APPLICATIONS') },
         });
       }
 

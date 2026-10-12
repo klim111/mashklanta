@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signOut } from 'next-auth/react';
 import {
-  ArrowLeft,
+  ArrowRight,
   CalendarDays,
   Calculator,
   Compass,
@@ -302,10 +302,10 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               <UserRound className="h-4 w-4 text-white" />
             </span>
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">{displayName}</span>
-            {/* יציאה מהאזור האישי חוזרת לעמוד הראשי; היציאה מהחשבון נשארת לצדה */}
+            {/* יציאה מהאזור האישי חוזרת לדף הבית; היציאה מהחשבון נשארת לצדה */}
             <Link
               href="/"
-              title="לעמוד הראשי"
+              title="דף הבית"
               className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
             >
               <HomeIcon className="h-4 w-4" />
@@ -336,7 +336,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
               <span className="max-w-[9rem] truncate text-sm font-semibold text-white/80">{displayName}</span>
               <Link
                 href="/"
-                title="לעמוד הראשי"
+                title="דף הבית"
                 className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <HomeIcon className="h-4 w-4" />
@@ -381,7 +381,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                     onClick={() => navigate('overview')}
                     className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"
                   >
-                    <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+                    <ArrowRight className="h-3.5 w-3.5" />
                     חזרה לסקירה
                   </button>
                   <h1 className="mt-1 text-title font-black text-slate-900">{meta.title}</h1>
@@ -448,7 +448,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
               {section === 'tools' && (
                 <div {...demoId('dash-tools')}>
-                  <ToolsHub />
+                  <ToolsHub onSection={navigate} />
                 </div>
               )}
 

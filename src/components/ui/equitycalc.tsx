@@ -74,7 +74,8 @@ export default function CapitalPlanningCalculator() {
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-title font-bold">מחשבון הון עצמי</h1>
-        <Link href="/equity-planning">
+        {/* נפתח בכרטיסייה חדשה, כדי שהטופס שממנו נפתח המחשבון יישאר פתוח */}
+        <Link href="/equity-planning" target="_blank" rel="noopener">
           <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Calculator className="w-4 h-4 ml-2" />
             כלי תכנון מתקדם

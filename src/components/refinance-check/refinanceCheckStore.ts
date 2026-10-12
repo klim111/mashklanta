@@ -5,6 +5,7 @@
  * הנתונים עוברים לחשבון (src/components/tool-data/toolData.ts).
  */
 
+import { expireGuestData, touchGuestData } from '@/components/guest/guestData';
 import type { MortgageMix, MortgageTrack } from '@/components/mortgage-advisor/types';
 import { endDateFromMonths, toDateInputValue, DEFAULT_PAYMENT_DAY } from '@/lib/refinance';
 import {
@@ -27,6 +28,7 @@ const DRAFT_KEY = 'mashklanta:refinance-check';
 const MIX_KEY = 'mashklanta:refinance-mix';
 
 export function loadDraft(): RefinanceCheckDraft | null {
+  expireGuestData();
   try {
     // טיוטה מגרסה קודמת, שנשמרה רק ללשונית, עדיין נקראת
     const raw = window.localStorage.getItem(DRAFT_KEY) ?? window.sessionStorage.getItem(DRAFT_KEY);
@@ -41,6 +43,7 @@ export function loadDraft(): RefinanceCheckDraft | null {
 export function saveDraft(draft: RefinanceCheckDraft) {
   try {
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    touchGuestData();
   } catch {
     // אחסון חסום (גלישה פרטית) — הכלי ממשיך לעבוד בלי לזכור
   }
@@ -91,6 +94,7 @@ export function reviveMix(value: unknown): MortgageMix | null {
 }
 
 export function loadGuestMix(): MortgageMix | null {
+  expireGuestData();
   try {
     const raw = window.localStorage.getItem(MIX_KEY);
     return raw ? reviveMix(JSON.parse(raw)) : null;
@@ -102,6 +106,7 @@ export function loadGuestMix(): MortgageMix | null {
 export function saveGuestMix(mix: MortgageMix) {
   try {
     window.localStorage.setItem(MIX_KEY, JSON.stringify(mix));
+    touchGuestData();
   } catch {
     // אחסון חסום — ההצצה ממשיכה לעבוד בלי לזכור
   }

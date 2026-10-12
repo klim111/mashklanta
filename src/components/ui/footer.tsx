@@ -2,8 +2,7 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { Phone, Mail, Facebook, Instagram, Linkedin, Twitter } from "lucide-react"
-import { Button } from "./button"
+import { Phone, Mail } from "lucide-react"
 import { SITE_CONTACT } from "@/lib/site-contact"
 
 export default function Footer() {
@@ -20,33 +19,20 @@ export default function Footer() {
               <h3 className="text-subtitle font-bold text-white">משכלנתא</h3>
             </div>
             <p className="text-slate-300 leading-relaxed">
-              הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לך למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
+              הפלטפורמה החכמה לייעוץ משכנתאות. אנחנו עוזרים לכם למצוא את התמהיל המושלם ולחסוך מאות אלפי שקלים.
             </p>
-            <div className="flex space-x-4 space-x-reverse">
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="פייסבוק">
-                <Facebook className="w-4 h-4" aria-hidden="true" />
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="אינסטגרם">
-                <Instagram className="w-4 h-4" aria-hidden="true" />
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="לינקדאין">
-                <Linkedin className="w-4 h-4" aria-hidden="true" />
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full p-2 border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-blue-500" aria-label="טוויטר">
-                <Twitter className="w-4 h-4" aria-hidden="true" />
-              </Button>
-            </div>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-white">קישורים מהירים</h4>
             <ul className="space-y-2 text-slate-300">
-              <li><a href="/how-it-works" className="hover:text-white transition-colors">איך זה עובד</a></li>
-              <li><a href="/pricing" className="hover:text-white transition-colors">תמחור</a></li>
-              <li><a href="/learn" className="hover:text-white transition-colors">מרכז למידה</a></li>
-              <li><a href="/mortgage-advisor" className="hover:text-white transition-colors">כלי יועצים</a></li>
-              <li><a href="/auth/register" className="hover:text-white transition-colors">הרשמה</a></li>
+              <li><Link href="/how-it-works" className="hover:text-white transition-colors">איך זה עובד</Link></li>
+              <li><Link href="/pricing" className="hover:text-white transition-colors">תמחור</Link></li>
+              <li><Link href="/#free-tools" className="hover:text-white transition-colors">הכלים החינמיים</Link></li>
+              <li><Link href="/demo" className="hover:text-white transition-colors">הכירו את הכלים</Link></li>
+              <li><Link href="/learn" className="hover:text-white transition-colors">מרכז למידה</Link></li>
+              <li><Link href="/auth/register" className="hover:text-white transition-colors">הרשמה</Link></li>
             </ul>
           </div>
 
@@ -54,17 +40,16 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-white">השירותים שלנו</h4>
             <ul className="space-y-2 text-slate-300">
-              <li><a href="/pricing" className="hover:text-white transition-colors">מסלול עצמאי</a></li>
-              <li><a href="/pricing" className="hover:text-white transition-colors">מסלול היברידי</a></li>
-              <li><a href="/pricing#advisory" className="hover:text-white transition-colors">מסלול בליווי</a></li>
-              <li><a href="/custom-mix-builder" className="hover:text-white transition-colors">בניית תמהילים</a></li>
-              <li><a href="/mortgage-advisor" className="hover:text-white transition-colors">השוואת הצעות</a></li>
+              <li><Link href="/pricing#tracks" className="hover:text-white transition-colors">מסלול עצמאי / היברידי</Link></li>
+              <li><Link href="/pricing#advisory" className="hover:text-white transition-colors">מסלול בליווי</Link></li>
+              <li><Link href="/consult" className="hover:text-white transition-colors">היוועצו עם יועץ</Link></li>
+              <li><Link href="/dashboard/mix-planner" className="hover:text-white transition-colors">בניית תמהיל</Link></li>
             </ul>
           </div>
 
           {/* Contact Info */}
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">צור קשר</h4>
+            <h4 className="text-lg font-semibold text-white">יצירת קשר</h4>
             <div className="space-y-3 text-slate-300">
               <a
                 href={SITE_CONTACT.phoneHref}

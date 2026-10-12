@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { sendEmail, emailTemplates } from '@/lib/email';
-import { canonicalSiteOrigin } from '@/lib/auth-url';
+import { publicSiteOrigin } from '@/lib/auth-url';
 import { normalizeEmail } from '@/lib/find-user-by-login';
 import { rateLimit } from '@/lib/rate-limit';
 import { generateToken, hashToken } from '@/lib/registration';
@@ -19,8 +19,7 @@ export const RESET_TTL_MINUTES = 60;
 const IDENTIFIER_PREFIX = 'password-reset:';
 
 function resetUrl(token: string, requestOrigin?: string | null): string {
-  const origin = canonicalSiteOrigin() ?? requestOrigin ?? 'http://localhost:3000';
-  return `${origin}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  return `${publicSiteOrigin(requestOrigin)}/auth/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 export type ResetRequestResult = 'sent' | 'cooldown' | 'limit' | 'email-failed';

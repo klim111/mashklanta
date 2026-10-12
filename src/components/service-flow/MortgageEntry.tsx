@@ -35,6 +35,12 @@ export interface MortgageEntryProps {
   /** המשך בחירה שנעשתה לפני ההתחברות או לפני התשלום (`?goal=&service=`) */
   initialGoal?: FlowGoal | null;
   autoService?: ServiceType | null;
+  /**
+   * לגרסת החלון הצף: פתיחה עם מטרה (`initialGoal`) מתנהגת כמו הכפתורים בתפריט
+   * הצד — מי ששילם, או שיש לו תהליך פתוח בלי תשלום פנוי, ממשיך ישר בלי מסך
+   * המסלולים. כך "מיחזור משכנתא" בפעולות המהירות פותח בדיוק את אותו תהליך.
+   */
+  direct?: boolean;
   /** מחיקת תהליך קודם מתוך ההתרעה — מרשימת התהליכים של הדאשבורד, כדי שתתעדכן */
   deletePlan?: (planId: string) => Promise<string | null>;
 }
@@ -75,6 +81,7 @@ export function MortgageEntry({
   initialGoal = null,
   autoService = null,
   deletePlan = deletePlanRequest,
+  direct = false,
 }: MortgageEntryProps) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -85,7 +92,10 @@ export function MortgageEntry({
   /** תהליך פתוח שעוד לא הסתיים — ההתרעה שהתשלום הוא עבור תהליך אחד */
   const [notice, setNotice] = useState<{ goal: FlowGoal; plans: OpenProcess[] } | null>(null);
   const [refinanceBusy, setRefinanceBusy] = useState(false);
+  /** פתיחת תהליך המיחזור נכשלה — מוצגת הודעה במקום לצאת בשקט מהאזור האישי */
+  const [refinanceError, setRefinanceError] = useState(false);
   const autoHandled = useRef(false);
+  const directHandled = useRef(false);
 
   const isOpen = variant === 'dialog' ? Boolean(open) : dialogOpen;
   const setOpen = (next: boolean) => {
@@ -126,6 +136,7 @@ export function MortgageEntry({
 
   const startRefinance = async () => {
     setRefinanceBusy(true);
+    setRefinanceError(false);
     try {
       const res = await fetch('/api/plans', {
         method: 'POST',
@@ -141,8 +152,7 @@ export function MortgageEntry({
       const plan = (await res.json()) as { id: string };
       router.push(`/dashboard/plans/${plan.id}`);
     } catch {
-      // בלי חיבור — הכלי עצמו עדיין פתוח, והשמירה בו פותחת את התהליך
-      router.push('/mortgage-refinance');
+      setRefinanceError(true);
     } finally {
       setRefinanceBusy(false);
     }
@@ -152,6 +162,19 @@ export function MortgageEntry({
     setOpen(false);
     setRequest({ goal, service });
   };
+
+  // פתיחה ישירה עם מטרה — כמו בתפריט הצד
+  useEffect(() => {
+    if (variant !== 'dialog' || !direct) return;
+    if (!open) {
+      directHandled.current = false;
+      return;
+    }
+    if (!initialGoal || !accessReady || directHandled.current) return;
+    directHandled.current = true;
+    if (access.active || !access.canOpenMore) onSelf(initialGoal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant, direct, open, initialGoal, accessReady]);
 
   // המשך אוטומטי של בחירה מעמוד הבית או ממסך התשלום
   useEffect(() => {
@@ -189,6 +212,32 @@ export function MortgageEntry({
         deletePlan={deletePlan}
         onDeleted={() => afterDelete(notice?.goal ?? 'NEW_MORTGAGE')}
       />
+
+      <Dialog open={refinanceError} onOpenChange={setRefinanceError}>
+        <DialogContent dir="rtl" className="max-w-md rounded-3xl bg-white p-6 text-center">
+          <DialogTitle className="text-subtitle font-black text-slate-900">לא הצלחנו לפתוח את תהליך המיחזור</DialogTitle>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            ייתכן שהחיבור לאינטרנט נקטע. בדקו את החיבור ונסו שוב.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              disabled={refinanceBusy}
+              onClick={() => void startRefinance()}
+              className="rounded-xl bg-blue-600 px-5 py-2.5 text-button font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+            >
+              נסו שוב
+            </button>
+            <button
+              type="button"
+              onClick={() => setRefinanceError(false)}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-button font-bold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              סגירה
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {request && (
         <GuidanceRequestDialog

@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import NavBar from '@/components/ui/navbar';
 import EquityPlanningTool from '@/components/equity-planning/EquityPlanningTool';
 
@@ -10,7 +11,10 @@ export default function EquityPlanningPage() {
         <NavBar />
       </div>
 
-      <EquityPlanningTool />
+      {/* קישור החזרה קורא את ?fromPlan מהכתובת — ולכן צריך גבול Suspense */}
+      <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+        <EquityPlanningTool />
+      </Suspense>
     </div>
   );
 }

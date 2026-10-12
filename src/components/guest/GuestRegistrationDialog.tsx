@@ -9,6 +9,7 @@ import { CheckEmailPanel } from '@/components/auth/CheckEmailPanel';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { EmailExistsNotice, useEmailExists } from '@/components/auth/EmailExistsNotice';
 import { passwordProblem } from '@/lib/password-policy';
+import { authHref, safeCallbackPath } from '@/lib/auth-url';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 
@@ -17,8 +18,8 @@ import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
  *
  * הלקוח שסיים לשחק עם הכלי ורוצה להמשיך לתכנון ולקיחת המשכנתא לא נשלח לעמוד
  * הרשמה נפרד — הוא נפתח כאן, מעל התוצאות שהוא כבר רואה. עם השליחה נשלח אליו
- * מייל עם קישור אימות; רק אישור הקישור יוצר את החשבון ופותח את הדאשבורד,
- * ישר ליעד שממנו נרשם.
+ * מייל עם קישור אימות; רק אישור הקישור יוצר את החשבון ומחזיר אותו, מחובר,
+ * ליעד שממנו נרשם — כברירת מחדל העמוד שבו נפתח החלון.
  */
 
 const inputClass =
@@ -27,7 +28,7 @@ const inputClass =
 export interface GuestRegistrationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** הכתובת שנפתחת אחרי ההרשמה — ברירת המחדל: האזור האישי */
+  /** הכתובת שנפתחת אחרי ההרשמה — ברירת המחדל: העמוד שבו נפתח החלון */
   redirectTo?: string;
   title?: string;
   description?: string;
@@ -36,10 +37,22 @@ export interface GuestRegistrationDialogProps {
 export function GuestRegistrationDialog({
   open,
   onOpenChange,
-  redirectTo = '/dashboard',
+  redirectTo,
   title = 'עוד שלב אחד — ונמשיך לתכנון ולקיחת המשכנתא',
-  description = 'פתיחת חשבון לוקחת פחות מדקה, והיא חינמית. נשלח לכם מייל לאישור, ומיד אחריו נפתח האזור האישי עם כל שלבי התהליך, והנתונים שהזנתם בכלי ממשיכים איתכם.',
+  description,
 }: GuestRegistrationDialogProps) {
+  // בלי יעד מפורש — חוזרים לעמוד שממנו נרשמו (נקבע בדפדפן, בפתיחת החלון)
+  const [currentPage, setCurrentPage] = useState('/dashboard');
+  useEffect(() => {
+    if (open) setCurrentPage(`${window.location.pathname}${window.location.search}${window.location.hash}`);
+  }, [open]);
+  const target = safeCallbackPath(redirectTo) ?? safeCallbackPath(currentPage) ?? '/dashboard';
+  const toDashboard = target.startsWith('/dashboard');
+  const text =
+    description ??
+    (toDashboard
+      ? 'פתיחת חשבון לוקחת פחות מדקה, והיא חינמית. נשלח לכם מייל לאישור, ומיד אחריו נפתח האזור האישי עם כל שלבי התהליך, והנתונים שהזנתם בכלי ממשיכים איתכם.'
+      : 'פתיחת חשבון לוקחת פחות מדקה, והיא חינמית. נשלח לכם מייל לאישור, ומיד אחריו תחזרו לכאן מחוברים, והנתונים שהזנתם בכלי ממשיכים איתכם.');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,7 +102,7 @@ export function GuestRegistrationDialog({
           name: name.trim(),
           email: email.trim(),
           password,
-          callbackUrl: redirectTo,
+          callbackUrl: target,
         }),
       });
       const body = await response.json().catch(() => null);
@@ -136,14 +149,16 @@ export function GuestRegistrationDialog({
                   {title}
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-sm leading-relaxed text-slate-500">
-                  {description}
+                  {text}
                 </DialogDescription>
               </div>
             </div>
 
             <div className="mb-4 flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-xs font-bold text-blue-900">
               <LayoutDashboard className="h-4 w-4 shrink-0" />
-              אחרי אישור המייל נפתח הדאשבורד של האזור האישי, עם חמשת שלבי התהליך
+              {toDashboard
+                ? 'אחרי אישור המייל נפתח האזור האישי, עם חמשת שלבי התהליך'
+                : 'אחרי אישור המייל תחזרו לכאן, ומכאן גם האזור האישי עם חמשת שלבי התהליך'}
             </div>
 
             <label className="block text-xs font-bold text-slate-600">
@@ -171,13 +186,13 @@ export function GuestRegistrationDialog({
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   className={`${inputClass} pr-9`}
-                  placeholder="name@example.com"
+                  placeholder="your@email.com"
                   autoComplete="email"
                   dir="ltr"
                 />
               </span>
             </label>
-            {emailStatus.exists && <EmailExistsNotice email={email} callbackUrl={redirectTo} />}
+            {emailStatus.exists && <EmailExistsNotice email={email} callbackUrl={target} />}
 
             <div className="mt-3 text-xs font-bold text-slate-600">
               סיסמה
@@ -199,10 +214,20 @@ export function GuestRegistrationDialog({
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-6 py-3 text-button font-black text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-60"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeft className="h-4 w-4" />}
-              הרשמה והמשך לאזור האישי
+              {toDashboard ? 'הרשמה והמשך לאזור האישי' : 'הרשמה והמשך'}
             </button>
 
-            <SignupDraftNotice className="mt-3 text-center" />
+            <p className="mt-3 text-center text-xs text-slate-500">
+              בהרשמה אתם מסכימים ל
+              <Link href="/terms" target="_blank" rel="noopener" className="text-blue-600 hover:text-blue-700">
+                תנאי השימוש
+              </Link>{' '}
+              ול
+              <Link href="/privacy" target="_blank" rel="noopener" className="text-blue-600 hover:text-blue-700">
+                מדיניות הפרטיות
+              </Link>
+            </p>
+            <SignupDraftNotice className="mt-2 text-center" />
 
             <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-slate-200" />
@@ -210,15 +235,15 @@ export function GuestRegistrationDialog({
               <span className="h-px flex-1 bg-slate-200" />
             </div>
 
-            <GoogleAuthButton label="הרשמה עם Google" callbackUrl={redirectTo} />
+            <GoogleAuthButton label="הרשמה עם Google" callbackUrl={target} />
 
             <p className="mt-4 text-center text-xs text-slate-500">
               כבר יש לכם חשבון?{' '}
               <Link
-                href={`/auth/login?callbackUrl=${encodeURIComponent(redirectTo)}`}
+                href={authHref('/auth/login', target)}
                 className="font-black text-blue-600 hover:underline"
               >
-                התחברו והמשיכו לאזור האישי
+                {toDashboard ? 'התחברו והמשיכו לאזור האישי' : 'התחברו והמשיכו'}
               </Link>
             </p>
           </form>

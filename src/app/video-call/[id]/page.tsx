@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { 
   Check,
   Mic, 
@@ -17,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { createSocketIOSignaling, SignalingMessage, SocketIOSignaling } from '@/lib/socketio-signaling';
 import { createHTTPSignaling, HTTPSignaling } from '@/lib/http-signaling';
 import { getWebRTCConfigurationAsync } from '@/lib/webrtc-config';
+import { returnTargetFor } from '@/components/navigation/ReturnLink';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -64,6 +66,7 @@ export default function VideoCallClient({ params }: PageProps) {
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const router = useRouter();
+  const { status: sessionStatus } = useSession();
 
   useEffect(() => {
     params.then(({ id }) => setCallId(id));
@@ -433,7 +436,8 @@ export default function VideoCallClient({ params }: PageProps) {
     signalingRef.current?.endCall();
     cleanupMedia();
     resetCall();
-    router.push('/');
+    // לקוח מחובר חוזר לאזור האישי; אורח — לדף הבית
+    router.push(returnTargetFor({ signedIn: sessionStatus === 'authenticated' }).href);
   };
 
   const toggleVideo = () => {
@@ -497,7 +501,7 @@ export default function VideoCallClient({ params }: PageProps) {
             <div className="flex items-center gap-4">
             <div className="flex flex-col">
               <span className="text-xs text-slate-400">שיחת וידאו</span>
-              <span className="text-lg font-semibold">משכלתנא</span>
+              <span className="text-lg font-semibold">משכלנתא</span>
             </div>
             <Badge variant={callState.advisorConnected ? 'default' : 'secondary'}>
               {callState.advisorConnected ? 'יועץ מחובר' : 'ממתין ליועץ'}

@@ -4,8 +4,8 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { ensureClientLinkSafely, primaryAdvisor } from './advisor-link';
 import { MAX_DOCUMENT_BYTES, isAllowedDocumentType, storeFileInPlan } from './plan-documents';
-import { canonicalSiteOrigin } from './auth-url';
-import { sendEmail } from './email';
+import { canonicalSiteOrigin, publicSiteOrigin } from './auth-url';
+import { clientNoticeEmail, sendEmail } from './email';
 import { parseStageData } from './mortgage-plan';
 import { deleteStoredFiles, readStoredFile, resolveOutgoingFiles } from './conversation-files';
 import {
@@ -250,6 +250,14 @@ export async function chatAttachment(
   return storedAttachments(row?.attachments).find((item) => item.id === attachmentId && item.blob) ?? null;
 }
 
+/**
+ * הקישור לשיחה במיילים ללקוח. `#chat` פותח את חלון השיחה באזור האישי; מי שלא
+ * מחובר עובר דרך ההתחברות, שמחזירה אותו לאותה כתובת כולל ה-`#chat`.
+ */
+function clientChatUrl(): string {
+  return `${publicSiteOrigin().replace(/\/$/, '')}/dashboard#chat`;
+}
+
 /** התראה במייל לצד השני שיש הודעה חדשה, עם קישור ישר לשיחה */
 async function notifyNewMessage(access: ConversationAccess, body: string) {
   const origin = (canonicalSiteOrigin() || process.env.NEXTAUTH_URL || '').replace(/\/$/, '');
@@ -279,8 +287,12 @@ async function notifyNewMessage(access: ConversationAccess, body: string) {
   await sendEmail({
     to: client.email,
     subject: `היועץ שלכם ב${appName()} כתב לכם`,
-    html: emailHtml(`קיבלתם הודעה חדשה מהיועץ:\n\n${preview}\n\nלתשובה: ${origin}/dashboard#chat`, appName()),
-    text: `קיבלתם הודעה חדשה מהיועץ:\n\n${preview}\n\nלתשובה: ${origin}/dashboard#chat`,
+    ...clientNoticeEmail({
+      title: 'הודעה חדשה בצ\'אט',
+      text: `קיבלתם הודעה חדשה מהיועץ:\n\n${preview}`,
+      href: clientChatUrl(),
+      label: 'לקריאה ולתשובה',
+    }),
   });
 }
 
@@ -1135,10 +1147,13 @@ export async function reviewHeldSender(
 async function notifyHeldEmail(clientUserId: string, email: { fromAddress: string; fromName: string | null; subject: string }) {
   const client = await prisma.user.findUnique({ where: { id: clientUserId }, select: { email: true } });
   if (!client?.email) return;
-  const origin = (canonicalSiteOrigin() || process.env.NEXTAUTH_URL || '').replace(/\/$/, '');
   const from = email.fromName ? `${email.fromName} (${email.fromAddress})` : email.fromAddress;
-  const text = `הגיע מייל לכתובת האישית שלכם ב${appName()} משולח שעוד לא מוכר לשיחה.\n\nמאת: ${from}\nנושא: ${email.subject}\n\nהמייל ממתין בטאב המיילים. אם אתם מכירים את השולח (למשל הבנק), אשרו אותו והמייל ייכנס לשיחה. אם לא — מחקו אותו.\n\n${origin}/dashboard#chat`;
-  await sendEmail({ to: client.email, subject: `מייל ממתין לאישור: ${email.subject}`, text, html: emailHtml(text, appName()) });
+  const text = `הגיע מייל לכתובת האישית שלכם ב${appName()} משולח שעוד לא מוכר לשיחה.\n\nמאת: ${from}\nנושא: ${email.subject}\n\nהמייל ממתין בלשונית "מיילים" שבחלון השיחה. אם אתם מכירים את השולח (למשל הבנק), אשרו אותו והמייל ייכנס לשיחה. אם לא — מחקו אותו.`;
+  await sendEmail({
+    to: client.email,
+    subject: `מייל ממתין לאישור: ${email.subject}`,
+    ...clientNoticeEmail({ title: 'מייל ממתין לאישור', text, href: clientChatUrl(), label: 'לצפייה במייל' }),
+  });
 }
 
 /**
@@ -1162,8 +1177,12 @@ async function notifyInboundEmail(
   ]);
 
   if (senderKind !== 'CLIENT' && client?.email) {
-    const text = `הגיע מייל חדש לכתובת האישית שלכם ב${appName()}.\n\nמאת: ${from}\nנושא: ${email.subject}\n\n${body}${filesLine}\n\nכדי שהתשובה תישמר בשיחה ותצא מהכתובת האישית, ענו מהפלטפורמה: ${origin}/dashboard#chat`;
-    await sendEmail({ to: client.email, subject: `מייל חדש: ${email.subject}`, text, html: emailHtml(text, appName()) });
+    const text = `הגיע מייל חדש לכתובת האישית שלכם ב${appName()}.\n\nמאת: ${from}\nנושא: ${email.subject}\n\n${body}${filesLine}\n\nכדי שהתשובה תישמר בשיחה ותצא מהכתובת האישית, ענו מהפלטפורמה.`;
+    await sendEmail({
+      to: client.email,
+      subject: `מייל חדש: ${email.subject}`,
+      ...clientNoticeEmail({ title: 'מייל חדש לכתובת האישית', text, href: clientChatUrl(), label: 'לתשובה מהפלטפורמה' }),
+    });
   }
   if (senderKind !== 'ADVISOR' && advisor?.email) {
     const who = client?.name || client?.email || 'הלקוח';

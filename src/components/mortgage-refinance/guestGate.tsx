@@ -18,6 +18,10 @@ import { ArrowLeft, Layers, Lock, Save, Sparkles, TrendingDown } from 'lucide-re
  * לכל דפדפן (localStorage): רענון או כניסה חוזרת אינם מאפסים אותם.
  */
 
+/** אחרי ההרשמה או ההתחברות חוזרים לכלי המיחזור — עם המסלולים שכבר הוזנו */
+const TOOL_REGISTER_HREF = `/auth/register?callbackUrl=${encodeURIComponent('/mortgage-refinance')}`;
+const TOOL_LOGIN_HREF = `/auth/login?callbackUrl=${encodeURIComponent('/mortgage-refinance')}`;
+
 export const GUEST_TRIES_KEY = 'mashkalanta:refinance-preview-tries';
 export const GUEST_TRIES_EVENT = 'mashkalanta:refinance-preview-tries-changed';
 
@@ -130,13 +134,13 @@ export function GuestLimitDialog({ open, onClose }: { open: boolean; onClose: ()
         </ul>
 
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row-reverse sm:items-center">
-          <Link href="/auth/register" className="min-w-0 sm:flex-1">
+          <Link href={TOOL_REGISTER_HREF} className="min-w-0 sm:flex-1">
             <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               פתיחת חשבון חינם
               <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
             </Button>
           </Link>
-          <Link href="/auth/login" className="min-w-0 sm:flex-1">
+          <Link href={TOOL_LOGIN_HREF} className="min-w-0 sm:flex-1">
             <Button variant="outline" className="w-full">
               כבר יש לי חשבון
             </Button>

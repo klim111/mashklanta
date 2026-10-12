@@ -3,11 +3,11 @@
 /**
  * התאמת הפלטפורמה לטלפון נייד.
  *
- * בטלפון מוצגים במלואם רק עמוד הבית והכלים החינמיים, שעוצבו גם למסך קטן.
+ * בטלפון מוצגים במלואם רק דף הבית והכלים החינמיים, שעוצבו גם למסך קטן.
  * שאר המסכים שלפני ההתחברות (הרשמה, התחברות, תמחור וכו׳) נשארים שמישים, עם
  * הודעה שלהצגה מיטבית יש לפתוח מטאבלט או ממחשב. מסכי הפלטפורמה שאחרי
  * ההתחברות — הלוח ושלבי המשכנתא — אינם נפתחים בטלפון: במקומם מוצגת ההודעה
- * עם דרך חזרה לעמוד הבית ולכלים. טאבלטים ומחשבים אינם מושפעים.
+ * עם דרך חזרה לדף הבית ולכלים. טאבלטים ומחשבים אינם מושפעים.
  */
 
 import { useEffect, useState } from 'react';
@@ -31,8 +31,13 @@ const PHONE_READY_PATHS = [
   '/privacy',
   '/terms',
   '/accessibility',
-  '/accessibility-statement',
 ];
+
+/**
+ * עמודי המידע הציבוריים שלא עוצבו במיוחד לטלפון. הם נפתחים בטלפון עם ההודעה
+ * שבראש העמוד — לאורח וגם למשתמש מחובר, כי אין בהם מסכי פלטפורמה.
+ */
+const PUBLIC_INFO_PATHS = ['/how-it-works', '/pricing', '/demo'];
 
 /** מסכי הפלטפורמה שאחרי ההתחברות — חסומים בטלפון גם בלי לבדוק את ה-session */
 const APP_PREFIXES = ['/dashboard', '/advisor-dashboard'];
@@ -76,8 +81,10 @@ export function PhoneGate({ children }: { children: React.ReactNode }) {
 
   if (PHONE_READY_PATHS.some((path) => matches(pathname, path))) return <>{children}</>;
 
+  const isPublicInfo = PUBLIC_INFO_PATHS.some((path) => matches(pathname, path));
   const isAppScreen =
-    APP_PREFIXES.some((path) => matches(pathname, path)) || status === 'authenticated';
+    APP_PREFIXES.some((path) => matches(pathname, path)) ||
+    (status === 'authenticated' && !isPublicInfo);
 
   if (isAppScreen) return <PhoneBlockedScreen signedIn={status === 'authenticated'} />;
 
@@ -157,7 +164,7 @@ export function PhoneBlockedScreen({ signedIn }: { signedIn: boolean }) {
             לכלים החינמיים
           </Link>
           <Link href="/" className="text-button font-semibold text-blue-700 underline-offset-4 hover:underline">
-            לעמוד הבית
+            לדף הבית
           </Link>
           {signedIn && (
             <button

@@ -29,6 +29,7 @@ import {
   X,
 } from 'lucide-react';
 import { journeyStageFor } from '@/data/platform/planStages';
+import { flowStages, planFlowOf } from '@/lib/mortgage-plan';
 import { formatDate, formatTime, relativeDayLabel } from '@/lib/advisor-crm';
 import { groupTasks, planCreatedLabel, summarizePlan, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, CalendarEvent, DashboardSection } from '@/lib/client-agenda';
@@ -103,6 +104,8 @@ export function OverviewSection({
   const [peekPlanId, setPeekPlanId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  /** המטרה שהחלון נפתח איתה — "מיחזור משכנתא" בפעולות המהירות פותח ישר את תהליך המיחזור */
+  const [addGoal, setAddGoal] = useState<'REFINANCE' | null>(null);
   const [agendaOpen, setAgendaOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
@@ -121,6 +124,9 @@ export function OverviewSection({
   const { access, ready: accessReady } = usePlatformAccess();
   const urgent = tasks.filter((task) => task.tone === 'urgent').length;
   const lead = summaries[0] ?? null;
+  /** שלב האישור העקרוני של התהליך הפעיל הראשון — אם יש כזה ושלב ההגשה קיים בו */
+  const preApprovalPlan =
+    active.find((plan) => flowStages(planFlowOf(plan.data)).includes('APPLICATIONS')) ?? null;
 
   const scrollToPlans = () =>
     document.getElementById('my-mortgages')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -311,15 +317,17 @@ export function OverviewSection({
   );
   const quickActions = (
     <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4" data-demo-id="dash-quick-actions">
-        <QuickAction
-          href="/principal-approval"
-          icon={<FileText className="h-4 w-4" />}
-          label="אישור עקרוני — פרטי הבקשה"
-        />
+        {preApprovalPlan && (
+          <QuickAction
+            href={`/dashboard/plans/${preApprovalPlan.id}?stage=APPLICATIONS`}
+            icon={<FileText className="h-4 w-4" />}
+            label="אישור עקרוני — פרטי הבקשה"
+          />
+        )}
         <QuickAction
           onClick={() => onNavigate('rate-requests')}
           icon={<Gavel className="h-4 w-4" />}
-          label="תמהילים שהוגשו לבנקים"
+          label="תמהילים שמורים"
           badge={requests.length}
         />
         <QuickAction href="/dashboard/mix-planner" icon={<Calculator className="h-4 w-4" />} label="בניית תמהיל" />
@@ -333,7 +341,14 @@ export function OverviewSection({
           icon={<FolderOpen className="h-4 w-4" />}
           label="תיק המסמכים שלי"
         />
-        <QuickAction href="/mortgage-refinance" icon={<RefreshCw className="h-4 w-4" />} label="מיחזור משכנתא" />
+        <QuickAction
+          onClick={() => {
+            setAddGoal('REFINANCE');
+            setAddOpen(true);
+          }}
+          icon={<RefreshCw className="h-4 w-4" />}
+          label="מיחזור משכנתא"
+        />
         <QuickAction
           onClick={() => onNavigate('expenses')}
           icon={<Wallet className="h-4 w-4" />}
@@ -548,7 +563,10 @@ export function OverviewSection({
             <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
               <button
                 type="button"
-                onClick={() => setAddOpen(true)}
+                onClick={() => {
+                  setAddGoal(null);
+                  setAddOpen(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white shadow-md transition-transform hover:-translate-y-0.5 hover:bg-blue-700"
               >
                 <Plus className="h-5 w-5" />
@@ -589,6 +607,8 @@ export function OverviewSection({
         variant="dialog"
         open={addOpen}
         onOpenChange={setAddOpen}
+        initialGoal={addGoal}
+        direct
         onStart={startPlan}
         busy={busy}
         hasPlans={plansState.plans.length > 0}

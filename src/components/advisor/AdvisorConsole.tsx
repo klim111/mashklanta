@@ -158,7 +158,7 @@ export function AdvisorConsole() {
                 <HomeIcon className="h-5 w-5 text-white" />
               </div>
               <span className="truncate text-lg font-black text-white sm:text-xl">
-                משכלתנא · יועצים
+                משכלנתא · יועצים
               </span>
             </Link>
 
