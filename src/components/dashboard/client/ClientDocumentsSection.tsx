@@ -90,10 +90,11 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
 
 /** כל מה שבתיק לפי קטגוריה ושלב, עם חיפוש וסינון — מעל רשימת הדרישות */
 function OrganizedDocuments({ planId }: { planId: string }) {
-  const { documents, ready, busyKey, remove, updateMeta } = usePlanDocuments(planId);
+  const { documents, ready, locked, busyKey, remove, updateMeta } = usePlanDocuments(planId);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
 
-  if (!ready || documents.length === 0) return null;
+  // בתהליך שלא שולם רשימת הדרישות שמתחת מציגה את ההסבר על הנעילה
+  if (!ready || locked || documents.length === 0) return null;
 
   return (
     <DashCard

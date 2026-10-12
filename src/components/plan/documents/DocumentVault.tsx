@@ -21,6 +21,7 @@ import type { StageDocument } from '@/lib/client-process';
 import { planDocumentRequirements, vaultCounts } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
 import { DocumentViewerDialog } from './DocumentViewerDialog';
+import { DocumentsLockedNotice } from './DocumentsLockedNotice';
 import { documentDownloadUrl, documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
 
 /**
@@ -50,7 +51,7 @@ export function DocumentVault({
    */
   hideModes?: boolean;
 }) {
-  const { documents, ready, error, busyKey, upload, remove } = usePlanDocuments(planId);
+  const { documents, ready, error, locked, busyKey, upload, remove } = usePlanDocuments(planId);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
   /** החלון הצף של ההעלאה, ועליו סוג המסמך שממנו נפתח */
   const [uploadKey, setUploadKey] = useState<string | null>(null);
@@ -92,6 +93,15 @@ export function DocumentVault({
       title: 'מסמכים נוספים שהעליתם',
       documents: extras.map((document) => ({ key: document.key, name: document.name })),
     });
+  }
+
+  if (locked) {
+    return (
+      <section className="rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <h4 className="mb-4 text-center text-xl font-black text-slate-900">תיק המסמכים</h4>
+        <DocumentsLockedNotice planId={planId} />
+      </section>
+    );
   }
 
   return (

@@ -278,6 +278,7 @@ export function planDocumentFailure(error: unknown): { status: number; message: 
 /** הקובץ עצמו, לצפייה — רק למי שרשאי לראות את התהליך */
 export async function readPlanDocument(
   userId: string,
+  planId: string,
   documentId: string
 ): Promise<{ stream: ReadableStream; contentType: string; fileName: string } | null> {
   const row = await prisma.planDocument.findUnique({
@@ -286,6 +287,7 @@ export async function readPlanDocument(
       blobPath: true,
       contentType: true,
       fileName: true,
+      planId: true,
       plan: { select: { ownerId: true, client: { select: { advisorId: true } } } },
     },
   });
@@ -293,6 +295,8 @@ export async function readPlanDocument(
 
   const allowed = row.plan.ownerId === userId || row.plan.client?.advisorId === userId;
   if (!allowed) return null;
+  // המסמך חייב להיות מהתהליך שבכתובת — שם נבדקה הנעילה
+  if (row.planId !== planId) return null;
 
   const blob = await get(row.blobPath, { access: 'private' });
   if (!blob?.stream) return null;
@@ -338,26 +342,27 @@ export async function planDocumentsArchive(
  */
 export async function updatePlanDocumentMeta(
   userId: string,
+  planId: string,
   documentId: string,
   meta: DocumentMeta
 ): Promise<PlanDocumentView | null> {
   const row = await prisma.planDocument.findUnique({
     where: { id: documentId },
-    select: { id: true, ownerId: true },
+    select: { id: true, ownerId: true, planId: true },
   });
-  if (!row || row.ownerId !== userId) return null;
+  if (!row || row.ownerId !== userId || row.planId !== planId) return null;
   const data = cleanDocumentMeta(meta);
   const updated = await prisma.planDocument.update({ where: { id: row.id }, data, select: documentSelect });
   return toView(updated);
 }
 
 /** מחיקת מסמך — רק בעל התהליך, ותמיד גם מה-Blob */
-export async function deletePlanDocument(userId: string, documentId: string): Promise<boolean> {
+export async function deletePlanDocument(userId: string, planId: string, documentId: string): Promise<boolean> {
   const row = await prisma.planDocument.findUnique({
     where: { id: documentId },
-    select: { id: true, blobPath: true, ownerId: true },
+    select: { id: true, blobPath: true, ownerId: true, planId: true },
   });
-  if (!row || row.ownerId !== userId) return false;
+  if (!row || row.ownerId !== userId || row.planId !== planId) return false;
 
   await prisma.planDocument.delete({ where: { id: row.id } });
   await del(row.blobPath).catch(() => undefined);

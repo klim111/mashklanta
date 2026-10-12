@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, Lock } from 'lucide-react';
 import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { DocumentVaultDialog, ProgressBar, useDocumentProgress } from './DocumentVaultDialog';
@@ -29,7 +29,7 @@ export function VaultButton({
   onSigningChange?: (next: SigningData) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { progress } = useDocumentProgress(planId, data);
+  const { progress, locked } = useDocumentProgress(planId, data);
   const relevant = progress.stages.filter((row) => row.relevant);
 
   const dialog = (
@@ -54,7 +54,11 @@ export function VaultButton({
         >
           <FolderOpen className="h-4 w-4 text-emerald-600" />
           תיק המסמכים
-          <span className="rounded-full bg-slate-100 px-1.5 text-2xs text-slate-600">{progress.overall.percent}%</span>
+          {locked ? (
+            <Lock className="h-3.5 w-3.5 text-slate-500" />
+          ) : (
+            <span className="rounded-full bg-slate-100 px-1.5 text-2xs text-slate-600">{progress.overall.percent}%</span>
+          )}
         </button>
         {dialog}
       </>
@@ -80,14 +84,23 @@ export function VaultButton({
             </span>
             תיק המסמכים
           </span>
-          <span className="text-sm font-black text-white/80">
-            {progress.overall.done}/{progress.overall.total} · {progress.overall.percent}%
+          {locked ? (
+            <span className="flex items-center gap-1 text-xs font-black text-white/70">
+              <Lock className="h-3.5 w-3.5" />
+              למנויים
+            </span>
+          ) : (
+            <span className="text-sm font-black text-white/80">
+              {progress.overall.done}/{progress.overall.total} · {progress.overall.percent}%
+            </span>
+          )}
+        </span>
+        {!locked && (
+          <span className="mt-2 block">
+            <ProgressBar percent={progress.overall.percent} tone="white" />
           </span>
-        </span>
-        <span className="mt-2 block">
-          <ProgressBar percent={progress.overall.percent} tone="white" />
-        </span>
-        {variant === 'header' && relevant.length > 0 && (
+        )}
+        {!locked && variant === 'header' && relevant.length > 0 && (
           <span className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-3">
             {relevant.map((row) => (
               <span key={row.stage} className="block">

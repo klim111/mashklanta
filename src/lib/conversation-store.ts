@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { ensureClientLinkSafely, primaryAdvisor } from './advisor-link';
 import { MAX_DOCUMENT_BYTES, isAllowedDocumentType, storeFileInPlan } from './plan-documents';
+import { lockedPlanIdsFor } from './mortgage-plans';
 import { canonicalSiteOrigin, publicSiteOrigin } from './auth-url';
 import { clientNoticeEmail, sendEmail } from './email';
 import { parseStageData } from './mortgage-plan';
@@ -697,9 +698,12 @@ export async function listConversationEmails(access: ConversationAccess): Promis
  * שלו; יועץ — רק תהליכים של לקוח שהוא מלווה.
  */
 export async function conversationDocuments(access: ConversationAccess): Promise<ConversationDocument[]> {
+  // תיק המסמכים פתוח ללקוח רק בתהליך ששולם עליו; היועץ המלווה רואה תמיד
+  const locked = access.viewerRole === 'ADVISOR' ? new Set<string>() : await lockedPlanIdsFor(access.clientUserId);
   const rows = await prisma.planDocument.findMany({
     where: {
       ownerId: access.clientUserId,
+      ...(locked.size > 0 ? { planId: { notIn: [...locked] } } : {}),
       ...(access.viewerRole === 'ADVISOR' ? { plan: { client: { advisorId: access.viewerId } } } : {}),
     },
     orderBy: { uploadedAt: 'desc' },
@@ -730,7 +734,8 @@ export async function attachmentFolders(access: ConversationAccess): Promise<Att
     orderBy: { updatedAt: 'desc' },
     select: { id: true, name: true },
   });
-  return plans.map((plan) => ({ planId: plan.id, name: plan.name }));
+  const locked = access.viewerRole === 'ADVISOR' ? new Set<string>() : await lockedPlanIdsFor(access.clientUserId);
+  return plans.filter((plan) => !locked.has(plan.id)).map((plan) => ({ planId: plan.id, name: plan.name }));
 }
 
 async function attachmentOf(access: ConversationAccess, emailId: string, attachmentId: string) {
