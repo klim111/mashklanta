@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -28,8 +28,8 @@ const CHART_LTR = '[&_div]:![direction:ltr] [&_text]:![direction:ltr]';
 const AXIS = { fontSize: 12, fill: '#64748b', fontFamily: 'inherit' };
 
 /**
- * ההחזר החודשי לאורך זמן: משכנתא והלוואות, אחת מעל השנייה, ומעליהן מה שנשאר
- * מההכנסה. מתחת — יחס ההחזר בכל חודש מול תקרת ה-40%. הסליידר בוחר חודש,
+ * ההחזר החודשי לאורך זמן: משכנתא והלוואות, אחת מעל השנייה, וקו ההכנסה הפנויה
+ * מעליהן. מתחת — יחס ההחזר בכל חודש מול תקרת ה-40%. הסליידר בוחר חודש,
  * והכרטיס שלידו מפרט מה משלמים בו ומה נשאר.
  */
 export function CashFlowCharts({ state }: { state: CashFlowState }) {
@@ -46,6 +46,7 @@ export function CashFlowCharts({ state }: { state: CashFlowState }) {
         mortgage: Math.round(p.mortgage),
         ...Object.fromEntries(state.loans.map((loan) => [loan.id, Math.round(p.loans[loan.id] ?? 0)])),
         free: Math.max(0, Math.round(p.free)),
+        income: p.actualRatio === null ? null : Math.round(p.total + p.free),
         actual: p.actualRatio === null ? null : Math.round(p.actualRatio * 1000) / 10,
         forMortgage: p.mortgageRatio === null ? null : Math.round(p.mortgageRatio * 1000) / 10,
       })),
@@ -68,7 +69,14 @@ export function CashFlowCharts({ state }: { state: CashFlowState }) {
     .map((loan) => ({ loan, at: loan.months! }))
     .sort((a, b) => a.at - b.at);
 
-  const tick = (value: number) => (value % 6 === 0 ? monthLabel(value) : '');
+  /* תוויות הציר: כל חצי שנה בטווח קצר, כל שנה או כל חמש שנים בטווח ארוך */
+  const step = points.length <= 36 ? 6 : points.length <= 120 ? 12 : 60;
+  const ticks = Array.from({ length: Math.floor((points.length - 1) / step) + 1 }, (_, i) => i * step);
+  const ratioMax = Math.max(50, Math.ceil(Math.max(...data.map((row) => row.actual ?? 0)) / 10) * 10);
+  const pick = (event: { activeLabel?: string | number } | null) => {
+    const label = Number(event?.activeLabel);
+    if (Number.isFinite(label)) setSelected(label);
+  };
 
   return (
     <ToolPanel title="ההחזר החודשי על ציר הזמן" icon={<TrendingDown className="h-5 w-5 text-blue-600" />}>
@@ -81,20 +89,31 @@ export function CashFlowCharts({ state }: { state: CashFlowState }) {
         ))}
         {hasIncome && (
           <li className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: FREE_COLOR }} />
-            נשאר פנוי
+            <span className="w-4 border-t-2 border-dashed border-emerald-600" />
+            הכנסה פנויה
           </li>
         )}
       </ul>
 
-      <div className={`h-64 ${CHART_LTR}`} dir="ltr">
+      {/*
+        כמו בגרפים של כלי ההלוואות: שטחים בגרדיאנט, אחד מעל השני, והזמן זורם
+        משמאל לימין. ההכנסה הפנויה היא קו מקווקו מעליהם — הרווח ביניהם הוא מה
+        שנשאר פנוי, וכל קו אנכי מנוקד מסמן הלוואה שמסתיימת.
+      */}
+      <div className={`h-72 ${CHART_LTR}`} dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} onClick={(e) => {
-            if (typeof e?.activeLabel === 'number') setSelected(e.activeLabel);
-          }}>
-            <CartesianGrid stroke="#eef2f7" vertical={false} />
-            <XAxis dataKey="month" reversed tick={AXIS} tickFormatter={tick} interval={0} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-            <YAxis orientation="right" tick={AXIS} tickFormatter={(v) => `₪${Math.round(v / 1000)}K`} width={52} tickLine={false} axisLine={false} />
+          <ComposedChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 4 }} onClick={pick}>
+            <defs>
+              {series.map((item) => (
+                <linearGradient key={item.key} id={`cf-grad-${item.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={item.color} stopOpacity={0.85} />
+                  <stop offset="100%" stopColor={item.color} stopOpacity={0.45} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="month" ticks={ticks} interval={0} tick={AXIS} tickFormatter={(value: number) => monthLabel(value)} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
+            <YAxis tick={AXIS} tickFormatter={(v) => `₪${Math.round(v / 1000)}K`} width={52} tickLine={false} axisLine={false} domain={[0, (max: number) => Math.ceil((max * 1.08) / 2000) * 2000]} />
             <Tooltip content={<PaymentsTooltip series={series} />} />
             {series.map((item) => (
               <Area
@@ -105,42 +124,50 @@ export function CashFlowCharts({ state }: { state: CashFlowState }) {
                 type="stepAfter"
                 stroke={item.color}
                 strokeWidth={1.5}
-                fill={item.color}
-                fillOpacity={0.85}
+                fill={`url(#cf-grad-${item.key})`}
                 isAnimationActive={false}
               />
             ))}
             {hasIncome && (
-              <Area dataKey="free" name="נשאר פנוי" stackId="pay" type="stepAfter" stroke="#94a3b8" strokeWidth={1} fill={FREE_COLOR} fillOpacity={0.6} isAnimationActive={false} />
+              <Line dataKey="income" name="הכנסה פנויה" type="stepAfter" stroke="#059669" strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
             )}
-            <ReferenceLine x={month} stroke="#0f172a" strokeDasharray="4 3" />
-          </AreaChart>
+            {milestones.map(({ loan, at }) => (
+              <ReferenceLine key={loan.id} x={at} stroke="#94a3b8" strokeDasharray="2 3" />
+            ))}
+            <ReferenceLine x={month} stroke="#0f172a" strokeWidth={1.5} />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       {hasIncome && (
         <>
-          <p className="mt-3 text-sm font-black text-slate-700">יחס ההחזר מההכנסה הפנויה</p>
-          <div className={`h-36 ${CHART_LTR}`} dir="ltr">
+          <p className="mt-4 text-sm font-black text-slate-700">יחס ההחזר מההכנסה הפנויה</p>
+          <div className={`h-40 ${CHART_LTR}`} dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }} onClick={(e) => {
-                if (typeof e?.activeLabel === 'number') setSelected(e.activeLabel);
-              }}>
-                <CartesianGrid stroke="#eef2f7" vertical={false} />
-                <XAxis dataKey="month" reversed tick={AXIS} tickFormatter={tick} interval={0} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                <YAxis orientation="right" tick={AXIS} tickFormatter={(v) => `${v}%`} width={52} tickLine={false} axisLine={false} domain={[0, (max: number) => Math.max(50, Math.ceil(max / 10) * 10)]} />
+              <ComposedChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 4 }} onClick={pick}>
+                <defs>
+                  <linearGradient id="cf-grad-ratio" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#0f172a" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#0f172a" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" ticks={ticks} interval={0} tick={AXIS} tickFormatter={(value: number) => monthLabel(value)} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
+                <YAxis tick={AXIS} tickFormatter={(v) => `${v}%`} width={52} tickLine={false} axisLine={false} domain={[0, ratioMax]} />
                 <Tooltip content={<RatioTooltip />} />
-                <ReferenceLine y={MORTGAGE_RATIO_LIMIT * 100} stroke="#e34948" strokeDasharray="5 4" label={{ value: '40%', position: 'insideTopLeft', fill: '#b91c1c', fontSize: 12 }} />
-                <Line dataKey="actual" name="יחס בפועל" type="stepAfter" stroke="#0f172a" strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line dataKey="forMortgage" name="יחס למשכנתא" type="stepAfter" stroke={MORTGAGE_COLOR} strokeWidth={2} dot={false} isAnimationActive={false} />
-                <ReferenceLine x={month} stroke="#0f172a" strokeDasharray="4 3" />
-              </LineChart>
+                {/* מעל התקרה — אזור אדום עדין */}
+                <ReferenceArea y1={MORTGAGE_RATIO_LIMIT * 100} y2={ratioMax} fill="#e34948" fillOpacity={0.06} />
+                <ReferenceLine y={MORTGAGE_RATIO_LIMIT * 100} stroke="#e34948" strokeDasharray="5 4" label={{ value: '40%', position: 'insideTopRight', fill: '#b91c1c', fontSize: 12 }} />
+                <Area dataKey="actual" name="יחס בפועל" type="stepAfter" stroke="#0f172a" strokeWidth={2} fill="url(#cf-grad-ratio)" dot={false} isAnimationActive={false} />
+                <Line dataKey="forMortgage" name="יחס למשכנתא" type="stepAfter" stroke={MORTGAGE_COLOR} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                <ReferenceLine x={month} stroke="#0f172a" strokeWidth={1.5} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <ul className="flex flex-wrap gap-x-4 text-sm font-semibold text-slate-600">
             <li className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-slate-900" />יחס בפועל (כל ההחזרים)</li>
             <li className="flex items-center gap-1.5"><span className="h-0.5 w-4" style={{ background: MORTGAGE_COLOR }} />יחס למשכנתא (אחרי הלוואות ארוכות)</li>
-            <li className="flex items-center gap-1.5"><span className="h-0.5 w-4 border-t-2 border-dashed border-rose-500" />תקרה 40%</li>
+            <li className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-rose-500" />תקרה 40%</li>
           </ul>
         </>
       )}
@@ -174,6 +201,8 @@ export function CashFlowCharts({ state }: { state: CashFlowState }) {
           value={month}
           onChange={(event) => setSelected(Number(event.target.value))}
           aria-label="חודש על ציר הזמן"
+          dir="ltr"
+          /* כמו הגרף: היום בשמאל, והזמן מתקדם ימינה */
           className="mt-2 w-full accent-blue-600"
         />
         <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
