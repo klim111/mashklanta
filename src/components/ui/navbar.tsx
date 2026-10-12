@@ -20,7 +20,7 @@ const NAV_LINKS = [
   { href: "/pricing", label: "תמחור" },
   { href: "/#free-tools", label: "הכלים החינמיים של משכלנתא", short: "הכלים החינמיים" },
   { href: "/#stats", label: "שוק המשכנתאות" },
-  { href: "/demo", label: "הכירו את הכלים של משכלנתא", short: "הכירו את הכלים" },
+  { href: "/learn", label: "מרכז הלמידה" },
 ];
 
 const linkClass =

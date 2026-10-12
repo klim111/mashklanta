@@ -30,7 +30,6 @@ export default function Footer() {
               <li><Link href="/how-it-works" className="hover:text-white transition-colors">איך זה עובד</Link></li>
               <li><Link href="/pricing" className="hover:text-white transition-colors">תמחור</Link></li>
               <li><Link href="/#free-tools" className="hover:text-white transition-colors">הכלים החינמיים</Link></li>
-              <li><Link href="/demo" className="hover:text-white transition-colors">הכירו את הכלים</Link></li>
               <li><Link href="/learn" className="hover:text-white transition-colors">מרכז למידה</Link></li>
               <li><Link href="/auth/register" className="hover:text-white transition-colors">הרשמה</Link></li>
             </ul>
