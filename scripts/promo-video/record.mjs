@@ -1,12 +1,16 @@
 /**
  * הקלטת הסרטון "צפו בהדגמה קצרה" שמתחת לאנימציה בדף הבית.
  *
- * הסרטון מוקלט מהממשק האמיתי, בשלושה חלקים ובסדר הזה:
- *   1. הכלים החינמיים, כאורח: היתכנות, בדיקת מיחזור והלוואות צרכניות.
- *   2. לרשומים: תכנון הון עצמי עם טבלת הוצאות מלאה ולוח שנה, ואז האזור
- *      האישי (פעולות מהירות, מצב הון ותזרים, לוח שנה ומשימות, תיק המסמכים,
- *      צ׳אט ומיילים). החלק הזה רץ בתוך ההדגמה (נתונים לדוגמה, בלי שרת).
- *   3. חמשת השלבים של תהליך המשכנתא, עם הדוחות שמפיקים לבנק.
+ * הסרטון מוקלט מהממשק האמיתי, בארבעה קטעים ובסדר הזה:
+ *   free   הכלים החינמיים, כאורח: היתכנות (כולל הזזת ערכים ונעילה), בדיקת
+ *          מיחזור והלוואות צרכניות.
+ *   equity לרשומים: תכנון הון עצמי עם טבלת הוצאות מלאה, לוח שנה והדוח הסופי.
+ *   dash   האזור האישי: פעולות מהירות, מצב הון ותזרים עם המחשבון המהיר, לוח
+ *          שנה ומשימות, תיק המסמכים, צ׳אט ומיילים.
+ *   plan   חמשת השלבים לפי הסדר: דוח הפרופיל, בניית תמהיל, לוח החזרים, פרעון
+ *          מוקדם וההצעה לבנקים, אישור עקרוני, מכרז ריביות וחתימה. בכל שלב
+ *          כפתור "פנו ליועץ" ותפריט הפעולות הצף.
+ * הקטעים של הרשומים רצים בתוך ההדגמה (נתונים לדוגמה, בלי שרת).
  *
  * הסקריפט מזיז עכבר, מקליד ומציג כתוביות בעצמו. ההדגמה `promo`
  * (src/demo/catalog/flows/promo.ts) משמשת רק במה מושהית לחלקים של הרשומים.
@@ -16,8 +20,9 @@
  *   node scripts/promo-video/record.mjs
  *
  * משתני סביבה: BASE_URL, CHROMIUM (נתיב לדפדפן), FFMPEG (נתיב ל-ffmpeg),
- * OUT_DIR (ברירת מחדל public/promo), NARRATION (קובץ שמע לקריינות, אופציונלי),
- * SPEED (האצת הפעולות), WORK_DIR.
+ * PYTHON (למעברים הרכים, דורש Pillow), OUT_DIR (ברירת מחדל public/promo),
+ * NARRATION (קובץ שמע לקריינות, אופציונלי), SPEED (האצת הפעולות), WORK_DIR,
+ * ONLY (רשימת קטעים מופרדת בפסיקים, לכיוונון: free,equity,dash,plan).
  *
  * נתוני שוק המשכנתאות מוגשים מ-market-snapshot.json — תמונת מצב של נתוני
  * בנק ישראל כפי שהוצגו באתר, כדי שההקלטה לא תלויה ברשת.
@@ -39,9 +44,9 @@ const FPS = 30;
 const VIEWPORT = { width: 1280, height: 720 };
 const SCALE = 1.5; // 1920x1080
 /** פי כמה מואצות הפעולות (תנועת עכבר, לחיצות, גלילה). זמן הקריאה של הכתוביות אינו מואץ */
-const SPEED = Number(process.env.SPEED ?? 2.8);
-/** הקלדה מואצת פחות, כדי שיראו את הערכים נכתבים */
-const TYPING_SPEED = 1.5;
+const SPEED = Number(process.env.SPEED ?? 1.6);
+/** הקלדה וגרירה מואצות פחות, כדי שיראו את הערכים משתנים */
+const TYPING_SPEED = 1.15;
 const DEMO_KEY = 'mashkalanta:demo';
 /** הצעדים של במת ההדגמה, לפי הסדר ב-promo.ts */
 const STAGE = { equity: 0, dashboard: 1, plan: 2 };
@@ -52,14 +57,15 @@ const OVERLAY_CSS = `
   .driver-popover, [data-a11y-ui], nextjs-portal { display: none !important; }
   .driver-overlay { display: none !important; }
   body.driver-active, body.driver-active * { pointer-events: auto !important; }
-  /* ההתראה "נרשמים כדי לשמור" נשארת על המסך, אבל לא חוסמת את העכבר */
-  aside[role="status"], aside[role="status"] *, #promo-layer, #promo-layer * { pointer-events: none !important; }
+  /* ההתראה "נרשמים כדי לשמור" של האורח מסתירה את התוצאות; כרטיס הפרק "נרשמים בחינם" אומר את זה */
+  aside[role="status"] { display: none !important; }
+  #promo-layer, #promo-layer * { pointer-events: none !important; }
   html { scroll-behavior: smooth; }
   #promo-layer { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; direction: rtl; font-family: var(--font-assistant), Assistant, sans-serif; }
   #promo-caption { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); max-width: 1120px; width: max-content;
     padding: 13px 30px 15px; border-radius: 22px; background: rgba(15, 23, 42, 0.92); color: #fff; text-align: center;
     font-size: 36px; line-height: 1.25; font-weight: 800; box-shadow: 0 18px 50px rgba(15, 23, 42, 0.35); }
-  #promo-caption.is-in { animation: promo-in 360ms cubic-bezier(.2,.8,.2,1) both; }
+  #promo-caption.is-in { animation: promo-in 520ms cubic-bezier(.2,.8,.2,1) both; }
   #promo-caption::before { content: ''; position: absolute; top: 0; right: 30px; left: 30px; height: 4px; border-radius: 0 0 4px 4px; background: #2563eb; }
   #promo-caption:empty { display: none; }
   #promo-caption small { display: block; margin-top: 4px; font-size: 26px; font-weight: 700; color: #bfdbfe; }
@@ -67,7 +73,7 @@ const OVERLAY_CSS = `
     color: #e2e8f0; font-size: 15px; font-weight: 700; }
   #promo-chapter, #promo-end { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
     background: radial-gradient(circle at 50% 35%, #1e3a8a 0%, #0f172a 72%); color: #fff; text-align: center; padding: 0 60px; }
-  #promo-chapter.is-on, #promo-end.is-on { display: flex; animation: promo-fade 350ms ease both; }
+  #promo-chapter.is-on, #promo-end.is-on { display: flex; animation: promo-fade 600ms ease both; }
   #promo-chapter i { font-style: normal; padding: 6px 18px; border-radius: 999px; background: rgba(96, 165, 250, 0.18); color: #93c5fd; font-size: 24px; font-weight: 800; }
   #promo-chapter b { font-size: 64px; font-weight: 900; line-height: 1.15; }
   #promo-chapter ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -77,7 +83,7 @@ const OVERLAY_CSS = `
   #promo-end b span { color: #60a5fa; }
   #promo-end p { font-size: 38px; font-weight: 700; color: #cbd5e1; margin: 0; }
   #promo-end em { font-style: normal; margin-top: 18px; padding: 14px 34px; border-radius: 18px; background: #2563eb; font-size: 32px; font-weight: 800; }
-  #promo-cursor { position: absolute; top: 0; left: 0; width: 26px; height: 30px; display: none; transition: transform 380ms cubic-bezier(.3,.7,.2,1);
+  #promo-cursor { position: absolute; top: 0; left: 0; width: 26px; height: 30px; display: none; transition: transform 700ms cubic-bezier(.35,.6,.25,1);
     filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35)); }
   #promo-cursor.is-on { display: block; }
   @keyframes promo-in { from { opacity: 0; transform: translate(-50%, 18px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -149,6 +155,7 @@ class Segment {
     Object.assign(this, { name, context, page });
     this.ranges = []; // [from, to, rate]
     this.cues = []; // { t, text }
+    this.marks = []; // מעברי מסך שיקבלו מעבר רך: { t, span }
   }
 
   static async open(browser, market, name, { demoStep = null } = {}) {
@@ -186,6 +193,7 @@ class Segment {
     if (capture) {
       await this.capture.start();
       this.ranges.push([from, now(), 0]);
+      this.soft(0.3);
     }
   }
 
@@ -199,6 +207,12 @@ class Segment {
     await this.cursorOff();
     await this.capture.start();
     this.ranges.push([from, now(), 0]);
+    this.soft(0.3);
+  }
+
+  /** מכאן ועד span שניות קדימה מתחלף המסך — במקום קפיצה יהיה מעבר רך */
+  soft(span = 1.6) {
+    this.marks.push({ t: now(), span });
   }
 
   async hold(ms) {
@@ -235,6 +249,15 @@ class Segment {
   /** כרטיס פרק על כל המסך */
   async chapter(kicker, title, bullets, holdMs) {
     this.cues.push({ t: now(), text: [title, ...bullets].join(' · ') });
+    await this.chapterCard(kicker, title, bullets);
+    await this.hold(holdMs);
+    this.soft(0.6);
+    await this.page.evaluate(() => document.getElementById('promo-chapter').classList.remove('is-on'));
+    await this.page.waitForTimeout(300);
+  }
+
+  /** הכרטיס עצמו. בתחילת קטע מציגים אותו לפני שהצילום מתחיל, כדי שהקטע ייפתח בו */
+  async chapterCard(kicker, title, bullets) {
     await this.page.evaluate(
       ({ kicker, title, bullets }) => {
         document.getElementById('promo-caption').textContent = '';
@@ -255,8 +278,6 @@ class Segment {
       },
       { kicker, title, bullets }
     );
-    await this.hold(holdMs);
-    await this.page.evaluate(() => document.getElementById('promo-chapter').classList.remove('is-on'));
   }
 
   async endCard(holdMs) {
@@ -291,15 +312,17 @@ class Segment {
       },
       { x: box.x + Math.min(box.width * 0.55, box.width - 10), y: box.y + box.height * 0.6 }
     );
-    await this.page.waitForTimeout(420);
+    await this.page.waitForTimeout(760);
   }
 
-  async click(target, { optional = false } = {}) {
+  /** soft: הלחיצה מחליפה מסך (לשונית, חלון, שלב) — מעבר רך במקום קפיצה */
+  async click(target, { optional = false, soft = false } = {}) {
     try {
       const locator = this.locator(target);
       await this.point(locator);
+      if (soft) this.soft();
       await locator.click({ timeout: 10_000 });
-      await this.page.waitForTimeout(300);
+      await this.page.waitForTimeout(soft ? 900 : 380);
       return true;
     } catch (error) {
       if (!optional) {
@@ -311,14 +334,88 @@ class Segment {
     }
   }
 
+  /** לחיצה בנקודה על המסך (כפתור שמחליף את התווית שלו, כמו כפתור צף שנפתח) */
+  async clickAt(box) {
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await this.page.evaluate(({ x, y }) => {
+      const cursor = document.getElementById('promo-cursor');
+      cursor.classList.add('is-on');
+      cursor.style.transform = `translate(${x}px, ${y}px)`;
+    }, { x, y });
+    await this.page.waitForTimeout(760);
+    this.soft();
+    await this.page.mouse.click(x, y);
+    await this.page.waitForTimeout(900);
+  }
+
   async type(target, text) {
     const locator = this.locator(target);
     await this.click(locator);
-    await locator.fill('');
+    await locator.press('Control+a');
+    await locator.press('Delete');
     const a = now();
-    await locator.pressSequentially(String(text), { delay: 85 });
+    await locator.pressSequentially(String(text), { delay: 95 });
     this.ranges.push([a, now(), 1 / TYPING_SPEED]);
-    await this.page.waitForTimeout(150);
+    // יציאה מהשדה בלי מקלדת: Tab מעביר פוקוס לרכיבים אחרים במסך
+    await locator.evaluate((element) => element.blur()).catch(() => undefined);
+    await this.page.waitForTimeout(250);
+  }
+
+  /** גרירת סליידר (Radix) עם העכבר עד לערך מבוקש — בכל כיוון כתיבה */
+  async slide(target, goal) {
+    const root = this.locator(target);
+    await root.scrollIntoViewIfNeeded();
+    const thumb = (await root.getAttribute('role')) === 'slider' ? root : root.locator('[role="slider"]').first();
+    const read = async () => ({
+      value: Number(await thumb.getAttribute('aria-valuenow')),
+      min: Number((await thumb.getAttribute('aria-valuemin')) ?? 0),
+      max: Number((await thumb.getAttribute('aria-valuemax')) ?? 100),
+    });
+    const { value, min, max } = await read();
+    const track = await root.boundingBox();
+    const knob = await thumb.boundingBox();
+    if (!track || !knob || max <= min) return;
+    const x0 = knob.x + knob.width / 2;
+    const y = knob.y + knob.height / 2;
+    const fraction = (value - min) / (max - min);
+    // הכיוון: איפה הידית נמצאת ביחס לערך שלה
+    const ltr = Math.abs(track.x + fraction * track.width - x0) <= Math.abs(track.x + (1 - fraction) * track.width - x0);
+    const g = (Math.min(max, Math.max(min, goal)) - min) / (max - min);
+    const x1 = ltr ? track.x + g * track.width : track.x + (1 - g) * track.width;
+    await this.point(thumb);
+    const a = now();
+    await this.page.mouse.move(x0, y);
+    await this.page.mouse.down();
+    const steps = 28;
+    for (let i = 1; i <= steps; i += 1) {
+      const x = x0 + ((x1 - x0) * i) / steps;
+      await this.page.mouse.move(x, y);
+      await this.page.evaluate(({ x, y }) => {
+        const cursor = document.getElementById('promo-cursor');
+        cursor.style.transition = 'none';
+        cursor.style.transform = `translate(${x}px, ${y}px)`;
+      }, { x, y });
+      await this.page.waitForTimeout(45);
+    }
+    await this.page.mouse.up();
+    await this.page.evaluate(() => (document.getElementById('promo-cursor').style.transition = ''));
+    this.ranges.push([a, now(), 1 / TYPING_SPEED]);
+    await this.page.waitForTimeout(400);
+  }
+
+  /** גלילה בתוך מכל נגלל (חלון, טבלה) שמכיל את הרכיב */
+  async scrollInside(target, top) {
+    await this.locator(target).evaluate((element, top) => {
+      let box = element;
+      while (box && box !== document.body) {
+        const style = getComputedStyle(box);
+        if (/(auto|scroll)/.test(style.overflowY) && box.scrollHeight > box.clientHeight + 10) break;
+        box = box.parentElement;
+      }
+      (box && box !== document.body ? box : window).scrollBy({ top, behavior: 'smooth' });
+    }, top);
+    await this.page.waitForTimeout(1100);
   }
 
   /** שדה תאריך: מצביעים עליו וממלאים */
@@ -330,18 +427,18 @@ class Segment {
   }
 
   async scrollTo(target, block = 'start') {
-    await this.locator(target).evaluate((element, block) => element.scrollIntoView({ behavior: 'smooth', block }), block);
-    await this.page.waitForTimeout(900);
+    await this.locator(target).evaluate((element, block) => element.scrollIntoView({ behavior: 'smooth', block }), block, { timeout: 6000 });
+    await this.page.waitForTimeout(1300);
   }
 
   async scrollBy(top) {
     await this.page.evaluate((top) => window.scrollBy({ top, behavior: 'smooth' }), top);
-    await this.page.waitForTimeout(800);
+    await this.page.waitForTimeout(1200);
   }
 
   async scrollTop() {
     await this.page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    await this.page.waitForTimeout(600);
+    await this.page.waitForTimeout(1100);
   }
 
   async finish() {
@@ -376,14 +473,46 @@ class Segment {
       const next = frames[i + 1]?.t ?? t1;
       const duration = remap(next) - clock;
       if (duration <= 0.0005) return; // פריים שכולו בתוך חיתוך
-      entries.push({ file: frame.file, duration });
+      entries.push({ file: frame.file, duration, t: frame.t });
       clock += duration;
     });
-    return { entries, remap, total: clock };
+    // חלונות המעברים הרכים, לפי מספרי הפריימים
+    const windows = this.marks.map(({ t, span }) => {
+      let a = entries.findIndex((entry) => entry.t >= t);
+      if (a < 0) return null;
+      let b = a;
+      while (b + 1 < entries.length && entries[b + 1].t <= t + span) b += 1;
+      return [Math.max(1, a), b];
+    }).filter(Boolean);
+    return { entries, remap, total: clock, windows };
   }
 }
 
-// ─────────────────────────── חלק 1: הכלים החינמיים, כאורח ───────────────────────────
+// ─────────────────────────── עזרים למסכים ───────────────────────────
+
+/** בחירה ברשימה נפתחת (Radix) במקלדת: הרשימה עצמה נפתחת לפעמים מחוץ למסך */
+async function choose(s, trigger, downs) {
+  const scroll = await s.page.evaluate(() => window.scrollY);
+  await s.click(trigger);
+  await s.wait(450);
+  for (let i = 0; i < downs; i += 1) {
+    await s.page.keyboard.press('ArrowDown');
+    await s.wait(330);
+  }
+  await s.page.keyboard.press('Enter');
+  await s.wait(350);
+  await s.page.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), scroll);
+  await s.wait(250);
+}
+
+/** סגירת חלון (Radix Dialog) בכפתור הסגירה שלו. לא Escape: בהדגמה הוא יוצא ממנה */
+async function closeDialog(s) {
+  const close = s.page.locator('[role="dialog"]').last().getByRole('button', { name: /^(Close|סגירה|סגור)$/ }).first();
+  await s.click(close, { optional: true, soft: true });
+  await s.cursorOff();
+}
+
+// ─────────────────────────── קטע 1: הכלים החינמיים, כאורח ───────────────────────────
 
 async function recordFreeTools(browser, market) {
   const s = await Segment.open(browser, market, 'free');
@@ -391,33 +520,44 @@ async function recordFreeTools(browser, market) {
   await page.waitForTimeout(2500);
   await s.begin();
 
-  await s.caption('משכלנתא: כל המשכנתא שלכם, בפלטפורמה אחת', 1500);
+  await s.caption('משכלנתא: כל המשכנתא שלכם, בפלטפורמה אחת', 2400);
   await s.scrollTo(sel('home-free-tools'));
-  await s.caption('מתחילים בכלים החינמיים', 1500, 'פתוחים לכולם, בלי הרשמה');
+  await s.caption('מתחילים בכלים החינמיים', 2300, 'פתוחים לכולם, בלי הרשמה');
 
-  // ─── היתכנות ───
+  // ─── מה אני יכול להרשות לעצמי ───
   await s.goto('/mortgage-planning?flow=affordability', sel('mp-property-0'));
-  await s.caption('כמה משכנתא אפשר לקבל?', 0, 'מזינים הון עצמי והכנסה, לפי כללי בנק ישראל');
-  await s.hold(900);
+  await s.caption('מה אני יכול להרשות לעצמי?', 0, 'מזינים הון עצמי, גיל והכנסה');
+  await s.hold(1300);
   await s.click(sel('mp-property-0'));
   await s.click(sel('mp-borrower-individual'));
   await s.type(sel('mp-own-capital'), '700000');
   await s.type(sel('mp-age'), '34');
   await s.type(sel('mp-income'), '25000');
   await s.click(sel('mp-loans-no'));
-  await s.click(sel('mp-submit'));
+  await s.click(sel('mp-submit'), { soft: true });
   await page.locator(sel('mp-max-property')).first().waitFor({ timeout: 15_000 });
-  await page.keyboard.press('Escape').catch(() => undefined);
   await s.cursorOff();
   await s.scrollTo(sel('mp-max-property'), 'center');
-  await s.caption('ומקבלים מיד את מחיר הדירה וגובה המשכנתא האפשריים', 1900);
+  await s.caption('ומקבלים מחיר דירה, משכנתא והחזר חודשי', 2600, 'לפי כללי בנק ישראל');
+  await s.caption('כל ערך אפשר לעדכן', 0, 'מזיזים, וכל השאר מתעדכן מיד');
+  await s.slide(sel('mp-payment-slider'), 8000);
+  await s.cursorOff();
+  await s.hold(2000);
+  await s.caption('ונועלים ערך שלא רוצים שישתנה', 0, 'למשל את ההחזר החודשי');
+  await s.click('button[title^="נעילת ההחזר החודשי"]');
+  await s.hold(1300);
   await s.scrollTo(sel('mp-term-card'), 'center');
-  await s.hold(700);
+  await s.slide(sel('mp-term-slider'), 240);
+  await s.cursorOff();
+  await s.caption('התקופה התקצרה, וההחזר נשאר נעול', 0, 'סכום המשכנתא ומחיר הדירה התעדכנו בהתאם');
+  await s.scrollTo(sel('mp-max-property'), 'center');
+  await s.hold(2600);
 
   // ─── בדיקת מיחזור ───
   await s.goto('/mortgage-refinance');
-  await s.caption('בדיקת מיחזור: בוחרים מטרה ומזינים את המשכנתא של היום', 900);
-  await s.click(page.getByText('הקטנת ההחזר החודשי').first(), { optional: true });
+  await s.caption('בדיקת מיחזור: בוחרים מטרה', 0, 'ומזינים את המשכנתא של היום');
+  await s.hold(1200);
+  await s.click(page.getByText('הקטנת ההחזר החודשי').first(), { optional: true, soft: true });
   await page.getByText('המסלולים במשכנתא היום').first().waitFor({ timeout: 10_000 }).catch(() => undefined);
   const trackType = page.getByLabel('סוג המסלול').first();
   await s.point(trackType);
@@ -428,17 +568,16 @@ async function recordFreeTools(browser, market) {
   await s.click(page.getByRole('button', { name: 'הוספת מסלול' }));
   await s.type(page.getByLabel('יתרה לסילוק').nth(1), '380000');
   await s.type(page.getByLabel('מרווח').last(), '0.6');
-  await s.click(page.getByRole('button', { name: /בדיקת אפשרויות המיחזור/ }));
+  await s.click(page.getByRole('button', { name: /בדיקת אפשרויות המיחזור/ }), { soft: true });
   await s.cursorOff();
-  await s.wait(700);
-  await s.caption('ורואים מיד כמה אפשר לחסוך, מול הריביות של בנק ישראל', 2000);
-  await s.scrollBy(360);
-  await s.hold(900);
+  await s.caption('ורואים כמה אפשר לחסוך', 2400, 'מול הריביות הממוצעות של בנק ישראל');
+  await s.scrollBy(380);
+  await s.hold(1800);
 
   // ─── הלוואות צרכניות ───
   await s.goto('/consumer-loans', 'text=הוספת הלוואה');
   await s.caption('הלוואות צרכניות: מזינים כל הלוואה', 0, 'ורואים מה היא עושה להחזר החודשי וליחס ההחזר');
-  await s.hold(700);
+  await s.hold(1300);
   const loans = [
     ['הלוואת רכב', '85000', '6.5', '48'],
     ['כרטיס אשראי', '24000', '14', '24'],
@@ -452,36 +591,38 @@ async function recordFreeTools(browser, market) {
     await s.type(page.getByRole('textbox', { name: 'תקופה', exact: true }).nth(i), months);
   }
   await s.cursorOff();
-  await s.caption('תמונה מלאה של ההלוואות, איחוד ואסטרטגיה לפירעון', 1800);
-  await s.scrollBy(380);
-  await s.hold(900);
+  await s.caption('תמונה מלאה של ההלוואות', 2200, 'איחוד הלוואות ואסטרטגיה לפירעון');
+  await s.scrollBy(400);
+  await s.hold(1800);
 
   await s.finish();
   return s;
 }
 
-// ─────────────────────────── חלקים 2–3: לרשומים, וחמשת השלבים ───────────────────────────
+// ─────────────────────────── קטע 2: נרשמים — תכנון הון עצמי ───────────────────────────
 
-async function recordRegistered(browser, market) {
-  const s = await Segment.open(browser, market, 'reg', { demoStep: { step: STAGE.equity, route: '/equity-planning' } });
+async function recordEquity(browser, market) {
+  const s = await Segment.open(browser, market, 'equity', { demoStep: { step: STAGE.equity, route: '/equity-planning' } });
   const page = s.page;
   await page.locator(sel('eq-price')).first().waitFor({ timeout: 30_000 });
-  await s.begin();
-
-  await s.chapter('נרשמים בחינם', 'הנתונים נשמרים, ונפתחים עוד כלים', [
+  const chapter = ['נרשמים בחינם', 'הנתונים נשמרים, ונפתחים עוד כלים', [
     'כל מה שהזנתם נשמר בחשבון',
     'עוד כלים חינמיים נפתחים לרשומים',
     'שימוש בכלים החינמיים ללא הגבלה',
-  ], 3200);
+  ]];
+  await s.chapterCard(...chapter);
+  await page.waitForTimeout(700);
+  await s.begin();
+  await s.chapter(...chapter, 4200);
 
-  // ─── תכנון הון עצמי: יותר מעשר שורות, ולוח שנה מלא ───
+  // ─── תכנון הון עצמי: יותר מעשר שורות, לוח שנה מלא והדוח הסופי ───
   await s.caption('תכנון הון עצמי: כל הוצאה עד קבלת המפתח', 0, 'לרשומים, ללא הגבלה');
-  await s.hold(800);
+  await s.hold(1300);
   await s.type(sel('eq-price'), '2100000');
   await s.click(sel('eq-profile-first-home'));
   for (let i = 0; i < 2; i += 1) await s.click(page.getByRole('button', { name: 'החודש הבא' }).first());
   await s.click(page.getByRole('button', { name: '15', exact: true }).first(), { optional: true });
-  await s.click(sel('eq-continue-expenses'));
+  await s.click(sel('eq-continue-expenses'), { soft: true });
   await page.locator(sel('eq-expenses-table')).first().waitFor({ timeout: 15_000 });
   await s.wait(600);
 
@@ -518,134 +659,259 @@ async function recordRegistered(browser, market) {
     await s.click(header); // סוגרים, כדי שהטבלה תישאר קומפקטית
     await page.waitForTimeout(300);
   }
-  console.log(`[reg] הוזנו ${rowsTyped} שורות בטבלת ההוצאות`);
+  console.log(`[equity] הוזנו ${rowsTyped} שורות בטבלת ההוצאות`);
   await s.cursorOff();
   await s.scrollTo(page.getByText('לוח התשלומים').first(), 'start');
   await s.caption('כל תשלום נכנס ללוח השנה', 0, 'וההון מתחלק לפי קטגוריות');
-  // הלוח נפתח בחודש הראשון של התשלומים; עוברים לחודש שבו נמצאות ההוצאות
-  for (let i = 0; i < 6; i += 1) {
-    if (await page.getByText('נובמבר 2026').first().isVisible().catch(() => false)) break;
-    const label = (await page.getByText(/^[א-ת]+ 20\d\d$/).first().textContent().catch(() => '')) ?? '';
-    const forward = /2025|ינואר 2026|פברואר 2026|מרץ 2026|אפריל 2026|מאי 2026|יוני 2026|יולי 2026|אוגוסט 2026|ספטמבר 2026|אוקטובר 2026/.test(label);
-    await s.click(page.getByRole('button', { name: forward ? 'החודש הבא' : 'החודש הקודם' }).first(), { optional: true });
+  // הלוח נפתח בחודש אחר; עוברים לחודש שבו נמצאות ההוצאות (נובמבר 2026)
+  const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+  const nextMonth = page.getByRole('button', { name: 'החודש הבא' }).first();
+  const monthLabel = nextMonth.locator('xpath=..').locator('p').first();
+  for (let i = 0; i < 8; i += 1) {
+    const label = ((await monthLabel.textContent().catch(() => '')) ?? '').trim();
+    const match = label.match(/([א-ת]+)\s+(\d{4})/);
+    if (!match) break;
+    const shown = Number(match[2]) * 12 + MONTHS.indexOf(match[1]);
+    const goal = 2026 * 12 + 10;
+    if (shown === goal) break;
+    await s.click(page.getByRole('button', { name: shown < goal ? 'החודש הבא' : 'החודש הקודם' }).first(), { optional: true, soft: true });
   }
   await s.cursorOff();
-  await s.hold(2200);
+  await s.hold(2600);
   await s.scrollTo(page.getByText('חלוקת ההון').first(), 'center');
+  await s.hold(2000);
+
+  // ─── הדוח הסופי ───
+  await s.click(sel('eq-continue-summary'), { soft: true });
+  await s.cursorOff();
+  await s.scrollTop();
+  await s.caption('הדוח הסופי: כמה כסף צריך, ומתי', 0, 'תזרים חודשי עד קבלת המפתח');
+  await s.hold(2600);
+  await s.scrollBy(450);
+  await s.hold(1800);
+  await s.scrollBy(450);
   await s.hold(1500);
-  await s.click(sel('eq-continue-summary'));
+  await s.scrollTo(sel('eq-export-pdf'), 'center');
+  await s.point(sel('eq-export-pdf'));
+  await s.caption('ומפיקים אותו כ-PDF או כקובץ אקסל', 0, 'לשמירה, להדפסה ולשיתוף');
+  await s.hold(1600);
   await s.cursorOff();
-  await s.wait(900);
-  await s.caption('ובסיכום: תזרים חודשי, כמה כסף צריך ומתי', 1900);
-  await s.scrollBy(420);
-  await s.hold(700);
+  await s.hold(400);
 
-  // ─── האזור האישי ───
-  await s.loadStage(STAGE.dashboard, '/demo/dashboard');
-  await s.caption('האזור האישי: כל המשכנתא שלכם במסך אחד', 2000);
-  await s.click(page.getByRole('button', { name: /^פעולות/ }).first(), { optional: true });
-  await s.cursorOff();
-  await s.wait(500);
-  await s.caption('פעולות מהירות: אישור עקרוני, תמהיל, מיחזור, מסמכים ועוד', 2100);
+  await s.finish();
+  return s;
+}
 
-  await s.click(sel('dash-nav-cash-flow'));
+// ─────────────────────────── קטע 3: האזור האישי ───────────────────────────
+
+async function recordDashboard(browser, market) {
+  const s = await Segment.open(browser, market, 'dash', { demoStep: { step: STAGE.dashboard, route: '/demo/dashboard' } });
+  const page = s.page;
+  await s.begin();
+
+  await s.caption('האזור האישי: כל המשכנתא שלכם במסך אחד', 2600);
+  const fab = page.getByRole('button', { name: /^פעולות/ }).first();
+  const fabBox = await fab.boundingBox().catch(() => null);
+  if (fabBox) {
+    await s.click(fab, { optional: true, soft: true });
+    await s.cursorOff();
+    await s.caption('כפתור הפעולות הצף: פעולות מהירות מכל מסך', 0, 'אישור עקרוני, תמהיל, מיחזור, מסמכים ועוד');
+    await s.hold(2800);
+    await s.clickAt(fabBox); // אותו כפתור סוגר את התפריט
+    await s.cursorOff();
+  }
+
+  // ─── מצב הון ותזרים, והמחשבון המהיר ───
+  await s.click(page.locator(`${sel('dash-nav-cash-flow')}:visible`).first(), { soft: true });
   await s.cursorOff();
-  await s.wait(600);
   await s.caption('מצב הון ותזרים: הכנסות, משכנתא והלוואות', 0, 'וכמה כסף נשאר בכל חודש');
-  await s.hold(1500);
-  await s.scrollBy(1500);
-  await s.hold(1200);
-
-  await s.click(sel('dash-nav-agenda'));
-  await s.cursorOff();
-  await s.wait(600);
-  await s.caption('לוח שנה ומשימות: פגישות, מועדים ומה פתוח', 1700);
-  await s.scrollBy(900);
-  await s.hold(1100);
-
-  await s.click(sel('dash-nav-documents'));
-  await s.cursorOff();
-  await s.wait(600);
-  await s.caption('תיק המסמכים: כל האישורים וההגשות לבנקים', 0, 'שמורים במקום אחד');
-  await s.hold(1500);
-  await s.scrollBy(650);
+  await s.hold(2400);
+  const calculatorTitle = page.getByText('מחשבון הלוואה מהיר', { exact: true }).first();
+  await s.scrollTo(calculatorTitle, 'center');
+  const calculator = calculatorTitle.locator('xpath=ancestor::*[.//input][1]');
+  await s.caption('מחשבון הלוואה מהיר', 0, 'סכום, תקופה וריבית, וההחזר החודשי מחושב מיד');
   await s.hold(900);
-
-  await s.click(page.getByText('צ׳אט עם נציג').first());
-  await s.wait(700);
-  await s.caption('צ׳אט עם היועץ, מכל מסך', 1700);
-  await s.click(page.getByRole('button', { name: /מיילים/ }).first(), { optional: true });
+  await s.type(calculator.locator('input').nth(0), '50000');
+  await s.type(calculator.locator('input').nth(1), '24');
+  await s.type(calculator.locator('input').nth(2), '6');
   await s.cursorOff();
-  await s.wait(500);
-  await s.caption('והמיילים עם הבנקים, בתוך הפלטפורמה', 1900);
+  await s.hold(1800);
+  await s.caption('נועלים את ההחזר, ומשנים את התקופה', 0, 'והמחשבון מחשב כמה אפשר ללוות באותו החזר');
+  await s.click(page.getByRole('button', { name: 'נעילת החזר חודשי' }).first(), { optional: true });
+  await s.click(page.getByRole('button', { name: 'שחרור סכום ההלוואה' }).first(), { optional: true });
+  await s.type(calculator.locator('input').nth(1), '36');
+  await s.cursorOff();
+  await s.hold(2200);
+  await s.click(page.getByRole('button', { name: /בדיקה ל-18 חודשים/ }).first(), { optional: true, soft: true });
+  await s.cursorOff();
+  await s.caption('ובדיקה ל-18 חודשים', 2600, 'האם ההלוואה פוגעת ביכולת לקחת משכנתא');
 
-  // ─── חמשת השלבים ───
-  await s.loadStage(STAGE.plan, '/demo/plan');
-  // שאלת החוזה על פעימות התשלום קופצת שוב ושוב במסך הזה בהדגמה. היא (וכל חלון אחר) לא חלק
-  // מהסיפור של הסרטון, ולכן מוסתרת בהקלטה (בלי לענות עליה ובלי לשמור דבר)
-  await page.addStyleTag({
-    content: `
-      body { pointer-events: auto !important; }
-      div[role="dialog"] { display: none !important; }
-      div.fixed.inset-0.z-50.backdrop-blur-sm { display: none !important; }
-    `,
-  });
-  await page.waitForTimeout(500);
-  await s.chapter('במנוי לפלטפורמה', 'תהליך המשכנתא בחמישה שלבים', [
+  // ─── לוח שנה, מסמכים, צ׳אט ומיילים ───
+  await s.click(page.locator(`${sel('dash-nav-agenda')}:visible`).first(), { soft: true });
+  await s.cursorOff();
+  await s.scrollTop();
+  await s.caption('לוח שנה ומשימות', 0, 'פגישות, מועדים ומה עוד פתוח');
+  await s.hold(2200);
+  await s.scrollBy(900);
+  await s.hold(1600);
+
+  await s.click(page.locator(`${sel('dash-nav-documents')}:visible`).first(), { soft: true });
+  await s.cursorOff();
+  await s.scrollTop();
+  await s.caption('תיק המסמכים', 0, 'כל האישורים וההגשות לבנקים, במקום אחד');
+  await s.hold(2200);
+  await s.scrollBy(650);
+  await s.hold(1500);
+
+  await s.click(page.getByText('צ׳אט עם נציג').first(), { soft: true });
+  await s.cursorOff();
+  await s.caption('צ׳אט עם היועץ, מכל מסך', 2300);
+  await s.click(page.getByRole('button', { name: /מיילים/ }).first(), { optional: true, soft: true });
+  await s.cursorOff();
+  await s.caption('והמיילים עם הבנקים, בתוך הפלטפורמה', 2500);
+
+  await s.finish();
+  return s;
+}
+
+// ─────────────────────────── קטע 4: חמשת השלבים ───────────────────────────
+
+async function recordPlan(browser, market) {
+  const s = await Segment.open(browser, market, 'plan', { demoStep: { step: STAGE.plan, route: '/demo/plan' } });
+  const page = s.page;
+  const chapter = ['במנוי לפלטפורמה', 'תהליך המשכנתא בחמישה שלבים', [
     'מהפרופיל הפיננסי ועד החתימה בבנק',
     'בכל שלב: מה עושים, ומה מגישים לבנק',
-  ], 3000);
-  await s.caption('חמישה שלבים, והנתונים כבר בפנים', 1500);
+    'ובכל שלב אפשר לפנות ליועץ',
+  ]];
+  await s.chapterCard(...chapter);
+  await page.waitForTimeout(700);
+  await s.begin();
+  await s.chapter(...chapter, 4300);
+  await s.caption('חמישה שלבים, לפי הסדר', 0, 'והנתונים שכבר הזנתם נמצאים בפנים');
+  await s.hold(2400);
 
-  const openStage = async (stage) => {
+  // ─── בכל שלב: פנו ליועץ, ותפריט הפעולות הצף ───
+  const advisor = page.getByRole('button', { name: /^פנו ליועץ/ }).first();
+  await s.point(advisor).catch(() => undefined);
+  await s.caption('בכל שלב: "פנו ליועץ"', 0, 'יועץ משכלנתא נכנס לתמונה עם כל מה שכבר הזנתם');
+  await s.hold(2600);
+  const fab = page.getByRole('button', { name: /^פתיחת תפריט הפעולות/ }).first();
+  const fabBox = await fab.boundingBox().catch(() => null);
+  if (fabBox) {
+    await s.caption('ותפריט הפעולות הצף', 0, 'משימה חדשה, צ׳אט ומייל, תיק המסמכים וחזרה לאזור האישי');
+    await s.click(fab, { optional: true, soft: true });
+    await s.cursorOff();
+    await s.hold(2600);
+    await s.clickAt(fabBox);
+    await s.cursorOff();
+  }
+
+  /** מעבר לשלב: לחיצה בסרגל, ומסך ההסבר של השלב אם יש */
+  const openStage = async (stage, title, sub) => {
     await s.page.evaluate(() => (document.getElementById('promo-caption').textContent = ''));
     await s.scrollTop();
-    await s.click(sel(`plan-stage-${stage}`));
-    await s.wait(700);
-    const intro = page.locator(sel('plan-stage-intro-start')).first();
-    if (await intro.isVisible().catch(() => false)) await s.click(intro, { optional: true });
+    await s.click(sel(`plan-stage-${stage}`), { soft: true });
     await s.cursorOff();
-    await s.wait(600);
+    await s.scrollTo(sel('plan-stage-title'), 'start').catch(() => undefined);
+    const intro = page.locator(sel('plan-stage-intro-start')).first();
+    if (await intro.isVisible().catch(() => false)) {
+      await s.caption(title, 0, 'מה עושים בשלב, ומה יש לכם בסופו');
+      await s.hold(2800);
+      await s.click(intro, { optional: true, soft: true });
+      await s.cursorOff();
+      await s.scrollTo(sel('plan-stage-title'), 'start').catch(() => undefined);
+    }
+    await s.caption(title, 0, sub);
   };
 
-  await openStage('ANALYSIS');
-  await s.click(page.getByRole('button', { name: /דוח הפרופיל/ }).first(), { optional: true });
+  // ─── שלב 1: פרופיל פיננסי ───
+  await openStage('ANALYSIS', 'שלב 1, פרופיל פיננסי', 'הנכס, הלווים, ההכנסות והמסמכים, כבר מלאים');
+  await s.hold(2000);
+  await s.click(page.getByRole('button', { name: /דוח הפרופיל/ }).first(), { optional: true, soft: true });
   await s.cursorOff();
-  await s.wait(700);
-  await s.caption('שלב 1, פרופיל פיננסי', 0, 'דוח מסודר לבנק: יחס מימון, יחס החזר ועמידה בהוראות בנק ישראל');
+  await s.caption('דוח הפרופיל לבנק', 0, 'יחס מימון, יחס החזר ועמידה בהוראות בנק ישראל');
+  await s.hold(2400);
+  await s.scrollBy(700);
   await s.hold(1700);
-  await s.scrollBy(900);
-  await s.hold(800);
-  await s.scrollBy(900);
-  await s.hold(700);
+  await s.scrollBy(700);
+  await s.hold(1500);
 
-  await openStage('MIX');
-  await s.scrollTo(sel('plan-stage-content'), 'start');
-  await s.caption('שלב 2, בניית תמהיל', 0, 'משווים תמהילים ומפיקים הצעה מסודרת לבנקים');
-  await s.point(page.getByRole('button', { name: /הצעה לבנקים/ }).first()).catch(() => undefined);
+  // ─── שלב 2: בניית תמהיל ───
+  await openStage('MIX', 'שלב 2, בניית תמהיל', 'בונים, משווים, ומפיקים הצעה לבנקים');
   await s.hold(2000);
+  await s.click(page.getByRole('button', { name: /^תמהיל נוסף לנכס הזה/ }).first(), { soft: true });
   await s.cursorOff();
-
-  await openStage('APPLICATIONS');
-  await s.scrollTo(page.getByText('הגשת הבקשה לבנקים').first(), 'start').catch(() => undefined);
-  await s.caption('שלב 3, אישור עקרוני', 0, 'מגישים לכמה בנקים, וכל אישור נשמר בתיק');
-  await s.hold(2000);
-
-  await openStage('AUCTION');
-  await s.scrollTo(sel('plan-stage-content'), 'start');
-  await s.caption('שלב 4, מכרז ריביות', 0, 'בקשת ריביות לכל בנק וטבלת השוואה בין ההצעות');
-  await s.hold(2000);
-
-  await s.page.evaluate(() => (document.getElementById('promo-caption').textContent = ''));
-  await s.scrollTop();
-  await s.click(sel('plan-stage-SIGNING'));
+  await s.caption('בונים תמהיל, מסלול אחרי מסלול', 0, 'סוג ריבית ואחוז מהמשכנתא, והגרפים מתעדכנים');
+  if (!(await page.locator(sel('ws-track-0')).count())) await s.click(sel('ws-add-track'));
+  const percent = (i) => page.locator(sel(`ws-track-${i}`)).locator('input').nth(1);
+  const typeTrigger = (i) => page.locator(sel(`ws-track-${i}`)).locator('button[role="combobox"]').nth(1);
+  await s.type(percent(0), '40');
+  await s.click(sel('ws-add-track'));
+  await choose(s, typeTrigger(1), 2); // פריים
+  await s.type(percent(1), '35');
+  await s.click(sel('ws-add-track'));
+  await choose(s, typeTrigger(2), 3); // משתנה לא צמודה
+  await s.type(percent(2), '25');
   await s.cursorOff();
-  await s.wait(800);
-  await s.scrollTo(page.getByText('מה עושים בשלב').first(), 'center').catch(() => undefined);
-  await s.caption('שלב 5, חתימה בבנק', 0, 'צ׳ק־ליסט לחתימה, בדיקת מסמכי הבנק ודוח פעימות לעורך הדין');
-  await s.hold(2300);
+  await s.hold(1500);
+  await s.caption('ושומרים את התמהיל', 0, 'אפשר לבנות כמה תמהילים לאותו נכס');
+  await s.click(page.getByRole('button', { name: /^שמור תמהיל/ }).first(), { soft: true });
+  await s.cursorOff();
+  await s.hold(1300);
+  await s.scrollBy(320);
+  await s.caption('והגרפים מראים את התמונה המלאה', 0, 'יתרת חוב, החזר חודשי, וקרן מול ריבית לאורך השנים');
+  await s.hold(2600);
 
-  await s.endCard(3500);
+  await s.click(page.getByRole('button', { name: /^לוח החזרים$/ }).first(), { soft: true });
+  await s.cursorOff();
+  await s.caption('לוח החזרים מלא, חודש אחרי חודש', 0, 'קרן, ריבית ויתרה, עם ייצוא לאקסל');
+  await s.hold(2200);
+  await s.scrollInside(page.locator('[role="dialog"] tbody tr, [role="dialog"] [role="row"]').nth(4), 520);
+  await s.hold(1800);
+  await closeDialog(s);
+
+  await s.click(page.getByRole('button', { name: /^פרעון מוקדם$/ }).first(), { soft: true });
+  await s.cursorOff();
+  await s.caption('פרעון מוקדם: מה קורה אם מקדימים תשלום', 0, 'קיצור תקופה או הקטנת ההחזר, וכמה חוסכים בריבית');
+  await s.hold(2400);
+  await s.click(page.getByRole('button', { name: /^הקטנת ההחזר החודשי/ }).first(), { optional: true });
+  await s.cursorOff();
+  await s.hold(2200);
+  await closeDialog(s);
+
+  await s.click(page.getByRole('button', { name: /^הצעה לבנקים/ }).first(), { soft: true });
+  await s.cursorOff();
+  await s.caption('ההצעה לבנקים: מכתב מסודר עם התמהיל', 0, 'מסלולים, סכומים ולוח סילוקין, לשמירה כ-PDF או כאקסל');
+  await s.hold(2200);
+  await s.click(page.locator('[role="dialog"]').last().getByRole('button', { name: 'לאומי', exact: true }), { optional: true });
+  await s.cursorOff();
+  const letter = page.locator('[role="dialog"]').last().getByText('בקשה לקבלת הצעת ריביות').first();
+  await s.scrollInside(letter, 420);
+  await s.hold(1800);
+  await s.scrollInside(letter, 420);
+  await s.hold(1600);
+  await s.point(page.getByRole('button', { name: /שמירה כ-PDF/ }).first()).catch(() => undefined);
+  await s.hold(1300);
+  await closeDialog(s);
+
+  // ─── שלבים 3–5 ───
+  await openStage('APPLICATIONS', 'שלב 3, אישור עקרוני', 'מגישים לכמה בנקים, וכל אישור נשמר בתיק');
+  await s.hold(2400);
+  await s.scrollBy(600);
+  await s.hold(1500);
+
+  await openStage('AUCTION', 'שלב 4, מכרז ריביות', 'מזינים את הריביות מכל בנק ומשווים בין ההצעות');
+  await s.hold(2400);
+  await s.scrollBy(600);
+  await s.hold(1500);
+
+  await openStage('SIGNING', 'שלב 5, חתימה בבנק', 'צ׳ק־ליסט לחתימה, בטחונות ומסמכים לבנק');
+  await s.hold(2400);
+  await s.scrollBy(500);
+  await s.hold(1500);
+
+  await s.endCard(4200);
   await s.finish();
   return s;
 }
@@ -672,26 +938,57 @@ async function main() {
     await context.close();
   }
 
-  const only = process.env.ONLY; // free | reg — להקלטה חלקית בזמן כיוונון
+  // ONLY=free,plan — הקלטה חלקית בזמן כיוונון
+  const only = process.env.ONLY ? process.env.ONLY.split(',').map((name) => name.trim()) : null;
+  const parts = { free: recordFreeTools, equity: recordEquity, dash: recordDashboard, plan: recordPlan };
   const segments = [];
-  if (only !== 'reg') segments.push(await recordFreeTools(browser, market));
-  if (only !== 'free') segments.push(await recordRegistered(browser, market));
+  for (const [name, record] of Object.entries(parts)) {
+    if (!only || only.includes(name)) segments.push(await record(browser, market));
+  }
   await browser.close();
 
   // ─── חיבור הקטעים לציר זמן אחד ───
   const entries = [];
+  const windows = [];
   const cues = [];
   let clock = 0;
   for (const segment of segments) {
     const line = segment.timeline();
+    const offset = entries.length;
+    // המעבר בין קטע לקטע, וכל מעבר מסך בתוך הקטע
+    if (offset > 0) windows.push([offset, offset]);
+    line.windows.forEach(([a, b]) => windows.push([offset + a, offset + b]));
     segment.cues.forEach((cue) => cues.push({ start: clock + line.remap(cue.t), text: cue.text }));
-    entries.push(...line.entries);
+    entries.push(...line.entries.map(({ file, duration }) => ({ file, duration })));
     clock += line.total;
   }
   cues.forEach((cue, i) => (cue.end = cues[i + 1]?.start ?? clock));
 
-  const lines = entries.flatMap((entry) => [`file '${entry.file}'`, `duration ${entry.duration.toFixed(4)}`]);
-  lines.push(`file '${entries[entries.length - 1].file}'`);
+  // ─── מעברים רכים במקום קפיצות (soften.py, דורש Pillow) ───
+  let frames = entries;
+  writeFileSync(join(WORK, 'entries.json'), JSON.stringify({ entries, windows }));
+  try {
+    execFileSync(process.env.PYTHON ?? 'python3', [join(here, 'soften.py'), join(WORK, 'entries.json'), join(WORK, 'entries-soft.json')], { stdio: 'inherit' });
+    const soft = JSON.parse(readFileSync(join(WORK, 'entries-soft.json'), 'utf8'));
+    frames = soft.entries;
+    // המעברים מזיזים מעט את ציר הזמן; הכתוביות עוברות לזמנים החדשים
+    const original = [];
+    entries.reduce((at, entry) => (original.push(at), at + entry.duration), 0);
+    const shift = (t) => {
+      let k = 0;
+      while (k + 1 < original.length && original[k + 1] <= t) k += 1;
+      return soft.starts[k] + Math.min(t - original[k], entries[k].duration);
+    };
+    cues.forEach((cue) => {
+      cue.start = shift(cue.start);
+      cue.end = shift(cue.end);
+    });
+  } catch (error) {
+    console.warn('המעברים הרכים לא נוצרו (חסר Python או Pillow?) — הסרטון ייצא עם חיתוכים רגילים');
+  }
+
+  const lines = frames.flatMap((entry) => [`file '${entry.file}'`, `duration ${entry.duration.toFixed(4)}`]);
+  lines.push(`file '${frames[frames.length - 1].file}'`);
   writeFileSync(join(WORK, 'frames.txt'), lines.join('\n'));
 
   const video = join(OUT_DIR, 'mashkalanta-promo.mp4');
@@ -707,8 +1004,8 @@ async function main() {
   args.push(video);
   execFileSync(FFMPEG, args, { stdio: 'inherit' });
 
-  // עותק WebM (VP9) לדפדפנים בלי H.264
-  execFileSync(FFMPEG, ['-y', '-i', video, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '38', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '4', ...(narration ? ['-c:a', 'libopus', '-b:a', '96k'] : ['-an']), join(OUT_DIR, 'mashkalanta-promo.webm')], { stdio: 'inherit' });
+  // עותק WebM (VP9) לדפדפנים בלי H.264 (SKIP_WEBM=1 מדלג, להקלטות ניסיון)
+  if (!process.env.SKIP_WEBM) execFileSync(FFMPEG, ['-y', '-i', video, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '38', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '4', ...(narration ? ['-c:a', 'libopus', '-b:a', '96k'] : ['-an']), join(OUT_DIR, 'mashkalanta-promo.webm')], { stdio: 'inherit' });
 
   // תמונת פתיחה (פוסטר) — מתוך דף הבית
   execFileSync(FFMPEG, ['-y', '-ss', '1.0', '-i', video, '-frames:v', '1', '-update', '1', '-vf', 'scale=1280:-2', '-q:v', '4', join(OUT_DIR, 'mashkalanta-promo-poster.jpg')], { stdio: 'inherit' });
