@@ -4,9 +4,8 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LayoutDashboard, Upload, Target, Banknote, Clock } from 'lucide-react';
+import { ArrowRight, Target, Banknote, Clock } from 'lucide-react';
 import type { MortgageMix } from '@/components/mortgage-advisor/types';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import NavBar from '@/components/ui/navbar';
@@ -18,7 +17,7 @@ import { useMarketRates } from '@/hooks/useMarketRates';
 import { mixWithRemainingTerms } from '@/lib/refinance';
 import { AdvisorHelpButton } from '@/components/plan/stages/analysis/AdvisorHelpButton';
 import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
-import { useClientConversation } from '@/components/conversation/ClientChatDock';
+import { ReturnLink } from '@/components/navigation/ReturnLink';
 import { saveRefinanceAsNewPlan } from '@/components/mortgage-refinance/refinancePlan';
 import { RefinanceCheck } from '@/components/refinance-check/RefinanceCheck';
 import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePreviewBar';
@@ -122,7 +121,6 @@ function FullRefinanceTool({
     persistRef.current?.(currentMix);
   }, [currentMix]);
   const [currentStep, setCurrentStep] = useState<RefinanceStep>('tracks');
-  const [inputMethod, setInputMethod] = useState<'scan' | 'manual'>('manual');
   const [showScenarioAnalysis, setShowScenarioAnalysis] = useState<MortgageMix | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState<MortgageMix | null>(null);
   const [perTrackRefinanceEnabled, setPerTrackRefinanceEnabled] = useState(false);
@@ -130,9 +128,6 @@ function FullRefinanceTool({
   const [readyForGoal, setReadyForGoal] = useState(false);
   /** טופס הפנייה ליועץ — נפתח מהכפתור הצף */
   const [leadOpen, setLeadOpen] = useState(false);
-  /** משתמש רשום מגיע מהאזור האישי, וחוזר אליו */
-  const signedIn = status === 'authenticated';
-  const conversation = useClientConversation();
 
   const totalTracksAmount = currentMix.tracks.reduce((sum, track) => sum + track.amount, 0);
   const isMixValid =
@@ -163,9 +158,9 @@ function FullRefinanceTool({
       className="max-w-4xl mx-auto"
     >
       <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-slate-900 mb-6">מה המטרה שלך במיחזור?</h1>
+        <h1 className="text-title font-bold text-slate-900 mb-6">מה המטרה שלכם במיחזור?</h1>
         <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          בחר את הכיוון שמתאים לך ונמשיך לניתוח האפשרויות
+          בחרו את הכיוון שמתאים לכם ונמשיך לניתוח האפשרויות
         </p>
       </div>
 
@@ -219,46 +214,9 @@ function FullRefinanceTool({
           }}
           className="px-6 py-3"
         >
-          <ArrowLeft className="w-5 h-5 ml-2" />
-          חזור לפרטי התמהיל
+          <ArrowRight className="w-5 h-5 ml-2" />
+          חזרה לפרטי התמהיל
         </Button>
-      </div>
-    </motion.div>
-  );
-
-  const renderScanUpload = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="max-w-4xl mx-auto"
-    >
-      <div className="text-center mb-12">
-        <h1 className="text-title font-bold text-slate-900 mb-6">סריקת דוח יתרות לסילוק</h1>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-          העלה את דוח היתרות לסילוק של המשכנתא הנוכחית שלך
-        </p>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-        <div className="border-2 border-dashed border-slate-300 rounded-lg p-12 mb-6">
-          <Upload className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600 mb-4">גרור קובץ לכאן או לחץ לבחירה</p>
-          <Button variant="outline" className="px-6 py-3">
-            בחר קובץ
-          </Button>
-        </div>
-
-        <div className="flex gap-4 justify-center">
-          <Button variant="outline" onClick={() => setInputMethod('manual')} className="px-6 py-3">
-            <ArrowLeft className="w-5 h-5 ml-2" />
-            חזור להזנה ידנית
-          </Button>
-          <Button onClick={() => setInputMethod('manual')} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white">
-            <Target className="w-5 h-5 ml-2" />
-            המשך להזנת מסלולים
-          </Button>
-        </div>
       </div>
     </motion.div>
   );
@@ -281,12 +239,8 @@ function FullRefinanceTool({
         <div className="text-center mb-10">
           <h1 className="text-title font-bold text-slate-900 mb-4">הזנת פרטי המשכנתא הנוכחית</h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-            הזן את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
+            הזינו את נתוני המשכנתא והמסלולים כדי לחשב את אפשרויות המיחזור
           </p>
-          <Button variant="link" className="mt-4 text-blue-600" onClick={() => setInputMethod('scan')}>
-            <Upload className="w-4 h-4 ml-2" />
-            העלאת דוח יתרות לסילוק במקום הזנה ידנית
-          </Button>
         </div>
       )}
 
@@ -310,16 +264,8 @@ function FullRefinanceTool({
         saveContext="tool"
       />
 
+      {/* החזרה לדף הבית / לאזור האישי — בקישור האחיד שבראש הכלי */}
       <div className="flex gap-4 justify-center mt-8">
-        {/* למחובר יש את הכפתור הצף «חזרה לדאשבורד», ולכן אין כאן כפתור חזרה נוסף */}
-        {!signedIn && (
-          <Link href="/">
-            <Button variant="outline" className="px-6 py-3">
-              <ArrowLeft className="w-5 h-5 ml-2" />
-              חזור לעמוד הבית
-            </Button>
-          </Link>
-        )}
         {/* בזרימה הרגילה בחירת מטרת המיחזור מתבצעת בתוך תיבת המצב הנוכחי. הכפתור נשאר לזרימת מיחזור לכל מסלול. */}
         {perTrackRefinanceEnabled && (
           <Button
@@ -342,10 +288,13 @@ function FullRefinanceTool({
       </div>
 
       <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
+        {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
+        <div className={mixSummaryRevealed ? 'mx-auto mb-4 max-w-7xl' : 'mx-auto mb-4 max-w-6xl'}>
+          <ReturnLink />
+        </div>
         {banner && <div className="mb-8">{banner}</div>}
         {currentStep === 'goal' && renderRefinanceGoalSelection()}
-        {currentStep === 'tracks' && inputMethod === 'scan' && renderScanUpload()}
-        {currentStep === 'tracks' && inputMethod === 'manual' && renderManualInput()}
+        {currentStep === 'tracks' && renderManualInput()}
       </div>
 
       <MortgageDetailsModal
@@ -367,20 +316,6 @@ function FullRefinanceTool({
         opensDialog
       />
       <AdvisorLeadDialog open={leadOpen} onOpenChange={setLeadOpen} topic="REFINANCE_HYBRID" />
-
-      {/* ללקוח מחובר עיגול הפעולות מחזיק את החזרה לדאשבורד; כאן רק למי שאין לו אותו */}
-      {signedIn && !conversation?.enabled && (
-        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden">
-          <Link
-            href="/dashboard"
-            aria-label="חזרה לדאשבורד"
-            className="inline-flex items-center gap-2 rounded-full bg-blue-600 p-3.5 sm:px-5 sm:py-3 text-button font-black text-white shadow-xl shadow-blue-600/30 transition-transform hover:-translate-y-0.5"
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            <span className="sr-only sm:not-sr-only">חזרה לדאשבורד</span>
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

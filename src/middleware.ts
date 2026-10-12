@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { safeCallbackPath } from '@/lib/auth-url';
 
 /**
  * מסלולי ה-API שפתוחים גם בלי התחברות: נתוני שוק מבנק ישראל, שערי מטבע, חיפוש
@@ -92,12 +93,26 @@ export async function middleware(request: NextRequest) {
 
   const userRole = (token as { role?: string })?.role;
 
-  // משתמש מחובר שמגיע למסכי ההתחברות נשלח ללוח שלו. הכניסה הנסתרת של היועץ
-  // פתוחה גם למי שמחובר, כדי שאפשר יהיה לעבור ממנה לאזור היועץ
-  if (isAuthPage && !pathname.includes('verify') && pathname !== '/auth/team-entry') {
-    return NextResponse.redirect(
-      new URL(userRole === 'ADVISOR' ? '/advisor-dashboard' : '/dashboard', request.url)
-    );
+  /**
+   * משתמש מחובר שמגיע למסכי ההתחברות וההרשמה ממשיך ליעד שביקש (`callbackUrl`),
+   * ובלעדיו ללוח שלו. כמה מסכים פתוחים גם למי שמחובר: אישור ההרשמה מהמייל,
+   * הכניסה הנסתרת של היועץ, ובחירת סיסמה חדשה — הקישור במייל "שכחתי סיסמה"
+   * חייב לעבוד גם כשהלקוח כבר מחובר באותו דפדפן.
+   */
+  const authPageOpenWhenSignedIn =
+    pathname.includes('verify') ||
+    pathname === '/auth/team-entry' ||
+    pathname.startsWith('/auth/reset-password') ||
+    pathname.startsWith('/auth/forgot-password');
+  if (isAuthPage && !authPageOpenWhenSignedIn) {
+    const callback = safeCallbackPath(request.nextUrl.searchParams.get('callbackUrl'));
+    const target =
+      callback && !callback.startsWith('/auth')
+        ? callback
+        : userRole === 'ADVISOR'
+          ? '/advisor-dashboard'
+          : '/dashboard';
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   // כל צד רואה את הלוח שלו בלבד

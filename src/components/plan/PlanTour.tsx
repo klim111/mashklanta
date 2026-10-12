@@ -260,14 +260,14 @@ function OfferScreen({ onBack }: { onBack: () => void }) {
               href="/dashboard"
               className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100"
             >
-              לאזור האישי
+              האזור האישי
             </Link>
           </div>
           <Link
             href="/dashboard/checkout?next=plan"
             className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-7 py-3.5 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-2xl"
           >
-            קבל גישה
+            קבלו גישה
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </div>

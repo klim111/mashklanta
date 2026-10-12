@@ -14,11 +14,27 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { demoId } from '@/demo/demo-attr';
+import type { DashboardSection } from '@/lib/client-agenda';
 
-const tools = [
+type HubTool = {
+  id: string;
+  href: string;
+  /** כלי שמוטמע באזור של האזור האישי — נפתח שם, בלי לעזוב את המסך */
+  section?: DashboardSection;
+  title: string;
+  tag: string;
+  icon: typeof Wallet;
+  gradient: string;
+  description: string;
+  benefits: string[];
+};
+
+const tools: HubTool[] = [
   {
     id: 'equity',
-    href: '/equity-planning',
+    // אותו כלי מוטמע באזור "תכנון הוצאות" — נשארים באזור האישי
+    href: '/dashboard#expenses',
+    section: 'expenses',
     title: 'כלי תכנון הון עצמי',
     tag: 'מקדמה והוצאות נלוות',
     icon: Wallet,
@@ -34,6 +50,7 @@ const tools = [
   {
     id: 'cash-flow',
     href: '/dashboard#cash-flow',
+    section: 'cash-flow',
     title: 'כלי מצב הון ותזרים',
     tag: 'משכנתא, הלוואות ויחס החזר',
     icon: LineChart,
@@ -84,7 +101,7 @@ const tools = [
     icon: Search,
     gradient: 'from-blue-500 to-indigo-600',
     description:
-      'אותם שלבים שמופיעים בעמוד הראשי למשתמשים לא רשומים: מחשבים את שווי הנכס המקסימלי לפי הכנסות, הון עצמי והתחייבויות.',
+      'אותם שלבים שמופיעים בדף הבית למשתמשים לא רשומים: מחשבים את שווי הנכס המקסימלי לפי הכנסות, הון עצמי והתחייבויות.',
     benefits: [
       'יודעים לאיזה מחיר נכס לכוון לפני שיוצאים לסיורים',
       'מתחשב ביחס החזר ובתקרת המימון של בנק ישראל',
@@ -114,7 +131,7 @@ const tools = [
     icon: Calculator,
     gradient: 'from-cyan-500 to-blue-600',
     description:
-      'בונים ומשווים תמהילים שנשמרים בחשבון כתמהילים כלליים. ברגע שמשייכים נכס — הם הופכים למשכנתא בתהליך בדאשבורד.',
+      'בונים ומשווים תמהילים שנשמרים בחשבון כתמהילים כלליים. ברגע שמשייכים נכס — הם הופכים למשכנתא בתהליך באזור האישי.',
     benefits: [
       'אפשר לנסות תמהילים לפני שיש דירה על השולחן',
       'השמירה היא לחשבון שלכם בבסיס הנתונים',
@@ -123,7 +140,7 @@ const tools = [
   },
 ];
 
-export function ToolsHub() {
+export function ToolsHub({ onSection }: { onSection?: (section: DashboardSection) => void } = {}) {
   return (
     <div dir="rtl" className="space-y-6">
       <div className="relative overflow-hidden rounded-3xl bg-brand-dark p-6 shadow-xl md:p-8">
@@ -160,6 +177,13 @@ export function ToolsHub() {
                 <Link
                   {...demoId(`dash-tool-${tool.id}`)}
                   href={tool.href}
+                  onClick={(event) => {
+                    // מעבר בין אזורים באותו מסך — דרך הניווט של האזור האישי
+                    if (tool.section && onSection) {
+                      event.preventDefault();
+                      onSection(tool.section);
+                    }
+                  }}
                   className={`inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-all group-hover:scale-[1.02] hover:bg-blue-700 sm:w-auto sm:min-w-[11.5rem] xl:w-full 2xl:w-auto`}
                 >
                   <Icon className="h-5 w-5" />

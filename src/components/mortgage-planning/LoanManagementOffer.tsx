@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { MortgagePlanningUserData } from '@/lib/mortgage-affordability';
 import { startConsumerLoansImport } from '@/lib/consumer-loans-import';
@@ -37,6 +38,17 @@ export function LoanManagementOffer({
   onUserDataChange,
 }: LoanManagementOfferProps) {
   const text = copy[mode];
+  const searchParams = useSearchParams();
+
+  /** מי שהגיע לכלי מתוך תהליך ממשיך לכלי ההלוואות עם אותה דרך חזרה לתהליך */
+  const returnQuery = (() => {
+    const fromPlan = searchParams?.get('fromPlan');
+    if (!fromPlan) return '';
+    const fromStage = searchParams?.get('fromStage');
+    return `&fromPlan=${encodeURIComponent(fromPlan)}${
+      fromStage ? `&fromStage=${encodeURIComponent(fromStage)}` : ''
+    }`;
+  })();
 
   const goToConsumerLoans = () => {
     const nextUserData = { ...userData, wantsLoanManagement: true };
@@ -46,7 +58,7 @@ export function LoanManagementOffer({
       JSON.stringify({ userData: nextUserData, currentStep: planningStep })
     );
     startConsumerLoansImport(nextUserData);
-    window.location.href = '/consumer-loans?import=planning';
+    window.location.href = `/consumer-loans?import=planning${returnQuery}`;
   };
 
   return (

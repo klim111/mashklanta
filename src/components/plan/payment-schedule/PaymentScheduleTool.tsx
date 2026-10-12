@@ -8,7 +8,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowDown,
-  ArrowRight,
+  ChevronRight,
   ArrowUp,
   Banknote,
   CheckCircle2,
@@ -221,14 +221,14 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
             href={planHref}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-button font-black text-slate-700 transition-colors hover:bg-slate-50"
           >
-            <ArrowRight className="h-4 w-4" />
-            לתהליך המשכנתא
+            <ChevronRight className="h-4 w-4" />
+            חזרה לתהליך
           </Link>
           <Link
             href="/dashboard"
             className="rounded-xl px-3.5 py-2 text-button font-bold text-slate-600 transition-colors hover:bg-slate-100"
           >
-            לאזור האישי
+            האזור האישי
           </Link>
           <span dir="rtl" className="mr-auto text-xs font-bold text-slate-400">
             {saveState === 'saving' || saveState === 'dirty'

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
-  ArrowRight,
+  ChevronRight,
   CheckCircle2,
   Download,
   Eye,
@@ -249,17 +249,17 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
       <header className="border-b border-slate-200 bg-white">
         <div dir="rtl" className="mx-auto flex max-w-4xl flex-wrap items-center gap-2 px-4 py-3">
           <Link
-            href="/dashboard"
+            href={`/dashboard/plans/${planId}?stage=APPLICATIONS`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-button font-black text-slate-700 transition-colors hover:bg-slate-50"
           >
-            <ArrowRight className="h-4 w-4" />
-            לאזור האישי
+            <ChevronRight className="h-4 w-4" />
+            חזרה לתהליך
           </Link>
           <Link
-            href={`/dashboard/plans/${planId}?stage=APPLICATIONS`}
+            href="/dashboard"
             className="rounded-xl px-3.5 py-2 text-button font-bold text-slate-600 transition-colors hover:bg-slate-100"
           >
-            לתהליך המשכנתא
+            האזור האישי
           </Link>
         </div>
       </header>

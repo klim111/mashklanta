@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle, Home, KeyRound, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, KeyRound, Loader2 } from 'lucide-react';
+import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { passwordProblem } from '@/lib/password-policy';
 
@@ -48,13 +49,13 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-start justify-center px-4 py-10 sm:items-center sm:p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-600">
+            <AuthLogo>
               {done ? <CheckCircle className="h-8 w-8 text-white" /> : <KeyRound className="h-8 w-8 text-white" />}
-            </div>
+            </AuthLogo>
             <h1 className="text-title font-bold text-slate-900">
               {done ? 'הסיסמה עודכנה' : expired ? 'הקישור אינו תקף' : 'בחירת סיסמה חדשה'}
             </h1>
@@ -79,7 +80,7 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
               href="/auth/login"
               className="flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-button font-semibold text-white hover:bg-blue-700"
             >
-              להתחברות
+              התחברות עם הסיסמה החדשה
             </Link>
           ) : expired ? (
             <Link
@@ -130,13 +131,17 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
               </button>
             </form>
           )}
+
+          {!done && (
+            <p className="mt-6 border-t border-slate-200 pt-4 text-center text-sm text-slate-600">
+              נזכרתם בסיסמה?{' '}
+              <Link href="/auth/login" className="font-semibold text-blue-600 hover:text-blue-700">
+                חזרה להתחברות
+              </Link>
+            </p>
+          )}
         </div>
-        <div className="mt-6 text-center">
-          <Link href="/" className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800">
-            <Home className="h-4 w-4" />
-            חזרה לדף הבית
-          </Link>
-        </div>
+        <BackHomeLink />
       </div>
     </div>
   );

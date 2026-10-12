@@ -235,11 +235,6 @@ export function ServiceChooser({
                       featured ? (dark ? 'border-violet-300/50' : 'border-violet-300') : ''
                     }`}
                   >
-                    {featured && (
-                      <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-3 py-0.5 text-2xs font-black text-white shadow">
-                        הכי נבחר
-                      </span>
-                    )}
                     <span
                       className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${meta.gradient} shadow-lg transition-transform group-hover:scale-110`}
                     >

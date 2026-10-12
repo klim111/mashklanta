@@ -27,6 +27,7 @@ function MixPlannerBody() {
       <MortgageWorkspace
         soloMixKey={mixKey || undefined}
         activeMixKey={mixKey}
+        hideSiteLinks
       />
     </div>
   );

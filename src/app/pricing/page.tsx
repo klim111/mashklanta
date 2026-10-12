@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 import {
   ArrowUpLeft,
   BadgeCheck,
@@ -77,8 +78,18 @@ function CellValue({ value }: { value: boolean | string }) {
   return <span className="text-sm font-semibold text-slate-700">{value}</span>;
 }
 
+/**
+ * "מתחילים לבד" — כמו בעמוד הבית: אורח נרשם וחוזר ישר לפתיחת התהליך העצמאי
+ * באזור האישי, ומשתמש מחובר נכנס אליו מיד.
+ */
+const SELF_START_TARGET = '/dashboard?goal=NEW_MORTGAGE&service=SELF';
+
 export default function PricingPage() {
   const { platformPrice, advisory, plans, comparisonRows, faq } = usePricing();
+  const { data: session } = useSession();
+  const selfStartHref = session?.user
+    ? SELF_START_TARGET
+    : `/auth/register?callbackUrl=${encodeURIComponent(SELF_START_TARGET)}`;
   return (
     <div className="min-h-screen bg-white" dir="rtl">
       <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 shadow-sm backdrop-blur-md">
@@ -143,7 +154,7 @@ export default function PricingPage() {
       </section>
 
       {/* ─────────────────────── Two tracks ─────────────────────── */}
-      <section className="bg-white py-20 md:py-28">
+      <section id="tracks" className="scroll-mt-24 bg-white py-20 md:py-28">
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -175,12 +186,6 @@ export default function PricingPage() {
                       : 'border-slate-200'
                   }`}
                 >
-                  {plan.popular && (
-                    <span className="absolute -top-3.5 right-8 rounded-full bg-gradient-to-l from-violet-600 to-fuchsia-600 px-4 py-1 text-xs font-black text-white shadow-lg">
-                      הכי נבחר
-                    </span>
-                  )}
-
                   <div
                     className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${plan.gradient} shadow-lg`}
                   >
@@ -227,7 +232,7 @@ export default function PricingPage() {
                         : 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
-                    <Link href={plan.ctaHref}>{plan.ctaLabel}</Link>
+                    <Link href={plan.kind === 'PLATFORM' ? selfStartHref : plan.ctaHref}>{plan.ctaLabel}</Link>
                   </Button>
                 </motion.div>
               );
@@ -544,7 +549,7 @@ export default function PricingPage() {
               size="lg"
               className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
             >
-              <Link href="/custom-mix-builder">נסו את בונה התמהיל</Link>
+              <Link href="/dashboard/mix-planner">נסו את בונה התמהיל</Link>
             </Button>
           </div>
         </motion.div>

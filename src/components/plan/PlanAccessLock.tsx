@@ -47,12 +47,12 @@ export function PlanAccessLock({ planId, access }: { planId: string; access: Pro
         <div className="my-5 rounded-2xl bg-slate-50 py-4">
           <div className="text-4xl font-black text-slate-900">₪{platformPrice}</div>
           <div className="mt-0.5 text-sm font-bold text-slate-500">
-            {advisoryEnded ? 'לחודש' : 'לחודש נוסף'} · אין חיוב בלי אישור שלכם
+            {expired && !advisoryEnded ? 'לחודש נוסף' : 'לחודש'} · אין חיוב בלי אישור שלכם
           </div>
         </div>
 
         <Link
-          href={`/dashboard/checkout?planId=${encodeURIComponent(planId)}`}
+          href={`/dashboard/checkout?planId=${encodeURIComponent(planId)}${expired || advisoryEnded ? '' : '&first=1'}`}
           className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 text-cta font-black text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl"
         >
           {advisoryEnded

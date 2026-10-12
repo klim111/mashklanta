@@ -94,6 +94,8 @@ interface MortgageWorkspaceProps {
   initialMix?: WorkspaceMix;
   /** בתוך דשבורד התהליך — בלי סרגל ניווט כפול */
   embedded?: boolean;
+  /** הדף העוטף כבר מציג קישור חזרה, ולכן הכלי לא מוסיף "דף הבית" ו"האזור האישי" משלו */
+  hideSiteLinks?: boolean;
   /** תמהילי הסלים האחידים שנשמרו בשלב הקודם — נפתחים ברשימה */
   preferredMixIds?: string[];
   /** התמהיל הפעיל בתהליך, אם כבר נבחר אחד */
@@ -165,6 +167,7 @@ function signatureOf(mix: WorkspaceMix): string {
 export function MortgageWorkspace({
   initialMix,
   embedded = false,
+  hideSiteLinks = false,
   preferredMixIds,
   activeMixKey,
   defaultSetupSeed,
@@ -1171,11 +1174,11 @@ export function MortgageWorkspace({
     <div className={`${embedded ? '' : 'min-h-screen'} bg-slate-50`} dir="rtl">
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="container mx-auto flex flex-wrap items-center justify-center gap-2 px-3 py-2.5 sm:justify-start sm:px-4">
-          {!embedded && (
+          {!embedded && !hideSiteLinks && (
           <Button variant="ghost" size="sm" className="h-9" asChild>
             <Link href="/">
               <Home className="h-4 w-4 ml-1" />
-              עמוד ראשי
+              דף הבית
             </Link>
           </Button>
           )}
@@ -1213,12 +1216,13 @@ export function MortgageWorkspace({
             </PopoverContent>
           </Popover>
 
-          {!embedded && (
+          {/* לאורח אין אזור אישי — הקישור היה מוביל לחומת ההתחברות */}
+          {!embedded && !hideSiteLinks && signedIn && (
           <Button variant="ghost" size="sm" className="h-9" asChild>
             <Link href={personalAreaHref}>
               {isAdvisor ? <Users className="h-4 w-4 ml-1" /> : <UserRound className="h-4 w-4 ml-1" />}
               <span className="hidden md:inline">{isAdvisor ? 'האזור שלי והלקוחות' : 'האזור האישי'}</span>
-              <span className="md:hidden">{isAdvisor ? 'האזור שלי' : 'אזור אישי'}</span>
+              <span className="md:hidden">{isAdvisor ? 'האזור שלי' : 'האזור האישי'}</span>
             </Link>
           </Button>
           )}
@@ -1252,7 +1256,10 @@ export function MortgageWorkspace({
             <LogIn className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <p className="text-xs leading-relaxed text-amber-900">
               אתם לא מחוברים, ולכן התמהילים נשמרים בדפדפן הזה בלבד.{' '}
-              <Link href="/auth/login" className="font-semibold underline">
+              <Link
+                href={`/auth/login?callbackUrl=${encodeURIComponent('/mortgage-advisor')}`}
+                className="font-semibold underline"
+              >
                 התחברו
               </Link>{' '}
               כדי לשמור אותם בחשבון — הם יעברו אליו אוטומטית ויהיו זמינים בכל מכשיר.

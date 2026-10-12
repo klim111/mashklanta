@@ -70,7 +70,7 @@ export const journeyStages: JourneyStage[] = [
       { label: 'מה אני יכול להרשות לעצמי', href: '/mortgage-planning?flow=affordability' },
       { label: 'תכנון הון עצמי', href: '/equity-planning' },
       { label: 'מתכנן הלוואות צרכניות', href: '/consumer-loans' },
-      { label: 'דינמיקה פיננסית', href: '/financial-dynamics' },
+      { label: 'מצב הון ותזרים', href: '/dashboard#cash-flow' },
     ],
   },
   {
@@ -102,9 +102,7 @@ export const journeyStages: JourneyStage[] = [
       'הזנת הריביות שהוצעו באישור העקרוני לסלים האחידים',
     ],
     tools: [
-      { label: 'בקשת משכנתא חכמה', href: '/mortgage-application' },
-      { label: 'מפת תהליך אינטראקטיבית', href: '/interactive-mortgage-journey' },
-      { label: 'תיק המסמכים שלי', href: '/dashboard' },
+      { label: 'תיק המסמכים שלי', href: '/dashboard#documents' },
     ],
   },
   {
@@ -136,10 +134,8 @@ export const journeyStages: JourneyStage[] = [
       'סימולציית זעזוע ריבית ופירעון מוקדם',
     ],
     tools: [
-      { label: 'בונה תמהיל אישי', href: '/custom-mix-builder' },
-      { label: 'סלים אחידים', href: '/uniform-mixes' },
-      { label: 'שולחן עבודה מקצועי', href: '/mortgage-advisor' },
-      { label: 'סימולציות פיננסיות', href: '/simulations' },
+      { label: 'בניית תמהיל', href: '/dashboard/mix-planner' },
+      { label: 'תמהילים שמורים', href: '/dashboard#rate-requests' },
     ],
   },
   {
@@ -171,9 +167,8 @@ export const journeyStages: JourneyStage[] = [
       'שמירת גרסאות והשוואה בין סבבי התמחרות',
     ],
     tools: [
-      { label: 'השוואת הצעות בנקים', href: '/mortgage-advisor' },
-      { label: 'תמהילים שמורים', href: '/saved-mixes' },
-      { label: 'בונה תמהיל אישי', href: '/custom-mix-builder' },
+      { label: 'תמהילים שמורים', href: '/dashboard#rate-requests' },
+      { label: 'בניית תמהיל', href: '/dashboard/mix-planner' },
     ],
   },
   {
@@ -206,9 +201,8 @@ export const journeyStages: JourneyStage[] = [
       'החתימה על תיק המשכנתא, מול התמהיל הסופי שאושר',
     ],
     tools: [
-      { label: 'בדיקת לוח סילוקין', href: '/mortgage-advisor' },
-      { label: 'דשבורד המשכנתא שלי', href: '/mortgage-dashboard' },
-      { label: 'מפת תהליך אינטראקטיבית', href: '/interactive-mortgage-journey' },
+      { label: 'תיק המסמכים שלי', href: '/dashboard#documents' },
+      { label: 'האזור האישי', href: '/dashboard' },
     ],
   },
 ];

@@ -94,7 +94,7 @@ export default function LearnPage() {
         >
           <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
             <GraduationCap className="w-4 h-4" />
-            מרכז למידה — משכלתנא
+            מרכז למידה — משכלנתא
           </div>
           <h1 className="mb-6 text-title font-black leading-[1.15] text-white">
             להבין משכנתא
@@ -244,8 +244,8 @@ export default function LearnPage() {
                 size="lg"
                 className="bg-white px-8 text-base font-bold text-indigo-900 shadow-xl hover:bg-blue-50 hover:text-indigo-900"
               >
-                <Link href="/mortgage-planning">
-                  תכנון משכנתא
+                <Link href="/#free-tools">
+                  הכלים החינמיים
                   <ChevronLeft className="w-5 h-5 mr-2" />
                 </Link>
               </Button>
@@ -254,7 +254,7 @@ export default function LearnPage() {
                 size="lg"
                 className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
               >
-                <Link href="/mortgage-advisor">בניית תמהיל</Link>
+                <Link href="/dashboard/mix-planner">בניית תמהיל</Link>
               </Button>
             </div>
           </motion.div>

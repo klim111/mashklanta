@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AlertCircle, CheckCircle, Loader2, MailCheck } from 'lucide-react';
+import { AuthLogo } from '@/components/auth/AuthPageParts';
 
 /**
  * "בדקו את המייל" — מה שהלקוח רואה אחרי ההרשמה, עד שיאשר את הקישור.
@@ -12,11 +13,14 @@ export function CheckEmailPanel({
   via = 'password',
   sendFailed = false,
   ttlMinutes = 60,
+  homeLogo = false,
 }: {
   email: string;
   via?: 'google' | 'password';
   sendFailed?: boolean;
   ttlMinutes?: number;
+  /** בעמוד עצמו (ולא בחלון) העיגול שבראש מוביל לדף הבית, כמו בשאר מסכי ההתחברות */
+  homeLogo?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -44,9 +48,15 @@ export function CheckEmailPanel({
 
   return (
     <div className="space-y-5 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
-        <MailCheck className="h-8 w-8 text-blue-600" />
-      </div>
+      {homeLogo ? (
+        <AuthLogo className="bg-blue-50">
+          <MailCheck className="h-8 w-8 text-blue-600" />
+        </AuthLogo>
+      ) : (
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
+          <MailCheck className="h-8 w-8 text-blue-600" />
+        </div>
+      )}
       <div>
         <h2 className="text-subtitle font-bold text-slate-900">בדקו את תיבת המייל</h2>
         <p className="mt-2 text-info text-slate-600">

@@ -1,4 +1,4 @@
-# 🎨 משכלתנא - מערכת עיצוב מקצועית
+# 🎨 משכלנתא - מערכת עיצוב מקצועית
 ## Nadlanium Professional Design System
 
 ### 🎯 עקרונות עיצוב - Design Principles

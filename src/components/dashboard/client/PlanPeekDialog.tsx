@@ -135,7 +135,7 @@ export function PlanPeekDialog({
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-colors hover:bg-blue-700"
           >
             <Eye className="h-4 w-4" />
-            הצג את התמהיל בדאשבורד
+            הציגו את התמהיל בסקירה
           </button>
         )}
       </DialogContent>

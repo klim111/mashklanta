@@ -90,7 +90,7 @@ const flow: DemoFlow = {
     {
       id: 'end',
       title: 'הכול במקום אחד',
-      caption: 'זה אזור הלקוח. רוצים לראות איך מנהלים משימות ולוח שנה? הדגמת הדאשבורד ממשיכה בדיוק מכאן.',
+      caption: 'זה אזור הלקוח. רוצים לראות איך מנהלים משימות ולוח שנה? הדגמת האזור האישי ממשיכה בדיוק מכאן.',
       actions: [{ type: 'click', target: 'dash-nav-overview' }],
       target: 'dash-heading',
       spotlight: { side: 'bottom' },

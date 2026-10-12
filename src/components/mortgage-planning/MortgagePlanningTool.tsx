@@ -49,7 +49,9 @@ import {
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import { LoanManagementOffer } from '@/components/mortgage-planning/LoanManagementOffer';
 import { BorrowerLoansSection } from '@/components/mortgage-planning/BorrowerLoansSection';
-import { HomeFloatingButton } from '@/components/guest/HomeFloatingButton';
+import { ReturnLink, returnTargetFor } from '@/components/navigation/ReturnLink';
+import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
+import type { LeadTopic } from '@/lib/advisor-lead-topics';
 import { GuestRegistrationDialog } from '@/components/guest/GuestRegistrationDialog';
 import { RegisterTeaserCarousel } from '@/components/guest/RegisterTeaserCarousel';
 import { useSliderEngagement } from '@/hooks/use-slider-engagement';
@@ -139,6 +141,19 @@ export function MortgagePlanningContent({
   useMarketRates();
   /** הגעה מתוך תהליך תכנון — מציגים דרך חזרה אליו במקום להשאיר את הלקוח תלוי באוויר */
   const returnPlanId = embedded ? null : searchParams.get('fromPlan');
+  const returnStage = embedded ? null : searchParams.get('fromStage');
+  /** כתובת התהליך שממנו הגיע הלקוח (כולל השלב), או null כשלא הגיע מתהליך */
+  const returnPlanHref = returnPlanId
+    ? returnTargetFor({ fromPlan: returnPlanId, fromStage: returnStage, signedIn: true }).href
+    : null;
+  /** אותה דרך חזרה לתהליך גם בכלי שנפתח מכאן בכרטיסייה חדשה */
+  const returnQuery = returnPlanId
+    ? `?fromPlan=${encodeURIComponent(returnPlanId)}${
+        returnStage ? `&fromStage=${encodeURIComponent(returnStage)}` : ''
+      }`
+    : '';
+  /** טופס הפנייה ליועץ — נפתח מכפתורי "פנו ליועץ משכלנתא" */
+  const [advisorTopic, setAdvisorTopic] = useState<LeadTopic | null>(null);
   const [currentStep, setCurrentStep] = useState<PlanningStep>('property-type');
   const [entryFlow, setEntryFlow] = useState<EntryFlow | null>(null);
   const [userData, setUserData] = useState<UserData>(defaultMortgagePlanningUserData());
@@ -147,6 +162,7 @@ export function MortgagePlanningContent({
   const [analyzedTerms, setAnalyzedTerms] = useState<any>(null);
   const [extractedText, setExtractedText] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [offerUploadError, setOfferUploadError] = useState<string | null>(null);
   const [personalInfoFieldErrors, setPersonalInfoFieldErrors] = useState<Record<string, boolean>>({});
   const [existingPropertyFieldErrors, setExistingPropertyFieldErrors] = useState<Record<string, boolean>>({});
   // Whether to deduct insurance costs from disposable income when computing max monthly payment.
@@ -215,7 +231,8 @@ export function MortgagePlanningContent({
     }
 
     if (session) {
-      router.push('/dashboard');
+      // מי שהגיע מתהליך ממשיך בתהליך שלו; אחרת — לאזור האישי
+      router.push(returnPlanHref ?? '/dashboard');
       return;
     }
     setRegistrationOpen(true);
@@ -463,14 +480,8 @@ export function MortgagePlanningContent({
     >
       <div className="text-center mb-12">
         <div className="mb-6 flex justify-between items-center w-full max-w-4xl">
-          {!embedded && (
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowRight className="w-4 h-4 mr-2" />
-              חזור לעמוד הבית
-            </Button>
-          </Link>
-          )}
+          {/* החזרה לדף הבית / לאזור האישי / לתהליך — בקישור האחיד בראש הכלי */}
+          <span />
           {(userData.propertyType || userData.calculationType || userData.ownCapital) && (
             <Button variant="outline" size="sm" onClick={clearSavedData} className="mb-4">
               <RefreshCw className="w-4 h-4 ml-2" />
@@ -687,6 +698,7 @@ export function MortgagePlanningContent({
                       const file = e.target.files && e.target.files[0];
                       if (file) {
                         setIsAnalyzing(true);
+                        setOfferUploadError(null);
                         const reader = new FileReader();
                         reader.onload = async () => {
                           try {
@@ -719,11 +731,11 @@ export function MortgagePlanningContent({
                               }
                             } else {
                               console.error('Error analyzing image:', await response.text());
-                              alert('שגיאה בניתוח התמונה. נסה שוב.');
+                              setOfferUploadError('שגיאה בניתוח המסמך. נסו שוב.');
                             }
                           } catch (err) {
                             console.error('שגיאה בעיבוד התמונה:', err);
-                            alert('שגיאה בעיבוד התמונה. נסה שוב.');
+                            setOfferUploadError('שגיאה בעיבוד המסמך. נסו שוב.');
                           } finally {
                             setIsAnalyzing(false);
                           }
@@ -735,7 +747,6 @@ export function MortgagePlanningContent({
                   <label 
                     htmlFor="bank-offer-upload"
                     className="cursor-pointer inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                    onClick={() => console.log('Bank offer upload label clicked')}
                   >
                     בחר קובץ
                   </label>
@@ -753,17 +764,12 @@ export function MortgagePlanningContent({
                 <Calculator className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-subtitle font-bold text-slate-900 mb-3">הזנה ידנית</h3>
-              <p className="text-slate-600 mb-6">פתח את כלי היועצים לבניית תמהיל והשוואת תנאים</p>
+              <p className="text-slate-600 mb-6">בנו את התמהיל שהוצע לכם בבונה התמהילים שבאזור האישי והשוו תנאים</p>
               <Button
-                onClick={() => {
-                  try {
-                    localStorage.setItem('advisorEntryMode', 'manual-offer');
-                  } catch (err) {}
-                  window.location.href = '/mortgage-advisor';
-                }}
+                onClick={() => router.push('/dashboard/mix-planner')}
                 className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white"
               >
-                עבור לכלי היועצים
+                לבונה התמהילים
               </Button>
             </div>
           </CardContent>
@@ -778,6 +784,12 @@ export function MortgagePlanningContent({
             מנתח את התמונה...
           </div>
         </div>
+      )}
+
+      {offerUploadError && !isAnalyzing && (
+        <p role="alert" className="mt-8 text-center text-sm font-bold text-red-600">
+          {offerUploadError}
+        </p>
       )}
 
       {analyzedTerms && (
@@ -1008,7 +1020,13 @@ export function MortgagePlanningContent({
               >
                 מחשבון הון עצמי
               </Button>
-              <Link href="/equity-planning" className="sm:contents">
+              {/* נפתח בכרטיסייה חדשה, כדי שהטופס שבאמצע המילוי יישאר פתוח */}
+              <Link
+                href={`/equity-planning${returnQuery}`}
+                target="_blank"
+                rel="noopener"
+                className="sm:contents"
+              >
                 <Button
                   className="w-full px-4 py-3 whitespace-normal text-button bg-blue-600 hover:bg-blue-700 text-white sm:w-auto sm:whitespace-nowrap"
                 >
@@ -1033,7 +1051,7 @@ export function MortgagePlanningContent({
                       ההון העצמי שמוזן אינו מספיק לפי הגבלות בנק ישראל
                     </p>
                     <p className="text-orange-700 text-sm mb-3">
-                      פנה ליועץ משכלנתא לבדיקת אפשרויות מימון להגדלת ההון העצמי
+                      פנו ליועץ משכלנתא לבדיקת אפשרויות מימון להגדלת ההון העצמי
                     </p>
                     
                     {(() => {
@@ -1069,13 +1087,10 @@ export function MortgagePlanningContent({
                     <Button
                       size="sm"
                       className="w-full bg-violet-600 hover:bg-violet-700 text-white text-sm py-2 shadow-md hover:shadow-lg transition-all duration-300 mt-3"
-                      onClick={() => {
-                        // Here you can add logic to contact advisor
-                        alert('יועץ משכלנתא ייצור איתך קשר בקרוב!');
-                      }}
+                      onClick={() => setAdvisorTopic('EQUITY')}
                     >
                       <Target className="w-4 h-4 ml-2" />
-                      פנה ליועץ משכלנתא
+                      פנו ליועץ משכלנתא
                     </Button>
                   </div>
                 </div>
@@ -1430,13 +1445,11 @@ export function MortgagePlanningContent({
                 </Button>
               )}
               <Button
-                onClick={() => {
-                  alert('יועץ משכלנתא ייצור איתך קשר בקרוב לפרטים נוספים!');
-                }}
+                onClick={() => setAdvisorTopic('ADVICE')}
                 className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <Target className="w-5 h-5 ml-2" />
-                פנה ליועץ משכלנתא
+                פנו ליועץ משכלנתא
               </Button>
             </div>
           </div>
@@ -2598,7 +2611,14 @@ export function MortgagePlanningContent({
           currentStep === 'results' ? 'py-3' : embedded ? 'py-4' : 'py-12'
         }`}
       >
-        {returnPlanId && (
+        {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
+        {!embedded && (
+          <div className="mx-auto mb-4 max-w-4xl">
+            <ReturnLink />
+          </div>
+        )}
+
+        {returnPlanHref && (
           <div
             dir="rtl"
             className="mx-auto mb-6 flex max-w-4xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-white/90 px-5 py-4 shadow-sm"
@@ -2609,7 +2629,7 @@ export function MortgagePlanningContent({
               עצרתם.
             </p>
             <Link
-              href={`/dashboard/plans/${returnPlanId}`}
+              href={returnPlanHref}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-blue-700"
             >
               <ArrowRight className="h-4 w-4" />
@@ -2648,8 +2668,13 @@ export function MortgagePlanningContent({
         {currentStep === 'profile-complete' && renderProfileComplete()}
       </div>
 
-      {/* חזרה לעמוד הבית — זמינה בכל מסך של הכלי, גם אחרי גלילה */}
-      {!embedded && <HomeFloatingButton />}
+      <AdvisorLeadDialog
+        open={advisorTopic !== null}
+        onOpenChange={(open) => {
+          if (!open) setAdvisorTopic(null);
+        }}
+        topic={advisorTopic ?? 'ADVICE'}
+      />
       {!embedded && (
         <GuestSaveNotice
           tool="affordability"
@@ -2663,7 +2688,7 @@ export function MortgagePlanningContent({
           <GuestRegistrationDialog
             open={registrationOpen}
             onOpenChange={setRegistrationOpen}
-            redirectTo="/dashboard"
+            redirectTo={returnPlanHref ?? '/dashboard'}
           />
           <RegisterTeaserCarousel
             open={teaserOpen}

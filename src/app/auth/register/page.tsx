@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Home } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { PasswordField } from '@/components/auth/PasswordField';
@@ -13,12 +13,8 @@ import { passwordProblem } from '@/lib/password-policy';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 import { ConsultSentNotice } from '@/components/auth/ConsultSentNotice';
-
-/** רק נתיב יחסי באתר — כדי שלא נפנה החוצה אחרי ההרשמה */
-function safeCallbackUrl(value: string | null): string | null {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
-  return value;
-}
+import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
+import { authHref, safeCallbackPath } from '@/lib/auth-url';
 
 function RegisterForm() {
   const router = useRouter();
@@ -38,7 +34,7 @@ function RegisterForm() {
     name: formData.name,
     email: formData.email,
   });
-  const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'));
 
   useEffect(() => {
     const oauthError = authErrorMessage(searchParams.get('error'));
@@ -123,7 +119,7 @@ function RegisterForm() {
         */
         draft.markSubmitted();
         setSuccess('שלחנו לכם מייל לאישור ההרשמה');
-        router.push(`/auth/check-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
+        router.push(authHref('/auth/check-email', callbackUrl, { email: formData.email.trim().toLowerCase() }));
       }
     } catch (error) {
       setError('אירעה שגיאה בהרשמה');
@@ -143,11 +139,7 @@ function RegisterForm() {
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           {/* Logo and Title */}
           <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-                <Home className="w-8 h-8 text-white" />
-              </div>
-            </Link>
+            <AuthLogo />
             <h1 className="text-title font-bold text-slate-900">הרשמה</h1>
             <p className="text-slate-600 mt-2">פתיחת חשבון לקוח במשכלנתא. נשלח לכם מייל לאישור הכתובת.</p>
           </div>
@@ -258,7 +250,7 @@ function RegisterForm() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 pl-12 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="הקלד שוב את הסיסמה"
+                  placeholder="הקלידו שוב את הסיסמה"
                 />
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               </div>
@@ -272,7 +264,7 @@ function RegisterForm() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  נרשם...
+                  נרשמים...
                 </>
               ) : success ? (
                 <>
@@ -280,14 +272,14 @@ function RegisterForm() {
                   נשלח מייל לאישור
                 </>
               ) : (
-                'הירשם'
+                'הרשמה'
               )}
             </button>
           </form>
 
           {/* Terms */}
           <p className="text-xs text-slate-500 text-center mt-6">
-            בהרשמתך אתה מסכים ל
+            בהרשמה אתם מסכימים ל
             <Link href="/terms" className="text-blue-600 hover:text-blue-700">
               תנאי השימוש
             </Link>
@@ -309,24 +301,26 @@ function RegisterForm() {
           <div className="mb-6">
             <GoogleAuthButton
               label="הרשמה עם Google"
-              callbackUrl={safeCallbackUrl(searchParams.get('callbackUrl')) ?? '/dashboard'}
+              callbackUrl={callbackUrl ?? '/dashboard'}
             />
           </div>
 
           {/* Login Link */}
           <div className="text-center">
             <p className="text-slate-600">
-              כבר יש לך חשבון?{' '}
+              כבר יש לכם חשבון?{' '}
               <Link
-                href="/auth/login"
+                href={authHref('/auth/login', callbackUrl)}
                 className="font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
-                התחבר
+                התחברו
               </Link>
             </p>
             <p className="mt-2">
               <Link
-                href={`/auth/forgot-password${formData.email.includes('@') ? `?email=${encodeURIComponent(formData.email.trim())}` : ''}`}
+                href={authHref('/auth/forgot-password', callbackUrl, {
+                  email: formData.email.includes('@') ? formData.email.trim() : null,
+                })}
                 className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
                 שכחתי סיסמה
@@ -335,16 +329,7 @@ function RegisterForm() {
           </div>
         </div>
 
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Link
-            href="/"
-            className="text-slate-600 hover:text-slate-800 transition-colors inline-flex items-center gap-2"
-          >
-            <Home className="w-4 h-4" />
-            חזרה לדף הבית
-          </Link>
-        </div>
+        <BackHomeLink />
       </motion.div>
     </div>
   );

@@ -1102,7 +1102,8 @@ function toPlanningLoans(loans: ProfileLoan[]) {
 
 /** הפניה לכלי תכנון ההלוואות הצרכניות, עם ייבוא ההלוואות שכבר הוזנו */
 function ConsumerLoansOffer({ profile, planId }: { profile: AnalysisData; planId: string }) {
-  const href = planToolHref(CONSUMER_LOANS_TOOL, planId);
+  // fromStage — כדי שהכלי יציג "חזרה לתהליך" אל שלב הפרופיל הפיננסי
+  const href = `${planToolHref(CONSUMER_LOANS_TOOL, planId)}&fromStage=ANALYSIS`;
   const couple = profile.household === 'COUPLE';
 
   const goToPlanner = () => {

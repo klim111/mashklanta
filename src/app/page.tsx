@@ -33,6 +33,8 @@ export default function Home() {
         <NavBar />
       </motion.div>
       
+      {/* התוכן הראשי — היעד של "דילוג לתוכן הראשי" */}
+      <main id="main">
       {/* Mashkalanta Logo Section with Benefits Carousel */}
       <motion.section
         initial={{ opacity: 0, y: 30 }}
@@ -45,6 +47,8 @@ export default function Home() {
         {/* הראש בנוי כעמודה אחת בזרימה רגילה — לוגו, טקסט, אנימציה, כפתורים — וממלא לפחות
             את גובה המסך שמתחת לסרגל הניווט. כך אין רכיב שעולה על אחר בשום יחס מסך */}
         <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center px-5 pb-10 pt-8 md:min-h-[calc(100svh-4rem)] md:px-6 md:pb-12 md:pt-10 lg:pt-12">
+        {/* הכותרת הראשית של העמוד — לקוראי מסך; הלוגו המונפש מציג אותה ויזואלית */}
+        <h1 className="sr-only">משכלנתא — פלטפורמה לתכנון משכנתא</h1>
         {/* Logo */}
         <div className="flex items-center justify-center">
           <Mashkalanta autoPlay />
@@ -62,7 +66,7 @@ export default function Home() {
           >
             פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
             <br />
-            <span className="text-blue-600 font-semibold">למציאת המשכנתא המושלמת עבורך</span>
+            <span className="text-blue-600 font-semibold">למציאת המשכנתא המושלמת עבורכם</span>
           </motion.p>
         </div>
 
@@ -156,7 +160,7 @@ export default function Home() {
               <text x="400" y="350" textAnchor="middle" fill="rgba(168, 85, 247, 0.9)" 
                     fontSize="32" fontWeight="bold">תמהיל אופטימלי מותאם</text>
               <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                    fontSize="18">התאמה מושלמת לצרכים שלך</text>
+                    fontSize="18">התאמה מושלמת לצרכים שלכם</text>
             </svg>
           </div>
         </div>
@@ -181,7 +185,7 @@ export default function Home() {
                 size="lg"
                 className="w-full justify-center px-6 py-4 text-cta font-semibold bg-white/90 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-lg backdrop-blur-sm md:w-auto md:px-8"
               >
-                <Link href="/how-it-works">למד איך זה עובד</Link>
+                <Link href="/how-it-works">למדו איך זה עובד</Link>
               </Button>
             </motion.div>
 
@@ -201,7 +205,7 @@ export default function Home() {
                   }
                 }}
               >
-                התחל עכשיו
+                התחילו עכשיו
                 <ArrowLeft className="w-5 h-5 mr-2" />
               </Button>
             </motion.div>
@@ -261,14 +265,13 @@ export default function Home() {
           </div>
           <div className="mx-auto mb-8 grid max-w-4xl gap-5 md:grid-cols-2">
             <Link href="/pricing" className="group relative rounded-2xl border border-violet-400/50 bg-white/10 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 sm:p-7 md:text-right">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-500 px-3 py-0.5 text-2xs font-black text-white">הכי נבחר</span>
               <div className="text-sm font-bold text-cyan-200">עצמאי / היברידי</div>
               <div className="my-2 text-4xl font-black text-white">₪{platformPrice}</div>
               <div className="text-sm text-slate-100">
                 לחודש לתהליך משכנתא, גישה מלאה לכל הכלים. מתחילים לבד, ובכל שלב שצריך עזרה מעבירים ליועץ משכלנתא
               </div>
             </Link>
-            <Link href="/pricing" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
+            <Link href="/pricing#advisory" className="group rounded-2xl border border-white/15 bg-white/5 p-5 text-center backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/10 sm:p-7 md:text-right">
               <div className="text-sm font-bold text-amber-200">{advisory.title}</div>
               <div className="my-2 text-subtitle font-black leading-snug text-white sm:my-3.5">{advisory.priceLabel}</div>
               <div className="text-sm text-slate-100">
@@ -296,6 +299,8 @@ export default function Home() {
         >
           <MortgageMarketDashboard />
         </motion.section>
+
+      </main>
 
         {/* Footer */}
         <motion.section

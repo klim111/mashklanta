@@ -146,6 +146,10 @@ export function RateWorsenedNotice({
   );
 }
 
+/** אחרי ההרשמה או ההתחברות חוזרים לכלי המיחזור — עם המסלולים שכבר הוזנו */
+const TOOL_REGISTER_HREF = `/auth/register?callbackUrl=${encodeURIComponent('/mortgage-refinance')}`;
+const TOOL_LOGIN_HREF = `/auth/login?callbackUrl=${encodeURIComponent('/mortgage-refinance')}`;
+
 /** הזמנה להרשמה — הכלי המלא פתוח למשתמשים רשומים */
 export function RegistrationInvite({ compact = false }: { compact?: boolean }) {
   return (
@@ -155,7 +159,7 @@ export function RegistrationInvite({ compact = false }: { compact?: boolean }) {
       title="הכלי המלא פתוח לחשבון חינמי"
       action={
         <div className="flex flex-wrap gap-2">
-          <Link href="/auth/register">
+          <Link href={TOOL_REGISTER_HREF}>
             <Button
               size="sm"
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
@@ -164,7 +168,7 @@ export function RegistrationInvite({ compact = false }: { compact?: boolean }) {
               <ArrowLeft className="w-4 h-4 mr-2" />
             </Button>
           </Link>
-          <Link href="/auth/login">
+          <Link href={TOOL_LOGIN_HREF}>
             <Button size="sm" variant="outline">
               כבר יש לי חשבון
             </Button>

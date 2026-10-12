@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { sendEmail, emailTemplates } from '@/lib/email';
-import { canonicalSiteOrigin } from '@/lib/auth-url';
+import { publicSiteOrigin } from '@/lib/auth-url';
 import { normalizeEmail } from '@/lib/find-user-by-login';
 
 /**
@@ -82,21 +82,25 @@ export function sendDecision(
   return 'send';
 }
 
-function siteOrigin(requestOrigin?: string | null): string {
-  return canonicalSiteOrigin() ?? requestOrigin ?? 'http://localhost:3000';
-}
-
-export function verificationUrl(token: string, requestOrigin?: string | null): string {
-  return `${siteOrigin(requestOrigin)}/auth/verify?token=${encodeURIComponent(token)}`;
+/**
+ * קישור האישור שבמייל. היעד המקורי של ההרשמה (`callbackUrl`) מצורף לקישור,
+ * כדי שגם כשהקישור כבר שומש, "התחברות" בעמוד האישור תחזיר את הלקוח לאותו מקום.
+ */
+export function verificationUrl(token: string, requestOrigin?: string | null, callbackUrl?: string | null): string {
+  const params = new URLSearchParams({ token });
+  const safe = safeCallbackUrl(callbackUrl);
+  if (safe) params.set('callbackUrl', safe);
+  return `${publicSiteOrigin(requestOrigin)}/auth/verify?${params.toString()}`;
 }
 
 async function deliverVerification(
   email: string,
   name: string | null,
   token: string,
-  requestOrigin?: string | null
+  requestOrigin?: string | null,
+  callbackUrl?: string | null
 ) {
-  const url = verificationUrl(token, requestOrigin);
+  const url = verificationUrl(token, requestOrigin, callbackUrl);
   const template = emailTemplates.verificationEmail({
     name: name ?? '',
     email,
@@ -205,7 +209,7 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
 
   await prisma.pendingRegistration.upsert({ where: { email }, create: data, update: data });
 
-  const sent = await deliverVerification(email, data.name, token, input.requestOrigin);
+  const sent = await deliverVerification(email, data.name, token, input.requestOrigin, data.callbackUrl);
   return sent ? { status: 'sent' } : { status: 'email-failed' };
 }
 
@@ -243,7 +247,7 @@ export async function resendVerification(
     },
   });
 
-  const sent = await deliverVerification(pending.email, pending.name, token, requestOrigin);
+  const sent = await deliverVerification(pending.email, pending.name, token, requestOrigin, pending.callbackUrl);
   return sent ? { status: 'sent' } : { status: 'email-failed' };
 }
 

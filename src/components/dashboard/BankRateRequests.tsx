@@ -49,9 +49,17 @@ export function BankRateRequests() {
   const [open, setOpen] = useState<SavedRateRequest | null>(null);
   const [quoteEntry, setQuoteEntry] = useState<SavedRateRequest | null>(null);
 
+  /**
+   * פתיחת תמהיל בכלי התמהילים של האזור האישי. תמהיל שכבר שמור בחשבון נפתח לפי
+   * המזהה שלו; תמהיל שלא נשמר (למשל המבנה שהוגש בבקשה) מועבר לכלי כטיוטה.
+   */
   const openMixInTool = (mix: WorkspaceMix) => {
+    if (saved.some((item) => item.mix.id === mix.id)) {
+      router.push(`/dashboard/mix-planner?mix=${encodeURIComponent(mix.id)}`);
+      return;
+    }
     stageMixForWorkspace(mix);
-    router.push('/mortgage-advisor');
+    router.push('/dashboard/mix-planner');
   };
 
   /** ההצעות שכבר התקבלו על מבנה התמהיל שהוגש — לכל בנק ולכל סבב */
@@ -83,7 +91,7 @@ export function BankRateRequests() {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link href="/mortgage-advisor">
+          <Link href="/dashboard/mix-planner">
             <PieChart className="ml-1 h-4 w-4" />
             לכלי בניית התמהילים
           </Link>
@@ -117,7 +125,7 @@ export function BankRateRequests() {
               ושמרו את הבקשה כאן.
             </p>
             <Button asChild>
-              <Link href="/mortgage-advisor">פתחו את כלי בניית התמהילים</Link>
+              <Link href="/dashboard/mix-planner">פתחו את כלי בניית התמהילים</Link>
             </Button>
           </CardContent>
         </Card>

@@ -25,7 +25,7 @@ export function RenewConfirm({ token, afterAdvisory = false }: { token: string |
           href="/dashboard"
           className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-7 py-3.5 text-cta font-black text-white shadow-lg hover:bg-blue-700"
         >
-          לאזור האישי
+          האזור האישי
         </Link>
       </div>
     );

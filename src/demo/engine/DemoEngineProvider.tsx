@@ -395,7 +395,9 @@ export function DemoEngineProvider({ request, catalog, narration = captionsOnlyN
     cancelRun();
     getSpotlight().clear();
     cursorRef.current?.hide();
-    const returnTo = flowRef.current?.exitRoute ?? request.returnTo ?? '/';
+    // חוזרים למקום שממנו ההדגמה התחילה (קטלוג ההדגמות, דף הבית או הכלי);
+    // יעד היציאה של ההדגמה עצמה רק כשלא נשמר מקום כזה
+    const returnTo = request.returnTo || flowRef.current?.exitRoute || '/';
     demoStore.stop();
     router.push(returnTo);
   }, [cancelRun, request.returnTo, router]);

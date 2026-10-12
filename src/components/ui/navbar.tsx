@@ -85,7 +85,7 @@ export default function NavBar() {
 
   return (
     <header className="bg-white/98 backdrop-blur-sm shadow-sm border-b border-gray-100 px-4 md:px-6 py-2 flex justify-between items-center gap-3" {...demoId('nav-root')}>
-      <Link href="/" className="shrink-0" aria-label="משכלנתא — עמוד הבית">
+      <Link href="/" className="shrink-0" aria-label="משכלנתא — דף הבית">
         <Mashkalanta variant="nav" autoPlay />
       </Link>
 
@@ -123,7 +123,7 @@ export default function NavBar() {
                   className="px-4 2xl:px-6 font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
                 >
                   <Shield className="w-4 h-4 ml-2" />
-                  אזור אישי
+                  האזור האישי
                 </Button>
               </Link>
               <Button
@@ -215,7 +215,7 @@ export default function NavBar() {
                         className="w-full font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600"
                       >
                         <Shield className="w-4 h-4 ml-2" />
-                        אזור אישי
+                        האזור האישי
                       </Button>
                     </Link>
                     <Button

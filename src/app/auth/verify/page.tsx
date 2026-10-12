@@ -4,8 +4,10 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
-import { AlertCircle, CheckCircle, Home, Loader2, Lock, MailCheck, ShieldCheck, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Lock, MailCheck, ShieldCheck, XCircle } from 'lucide-react';
 import { authErrorMessage } from '@/lib/auth-errors';
+import { authHref, safeCallbackPath } from '@/lib/auth-url';
+import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
 
 /**
  * אישור ההרשמה מהקישור שנשלח במייל.
@@ -52,6 +54,12 @@ function VerifyEmailContent() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * היעד המקורי של ההרשמה — מהשרת (כשהקישור תקף) או מהכתובת — כדי שגם
+   * "התחברות" ממסך של קישור שכבר שומש תחזיר את הלקוח לאותו מקום
+   */
+  const callbackUrl = safeCallbackPath(summary?.callbackUrl ?? searchParams.get('callbackUrl'));
+  const loginHref = authHref('/auth/login', callbackUrl);
 
   useEffect(() => {
     if (!token) {
@@ -152,7 +160,7 @@ function VerifyEmailContent() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8">
           <div className="text-center mb-6">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">{icon}</div>
+            <AuthLogo className="mb-4 bg-slate-100">{icon}</AuthLogo>
             <h1 className="text-title font-bold text-slate-900">{title[view]}</h1>
           </div>
 
@@ -264,10 +272,10 @@ function VerifyEmailContent() {
                 ייתכן שכבר השתמשתם בקישור, או שנשלח אחריו קישור חדש יותר. אם כבר אישרתם, פשוט התחברו.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="/auth/login" className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-center text-button font-semibold text-white hover:bg-blue-700">
+                <Link href={loginHref} className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-center text-button font-semibold text-white hover:bg-blue-700">
                   התחברות
                 </Link>
-                <Link href="/auth/register" className="flex-1 rounded-lg border border-slate-300 px-4 py-3 text-center text-button font-semibold text-slate-700 hover:bg-slate-50">
+                <Link href={authHref('/auth/register', callbackUrl)} className="flex-1 rounded-lg border border-slate-300 px-4 py-3 text-center text-button font-semibold text-slate-700 hover:bg-slate-50">
                   הרשמה מחדש
                 </Link>
               </div>
@@ -277,19 +285,14 @@ function VerifyEmailContent() {
           {view === 'exists' && (
             <div className="space-y-4 text-center">
               <p className="text-info text-slate-600">החשבון כבר פתוח. התחברו אליו עם המייל או עם Google.</p>
-              <Link href="/auth/login" className="block rounded-lg bg-blue-600 px-4 py-3 text-center text-button font-semibold text-white hover:bg-blue-700">
+              <Link href={loginHref} className="block rounded-lg bg-blue-600 px-4 py-3 text-center text-button font-semibold text-white hover:bg-blue-700">
                 התחברות
               </Link>
             </div>
           )}
         </div>
 
-        <div className="text-center mt-6">
-          <Link href="/" className="text-slate-600 hover:text-slate-800 transition-colors inline-flex items-center gap-2">
-            <Home className="w-4 h-4" />
-            חזרה לדף הבית
-          </Link>
-        </div>
+        <BackHomeLink />
       </div>
     </div>
   );

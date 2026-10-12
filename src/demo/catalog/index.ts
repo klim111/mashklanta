@@ -83,7 +83,7 @@ export const DEMO_CATALOG: DemoCatalogEntry[] = [
   },
   {
     id: 'client-dashboard',
-    title: 'הדגמת הדאשבורד של לקוח רשום',
+    title: 'הדגמת האזור האישי של לקוח רשום',
     description: 'מעקב משימות, לוח שנה, הוספת פגישות ומשימות, מעקב אחרי הוצאות והפרופיל — מרכז השליטה היומיומי.',
     icon: CalendarCheck,
     gradient: 'from-sky-500 to-blue-600',

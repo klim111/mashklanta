@@ -195,7 +195,10 @@ export function trackPriceNote(track: TrackConfig): string {
 
 /** לאן מוביל כפתור המסלול */
 export function trackHref(track: TrackConfig): string {
-  if (track.kind === 'PLATFORM') return '/auth/register';
+  if (track.kind === 'PLATFORM') {
+    // אחרי ההרשמה הלקוח מגיע ישר לפתיחת תהליך עצמאי, כמו מכפתור "מתחילים לבד" בתמחור
+    return `/auth/register?callbackUrl=${encodeURIComponent('/dashboard?goal=NEW_MORTGAGE&service=SELF')}`;
+  }
   if (track.kind === 'ADVISORY') return '/#start';
   return `/consult?track=${encodeURIComponent(track.name)}`;
 }
