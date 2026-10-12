@@ -24,6 +24,7 @@ import { RefinanceCheck } from '@/components/refinance-check/RefinanceCheck';
 import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePreviewBar';
 import { guestRefinanceMix, reviveMix, saveGuestMix } from '@/components/refinance-check/refinanceCheckStore';
 import { useToolData } from '@/components/tool-data/toolData';
+import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
 import { PhoneBlockedScreen, useIsPhone } from '@/components/device/PhoneGate';
 
 type RefinanceStep = 'tracks' | 'goal';
@@ -83,7 +84,10 @@ function PreviewTool() {
   useEffect(() => setMix(guestRefinanceMix()), []);
   if (mix === undefined) return <div className="min-h-screen bg-slate-50" />;
   return (
-    <FullRefinanceTool initialMix={mix ?? undefined} banner={<RefinancePreviewBar />} onMixPersist={saveGuestMix} />
+    <>
+      <FullRefinanceTool initialMix={mix ?? undefined} banner={<RefinancePreviewBar />} onMixPersist={saveGuestMix} />
+      <GuestSaveNotice tool="refinance-preview" hasData={(mix?.tracks.length ?? 0) > 0} />
+    </>
   );
 }
 

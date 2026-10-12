@@ -20,6 +20,8 @@ import {
 import { formatILS } from '@/lib/currency';
 import { HomeFloatingButton } from '@/components/guest/HomeFloatingButton';
 import { useToolData } from '@/components/tool-data/toolData';
+import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
+import { touchGuestData } from '@/components/guest/guestData';
 import type {
   ConsolidationPlan,
   Loan,
@@ -144,7 +146,8 @@ export function LoanWorkspace() {
       console.error('שגיאה בשמירת נתוני ההלוואות:', error);
     }
     saveToolData(state);
-  }, [state, importSession, ready, saveToolData]);
+    if (!toolData.signedIn && state.loans.length > 0) touchGuestData();
+  }, [state, importSession, ready, saveToolData, toolData.signedIn]);
 
   const finishImport = useCallback((imported: Loan[]) => {
     setState((prev) => ({ ...prev, loans: [...prev.loans, ...imported] }));
@@ -549,6 +552,7 @@ export function LoanWorkspace() {
       {/* הכפתורים הצפים: פנייה ליועץ בשמאל, חזרה לדף הבית בימין */}
       <FamilyEconomyFloatingCta context={leadContext} />
       <HomeFloatingButton />
+      <GuestSaveNotice tool="consumer-loans" hasData={ready && state.loans.length > 0} />
     </div>
   );
 }
