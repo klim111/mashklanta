@@ -383,7 +383,7 @@ export function ClientCalendar({
 
       <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm font-semibold text-slate-500">
         <Legend dot="bg-emerald-500" label="פגישה מאושרת" />
-        <Legend dot="bg-amber-500" label="ממתינה לאישורכם" />
+        <Legend dot="bg-amber-500" label="פגישה ממתינה לאישור" />
         <Legend dot="bg-rose-500" label="מועד חשוב" />
         <Legend dot="bg-blue-500" label="משימה שלי" />
       </div>

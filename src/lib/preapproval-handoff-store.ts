@@ -4,6 +4,7 @@ import { emailAdvisorAboutRequest } from './advisor-notify';
 import { isValidEmail, normalizeEmail } from './conversation';
 import { readApplicationsStage, updateApplicationsStage } from './mortgage-plans';
 import type { BankPreApproval, PreApprovalData } from './mortgage-plan';
+import type { MeetingParty, MeetingStatus } from './advisor-crm';
 import { parseDay, dayKey } from './rate-validity';
 import { PRE_APPROVAL_BANKS } from '@/components/plan/stages/preapproval/banks';
 import {
@@ -143,8 +144,21 @@ async function advisorPlan(advisorId: string, planId: string) {
 export interface HandoffMeetingView {
   id: string;
   startsAt: string;
-  status: string;
+  status: MeetingStatus;
+  /** מי הציע את המועד הנוכחי — כשהפגישה ממתינה, הצד השני הוא שמאשר */
+  proposedBy: MeetingParty;
 }
+
+function toHandoffMeeting(row: {
+  id: string;
+  startsAt: Date;
+  status: MeetingStatus;
+  proposedBy: MeetingParty;
+}): HandoffMeetingView {
+  return { id: row.id, startsAt: row.startsAt.toISOString(), status: row.status, proposedBy: row.proposedBy };
+}
+
+const HANDOFF_MEETING_SELECT = { id: true, startsAt: true, status: true, proposedBy: true } as const;
 
 export interface AdvisorHandoffView {
   banks: BankPreApproval[];
@@ -155,9 +169,9 @@ async function liveMeeting(clientId: string): Promise<HandoffMeetingView | null>
   const row = await prisma.advisorMeeting.findFirst({
     where: { clientId, title: HANDOFF_MEETING_TITLE, status: LIVE_MEETING },
     orderBy: { startsAt: 'desc' },
-    select: { id: true, startsAt: true, status: true },
+    select: HANDOFF_MEETING_SELECT,
   });
-  return row ? { id: row.id, startsAt: row.startsAt.toISOString(), status: row.status } : null;
+  return row ? toHandoffMeeting(row) : null;
 }
 
 /** הבנקים שהלקוח העביר ליועץ, והפגישה להשלמת הפרטים — כפי שהיועץ רואה אותם */
@@ -245,8 +259,9 @@ export async function updateHandoffBank(
 }
 
 /**
- * היועץ קובע מועד לפגישה להשלמת הפרטים. המועד שהוא קובע הוא הסופי: הפגישה
- * נרשמת כמאושרת ומופיעה אצל הלקוח עם התאריך והשעה, ומשימת קביעת המועד נסגרת.
+ * היועץ קובע מועד לפגישה להשלמת הפרטים. כמו בכל פגישה, זו הצעה: היא מופיעה אצל
+ * הלקוח עם התאריך והשעה וממתינה לאישורו (או להצעת מועד אחר), ומשימת קביעת
+ * המועד נסגרת.
  */
 export async function setHandoffMeeting(
   advisorId: string,
@@ -265,8 +280,8 @@ export async function setHandoffMeeting(
   const row = existing
     ? await prisma.advisorMeeting.update({
         where: { id: existing.id },
-        data: { startsAt, status: 'CONFIRMED', respondedAt: new Date() },
-        select: { id: true, startsAt: true, status: true },
+        data: { startsAt, status: 'PROPOSED', proposedBy: 'ADVISOR', respondedAt: null },
+        select: HANDOFF_MEETING_SELECT,
       })
     : await prisma.advisorMeeting.create({
         data: {
@@ -276,10 +291,10 @@ export async function setHandoffMeeting(
           title: HANDOFF_MEETING_TITLE,
           startsAt,
           durationMinutes: 45,
-          status: 'CONFIRMED',
-          respondedAt: new Date(),
+          status: 'PROPOSED',
+          proposedBy: 'ADVISOR',
         },
-        select: { id: true, startsAt: true, status: true },
+        select: HANDOFF_MEETING_SELECT,
       });
 
   await prisma.advisorTask.updateMany({
@@ -287,5 +302,5 @@ export async function setHandoffMeeting(
     data: { status: 'DONE', completedAt: new Date() },
   });
 
-  return { id: row.id, startsAt: row.startsAt.toISOString(), status: row.status };
+  return toHandoffMeeting(row);
 }

@@ -215,6 +215,7 @@ export default function AdvisorClientPage() {
           onNoteVisibility={(noteId, visibility) => void notes.setVisibility(noteId, visibility)}
           onNoteDelete={(noteId) => void notes.remove(noteId)}
           onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+          onAnswerMeeting={meetings.answer}
           onScheduleMeeting={() => openMeeting(stage)}
         />
 
@@ -227,6 +228,7 @@ export default function AdvisorClientPage() {
           onScheduleMeeting={() => openMeeting(null)}
           onAddTask={() => setTaskOpen(true)}
           onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+          onAnswerMeeting={meetings.answer}
           onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
           onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
           onTaskDelete={(taskId) => void tasks.remove(taskId)}

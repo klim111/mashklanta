@@ -19,14 +19,15 @@ import {
 } from 'lucide-react';
 import { StageChip } from '@/components/advisor/ui';
 import {
-  MEETING_STATUS_LABELS,
   dayKey,
   formatDate,
   formatTime,
-  meetingIsLive,
+  meetingAwaits,
+  meetingStatusLabel,
   relativeDayLabel,
 } from '@/lib/advisor-crm';
-import type { AdvisorMeetingView } from '@/lib/advisor-crm';
+import type { AdvisorMeetingView, MeetingReply } from '@/lib/advisor-crm';
+import { ClientMeetingAnswer } from '@/components/plan/advisor/ClientMeetingAnswer';
 import { planStageNumber } from '@/lib/mortgage-plan';
 import { clientTaskIdOf, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, CalendarEvent, ClientTask, DashboardSection } from '@/lib/client-agenda';
@@ -97,7 +98,7 @@ export function AgendaSection({
     [events, selected]
   );
   const upcoming = upcomingEvents(events, new Date(), 4);
-  const awaiting = meetingsState.meetings.filter((meeting) => meeting.status === 'PROPOSED').length;
+  const awaiting = meetingsState.meetings.filter((meeting) => meetingAwaits(meeting, 'CLIENT')).length;
   const sortedNotes = [...notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const go = (target: AgendaTarget) => {
@@ -144,7 +145,11 @@ export function AgendaSection({
 
         {detail ? (
           <DetailPanel
-            detail={detail}
+            detail={
+              detail.kind === 'event'
+                ? { ...detail, event: events.find((event) => event.id === detail.event.id) ?? detail.event }
+                : detail
+            }
             meeting={detail.kind === 'event' ? meetingOf(detail.event) : null}
             ownTask={ownTaskOf(detail.kind === 'event' ? detail.event.id : detail.task.id)}
             onUpload={() => setUploadFor(ownTaskOf(detail.kind === 'event' ? detail.event.id : detail.task.id))}
@@ -152,9 +157,14 @@ export function AgendaSection({
             onRemove={() => void removeOwn(detail.kind === 'event' ? detail.event.id : detail.task.id)}
             onBack={() => setDetail(null)}
             onGo={go}
-            onRespond={(meeting, accepted) => {
-              void meetingsState.respond(meeting.id, accepted);
-              setDetail(null);
+            onAnswer={async (meeting, reply) => {
+              const failure = await meetingsState.answer(meeting.id, reply);
+              if (!failure) {
+                // מועד חדש — הלוח עובר ליום שהוצע, והפגישה נשארת פתוחה עם המועד המעודכן
+                if (reply.action === 'propose') setSelected(dayKey(reply.startsAt));
+                else setDetail(null);
+              }
+              return failure;
             }}
           />
         ) : (
@@ -307,7 +317,7 @@ function DetailPanel({
   onUpload,
   onBack,
   onGo,
-  onRespond,
+  onAnswer,
 }: {
   detail: Detail;
   meeting: AdvisorMeetingView | null;
@@ -318,7 +328,7 @@ function DetailPanel({
   onUpload: () => void;
   onBack: () => void;
   onGo: (target: AgendaTarget) => void;
-  onRespond: (meeting: AdvisorMeetingView, accepted: boolean) => void;
+  onAnswer: (meeting: AdvisorMeetingView, reply: MeetingReply) => Promise<string | null>;
 }) {
   const ownActions = ownTask ? (
     <>
@@ -448,7 +458,7 @@ function DetailPanel({
               </Row>
             )}
             <Row icon={<CalendarCheck2 className="h-4 w-4" />} label="סטטוס">
-              {MEETING_STATUS_LABELS[meeting.status]}
+              {meetingStatusLabel(meeting, 'CLIENT')}
             </Row>
             {meeting.note && (
               <p className="rounded-xl bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{meeting.note}</p>
@@ -458,24 +468,12 @@ function DetailPanel({
 
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
           {ownActions}
-          {meeting && meeting.status === 'PROPOSED' && meetingIsLive(meeting.status) && (
-            <>
-              <button
-                type="button"
-                onClick={() => onRespond(meeting, true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-button font-black text-white hover:bg-emerald-700"
-              >
-                <CalendarCheck2 className="h-4 w-4" />
-                אשרו את המועד
-              </button>
-              <button
-                type="button"
-                onClick={() => onRespond(meeting, false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-button font-bold text-slate-600 hover:bg-slate-50"
-              >
-                המועד לא מתאים
-              </button>
-            </>
+          {meeting && (
+            <ClientMeetingAnswer
+              meeting={meeting}
+              allowDecline
+              onAnswer={(reply) => onAnswer(meeting, reply)}
+            />
           )}
           {event.target.kind === 'href' && (
             <Link

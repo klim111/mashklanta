@@ -111,6 +111,7 @@ export function demoMeetings(): AdvisorMeetingView[] {
       location: 'שיחת וידאו בפלטפורמה',
       note: 'נעבור יחד על שלושת המסלולים ועל רגישות ההחזר לעליית ריבית.',
       status: 'PROPOSED',
+      proposedBy: 'ADVISOR',
       respondedAt: null,
     },
     {
@@ -126,6 +127,7 @@ export function demoMeetings(): AdvisorMeetingView[] {
       location: 'טלפון',
       note: null,
       status: 'CONFIRMED',
+      proposedBy: 'ADVISOR',
       respondedAt: daysFromNow(-7),
     },
   ];

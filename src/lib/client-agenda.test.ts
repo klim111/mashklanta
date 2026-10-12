@@ -47,6 +47,7 @@ function meeting(overrides: Partial<AdvisorMeetingView> = {}): AdvisorMeetingVie
     location: null,
     note: null,
     status: 'PROPOSED',
+    proposedBy: 'ADVISOR',
     respondedAt: null,
     ...overrides,
   };
@@ -66,6 +67,12 @@ describe('סדר היום של הלקוח', () => {
       NOW
     );
     expect(confirmed.some((task) => task.id === 'meeting:m1')).toBe(false);
+    // מועד שהלקוח עצמו הציע ממתין ליועץ, ולא נכנס למשימות של הלקוח
+    const ownProposal = buildClientTasks(
+      { ...EMPTY_AGENDA_INPUT, meetings: [meeting({ proposedBy: 'CLIENT' })] },
+      NOW
+    );
+    expect(ownProposal.some((task) => task.id === 'meeting:m1')).toBe(false);
   });
 
   it('תהליך פתוח מקבל משימת "המשיכו" בשלב הנוכחי, ותהליך שהושלם לא', () => {

@@ -7,6 +7,7 @@ import type {
   AdvisorRateDefaultView,
   AdvisorTaskStatus,
   AdvisorTaskView,
+  MeetingReply,
   MixCategoryView,
   NoteVisibility,
   PlanStageId,
@@ -43,6 +44,7 @@ export interface AdvisorOverviewView {
   openTasks: number;
   overdueTasks: number;
   awaitingConfirmation: number;
+  awaitingAdvisor: number;
   todayTasks: AdvisorTaskView[];
   overdue: AdvisorTaskView[];
   upcomingMeetings: AdvisorMeetingView[];
@@ -56,6 +58,7 @@ const emptyOverview: AdvisorOverviewView = {
   openTasks: 0,
   overdueTasks: 0,
   awaitingConfirmation: 0,
+  awaitingAdvisor: 0,
   todayTasks: [],
   overdue: [],
   upcomingMeetings: [],
@@ -246,11 +249,17 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
     [refresh]
   );
 
-  /** תשובת הלקוח להצעת מועד */
-  const respond = useCallback(
-    async (meetingId: string, accepted: boolean) => {
+  /**
+   * תשובה של המשתמש המחובר לפגישה — יועץ או לקוח: אישור, הצעת מועד אחר או
+   * דחייה. מחזיר הודעת שגיאה, או null כשהתשובה נשמרה.
+   */
+  const answer = useCallback(
+    async (meetingId: string, reply: MeetingReply): Promise<string | null> => {
       try {
-        await send<AdvisorMeetingView>(`/api/meetings/${meetingId}`, 'PATCH', { accepted });
+        await send<AdvisorMeetingView>(`/api/meetings/${meetingId}`, 'PATCH', reply);
+        return null;
+      } catch {
+        return reply.action === 'propose' ? 'המועד החדש לא נשלח' : 'התשובה לא נשמרה';
       } finally {
         await refresh();
       }
@@ -282,7 +291,7 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
     [refresh]
   );
 
-  return { meetings, ready, error, refresh, propose, respond, cancel, remove };
+  return { meetings, ready, error, refresh, propose, answer, cancel, remove };
 }
 
 // ───────────────────────────────── הערות ─────────────────────────────────

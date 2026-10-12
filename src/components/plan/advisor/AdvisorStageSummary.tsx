@@ -23,13 +23,11 @@ import {
 } from '@/lib/advised-stage';
 import type { AdvantageRow } from '@/lib/advised-stage';
 import { journeyStageFor } from '@/data/platform/planStages';
+import { meetingStatusLabel } from '@/lib/advisor-crm';
+import type { ClientMeetingView } from './useClientMeetings';
+import { ClientMeetingAnswer, sendMeetingReply } from './ClientMeetingAnswer';
 
-interface StageMeeting {
-  startsAt: string;
-  title: string;
-  location: string | null;
-  status: string;
-}
+type StageMeeting = ClientMeetingView;
 
 interface AdvisorStageSummaryProps {
   stage: PlanStageId;
@@ -39,6 +37,8 @@ interface AdvisorStageSummaryProps {
   advisorName?: string | null;
   /** פגישה שהיועץ קבע לשלב, אם נקבעה */
   meeting?: StageMeeting | null;
+  /** אחרי שהלקוח אישר או הציע מועד אחר — כדי לרענן את הפגישות */
+  onMeetingChanged?: () => void;
   /** האם הפירוט המלא פתוח כרגע */
   detailsOpen: boolean;
   onToggleDetails: () => void;
@@ -57,6 +57,7 @@ export function AdvisorStageSummary({
   status,
   advisorName,
   meeting = null,
+  onMeetingChanged,
   detailsOpen,
   onToggleDetails,
 }: AdvisorStageSummaryProps) {
@@ -122,7 +123,7 @@ export function AdvisorStageSummary({
           )}
         </div>
 
-        {meeting ? <StageMeetingRow meeting={meeting} /> : <AwaitingAdvisorRow />}
+        {meeting ? <StageMeetingRow meeting={meeting} onChanged={onMeetingChanged} /> : <AwaitingAdvisorRow />}
 
         {detailsOpen && hasValues && (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -199,8 +200,11 @@ function AwaitingAdvisorRow() {
   );
 }
 
-/** הפגישה שהיועץ קבע לשלב — מוצגת גם כאן וגם בדאשבורד */
-function StageMeetingRow({ meeting }: { meeting: StageMeeting }) {
+/**
+ * הפגישה שנקבעה לשלב — מוצגת גם כאן וגם בדאשבורד, ואפשר לאשר אותה או להציע
+ * מועד אחר מכאן כמו מלוח השנה
+ */
+function StageMeetingRow({ meeting, onChanged }: { meeting: StageMeeting; onChanged?: () => void }) {
   const when = new Date(meeting.startsAt);
   const date = when.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const time = when.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
@@ -223,8 +227,16 @@ function StageMeetingRow({ meeting }: { meeting: StageMeeting }) {
           proposed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-600 text-white'
         }`}
       >
-        {proposed ? 'ממתינה לאישורכם' : 'מאושרת'}
+        {meetingStatusLabel(meeting, 'CLIENT')}
       </span>
+      <ClientMeetingAnswer
+        meeting={meeting}
+        onAnswer={async (reply) => {
+          const failure = await sendMeetingReply(meeting.id, reply);
+          onChanged?.();
+          return failure;
+        }}
+      />
     </div>
   );
 }

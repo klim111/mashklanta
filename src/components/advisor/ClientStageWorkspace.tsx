@@ -23,6 +23,7 @@ import type {
   AdvisorMeetingView,
   AdvisorNoteView,
   AdvisorTaskView,
+  MeetingReply,
   NoteVisibility,
   PlanStageId,
 } from '@/lib/advisor-crm';
@@ -70,6 +71,8 @@ interface ClientStageWorkspaceProps {
   onNoteVisibility: (noteId: string, visibility: NoteVisibility) => void;
   onNoteDelete: (noteId: string) => void;
   onCancelMeeting: (meetingId: string) => void;
+  /** אישור או הצעת מועד אחר לפגישה */
+  onAnswerMeeting: (meetingId: string, reply: MeetingReply) => Promise<string | null>;
   onScheduleMeeting: () => void;
 }
 
@@ -184,6 +187,7 @@ export function ClientStageWorkspace(props: ClientStageWorkspaceProps) {
                   viewer="advisor"
                   linkToClient={false}
                   onCancel={() => props.onCancelMeeting(meeting.id)}
+                  onAnswer={(reply) => props.onAnswerMeeting(meeting.id, reply)}
                 />
               ))}
             </div>
