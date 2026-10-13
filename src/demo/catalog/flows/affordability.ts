@@ -87,7 +87,7 @@ const flow: DemoFlow = {
       id: 'max-property',
       title: 'שווי הנכס המקסימלי',
       caption: (state) =>
-        `זו התוצאה המרכזית: המחיר הגבוה ביותר שאפשר לכוון אליו עם הון עצמי של ${money(state.values.ownCapital)} והכנסה של ${money(state.values.monthlyIncome)}. מתחתיו — אחוז המימון שנבחר, ואפשר להוריד אותו כדי לקחת פחות משכנתא.`,
+        `זו התוצאה המרכזית: המחיר הגבוה ביותר שאפשר לכוון אליו עם הון עצמי של ${money(state.values.ownCapital)} והכנסה של ${money(state.values.monthlyIncome)}. אפשר להזיז את המחיר במכוון שמתחתיו.`,
       target: 'mp-max-property',
       spotlight: { side: 'bottom' },
       duration: 7000,
@@ -95,9 +95,9 @@ const flow: DemoFlow = {
     {
       id: 'ltv',
       title: 'אחוז מימון',
-      caption: 'הסליידר מוריד את אחוז המימון ל-{{ltv|pct}}: הנכס שאפשר לקנות קטן, אבל גם המשכנתא וההחזר. נוח למי שרוצה מרווח ביטחון.',
-      actions: [{ type: 'slider', target: 'mp-ltv-slider', value: 70, key: 'ltv' }],
-      target: 'mp-ltv-slider',
+      caption: 'אחוז המימון מתעדכן לבד, לפי היחס בין המשכנתא למחיר הנכס. כשמזיזים ערך עד מעבר למותר לסוג העסקה, המכוון נעצר במגבלה.',
+      actions: [{ type: 'scroll', target: 'mp-ltv-value' }],
+      target: 'mp-ltv-value',
       spotlight: { side: 'top' },
     },
     {

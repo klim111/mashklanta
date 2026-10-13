@@ -1,4 +1,4 @@
-import { amountForPayment, annuityPayment, monthsForPayment, rateForPayment } from '@/lib/cash-flow';
+import { amountForPayment, annuityPayment, monthsForPayment } from '@/lib/cash-flow';
 
 /**
  * נעילת ערכים בכלי "מה אני יכול להרשות לעצמי".
@@ -11,8 +11,9 @@ import { amountForPayment, annuityPayment, monthsForPayment, rateForPayment } fr
  * כשמשנים פרמטר, הנעולים נשארים במקומם וזזים רק הפתוחים:
  * - מחיר נעול: שינוי בסכום המשכנתא בא על חשבון ההון העצמי שנכנס לעסקה.
  * - אחוז מימון נעול: מחיר הנכס זז יחד עם המשכנתא.
- * - החזר נעול: כשהמשכנתא גדלה או קטנה התקופה מתארכת או מתקצרת; כשהתקופה נעולה
- *   גם היא — הריבית היא שמשתנה ("באיזו ריבית זה מסתדר").
+ * - החזר נעול: כשהמשכנתא גדלה או קטנה התקופה מתארכת או מתקצרת, וכשהתקופה
+ *   משתנה — סכום המשכנתא.
+ * - הריבית לא זזה לבד אף פעם; היא משתנה רק כשהלקוח מזין ריבית אחרת.
  * - בלי נעילות: ההון העצמי נשאר כמו שהוא, כמו שהכלי עבד עד היום.
  */
 
@@ -140,7 +141,7 @@ function bankShare(payment: number, loan: number, env: AffordEnv): number {
   return payment - env.propertyInsurance - (loan * env.healthPer100k) / 100_000;
 }
 
-type Free = 'loan' | 'term' | 'rate';
+type Free = 'loan' | 'term';
 
 /**
  * ההחזר נעול: מחזירים אותו לערך שננעל על ידי שינוי של אחד הפרמטרים הפתוחים,
@@ -155,7 +156,7 @@ function restorePayment(
 ): AffordState | null {
   const target = locks.payment;
   if (target === undefined) return state;
-  if (Math.abs(deriveAfford(state, env).payment - target) < 0.5) return state;
+  if (Math.abs(deriveAfford(state, env).payment - target) < 0.01) return state;
 
   for (const free of order) {
     if (free === 'loan') {
@@ -171,13 +172,6 @@ function restorePayment(
       const months = monthsForPayment(state.loan, state.rate, bank);
       if (months === null || months < env.minMonths || months > env.maxMonths) continue;
       return { ...state, months };
-    }
-    if (free === 'rate') {
-      if (locks.rate !== undefined) continue;
-      const bank = bankShare(target, state.loan, env);
-      const rate = rateForPayment(state.loan, state.months, bank);
-      if (rate === null || rate <= 0 || rate > MAX_SIM_RATE) continue;
-      return { ...state, rate };
     }
   }
   return null;
@@ -227,7 +221,7 @@ export function applyAffordChange(
   switch (key) {
     case 'loan': {
       next = moveLoan(state, Math.max(0, value), locks);
-      order = ['term', 'rate'];
+      order = ['term'];
       break;
     }
     case 'price': {
@@ -244,7 +238,7 @@ export function applyAffordChange(
         const loan = Math.max(0, price - state.equity);
         next = { ...state, loan, equity: price - loan };
       }
-      order = ['term', 'rate'];
+      order = ['term'];
       break;
     }
     case 'ltv': {
@@ -259,19 +253,19 @@ export function applyAffordChange(
         const loan = (state.equity * ratio) / (1 - ratio);
         next = { ...state, loan };
       }
-      order = ['term', 'rate'];
+      order = ['term'];
       break;
     }
     case 'payment': {
       // ההחזר עצמו זז, ולכן משחררים אותו זמנית ומחפשים מי יזוז במקומו
       const target = Math.max(0, value);
-      next = restorePayment(state, env, { ...locks, payment: target }, ['loan', 'term', 'rate']);
+      next = restorePayment(state, env, { ...locks, payment: target }, ['loan', 'term']);
       break;
     }
     case 'term': {
       const months = Math.round(Math.min(env.maxMonths, Math.max(env.minMonths, value)));
       next = { ...state, months };
-      order = ['loan', 'rate'];
+      order = ['loan'];
       break;
     }
     case 'rate': {
@@ -288,4 +282,126 @@ export function applyAffordChange(
     if (!next) return blocked(key, locks);
   }
   return { ok: true, state: next };
+}
+
+// ───────────────────────────── מגבלות ─────────────────────────────
+
+/** מגבלות בנק ישראל והאפשרי בפועל — שינוי של הלקוח לא יעבור אותן */
+export interface AffordLimits {
+  /** אחוז מימון מקסימלי לסוג העסקה */
+  maxLtv: number;
+  /** ההחזר החודשי המקסימלי — 40% מההכנסה הפנויה */
+  maxPayment: number;
+  /** התקופה המקסימלית שהבנק יאשר לפי הגיל, בחודשים */
+  maxMonths: number;
+  /** ההון העצמי שיש ללקוח */
+  maxEquity: number;
+  /** סוג העסקה, להסבר */
+  dealLabel?: string;
+}
+
+type LimitKey = 'ltv' | 'payment' | 'term' | 'equity';
+
+/** כמה כל מגבלה נחצתה, יחסית לגודלה (0 — בתוך המגבלה) */
+function overshoots(state: AffordState, env: AffordEnv, limits: AffordLimits): Record<LimitKey, number> {
+  const derived = deriveAfford(state, env);
+  const over = (value: number, max: number, slack: number) =>
+    value > max + slack ? (value - max) / Math.max(1, Math.abs(max)) : 0;
+  return {
+    ltv: over(derived.ltv, limits.maxLtv, 0.05),
+    payment: over(derived.payment, limits.maxPayment, 1),
+    term: over(state.months, limits.maxMonths, 0),
+    equity: over(state.equity, limits.maxEquity, 1),
+  };
+}
+
+export function limitBreaches(state: AffordState, env: AffordEnv, limits: AffordLimits): LimitKey[] {
+  const values = overshoots(state, env, limits);
+  return (Object.keys(values) as LimitKey[]).filter((key) => values[key] > 0);
+}
+
+function violation(state: AffordState, env: AffordEnv, limits: AffordLimits): number {
+  const values = overshoots(state, env, limits);
+  return values.ltv + values.payment + values.term + values.equity;
+}
+
+const SHEKEL = (value: number) => `₪${Math.round(value).toLocaleString('he-IL')}`;
+
+function limitReason(key: LimitKey, limits: AffordLimits): string {
+  switch (key) {
+    case 'ltv':
+      return `אחוז המימון לא יעלה על ${limits.maxLtv}%${limits.dealLabel ? ` ב${limits.dealLabel}` : ''}`;
+    case 'payment':
+      return `ההחזר החודשי לא יעלה על 40% מההכנסה הפנויה (${SHEKEL(limits.maxPayment)})`;
+    case 'term':
+      return `התקופה לא תעלה על ${Math.round(limits.maxMonths / 12)} שנים לפי הגיל`;
+    case 'equity':
+      return `ההון העצמי בעסקה לא יעלה על ההון שיש לך (${SHEKEL(limits.maxEquity)})`;
+  }
+}
+
+export type LimitedChange =
+  | { ok: true; state: AffordState; stopped: string | null }
+  | { ok: false; reason: string };
+
+/**
+ * שינוי של פרמטר בתוך המגבלות: כשהערך המבוקש חוצה מגבלה, הפרמטר נעצר בערך
+ * הקרוב ביותר שעוד עומד בה (כמו מכוון שמגיע לקצה), ומוחזר ההסבר למה נעצר.
+ * כשהמצב כבר חורג (למשל אחרי שינוי ריבית), מותר כל שינוי שלא מחמיר את החריגה.
+ */
+export function applyWithinLimits(
+  state: AffordState,
+  env: AffordEnv,
+  locks: AffordLocks,
+  limits: AffordLimits,
+  key: AffordKey,
+  value: number
+): LimitedChange {
+  const EPS = 1e-9;
+  const base = violation(state, env, limits);
+  const allowed = Math.max(EPS, base + EPS);
+  const attempt = (target: number) => {
+    const result = applyAffordChange(state, env, locks, key, target);
+    if (!result.ok) return null;
+    return violation(result.state, env, limits) <= allowed ? result.state : null;
+  };
+
+  const direct = applyAffordChange(state, env, locks, key, value);
+  if (direct.ok && violation(direct.state, env, limits) <= allowed) {
+    return { ok: true, state: direct.state, stopped: null };
+  }
+
+  // הערך המבוקש לא אפשרי — או שהוא חוצה מגבלה, או שהנעולים לא משאירים לאן לזוז
+  let reason: string;
+  if (direct.ok) {
+    const hit = limitBreaches(direct.state, env, limits).filter(
+      (limit) => !limitBreaches(state, env, limits).includes(limit)
+    );
+    reason = limitReason(hit[0] ?? limitBreaches(direct.state, env, limits)[0], limits);
+  } else {
+    const locked = (Object.keys(locks) as AffordKey[]).filter((item) => item !== key).map(affordLabel);
+    reason =
+      locks.payment !== undefined && key !== 'term'
+        ? `ההחזר החודשי נעול, והתקופה לא יכולה להתארך מעבר ל-${Math.round(env.maxMonths / 12)} שנים`
+        : locked.length
+          ? `הערכים הנעולים (${locked.join(', ')}) לא מאפשרים להמשיך מעבר לכאן`
+          : `אין פתרון ל${affordLabel(key)} בערך הזה`;
+  }
+
+  const from = valueOf(key, state, env);
+  let low = 0;
+  let high = 1;
+  let best: AffordState | null = null;
+  for (let i = 0; i < 40; i += 1) {
+    const mid = (low + high) / 2;
+    const found = attempt(from + (value - from) * mid);
+    if (found) {
+      best = found;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+  if (!best) return { ok: false, reason: direct.ok ? `${reason}.` : `${reason}. שחררו אחת הנעילות.` };
+  return { ok: true, state: best, stopped: direct.ok ? `נעצר במגבלה: ${reason}.` : `נעצר: ${reason}.` };
 }
