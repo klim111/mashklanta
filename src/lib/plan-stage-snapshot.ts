@@ -6,7 +6,7 @@
  * עומד — וזה בדיוק מה שהמודול הזה מייצר. הפירוט המלא נשאר זמין מאחורי כפתור.
  */
 
-import { analyzeProfile, winningOffer } from './mortgage-plan';
+import { analyzeProfile, planFlowOf, winningOffer } from './mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from './mortgage-plan';
 
 export interface SnapshotItem {
@@ -46,6 +46,8 @@ export function stageSnapshot(
   status: PlanStageStatus = 'IN_PROGRESS'
 ): StageSnapshot {
   const done = status === 'COMPLETED';
+  /** במיחזור אין הון עצמי לעסקה, והסכום הוא יתרת המשכנתא שממוחזרת */
+  const refinance = planFlowOf(data).kind === 'REFINANCE';
 
   switch (stage) {
     case 'ANALYSIS': {
@@ -63,12 +65,19 @@ export function stageSnapshot(
             value: shekel(analysis.maxMonthlyPayment),
             note: 'לפי יחס החזר של 40%',
           },
-          { label: 'הון עצמי נדרש', value: shekel(analysis.requiredEquity) },
-          {
-            label: 'משכנתא נדרשת',
-            value: shekel(analysis.requiredLoan),
-            note: analysis.ltv === null ? undefined : `מימון ${percent(analysis.ltv, 0)}`,
-          },
+          ...(refinance
+            ? [
+                { label: 'שווי הנכס', value: shekel(data.ANALYSIS.propertyValue) },
+                { label: 'הסכום למיחזור', value: shekel(data.MIX.totalAmount || null) },
+              ]
+            : [
+                { label: 'הון עצמי נדרש', value: shekel(analysis.requiredEquity) },
+                {
+                  label: 'משכנתא נדרשת',
+                  value: shekel(analysis.requiredLoan),
+                  note: analysis.ltv === null ? undefined : `מימון ${percent(analysis.ltv, 0)}`,
+                },
+              ]),
         ],
       };
     }
@@ -94,7 +103,9 @@ export function stageSnapshot(
     case 'MIX': {
       const mix = data.MIX;
       return {
-        headline: mix.finalLocked
+        headline: refinance && done
+          ? 'התמהיל למיחזור נבחר'
+          : mix.finalLocked
           ? 'התמהיל הסופי נבחר ונעול'
           : mix.mixKey
             ? 'היועץ בונה ומשווה תמהילים עבורכם'

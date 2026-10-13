@@ -18,6 +18,7 @@ import type {
   AnalysisData,
   MixData,
   PlanData,
+  PlanFlow,
   PlanKind,
   PlanStageDataMap,
   PlanStageId,
@@ -219,13 +220,17 @@ async function assertAccess(userId: string, planId: string): Promise<boolean> {
 }
 
 /**
- * פתיחת תהליך חדש. חמש רשומות השלב נוצרות מיד, כדי שהתהליך יהיה שלם מרגע
- * היצירה ולא ייבנה בהדרגה תוך כדי עבודה.
+ * נתוני הפרופיל שתהליך חדש נפתח איתם — אותו דבר בכל סוג תהליך, כדי שהלקוח לא
+ * יצטרך להזין שוב הכנסות, גילים והלוואות שכבר נאספו.
  *
- * אם ללקוח כבר יש כרטיס ליווי אצל יועץ, נתוני הניתוח מגיעים משם — כדי שלא
- * יצטרך להזין שוב הכנסה, הון עצמי ושווי נכס שכבר נאספו.
+ * הסדר: הפרופיל השמור של הלקוח, ואם אין — כרטיס הליווי אצל היועץ. `fromTools`
+ * מוסיף בסוף את מה שהוזן בכלי המחשבון הפתוח; הוא שייך לרכישת נכס, ולכן אינו
+ * משמש תהליך מיחזור.
  */
-export async function createPlan(userId: string, name?: string): Promise<PlanView> {
+async function seedAnalysis(
+  userId: string,
+  { fromTools }: { fromTools: boolean }
+): Promise<{ clientId: string | null; analysisJson: Prisma.InputJsonValue | undefined }> {
   const client = await prisma.client.findFirst({
     where: { userId },
     select: {
@@ -264,7 +269,7 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
       // תהליך ריק עדיף על כשל בפתיחה בגלל פענוח
     }
   }
-  if (!analysisJson) {
+  if (!analysisJson && fromTools) {
     try {
       analysisJson = analysisFromToolData(user?.toolDataJson) as unknown as Prisma.InputJsonValue | undefined;
     } catch {
@@ -272,10 +277,23 @@ export async function createPlan(userId: string, name?: string): Promise<PlanVie
     }
   }
 
+  return { clientId: client?.id ?? null, analysisJson };
+}
+
+/**
+ * פתיחת תהליך חדש. חמש רשומות השלב נוצרות מיד, כדי שהתהליך יהיה שלם מרגע
+ * היצירה ולא ייבנה בהדרגה תוך כדי עבודה.
+ *
+ * אם ללקוח כבר יש כרטיס ליווי אצל יועץ, נתוני הניתוח מגיעים משם — כדי שלא
+ * יצטרך להזין שוב הכנסה, הון עצמי ושווי נכס שכבר נאספו.
+ */
+export async function createPlan(userId: string, name?: string): Promise<PlanView> {
+  const { clientId, analysisJson } = await seedAnalysis(userId, { fromTools: true });
+
   const row = await prisma.mortgagePlan.create({
     data: {
       ownerId: userId,
-      clientId: client?.id ?? null,
+      clientId,
       name: name?.trim() || defaultPlanName(),
       stages: {
         create: PLAN_STAGES.map((stage, index) => ({
@@ -639,7 +657,7 @@ export type DeletePlanResult =
   | { ok: true }
   | { ok: false; reason: 'not-found' }
   /** שלבים שהיועץ כבר עובד עליהם בתשלום — אי אפשר למחוק תהליך שעבודה עליו שולמה */
-  | { ok: false; reason: 'locked'; stages: PlanStageId[] };
+  | { ok: false; reason: 'locked'; stages: PlanStageId[]; flow: PlanFlow };
 
 /**
  * מחיקת תהליך מבסיס הנתונים.
@@ -658,7 +676,7 @@ export async function deletePlan(userId: string, planId: string): Promise<Delete
     select: {
       id: true,
       completedAt: true,
-      stages: { where: { stage: 'ANALYSIS' }, select: { dataJson: true } },
+      stages: { where: { stage: { in: ['ANALYSIS', 'MIX'] } }, select: { stage: true, dataJson: true } },
       advisorOrders: {
         where: { workStartedAt: { not: null } },
         select: { stagesJson: true },
@@ -669,10 +687,18 @@ export async function deletePlan(userId: string, planId: string): Promise<Delete
 
   const lockedRaw = new Set(row.advisorOrders.flatMap((order) => parseStages(order.stagesJson)));
   if (lockedRaw.size > 0) {
-    return { ok: false, reason: 'locked', stages: PLAN_STAGES.filter((stage) => lockedRaw.has(stage)) };
+    // השלבים נקראים בהודעה בשמם ובמספרם בתהליך הזה — במיחזור הסדר שונה
+    const mixJson = row.stages.find((item) => item.stage === 'MIX')?.dataJson ?? null;
+    const flow = planFlowOf({ MIX: parseStageData('MIX', mixJson) });
+    return {
+      ok: false,
+      reason: 'locked',
+      stages: flowStages(flow).filter((stage) => lockedRaw.has(stage)),
+      flow,
+    };
   }
 
-  const analysis = row.stages[0]?.dataJson;
+  const analysis = row.stages.find((item) => item.stage === 'ANALYSIS')?.dataJson;
   if (analysis) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -871,13 +897,14 @@ export async function createRefinancePlan(
   // התהליך נפתח בלי בחירת סוג — זה המסך הראשון שנפתח בתוכו
   refinance.mode = null;
 
-  const client = await prisma.client.findFirst({ where: { userId }, select: { id: true } });
+  // הפרופיל נפתח עם מה שכבר נאסף — בדיוק כמו בתהליך של משכנתא חדשה
+  const { clientId, analysisJson } = await seedAnalysis(userId, { fromTools: false });
   const summary = computeMix(input.mix).summary;
 
   const row = await prisma.mortgagePlan.create({
     data: {
       ownerId: userId,
-      clientId: client?.id ?? null,
+      clientId,
       name: `מיחזור משכנתא · ${refinance.bank}`,
       currentStage: 'MIX',
       mortgageAmount: refinance.refinancedMix.totalAmount,
@@ -885,6 +912,7 @@ export async function createRefinancePlan(
         create: PLAN_STAGES.map((stage) => ({
           stage,
           status: stage === 'MIX' ? 'IN_PROGRESS' : 'PENDING',
+          ...(stage === 'ANALYSIS' && analysisJson ? { dataJson: analysisJson } : {}),
         })),
       },
     },
@@ -894,7 +922,7 @@ export async function createRefinancePlan(
   const saved = await saveMix({
     ownerId: userId,
     mix: { ...input.mix, id: refinance.refinancedMix.id },
-    clientId: client?.id ?? null,
+    clientId,
     planId: row.id,
   });
 
@@ -930,17 +958,18 @@ export async function createRefinancePlan(
  * הראשונה בכלי ממלאת את נתוני המיחזור, בדיוק כמו תהליך שנפתח מכלי המיחזור.
  */
 export async function createEmptyRefinancePlan(userId: string): Promise<PlanView | null> {
-  const client = await prisma.client.findFirst({ where: { userId }, select: { id: true } });
+  const { clientId, analysisJson } = await seedAnalysis(userId, { fromTools: false });
   const row = await prisma.mortgagePlan.create({
     data: {
       ownerId: userId,
-      clientId: client?.id ?? null,
+      clientId,
       name: 'מיחזור משכנתא',
       currentStage: 'MIX',
       stages: {
         create: PLAN_STAGES.map((stage) => ({
           stage,
           status: stage === 'MIX' ? 'IN_PROGRESS' : 'PENDING',
+          ...(stage === 'ANALYSIS' && analysisJson ? { dataJson: analysisJson } : {}),
           ...(stage === 'MIX'
             ? {
                 dataJson: {

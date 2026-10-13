@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyPlanData } from './mortgage-plan';
+import type { RefinanceMixData } from './mortgage-plan';
 import type { PlanDocumentView } from './plan-documents';
 import type { ClientTaskView } from './client-tasks';
 import { customDocumentKey, customDocumentStage, documentProgress } from './document-progress';
@@ -48,6 +49,25 @@ describe('customDocumentKey', () => {
 });
 
 describe('documentProgress', () => {
+  it('מיחזור: השלבים בסדר של התהליך, ובמיחזור פנימי רק שלושת השלבים שלו', () => {
+    const external = emptyPlanData();
+    external.MIX = { ...external.MIX, refinance: { mode: 'EXTERNAL' } as RefinanceMixData };
+    expect(documentProgress(external, []).stages.map((row) => row.stage)).toEqual([
+      'MIX',
+      'ANALYSIS',
+      'APPLICATIONS',
+      'AUCTION',
+      'SIGNING',
+    ]);
+
+    const internal = emptyPlanData();
+    internal.MIX = { ...internal.MIX, refinance: { mode: 'INTERNAL' } as RefinanceMixData };
+    const progress = documentProgress(internal, [], [task({ stage: 'SIGNING' })]);
+    expect(progress.stages.map((row) => row.stage)).toEqual(['MIX', 'APPLICATIONS', 'AUCTION']);
+    // מסמכי החתימה של מיחזור פנימי נספרים בשלב האחרון, שבו נמצאת החתימה
+    expect(progress.stages.find((row) => row.stage === 'AUCTION')?.total).toBe(1);
+  });
+
   it('תהליך ריק: מסמכי הפרופיל ושלושת האישורים נספרים, שלב התמהיל לא', () => {
     const progress = documentProgress(emptyPlanData(), []);
     const byStage = Object.fromEntries(progress.stages.map((row) => [row.stage, row]));

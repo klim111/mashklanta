@@ -6,8 +6,9 @@ import { CheckCircle2, CircleDashed, FileUp, ListChecks, Loader2, Lock, Upload }
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ALLOWED_DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from '@/lib/plan-documents';
 import type { PlanDocumentView } from '@/lib/plan-documents';
+import { NEW_PLAN_FLOW, planFlowOf } from '@/lib/mortgage-plan';
 import type { PlanStageId } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { planStageMeta } from '@/data/platform/planStages';
 import { customDocumentKey } from '@/lib/document-progress';
 import type { PlanData } from '@/lib/mortgage-plan';
 import { documentCategory, documentStage } from '@/lib/document-organize';
@@ -54,6 +55,8 @@ export function DocumentUploadDialog({
 }: DocumentUploadDialogProps) {
   const { documents, error, upload, busyKey } = usePlanDocuments(planId);
   const requirements = usePlanRequirements(planId, data);
+  /** סוג התהליך — שמות השלבים ומספריהם כמו בסרגל השלבים */
+  const flow = data ? planFlowOf(data) : NEW_PLAN_FLOW;
   const [title, setTitle] = useState(defaultTitle);
   /** סוג המסמך מהקטלוג; ריק — כותרת חופשית */
   const [typeKey, setTypeKey] = useState<string>(defaultKey ?? '');
@@ -159,7 +162,7 @@ export function DocumentUploadDialog({
               <div>
                 <DialogTitle className="text-xl font-black text-slate-900">העלאת מסמך לתיק</DialogTitle>
                 <p className="mt-0.5 text-sm text-slate-500">
-                  {stage ? `שלב ${journeyStageFor(stage).shortTitle} · ` : ''}
+                  {stage ? `שלב ${planStageMeta(stage, flow).shortTitle} · ` : ''}
                   {requirements.length > 0
                     ? 'בחרו את סוג המסמך מתוך מה שנדרש בתהליך שלכם'
                     : 'הכותרת היא המפתח שבו המסמך יישמר'}
@@ -280,7 +283,7 @@ export function DocumentUploadDialog({
               </label>
               <label className="block text-xs font-bold text-slate-600">
                 שיוך לשלב
-                <StageSelect value={stageValue} onChange={setStageChoice} className={`mt-1 ${inputClass}`} />
+                <StageSelect flow={flow} value={stageValue} onChange={setStageChoice} className={`mt-1 ${inputClass}`} />
               </label>
             </div>
 

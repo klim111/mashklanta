@@ -13,6 +13,7 @@ import {
   TrendingUp,
   UserCheck,
 } from 'lucide-react';
+import { planFlowOf } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import { stageSnapshot } from '@/lib/plan-stage-snapshot';
 import {
@@ -22,7 +23,7 @@ import {
   advisedResult,
 } from '@/lib/advised-stage';
 import type { AdvantageRow } from '@/lib/advised-stage';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import { meetingStatusLabel } from '@/lib/advisor-crm';
 import type { ClientMeetingView } from './useClientMeetings';
 import { ClientMeetingAnswer, sendMeetingReply } from './ClientMeetingAnswer';
@@ -62,6 +63,8 @@ export function AdvisorStageSummary({
   onToggleDetails,
 }: AdvisorStageSummaryProps) {
   const journey = journeyStageFor(stage);
+  /** שם השלב כפי שהוא מופיע בכותרת השלב — במיחזור חלק מהשלבים נקראים אחרת */
+  const meta = planStageMeta(stage, planFlowOf(data));
   const snapshot = stageSnapshot(stage, data, status);
   const Icon = journey.icon;
 
@@ -107,7 +110,7 @@ export function AdvisorStageSummary({
             </span>
             <h3 className="mt-1 text-subtitle font-black text-slate-900">{snapshot.headline}</h3>
             <p className="text-xs text-slate-500">
-              {journey.title} · {journey.duration}
+              {meta.title} · {journey.duration}
             </p>
           </div>
 

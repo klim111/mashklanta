@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CalendarPlus, FolderOpen, LayoutDashboard, MessageCircle } from 'lucide-react';
+import { planFlowOf } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
 import { DocumentVaultDialog, useDocumentProgress } from './documents/DocumentVaultDialog';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
@@ -99,7 +100,14 @@ export function StageActionsMenu({
             stage={stage}
             onSigningChange={onSigningChange}
           />
-          <AddTaskDialog open={taskOpen} onOpenChange={setTaskOpen} planId={planId} stage={stage} onSubmit={addTask} />
+          <AddTaskDialog
+            open={taskOpen}
+            onOpenChange={setTaskOpen}
+            planId={planId}
+            stage={stage}
+            flow={planFlowOf(data)}
+            onSubmit={addTask}
+          />
         </>
       )}
     </>
