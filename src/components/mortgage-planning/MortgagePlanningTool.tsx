@@ -27,8 +27,10 @@ import {
 } from '@/lib/mortgage-planning-validation';
 import { cn } from '@/lib/utils';
 import {
+  AFFORDABILITY_DEFAULT_RATE,
   calculateMaxProperty,
   calculateHealthInsuranceMonthly,
+  calculatePropertyInsuranceMonthly,
   getAffordabilityInputs,
   getHealthInsuranceRatePer100k,
   defaultMortgagePlanningUserData,
@@ -41,9 +43,11 @@ import { INTEREST_RATES } from '@/lib/interest-rates';
 import {
   affordLabel,
   applyAffordChange,
+  applyWithinLimits,
   isFrozen,
   valueOf,
   type AffordEnv,
+  type AffordLimits,
   type AffordKey,
   type AffordLocks,
   type AffordState,
@@ -176,8 +180,8 @@ export function MortgagePlanningContent({
   const [personalInfoFieldErrors, setPersonalInfoFieldErrors] = useState<Record<string, boolean>>({});
   const [existingPropertyFieldErrors, setExistingPropertyFieldErrors] = useState<Record<string, boolean>>({});
   // Whether to deduct insurance costs from disposable income when computing max monthly payment.
-  // Default: include insurance (per product requirement). User can toggle this off in the results view.
-  const [includeInsurance, setIncludeInsurance] = useState(true);
+  // Default: without insurance (per product requirement). The user can include it in the results view.
+  const [includeInsurance, setIncludeInsurance] = useState(false);
   // User-overridden loan period (years, from a 48–360 month slider). When null, the
   // calculated results.maxLoanPeriod is used as the effective period.
   const [selectedLoanPeriod, setSelectedLoanPeriod] = useState<number | null>(null);
@@ -191,8 +195,8 @@ export function MortgagePlanningContent({
   const [affordLocks, setAffordLocks] = useState<AffordLocks>({});
   // הסבר כשהזזה נחסמה בגלל הנעילות
   const [lockNotice, setLockNotice] = useState<string | null>(null);
-  // הריבית חושבה מהנעילות (החזר ותקופה נעולים) ולא הוזנה ידנית
-  const [rateFromLocks, setRateFromLocks] = useState(false);
+  // הלקוח התחיל לשנות ערכים — רק מכאן מוצגות התראות חריגה
+  const [hasAdjusted, setHasAdjusted] = useState(false);
   // User-overridden annual interest rate (as a percentage, e.g. 4.85). When null, the default
   // קל"צ rate from the central rates file is used. Allows users to plug in a personal bank quote
   // and see all results recalculate accordingly.
@@ -1485,7 +1489,7 @@ export function MortgagePlanningContent({
         loanPeriodOverride: selectedLoanPeriod ?? undefined,
       });
       const aggregated = getAffordabilityInputs(userData);
-      const defaultRate = INTEREST_RATES.fixed_unlinked;
+      const defaultRate = AFFORDABILITY_DEFAULT_RATE;
       const isRateOverridden = userInterestRateOverride !== null;
 
       // Open the rate-editor popover, pre-filling the input with the currently-effective rate.
@@ -1507,12 +1511,12 @@ export function MortgagePlanningContent({
           setRateEditorError('ערך גבוה מדי - יש להזין ריבית שנתית באחוזים (לדוגמה: 4.85)');
           return;
         }
-        if (changeParam('rate', Math.round(value * 100) / 100)) setIsRateEditorOpen(false);
+        if (changeRate(Math.round(value * 100) / 100)) setIsRateEditorOpen(false);
       };
 
       // Clear the override and fall back to the central default rate.
       const resetRateEditor = () => {
-        if (changeParam('rate', defaultRate)) setIsRateEditorOpen(false);
+        if (changeRate(defaultRate)) setIsRateEditorOpen(false);
       };
       const isCouple = userData.applicationType === 'couple';
 
@@ -1593,18 +1597,16 @@ export function MortgagePlanningContent({
         )
       );
 
-      // Bank-of-Israel limit violations (used to color values red and explain the breach).
-      const exceedsMaxPayment = displayTotalMonthly > maxTotalMonthly;
-      const exceedsMaxLoan = effectiveLoanAmount > maxLoanByPayment + 0.5;
-      const exceedsMaxLTV = effectiveLTV > maxLTVPct + 0.05;
-      const anyLimitBreached = exceedsMaxPayment || exceedsMaxLoan || exceedsMaxLTV || exceedsMaxTerm;
-
       // ── נעילות ערך: כל מכוון עובר דרך אותו פותר, כך שהנעולים נשארים במקומם
+      const bankMaxMonths = Math.min(
+        PLAN_TERM_MONTHS_MAX,
+        Math.max(PLAN_TERM_MONTHS_MIN, yearsToMonths(results.maxLoanPeriod))
+      );
       const affordEnv: AffordEnv = {
         propertyInsurance: propertyInsuranceMonthly,
         healthPer100k: healthInsuranceRatePer100k,
         minMonths: PLAN_TERM_MONTHS_MIN,
-        maxMonths: PLAN_TERM_MONTHS_MAX,
+        maxMonths: bankMaxMonths,
       };
       const affordState: AffordState = {
         loan: effectiveLoanAmount,
@@ -1612,19 +1614,33 @@ export function MortgagePlanningContent({
         months: termMonths,
         rate: results.interestRate,
       };
+      // מגבלות בנק ישראל ומה שאפשרי בפועל — מכוון שמגיע אליהן נעצר
+      const affordLimits: AffordLimits = {
+        maxLtv: maxLTVPct,
+        maxPayment: maxTotalMonthly,
+        maxMonths: bankMaxMonths,
+        maxEquity: aggregated.ownCapital,
+        dealLabel: userData.propertyType || undefined,
+      };
 
-      /** מחזיר false כשהנעילות לא מאפשרות את השינוי (וההסבר מוצג מעל הכרטיסים) */
-      const changeParam = (key: AffordKey, value: number): boolean => {
-        const result = applyAffordChange(affordState, affordEnv, affordLocks, key, value);
-        if (!result.ok) {
-          setLockNotice(result.reason);
-          return false;
-        }
-        setLockNotice(null);
-        const next = result.state;
-        const loan = Math.max(0, Math.round(next.loan));
-        const price = Math.round(next.loan + next.equity);
-        const equity = Math.max(0, price - loan);
+      // Bank-of-Israel limit violations. כברירת מחדל הכלי מציג את המקסימום, ולכן
+      // ההתראות מופיעות רק אחרי שהלקוח התחיל לשנות ערכים.
+      const exceedsMaxPayment = hasAdjusted && displayTotalMonthly > maxTotalMonthly + 1;
+      const exceedsMaxLoan = hasAdjusted && effectiveLoanAmount > maxLoanByPayment + 1;
+      const exceedsMaxLTV = hasAdjusted && effectiveLTV > maxLTVPct + 0.05;
+      const exceedsMaxTermShown = hasAdjusted && exceedsMaxTerm;
+      const anyLimitBreached = exceedsMaxPayment || exceedsMaxLoan || exceedsMaxLTV || exceedsMaxTermShown;
+      const paymentRatio =
+        aggregated.disposableIncome > 0 ? (displayTotalMonthly / aggregated.disposableIncome) * 100 : 0;
+
+      const commitState = (next: AffordState) => {
+        // החזר נעול: מעגלים את הסכום כלפי מטה, כדי שההחזר לא יעבור את הנעול באגורה
+        const loan = Math.max(0, affordLocks.payment !== undefined ? Math.floor(next.loan) : Math.round(next.loan));
+        // מחיר נעול נשאר בדיוק; אחרת ההון העצמי הוא שנשמר, בלי לצבור שאריות עיגול
+        const equity =
+          affordLocks.price !== undefined
+            ? Math.max(0, Math.round(next.loan + next.equity) - loan)
+            : Math.max(0, Math.round(next.equity));
         // בלי שינוי בסכום — משאירים את הסכום "אוטומטי", כך שבלי נעילות התקופה
         // והריבית ממשיכות להזיז את המקסימום כמו קודם
         if (loan !== Math.round(effectiveLoanAmount) || selectedLoanAmount !== null) {
@@ -1634,12 +1650,34 @@ export function MortgagePlanningContent({
           setSelectedEquity(equity === aggregated.ownCapital ? null : equity);
         }
         if (next.months !== termMonths) setSelectedLoanPeriod(monthsToYears(next.months));
-        if (Math.abs(next.rate - results.interestRate) > 1e-9) {
-          setUserInterestRateOverride(Math.abs(next.rate - defaultRate) < 1e-9 ? null : next.rate);
-          setRateFromLocks(key !== 'rate');
-        } else if (key === 'rate') {
-          setRateFromLocks(false);
+        setHasAdjusted(true);
+      };
+
+      /** שינוי ממכוון: נשאר בתוך המגבלות, ומחזיר false כשהנעילות לא מאפשרות אותו */
+      const changeParam = (key: AffordKey, value: number): boolean => {
+        const result = applyWithinLimits(affordState, affordEnv, affordLocks, affordLimits, key, value);
+        if (!result.ok) {
+          setLockNotice(result.reason);
+          return false;
         }
+        setLockNotice(result.stopped);
+        commitState(result.state);
+        return true;
+      };
+
+      /**
+       * שינוי ריבית — רק כשהלקוח מזין ריבית. היא עובדה מהבנק ולא ערך שבוחרים,
+       * ולכן אינה נחסמת; אם בעקבותיה ההחזר חורג, מוצגת התראה.
+       */
+      const changeRate = (rate: number): boolean => {
+        const result = applyAffordChange(affordState, affordEnv, affordLocks, 'rate', rate);
+        if (!result.ok) {
+          setLockNotice(result.reason);
+          return false;
+        }
+        setLockNotice(null);
+        commitState(result.state);
+        setUserInterestRateOverride(Math.abs(rate - defaultRate) < 1e-9 ? null : rate);
         return true;
       };
 
@@ -1656,55 +1694,44 @@ export function MortgagePlanningContent({
       };
       const lockedCount = Object.keys(affordLocks).length;
 
-      const handleLTVSliderChange = (newPct: number) => {
-        changeParam('ltv', newPct);
-      };
-      const handleLoanAmountSliderChange = (newLoan: number) => {
-        changeParam('loan', newLoan);
-      };
-      const handlePriceSliderChange = (newPrice: number) => {
-        changeParam('price', newPrice);
-      };
-      // The payment slider operates on the TOTAL monthly payment (bank installment + health/life
-      // insurance + property insurance) — i.e. the same figure that the Bank-of-Israel 40% rule
-      // applies to.
-      const handleMonthlyPaymentSliderChange = (newTotal: number) => {
-        changeParam('payment', newTotal);
+      /**
+       * הוספת הביטוחים או הורדתם. כשההחזר נעול, הוא נשאר אותו החזר כולל —
+       * המשכנתא (או התקופה) מתאימה את עצמה לביטוחים במקום שההחזר יקפוץ.
+       */
+      const toggleInsurance = () => {
+        const nextInclude = !includeInsurance;
+        setIncludeInsurance(nextInclude);
+        const lockedPayment = affordLocks.payment;
+        if (lockedPayment === undefined) return;
+        const nextEnv: AffordEnv = {
+          ...affordEnv,
+          propertyInsurance: nextInclude ? Math.round(calculatePropertyInsuranceMonthly()) : 0,
+          healthPer100k: nextInclude ? getHealthInsuranceRatePer100k(aggregated.age) : 0,
+        };
+        const { payment: _locked, ...others } = affordLocks;
+        void _locked;
+        const result = applyWithinLimits(affordState, nextEnv, others, affordLimits, 'payment', lockedPayment);
+        if (result.ok) {
+          commitState(result.state);
+          setLockNotice(result.stopped);
+        } else {
+          setLockNotice(result.reason);
+        }
       };
 
-      // Slider upper bounds (per the user's requirements).
-      const ltvSliderMax = maxLTVPct;
-      // נעילה יכולה להביא ערך מעבר למקסימום המחושב (למשל החזר נעול ותקופה שהתארכה),
-      // ולכן הטווח תמיד כולל גם את הערך הנוכחי
-      const loanSliderMax = Math.max(0, results.maxLoanAmount, Math.round(effectiveLoanAmount));
-      const priceSliderMax = Math.max(0, results.maxPropertyPrice, Math.round(effectivePropertyPrice));
-      // The payment slider's natural max is the maximum TOTAL monthly payment that can actually
-      // be reached given ALL Bank-of-Israel constraints (the 40% income rule AND the LTV cap).
-      // It is computed as the total payment when the loan equals results.maxLoanAmount — i.e. the
-      // upper-bound loan we already enforce on the loan-amount slider. This guarantees the user
-      // cannot drag the payment slider to a value that would push the property price above its
-      // calculated maximum.
-      const maxBankPaymentAtMaxLoan = Math.floor(
-        calcMonthlyPmt(
-          results.maxLoanAmount,
-          results.interestRate / 100,
-          effectiveLoanPeriod
-        )
-      );
-      const paymentSliderMax = Math.max(
-        0,
-        maxBankPaymentAtMaxLoan + results.totalInsuranceMonthly,
-        displayTotalMonthly
-      );
+      // המקסימום הכללי — בתקופה המקסימלית שהבנק יאשר ובכל ההון העצמי — הוא קצה
+      // המכוונים, כך שגם כשהתקופה קוצרה אפשר להגדיל סכום כשההחזר נעול
+      const overallMax = calculateMaxProperty(userData, {
+        includeInsurance,
+        interestRateOverride: results.interestRate,
+      });
+      const loanSliderMax = Math.max(0, overallMax.maxLoanAmount, Math.round(effectiveLoanAmount));
+      const priceSliderMax = Math.max(0, overallMax.maxPropertyPrice, Math.round(effectivePropertyPrice));
+      const paymentSliderMax = Math.max(0, maxTotalMonthly, displayTotalMonthly);
       // Step sizes that feel natural for each domain.
       const loanSliderStep = Math.max(1000, Math.round(loanSliderMax / 500 / 1000) * 1000);
       const priceSliderStep = Math.max(1000, Math.round(priceSliderMax / 500 / 1000) * 1000);
       const paymentSliderStep = Math.max(50, Math.round(paymentSliderMax / 500 / 50) * 50);
-
-      // Slider values clamped into their visual range. When a derived value exceeds the slider's
-      // upper bound (only the LTV slider can drive this), the thumb sits at the maximum and a red
-      // overflow value is displayed beside it.
-      const ltvSliderValue = Math.min(ltvSliderMax, Math.max(0, effectiveLTV));
       const loanSliderValue = Math.min(loanSliderMax, effectiveLoanAmount);
       const priceSliderValue = Math.min(priceSliderMax, effectivePropertyPrice);
       const paymentSliderValue = Math.min(paymentSliderMax, displayTotalMonthly);
@@ -1755,12 +1782,11 @@ export function MortgagePlanningContent({
           <div className="text-center mb-3 text-xs text-slate-600 flex items-center justify-center gap-1.5 flex-wrap">
             <span>
               הסימולציה מחושבת לפי ריבית קבוע לא צמודה (קל&quot;ץ){' '}
-              {isRateOverridden ? (rateFromLocks ? 'שמתאימה לערכים הנעולים' : 'שהזנת') : 'משוערת'} של{' '}
+              {isRateOverridden ? 'שהזנת' : 'משוערת'} של{' '}
               <span ref={rateEditorRef} className="relative inline-block align-middle">
                 <button
                   type="button"
                   onClick={() => (isRateEditorOpen ? setIsRateEditorOpen(false) : openRateEditor())}
-                  disabled={affordLocks.rate !== undefined}
                   className={cn(
                     'font-semibold inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-dashed transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70',
                     isRateOverridden
@@ -1869,12 +1895,6 @@ export function MortgagePlanningContent({
                   )}
                 </AnimatePresence>
               </span>{' '}
-              <LockToggle
-                locked={affordLocks.rate !== undefined}
-                label="הריבית"
-                onToggle={() => toggleLock('rate')}
-                className="align-middle"
-              />{' '}
               ל-<span className="font-semibold">{termLabel}</span>
             </span>
             <span className="relative group inline-block align-middle cursor-pointer">
@@ -1985,10 +2005,11 @@ export function MortgagePlanningContent({
                     <Slider
                       dir="ltr"
                       aria-label="מחיר הנכס"
+                      {...demoId('mp-price-slider')}
                       value={[priceSliderValue]}
                       onValueChange={([v]) => {
                         registerSliderMove('price');
-                        handlePriceSliderChange(v);
+                        changeParam('price', v);
                       }}
                       min={0}
                       max={priceSliderMax}
@@ -2016,53 +2037,6 @@ export function MortgagePlanningContent({
                     )}
                   </p>
 
-                  <p className="text-slate-600 text-xs mb-2">
-                    אחוז מימון מקסימלי מותר ל
-                    {userData.propertyType ? userData.propertyType : 'נכס'}:{' '}
-                    <span className="font-semibold text-slate-800">{maxLTVPct}%</span>
-                  </p>
-
-                  <div className="mb-1">
-                    <div className="flex justify-between items-baseline mb-2.5">
-                      <span className="text-xs text-slate-700 inline-flex items-center gap-1.5">
-                        <LockToggle
-                          locked={affordLocks.ltv !== undefined}
-                          label="אחוז המימון"
-                          onToggle={() => toggleLock('ltv')}
-                        />
-                        אחוז מימון נבחר:{' '}
-                        <span className="font-semibold text-blue-700">
-                          {effectiveLTV.toFixed(1)}%
-                        </span>
-                      </span>
-                      <span className="text-xs text-slate-500">עד {maxLTVPct}%</span>
-                    </div>
-                    <div dir="ltr">
-                      <Slider
-                        dir="ltr"
-                        {...demoId('mp-ltv-slider')}
-                        value={[ltvSliderValue]}
-                        onValueChange={([v]) => {
-                          registerSliderMove('ltv');
-                          handleLTVSliderChange(v);
-                        }}
-                        min={0}
-                        max={ltvSliderMax}
-                        step={0.5}
-                        disabled={
-                          isFrozen('ltv', affordLocks) ||
-                          (aggregated.ownCapital <= 0 && affordLocks.price === undefined && affordLocks.loan === undefined)
-                        }
-                      />
-                      <div
-                        className="flex justify-between text-xs text-slate-500 mt-1"
-                        dir="ltr"
-                      >
-                        <span>0%</span>
-                        <span>{maxLTVPct}%</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </Card>
             </motion.div>
@@ -2120,6 +2094,18 @@ export function MortgagePlanningContent({
                     );
                   })()}
 
+                  {/* אחוז המימון נגזר מהיחס בין המשכנתא למחיר הנכס, בלי מכוון משלו */}
+                  <p className="text-xs text-slate-700 mb-2" {...demoId('mp-ltv-value')}>
+                    אחוז מימון:{' '}
+                    <span className={`font-semibold ${exceedsMaxLTV ? 'text-red-600' : 'text-blue-700'}`}>
+                      {effectiveLTV.toFixed(1)}%
+                    </span>
+                    <span className="text-slate-500">
+                      {' '}
+                      (מותר עד {maxLTVPct}% ל{userData.propertyType || 'נכס'})
+                    </span>
+                  </p>
+
                   <div className="mb-1">
                     <div className="flex justify-between items-baseline mb-2.5">
                       <span className="text-xs text-slate-700">סכום משכנתא נבחר</span>
@@ -2134,7 +2120,7 @@ export function MortgagePlanningContent({
                         value={[loanSliderValue]}
                         onValueChange={([v]) => {
                           registerSliderMove('loan-amount');
-                          handleLoanAmountSliderChange(v);
+                          changeParam('loan', v);
                         }}
                         min={0}
                         max={loanSliderMax}
@@ -2267,7 +2253,7 @@ export function MortgagePlanningContent({
                         value={[paymentSliderValue]}
                         onValueChange={([v]) => {
                           registerSliderMove('monthly-payment');
-                          handleMonthlyPaymentSliderChange(v);
+                          changeParam('payment', v);
                         }}
                         min={0}
                         max={paymentSliderMax}
@@ -2289,7 +2275,7 @@ export function MortgagePlanningContent({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIncludeInsurance((prev) => !prev)}
+                        onClick={toggleInsurance}
                         className={`whitespace-nowrap text-xs h-6 px-2 ${
                           results.includesInsurance
                             ? 'border-indigo-300 text-indigo-700 hover:bg-indigo-100'
@@ -2368,7 +2354,7 @@ export function MortgagePlanningContent({
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
                   <div className="md:flex-shrink-0 flex items-baseline gap-2">
                     <h3 className="text-subtitle font-bold text-slate-900 whitespace-nowrap">תקופת משכנתא:</h3>
-                    <p className={`text-xl font-bold ${exceedsMaxTerm ? 'text-red-600' : 'text-orange-600'}`}>
+                    <p className={`text-xl font-bold ${exceedsMaxTermShown ? 'text-red-600' : 'text-orange-600'}`}>
                       {termLabel}
                     </p>
                     <LockToggle
@@ -2389,13 +2375,13 @@ export function MortgagePlanningContent({
                           changeParam('term', v);
                         }}
                         min={PLAN_TERM_MONTHS_MIN}
-                        max={PLAN_TERM_MONTHS_MAX}
+                        max={bankMaxMonths}
                         step={1}
                         disabled={isFrozen('term', affordLocks)}
                       />
                       <div className="flex justify-between text-xs text-slate-500 mt-0.5" dir="ltr">
                         <span>{PLAN_TERM_MONTHS_MIN}</span>
-                        <span>{PLAN_TERM_MONTHS_MAX}</span>
+                        <span>{bankMaxMonths}</span>
                       </div>
                     </div>
                     <p className="text-slate-600 text-xs mt-1">
@@ -2474,7 +2460,7 @@ export function MortgagePlanningContent({
                           <span className="font-semibold">יחס החזר מההכנסה הפנויה:</span>{' '}
                           {aggregated.disposableIncome > 0 ? (
                             <span className={exceedsMaxPayment ? 'text-red-600 font-semibold' : ''}>
-                              {Math.round((displayTotalMonthly / aggregated.disposableIncome) * 1000) / 10}%
+                              {Math.round(paymentRatio * 10) / 10}%
                             </span>
                           ) : (
                             '—'
@@ -2560,7 +2546,7 @@ export function MortgagePlanningContent({
                             {maxLoanByPayment.toLocaleString()}).
                           </li>
                         )}
-                        {exceedsMaxTerm && (
+                        {exceedsMaxTermShown && (
                           <li>
                             התקופה ({termLabel}) ארוכה מהמקסימום שהבנק יאשר לפי הגיל (
                             {formatDuration(yearsToMonths(results.maxLoanPeriod))}).
@@ -2611,6 +2597,7 @@ export function MortgagePlanningContent({
                   setAffordLocks({});
                   setSelectedEquity(null);
                   setLockNotice(null);
+                  setHasAdjusted(false);
                   setCurrentStep(isCouple ? 'personal-info-couple' : 'personal-info');
                 }}
                 className="px-4 py-2 h-9"

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAffordChange,
+  applyWithinLimits,
+  limitBreaches,
+  type AffordLimits,
   deriveAfford,
   isFrozen,
   type AffordEnv,
@@ -89,12 +92,10 @@ describe('payment locked', () => {
     expect(deriveAfford(next, env).payment).toBeCloseTo(locks.payment!, 4);
   });
 
-  it('payment and term locked: a loan change solves the rate', () => {
+  it('payment and term locked: the rate never moves, so a loan change is refused', () => {
     const both = { ...locks, term: 300 };
-    const next = ok(applyAffordChange(base, env, both, 'loan', 1_100_000));
-    expect(next.months).toBe(300);
-    expect(next.rate).toBeGreaterThan(4.8);
-    expect(deriveAfford(next, env).payment).toBeCloseTo(locks.payment!, 4);
+    const result = applyAffordChange(base, env, both, 'loan', 1_100_000);
+    expect(result.ok).toBe(false);
   });
 
   it('a loan too big for the payment within 30 years is refused', () => {
@@ -159,5 +160,45 @@ describe('loan locked', () => {
     expect(isFrozen('ltv', { loan: 1, price: 2 })).toBe(true);
     expect(isFrozen('loan', { ltv: 50, price: 2 })).toBe(true);
     expect(isFrozen('price', { ltv: 50, loan: 1 })).toBe(true);
+  });
+});
+
+describe('regulatory limits', () => {
+  const limits: AffordLimits = { maxLtv: 75, maxPayment: 10_000, maxMonths: 360, maxEquity: 500_000 };
+
+  it('the loan stops at 75% LTV with the equity fixed', () => {
+    const result = applyWithinLimits(base, env, {}, limits, 'loan', 2_000_000);
+    if (!result.ok) throw new Error(result.reason);
+    expect(deriveAfford(result.state, env).ltv).toBeLessThanOrEqual(75.05);
+    expect(result.state.loan).toBeGreaterThan(1_499_000);
+    expect(result.stopped).toContain('75%');
+  });
+
+  it('the payment stops at 40% of disposable income', () => {
+    const result = applyWithinLimits(base, env, { loan: base.loan }, limits, 'term', 120);
+    if (!result.ok) throw new Error(result.reason);
+    expect(deriveAfford(result.state, env).payment).toBeLessThanOrEqual(10_001);
+    expect(result.state.months).toBeGreaterThan(120);
+    expect(result.stopped).toContain('40%');
+  });
+
+  it('with the price locked, a smaller loan cannot need more equity than the client has', () => {
+    const result = applyWithinLimits(base, env, { price: 1_700_000 }, limits, 'loan', 1_000_000);
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.equity).toBeLessThanOrEqual(500_001);
+    expect(deriveAfford(result.state, env).price).toBeCloseTo(1_700_000, 4);
+  });
+
+  it('locked values never move inside the limits either', () => {
+    const payment = deriveAfford(base, env).payment;
+    const result = applyWithinLimits(base, env, { payment }, limits, 'loan', 1_000_000);
+    if (!result.ok) throw new Error(result.reason);
+    expect(deriveAfford(result.state, env).payment).toBeLessThanOrEqual(payment + 0.01);
+    expect(limitBreaches(result.state, env, limits)).toEqual([]);
+  });
+
+  it('changes inside the limits pass through unchanged', () => {
+    const result = applyWithinLimits(base, env, {}, limits, 'loan', 1_000_000);
+    expect(result.ok && result.stopped).toBe(null);
   });
 });
