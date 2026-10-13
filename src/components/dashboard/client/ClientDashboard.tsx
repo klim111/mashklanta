@@ -40,6 +40,7 @@ import { ContactsSection } from './ContactsSection';
 import { ExpensesSection } from './ExpensesSection';
 import { CashFlowTool } from '@/components/cash-flow/CashFlowTool';
 import { OverviewSection } from './OverviewSection';
+import { ContinueToolsDialog } from './ContinueToolsDialog';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
 import { ConversationDockSlot, useClientConversation } from '@/components/conversation/ClientChatDock';
@@ -272,6 +273,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
+      {/* כניסה ראשונה אחרי הרשמה מתוך כלי חינמי — הצעה להמשיך מאיפה שעצרו */}
+      <ContinueToolsDialog />
       {/* תפריט הצד — במסך רחב */}
       <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:bg-brand-dark lg:px-4 lg:py-5">
         <Link href="/" className="flex items-center gap-2.5 px-2">
