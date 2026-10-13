@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { PlanFlow } from '@/lib/mortgage-plan';
 import type {
   AdvisorMeetingView,
   AdvisorNoteView,
@@ -516,6 +517,8 @@ export interface ClientProcessPayload {
   progress: number;
   plans: ClientPlanSummaryView[];
   stages: ClientStageBoardView[];
+  /** סוג התהליך — השלבים, השמות והמספרים כמו אצל הלקוח */
+  flow: PlanFlow;
   /** הליווי בתהליך — null כשהלקוח במסלול העצמאי */
   advisory: { active: boolean; endedAt: string | null } | null;
 }

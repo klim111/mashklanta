@@ -9,7 +9,7 @@
  * כלשהו. הוא מופיע בתיק, אבל אינו חלק מהמניין.
  */
 
-import { PLAN_STAGES, planFlowOf, preApprovalDocumentGroups } from './mortgage-plan';
+import { PLAN_STAGES, flowStages, planFlowOf, preApprovalDocumentGroups } from './mortgage-plan';
 import type { PlanData, PlanStageId } from './mortgage-plan';
 import type { PlanDocumentView } from './plan-documents';
 import type { ClientTaskView } from './client-tasks';
@@ -135,7 +135,16 @@ export function documentProgress(
       row.done += 1;
     });
 
-  const stages = PLAN_STAGES.map((stage) => {
+  // השלבים של התהליך עצמו, בסדר שלו — במיחזור הסדר שונה, ובמיחזור פנימי יש רק שלושה
+  const flow = planFlowOf(data);
+  const flowOrder = flowStages(flow);
+  // במיחזור פנימי תת-השלבים של החתימה נמצאים בשלב האחרון (אימות ההצעה), ולכן גם המסמכים שלהם
+  if (!flowOrder.includes('SIGNING')) {
+    const last = flowOrder[flowOrder.length - 1];
+    counts[last].done += counts.SIGNING.done;
+    counts[last].total += counts.SIGNING.total;
+  }
+  const stages = flowOrder.map((stage) => {
     const { done, total } = counts[stage];
     return { stage, done, total, percent: percentOf(done, total), relevant: total > 0 };
   });

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Building2, Gavel, Pencil, RefreshCw } from 'lucide-react';
-import type { MixData, PlanData } from '@/lib/mortgage-plan';
+import type { MixData, PlanData, RefinanceMixData } from '@/lib/mortgage-plan';
 import { REFINANCE_GOAL_LABELS, mixWithRemainingTerms } from '@/lib/refinance';
 import type { MarketRates } from '@/lib/refinance';
 import type { MortgageMix } from '@/components/mortgage-advisor/types';
@@ -22,6 +22,7 @@ import {
 import {
   draftStateOf,
   mortgageMixOf,
+  newRefinanceMixId,
   refinanceMixDataFrom,
   refinanceWorkspaceMix,
 } from '@/components/mortgage-refinance/refinancePlan';
@@ -29,6 +30,31 @@ import type { RefinanceSaveOutcome, RefinanceSavePayload } from '@/components/mo
 import { PanelBadge, StagePanel } from '../auction/ui';
 
 const MODE_LABELS = { INTERNAL: 'מיחזור פנימי', EXTERNAL: 'מיחזור חיצוני' } as const;
+
+/**
+ * שדות שלב התמהיל לתמהיל למיחזור שנשמר — הסיכומים שהכרטיסים והשלבים הבאים
+ * קוראים בלי לחשב לוח סילוקין מחדש.
+ */
+export function refinanceMixFields(
+  mix: MixData,
+  next: RefinanceMixData,
+  recordId: string | null | undefined
+): MixData {
+  return {
+    ...mix,
+    mixRecordId: recordId ?? mix.mixRecordId,
+    mixKey: next.refinancedMix.id,
+    mixName: next.refinancedMix.name,
+    totalAmount: next.refinancedMix.totalAmount,
+    monthlyPayment: next.refinanced.monthlyPayment,
+    averageRate: next.refinanced.averageRate,
+    totalInterest: next.refinanced.totalInterest,
+    totalPaid: next.refinanced.totalPaid,
+    months: next.refinanced.months,
+    isFinal: true,
+    refinance: next,
+  };
+}
 
 /**
  * שלב התמהיל בתהליך מיחזור.
@@ -43,14 +69,33 @@ export function RefinanceMixStage({
   planId,
   onChange,
   market = null,
+  advisorClientId,
 }: {
   data: PlanData;
   planId: string;
   onChange: (next: MixData) => void;
   market?: MarketRates | null;
+  /**
+   * תיק הלקוח, כשהמסך נפתח אצל היועץ. אז אותו כלי בדיוק, אבל מה שהיועץ שומר
+   * נשמר כטיוטה (`advisorRefinanceDraft`) ואינו מגיע ללקוח עד שהיועץ משדר אותו.
+   */
+  advisorClientId?: string;
 }) {
-  const refinance = data.MIX.refinance;
-  const { saved, save } = useSavedMixes({ planId });
+  const advisor = Boolean(advisorClientId);
+  /** אצל היועץ העריכה ממשיכה מהטיוטה שלו, אם יש כזו */
+  const refinance = (advisor ? data.MIX.advisorRefinanceDraft : null) ?? data.MIX.refinance;
+  const { saved, save } = useSavedMixes({ planId, clientId: advisorClientId });
+  /**
+   * שמירת התמהיל למיחזור: אצל הלקוח — ישר לתהליך; אצל היועץ — כטיוטה שלו,
+   * בלי לגעת במה שהלקוח רואה.
+   */
+  const commit = (next: RefinanceMixData, recordId: string | null | undefined) => {
+    if (advisor) {
+      onChange({ ...data.MIX, advisorRefinanceDraft: next });
+      return;
+    }
+    onChange({ ...refinanceMixFields(data.MIX, next, recordId), refinancePending: false });
+  };
   const [editing, setEditing] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   /** המשכנתא הנוכחית כפי שהיא נערכת בכלי — נפתחת ממה שנשמר */
@@ -70,10 +115,11 @@ export function RefinanceMixStage({
    */
   const toolData = useToolData('refinance', reviveMix);
   useEffect(() => {
-    if (!toolData.ready || !toolData.initial) return;
+    // אצל היועץ הנתונים השמורים בכלי הם שלו, לא של הלקוח
+    if (advisor || !toolData.ready || !toolData.initial) return;
     const known = toolData.initial;
     setFirstMix((current) => (current.tracks.length > 0 ? current : known));
-  }, [toolData.ready, toolData.initial]);
+  }, [advisor, toolData.ready, toolData.initial]);
 
   const calcs = useMemo(() => {
     if (!refinance) return null;
@@ -89,21 +135,7 @@ export function RefinanceMixStage({
       const next = refinanceMixDataFrom(payload, null);
       const mix = refinanceWorkspaceMix(next);
       const stored = await save(mix, { planId });
-      onChange({
-        ...data.MIX,
-        mixRecordId: stored.recordId ?? data.MIX.mixRecordId,
-        mixKey: next.refinancedMix.id,
-        mixName: next.refinancedMix.name,
-        totalAmount: next.refinancedMix.totalAmount,
-        monthlyPayment: next.refinanced.monthlyPayment,
-        averageRate: next.refinanced.averageRate,
-        totalInterest: next.refinanced.totalInterest,
-        totalPaid: next.refinanced.totalPaid,
-        months: next.refinanced.months,
-        isFinal: true,
-        refinance: next,
-        refinancePending: false,
-      });
+      commit(next, stored.recordId);
       return { planId, href: null, mix };
     };
 
@@ -135,23 +167,18 @@ export function RefinanceMixStage({
     saved.find((item) => item.mix.id === refinance.refinancedMix.id)?.mix ?? refinanceWorkspaceMix(refinance);
 
   const persist = async (payload: RefinanceSavePayload): Promise<RefinanceSaveOutcome> => {
-    const next = refinanceMixDataFrom(payload, refinance);
+    /*
+      הטיוטה הראשונה של היועץ מקבלת מזהה תמהיל משלה: התמהיל נשמר אצלו, ואם
+      יחזור באותו מזהה של התמהיל שהלקוח כבר שמר, יופיעו אצל הלקוח שניים זהים.
+    */
+    const base =
+      advisor && !data.MIX.advisorRefinanceDraft
+        ? { ...refinance, refinancedMix: { ...refinance.refinancedMix, id: newRefinanceMixId() } }
+        : refinance;
+    const next = refinanceMixDataFrom(payload, base);
     const mix = refinanceWorkspaceMix(next);
     const stored = await save(mix, { planId });
-    onChange({
-      ...data.MIX,
-      mixRecordId: stored.recordId ?? data.MIX.mixRecordId,
-      mixKey: next.refinancedMix.id,
-      mixName: next.refinancedMix.name,
-      totalAmount: next.refinancedMix.totalAmount,
-      monthlyPayment: next.refinanced.monthlyPayment,
-      averageRate: next.refinanced.averageRate,
-      totalInterest: next.refinanced.totalInterest,
-      totalPaid: next.refinanced.totalPaid,
-      months: next.refinanced.months,
-      isFinal: true,
-      refinance: next,
-    });
+    commit(next, stored.recordId);
     return { planId, href: null, mix };
   };
 
@@ -169,7 +196,9 @@ export function RefinanceMixStage({
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm font-bold text-slate-700">
-            עורכים את התמהיל למיחזור. שינויים נשמרים לתהליך רק בלחיצה על "שמור את התמהיל למיחזור".
+            {advisor
+              ? 'עורכים את התמהיל למיחזור. השמירה נשארת אצלכם כטיוטה, והלקוח יראה אותה רק אחרי שתשדרו אותה.'
+              : 'עורכים את התמהיל למיחזור. שינויים נשמרים לתהליך רק בלחיצה על "שמור את התמהיל למיחזור".'}
           </p>
           <button
             type="button"
@@ -206,8 +235,12 @@ export function RefinanceMixStage({
             {refinance.mode ? MODE_LABELS[refinance.mode] : 'תמהיל למיחזור'}
           </PanelBadge>
         }
-        title="התמהיל שאושר למיחזור"
-        description={`${REFINANCE_GOAL_LABELS[refinance.goal]} · המשכנתא הנוכחית ב${refinance.bank} מול התמהיל שבניתם. אפשר לפתוח את התמהיל לעריכה בכלי המיחזור ולשמור אותו שוב.`}
+        title={advisor && data.MIX.advisorRefinanceDraft ? 'הטיוטה שלכם למיחזור' : 'התמהיל שאושר למיחזור'}
+        description={
+          advisor && data.MIX.advisorRefinanceDraft
+            ? `${REFINANCE_GOAL_LABELS[refinance.goal]} · המשכנתא הנוכחית ב${refinance.bank} מול הטיוטה ששמרתם. הלקוח עדיין רואה את התמהיל הקודם, עד שתשדרו את הטיוטה.`
+            : `${REFINANCE_GOAL_LABELS[refinance.goal]} · המשכנתא הנוכחית ב${refinance.bank} מול התמהיל שבניתם. אפשר לפתוח את התמהיל לעריכה בכלי המיחזור ולשמור אותו שוב.`
+        }
       >
         <div className="space-y-2.5" dir="rtl">
           <StateBlocksRow

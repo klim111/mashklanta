@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { TOOL_DATA_KEYS, TOOL_HAS_CONTENT } from '@/lib/tool-data';
-import type { AccountToolData, ToolDataKey } from '@/lib/tool-data';
-import { clearGuestRefinance, guestRefinanceMix } from '@/components/refinance-check/refinanceCheckStore';
-import { adoptEquityDraft } from '@/components/equity-planning/useEquityPlan';
+import { TOOL_DATA_KEYS, TOOL_HAS_CONTENT, parseResume } from '@/lib/tool-data';
+import type { AccountToolData, ResumeInfo, ResumeTool, StoredKey, ToolDataKey } from '@/lib/tool-data';
+import {
+  clearGuestRefinance,
+  guestRefinanceMix,
+  loadDraft,
+  loadGuestMix,
+} from '@/components/refinance-check/refinanceCheckStore';
+import { adoptEquityDraft, readEquityDraft } from '@/components/equity-planning/useEquityPlan';
 import { expireGuestData } from '@/components/guest/guestData';
 
 /**
@@ -43,6 +48,40 @@ export function readGuestToolData(key: ToolDataKey): unknown {
   return TOOL_HAS_CONTENT[key](value) ? value : null;
 }
 
+/** השלב שבו האורח עצר בכל כלי, לפי מה שהכלי שמר בדפדפן */
+function guestSteps(): ResumeInfo['steps'] {
+  const steps: ResumeInfo['steps'] = {};
+  const planning = readLocalJson('mortgagePlanningData') as { currentStep?: unknown } | null;
+  if (typeof planning?.currentStep === 'string') steps.affordability = planning.currentStep;
+  // מסך ההצצה בכלי המלא בא אחרי הבדיקה המהירה
+  const refinanceStep = loadGuestMix() ? 'preview' : loadDraft()?.step;
+  if (refinanceStep) steps.refinance = refinanceStep;
+  const equity = readEquityDraft();
+  if (equity) steps.equity = String(equity.currentStep);
+  return steps;
+}
+
+/**
+ * כל מה שהאורח הזין בכלים החינמיים, והשלב שבו עצר בכל אחד — נשלח עם בקשת
+ * ההרשמה ונשמר בחשבון כשהמייל מאושר, גם אם האישור נעשה בדפדפן אחר.
+ */
+export function collectGuestSnapshot(): Record<string, unknown> | undefined {
+  try {
+    const snapshot: Record<string, unknown> = {};
+    for (const key of TOOL_DATA_KEYS) {
+      const value = readGuestToolData(key);
+      if (value) snapshot[key] = value;
+    }
+    const equity = readEquityDraft();
+    if (equity) snapshot.equity = equity;
+    if (Object.keys(snapshot).length === 0) return undefined;
+    snapshot.steps = guestSteps();
+    return snapshot;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * הנתונים בחשבון, אחרי שמה שהוזן בדפדפן לפני ההרשמה עבר אליהם. נטען פעם אחת
  * לכל טעינת דף, ומשותף לכל הכלים והכרטיסים שבו.
@@ -55,7 +94,7 @@ async function fetchToolData(): Promise<AccountToolData> {
   return (await response.json()) as AccountToolData;
 }
 
-export async function putToolData(key: ToolDataKey, data: unknown): Promise<boolean> {
+export async function putToolData(key: StoredKey, data: unknown): Promise<boolean> {
   try {
     const response = await fetch('/api/profile/tool-data', {
       method: 'PUT',
@@ -84,29 +123,53 @@ export function loadAccountToolData(): Promise<AccountToolData> {
   return cached;
 }
 
+async function putRaw(key: StoredKey, data: unknown): Promise<boolean> {
+  const response = await fetch('/api/profile/tool-data', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, data }),
+  });
+  return response.ok;
+}
+
 async function syncGuestData(): Promise<AccountToolData> {
   const account = await fetchToolData();
-  let moved = false;
+  // השלבים נקראים לפני שהטיוטות עוברות לחשבון ונמחקות מהדפדפן
+  const steps = guestSteps();
+  const moved: ResumeTool[] = [];
 
   for (const key of TOOL_DATA_KEYS) {
-    if (TOOL_HAS_CONTENT[key](account[key])) continue;
     const guest = readGuestToolData(key);
     if (!guest) continue;
-    const response = await fetch('/api/profile/tool-data', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, data: guest }),
-    });
-    if (!response.ok) continue;
+    if (TOOL_HAS_CONTENT[key](account[key])) {
+      // כבר בחשבון (למשל נשמר עם ההרשמה) — העותק של האורח מיותר
+      GUEST_SOURCES[key].clear?.();
+      continue;
+    }
+    if (!(await putRaw(key, guest))) continue;
     account[key] = guest;
     GUEST_SOURCES[key].clear?.();
-    moved = true;
+    moved.push(key);
   }
 
-  // תכנון ההון העצמי שמור בטבלה משלו, ועובר לחשבון באותו רגע
-  await adoptEquityDraft();
+  // תכנון ההון העצמי שמור בטבלה משלו: טיוטה שנשמרה עם ההרשמה, או זו שבדפדפן
+  if (account.equity) {
+    await adoptEquityDraft(account.equity);
+    if (await putRaw('equity', null)) delete account.equity;
+  }
+  if (await adoptEquityDraft()) moved.push('equity');
 
-  if (moved) window.dispatchEvent(new Event(TOOL_DATA_CHANGED_EVENT));
+  /**
+   * מי שהזין בכלים ונכנס לחשבון מהדפדפן הזה — גם אם לא שלח אותם עם ההרשמה —
+   * מקבל את ההודעה "תרצו להמשיך?" עם הכלים האלה.
+   */
+  if (moved.length > 0) {
+    const existing = parseResume(account.resume);
+    const tools = [...new Set([...(existing?.tools ?? []), ...moved])];
+    const resume = { tools, steps: { ...steps, ...existing?.steps }, savedAt: new Date().toISOString() };
+    if (await putRaw('resume', resume)) account.resume = resume;
+    window.dispatchEvent(new Event(TOOL_DATA_CHANGED_EVENT));
+  }
   return account;
 }
 

@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ScanSearch } from 'lucide-react';
-import { NEW_PLAN_FLOW } from '@/lib/mortgage-plan';
+import { NEW_PLAN_FLOW, usesPaymentSchedule } from '@/lib/mortgage-plan';
 import type { PlanData, PlanFlow, SigningData, SigningScreen } from '@/lib/mortgage-plan';
 import { SIGNING_VISITS } from '@/lib/signing-visits';
 import { StageIntro } from '../StageIntro';
@@ -107,7 +107,7 @@ export function SigningStage({
               planId={planId}
               onChange={onChange}
               visitKey="collateral-submit"
-              explanation="כשעורך הדין והמוכרים סיימו להכין את מסמכי הבטחונות, מגישים את המקורות (לא העתקים) פיזית בסניף הבנק. קבעו מתי מגיעים לסניף, וסמנו כשהמקורות הוגשו."
+              explanation={`כשעורך הדין${usesPaymentSchedule(data) ? ' והמוכרים' : ''} סיימו להכין את מסמכי הבטחונות, מגישים את המקורות (לא העתקים) פיזית בסניף הבנק. קבעו מתי מגיעים לסניף, וסמנו כשהמקורות הוגשו.`}
               continueLabel="לחתימה על תיק המשכנתא"
               onContinue={() => go('bank-sign')}
             />

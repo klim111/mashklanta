@@ -817,7 +817,7 @@ export function PlanWorkspace({
             {/* המשימות הפתוחות של השלב; הוספת משימה נמצאת בכפתור הפעולות */}
             {!tour && !advisorSummaryOnly && !needsIntro && (
               <div {...demoId('plan-stage-tasks')}>
-                <StageTasksPanel planId={plan.id} stage={stage} />
+                <StageTasksPanel planId={plan.id} stage={stage} flow={flow} />
               </div>
             )}
 
@@ -991,7 +991,8 @@ export function PlanWorkspace({
           stageLabel={`שלב ${index + 1} מתוך ${stages.length} · ${meta.shortTitle}`}
           title="היעזרו ביועץ משכנתא בשלב הזה"
           description={
-            stage === 'ANALYSIS' && !isRefinance
+            /* בשלב הפרופיל ההסבר זהה בכל סוגי התהליך: הפרופיל נבנה אותו דבר */
+            stage === 'ANALYSIS'
               ? undefined
               : `יועץ משכלנתא ייקח על עצמו את ${meta.title}${isRefinance ? ' במיחזור שלכם' : ''}: יבחן את מה שכבר הזנתם, ישלים את מה שחסר וילווה אתכם מול הבנק. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.`
           }

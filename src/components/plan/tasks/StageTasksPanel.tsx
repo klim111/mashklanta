@@ -19,8 +19,9 @@ import {
 import { formatDate, formatTime } from '@/lib/advisor-crm';
 import { AUTHORIZATION_TASK_KEY, authorizationLettersHref } from '@/lib/authorization-letters';
 import type { ClientTaskView } from '@/lib/client-tasks';
-import type { PlanStageId } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { NEW_PLAN_FLOW } from '@/lib/mortgage-plan';
+import type { PlanFlow, PlanStageId } from '@/lib/mortgage-plan';
+import { planStageMeta } from '@/data/platform/planStages';
 import { DocumentUploadDialog } from '../documents/DocumentUploadDialog';
 import { useClientTasks } from './useClientTasks';
 
@@ -33,7 +34,16 @@ const KIND_ICONS = { TASK: ListChecks, MEETING: CalendarClock, DOCUMENT: FileUp 
  * הרשימה מופיעה רק כשיש בשלב משימות פתוחות. משימה עם מועד מופיעה גם בלוח
  * השנה של האזור האישי; משימת מסמך נסגרת מהעלאת הקובץ לתיק.
  */
-export function StageTasksPanel({ planId, stage }: { planId: string; stage: PlanStageId }) {
+export function StageTasksPanel({
+  planId,
+  stage,
+  flow = NEW_PLAN_FLOW,
+}: {
+  planId: string;
+  stage: PlanStageId;
+  /** סוג התהליך — שם השלב כפי שהוא מופיע בכותרת השלב */
+  flow?: PlanFlow;
+}) {
   const { tasks, ready, complete, attachDocument, remove } = useClientTasks({ planId, includeDone: true });
   const [uploadFor, setUploadFor] = useState<ClientTaskView | null>(null);
   const [showDone, setShowDone] = useState(false);
@@ -41,7 +51,7 @@ export function StageTasksPanel({ planId, stage }: { planId: string; stage: Plan
   const stageTasks = useMemo(() => tasks.filter((task) => task.stage === stage), [tasks, stage]);
   const open = stageTasks.filter((task) => task.status === 'OPEN');
   const done = stageTasks.filter((task) => task.status === 'DONE');
-  const journey = journeyStageFor(stage);
+  const journey = planStageMeta(stage, flow);
 
   if (!ready || open.length === 0) return null;
 

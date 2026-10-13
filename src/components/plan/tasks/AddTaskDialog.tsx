@@ -20,7 +20,7 @@ import { ALLOWED_DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from '@/lib/plan-documents
 import { customDocumentKey } from '@/lib/document-progress';
 import { usePlanDocuments } from '../documents/usePlanDocuments';
 import { MORTGAGE_BANKS } from '@/components/mortgage-advisor/types';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import {
   ALL_TASK_TEMPLATES,
   CLIENT_TASK_KINDS,
@@ -29,7 +29,8 @@ import {
   bankTaskTitle,
 } from '@/lib/client-tasks';
 import type { ClientTaskKind, ClientTaskTemplate } from '@/lib/client-tasks';
-import { PLAN_STAGES } from '@/lib/mortgage-plan';
+import { NEW_PLAN_FLOW, flowStages } from '@/lib/mortgage-plan';
+import type { PlanFlow } from '@/lib/mortgage-plan';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { fromLocalInputValue } from '@/components/advisor/ui';
 import type { NewClientTaskInput } from './useClientTasks';
@@ -58,6 +59,8 @@ export interface AddTaskDialogProps {
    * השנה שהקובץ שלה צריך בכל זאת להיכנס לתיק של המשכנתא הפתוחה.
    */
   documentPlanId?: string | null;
+  /** סוג התהליך — שמות השלבים ומספרם כמו בסרגל השלבים של אותו תהליך */
+  flow?: PlanFlow;
   onSubmit: (input: NewClientTaskInput) => Promise<unknown>;
 }
 
@@ -75,6 +78,7 @@ export function AddTaskDialog({
   stage,
   defaultDay,
   documentPlanId,
+  flow = NEW_PLAN_FLOW,
   onSubmit,
 }: AddTaskDialogProps) {
   const [picked, setPicked] = useState<Picked>('free');
@@ -108,9 +112,20 @@ export function AddTaskDialog({
   const suggestions = useMemo(
     () =>
       stage
-        ? STAGE_TASK_TEMPLATES[stage].map((template) => ({ template, stage }))
+        ? [
+            ...STAGE_TASK_TEMPLATES[stage].map((template) => ({ template, stage })),
+            /*
+              במיחזור פנימי תת-השלבים של החתימה נמצאים בשלב האחרון, ולכן גם
+              המשימות המוצעות של החתימה מוצעות בו — כמו בשלב החתימה של משכנתא חדשה.
+            */
+            ...(stage !== 'SIGNING' &&
+            !flowStages(flow).includes('SIGNING') &&
+            flowStages(flow)[flowStages(flow).length - 1] === stage
+              ? STAGE_TASK_TEMPLATES.SIGNING.map((template) => ({ template, stage }))
+              : []),
+          ]
         : ALL_TASK_TEMPLATES.map(({ stage: templateStage, ...template }) => ({ template, stage: templateStage })),
-    [stage]
+    [stage, flow]
   );
 
   const chooseTemplate = (entry: { template: ClientTaskTemplate; stage: PlanStageId }) => {
@@ -181,7 +196,7 @@ export function AddTaskDialog({
             <DialogTitle className="text-xl font-black text-slate-900">הוסף משימה מתוכננת</DialogTitle>
             <p className="mt-0.5 text-sm text-slate-500">
               {stage
-                ? `משימה בשלב ${journeyStageFor(stage).shortTitle} — מהמוצעות או בניסוח חופשי`
+                ? `משימה בשלב ${planStageMeta(stage, flow).shortTitle} — מהמוצעות או בניסוח חופשי`
                 : 'משימה או פגישה — מהמוצעות בכל השלבים או בניסוח חופשי'}
             </p>
           </div>
@@ -405,7 +420,7 @@ export function AddTaskDialog({
         </div>
 
         <p className="mt-3 text-center text-2xs text-slate-400">
-          {PLAN_STAGES.length} שלבים · כל משימה עם מועד מופיעה בלוח השנה וברשימת המשימות שלכם
+          {flowStages(flow).length} שלבים · כל משימה עם מועד מופיעה בלוח השנה וברשימת המשימות שלכם
         </p>
       </DialogContent>
     </Dialog>

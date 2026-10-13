@@ -28,7 +28,7 @@ import {
 } from '@/lib/advisor-crm';
 import type { AdvisorMeetingView, MeetingReply } from '@/lib/advisor-crm';
 import { ClientMeetingAnswer } from '@/components/plan/advisor/ClientMeetingAnswer';
-import { planStageNumber } from '@/lib/mortgage-plan';
+import { planFlowOf, planStageNumber } from '@/lib/mortgage-plan';
 import { clientTaskIdOf, upcomingEvents } from '@/lib/client-agenda';
 import type { AgendaTarget, CalendarEvent, ClientTask, DashboardSection } from '@/lib/client-agenda';
 import { AddTaskDialog } from '@/components/plan/tasks/AddTaskDialog';
@@ -72,7 +72,10 @@ export function AgendaSection({
   /** משימת מסמך שנפתח עבורה חלון ההעלאה */
   const [uploadFor, setUploadFor] = useState<ClientTaskView | null>(null);
   /** משימה חדשה מלוח השנה משויכת לתהליך הפתוח, כשיש אחד */
-  const activePlanId = plansState.plans.find((plan) => plan.status === 'IN_PROGRESS')?.id ?? null;
+  const activePlan = plansState.plans.find((plan) => plan.status === 'IN_PROGRESS') ?? null;
+  const activePlanId = activePlan?.id ?? null;
+  /** מספרי השלבים כמו בסרגל השלבים של התהליך הפתוח — במיחזור הסדר שונה */
+  const activeFlow = activePlan ? planFlowOf(activePlan.data) : undefined;
 
   /** משימה שהלקוח הוסיף לעצמו — אפשר לסמן כבוצעה, להעלות מסמך ולמחוק מכאן */
   const ownTaskId = (id: string) => clientTaskIdOf(id);
@@ -292,7 +295,7 @@ export function AgendaSection({
                   <p className="whitespace-pre-wrap text-info leading-relaxed text-slate-800">{note.body}</p>
                   <p className="mt-1.5 text-sm text-slate-500">
                     <span className="font-bold text-blue-700">{note.advisorName}</span> · שלב{' '}
-                    {planStageNumber(note.stage)} · {formatDate(note.createdAt)} {formatTime(note.createdAt)}
+                    {planStageNumber(note.stage, activeFlow)} · {formatDate(note.createdAt)} {formatTime(note.createdAt)}
                   </p>
                 </div>
               ))}

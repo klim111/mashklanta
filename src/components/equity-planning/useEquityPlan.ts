@@ -27,7 +27,22 @@ function readDraft(): EquityPlanningData | null {
   try {
     const raw = window.localStorage.getItem(EQUITY_DRAFT_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return parseDraft(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+/** הטיוטה כפי שנשמרה בדפדפן, לשליחה עם ההרשמה */
+export function readEquityDraft(): EquityPlanningData | null {
+  const draft = readDraft();
+  return draft && hasContent(draft) ? draft : null;
+}
+
+function parseDraft(value: unknown): EquityPlanningData | null {
+  if (!value || typeof value !== 'object') return null;
+  try {
+    const parsed = value as Record<string, unknown>;
     const property = (parsed.propertyData ?? {}) as Record<string, unknown>;
     const price = Number(property.price);
     return {
@@ -90,8 +105,9 @@ function putPlan(next: EquityPlanningData): Promise<Response> {
  * שהסקירה בדאשבורד תציג אותה כבר בכניסה הראשונה. תכנון שכבר שמור בחשבון
  * אינו נדרס.
  */
-export async function adoptEquityDraft(): Promise<boolean> {
-  const draft = readDraft();
+export async function adoptEquityDraft(source?: unknown): Promise<boolean> {
+  // טיוטה שנשמרה עם ההרשמה, ואם אין — זו שבדפדפן
+  const draft = source !== undefined ? parseDraft(source) : readDraft();
   if (!draft || !hasContent(draft)) return false;
   try {
     const response = await fetch('/api/equity-plans', { cache: 'no-store' });

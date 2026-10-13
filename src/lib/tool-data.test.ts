@@ -3,6 +3,8 @@ import {
   MAX_TOOL_DATA_BYTES,
   TOOL_HAS_CONTENT,
   analysisFromToolData,
+  guestSnapshotToToolData,
+  parseResume,
   parseToolData,
   parseToolDataWrite,
 } from './tool-data';
@@ -72,5 +74,59 @@ describe('נתוני הכלים בחשבון', () => {
   it('אינו פותח פרופיל כשבכלי לא הוזן דבר', () => {
     expect(analysisFromToolData(null)).toBeUndefined();
     expect(analysisFromToolData({ affordability: { userData: {} } })).toBeUndefined();
+  });
+});
+
+describe('מה שנשלח עם ההרשמה', () => {
+  const now = new Date('2026-10-13T08:00:00Z');
+  const refinance = { tracks: [{ amount: 600_000 }] };
+  const equity = { propertyData: { price: 2_000_000 }, expenses: [], currentStep: 1 };
+
+  it('שומר כל כלי שהוזן בו משהו, עם השלב שבו עצרו', () => {
+    const result = guestSnapshotToToolData(
+      {
+        affordability,
+        refinance,
+        equity,
+        consumerLoans: { loans: [] },
+        steps: { affordability: 'results', refinance: 'preview', equity: '1', other: 'x' },
+      },
+      now
+    );
+    expect(result).toEqual({
+      affordability,
+      refinance,
+      equity,
+      resume: {
+        tools: ['affordability', 'refinance', 'equity'],
+        steps: { affordability: 'results', refinance: 'preview', equity: '1' },
+        savedAt: now.toISOString(),
+      },
+    });
+  });
+
+  it('בלי נתונים בכלים אין מה לשמור', () => {
+    expect(guestSnapshotToToolData(undefined)).toBeNull();
+    expect(guestSnapshotToToolData({ refinance: { tracks: [] }, steps: {} })).toBeNull();
+    expect(guestSnapshotToToolData([refinance])).toBeNull();
+    expect(guestSnapshotToToolData({ refinance: { tracks: ['x'.repeat(700_000)] } })).toBeNull();
+  });
+
+  it('קורא את ההודעה "תרצו להמשיך?" רק עם כלים מוכרים', () => {
+    expect(parseResume(null)).toBeNull();
+    expect(parseResume({ tools: ['other'] })).toBeNull();
+    expect(parseResume({ tools: ['consumerLoans', 'refinance'], steps: { refinance: 'result' } })).toEqual({
+      tools: ['refinance', 'consumerLoans'],
+      steps: { refinance: 'result' },
+      savedAt: '',
+    });
+  });
+
+  it('נתוני הכלים בחשבון כוללים את ההודעה ואת טיוטת ההון העצמי', () => {
+    expect(parseToolData({ resume: { tools: ['equity'] }, equity: {} })).toEqual({
+      resume: { tools: ['equity'] },
+      equity: {},
+    });
+    expect(parseToolDataWrite({ key: 'resume', data: null }).ok).toBe(true);
   });
 });

@@ -9,7 +9,8 @@ import { usePlanDocuments } from '@/components/plan/documents/usePlanDocuments';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import { isDemoPlan } from '@/lib/demo-plan';
 import { planHeadline } from '@/lib/client-agenda';
-import type { DocumentsMode } from '@/lib/mortgage-plan';
+import { planFlowOf } from '@/lib/mortgage-plan';
+import type { DocumentsMode, PlanFlow } from '@/lib/mortgage-plan';
 import type { ClientDashboardData } from './useClientDashboard';
 import { DashCard } from './ui';
 
@@ -75,7 +76,7 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
         </DashCard>
       )}
 
-      <OrganizedDocuments planId={plan.id} />
+      <OrganizedDocuments planId={plan.id} flow={planFlowOf(plan.data)} />
 
       <DocumentVault
         planId={plan.id}
@@ -89,7 +90,7 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
 }
 
 /** כל מה שבתיק לפי קטגוריה ושלב, עם חיפוש וסינון — מעל רשימת הדרישות */
-function OrganizedDocuments({ planId }: { planId: string }) {
+function OrganizedDocuments({ planId, flow }: { planId: string; flow: PlanFlow }) {
   const { documents, ready, busyKey, remove, updateMeta } = usePlanDocuments(planId);
   const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
 
@@ -105,6 +106,7 @@ function OrganizedDocuments({ planId }: { planId: string }) {
         documents={documents}
         busyKey={busyKey}
         demo={isDemoPlan(planId)}
+        flow={flow}
         onView={setViewing}
         onRemove={(document) => void remove(document.id, document.key)}
         onUpdateMeta={(documentId, meta) => void updateMeta(documentId, meta)}

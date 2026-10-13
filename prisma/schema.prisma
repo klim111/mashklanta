@@ -265,6 +265,11 @@ model PendingRegistration {
   /** hash של עוגיית הדפדפן שממנו נרשמו — אישור מדפדפן אחר דורש את הסיסמה */
   deviceHash        String?
   callbackUrl       String?
+  /**
+   * מה שהלקוח הזין בכלים החינמיים לפני ההרשמה, והשלב שבו עצר בכל כלי
+   * (src/lib/tool-data.ts). עובר לחשבון כשהמייל מאושר.
+   */
+  toolDataJson      Json?
   expires           DateTime
   sendCount         Int       @default(1)
   lastSentAt        DateTime  @default(now())

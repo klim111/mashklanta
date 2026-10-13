@@ -467,9 +467,11 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
   const latestNote = [...input.notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   if (latestNote) {
     const plan = activePlans(input.plans)[0];
+    // מספר השלב כמו בסרגל השלבים של התהליך — במיחזור הסדר שונה
+    const noteFlow = plan ? planFlowOf(plan.data) : undefined;
     tasks.push({
       id: `note:${latestNote.id}`,
-      title: `הערה מהיועץ ${latestNote.advisorName} בשלב ${planStageNumber(latestNote.stage)}`,
+      title: `הערה מהיועץ ${latestNote.advisorName} בשלב ${planStageNumber(latestNote.stage, noteFlow)}`,
       hint: latestNote.body.length > 90 ? `${latestNote.body.slice(0, 90)}…` : latestNote.body,
       tone: 'info',
       due: latestNote.createdAt,
