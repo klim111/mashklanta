@@ -503,6 +503,17 @@ export async function saveStage({
     const saved = await loadData(planId);
     clean = keepAdvisorRows(saved.APPLICATIONS, clean as PreApprovalData) as typeof clean;
   }
+  /*
+    טיוטת המיחזור של היועץ שייכת ליועץ בלבד: שמירה של הלקוח (שבידיו עותק ישן של
+    השלב) אינה מוחקת אותה ואינה משנה אותה. רק היועץ שומר או משדר אותה.
+  */
+  if (stage === 'MIX') {
+    const owner = await prisma.mortgagePlan.findUnique({ where: { id: planId }, select: { ownerId: true } });
+    if (owner?.ownerId === userId) {
+      const saved = await loadData(planId);
+      clean = { ...(clean as MixData), advisorRefinanceDraft: saved.MIX.advisorRefinanceDraft ?? null } as typeof clean;
+    }
+  }
 
   await prisma.mortgagePlanStage.upsert({
     where: { planId_stage: { planId, stage } },

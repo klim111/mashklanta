@@ -759,6 +759,14 @@ describe('תהליך מיחזור', () => {
     }, external)).toEqual(['ANALYSIS']);
   });
 
+  it('טיוטת היועץ למיחזור נשמרת בשלב התמהיל ואינה משנה את סוג התהליך', () => {
+    const parsed = parseStageData('MIX', { refinancePending: true, advisorRefinanceDraft: refinance });
+    expect(parsed.advisorRefinanceDraft?.bank).toBe(parseRefinanceMixData(refinance)?.bank);
+    expect(parsed.refinance).toBeNull();
+    expect(planFlowOf({ MIX: parsed })).toEqual({ kind: 'REFINANCE', refinanceMode: null });
+    expect(parseStageData('MIX', {}).advisorRefinanceDraft).toBeNull();
+  });
+
   it('שלב התמהיל במיחזור נסגר רק אחרי הבחירה בין פנימי לחיצוני', () => {
     const data = emptyPlanData();
     data.MIX = { ...data.MIX, mixKey: 'refi', refinance: parseRefinanceMixData(refinance) };

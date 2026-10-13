@@ -440,6 +440,12 @@ export interface MixData {
    * ממלאת את `refinance`.
    */
   refinancePending?: boolean;
+  /**
+   * תמהיל למיחזור שהיועץ בנה ושמר, ועוד לא שידר ללקוח. כמו בשלב התמהיל של
+   * משכנתא חדשה, מה שהיועץ שומר נשאר אצלו עד השידור: רק אז הוא מחליף את
+   * `refinance` ומגיע ללקוח.
+   */
+  advisorRefinanceDraft?: RefinanceMixData | null;
 }
 
 // ───────────────────────────── מיחזור ─────────────────────────────
@@ -756,6 +762,7 @@ const EMPTY: PlanData = {
     finalLocked: false,
     refinance: null,
     refinancePending: false,
+    advisorRefinanceDraft: null,
   },
   APPLICATIONS: {
     bank: null,
@@ -1246,6 +1253,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         finalLocked: bool(source.finalLocked) || bool(source.isFinal),
         refinance: parseRefinanceMixData(source.refinance),
         refinancePending: bool(source.refinancePending),
+        advisorRefinanceDraft: parseRefinanceMixData(source.advisorRefinanceDraft),
       } as PlanStageDataMap[S];
     }
 
