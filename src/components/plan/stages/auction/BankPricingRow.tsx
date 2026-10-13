@@ -9,6 +9,8 @@ import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { BankRateEntry } from './BankRateEntry';
 import { bankTone } from './pricedMixes';
 import { StageSubtitle } from './ui';
+import { ApprovalDocButton } from './ApprovalDocButton';
+import type { BankApprovalAccess } from './ApprovalDocButton';
 
 interface BankPricingRowProps {
   /** התמהיל הסופי — המבנה שכל הבנקים מתמחרים */
@@ -27,6 +29,11 @@ interface BankPricingRowProps {
    */
   lockBanks?: boolean;
   onSave: (quoted: WorkspaceMix) => Promise<void> | void;
+  /** הבנק שטבלת הריביות שלו פתוחה, כשהמסך שמעל שולט בה (המיקוח) */
+  open?: MortgageBank | null;
+  onOpenChange?: (bank: MortgageBank | null) => void;
+  /** צפייה באישור העקרוני של כל בנק, או העלאה שלו — ליד שם הבנק */
+  approvals?: BankApprovalAccess;
 }
 
 /**
@@ -43,8 +50,16 @@ export function BankPricingRow({
   approvedBanks = [],
   lockBanks = false,
   onSave,
+  open: controlledOpen,
+  onOpenChange,
+  approvals,
 }: BankPricingRowProps) {
-  const [open, setOpen] = useState<MortgageBank | null>(null);
+  const [ownOpen, setOwnOpen] = useState<MortgageBank | null>(null);
+  const open = controlledOpen !== undefined ? controlledOpen : ownOpen;
+  const setOpen = (bank: MortgageBank | null) => {
+    setOwnOpen(bank);
+    onOpenChange?.(bank);
+  };
   /** בנקים שלא נתנו אישור עקרוני מוצגים רק כשמבקשים אותם במפורש */
   const [showAll, setShowAll] = useState(false);
 
@@ -71,8 +86,8 @@ export function BankPricingRow({
           const count = offersPerBank[bank] ?? 0;
 
           return (
+            <div key={bank} className="inline-flex items-center gap-1">
             <button
-              key={bank}
               type="button"
               onClick={() => setOpen(active ? null : bank)}
               aria-expanded={active}
@@ -101,6 +116,8 @@ export function BankPricingRow({
                 <Plus className={`h-3.5 w-3.5 ${active ? 'text-white' : 'text-slate-400'}`} />
               )}
             </button>
+            {approvals && <ApprovalDocButton bank={bank} access={approvals} />}
+            </div>
           );
         })}
 

@@ -382,12 +382,8 @@ export function SelfPreApproval({
               onChooseSelf={() => setChannel([info.bank], 'SELF')}
               onChooseAdvisor={() => void handToAdvisor()}
               // כשהיועץ מטפל בהגשה, חזרה מהגשה עצמית מחזירה את הבנק אליו
-              onResetChoice={() =>
-                anyHanded
-                  ? setChannel([info.bank], 'ADVISOR', new Date().toISOString())
-                  : setChannel([info.bank], null)
-              }
-              resetLabel={anyHanded ? 'חזרה לטיפול היועץ' : 'חזרה לבחירה'}
+              onResetChoice={() => setChannel([info.bank], 'ADVISOR', new Date().toISOString())}
+              resetLabel={anyHanded ? 'חזרה לטיפול היועץ' : null}
               onEmailBanker={emailBanker}
               uploaded={byKey.get(preApprovalDocumentKey(info.slug)) ?? null}
               busy={busyKey === preApprovalDocumentKey(info.slug) || !ready}
@@ -686,14 +682,14 @@ function AdvisorBanker({
 }
 
 /**
- * אזור של בנק אחד. בכניסה למסך יש בו רק שני כפתורים — הגשה עצמית או הגשה
- * באמצעות יועץ משכלנתא — ורק אחרי הבחירה נפתחות האפשרויות בשורה שמתחת:
+ * אזור של בנק אחד.
  *
- * - **הגשה עצמית:** הקישור לאתר הבנק; אחרי המעבר אליו — העלאת האישור, פרטי
- *   הבנקאי, ותוקף הריביות כשהאישור התקבל.
+ * - **הגשה עצמית, או עוד לא נבחר:** הקישור לאתר הבנק (ולידו "הגשה באמצעות יועץ
+ *   משכלנתא" כל עוד לא נבחר), העלאת האישור ופרטי הבנקאי — כולם פתוחים מהכניסה
+ *   למסך, ותוקף הריביות כשהאישור התקבל.
  * - **דרך היועץ:** הודעה שהיועץ מטפל ויחזור להשלמת הפרטים; הבנקאי שהיועץ הזין
- *   עם מייל אליו, ותוקף הריביות כשהיועץ רשם את האישור. אין העלאה — הלקוח לא
- *   מגיש לבד.
+ *   עם מייל אליו, ותוקף הריביות כשהיועץ רשם את האישור. נשארת האפשרות לעבור
+ *   להגשה עצמית.
  */
 function BankCard({
   info,
@@ -724,7 +720,8 @@ function BankCard({
   onChooseSelf: () => void;
   onChooseAdvisor: () => void;
   onResetChoice: () => void;
-  resetLabel: string;
+  /** חזרה מהגשה עצמית לטיפול היועץ; ריק — אין לאן לחזור */
+  resetLabel: string | null;
   /** פתיחת מייל חדש לבנקאי בכלי ההתכתבויות; ריק — אין כלי התכתבות במסך */
   onEmailBanker: ((to: string) => void) | null;
   uploaded: PlanDocumentView | null;
@@ -743,8 +740,7 @@ function BankCard({
   const received = approval?.approvedAt ? parseDay(approval.approvedAt) : null;
   const viaAdvisor = channel === 'ADVISOR';
   const approved = viaAdvisor ? Boolean(approval?.approved) : Boolean(uploaded);
-  // בהגשה עצמית, ההעלאה ופרטי הבנקאי נפתחים רק אחרי המעבר לאתר הבנק
-  const selfOpened = channel === 'SELF' && Boolean(approval?.submittedAt || uploaded);
+  const canReset = channel === 'SELF' && Boolean(resetLabel) && !approval?.submittedAt && !uploaded;
 
   const status = approved
     ? `אישור עקרוני התקבל${!viaAdvisor && uploaded ? ` · ${uploaded.fileName}` : ''}`
@@ -754,7 +750,7 @@ function BankCard({
         ? 'הבקשה הוגשה — ממתינים לאישור'
         : channel === 'SELF'
           ? 'הגשה עצמית — טרם הוגשה בקשה'
-          : 'בחרו איך להגיש לבנק';
+          : 'הגישו בעצמכם או דרך יועץ משכלנתא, והעלו כאן את האישור שהתקבל';
 
   return (
     <section
@@ -778,73 +774,62 @@ function BankCard({
         {status}
       </p>
 
-      {/* בכניסה למסך: שני כפתורים בלבד */}
-      {channel === null && (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={onChooseSelf}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-button font-black text-white transition-colors hover:bg-blue-700"
-          >
-            <ExternalLink className="h-4 w-4" />
-            הגשה עצמית
-          </button>
-          <button
-            type="button"
-            disabled={handing}
-            onClick={onChooseAdvisor}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-button font-black text-white transition-colors hover:bg-violet-700 disabled:opacity-60"
-          >
-            {handing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundCheck className="h-4 w-4" />}
-            הגשה באמצעות יועץ משכלנתא
-          </button>
-        </div>
-      )}
-
-      {/* הגשה עצמית */}
-      {channel === 'SELF' && (
+      {/*
+        הגשה עצמית, או בנק שעוד לא נבחר בו אופן הגשה: הקישור לאתר הבנק, העלאת
+        האישור ופרטי הבנקאי פתוחים מהכניסה למסך, בלי לעבור קודם בקישור.
+      */}
+      {!viaAdvisor && (
         <>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className={`mt-3 grid gap-2 ${channel === null ? 'sm:grid-cols-2' : ''}`}>
             <button
               type="button"
               onClick={onApply}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-button font-black text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: info.color }}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              להגשה באתר הבנק
+              <ExternalLink className="h-4 w-4" />
+              {channel === null ? 'הגשה עצמית באתר הבנק' : 'להגשה באתר הבנק'}
             </button>
-
-            {selfOpened && (
-              <>
-                <input
-                  ref={input}
-                  type="file"
-                  accept={ACCEPT}
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void onUpload(file);
-                    event.target.value = '';
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => input.current?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
-                >
-                  {busy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : uploaded ? (
-                    <FileUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <Upload className="h-3.5 w-3.5" />
-                  )}
-                  {uploaded ? 'החלפת האישור' : 'העלאת האישור העקרוני'}
-                </button>
-              </>
+            {channel === null && (
+              <button
+                type="button"
+                disabled={handing}
+                onClick={onChooseAdvisor}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-button font-black text-white transition-colors hover:bg-violet-700 disabled:opacity-60"
+              >
+                {handing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRoundCheck className="h-4 w-4" />}
+                הגשה באמצעות יועץ משכלנתא
+              </button>
             )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              ref={input}
+              type="file"
+              accept={ACCEPT}
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void onUpload(file);
+                event.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => input.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-lg border-2 border-slate-200 bg-white px-3 py-1.5 text-button font-black text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : uploaded ? (
+                <FileUp className="h-3.5 w-3.5" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              {uploaded ? 'החלפת האישור' : 'העלאת האישור העקרוני'}
+            </button>
 
             {uploaded && (
               <>
@@ -868,7 +853,8 @@ function BankCard({
               </>
             )}
 
-            {!selfOpened && (
+            {/* בנק שעבר מהיועץ להגשה עצמית ועוד לא הוגש בו דבר — אפשר להחזיר אותו */}
+            {canReset && (
               <button
                 type="button"
                 onClick={onResetChoice}
@@ -879,7 +865,7 @@ function BankCard({
             )}
           </div>
 
-          {selfOpened && <BankerFields approval={approval} onSave={onBanker} />}
+          <BankerFields approval={approval} onSave={onBanker} />
         </>
       )}
 

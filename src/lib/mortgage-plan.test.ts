@@ -218,11 +218,11 @@ describe('סגירת שלבים', () => {
     expect(planSnapshot(data).monthlyPayment).toBe(7_100);
   });
 
-  it('שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו', () => {
+  it('שלב האישור העקרוני נסגר רק כשהועלה אישור עקרוני אחד לפחות', () => {
     const data = profile();
     data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי' };
     expect(stageIsComplete('APPLICATIONS', data)).toBe(false);
-    expect(missingForStage('APPLICATIONS', data)).toEqual(['סימון שהאישור העקרוני התקבל']);
+    expect(missingForStage('APPLICATIONS', data)).toEqual(['העלאת אישור עקרוני אחד לפחות']);
 
     data.APPLICATIONS.approved = true;
     expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
@@ -769,11 +769,15 @@ describe('תהליך מיחזור', () => {
     expect(stageIsComplete('MIX', data)).toBe(true);
   });
 
-  it('שלב ההגשה לבנק במיחזור נסגר בלי מסמך ובלי פרופיל מלא', () => {
+  it('שלב ההגשה לבנק במיחזור נסגר עם אישור אחד, בלי פרופיל מלא', () => {
     const data = emptyPlanData();
     data.MIX = { ...data.MIX, mixKey: 'refi', refinance: { ...parseRefinanceMixData(refinance)!, mode: 'INTERNAL' } };
 
-    // ההגשה מתבצעת מול הבנק ישירות, ולכן ההמשך פתוח מיד — בשני סוגי המיחזור
+    // כמו במשכנתא חדשה: להשלמת השלב נדרש אישור אחד לפחות — בשני סוגי המיחזור
+    expect(stageIsComplete('APPLICATIONS', data)).toBe(false);
+    expect(missingForStage('APPLICATIONS', data)).toEqual(['העלאת אישור עקרוני אחד לפחות']);
+
+    data.APPLICATIONS = { ...data.APPLICATIONS, bank: 'לאומי', approved: true };
     expect(stageIsComplete('APPLICATIONS', data)).toBe(true);
     expect(missingForStage('APPLICATIONS', data)).toEqual([]);
 
