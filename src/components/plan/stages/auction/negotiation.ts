@@ -10,6 +10,7 @@
  */
 
 import { TRACK_TYPES } from '@/components/mortgage-advisor/types';
+import type { AuctionNegotiation } from '@/lib/mortgage-plan';
 import type { PricedMix } from './pricedMixes';
 
 /** הריבית הכוללת המשוקללת של הצעה, באחוזים */
@@ -30,9 +31,74 @@ export function cheapestByWeightedRate(items: readonly PricedMix[]): PricedMix |
   });
 }
 
-/** ההצעה הטובה של כל בנק — אחרי מיקוח, זו בדרך כלל ההצעה המעודכנת שלו */
+/** ההצעה הטובה של בנק מבין כל ההצעות שנתן */
 export function bestOfBank(items: readonly PricedMix[], bank: string): PricedMix | null {
   return cheapestByWeightedRate(items.filter((item) => item.bank === bank));
+}
+
+/**
+ * ההצעה האחרונה של בנק — הריביות של הסבב הקודם, שמוצגות לפני שהוא עונה. אחרי
+ * "ללא שיפור" זו ההצעה הטובה ביותר שלו.
+ */
+export function latestOfBank(items: readonly PricedMix[], bank: string): PricedMix | null {
+  const own = items.filter((item) => item.bank === bank);
+  if (own.length === 0) return null;
+  return own.reduce((latest, item) => {
+    const byDay = item.receivedAt.localeCompare(latest.receivedAt);
+    if (byDay !== 0) return byDay > 0 ? item : latest;
+    return (item.savedAt ?? '').localeCompare(latest.savedAt ?? '') > 0 ? item : latest;
+  });
+}
+
+/** ההצעה העדכנית של כל בנק שתמחר — עליהן נעשה המיקוח */
+export function latestOffers(items: readonly PricedMix[]): PricedMix[] {
+  const banks = [...new Set(items.map((item) => item.bank))];
+  return banks.flatMap((bank) => {
+    const latest = latestOfBank(items, bank);
+    return latest ? [latest] : [];
+  });
+}
+
+/**
+ * הבנקים שעוד צריכים לענות בסבב הנוכחי: כל בנק שתמחר, חוץ מהזול שההצעה שלו
+ * נשלחת לאחרים. כשיש בנק אחד בלבד, הוא עצמו מתבקש לשפר.
+ */
+export function awaitingBanks(state: AuctionNegotiation, items: readonly PricedMix[]): string[] {
+  const offers = latestOffers(items);
+  const cheapest = cheapestByWeightedRate(offers);
+  const asked = offers.length <= 1 ? offers.map((item) => item.bank) : offers.filter((item) => item !== cheapest).map((item) => item.bank);
+  return asked.filter((bank) => state.responses[bank]?.round !== state.round);
+}
+
+/** כל הבנקים שנשאלו בסבב ענו "ללא שיפור" — הזמן לסיים את המיקוח */
+export function everyoneDeclined(state: AuctionNegotiation, items: readonly PricedMix[]): boolean {
+  const responded = Object.values(state.responses).filter((item) => item.round === state.round);
+  return (
+    responded.length > 0 &&
+    awaitingBanks(state, items).length === 0 &&
+    responded.every((item) => item.kind === 'DECLINED')
+  );
+}
+
+/**
+ * הסבב עובר כשכל הבנקים שנשאלו ענו ולפחות אחד מהם שיפר. אם כולם ענו "ללא
+ * שיפור", הסבב נשאר — מה שנשאר הוא לסמן שאף בנק לא מוכן לרדת.
+ */
+export function nextRoundDue(state: AuctionNegotiation, items: readonly PricedMix[]): boolean {
+  if (state.endedAt) return false;
+  const responded = Object.values(state.responses).filter((item) => item.round === state.round);
+  return (
+    responded.some((item) => item.kind === 'UPDATED') && awaitingBanks(state, items).length === 0
+  );
+}
+
+/** תשובה של בנק בסבב הנוכחי */
+export function withResponse(
+  state: AuctionNegotiation,
+  bank: string,
+  kind: 'UPDATED' | 'DECLINED'
+): AuctionNegotiation {
+  return { ...state, endedAt: null, responses: { ...state.responses, [bank]: { round: state.round, kind } } };
 }
 
 /**

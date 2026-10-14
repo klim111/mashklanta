@@ -34,6 +34,11 @@ interface BankRateEntryProps {
   mix: WorkspaceMix;
   /** הבנק שהריביות שלו מוזנות. נבחר בשורת הבנקים שמעל */
   bank: MortgageBank;
+  /**
+   * ההצעה הקודמת של אותו בנק, כשיש. ההזנה מתחילה מהריביות שלה ולא מריביות
+   * התכנון, וליד כל מסלול מוצגת הריבית מהסבב הקודם — כך רואים מה הבנק שיפר.
+   */
+  previous?: WorkspaceMix | null;
   /** שמות ההצעות שכבר נשמרו, כדי ששתי הצעות לא יקבלו אותו שם */
   takenNames: string[];
   /** שמירת ההצעה המתומחרת */
@@ -63,11 +68,17 @@ interface RateEntry {
 export function BankRateEntry({
   mix,
   bank,
+  previous = null,
   takenNames,
   onSave,
   onSaved,
   onCancel,
 }: BankRateEntryProps) {
+  /** הריבית של כל מסלול בהצעה הקודמת של הבנק */
+  const previousRate = (trackId: string, index: number) => {
+    if (!previous) return null;
+    return previous.tracks.find((track) => track.id === trackId) ?? previous.tracks[index] ?? null;
+  };
   const { snapshot: marketRates, refresh: refreshMarketRates } = useMarketRates();
   const [receivedAt, setReceivedAt] = useState(() => isoToQuoteDate(new Date().toISOString()));
   const [entries, setEntries] = useState<Record<string, RateEntry>>({});
@@ -84,13 +95,18 @@ export function BankRateEntry({
   const reset = useMemo(
     () => () => {
       const next: Record<string, RateEntry> = {};
-      for (const track of mix.tracks) {
+      mix.tracks.forEach((track, index) => {
         const breakdown = trackRateBreakdown(track, marketRates);
-        next[track.id] = { rate: track.interestRate, spread: breakdown.spread, touched: false };
-      }
+        const before = previousRate(track.id, index);
+        next[track.id] = before
+          ? { rate: before.interestRate, spread: before.rateSpread ?? breakdown.spread, touched: false }
+          : { rate: track.interestRate, spread: breakdown.spread, touched: false };
+      });
       setEntries(next);
     },
-    [mix.tracks, marketRates]
+    // previousRate נגזר מ-previous
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mix.tracks, marketRates, previous]
   );
 
   useEffect(() => {
@@ -162,7 +178,7 @@ export function BankRateEntry({
             <Building2 className="h-4 w-4 text-white" />
           </span>
           <span className="text-base font-black text-slate-900">
-            הריביות שבנק {bank} הציע
+            {previous ? `הריביות המעודכנות מבנק ${bank}` : `הריביות שבנק ${bank} הציע`}
           </span>
         </div>
 
@@ -203,13 +219,15 @@ export function BankRateEntry({
               <th className="px-2 py-2 font-bold">תקופה</th>
               <th className="px-2 py-2 font-bold">סכום</th>
               <th className="px-2 py-2 font-bold">בתכנון</th>
+              {previous && <th className="bg-violet-50 px-2 py-2 font-bold text-violet-900">בסבב הקודם</th>}
               <th className="w-[260px] bg-emerald-50 px-2 py-2 font-bold text-emerald-900">
                 הריבית שהבנק נתן — עוגן + מרווח
               </th>
             </tr>
           </thead>
           <tbody>
-            {mix.tracks.map((track) => {
+            {mix.tracks.map((track, index) => {
+              const before = previousRate(track.id, index);
               const months = Math.max(1, Math.round(track.years * 12));
               const entry = entries[track.id];
               const breakdown = trackRateBreakdown(track, marketRates);
@@ -245,6 +263,19 @@ export function BankRateEntry({
                       </span>
                     )}
                   </td>
+                  {previous && (
+                    <td className="bg-violet-50 px-2 py-2 font-bold text-violet-900">
+                      {before ? formatPercentage(before.interestRate) : '—'}
+                      {before && Math.abs(rate - before.interestRate) > 0.001 && (
+                        <span
+                          className={`mr-1 font-black ${rate < before.interestRate ? 'text-emerald-600' : 'text-rose-600'}`}
+                        >
+                          {rate < before.interestRate ? '−' : '+'}
+                          {Math.abs(rate - before.interestRate).toFixed(2)}
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="bg-emerald-50 px-2 py-1.5">
                     <AnchorSpreadRate
                       compact
@@ -317,7 +348,9 @@ export function BankRateEntry({
         <p className="text-sm font-bold">
           {untouched > 0 ? (
             <span className="text-amber-700">
-              {untouched} מסלולים עדיין בריבית התכנון — עדכנו למה שהבנק נתן
+              {previous
+                ? `${untouched} מסלולים עדיין בריבית מהסבב הקודם — עדכנו למה שהבנק שיפר`
+                : `${untouched} מסלולים עדיין בריבית התכנון — עדכנו למה שהבנק נתן`}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-emerald-700">

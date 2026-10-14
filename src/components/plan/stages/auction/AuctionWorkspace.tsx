@@ -28,7 +28,7 @@ import {
   pricedMixesFor,
   toggleBank,
 } from './pricedMixes';
-import { cheapestByWeightedRate } from './negotiation';
+import { cheapestByWeightedRate, latestOfBank, nextRoundDue, withResponse } from './negotiation';
 import type { PricedMix } from './pricedMixes';
 import { PanelBadge, StagePanel } from './ui';
 
@@ -178,22 +178,29 @@ export function AuctionWorkspace({
   };
 
   /*
-    ריביות מעודכנות מבנק שכבר נתן הצעה פותחות את הסבב הבא של המיקוח. אחרי
-    שהמיקוח הסתיים, הצעה חדשה (מאישור משופר) פותחת אותו מחדש.
+    ריביות שנשמרות מבנק שכבר נתן הצעה הן התשובה שלו בסבב הנוכחי. אחרי שהמיקוח
+    הסתיים, הצעה חדשה (מאישור משופר) פותחת אותו מחדש.
   */
   const savePriced = onSavePriced
     ? async (quoted: WorkspaceMix) => {
         const bank = quoted.quote?.bank ?? quoted.bank ?? null;
         const hadOffer = bank ? (offersPerBank[bank] ?? 0) > 0 : false;
         await onSavePriced(quoted);
-        if (negotiation && (hadOffer || negotiation.state.endedAt)) {
-          negotiation.onChange({
-            round: hadOffer ? negotiation.state.round + 1 : negotiation.state.round,
-            endedAt: null,
-          });
-        }
+        if (!negotiation) return;
+        if (bank && hadOffer) negotiation.onChange(withResponse(negotiation.state, bank, 'UPDATED'));
+        else if (negotiation.state.endedAt) negotiation.onChange({ ...negotiation.state, endedAt: null });
       }
     : undefined;
+
+  /* כשכל הבנקים שנשאלו ענו ולפחות אחד שיפר — מתחיל הסבב הבא */
+  const negotiationState = negotiation?.state;
+  const onNegotiationChange = negotiation?.onChange;
+  useEffect(() => {
+    if (!negotiationState || !onNegotiationChange) return;
+    if (nextRoundDue(negotiationState, priced)) {
+      onNegotiationChange({ ...negotiationState, round: negotiationState.round + 1 });
+    }
+  }, [negotiationState, onNegotiationChange, priced]);
 
   /* אישור שהועלה מכאן — נפתחת מיד טבלת הריביות של אותו בנק, להזנת מה שבאישור */
   const approvalAccess: BankApprovalAccess | undefined = approvals
@@ -319,6 +326,7 @@ export function AuctionWorkspace({
           negotiation={negotiation.state}
           onChange={negotiation.onChange}
           onEnterRates={enterRates}
+          onDecline={(bank) => negotiation.onChange(withResponse(negotiation.state, bank, 'DECLINED'))}
           approvals={approvalAccess}
           bankers={negotiation.bankers}
           onEmail={negotiation.onEmail}
@@ -348,6 +356,7 @@ export function AuctionWorkspace({
             open={openBank}
             onOpenChange={setOpenBank}
             approvals={approvalAccess}
+            previousOf={(bank) => latestOfBank(priced, bank)?.mix ?? null}
           />
         </StagePanel>
         </div>

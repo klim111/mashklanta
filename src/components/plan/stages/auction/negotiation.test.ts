@@ -3,7 +3,13 @@ import { computeMix, createTrack, createWorkspaceMix } from '@/components/mortga
 import { buildQuotedMix } from '@/components/mortgage-advisor/bankQuote/quote';
 import type { MortgageBank } from '@/components/mortgage-advisor/types';
 import { pricedMixesFor } from './pricedMixes';
+import { EMPTY_NEGOTIATION } from '@/lib/mortgage-plan';
 import {
+  awaitingBanks,
+  everyoneDeclined,
+  latestOfBank,
+  nextRoundDue,
+  withResponse,
   bestOfBank,
   cheapestByWeightedRate,
   negotiationBanks,
@@ -63,5 +69,40 @@ describe('negotiation', () => {
     expect(email.text).toContain('שלום דנה,');
     expect(email.text).toContain('4.64%');
     expect(email.text).toContain('4.40%');
+  });
+
+  it('the previous round rates are the bank\'s latest offer', () => {
+    const items = pricedMixesFor(
+      [offer('לאומי', 4.0, 6.0, '2026-10-01'), offer('לאומי', 3.9, 5.2, '2026-10-05')],
+      'mix-final'
+    );
+    expect(latestOfBank(items, 'לאומי')?.receivedAt).toContain('2026-10-05');
+  });
+
+  it('a round moves on once every asked bank answered and one improved', () => {
+    const items = pricedMixesFor(
+      [offer('לאומי', 4.0, 6.0), offer('מזרחי', 4.4, 5.0), offer('הפועלים', 4.2, 5.8)],
+      'mix-final'
+    );
+    // מזרחי הזולה — לאומי והפועלים נשאלים
+    let state = EMPTY_NEGOTIATION;
+    expect(awaitingBanks(state, items).sort()).toEqual(['הפועלים', 'לאומי'].sort());
+    state = withResponse(state, 'לאומי', 'DECLINED');
+    expect(nextRoundDue(state, items)).toBe(false);
+    state = withResponse(state, 'הפועלים', 'UPDATED');
+    expect(nextRoundDue(state, items)).toBe(true);
+    expect(everyoneDeclined(state, items)).toBe(false);
+  });
+
+  it('when every asked bank declines, the round stays and the end is suggested', () => {
+    const items = pricedMixesFor([offer('לאומי', 4.0, 6.0), offer('מזרחי', 4.4, 5.0)], 'mix-final');
+    const state = withResponse(EMPTY_NEGOTIATION, 'לאומי', 'DECLINED');
+    expect(nextRoundDue(state, items)).toBe(false);
+    expect(everyoneDeclined(state, items)).toBe(true);
+  });
+
+  it('with a single bank, that bank is the one asked to improve', () => {
+    const items = pricedMixesFor([offer('לאומי', 4.0, 6.0)], 'mix-final');
+    expect(awaitingBanks(EMPTY_NEGOTIATION, items)).toEqual(['לאומי']);
   });
 });

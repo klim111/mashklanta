@@ -1,12 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BadgePercent, Check, Copy, Handshake, Mail, PencilLine, RotateCcw, Trophy } from 'lucide-react';
+import { BadgePercent, Ban, Check, Copy, Handshake, Mail, PencilLine, RotateCcw, Trophy } from 'lucide-react';
+import { TRACK_TYPES } from '@/components/mortgage-advisor/types';
 import type { AuctionNegotiation } from '@/lib/mortgage-plan';
 import type { MortgageBank } from '@/components/mortgage-advisor/types';
 import { ApprovalDocButton } from './ApprovalDocButton';
 import type { BankApprovalAccess } from './ApprovalDocButton';
-import { bestOfBank, cheapestByWeightedRate, negotiationBanks, negotiationEmail, weightedRateOf } from './negotiation';
+import {
+  awaitingBanks,
+  cheapestByWeightedRate,
+  everyoneDeclined,
+  latestOfBank,
+  latestOffers,
+  negotiationBanks,
+  negotiationEmail,
+  weightedRateOf,
+} from './negotiation';
 import { bankTone } from './pricedMixes';
 import type { PricedMix } from './pricedMixes';
 import { PanelBadge, StagePanel } from './ui';
@@ -31,6 +41,7 @@ export function NegotiationPanel({
   negotiation,
   onChange,
   onEnterRates,
+  onDecline,
   approvals,
   bankers,
   onEmail,
@@ -42,6 +53,8 @@ export function NegotiationPanel({
   onChange: (next: AuctionNegotiation) => void;
   /** פתיחת טבלת הריביות של הבנק, להזנת הריביות המעודכנות */
   onEnterRates: (bank: MortgageBank) => void;
+  /** הבנק ענה שאינו משפר — ההצעה האחרונה שלו היא הטובה ביותר שלו */
+  onDecline: (bank: string) => void;
   approvals?: BankApprovalAccess;
   /** הבנקאי של כל בנק, כפי שהוזן בשלב האישור העקרוני */
   bankers: Record<string, BankerContact>;
@@ -50,13 +63,16 @@ export function NegotiationPanel({
   formatRate: (value: number) => string;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
-  const cheapest = cheapestByWeightedRate(priced);
+  // המיקוח נעשה על ההצעה האחרונה של כל בנק — מה שהוא מציע עכשיו
+  const cheapest = cheapestByWeightedRate(latestOffers(priced));
   if (!cheapest) return null;
 
   const ended = Boolean(negotiation.endedAt);
   const banks = negotiationBanks(approvedBanks, priced);
   const others = banks.filter((bank) => bank !== cheapest.bank);
   const single = banks.length <= 1;
+  const awaiting = awaitingBanks(negotiation, priced);
+  const allDeclined = everyoneDeclined(negotiation, priced);
   const cheapestRate = weightedRateOf(cheapest);
 
   const send = (bank: string) => {
@@ -115,74 +131,133 @@ export function NegotiationPanel({
         {/* הבנקים */}
         <div className="grid gap-2 md:grid-cols-2">
           {banks.map((bank) => {
-            const best = bestOfBank(priced, bank);
+            const latest = latestOfBank(priced, bank);
             const isCheapest = bank === cheapest.bank;
             const tone = bankTone(bank);
+            const response = negotiation.responses[bank];
+            const answered = response?.round === negotiation.round ? response.kind : null;
+            const waiting = !ended && awaiting.includes(bank);
             return (
               <div
                 key={bank}
-                className={`flex flex-wrap items-center gap-2 rounded-2xl border-2 bg-white p-3 ${
+                className={`space-y-2 rounded-2xl border-2 bg-white p-3 ${
                   isCheapest ? tone.border : 'border-slate-200'
                 }`}
               >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone.dot }} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-sm font-black text-slate-900">
-                    {bank}
-                    {isCheapest && !single && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-black text-amber-800">
-                        הזולה ביותר
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-2xs font-bold text-slate-500">
-                    {best ? `ריבית כוללת משוקללת ${formatRate(weightedRateOf(best))}` : 'עוד לא הוזנו ריביות'}
-                  </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone.dot }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-1.5 text-sm font-black text-slate-900">
+                      {bank}
+                      {isCheapest && !single && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-black text-amber-800">
+                          הזולה ביותר
+                        </span>
+                      )}
+                      {answered === 'DECLINED' && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-black text-slate-700">
+                          ללא שיפור
+                        </span>
+                      )}
+                      {answered === 'UPDATED' && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-2xs font-black text-emerald-800">
+                          שיפר בסבב {negotiation.round}
+                        </span>
+                      )}
+                      {waiting && (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-black text-violet-800">
+                          ממתין לתשובה
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-2xs font-bold text-slate-500">
+                      {latest ? `ריבית כוללת משוקללת ${formatRate(weightedRateOf(latest))}` : 'עוד לא הוזנו ריביות'}
+                    </p>
+                  </div>
+                  {approvals && <ApprovalDocButton bank={bank} access={approvals} improved={ended} labeled={ended} />}
                 </div>
 
-                {approvals && <ApprovalDocButton bank={bank} access={approvals} improved={ended} labeled={ended} />}
-
-                {!ended && !isCheapest && (
-                  <button
-                    type="button"
-                    onClick={() => send(bank)}
-                    className="inline-flex items-center gap-1 rounded-xl border-2 border-violet-200 bg-violet-50 px-2.5 py-1.5 text-2xs font-black text-violet-800 hover:bg-violet-100"
-                  >
-                    {copied === bank ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : bankers[bank]?.email && onEmail ? (
-                      <Mail className="h-3.5 w-3.5" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5" />
-                    )}
-                    {copied === bank
-                      ? 'הנוסח הועתק'
-                      : bankers[bank]?.email && onEmail
-                        ? 'שליחת ההצעה לבנקאי'
-                        : 'העתקת ההצעה לשליחה'}
-                  </button>
+                {/* הריביות של הסבב הקודם — מה שהבנק מתבקש לשפר */}
+                {latest && (
+                  <div className="rounded-xl bg-slate-50 px-2.5 py-2">
+                    <p className="text-2xs font-black text-slate-600">
+                      {answered === 'UPDATED'
+                        ? 'הריביות המעודכנות'
+                        : answered === 'DECLINED'
+                          ? `ההצעה הטובה ביותר של ${bank}`
+                          : 'הריביות מהסבב הקודם'}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                      {latest.mix.tracks.map((track) => (
+                        <span key={track.id} className="text-2xs font-bold text-slate-700">
+                          {TRACK_TYPES[track.type] ?? track.name}{' '}
+                          <span className="font-black text-slate-900">{formatRate(track.interestRate)}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {!ended && (
-                  <button
-                    type="button"
-                    onClick={() => onEnterRates(bank as MortgageBank)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-2.5 py-1.5 text-2xs font-black text-white hover:bg-blue-700"
-                  >
-                    <PencilLine className="h-3.5 w-3.5" />
-                    {best ? 'הזינו ריביות מעודכנות מהבנק' : 'הזינו ריביות מהבנק'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {!isCheapest && (
+                      <button
+                        type="button"
+                        onClick={() => send(bank)}
+                        className="inline-flex items-center gap-1 rounded-xl border-2 border-violet-200 bg-violet-50 px-2.5 py-1.5 text-2xs font-black text-violet-800 hover:bg-violet-100"
+                      >
+                        {copied === bank ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : bankers[bank]?.email && onEmail ? (
+                          <Mail className="h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                        {copied === bank
+                          ? 'הנוסח הועתק'
+                          : bankers[bank]?.email && onEmail
+                            ? 'שליחת ההצעה לבנקאי'
+                            : 'העתקת ההצעה לשליחה'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onEnterRates(bank as MortgageBank)}
+                      className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-2.5 py-1.5 text-2xs font-black text-white hover:bg-blue-700"
+                    >
+                      <PencilLine className="h-3.5 w-3.5" />
+                      {latest ? 'הזינו ריביות מעודכנות מהבנק' : 'הזינו ריביות מהבנק'}
+                    </button>
+                    {latest && waiting && (
+                      <button
+                        type="button"
+                        onClick={() => onDecline(bank)}
+                        className="inline-flex items-center gap-1 rounded-xl border-2 border-slate-200 bg-white px-2.5 py-1.5 text-2xs font-black text-slate-700 hover:bg-slate-50"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                        ללא שיפור
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })}
         </div>
 
+        {allDeclined && !ended && (
+          <p className="rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-black text-slate-800">
+            {single
+              ? 'הבנק ענה שאינו משפר. ההצעה האחרונה שלו היא הטובה ביותר — סמנו שהמיקוח הסתיים.'
+              : 'כל הבנקים ענו שאינם משפרים. ההצעה האחרונה של כל בנק היא הטובה ביותר שלו — סמנו שהמיקוח הסתיים.'}
+          </p>
+        )}
+
         <div className="flex flex-wrap items-center justify-center gap-2">
           {ended ? (
             <button
               type="button"
-              onClick={() => onChange({ round: negotiation.round + 1, endedAt: null })}
+              onClick={() => onChange({ ...negotiation, round: negotiation.round + 1, endedAt: null })}
               className="inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50"
             >
               <RotateCcw className="h-4 w-4" />

@@ -34,6 +34,8 @@ interface BankPricingRowProps {
   onOpenChange?: (bank: MortgageBank | null) => void;
   /** צפייה באישור העקרוני של כל בנק, או העלאה שלו — ליד שם הבנק */
   approvals?: BankApprovalAccess;
+  /** ההצעה הקודמת של הבנק — ממנה ההזנה מתחילה, ומולה רואים מה השתפר */
+  previousOf?: (bank: MortgageBank) => WorkspaceMix | null;
 }
 
 /**
@@ -53,6 +55,7 @@ export function BankPricingRow({
   open: controlledOpen,
   onOpenChange,
   approvals,
+  previousOf,
 }: BankPricingRowProps) {
   const [ownOpen, setOwnOpen] = useState<MortgageBank | null>(null);
   const open = controlledOpen !== undefined ? controlledOpen : ownOpen;
@@ -145,6 +148,7 @@ export function BankPricingRow({
               <BankRateEntry
                 mix={mix}
                 bank={open}
+                previous={previousOf?.(open) ?? null}
                 takenNames={takenNames}
                 onSave={onSave}
                 onSaved={() => setOpen(null)}

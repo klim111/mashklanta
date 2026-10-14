@@ -639,15 +639,34 @@ export interface AuctionNegotiation {
   round: number;
   /** הלקוח סימן "אף בנק לא מוכן לרדת בריביות" (ISO); null — המיקוח פתוח */
   endedAt: string | null;
+  /**
+   * מה כל בנק ענה, ובאיזה סבב: ריביות מעודכנות, או "ללא שיפור" — ואז ההצעה
+   * האחרונה שלו היא הטובה ביותר שלו. הסבב עובר כשכל הבנקים שנשאלו ענו.
+   */
+  responses: Record<string, NegotiationResponse>;
 }
 
-export const EMPTY_NEGOTIATION: AuctionNegotiation = { round: 1, endedAt: null };
+export interface NegotiationResponse {
+  round: number;
+  kind: 'UPDATED' | 'DECLINED';
+}
+
+export const EMPTY_NEGOTIATION: AuctionNegotiation = { round: 1, endedAt: null, responses: {} };
 
 export function parseNegotiation(value: unknown): AuctionNegotiation {
   if (!value || typeof value !== 'object') return EMPTY_NEGOTIATION;
   const row = value as Record<string, unknown>;
   const round = typeof row.round === 'number' && row.round >= 1 ? Math.round(row.round) : 1;
-  return { round, endedAt: typeof row.endedAt === 'string' ? row.endedAt : null };
+  const responses: Record<string, NegotiationResponse> = {};
+  if (row.responses && typeof row.responses === 'object') {
+    for (const [bank, value] of Object.entries(row.responses as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') continue;
+      const item = value as Record<string, unknown>;
+      if (typeof item.round !== 'number' || (item.kind !== 'UPDATED' && item.kind !== 'DECLINED')) continue;
+      responses[bank] = { round: Math.round(item.round), kind: item.kind };
+    }
+  }
+  return { round, endedAt: typeof row.endedAt === 'string' ? row.endedAt : null, responses };
 }
 
 /**
