@@ -4,6 +4,7 @@ import {
   TOOL_HAS_CONTENT,
   analysisFromToolData,
   guestSnapshotToToolData,
+  mergeCarriedToolData,
   parseResume,
   parseToolData,
   parseToolDataWrite,
@@ -128,5 +129,46 @@ describe('מה שנשלח עם ההרשמה', () => {
       equity: {},
     });
     expect(parseToolDataWrite({ key: 'resume', data: null }).ok).toBe(true);
+  });
+});
+
+describe('מה שעובר עם התחברות לחשבון קיים', () => {
+  const now = new Date('2026-10-14T08:00:00Z');
+  const refinance = { tracks: [{ amount: 600_000 }] };
+  const loans = { loans: [{ principal: 80_000 }] };
+  const equity = { propertyData: { price: 2_000_000 }, expenses: [], currentStep: 0 };
+  const carried = guestSnapshotToToolData(
+    { refinance, consumerLoans: loans, equity, steps: { refinance: 'result', equity: '0' } },
+    now
+  )!;
+
+  it('מוסיף רק כלים שאין להם נתונים בחשבון, עם ההודעה "תרצו להמשיך?"', () => {
+    const writes = mergeCarriedToolData({ consumerLoans: { loans: [{ principal: 5 }] } }, carried, now);
+    expect(writes).toEqual({
+      refinance,
+      equity,
+      resume: {
+        tools: ['refinance', 'equity'],
+        steps: { refinance: 'result', equity: '0' },
+        savedAt: now.toISOString(),
+      },
+    });
+  });
+
+  it('שומר על הודעה קיימת ומוסיף לה', () => {
+    const writes = mergeCarriedToolData(
+      { resume: { tools: ['affordability'], steps: { affordability: 'results' } } },
+      carried,
+      now
+    );
+    expect(writes.resume).toEqual({
+      tools: ['affordability', 'refinance', 'equity', 'consumerLoans'],
+      steps: { refinance: 'result', equity: '0', affordability: 'results' },
+      savedAt: now.toISOString(),
+    });
+  });
+
+  it('כשהכל כבר בחשבון אין מה לכתוב', () => {
+    expect(mergeCarriedToolData({ refinance, consumerLoans: loans, equity: {} }, carried, now)).toEqual({});
   });
 });

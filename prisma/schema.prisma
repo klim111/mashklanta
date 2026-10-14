@@ -279,6 +279,22 @@ model PendingRegistration {
   @@index([expires])
 }
 
+/**
+ * מה שאורח הזין בכלים החינמיים, בדרך להתחברות עם גוגל. הדפדפן שולח אותו
+ * לפני היציאה לגוגל, כי הנתונים בדפדפן לא עוברים כשהאתר מעביר לכתובת הרשמית
+ * שלו, וכי קישור האימות של הרשמה חדשה עשוי להיפתח בדפדפן אחר. כשההתחברות
+ * חוזרת, הנתונים עוברים להרשמה הממתינה או לחשבון, והשורה נמחקת.
+ */
+model GuestCarry {
+  /** hash של המזהה שבעוגייה */
+  id           String   @id
+  toolDataJson Json
+  expires      DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expires])
+}
+
 // Domain models
 model Document {
   id          String         @id @default(cuid())

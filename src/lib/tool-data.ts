@@ -204,3 +204,40 @@ export function guestSnapshotToToolData(raw: unknown, now: Date = new Date()): R
   if (resume) result.resume = resume;
   return result;
 }
+
+/**
+ * מה שנשמר עם ההתחברות לחשבון קיים (src/lib/guest-carry.ts): רק כלים שאין
+ * להם עדיין נתונים בחשבון, כדי לא לדרוס עבודה קיימת, וההודעה "תרצו
+ * להמשיך?" עם הכלים שנוספו. מחזיר רק את המפתחות שצריך לכתוב.
+ */
+export function mergeCarriedToolData(
+  accountRaw: unknown,
+  carried: Record<string, unknown>,
+  now: Date = new Date()
+): AccountToolData {
+  const account = parseToolData(accountRaw);
+  const writes: AccountToolData = {};
+  const added: ResumeTool[] = [];
+  for (const tool of RESUME_TOOLS) {
+    const value = carried[tool];
+    if (!RESUME_HAS_CONTENT[tool](value)) continue;
+    const present = tool === 'equity' ? account.equity !== undefined : TOOL_HAS_CONTENT[tool](account[tool]);
+    if (present) continue;
+    writes[tool] = value;
+    added.push(tool);
+  }
+  if (added.length === 0) return writes;
+  const existing = parseResume(account.resume);
+  const carriedResume = parseResume(carried.resume);
+  const steps: ResumeInfo['steps'] = {};
+  for (const tool of added) {
+    const step = carriedResume?.steps[tool];
+    if (step) steps[tool] = step;
+  }
+  writes.resume = {
+    tools: RESUME_TOOLS.filter((tool) => existing?.tools.includes(tool) || added.includes(tool)),
+    steps: { ...steps, ...existing?.steps },
+    savedAt: now.toISOString(),
+  };
+  return writes;
+}
