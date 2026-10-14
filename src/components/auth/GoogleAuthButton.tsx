@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { GOOGLE_UNAVAILABLE_MESSAGE } from "@/lib/auth-errors";
+import { collectGuestSnapshot } from "@/components/tool-data/toolData";
 
 /** תשובת `/api/auth-diagnostics` — מצב ההתחברות עם גוגל בבקשה הנוכחית. */
 type GoogleOAuthStatus = {
@@ -12,6 +13,31 @@ type GoogleOAuthStatus = {
   originMatches: boolean;
   expectedRedirectUri: string | null;
 };
+
+/**
+ * מה שהזינו בכלים החינמיים נשמר בשרת לפני היציאה לגוגל (src/lib/guest-carry.ts),
+ * ועובר לחשבון כשההתחברות חוזרת. אחרי מעבר לכתובת הרשמית של האתר אין כאן
+ * נתונים בדפדפן — אז נשלח המזהה שהכתובת הקודמת העבירה. מחזיר את המזהה, אם יש.
+ */
+async function carryGuestData(): Promise<string | null> {
+  try {
+    const toolData = collectGuestSnapshot();
+    const passed = new URLSearchParams(window.location.search).get("carry");
+    const body = toolData ? { toolData } : passed ? { token: passed } : null;
+    if (!body) return null;
+    const response = await fetch("/api/auth/guest-carry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) return null;
+    const { token } = (await response.json()) as { token?: string | null };
+    return token ?? null;
+  } catch {
+    // בלי זה ההתחברות עדיין עובדת; הנתונים עוברים כשממשיכים באותו דפדפן
+    return null;
+  }
+}
 
 function GoogleMark() {
   return (
@@ -72,12 +98,15 @@ export function GoogleAuthButton({
        * במסך "Error 400: redirect_uri_mismatch". לכן מעבירים את הגולש
        * לכתובת הרשמית ומתחילים את ההתחברות משם.
        */
+      const carry = await carryGuestData();
+
       const canonical = status?.canonicalOrigin;
       if (canonical && status && !status.originMatches && canonical !== window.location.origin) {
         setNotice("מעבירים אתכם לכתובת הרשמית של האתר כדי להתחבר עם Google…");
         const target = new URL("/auth/login", canonical);
         target.searchParams.set("callbackUrl", callbackUrl);
         target.searchParams.set("google", "1");
+        if (carry) target.searchParams.set("carry", carry);
         window.location.assign(target.toString());
         return;
       }
