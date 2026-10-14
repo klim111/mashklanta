@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
-import { ClientList } from './ClientList';
+import { ClientsArea } from './ClientsArea';
 import { CalendarPanel } from './CalendarPanel';
 import { MeetingDialog } from './MeetingDialog';
 import { QuickActions } from './QuickActions';
@@ -390,21 +390,19 @@ export function AdvisorConsole() {
           transition={{ duration: 0.25 }}
         >
           {tab === 'clients' && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <ClientList
-                clients={clients}
-                ready={ready}
-                error={error}
-                onAddClient={async (input) => {
-                  const failure = await addClient(input);
-                  if (!failure) await refreshOverview();
-                  return failure;
-                }}
-                onScheduleMeeting={(client) => openMeeting(client)}
-                query={query}
-                onQueryChange={setQuery}
-              />
-            </div>
+            <ClientsArea
+              clients={clients}
+              ready={ready}
+              error={error}
+              onAddClient={async (input) => {
+                const failure = await addClient(input);
+                if (!failure) await refreshOverview();
+                return failure;
+              }}
+              onScheduleMeeting={(client) => openMeeting(client)}
+              query={query}
+              onQueryChange={setQuery}
+            />
           )}
 
           {tab === 'requests' && (

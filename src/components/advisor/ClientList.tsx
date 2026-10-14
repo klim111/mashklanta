@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertTriangle,
+  BadgeCheck,
   CalendarClock,
   CalendarPlus,
   ChevronLeft,
@@ -286,6 +287,21 @@ function ClientRow({
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
           <span className="truncate">{client.name}</span>
+          {client.paid && (
+            <span
+              title={
+                client.lastPaidAt
+                  ? `שילם לאחרונה ב-${formatDate(client.lastPaidAt)}${
+                      client.accessEndsAt ? ` · הגישה בתשלום עד ${formatDate(client.accessEndsAt)}` : ''
+                    }`
+                  : 'לקוח משלם'
+              }
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-2xs font-bold text-emerald-800"
+            >
+              <BadgeCheck className="h-3.5 w-3.5" />
+              שילם
+            </span>
+          )}
           {client.selfRegistered && (
             <span
               title="נרשם לבד לפלטפורמה. צירוף הלקוח בטופס הוספת לקוח הופך אותו ללקוח בליווי"
@@ -304,6 +320,13 @@ function ClientRow({
             <span className="flex items-center gap-1">
               <Phone className="h-3 w-3" />
               {client.phone}
+            </span>
+          )}
+          {client.registeredAt && <span>נרשם {formatDate(client.registeredAt)}</span>}
+          {client.accessEndsAt && (
+            <span className={new Date(client.accessEndsAt) > new Date() ? 'text-emerald-700' : 'text-rose-600'}>
+              {new Date(client.accessEndsAt) > new Date() ? 'גישה בתשלום עד' : 'הגישה בתשלום הסתיימה'}{' '}
+              {formatDate(client.accessEndsAt)}
             </span>
           )}
         </p>

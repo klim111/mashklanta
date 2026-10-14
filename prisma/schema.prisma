@@ -1724,6 +1724,17 @@ model SiteVisit {
   /** phone / tablet / desktop */
   device     String?
   userId     String?
+  /**
+   * פרטי ההתחברות — נשמרים רק בביקור של משתמש מחובר, כדי שהיועץ יראה מי נכנס
+   * לחשבון, מאיזו כתובת ומאיזה מכשיר. אצל אורחים הם נשארים ריקים.
+   */
+  ip         String?
+  /** הדפדפן, למשל "Chrome 129" */
+  browser    String?
+  /** מערכת ההפעלה, למשל "iOS 18" */
+  os         String?
+  /** העיר והמדינה לפי כתובת ה-IP (מ-Vercel), למשל "Tel Aviv, IL" */
+  location   String?
   /** זמן שהעמוד היה גלוי למבקר, באלפיות שנייה */
   durationMs Int      @default(0)
   startedAt  DateTime @default(now())
@@ -1731,6 +1742,7 @@ model SiteVisit {
   @@index([startedAt])
   @@index([path, startedAt])
   @@index([sessionId])
+  @@index([userId, startedAt])
 }
 
 /**
