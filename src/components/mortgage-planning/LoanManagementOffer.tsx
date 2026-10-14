@@ -58,7 +58,8 @@ export function LoanManagementOffer({
       JSON.stringify({ userData: nextUserData, currentStep: planningStep })
     );
     startConsumerLoansImport(nextUserData);
-    window.location.href = `/consumer-loans?import=planning${returnQuery}`;
+    // from=affordability — כדי שכלי ההלוואות יציע דרך חזרה לבדיקה עם הנתונים שכבר הוזנו
+    window.location.href = `/consumer-loans?import=planning&from=affordability${returnQuery}`;
   };
 
   return (
