@@ -64,7 +64,7 @@ export function AgendaSection({
   initialDay?: string;
   onNavigate: (section: DashboardSection) => void;
 }) {
-  const { tasks, events, meetingsState, notes, clientTasksState, plansState, scheduleTask } = data;
+  const { tasks, events, meetingsState, notes, clientTasksState, plansState, scheduleTask, cancelTask } = data;
   const [view, setView] = useState<CalendarView>('month');
   const [selected, setSelected] = useState(() => initialDay ?? dayKey(new Date()));
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -284,6 +284,7 @@ export function AgendaSection({
             columns={2}
             onOpen={(task) => setDetail({ kind: 'task', task })}
             onSchedule={scheduleTask}
+            onCancel={cancelTask}
           />
         </DashCard>
 

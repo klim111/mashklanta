@@ -258,7 +258,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-black ${
                 badge.alert
-                  ? 'bg-rose-500 text-white'
+                  ? 'bg-amber-400 text-amber-950'
                   : active
                     ? 'bg-slate-100 text-slate-700'
                     : 'bg-white/15 text-white'

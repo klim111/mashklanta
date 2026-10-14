@@ -96,6 +96,7 @@ export function OverviewSection({
     ready,
     taskStates,
     scheduleTask,
+    cancelTask,
     pendingLead,
   } = data;
   /** בקשה מבחוץ לפתוח אחת משלוש העמודות — למשל מהשורה של הבקשה ליועץ */
@@ -196,10 +197,10 @@ export function OverviewSection({
     {
       id: 'tasks',
       icon: <ListChecks className="h-4 w-4" />,
-      tone: urgent > 0 ? 'rose' : 'slate',
+      tone: urgent > 0 ? 'amber' : 'slate',
       label: 'משימות פתוחות',
       value: `${tasks.length}`,
-      hint: urgent > 0 ? `${urgent} דורשות טיפול מיידי` : 'הכול מעודכן',
+      hint: urgent > 0 ? `${urgent} חשובות לטיפול` : 'הכול מעודכן',
       onClick: () => onNavigate('agenda'),
     },
   ];
@@ -268,7 +269,7 @@ export function OverviewSection({
           המשימות שלי
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-black text-slate-600">{tasks.length}</span>
           {urgent > 0 && (
-            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-sm font-black text-rose-700">{urgent} דחופות</span>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-black text-amber-800">{urgent} חשובות</span>
           )}
         </span>
         {nextTask ? (
@@ -277,7 +278,7 @@ export function OverviewSection({
             onClick={() => go(nextTask.target)}
             className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border px-3 py-2 text-right transition-colors hover:border-blue-300 ${
               taskGroups.overdue[0] === nextTask || nextTask.tone === 'urgent'
-                ? 'border-rose-200 bg-rose-50'
+                ? 'border-amber-200 bg-amber-50/60'
                 : 'border-slate-200 bg-slate-50'
             }`}
           >
@@ -310,6 +311,7 @@ export function OverviewSection({
             columns={2}
             onOpen={(task) => go(task.target)}
             onSchedule={scheduleTask}
+            onCancel={cancelTask}
           />
         </div>
       )}

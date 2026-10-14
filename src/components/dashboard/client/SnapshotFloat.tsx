@@ -117,7 +117,7 @@ export function SnapshotFloat({ items, alert }: { items: SnapshotItem[]; alert: 
         <Gauge className="h-5 w-5" />
         תמונת מצב
         {alert && !open && (
-          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-rose-500 ring-2 ring-white" aria-label="יש פריטים דחופים" />
+          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-amber-400 ring-2 ring-white" aria-label="יש פריטים לטיפול" />
         )}
       </button>
     </div>

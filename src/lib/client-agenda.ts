@@ -401,14 +401,13 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
   (input.clientTasks ?? [])
     .filter((task) => task.status === 'OPEN')
     .forEach((task) => {
-      const overdue = task.dueAt !== null && daysUntil(task.dueAt, now) < 0;
       tasks.push({
         id: `${CLIENT_TASK_PREFIX}${task.id}`,
         title: task.title,
         hint: [isAuthorizationTask(task) ? 'משימה מהיועץ' : KIND_HINTS[task.kind], task.details ?? '']
           .filter(Boolean)
           .join(' · '),
-        tone: overdue ? 'urgent' : 'action',
+        tone: 'action',
         due: task.dueAt,
         /* משימה שהלקוח הוסיף נושאת את המועד שהוא קבע לה מלכתחילה */
         scheduled: Boolean(task.dueAt),
@@ -480,8 +479,12 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
     return [{ ...task, due: state.due, scheduled: true }];
   });
 
+  /* משימה שהמועד שלה עבר קופצת לראש הרשימה, כדי שהלקוח יבצע או יבטל אותה */
+  const late = (task: ClientTask) =>
+    task.due !== null && !Number.isNaN(new Date(task.due).getTime()) && new Date(task.due) < now;
   const rank: Record<AgendaTone, number> = { urgent: 0, action: 1, info: 2 };
   return scheduled.sort((a, b) => {
+    if (late(a) !== late(b)) return late(a) ? -1 : 1;
     if (rank[a.tone] !== rank[b.tone]) return rank[a.tone] - rank[b.tone];
     if (a.due && b.due) return a.due.localeCompare(b.due);
     if (a.due) return -1;

@@ -302,7 +302,7 @@ export function AdvisorConsole() {
                   overview.awaitingAdvisor > 0
                     ? `${overview.awaitingAdvisor} פגישות שהלקוח הציע להן מועד ממתינות לאישורך`
                     : overview.overdueTasks > 0
-                    ? `${overview.overdueTasks} משימות באיחור`
+                    ? `${overview.overdueTasks} משימות שהמועד שלהן עבר`
                     : overview.awaitingConfirmation > 0
                       ? `${overview.awaitingConfirmation} פגישות ממתינות לאישור הלקוח`
                       : 'הכול מעודכן'
@@ -505,7 +505,7 @@ function AgendaCard({
       onClick={onClick}
       className={`rounded-2xl border p-3 text-right transition-colors ${
         tone === 'alert'
-          ? 'border-rose-400/40 bg-rose-500/15 hover:bg-rose-500/25'
+          ? 'border-amber-300/40 bg-amber-400/15 hover:bg-amber-400/25'
           : 'border-white/15 bg-white/10 hover:bg-white/15'
       }`}
     >

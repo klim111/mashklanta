@@ -170,7 +170,7 @@ export function ClientContextRow({
           <div className="rounded-xl border border-slate-200 p-3">
             <p className="text-2xl font-black text-slate-900">{openTasks.length}</p>
             <p className="text-xs text-slate-500">
-              {overdue > 0 ? `${overdue} מהן באיחור` : 'משימות פתוחות ללקוח הזה'}
+              {overdue > 0 ? `${overdue} מהן שהמועד שלהן עבר` : 'משימות פתוחות ללקוח הזה'}
             </p>
           </div>
 

@@ -72,6 +72,18 @@ describe('מועדים שהלקוח קובע למשימות', () => {
     expect(groups.scheduled.map((task) => task.id)).toContain('deal:p1');
     expect(groups.undated.every((task) => task.due === null)).toBe(true);
   });
+
+  it('משימה שהמועד שלה עבר קופצת לראש הרשימה', () => {
+    const tasks = buildClientTasks(
+      {
+        ...EMPTY_AGENDA_INPUT,
+        plans: [plan()],
+        taskStates: { 'continue:p1': { due: '2026-09-15T10:00:00.000Z', done: false } },
+      },
+      NOW
+    );
+    expect(tasks[0]?.id).toBe('continue:p1');
+  });
 });
 
 describe('משימת המסמכים לחתימה', () => {

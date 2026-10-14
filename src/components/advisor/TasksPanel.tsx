@@ -62,8 +62,8 @@ export function TasksPanel({
             {openCount} פתוחות
           </span>
           {overdueCount > 0 && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
-              {overdueCount} באיחור
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+              {overdueCount} שהמועד שלהן עבר
             </span>
           )}
         </div>

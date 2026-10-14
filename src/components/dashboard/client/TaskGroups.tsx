@@ -1,15 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
-import { AlertTriangle, CalendarClock, Check, Inbox } from 'lucide-react';
+import { CalendarClock, Check, Clock, Inbox } from 'lucide-react';
 import { groupTasks } from '@/lib/client-agenda';
 import type { ClientTask } from '@/lib/client-agenda';
 import { TaskItem } from './TaskItem';
 
 /**
  * המשימות, מחולקות לשלוש קבוצות: מה שהמועד שלו עבר ולא הושלם, מה שנקבע לו
- * מועד, ומה שעדיין בלי תאריך. ההפרדה ויזואלית כדי שיהיה ברור במבט אחד מה
- * דוחק — וכל משימה נשארת ניתנת לתזמון מחדש מתוך הקבוצה שלה.
+ * מועד, ומה שעדיין בלי תאריך. מה שהמועד שלו עבר מופיע ראשון, בצבע עדין ולא
+ * באדום, עם אפשרות לעבור לביצוע או לבטל.
  */
 export function TaskGroupsList({
   tasks,
@@ -17,6 +17,7 @@ export function TaskGroupsList({
   columns = 1,
   onOpen,
   onSchedule,
+  onCancel,
 }: {
   tasks: ClientTask[];
   compact?: boolean;
@@ -24,6 +25,7 @@ export function TaskGroupsList({
   columns?: 1 | 2;
   onOpen: (task: ClientTask) => void;
   onSchedule?: (taskId: string, due: string | null) => void;
+  onCancel?: (taskId: string) => void;
 }) {
   const groups = useMemo(() => groupTasks(tasks), [tasks]);
 
@@ -50,10 +52,10 @@ export function TaskGroupsList({
   return (
     <div className="space-y-5">
       <Bucket
-        title="המועד עבר וטרם בוצע"
-        hint="קבעו מועד חדש כדי להחזיר את המשימה ללוח"
-        icon={<AlertTriangle className="h-4 w-4" />}
-        tone="rose"
+        title="ממתינות לביצוע"
+        hint="המועד שקבעתם עבר. אפשר לבצע עכשיו, לקבוע מועד חדש או לבטל"
+        icon={<Clock className="h-4 w-4" />}
+        tone="amber"
         tasks={groups.overdue}
         grid={grid}
         cell={cell}
@@ -61,6 +63,7 @@ export function TaskGroupsList({
         overdue
         onOpen={onOpen}
         onSchedule={onSchedule}
+        onCancel={onCancel}
       />
       <Bucket
         title="המשימות הבאות"
@@ -91,7 +94,7 @@ export function TaskGroupsList({
 }
 
 const TONES = {
-  rose: 'bg-rose-100 text-rose-800',
+  amber: 'bg-amber-100 text-amber-800',
   blue: 'bg-blue-100 text-blue-800',
   slate: 'bg-slate-200 text-slate-700',
 } as const;
@@ -108,6 +111,7 @@ function Bucket({
   overdue = false,
   onOpen,
   onSchedule,
+  onCancel,
 }: {
   title: string;
   hint: string;
@@ -121,6 +125,7 @@ function Bucket({
   overdue?: boolean;
   onOpen: (task: ClientTask) => void;
   onSchedule?: (taskId: string, due: string | null) => void;
+  onCancel?: (taskId: string) => void;
 }) {
   if (tasks.length === 0) return null;
 
@@ -143,6 +148,7 @@ function Bucket({
               overdue={overdue}
               onOpen={() => onOpen(task)}
               onSchedule={onSchedule ? (due) => onSchedule(task.id, due) : undefined}
+              onCancel={onCancel ? () => onCancel(task.id) : undefined}
             />
           </div>
         ))}

@@ -42,7 +42,7 @@ export function TaskRow({
         done
           ? 'border-slate-100 bg-slate-50/60'
           : overdue
-            ? 'border-red-200 bg-red-50/50'
+            ? 'border-amber-200 bg-amber-50/60'
             : 'border-slate-200 bg-white hover:border-blue-300'
       }`}
     >
@@ -107,7 +107,7 @@ export function TaskRow({
           className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold transition-colors ${
             task.dueDate
               ? overdue
-                ? 'bg-red-100 text-red-700'
+                ? 'bg-amber-100 text-amber-800'
                 : 'bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700'
               : 'border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-600'
           }`}

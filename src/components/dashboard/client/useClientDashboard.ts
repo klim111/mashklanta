@@ -200,6 +200,22 @@ export function useClientDashboard() {
     },
     [clientTasksState, taskStatesState]
   );
+
+  /**
+   * ביטול משימה: משימה שהלקוח הוסיף נמחקת, ומשימה נגזרת יורדת מהרשימה דרך
+   * הסימון שלה, כמו משימה שסומנה כבוצעה.
+   */
+  const cancelTask = useCallback(
+    (taskId: string) => {
+      const ownId = clientTaskIdOf(taskId);
+      if (ownId) {
+        void clientTasksState.remove(ownId);
+        return;
+      }
+      void taskStatesState.setDone(taskId, true);
+    },
+    [clientTasksState, taskStatesState]
+  );
   const events = useMemo(() => buildCalendarEvents(input, tasks), [input, tasks]);
 
   /**
@@ -227,6 +243,7 @@ export function useClientDashboard() {
     events,
     taskStates: taskStatesState,
     scheduleTask,
+    cancelTask,
     contactedAdvisor,
     pendingLead,
     firstVisit,

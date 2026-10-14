@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, ArrowLeft, CalendarPlus, Info, X, Zap } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarPlus, Clock, Info, X, Zap } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/advisor-crm';
 import type { AgendaTarget, ClientTask } from '@/lib/client-agenda';
 import { StageChip } from '@/components/advisor/ui';
 
 const TONES = {
-  urgent: { icon: AlertCircle, ring: 'border-rose-200 bg-rose-50', badge: 'bg-rose-100 text-rose-700', label: 'דחוף' },
+  urgent: { icon: AlertCircle, ring: 'border-amber-200 bg-amber-50/60', badge: 'bg-amber-100 text-amber-800', label: 'חשוב' },
   action: { icon: Zap, ring: 'border-slate-200 bg-white', badge: 'bg-blue-100 text-blue-700', label: 'לביצוע' },
   info: { icon: Info, ring: 'border-slate-200 bg-slate-50', badge: 'bg-slate-200 text-slate-700', label: 'לידיעה' },
 } as const;
@@ -34,6 +34,9 @@ function fromLocalInput(value: string): string | null {
  *
  * לחיצה על גוף המשימה מובילה למקום שבו עושים אותה, ולצדה אפשר לקבוע מועד
  * ושעה לביצוע — המועד משבץ את המשימה בלוח השנה ומעביר אותה לקבוצה המתאימה.
+ *
+ * משימה שהמועד שלה עבר לא נצבעת באדום: היא מסומנת בעדינות, ולצדה שתי
+ * הפעולות שהלקוח צריך — לעבור לביצוע או לבטל אותה.
  */
 export function TaskItem({
   task,
@@ -41,6 +44,7 @@ export function TaskItem({
   overdue = false,
   onOpen,
   onSchedule,
+  onCancel,
 }: {
   task: ClientTask;
   compact?: boolean;
@@ -49,9 +53,11 @@ export function TaskItem({
   onOpen: (target: AgendaTarget) => void;
   /** קביעת מועד או ביטולו. בלעדיה המשימה מוצגת בלי אפשרות תזמון */
   onSchedule?: (due: string | null) => void;
+  /** ביטול המשימה — מוצע כשהמועד שלה עבר */
+  onCancel?: () => void;
 }) {
   const tone = TONES[task.tone];
-  const Icon = overdue ? AlertTriangle : tone.icon;
+  const Icon = overdue ? Clock : tone.icon;
   const [picking, setPicking] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -60,7 +66,7 @@ export function TaskItem({
   }, [picking]);
 
   const shell = overdue
-    ? 'border-rose-300 bg-rose-50'
+    ? 'border-amber-200 bg-amber-50/60'
     : task.scheduled
       ? 'border-blue-200 bg-blue-50'
       : tone.ring;
@@ -74,7 +80,7 @@ export function TaskItem({
       >
         <span
           className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-            overdue ? 'bg-rose-200 text-rose-800' : tone.badge
+            overdue ? 'bg-amber-100 text-amber-700' : tone.badge
           }`}
         >
           <Icon className="h-4 w-4" />
@@ -87,13 +93,13 @@ export function TaskItem({
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
             <span
               className={`rounded-full px-2 py-0.5 font-bold ${
-                overdue ? 'bg-rose-200 text-rose-900' : tone.badge
+                overdue ? 'bg-amber-100 text-amber-800' : tone.badge
               }`}
             >
-              {overdue ? 'המועד עבר' : tone.label}
+              {overdue ? 'ממתינה לביצוע' : tone.label}
             </span>
             {task.due && (
-              <span className={`font-semibold ${overdue ? 'text-rose-700' : ''}`}>
+              <span className="font-semibold">
                 {formatDate(task.due)} · {formatTime(task.due)}
               </span>
             )}
@@ -103,7 +109,7 @@ export function TaskItem({
         <ArrowLeft className="mt-2 h-4 w-4 shrink-0 text-slate-400" />
       </button>
 
-      {onSchedule && (
+      {(onSchedule || (overdue && onCancel)) && (
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2 border-t border-slate-200/70 pt-2">
           {picking ? (
             <>
@@ -114,7 +120,7 @@ export function TaskItem({
                 onChange={(event) => {
                   const next = fromLocalInput(event.target.value);
                   if (next) {
-                    onSchedule(next);
+                    onSchedule?.(next);
                     setPicking(false);
                   }
                 }}
@@ -129,24 +135,50 @@ export function TaskItem({
                 <X className="h-4 w-4" />
               </button>
             </>
+          ) : overdue ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onOpen(task.target)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-black text-white transition-colors hover:bg-blue-700"
+              >
+                לביצוע
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              {onSchedule && (
+                <button
+                  type="button"
+                  onClick={() => setPicking(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
+                >
+                  <CalendarPlus className="h-4 w-4" />
+                  מועד חדש
+                </button>
+              )}
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                >
+                  ביטול המשימה
+                </button>
+              )}
+            </>
           ) : (
             <>
               <button
                 type="button"
                 onClick={() => setPicking(true)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-black transition-colors ${
-                  overdue
-                    ? 'bg-rose-600 text-white hover:bg-rose-700'
-                    : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700'
-                }`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-black text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700"
               >
                 <CalendarPlus className="h-4 w-4" />
-                {overdue ? 'קביעת מועד חדש' : task.scheduled ? 'שינוי המועד' : 'קביעת מועד ושעה'}
+                {task.scheduled ? 'שינוי המועד' : 'קביעת מועד ושעה'}
               </button>
               {task.scheduled && (
                 <button
                   type="button"
-                  onClick={() => onSchedule(null)}
+                  onClick={() => onSchedule?.(null)}
                   className="rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
                 >
                   הסרת המועד
