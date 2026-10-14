@@ -14,15 +14,15 @@ export const SITE_CONTACT = {
    * המשפטיים מציגים את שם המותג בלבד.
    */
   legalName: '',
-  businessId: '',
+  businessId: '306581380',
 } as const;
 
 /** מועד העדכון האחרון של מדיניות הפרטיות ותנאי השימוש */
-export const LEGAL_UPDATED_AT = '25 בספטמבר 2026';
+export const LEGAL_UPDATED_AT = '14 באוקטובר 2026';
 
-/** "משכלנתא" או "משכלנתא (שם משפטי, ח.פ. …)" — מי שמפעיל את הפלטפורמה */
+/** "משכלנתא (עוסק מס׳ …)" או "משכלנתא (שם משפטי, עוסק מס׳ …)" — מי שמפעיל את הפלטפורמה */
 export function operatorDescription(): string {
   const { brand, legalName, businessId } = SITE_CONTACT;
-  if (!legalName) return brand;
-  return businessId ? `${brand} (${legalName}, מס׳ ${businessId})` : `${brand} (${legalName})`;
+  const parts = [legalName, businessId && `עוסק מס׳ ${businessId}`].filter(Boolean);
+  return parts.length ? `${brand} (${parts.join(', ')})` : brand;
 }
