@@ -45,7 +45,7 @@ export function MeetingDialog({
   onSubmit,
 }: MeetingDialogProps) {
   const [target, setTarget] = useState(clientId ?? '');
-  const [title, setTitle] = useState('פגישת ייעוץ');
+  const [title, setTitle] = useState('');
   const [slot, setSlot] = useState(defaultMeetingSlot);
   const [duration, setDuration] = useState(45);
   const [location, setLocation] = useState('');
@@ -57,7 +57,7 @@ export function MeetingDialog({
   useEffect(() => {
     if (!open) return;
     setTarget(clientId ?? '');
-    setTitle('פגישת ייעוץ');
+    setTitle('');
     setSlot(defaultMeetingSlot());
     setDuration(45);
     setLocation('');
