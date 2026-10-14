@@ -65,9 +65,9 @@ export default function Home() {
             className="mx-auto max-w-md text-balance text-base leading-relaxed text-slate-600 md:max-w-4xl md:text-xl"
             {...demoId('home-hero-title')}
           >
-            פלטפורמה חדשנית המשלבת טכנולוגיה מתקדמת עם מומחיות פיננסית
+            פלטפורמה שנותנת לך ידע, כלים מקצועיים
             <br />
-            <span className="text-blue-600 font-semibold">למציאת המשכנתא המושלמת עבורכם</span>
+            <span className="text-blue-600 font-semibold">ושקיפות מלאה</span>
           </motion.p>
         </div>
 
@@ -78,8 +78,63 @@ export default function Home() {
           className="pointer-events-none relative my-4 hidden min-h-[220px] w-full max-w-3xl flex-1 md:block lg:min-h-[240px] xl:max-h-[460px]"
         >
       
-        {/* Slide 1: Transparency & Simplicity */}
+        {/* Slide 1: שוויון כוחות — מאזניים שנוטים לצד הבנק, ומתיישרים כשהכלים של משכלנתא נוחתים בצד שלכם */}
         <div className="absolute inset-0 opacity-0 animate-carousel-slide-1 flex items-center justify-center">
+          <div className="h-full w-full px-4">
+            <svg viewBox="40 40 720 360" className="h-full w-full">
+              {/* עמוד ובסיס */}
+              <path d="M400 112 L400 292" stroke="rgba(51, 65, 85, 0.55)" strokeWidth="6" strokeLinecap="round" />
+              <rect x="330" y="290" width="140" height="14" rx="7" fill="rgba(51, 65, 85, 0.45)" />
+              <circle cx="400" cy="104" r="10" fill="rgba(59, 130, 246, 0.85)" />
+
+              {/* הקורה */}
+              <g className="animate-balance-beam">
+                <path d="M200 110 L600 110" stroke="rgba(51, 65, 85, 0.7)" strokeWidth="6" strokeLinecap="round" />
+              </g>
+
+              {/* הכף שלכם (שמאל): הכלים נוחתים בה אחד אחרי השני */}
+              <g className="animate-balance-pan-light">
+                <path d="M200 110 L125 200 M200 110 L275 200" stroke="rgba(100, 116, 139, 0.6)" strokeWidth="2" />
+                <g className="animate-balance-drop-1">
+                  <rect x="126" y="170" width="46" height="26" rx="8" fill="rgba(16, 185, 129, 0.85)" />
+                  <text x="149" y="188" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold" direction="rtl">ידע</text>
+                </g>
+                <g className="animate-balance-drop-2">
+                  <rect x="177" y="170" width="46" height="26" rx="8" fill="rgba(59, 130, 246, 0.85)" />
+                  <text x="200" y="188" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold" direction="rtl">כלים</text>
+                </g>
+                <g className="animate-balance-drop-3">
+                  <rect x="228" y="170" width="46" height="26" rx="8" fill="rgba(139, 92, 246, 0.85)" />
+                  <text x="251" y="188" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" direction="rtl">שקיפות</text>
+                </g>
+                <path d="M115 200 Q200 244 285 200 Z" fill="rgba(59, 130, 246, 0.25)" stroke="rgba(59, 130, 246, 0.7)" strokeWidth="3" />
+                <text x="200" y="262" textAnchor="middle" fill="rgba(30, 64, 175, 0.9)" fontSize="20" fontWeight="bold" direction="rtl">אתם</text>
+              </g>
+
+              {/* הכף של הבנק (ימין) */}
+              <g className="animate-balance-pan-heavy">
+                <path d="M600 110 L525 200 M600 110 L675 200" stroke="rgba(100, 116, 139, 0.6)" strokeWidth="2" />
+                <path d="M566 162 L600 144 L634 162 Z" fill="rgba(71, 85, 105, 0.75)" />
+                <rect x="570" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
+                <rect x="586" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
+                <rect x="607" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
+                <rect x="623" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
+                <rect x="564" y="192" width="72" height="6" rx="2" fill="rgba(71, 85, 105, 0.75)" />
+                <path d="M515 200 Q600 244 685 200 Z" fill="rgba(100, 116, 139, 0.2)" stroke="rgba(71, 85, 105, 0.7)" strokeWidth="3" />
+                <text x="600" y="262" textAnchor="middle" fill="rgba(51, 65, 85, 0.9)" fontSize="20" fontWeight="bold" direction="rtl">הבנק</text>
+              </g>
+
+              {/* Title */}
+              <text x="400" y="350" textAnchor="middle" fill="rgba(59, 130, 246, 0.9)"
+                    fontSize="32" fontWeight="bold" direction="rtl">שוויון כוחות מול הבנק</text>
+              <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)"
+                    fontSize="17" direction="rtl">לבנק יש ידע וכוח. חמושים בכלים של משכלנתא, גם אתם מגיעים מוכנים למערכה.</text>
+            </svg>
+          </div>
+        </div>
+
+        {/* Slide 2: Transparency & Simplicity */}
+        <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
           <div className="h-full w-full px-4">
             <svg viewBox="40 40 720 360" className="h-full w-full">
               {/* Shield Icon */}
@@ -100,13 +155,13 @@ export default function Home() {
               <text x="400" y="350" textAnchor="middle" fill="rgba(59, 130, 246, 0.9)" 
                     fontSize="32" fontWeight="bold">פשטות ושקיפות מלאה</text>
               <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                    fontSize="18">תהליך ברור ללא הפתעות</text>
+                    fontSize="18" direction="rtl">בכל שלב אתם רואים את תוצרי העבודה של היועץ.</text>
             </svg>
           </div>
         </div>
 
-        {/* Slide 2: Navigation & Guidance — חמשת שלבי המשכנתא */}
-        <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
+        {/* Slide 3: Navigation & Guidance — חמשת שלבי המשכנתא */}
+        <div className="absolute inset-0 opacity-0 animate-carousel-slide-3 flex items-center justify-center">
           <div className="w-full px-4" dir="rtl">
             <div className="relative mb-6 lg:mb-10">
               <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-slate-200 md:block" />
@@ -132,13 +187,13 @@ export default function Home() {
               ניווט לאורך כל השלבים
             </p>
             <p className="mt-1 text-center text-base text-slate-600 md:text-lg">
-              ליווי מקצועי מהתחלה ועד הסוף
+              מנהלים את כל התהליך מול כל הגורמים, עם כל החישובים והמסמכים, במקום אחד.
             </p>
           </div>
         </div>
 
-        {/* Slide 3: Optimal Mix */}
-        <div className="absolute inset-0 opacity-0 animate-carousel-slide-3 flex items-center justify-center">
+        {/* Slide 4: Optimal Mix */}
+        <div className="absolute inset-0 opacity-0 animate-carousel-slide-4 flex items-center justify-center">
           <div className="h-full w-full px-4">
             <svg viewBox="40 40 720 360" className="h-full w-full">
               {/* Multiple Charts Representing Mix */}

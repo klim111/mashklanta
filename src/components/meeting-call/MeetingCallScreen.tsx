@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LiveKitRoom } from '@livekit/components-react';
 import { ScreenSharePresets, VideoPresets } from 'livekit-client';
+import { MediaDeviceFailure } from 'livekit-client';
 import type { RoomOptions } from 'livekit-client';
 import { ArrowRight, CalendarDays, Loader2, Mic, MicOff, RotateCcw, Video, VideoOff } from 'lucide-react';
 import '@livekit/components-styles';
 import { formatDate, formatTime } from '@/lib/advisor-crm';
 import { CallStage } from './CallStage';
+import { deviceIssueMessage, prepareDevices } from './devices';
 import { returnHref } from './types';
 import type { MeetingCallDetails } from './types';
 
@@ -30,6 +32,14 @@ const ROOM_OPTIONS: RoomOptions = {
     red: true,
     dtx: true,
   },
+};
+
+/** שגיאת המכשיר של LiveKit, בשמות של הדפדפן */
+const FAILURE_ERRORS: Record<MediaDeviceFailure, string | undefined> = {
+  [MediaDeviceFailure.PermissionDenied]: 'NotAllowedError',
+  [MediaDeviceFailure.NotFound]: 'NotFoundError',
+  [MediaDeviceFailure.DeviceInUse]: 'NotReadableError',
+  [MediaDeviceFailure.Other]: undefined,
 };
 
 type Phase =
@@ -74,6 +84,11 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
   const join = useCallback(async () => {
     setPhase({ kind: 'joining' });
     setDeviceIssue(null);
+    // ההרשאות נשאלות כאן, בבקשה אחת, ולא בתוך החדר — ראו devices.ts
+    const devices = await prepareDevices(mic, camera);
+    setMic(devices.mic);
+    setCamera(devices.camera);
+    setDeviceIssue(devices.issue);
     const response = await fetch(`/api/meetings/${encodeURIComponent(meetingId)}/call`, { method: 'POST' }).catch(
       () => null
     );
@@ -83,7 +98,7 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
       return;
     }
     setPhase({ kind: 'in-call', token: body.token, serverUrl: body.serverUrl });
-  }, [meetingId]);
+  }, [meetingId, mic, camera]);
 
   if (phase.kind === 'in-call' && details) {
     return (
@@ -97,11 +112,9 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
         data-lk-theme="default"
         className="h-[100dvh] w-full"
         onDisconnected={() => setPhase({ kind: 'ended' })}
-        onMediaDeviceFailure={(_failure, kind) =>
+        onMediaDeviceFailure={(failure, kind) =>
           setDeviceIssue(
-            kind === 'audioinput'
-              ? 'לא הצלחנו להפעיל את המיקרופון. בדקו שהדפדפן מורשה להשתמש בו.'
-              : 'לא הצלחנו להפעיל את המצלמה. בדקו שהדפדפן מורשה להשתמש בה ושאין תוכנה אחרת שתופסת אותה.'
+            deviceIssueMessage(kind === 'audioinput' ? 'mic' : 'camera', failure ? FAILURE_ERRORS[failure] : undefined)
           )
         }
         onError={(error) => console.error('[meeting-call]', error)}
