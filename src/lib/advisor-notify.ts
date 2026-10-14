@@ -92,6 +92,13 @@ export async function emailAdvisorAboutRequest(input: AdvisorRequestEmail): Prom
 
 // ─────────────────────── הרשמות ותשלומים ───────────────────────
 
+/**
+ * לאן יוצאות ההתראות על פעולות של לקוחות — הרשמה, תשלום, מחיקת חשבון — ומייל
+ * הסיכום היומי. כתובת קבועה של משכלנתא, בלי קשר לחשבון היועץ (בקשת בעל האתר,
+ * 2026-10-14).
+ */
+export const NOTIFY_EMAIL = ADVISOR_EMAIL;
+
 export interface AdvisorEventEmail {
   /** הכותרת בראש המייל ובשורת הנושא */
   title: string;
@@ -128,9 +135,13 @@ export function advisorEventEmailContent(input: AdvisorEventEmail, origin = site
   };
 }
 
-async function sendAdvisorEvent(input: AdvisorEventEmail, replyTo?: string | null): Promise<void> {
+/**
+ * מייל התראה ל-NOTIFY_EMAIL על פעולה של לקוח. כשל בשליחה נכתב ללוג ולא עוצר את
+ * הפעולה עצמה. `replyTo` — תשובה למייל מגיעה ישר ללקוח.
+ */
+export async function notifyAdmin(input: AdvisorEventEmail, replyTo?: string | null): Promise<void> {
   try {
-    const to = await advisorEmail();
+    const to = NOTIFY_EMAIL;
     const valid = replyTo && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo) ? replyTo : undefined;
     const result = await sendEmail({ to, ...advisorEventEmailContent(input), replyTo: valid });
     if (result && typeof result === 'object' && 'success' in result && !result.success) {
@@ -168,7 +179,7 @@ export async function emailAdvisorAboutSignup(userId: string): Promise<void> {
     if (!user || user.role !== 'CLIENT') return;
     const who = user.name?.trim() || user.email || 'לקוח';
     const google = user.accounts.some((account) => account.provider === 'google');
-    await sendAdvisorEvent(
+    await notifyAdmin(
       {
         title: `לקוח חדש נרשם: ${who}`,
         lead: `${who} פתח/ה חשבון בפלטפורמה.`,
@@ -201,7 +212,7 @@ export async function emailAdvisorAboutPayment(input: {
     const user = await prisma.user.findUnique({ where: { id: input.userId }, select: { name: true, email: true } });
     const who = user?.name?.trim() || user?.email || 'לקוח';
     const amount = `₪${input.amount.toLocaleString('he-IL')}`;
-    await sendAdvisorEvent(
+    await notifyAdmin(
       {
         title: `התקבל תשלום מ${who} · ${amount}`,
         lead: `${who} שילם/ה ${amount} על ${input.renewal ? 'חידוש הגישה לחודש נוסף' : 'גישה לפלטפורמה לחודש'}.`,
@@ -235,7 +246,7 @@ export async function emailAdvisorAboutAccountDeletion(input: {
 }): Promise<void> {
   const who = input.name?.trim() || input.email || 'לקוח';
   const paid = input.totalPaid !== null;
-  await sendAdvisorEvent({
+  await notifyAdmin({
     title: `לקוח הסיר את החשבון: ${who}`,
     lead: paid
       ? `${who} הסיר/ה את החשבון מהפלטפורמה. כל המידע שלו/ה נמחק, ורשומות התשלום נשמרו ב"לקוחות שעזבו".`

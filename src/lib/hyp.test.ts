@@ -48,6 +48,8 @@ describe('signParams', () => {
     expect(params.get('Sign')).toBe('True');
     expect(params.get('ClientName')).toBe('ישראל');
     expect(params.get('ClientLName')).toBe('ישראלי כהן');
+    // שדה ת"ז נשאר ריק בעמוד של HYP, כדי שהלקוח יוכל להקליד בו
+    expect(params.has('UserId')).toBe(false);
     expect(params.get('SendHesh')).toBe('True');
     expect(params.get('heshDesc')).toBe('[0~משכלנתא - גישה לחודש~1~49.00]');
   });
