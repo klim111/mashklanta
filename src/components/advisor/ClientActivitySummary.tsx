@@ -33,6 +33,8 @@ const DATE_TIME = new Intl.DateTimeFormat('he-IL', {
 const fmt = (iso: string | null | undefined, withTime = false) =>
   iso ? (withTime ? DATE_TIME : DATE).format(new Date(iso)) : '—';
 
+const DEVICE_LABELS: Record<string, string> = { desktop: 'מחשב', tablet: 'טאבלט', phone: 'טלפון' };
+
 const PLAN_STATUS: Record<string, string> = {
   IN_PROGRESS: 'פעיל',
   COMPLETED: 'הסתיים',
@@ -129,6 +131,20 @@ export function ClientActivitySummary({
             <Detail label="תשלום אחרון" value={fmt(billing.lastPaidAt, true)} />
             <Detail label="הודעות בצ'אט ממנו" value={String(activity.counts.chatFromClient)} />
             <Detail label="מיילים ממנו" value={String(activity.counts.emailsFromClient)} />
+            <Detail label="כתובת IP אחרונה" value={activity.lastLogin?.ip} ltr />
+            <Detail
+              label="מכשיר אחרון"
+              value={
+                [
+                  activity.lastLogin?.device ? DEVICE_LABELS[activity.lastLogin.device] ?? null : null,
+                  activity.lastLogin?.browser,
+                  activity.lastLogin?.os,
+                  activity.lastLogin?.location,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || null
+              }
+            />
           </dl>
         </SectionCard>
 

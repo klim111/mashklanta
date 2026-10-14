@@ -47,6 +47,8 @@ export interface ClientActivity {
   /** נרשם לבד — עדיין לא לקוח בליווי */
   selfRegistered: boolean;
   lastSeenAt: string | null;
+  /** מאיזו כתובת ומאיזה מכשיר נכנס לאחרונה, כשנשמר */
+  lastLogin: { ip: string | null; device: string | null; browser: string | null; os: string | null; location: string | null } | null;
   visitDays: number;
   billing: ClientBillingSummary;
   plans: ClientActivityPlan[];
@@ -110,7 +112,11 @@ export async function getClientActivity(advisorId: string, clientId: string): Pr
       where: { clientUserId: client.userId, senderRole: 'CLIENT', held: false },
     }),
     prisma.siteVisit
-      .findFirst({ where: { userId: client.userId }, orderBy: { startedAt: 'desc' }, select: { startedAt: true } })
+      .findFirst({
+        where: { userId: client.userId },
+        orderBy: { startedAt: 'desc' },
+        select: { startedAt: true, ip: true, device: true, browser: true, os: true, location: true },
+      })
       .catch(() => null),
     prisma.siteVisit
       .findMany({
@@ -160,6 +166,15 @@ export async function getClientActivity(advisorId: string, clientId: string): Pr
     emailVerifiedAt: client.user?.emailVerified?.toISOString() ?? null,
     selfRegistered: client.autoLinked,
     lastSeenAt: lastVisit?.startedAt.toISOString() ?? null,
+    lastLogin: lastVisit
+      ? {
+          ip: lastVisit.ip,
+          device: lastVisit.device,
+          browser: lastVisit.browser,
+          os: lastVisit.os,
+          location: lastVisit.location,
+        }
+      : null,
     visitDays,
     billing: billing.get(client.id) ?? EMPTY_BILLING,
     plans: plans.map((plan) => ({
