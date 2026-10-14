@@ -85,14 +85,14 @@ export function ClientActionsMenu({
     onDashboard
       ? {
           key: 'dashboard',
-          label: 'חזרה לדאשבורד',
+          label: 'חזרה לאזור האישי',
           icon: <LayoutDashboard className="h-6 w-6" />,
           onClick: () => {
             window.location.hash = 'overview';
             window.scrollTo({ top: 0, behavior: 'smooth' });
           },
         }
-      : { key: 'dashboard', label: 'חזרה לדאשבורד', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' },
+      : { key: 'dashboard', label: 'חזרה לאזור האישי', icon: <LayoutDashboard className="h-6 w-6" />, href: '/dashboard' },
   ];
 
   return (
@@ -102,7 +102,7 @@ export function ClientActionsMenu({
         unread={unread}
         inline={inline}
         menuId="client-actions"
-        ariaLabel="פתיחת תפריט הפעולות: הוספת משימה, תיק המסמכים, צ׳אט וחזרה לדאשבורד"
+        ariaLabel="פתיחת תפריט הפעולות: הוספת משימה, תיק המסמכים, צ׳אט וחזרה לאזור האישי"
       />
       {plan && (
         <DocumentVaultDialog open={vaultOpen} onOpenChange={setVaultOpen} planId={plan.id} data={plan.data} stage={null} />

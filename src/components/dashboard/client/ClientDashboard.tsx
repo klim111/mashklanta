@@ -19,9 +19,12 @@ import {
   MessageCircle,
   Settings,
   UserRound,
+  Video,
   Wallet,
 } from 'lucide-react';
 import { isDashboardSection } from '@/lib/client-agenda';
+import { meetingAwaits } from '@/lib/advisor-crm';
+import { upcomingClientMeetings } from './MeetingsSection';
 import type { DashboardSection } from '@/lib/client-agenda';
 import { UnassignedMixesSection, isUnassociatedMix } from '@/components/plan/UnassignedMixes';
 import { useStartPlan } from '@/components/plan/StartCard';
@@ -35,6 +38,7 @@ import { SettingsPanel } from '@/components/dashboard/SettingsPanel';
 import { AccessExpiredNotice } from './AccessExpiredNotice';
 import { AdvisorCta } from './AdvisorCta';
 import { AgendaSection } from './AgendaSection';
+import { MeetingsSection } from './MeetingsSection';
 import { ClientDocumentsSection } from './ClientDocumentsSection';
 import { ContactsSection } from './ContactsSection';
 import { ExpensesSection } from './ExpensesSection';
@@ -57,8 +61,8 @@ interface SectionMeta {
 const SECTIONS: SectionMeta[] = [
   {
     id: 'overview',
-    label: 'סקירה',
-    title: 'הסקירה שלי',
+    label: 'אזור אישי',
+    title: 'האזור האישי שלי',
     description: 'איפה אתם עומדים, מה קרוב ביומן ומה הפעולה הבאה — הכול במסך אחד.',
     icon: LayoutDashboard,
   },
@@ -68,6 +72,13 @@ const SECTIONS: SectionMeta[] = [
     title: 'משימות ולוח שנה',
     description: 'כל מה שממתין לכם, הפגישות עם היועץ והמועדים החשובים בתהליך.',
     icon: CalendarDays,
+  },
+  {
+    id: 'meetings',
+    label: 'הפגישות שלי',
+    title: 'הפגישות שלי',
+    description: 'כל הפגישות עם היועץ: מה קרוב, מה ממתין לאישורכם ומה כבר התקיים. מכאן גם נכנסים לשיחת הווידאו.',
+    icon: Video,
   },
   {
     id: 'expenses',
@@ -200,10 +211,12 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
   // המספרים בתפריט — כמה פריטים מחכים בכל אזור
   const activePlans = data.plansState.plans.filter((plan) => plan.status === 'IN_PROGRESS').length;
+  const upcomingMeetings = upcomingClientMeetings(data.meetingsState.meetings);
   const urgent = data.tasks.filter((task) => task.tone === 'urgent').length;
   const badges: Partial<Record<DashboardSection, { value: number; alert: boolean }>> = {
     overview: { value: activePlans, alert: false },
     agenda: { value: data.tasks.length, alert: urgent > 0 },
+    meetings: { value: upcomingMeetings.length, alert: upcomingMeetings.some((m) => meetingAwaits(m, 'CLIENT')) },
     'rate-requests': { value: data.requests.length, alert: false },
   };
 
@@ -385,7 +398,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                     className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"
                   >
                     <ArrowRight className="h-3.5 w-3.5" />
-                    חזרה לסקירה
+                    חזרה לאזור האישי
                   </button>
                   <h1 className="mt-1 text-title font-black text-slate-900">{meta.title}</h1>
                   <p className="mx-auto mt-2 max-w-2xl text-info leading-relaxed text-slate-600">
@@ -412,6 +425,12 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
               {section === 'agenda' && (
                 <AgendaSection data={data} initialDay={agendaDay} onNavigate={navigate} />
+              )}
+
+              {section === 'meetings' && (
+                <div {...demoId('dash-meetings')}>
+                  <MeetingsSection meetingsState={data.meetingsState} />
+                </div>
               )}
 
               {section === 'expenses' && (
@@ -489,7 +508,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         {data.ready && <AccessExpiredNotice plans={data.plansState.plans} />}
 
         {/*
-          עיגול הפעולות של הלקוח (צ׳אט, תיק המסמכים, משימה, חזרה לסקירה) — זמין
+          עיגול הפעולות של הלקוח (צ׳אט, תיק המסמכים, משימה, חזרה לאזור האישי) — זמין
           תמיד, גם אחרי גלילה. במסך רחב תפריט הצד תופס את הקצה הימני, והעיגול
           יושב משמאלו
         */}

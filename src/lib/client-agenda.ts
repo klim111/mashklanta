@@ -47,6 +47,7 @@ export function clientTaskIdOf(id: string): string | null {
 export const DASHBOARD_SECTIONS = [
   'overview',
   'agenda',
+  'meetings',
   'expenses',
   'cash-flow',
   'documents',
