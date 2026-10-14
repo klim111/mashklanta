@@ -5,7 +5,10 @@ import {
   asPlanStage,
   dayKey,
   defaultRateFrom,
+  answerMeeting,
+  meetingAwaiting,
   meetingIsLive,
+  meetingStatusLabel,
   relativeDayLabel,
   taskIsClosed,
   taskIsOverdue,
@@ -76,6 +79,55 @@ describe('משימות ופגישות', () => {
     expect(meetingIsLive('CONFIRMED')).toBe(true);
     expect(meetingIsLive('DECLINED')).toBe(false);
     expect(meetingIsLive('CANCELLED')).toBe(false);
+  });
+});
+
+describe('הצעת מועד, הצעה נגדית ואישור', () => {
+  const at = new Date('2026-10-20T10:00:00Z');
+  const later = new Date('2026-10-21T12:00:00Z');
+
+  it('פגישה שהיועץ הציע ממתינה ללקוח, והלקוח מאשר — מאושרת אצל שניהם', () => {
+    const proposed = { status: 'PROPOSED' as const, proposedBy: 'ADVISOR' as const };
+    expect(meetingAwaiting(proposed)).toBe('CLIENT');
+    expect(meetingStatusLabel(proposed, 'CLIENT')).toBe('ממתינה לאישורכם');
+    expect(meetingStatusLabel(proposed, 'ADVISOR')).toBe('ממתינה לאישור הלקוח');
+    const accepted = answerMeeting(proposed, 'CLIENT', { action: 'accept' }, at);
+    expect(accepted).toEqual({ status: 'CONFIRMED', proposedBy: 'ADVISOR', respondedAt: at });
+  });
+
+  it('הלקוח מציע מועד אחר — הפגישה עוברת לאישור היועץ, ושוב חזרה, עד שמישהו מאשר', () => {
+    const fromAdvisor = { status: 'PROPOSED' as const, proposedBy: 'ADVISOR' as const };
+    const counter = answerMeeting(fromAdvisor, 'CLIENT', { action: 'propose', startsAt: later });
+    expect(counter).toEqual({ status: 'PROPOSED', proposedBy: 'CLIENT', startsAt: later, respondedAt: null });
+    expect(meetingAwaiting(counter!)).toBe('ADVISOR');
+    expect(meetingStatusLabel(counter!, 'ADVISOR')).toContain('ממתינה לאישורך');
+
+    // הלקוח לא יכול לאשר את ההצעה של עצמו
+    expect(answerMeeting(counter!, 'CLIENT', { action: 'accept' })).toBeNull();
+
+    // היועץ מציע שוב מועד אחר — חזרה לאישור הלקוח
+    const back = answerMeeting(counter!, 'ADVISOR', { action: 'propose', startsAt: at });
+    expect(back?.proposedBy).toBe('ADVISOR');
+    expect(meetingAwaiting(back!)).toBe('CLIENT');
+
+    // והפעם היועץ מאשר את הצעת הלקוח
+    expect(answerMeeting(counter!, 'ADVISOR', { action: 'accept' }, at)?.status).toBe('CONFIRMED');
+  });
+
+  it('מועד חדש לפגישה מאושרת מחזיר אותה לאישור הצד השני', () => {
+    const confirmed = { status: 'CONFIRMED' as const, proposedBy: 'ADVISOR' as const };
+    expect(meetingAwaiting(confirmed)).toBeNull();
+    const moved = answerMeeting(confirmed, 'CLIENT', { action: 'propose', startsAt: later });
+    expect(moved?.status).toBe('PROPOSED');
+    expect(meetingAwaiting(moved!)).toBe('ADVISOR');
+    // אין מה לאשר בפגישה שכבר מאושרת
+    expect(answerMeeting(confirmed, 'ADVISOR', { action: 'accept' })).toBeNull();
+  });
+
+  it('פגישה שבוטלה או נדחתה לא מקבלת תשובות', () => {
+    const cancelled = { status: 'CANCELLED' as const, proposedBy: 'ADVISOR' as const };
+    expect(answerMeeting(cancelled, 'CLIENT', { action: 'accept' })).toBeNull();
+    expect(answerMeeting(cancelled, 'CLIENT', { action: 'propose', startsAt: later })).toBeNull();
   });
 });
 

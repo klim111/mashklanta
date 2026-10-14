@@ -1,16 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { PlanFlow } from '@/lib/mortgage-plan';
 import type {
   AdvisorMeetingView,
   AdvisorNoteView,
   AdvisorRateDefaultView,
   AdvisorTaskStatus,
   AdvisorTaskView,
+  MeetingReply,
   MixCategoryView,
   NoteVisibility,
   PlanStageId,
 } from '@/lib/advisor-crm';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * הנתונים של לוח הבקרה, מבסיס הנתונים.
@@ -43,6 +46,7 @@ export interface AdvisorOverviewView {
   openTasks: number;
   overdueTasks: number;
   awaitingConfirmation: number;
+  awaitingAdvisor: number;
   todayTasks: AdvisorTaskView[];
   overdue: AdvisorTaskView[];
   upcomingMeetings: AdvisorMeetingView[];
@@ -56,6 +60,7 @@ const emptyOverview: AdvisorOverviewView = {
   openTasks: 0,
   overdueTasks: 0,
   awaitingConfirmation: 0,
+  awaitingAdvisor: 0,
   todayTasks: [],
   overdue: [],
   upcomingMeetings: [],
@@ -203,6 +208,9 @@ export interface NewMeetingInput {
   stage?: PlanStageId | null;
 }
 
+/** כל כמה זמן רשימת הפגישות מתרעננת כשהעמוד פתוח */
+const MEETINGS_REFRESH_MS = 15000;
+
 /**
  * הפגישות של המשתמש המחובר. אותו hook משרת את שני הצדדים: היועץ מקבל את
  * הפגישות שקבע, והלקוח את אלה שהוצעו לו.
@@ -220,7 +228,9 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
     }
     try {
       const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
-      setMeetings(await readJson<AdvisorMeetingView[]>(`/api/meetings${query}`));
+      const next = await readJson<AdvisorMeetingView[]>(`/api/meetings${query}`);
+      // רענון שלא הביא שום שינוי לא מרנדר מחדש את כל המסך
+      setMeetings((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
       setError(null);
     } catch {
       setError('לא הצלחנו לטעון את הפגישות');
@@ -232,6 +242,9 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // פגישה שהצד השני קבע, אישר או הזיז מופיעה בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), MEETINGS_REFRESH_MS, enabled);
 
   const propose = useCallback(
     async (input: NewMeetingInput): Promise<string | null> => {
@@ -246,11 +259,17 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
     [refresh]
   );
 
-  /** תשובת הלקוח להצעת מועד */
-  const respond = useCallback(
-    async (meetingId: string, accepted: boolean) => {
+  /**
+   * תשובה של המשתמש המחובר לפגישה — יועץ או לקוח: אישור, הצעת מועד אחר או
+   * דחייה. מחזיר הודעת שגיאה, או null כשהתשובה נשמרה.
+   */
+  const answer = useCallback(
+    async (meetingId: string, reply: MeetingReply): Promise<string | null> => {
       try {
-        await send<AdvisorMeetingView>(`/api/meetings/${meetingId}`, 'PATCH', { accepted });
+        await send<AdvisorMeetingView>(`/api/meetings/${meetingId}`, 'PATCH', reply);
+        return null;
+      } catch {
+        return reply.action === 'propose' ? 'המועד החדש לא נשלח' : 'התשובה לא נשמרה';
       } finally {
         await refresh();
       }
@@ -282,7 +301,7 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
     [refresh]
   );
 
-  return { meetings, ready, error, refresh, propose, respond, cancel, remove };
+  return { meetings, ready, error, refresh, propose, answer, cancel, remove };
 }
 
 // ───────────────────────────────── הערות ─────────────────────────────────
@@ -507,6 +526,8 @@ export interface ClientProcessPayload {
   progress: number;
   plans: ClientPlanSummaryView[];
   stages: ClientStageBoardView[];
+  /** סוג התהליך — השלבים, השמות והמספרים כמו אצל הלקוח */
+  flow: PlanFlow;
   /** הליווי בתהליך — null כשהלקוח במסלול העצמאי */
   advisory: { active: boolean; endedAt: string | null } | null;
 }

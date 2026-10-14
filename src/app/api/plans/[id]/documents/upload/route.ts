@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleUpload } from '@vercel/blob/client';
 import type { HandleUploadBody } from '@vercel/blob/client';
 import { getServerAuth } from '@/lib/auth';
+import { DOCUMENTS_LOCKED_MESSAGE, documentsLockedFor } from '@/lib/plan-documents-lock';
 import {
   ALLOWED_DOCUMENT_TYPES,
   MAX_DOCUMENT_BYTES,
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
         if (!pathname.startsWith(planDocumentPrefix(id))) {
           throw new Error('נתיב הקובץ אינו שייך לתהליך הזה');
         }
+        if (await documentsLockedFor(userId, id)) throw new Error(DOCUMENTS_LOCKED_MESSAGE);
         if (!(await canUploadToPlan(userId, id))) {
           throw new Error('אין הרשאה להעלות מסמכים לתהליך הזה');
         }

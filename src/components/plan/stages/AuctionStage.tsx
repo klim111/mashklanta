@@ -1,13 +1,29 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, BadgePercent, Loader2 } from 'lucide-react';
 import { banksWithPreApproval } from '@/lib/mortgage-plan';
-import type { AuctionData, PlanData, RefinanceMixData, SignedMixChoice } from '@/lib/mortgage-plan';
+import type {
+  AuctionData,
+  BankPreApproval,
+  PlanData,
+  PreApprovalData,
+  RefinanceMixData,
+  SignedMixChoice,
+} from '@/lib/mortgage-plan';
+import type { PlanDocumentView } from '@/lib/plan-documents';
+import { emptyBankRow, withLeadingApproval } from '@/lib/preapproval-handoff';
+import { useClientConversation } from '@/components/conversation/ClientChatDock';
+import { usePlanDocuments } from '../documents/usePlanDocuments';
+import { DocumentViewerDialog } from '../documents/DocumentViewerDialog';
+import { PRE_APPROVAL_BANKS, preApprovalDocumentKey } from './preapproval/banks';
+import type { BankApprovalAccess } from './auction/ApprovalDocButton';
+import type { BankerContact } from './auction/NegotiationPanel';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { AuctionWorkspace } from './auction/AuctionWorkspace';
-import { bankTone, pricedMixesFor, winningPricedMix } from './auction/pricedMixes';
+import { bankTone, pricedMixesFor } from './auction/pricedMixes';
+import { cheapestByWeightedRate } from './auction/negotiation';
 import { PanelBadge, StagePanel, StageStat } from './auction/ui';
 import { RefinanceOfferComparison } from './refinance/RefinanceOfferComparison';
 import { formatPercent, formatShekel } from '../ui';
@@ -26,6 +42,7 @@ export function AuctionStage({
   advisorRun = false,
   banks,
   refinance = null,
+  onApplicationsChange,
 }: {
   data: PlanData;
   onChange: (next: AuctionData) => void;
@@ -39,6 +56,11 @@ export function AuctionStage({
   banks?: readonly string[];
   /** בתהליך מיחזור — ההצעה מושווית גם מול המשכנתא המקורית */
   refinance?: RefinanceMixData | null;
+  /**
+   * עדכון שלב האישור העקרוני — אישור שמועלה מהמכרז נרשם גם שם, כמו אישור
+   * שהועלה בשלב עצמו.
+   */
+  onApplicationsChange?: (next: PreApprovalData) => void;
 }) {
   /*
     מיחזור פנימי מתנהל מול בנק אחד: אין מכרז, אין "הצעה זולה ביותר" ואין בנקים
@@ -66,6 +88,9 @@ export function AuctionStage({
   const value = data.AUCTION;
   const finalMixKey = data.MIX.mixKey;
   const { saved, ready, save, remove, refresh } = useSavedMixes({ planId });
+  const documents = usePlanDocuments(planId);
+  const [viewing, setViewing] = useState<PlanDocumentView | null>(null);
+  const conversation = useClientConversation();
 
   const finalMix = useMemo(
     () => saved.find((item) => item.mix.id === finalMixKey) ?? null,
@@ -122,13 +147,76 @@ export function AuctionStage({
   /* התפקיד נקבע לפי מי מטפל בשלב: בליווי — advised, אחרת — self */
   const role: 'advised' | 'self' = advisorRun ? 'advised' : 'self';
 
+  /* האישור העקרוני של כל בנק — הקובץ שהועלה בשלב האישור העקרוני */
+  const documentOf = (bank: string): PlanDocumentView | null => {
+    const info = PRE_APPROVAL_BANKS.find((item) => item.bank === bank);
+    if (!info) return null;
+    return documents.documents.find((item) => item.key === preApprovalDocumentKey(info.slug)) ?? null;
+  };
+
   /* הבנקים שנתנו אישור עקרוני בשלב הקודם — רק מהם אפשר לבקש תמחור בפועל */
-  const approvedBanks = banks && banks.length > 0 ? banks : banksWithPreApproval(data);
+  const approvedBanks =
+    banks && banks.length > 0
+      ? banks
+      : [
+          ...banksWithPreApproval(data),
+          // אישור שהועלה מכאן ועוד לא נרשם בשלב האישור העקרוני
+          ...PRE_APPROVAL_BANKS.filter(
+            (info) => !banksWithPreApproval(data).includes(info.bank) && documentOf(info.bank)
+          ).map((info) => info.bank),
+        ];
+
+  /**
+   * העלאת אישור עקרוני (או אישור משופר) מתוך המכרז: הקובץ נשמר באותו מקום בתיק
+   * כמו בשלב האישור העקרוני, והבנק נרשם שם כבנק שנתן אישור בהגשה עצמית.
+   */
+  const uploadApproval = async (bank: string, file: File): Promise<boolean> => {
+    const info = PRE_APPROVAL_BANKS.find((item) => item.bank === bank);
+    if (!info) return false;
+    const document = await documents.upload(preApprovalDocumentKey(info.slug), `אישור עקרוני · ${bank}`, file);
+    if (!document) return false;
+    if (onApplicationsChange) {
+      const current = data.APPLICATIONS;
+      const existing = current.bankApprovals.find((row) => row.bank === bank) ?? null;
+      const row: BankPreApproval = {
+        ...(existing ?? emptyBankRow(bank)),
+        // הלקוח העלה את האישור בעצמו — הבנק עובר להגשה עצמית, גם אם היה אצל היועץ
+        channel: 'SELF',
+        submittedAt: existing?.submittedAt ?? document.uploadedAt,
+        approved: true,
+        approvedAt: document.uploadedAt,
+        documentName: document.fileName,
+      };
+      const bankApprovals = existing
+        ? current.bankApprovals.map((item) => (item.bank === bank ? row : item))
+        : [...current.bankApprovals, row];
+      onApplicationsChange(withLeadingApproval({ ...current, bankApprovals }));
+    }
+    return true;
+  };
+
+  const busyBank =
+    PRE_APPROVAL_BANKS.find((info) => documents.busyKey === preApprovalDocumentKey(info.slug))?.bank ?? null;
+  const approvals: BankApprovalAccess | undefined = documents.ready
+    ? {
+        documentOf,
+        canUpload: (bank) => PRE_APPROVAL_BANKS.some((info) => info.bank === bank),
+        onView: setViewing,
+        onUpload: uploadApproval,
+        busyBank,
+      }
+    : undefined;
+
+  /* הבנקאים שהוזנו בשלב האישור העקרוני — אליהם נשלחת ההצעה הזולה */
+  const bankers: Record<string, BankerContact> = {};
+  for (const row of data.APPLICATIONS.bankApprovals) {
+    bankers[row.bank] = { name: row.bankerName?.trim() ?? '', email: row.bankerEmail?.trim() ?? '' };
+  }
 
   /* במיחזור: ההצעה שנבחרה, ואם עוד לא נבחרה — הזולה ביותר, מול המשכנתא המקורית */
   const priced = pricedMixesFor(saved, finalMixKey);
   const comparedOffer =
-    (signed ? priced.find((item) => item.mix.id === signed.mixKey) : null) ?? winningPricedMix(priced) ?? null;
+    (signed ? priced.find((item) => item.mix.id === signed.mixKey) : null) ?? cheapestByWeightedRate(priced) ?? null;
 
   if (!ready) {
     return (
@@ -170,7 +258,19 @@ export function AuctionStage({
         lockBanks={internal}
         copy={auctionCopy}
         allowSelfEntry
+        approvals={approvals}
+        negotiation={{
+          state: value.negotiation,
+          onChange: (negotiation) => onChange({ ...value, negotiation }),
+          bankers,
+          onEmail: conversation?.enabled
+            ? (to, subject, text) => conversation.compose({ to: [to], subject, text })
+            : null,
+          formatRate: (rate) => formatPercent(rate, 2),
+        }}
       />
+
+      <DocumentViewerDialog planId={planId} document={viewing} onClose={() => setViewing(null)} />
 
       {refinance && (
         <RefinanceOfferComparison

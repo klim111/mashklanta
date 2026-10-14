@@ -44,6 +44,9 @@ function caretAfterDigits(text: string, digits: number): number {
  * במקומו. במצב עשרוני אין קיבוץ אלפים בכוונה: שם הפסיק הוא המפריד העשרוני
  * (ראה sanitizeDecimalInput), ולכן "1,234" היה נקרא כ-1.234.
  *
+ * שדה שמחזיק אפס נפתח ריק בכניסה אליו, כדי שלא יהיה צורך למחוק את האפס
+ * לפני ההקלדה.
+ *
  * בכניסה לשדה הסמן עובר לסוף הערך: הטקסט מיושר לימין בתוך שדה LTR, ולכן
  * לחיצה על החלק הריק שלו הייתה מציבה את הסמן לפני הספרה הראשונה — ומקש
  * המחיקה לא עשה כלום עד שהמשתמש הזיז את הסמן ידנית.
@@ -96,8 +99,13 @@ export function NumericInput({
       className={cn('text-right', className)}
       value={display}
       onFocus={(event) => {
+        // אפס הוא ערך התחלתי: השדה נפתח ריק להקלדה, ובלי הקלדה האפס חוזר ביציאה
         setDraft(
-          value === null ? '' : integer ? formatNumberInput(String(Math.round(value))) : String(value)
+          value === null || value === 0
+            ? ''
+            : integer
+              ? formatNumberInput(String(Math.round(value)))
+              : String(value)
         );
         setFocused(true);
         moveCaretToEnd(event.currentTarget);

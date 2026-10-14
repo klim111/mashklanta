@@ -16,7 +16,7 @@ const IGNORED_PREFIXES = [
   '/auth/team-entry',
   '/auth/advisor-verify',
   '/demo',
-  '/video-call',
+  '/meeting/',
 ];
 
 function send(body: Record<string, unknown>) {

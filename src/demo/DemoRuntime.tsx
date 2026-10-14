@@ -9,7 +9,7 @@
  */
 
 import { useEffect } from 'react';
-import { DEMO_CATALOG } from './catalog';
+import { ENGINE_CATALOG } from './catalog';
 import { DemoEngineProvider } from './engine/DemoEngineProvider';
 import { disposeSandbox, ensureSandbox } from './sandbox';
 import { demoStore } from './store';
@@ -32,7 +32,7 @@ export default function DemoRuntime({ request, children }: { request: DemoReques
   }, []);
 
   return (
-    <DemoEngineProvider key={request.flowId} request={request} catalog={DEMO_CATALOG}>
+    <DemoEngineProvider key={request.flowId} request={request} catalog={ENGINE_CATALOG}>
       {children}
       <DemoOverlay />
     </DemoEngineProvider>

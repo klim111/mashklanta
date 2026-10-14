@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { meetingIsLive, relativeDayLabel, formatTime, taskIsClosed, taskIsOverdue } from '@/lib/advisor-crm';
-import type { AdvisorMeetingView, AdvisorTaskStatus, AdvisorTaskView } from '@/lib/advisor-crm';
+import type { AdvisorMeetingView, AdvisorTaskStatus, AdvisorTaskView, MeetingReply } from '@/lib/advisor-crm';
 import type { ClientDocumentView } from './clientDetail';
 import { EmptyState, SectionCard } from './ui';
 import { MeetingRow } from './MeetingRow';
@@ -27,6 +27,8 @@ interface ClientContextRowProps {
   onScheduleMeeting: () => void;
   onAddTask: () => void;
   onCancelMeeting: (meetingId: string) => void;
+  /** אישור או הצעת מועד אחר לפגישה */
+  onAnswerMeeting: (meetingId: string, reply: MeetingReply) => Promise<string | null>;
   onTaskStatus: (taskId: string, status: AdvisorTaskStatus) => void;
   onTaskReschedule: (taskId: string, dueDate: string | null) => void;
   onTaskDelete: (taskId: string) => void;
@@ -47,6 +49,7 @@ export function ClientContextRow({
   onScheduleMeeting,
   onAddTask,
   onCancelMeeting,
+  onAnswerMeeting,
   onTaskStatus,
   onTaskReschedule,
   onTaskDelete,
@@ -145,6 +148,7 @@ export function ClientContextRow({
                 viewer="advisor"
                 linkToClient={false}
                 onCancel={() => onCancelMeeting(meeting.id)}
+                onAnswer={(reply) => onAnswerMeeting(meeting.id, reply)}
               />
             ))
           )}

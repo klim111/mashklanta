@@ -9,7 +9,7 @@
  * כלשהו. הוא מופיע בתיק, אבל אינו חלק מהמניין.
  */
 
-import { PLAN_STAGES, preApprovalDocumentGroups } from './mortgage-plan';
+import { PLAN_STAGES, flowStages, planFlowOf, preApprovalDocumentGroups } from './mortgage-plan';
 import type { PlanData, PlanStageId } from './mortgage-plan';
 import type { PlanDocumentView } from './plan-documents';
 import type { ClientTaskView } from './client-tasks';
@@ -18,6 +18,15 @@ import { signingDealType, signingDocumentKey, signingScenario } from './signing-
 
 /** כמה אישורים עקרוניים נחשבים "תיק מלא" למכרז — שלושה בנקים */
 export const PRE_APPROVAL_TARGET = 3;
+
+/**
+ * היעד לאישורים עקרוניים בתהליך: במיחזור פנימי יש בנק אחד, ולכן אישור אחד הוא
+ * התיק המלא. במשכנתא חדשה ובמיחזור חיצוני — שלושה בנקים למכרז.
+ */
+export function preApprovalTarget(data: PlanData): number {
+  const flow = planFlowOf(data);
+  return flow.kind === 'REFINANCE' && flow.refinanceMode === 'INTERNAL' ? 1 : PRE_APPROVAL_TARGET;
+}
 
 const CUSTOM_PREFIX = 'custom:';
 
@@ -91,12 +100,13 @@ export function documentProgress(
       });
   });
 
-  // שלב 3 — אישורים עקרוניים מהבנקים, עד היעד לשלושה בנקים
+  // שלב 3 — אישורים עקרוניים מהבנקים, עד היעד (שלושה בנקים, או הבנק היחיד במיחזור פנימי)
   PRE_APPROVAL_BANKS.forEach((info) => listed.add(preApprovalDocumentKey(info.slug)));
   const approvals = PRE_APPROVAL_BANKS.filter((info) => keys.has(preApprovalDocumentKey(info.slug))).length;
   const approvedRows = data.APPLICATIONS.bankApprovals.filter((row) => row.approved).length;
-  counts.APPLICATIONS.total += PRE_APPROVAL_TARGET;
-  counts.APPLICATIONS.done += Math.min(PRE_APPROVAL_TARGET, Math.max(approvals, approvedRows));
+  const target = preApprovalTarget(data);
+  counts.APPLICATIONS.total += target;
+  counts.APPLICATIONS.done += Math.min(target, Math.max(approvals, approvedRows));
 
   // שלב 5 — רשימת המסמכים של תרחיש הרכישה שנבחר
   const deal = signingDealType(data.SIGNING.dealTypeId);
@@ -125,7 +135,16 @@ export function documentProgress(
       row.done += 1;
     });
 
-  const stages = PLAN_STAGES.map((stage) => {
+  // השלבים של התהליך עצמו, בסדר שלו — במיחזור הסדר שונה, ובמיחזור פנימי יש רק שלושה
+  const flow = planFlowOf(data);
+  const flowOrder = flowStages(flow);
+  // במיחזור פנימי תת-השלבים של החתימה נמצאים בשלב האחרון (אימות ההצעה), ולכן גם המסמכים שלהם
+  if (!flowOrder.includes('SIGNING')) {
+    const last = flowOrder[flowOrder.length - 1];
+    counts[last].done += counts.SIGNING.done;
+    counts[last].total += counts.SIGNING.total;
+  }
+  const stages = flowOrder.map((stage) => {
     const { done, total } = counts[stage];
     return { stage, done, total, percent: percentOf(done, total), relevant: total > 0 };
   });

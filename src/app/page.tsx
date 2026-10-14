@@ -15,7 +15,7 @@ import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { usePricing } from '@/components/pricing/PricingProvider';
-import { HeroDemoButton } from '@/demo/components/HeroDemoButton';
+import { HeroPromoVideo } from '@/components/home/HeroPromoVideo';
 import { demoId } from '@/demo/demo-attr';
 
 export default function Home() {
@@ -222,9 +222,9 @@ export default function Home() {
         </div>
       </div>
 
-        {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — לחיצה מחליפה את האנימציה בהדגמה חיה */}
+        {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — סרטון שנפתח בחלון */}
         <div className="flex w-full items-center justify-center pt-4 md:pt-0">
-          <HeroDemoButton className="w-full max-w-sm md:w-auto md:max-w-none" />
+          <HeroPromoVideo className="w-full max-w-sm md:w-auto md:max-w-none" />
         </div>
 
         {/* Buttons Section - Bottom */}

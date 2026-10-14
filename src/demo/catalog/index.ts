@@ -17,6 +17,7 @@ import {
   ListChecks,
   Wallet,
   RefreshCw,
+  Clapperboard,
 } from 'lucide-react';
 import type { DemoCatalogEntry, DemoCategory } from '../types';
 
@@ -152,3 +153,23 @@ export const featuredDemos = () =>
   DEMO_CATALOG.filter((entry) => entry.featured).sort((a, b) => a.order - b.order);
 
 export const demoById = (id: string) => DEMO_CATALOG.find((entry) => entry.id === id) ?? null;
+
+/**
+ * הבמה של סרטון התדמית בדף הבית (scripts/promo-video). המקליט מפעיל אותה
+ * ומזיז את המסכים בעצמו, ולכן היא לא חלק מהקטלוג: לא בכרטיסים ולא במסך /demo.
+ */
+export const PROMO_RECORDING: DemoCatalogEntry = {
+  id: 'promo',
+  title: 'מה זה משכלנתא? (סרטון)',
+  description: 'הבמה שממנה מוקלט סרטון התדמית שמתחת לאנימציה בדף הבית.',
+  icon: Clapperboard,
+  gradient: 'from-blue-600 to-indigo-700',
+  route: '/demo/dashboard',
+  category: 'overview',
+  order: 99,
+  minutes: 2,
+  load: () => import('./flows/promo'),
+};
+
+/** כל מה שהמנוע יודע להריץ: הקטלוג הציבורי ובמת ההקלטה */
+export const ENGINE_CATALOG: DemoCatalogEntry[] = [...DEMO_CATALOG, PROMO_RECORDING];

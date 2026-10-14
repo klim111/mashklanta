@@ -14,6 +14,7 @@ import {
   paymentConfirmationEmail,
   renewalReminderEmail,
 } from './billing-emails';
+import { NOTIFY_EMAIL, emailAdvisorAboutPayment } from './advisor-notify';
 import { RENEWAL_LINK_GRACE_DAYS, renewalToken, type RenewalReason } from './billing-links';
 
 /**
@@ -261,6 +262,17 @@ async function recordPlatformPayment(
       console.error('Payment confirmation email failed:', error)
     );
   }
+  // מייל ליועץ על כל תשלום
+  if (payment) {
+    await emailAdvisorAboutPayment({
+      userId,
+      amount: payment.amountAgorot / 100,
+      paidAt: payment.createdAt,
+      accessUntil: passExpiresAt(payment.createdAt),
+      renewal: checkout.planId !== null,
+      invoiceNumber: payment.invoiceNumber,
+    });
+  }
 }
 
 /** תשלום בקישור תשלום שאומת: הקישור מסומן כשולם, ומייל ללקוח וליועץ */
@@ -302,20 +314,18 @@ async function recordLinkPayment(checkoutId: string, linkId: string, result: Hyp
       console.error('Payment link confirmation email failed:', error)
     );
   }
-  const advisor = await prisma.user.findUnique({ where: { id: link.createdById }, select: { email: true } });
-  if (advisor?.email) {
-    const email = linkPaidAdvisorEmail({
-      clientName: link.clientName,
-      clientEmail: link.clientEmail,
-      title: link.title,
-      amount,
-      invoiceNumber: link.invoiceNumber,
-      dashboardUrl: `${siteOrigin()}/advisor-dashboard`,
-    });
-    await sendEmail({ to: advisor.email, ...email, replyTo: link.clientEmail || undefined }).catch((error) =>
-      console.error('Payment link advisor email failed:', error)
-    );
-  }
+  // ההתראה על התשלום יוצאת לכתובת ההתראות של משכלנתא, כמו כל התראה על פעולה של לקוח
+  const notice = linkPaidAdvisorEmail({
+    clientName: link.clientName,
+    clientEmail: link.clientEmail,
+    title: link.title,
+    amount,
+    invoiceNumber: link.invoiceNumber,
+    dashboardUrl: `${siteOrigin()}/advisor-dashboard`,
+  });
+  await sendEmail({ to: NOTIFY_EMAIL, ...notice, replyTo: link.clientEmail || undefined }).catch((error) =>
+    console.error('Payment link advisor email failed:', error)
+  );
 }
 
 /** הקישור לחידוש שנכנס למייל התזכורת, או למייל על סיום הליווי */

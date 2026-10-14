@@ -22,6 +22,11 @@ export function moveCaretToEnd(input: HTMLInputElement | null | undefined): void
 
 const NUMERIC_INPUT_MODES = new Set(['numeric', 'decimal']);
 
+/** שדה שמחזיק אפס בלבד (0, 0.0, 0,00) — ערך התחלתי ולא משהו שהמשתמש הקליד */
+export function isZeroValue(value: string): boolean {
+  return /^0+([.,]0*)?$/.test(value.trim());
+}
+
 /**
  * מאזין גלובלי: כל שדה מספרי שמקבל מיקוד — לפי type או inputmode — מקבל את
  * הסמן בסוף הערך. מכסה גם שדות `type="number"` ישנים שאינם עוברים דרך
@@ -35,6 +40,14 @@ export function attachNumericCaretFix(): () => void {
       target.type === 'number' ||
       (target.type === 'text' && NUMERIC_INPUT_MODES.has(target.inputMode ?? ''));
     if (!isNumeric) return;
+
+    // אפס שממלא את השדה מראש נבחר כולו, כך שההקלדה מחליפה אותו ולא צריך למחוק קודם
+    if (isZeroValue(target.value)) {
+      window.setTimeout(() => {
+        if (document.activeElement === target && isZeroValue(target.value)) target.select();
+      }, 0);
+      return;
+    }
 
     if (target.type === 'number') {
       // שדה מספר לא תומך ב-setSelectionRange; המעבר הרגעי ל-text מאפשר אותו

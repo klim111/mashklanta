@@ -1264,7 +1264,11 @@ function PropertyPanel({
     <Panel
       centered
       title="הנכס והעסקה"
-      description="הכתובת, מחיר הנכס וסוג העסקה. אחרי המחיר וסוג העסקה נראה מה ההון העצמי המינימלי הנדרש, ותזינו את ההון הזמין לכם."
+      description={
+        refinance
+          ? 'הכתובת, שווי הנכס וסוג העסקה שבה נרכש. במיחזור אין הון עצמי להזין: הסכום הוא יתרת המשכנתא הקיימת.'
+          : 'הכתובת, מחיר הנכס וסוג העסקה. אחרי המחיר וסוג העסקה נראה מה ההון העצמי המינימלי הנדרש, ותזינו את ההון הזמין לכם.'
+      }
     >
       <div className="space-y-6">
         <div className="mx-auto max-w-xl text-center">
@@ -1288,7 +1292,7 @@ function PropertyPanel({
         <div className="mx-auto max-w-xl text-center">
           <span className="mb-1.5 flex items-center justify-center gap-1.5 text-sm font-bold text-slate-700">
             <Banknote className="h-4 w-4 text-slate-400" />
-            מחיר הנכס
+            {refinance ? 'שווי הנכס' : 'מחיר הנכס'}
           </span>
           <div className="mx-auto w-56">
             <NumberField

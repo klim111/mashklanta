@@ -48,11 +48,14 @@ export interface AuthorizationTaskSpec {
   stage: PlanStageId;
   title: string;
   details: string;
-  dueAt: Date;
 }
 
-/** המשימה כפי שהיא נוצרת אצל הלקוח: בשלב האישור העקרוני, בעוד שלושה ימים בעשר */
-export function authorizationTaskSpec(advisorName: string | null, now = new Date()): AuthorizationTaskSpec {
+/**
+ * המשימה כפי שהיא נוצרת אצל הלקוח: בשלב האישור העקרוני, בלי מועד. אין לה
+ * מועד אמיתי, ולכן היא לא מופיעה עם תאריך ולא הופכת ל"המועד עבר". הלקוח
+ * יכול לקבוע לה מועד בעצמו.
+ */
+export function authorizationTaskSpec(advisorName: string | null): AuthorizationTaskSpec {
   const advisor = advisorName?.trim() ? `היועץ ${advisorName.trim()}` : 'היועץ שלכם';
   return {
     templateKey: AUTHORIZATION_TASK_KEY,
@@ -60,6 +63,21 @@ export function authorizationTaskSpec(advisorName: string | null, now = new Date
     stage: 'APPLICATIONS',
     title: 'חתמו על כתבי הסמכה ליועץ והעלו אותם',
     details: `${advisor} צריך כתב הסמכה חתום לכל בנק שתרצו שיפנה אליו בשמכם. בחלון תמצאו את הטפסים של כל הבנקים להורדה, ושם גם מעלים את הכתבים החתומים.`,
-    dueAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 10, 0, 0),
   };
+}
+
+/**
+ * משימות שנשלחו לפני שהמועד הוסר נוצרו עם מועד אוטומטי: שלושה ימים אחרי
+ * השליחה, בעשר. מועד כזה לא נקבע על ידי אף אחד, ולכן הוא לא מוצג. מועד שהלקוח
+ * קבע בעצמו נשאר.
+ */
+export function isAutomaticAuthorizationDue(task: {
+  templateKey: string | null;
+  dueAt: Date | null;
+  createdAt: Date;
+}): boolean {
+  if (task.templateKey !== AUTHORIZATION_TASK_KEY || !task.dueAt) return false;
+  const created = task.createdAt;
+  const automatic = new Date(created.getFullYear(), created.getMonth(), created.getDate() + 3, 10, 0, 0);
+  return task.dueAt.getTime() === automatic.getTime();
 }

@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db';
 import { sendEmail, emailTemplates } from '@/lib/email';
 import { publicSiteOrigin } from '@/lib/auth-url';
 import { normalizeEmail } from '@/lib/find-user-by-login';
+import { saveEquityPlan } from '@/lib/equity-plan-store';
+import { isFinancingProfile, sanitizeExpenses } from '@/lib/equity-planning';
 
 /**
  * הרשמת לקוח חדש עם אימות מייל.
@@ -153,6 +155,8 @@ type PendingInput = {
   /** העוגייה של הדפדפן שממנו נרשמו (להרשמה עם סיסמה) */
   deviceToken?: string | null;
   requestOrigin?: string | null;
+  /** מה שהלקוח הזין בכלים החינמיים לפני ההרשמה (guestSnapshotToToolData) */
+  toolData?: Record<string, unknown> | null;
 };
 
 export type StartResult =
@@ -200,6 +204,8 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
     tokenHash: hashToken(token),
     deviceHash: input.deviceToken ? hashToken(input.deviceToken) : null,
     callbackUrl: safeCallbackUrl(input.callbackUrl),
+    // הרשמה חוזרת בלי נתוני כלים אינה מוחקת את מה שנשלח בפעם הקודמת
+    ...(input.toolData ? { toolDataJson: input.toolData as Prisma.InputJsonValue } : {}),
     expires: new Date(now.getTime() + VERIFICATION_TTL_MINUTES * 60 * 1000),
     lastSentAt: now,
     // מונה השליחות נשמר בתוך שעה, כדי שהרשמה חוזרת לא תעקוף את המגבלה
@@ -342,8 +348,17 @@ export async function confirmRegistration(input: {
     username = '';
   }
 
+  // מה שהוזן בכלים החינמיים עובר לחשבון. תכנון ההון העצמי נשמר בטבלה שלו
+  const toolData =
+    pending.toolDataJson && typeof pending.toolDataJson === 'object' && !Array.isArray(pending.toolDataJson)
+      ? { ...(pending.toolDataJson as Record<string, unknown>) }
+      : null;
+  const equity = toolData?.equity;
+  if (toolData) delete toolData.equity;
+
+  let user;
   try {
-    return await prisma.user.create({
+    user = await prisma.user.create({
       data: {
         email: pending.email,
         name: pending.name,
@@ -352,6 +367,7 @@ export async function confirmRegistration(input: {
         image: pending.image,
         emailVerified: new Date(),
         role: 'CLIENT',
+        ...(toolData ? { toolDataJson: toolData as Prisma.InputJsonValue } : {}),
         ...(pending.provider && pending.providerAccountId
           ? {
               accounts: {
@@ -371,6 +387,33 @@ export async function confirmRegistration(input: {
     }
     throw error;
   }
+
+  if (equity && typeof equity === 'object') {
+    const draft = equity as { propertyData?: Record<string, unknown>; expenses?: unknown; usesBroker?: unknown };
+    const price = Number(draft.propertyData?.price);
+    const targetDate = draft.propertyData?.targetDate;
+    const profile = draft.propertyData?.financingProfile;
+    try {
+      await saveEquityPlan(user.id, {
+        propertyPrice: Number.isFinite(price) && price > 0 ? price : 0,
+        targetDate: typeof targetDate === 'string' ? targetDate.slice(0, 10) : '',
+        financingProfile: isFinancingProfile(profile) ? profile : 'first-home',
+        usesBroker: draft.usesBroker === true,
+        expenses: sanitizeExpenses(draft.expenses),
+      });
+    } catch (error) {
+      // החשבון כבר קיים — הטיוטה נשארת בנתוני הכלים, והדאשבורד ישמור אותה
+      console.error('Could not save the equity plan from registration:', error);
+      await prisma.user
+        .update({
+          where: { id: user.id },
+          data: { toolDataJson: { ...(toolData ?? {}), equity } as Prisma.InputJsonValue },
+        })
+        .catch(() => {});
+    }
+  }
+
+  return user;
 }
 
 /** האם יש הרשמה ממתינה עם הסיסמה הזו — כדי להגיד למי שמנסה להתחבר שעליו לאשר את המייל */

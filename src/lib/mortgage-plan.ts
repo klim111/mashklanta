@@ -440,6 +440,12 @@ export interface MixData {
    * ממלאת את `refinance`.
    */
   refinancePending?: boolean;
+  /**
+   * תמהיל למיחזור שהיועץ בנה ושמר, ועוד לא שידר ללקוח. כמו בשלב התמהיל של
+   * משכנתא חדשה, מה שהיועץ שומר נשאר אצלו עד השידור: רק אז הוא מחליף את
+   * `refinance` ומגיע ללקוח.
+   */
+  advisorRefinanceDraft?: RefinanceMixData | null;
 }
 
 // ───────────────────────────── מיחזור ─────────────────────────────
@@ -618,6 +624,49 @@ export interface AuctionData {
   winnerOfferId: string | null;
   /** ההצעה המתומחרת שנבחרה כתמהיל הסופי לחתימה */
   signedMix: SignedMixChoice | null;
+  /** סבבי המיקוח על הריביות מול הבנקים שנתנו אישור עקרוני */
+  negotiation: AuctionNegotiation;
+}
+
+/**
+ * המיקוח בשלב המכרז. אחרי שהוזנו ריביות, הכלי ממליץ על ההצעה הזולה לפי הריבית
+ * הכוללת המשוקללת ומנחה לשלוח אותה לשאר הבנקים. כל סבב מסתיים בריביות מעודכנות,
+ * והמיקוח כולו מסתיים כשהלקוח מסמן שאף בנק לא מוכן לרדת בריביות. אישור עקרוני
+ * משופר שמועלה אחרי זה פותח סבב חדש.
+ */
+export interface AuctionNegotiation {
+  /** מספר הסבב הנוכחי, מ-1 */
+  round: number;
+  /** הלקוח סימן "אף בנק לא מוכן לרדת בריביות" (ISO); null — המיקוח פתוח */
+  endedAt: string | null;
+  /**
+   * מה כל בנק ענה, ובאיזה סבב: ריביות מעודכנות, או "ללא שיפור" — ואז ההצעה
+   * האחרונה שלו היא הטובה ביותר שלו. הסבב עובר כשכל הבנקים שנשאלו ענו.
+   */
+  responses: Record<string, NegotiationResponse>;
+}
+
+export interface NegotiationResponse {
+  round: number;
+  kind: 'UPDATED' | 'DECLINED';
+}
+
+export const EMPTY_NEGOTIATION: AuctionNegotiation = { round: 1, endedAt: null, responses: {} };
+
+export function parseNegotiation(value: unknown): AuctionNegotiation {
+  if (!value || typeof value !== 'object') return EMPTY_NEGOTIATION;
+  const row = value as Record<string, unknown>;
+  const round = typeof row.round === 'number' && row.round >= 1 ? Math.round(row.round) : 1;
+  const responses: Record<string, NegotiationResponse> = {};
+  if (row.responses && typeof row.responses === 'object') {
+    for (const [bank, value] of Object.entries(row.responses as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') continue;
+      const item = value as Record<string, unknown>;
+      if (typeof item.round !== 'number' || (item.kind !== 'UPDATED' && item.kind !== 'DECLINED')) continue;
+      responses[bank] = { round: Math.round(item.round), kind: item.kind };
+    }
+  }
+  return { round, endedAt: typeof row.endedAt === 'string' ? row.endedAt : null, responses };
 }
 
 /**
@@ -756,6 +805,7 @@ const EMPTY: PlanData = {
     finalLocked: false,
     refinance: null,
     refinancePending: false,
+    advisorRefinanceDraft: null,
   },
   APPLICATIONS: {
     bank: null,
@@ -769,7 +819,7 @@ const EMPTY: PlanData = {
     bankApprovals: [],
     note: '',
   },
-  AUCTION: { mode: null, offers: [], winnerOfferId: null, signedMix: null },
+  AUCTION: { mode: null, offers: [], winnerOfferId: null, signedMix: null, negotiation: EMPTY_NEGOTIATION },
   SIGNING: {
     bank: null,
     signingDate: null,
@@ -1246,6 +1296,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         finalLocked: bool(source.finalLocked) || bool(source.isFinal),
         refinance: parseRefinanceMixData(source.refinance),
         refinancePending: bool(source.refinancePending),
+        advisorRefinanceDraft: parseRefinanceMixData(source.advisorRefinanceDraft),
       } as PlanStageDataMap[S];
     }
 
@@ -1362,6 +1413,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         offers,
         winnerOfferId,
         signedMix: parseSignedMix(source.signedMix),
+        negotiation: parseNegotiation(source.negotiation),
       } as PlanStageDataMap[S];
     }
 
@@ -1782,6 +1834,14 @@ export function profileReadyForPreApproval(data: PlanData): boolean {
  * הבנקים שנתנו אישור עקרוני. אלה הבנקים שנפתחים לתמחור בשלב המכרז, כי רק מהם
  * אפשר לבקש ריביות על התמהיל הסופי.
  */
+/** מה שחסר לסגירת שלב האישור העקרוני כשעוד לא הועלה אישור */
+export const PRE_APPROVAL_MISSING = 'העלאת אישור עקרוני אחד לפחות';
+
+/** כמה אישורים עקרוניים התקבלו — כל אחד מהם הוא הצעה שעולה למכרז הריביות */
+export function preApprovalCount(data: PlanData): number {
+  return banksWithPreApproval(data).length;
+}
+
 export function banksWithPreApproval(data: PlanData): string[] {
   const banks = data.APPLICATIONS.bankApprovals
     .filter((row) => row.approved)
@@ -2076,20 +2136,14 @@ export function stageIsComplete(stage: PlanStageId, data: PlanData): boolean {
       // במיחזור, מה שסוגר את שלב התמהיל הוא הבחירה בין מיחזור פנימי לחיצוני
       if (data.MIX.refinance && !data.MIX.refinance.mode) return false;
       return Boolean(data.MIX.mixRecordId || data.MIX.mixKey);
-    /** שלב האישור העקרוני נסגר רק כשהלקוח מסמן שהאישור בידו */
+    /**
+     * שלב האישור העקרוני נסגר כשהתקבל והועלה לפחות אישור עקרוני אחד — זהה
+     * במשכנתא חדשה ובשני סוגי המיחזור. במשכנתא חדשה נדרש גם הפרופיל להגשה.
+     */
     case 'APPLICATIONS': {
-      /*
-        במיחזור ההגשה מתבצעת מול הבנק ישירות, והאישור חוזר אליו בערוץ שלו.
-        המסמך שאפשר להעלות כאן הוא תיעוד בלבד, ולכן הוא אינו תנאי להמשך:
-        הלקוח ממשיך לאימות ההצעה ברגע שהגיש.
-      */
+      if (preApprovalCount(data) === 0) return false;
       if (planFlowOf(data).kind === 'REFINANCE') return true;
-      const preApproval = data.APPLICATIONS;
-      return (
-        (!requiresProfileForPreApproval(data) || profileReadyForPreApproval(data)) &&
-        preApproval.bank !== null &&
-        preApproval.approved
-      );
+      return !requiresProfileForPreApproval(data) || profileReadyForPreApproval(data);
     }
     case 'AUCTION':
       // מה שסוגר את השלב הוא בחירת התמהיל שהולכים איתו לחתימה. הזנה ידנית של
@@ -2129,18 +2183,16 @@ export function missingForStage(stage: PlanStageId, data: PlanData): string[] {
       }
       break;
     case 'APPLICATIONS': {
-      // במיחזור אין תנאי לסגירת השלב — ראו stageIsComplete
-      if (planFlowOf(data).kind === 'REFINANCE') break;
-      const openProfile = requiresProfileForPreApproval(data)
-        ? preApprovalRequirements(data).filter((item) => !item.ok)
-        : [];
+      const openProfile =
+        planFlowOf(data).kind !== 'REFINANCE' && requiresProfileForPreApproval(data)
+          ? preApprovalRequirements(data).filter((item) => !item.ok)
+          : [];
       if (openProfile.length > 0) {
         missing.push(
           `פרטים מהפרופיל הפיננסי: ${openProfile.map((item) => item.label).join(', ')}`
         );
       }
-      if (!data.APPLICATIONS.bank) missing.push('הבנק שאליו מוגשת הבקשה');
-      if (!data.APPLICATIONS.approved) missing.push('סימון שהאישור העקרוני התקבל');
+      if (preApprovalCount(data) === 0) missing.push(PRE_APPROVAL_MISSING);
       break;
     }
     case 'AUCTION':

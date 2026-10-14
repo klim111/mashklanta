@@ -18,7 +18,9 @@ import {
 import { canonicalSiteOrigin } from "@/lib/auth-url";
 import { cookies } from "next/headers";
 import { sendWelcomeEmail } from "@/lib/client-emails";
+import { carryIntoAccount, takeGuestCarry } from "@/lib/guest-carry";
 import { ensureClientLinkSafely } from "@/lib/advisor-link";
+import { emailAdvisorAboutSignup } from "@/lib/advisor-notify";
 import {
   ADVISOR_DEVICE_COOKIE,
   AdvisorLinkError,
@@ -57,6 +59,12 @@ async function pendingGoogleCallbackUrl(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** מה שהאורח הזין בכלים בדרך לגוגל עובר לחשבון שאליו נכנס (src/lib/guest-carry.ts) */
+async function carryGuestData(userId: string): Promise<void> {
+  const carried = await takeGuestCarry();
+  if (carried) await carryIntoAccount(userId, carried);
 }
 
 /**
@@ -142,6 +150,8 @@ export const authOptions: NextAuthOptions = {
         await sendWelcomeEmail(user.id);
         // הלקוח משויך מיד ליועץ של הפלטפורמה, ומופיע ברשימת הלקוחות שלו
         await ensureClientLinkSafely(user.id);
+        // מייל ליועץ על כל הרשמה חדשה
+        await emailAdvisorAboutSignup(user.id);
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -204,11 +214,12 @@ export const authOptions: NextAuthOptions = {
             providerAccountId: account.providerAccountId,
           },
         },
-        select: { user: { select: { role: true } } },
+        select: { user: { select: { id: true, role: true } } },
       });
       if (linked) {
         // חשבון היועץ לא נפתח עם גוגל — רק בכניסה הנסתרת
         if (linked.user.role === "ADVISOR") return `/auth/login?error=${LoginError.GoogleNotAllowed}`;
+        await carryGuestData(linked.user.id);
         return true;
       }
 
@@ -236,6 +247,7 @@ export const authOptions: NextAuthOptions = {
             data: { hashedPassword: null, emailVerified: new Date() },
           });
         }
+        await carryGuestData(existing.id);
         return true;
       }
 
@@ -248,6 +260,8 @@ export const authOptions: NextAuthOptions = {
         providerAccountId: account.providerAccountId,
         callbackUrl,
         requestOrigin: canonicalSiteOrigin(),
+        // מה שהוזן בכלים לפני ההרשמה — עובר לחשבון כשהמייל מאושר, בכל דפדפן
+        toolData: (await takeGuestCarry()) ?? undefined,
       });
       const params = new URLSearchParams({ via: "google", email });
       // היעד המקורי ממשיך גם לקישורי "התחברו" / "הירשמו מחדש" שבמסך הבדיקה
@@ -292,7 +306,9 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async createUser({ user }) {
-      if (user.id) await ensureClientLinkSafely(user.id);
+      if (!user.id) return;
+      await ensureClientLinkSafely(user.id);
+      await emailAdvisorAboutSignup(user.id);
     },
   },
 };

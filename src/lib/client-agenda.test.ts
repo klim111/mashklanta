@@ -47,25 +47,19 @@ function meeting(overrides: Partial<AdvisorMeetingView> = {}): AdvisorMeetingVie
     location: null,
     note: null,
     status: 'PROPOSED',
+    proposedBy: 'ADVISOR',
     respondedAt: null,
     ...overrides,
   };
 }
 
 describe('סדר היום של הלקוח', () => {
-  it('פגישה שממתינה לאישור היא המשימה הדחופה הראשונה', () => {
+  it('פגישה שממתינה לאישור אינה משימה — היא מאושרת מלוח השנה', () => {
     const tasks = buildClientTasks(
       { ...EMPTY_AGENDA_INPUT, plans: [plan()], meetings: [meeting()] },
       NOW
     );
-    expect(tasks[0].id).toBe('meeting:m1');
-    expect(tasks[0].tone).toBe('urgent');
-    // פגישה מאושרת כבר לא דורשת פעולה
-    const confirmed = buildClientTasks(
-      { ...EMPTY_AGENDA_INPUT, meetings: [meeting({ status: 'CONFIRMED' })] },
-      NOW
-    );
-    expect(confirmed.some((task) => task.id === 'meeting:m1')).toBe(false);
+    expect(tasks.some((task) => task.id.startsWith('meeting:'))).toBe(false);
   });
 
   it('תהליך פתוח מקבל משימת "המשיכו" בשלב הנוכחי, ותהליך שהושלם לא', () => {

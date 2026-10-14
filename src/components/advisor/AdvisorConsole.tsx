@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
-import { ClientList } from './ClientList';
+import { ClientsArea } from './ClientsArea';
 import { CalendarPanel } from './CalendarPanel';
 import { MeetingDialog } from './MeetingDialog';
 import { QuickActions } from './QuickActions';
@@ -297,16 +297,18 @@ export function AdvisorConsole() {
               <AgendaCard
                 icon={<AlarmClock className="h-4 w-4" />}
                 label="דורש תשומת לב"
-                value={`${overview.overdueTasks + overview.awaitingConfirmation}`}
+                value={`${overview.overdueTasks + overview.awaitingAdvisor + overview.awaitingConfirmation}`}
                 hint={
-                  overview.overdueTasks > 0
+                  overview.awaitingAdvisor > 0
+                    ? `${overview.awaitingAdvisor} פגישות שהלקוח הציע להן מועד ממתינות לאישורך`
+                    : overview.overdueTasks > 0
                     ? `${overview.overdueTasks} משימות באיחור`
                     : overview.awaitingConfirmation > 0
                       ? `${overview.awaitingConfirmation} פגישות ממתינות לאישור הלקוח`
                       : 'הכול מעודכן'
                 }
-                tone={overview.overdueTasks > 0 ? 'alert' : 'default'}
-                onClick={() => setTab('tasks')}
+                tone={overview.overdueTasks > 0 || overview.awaitingAdvisor > 0 ? 'alert' : 'default'}
+                onClick={() => setTab(overview.awaitingAdvisor > 0 ? 'calendar' : 'tasks')}
               />
             </div>
 
@@ -388,21 +390,19 @@ export function AdvisorConsole() {
           transition={{ duration: 0.25 }}
         >
           {tab === 'clients' && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <ClientList
-                clients={clients}
-                ready={ready}
-                error={error}
-                onAddClient={async (input) => {
-                  const failure = await addClient(input);
-                  if (!failure) await refreshOverview();
-                  return failure;
-                }}
-                onScheduleMeeting={(client) => openMeeting(client)}
-                query={query}
-                onQueryChange={setQuery}
-              />
-            </div>
+            <ClientsArea
+              clients={clients}
+              ready={ready}
+              error={error}
+              onAddClient={async (input) => {
+                const failure = await addClient(input);
+                if (!failure) await refreshOverview();
+                return failure;
+              }}
+              onScheduleMeeting={(client) => openMeeting(client)}
+              query={query}
+              onQueryChange={setQuery}
+            />
           )}
 
           {tab === 'requests' && (

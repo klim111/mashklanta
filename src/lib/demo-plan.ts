@@ -160,5 +160,8 @@ export function demoPlanData(): PlanData {
 
   data.AUCTION = { ...data.AUCTION, mode: 'self' };
 
+  // החוזה כבר נחתם בתרחיש ההדגמה — כך שאלת החוזה לא קופצת בכל כניסה לתהליך
+  data.SIGNING = { ...data.SIGNING, contractAnswer: 'SIGNED' };
+
   return data;
 }

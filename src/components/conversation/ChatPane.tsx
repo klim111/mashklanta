@@ -24,9 +24,27 @@ function dayLabel(iso: string): string {
   return DAY.format(date);
 }
 
-/** הצ'אט עצמו: ההודעות, ושורת כתיבה בתחתית. Enter שולח, Shift+Enter יורד שורה */
-export function ChatPane({ role, clientUserId }: { role: ConversationRole; clientUserId?: string | null }) {
-  const { messages, ready, sending, error, send } = useChat(clientUserId, true);
+/**
+ * הצ'אט עצמו: ההודעות, ושורת כתיבה בתחתית. Enter שולח, Shift+Enter יורד שורה.
+ *
+ * בשיחת וידאו (`inCall`) זה אותו צ'אט עם אותה היסטוריה, בלי בחירת סוג פנייה:
+ * הוא מתרענן מהר יותר, `refreshSignal` מרענן אותו מיד כשהצד השני שלח, ו-`onSent`
+ * מודיע לצד השני שנשלחה הודעה.
+ */
+export function ChatPane({
+  role,
+  clientUserId,
+  inCall = false,
+  refreshSignal = 0,
+  onSent,
+}: {
+  role: ConversationRole;
+  clientUserId?: string | null;
+  inCall?: boolean;
+  refreshSignal?: number;
+  onSent?: () => void;
+}) {
+  const { messages, ready, sending, error, send, refresh } = useChat(clientUserId, true, inCall ? 4000 : 8000);
   const [draft, setDraft] = useState('');
   /** סוג פנייה שהלקוח סימן — ההודעה נפתחת גם כפנייה אצל היועץ */
   const [kind, setKind] = useState<RequestKind | null>(null);
@@ -39,6 +57,10 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
     list.current?.scrollTo({ top: list.current.scrollHeight });
   }, [messages.length]);
 
+  useEffect(() => {
+    if (refreshSignal > 0) void refresh();
+  }, [refreshSignal, refresh]);
+
   const submit = async () => {
     if (!canSend) return;
     const request = kind ? { requestKind: kind, sourcePath: window.location.pathname } : undefined;
@@ -46,6 +68,7 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
       setDraft('');
       setKind(null);
       outgoing.reset();
+      onSent?.();
     }
   };
 
@@ -95,7 +118,7 @@ export function ChatPane({ role, clientUserId }: { role: ConversationRole; clien
         <div className="mb-1.5 empty:hidden">
           <PendingFiles outgoing={outgoing} />
         </div>
-        {role === 'CLIENT' && (
+        {role === 'CLIENT' && !inCall && (
           <div role="radiogroup" aria-label="סוג הפנייה" className="mb-1.5 flex flex-wrap items-center gap-1.5 px-1">
             <span className="text-2xs font-bold text-slate-500">סוג הפנייה (לא חובה):</span>
             {REQUEST_KINDS.map((item) => {

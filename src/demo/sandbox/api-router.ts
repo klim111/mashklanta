@@ -16,7 +16,8 @@ import type { PlanDocumentView } from '@/lib/plan-documents';
 import { cleanDocumentMeta } from '@/lib/document-organize';
 import { demoDocuments, demoPlanData } from '@/lib/demo-plan';
 import type { ClientTaskView } from '@/lib/client-tasks';
-import type { AdvisorMeetingView } from '@/lib/advisor-crm';
+import type { AdvisorMeetingView, MeetingAnswer } from '@/lib/advisor-crm';
+import { answerMeeting } from '@/lib/advisor-crm';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 import type {
   AttachmentView,
@@ -439,9 +440,21 @@ export class DemoApiRouter {
         }
         if (method === 'PATCH') {
           const body = await this.body(init, input);
-          if (typeof body.accepted === 'boolean') {
-            meeting.status = body.accepted ? 'CONFIRMED' : 'DECLINED';
-            meeting.respondedAt = nowIso();
+          // בהדגמה המשתמש הוא הלקוח — אותו כלל של אישור והצעת מועד אחר כמו בשרת
+          const action =
+            typeof body.accepted === 'boolean' ? (body.accepted ? 'accept' : 'decline') : body.action;
+          const reply: MeetingAnswer | null =
+            action === 'accept' || action === 'decline'
+              ? { action }
+              : action === 'propose' && typeof body.startsAt === 'string'
+                ? { action, startsAt: new Date(body.startsAt) }
+                : null;
+          const next = reply ? answerMeeting(meeting, 'CLIENT', reply) : null;
+          if (next) {
+            meeting.status = next.status;
+            meeting.proposedBy = next.proposedBy;
+            meeting.respondedAt = next.respondedAt ? next.respondedAt.toISOString() : null;
+            if (next.startsAt) meeting.startsAt = next.startsAt.toISOString();
           }
           if (typeof body.status === 'string') meeting.status = body.status as AdvisorMeetingView['status'];
         }
@@ -462,6 +475,7 @@ export class DemoApiRouter {
           location: (body.location as string | null) ?? null,
           note: (body.note as string | null) ?? null,
           status: 'PROPOSED',
+          proposedBy: 'ADVISOR',
           respondedAt: null,
         };
         this.meetings = [meeting, ...this.meetings];

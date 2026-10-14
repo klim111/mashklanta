@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgePercent, Lock, X } from 'lucide-react';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import type { MortgageBank } from '@/components/mortgage-advisor/types';
+import type { AuctionNegotiation } from '@/lib/mortgage-plan';
+import type { BankApprovalAccess } from './ApprovalDocButton';
+import { NegotiationPanel } from './NegotiationPanel';
+import type { BankerContact } from './NegotiationPanel';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { computeMix, formatDuration } from '@/components/mortgage-advisor/engine';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
@@ -22,8 +27,8 @@ import {
   monthlySpread,
   pricedMixesFor,
   toggleBank,
-  winningPricedMix,
 } from './pricedMixes';
+import { cheapestByWeightedRate, latestOfBank, nextRoundDue, withResponse } from './negotiation';
 import type { PricedMix } from './pricedMixes';
 import { PanelBadge, StagePanel } from './ui';
 
@@ -63,6 +68,16 @@ interface AuctionWorkspaceProps {
   lockBanks?: boolean;
   /** ניסוח האזורים. ברירת המחדל היא מכרז ריביות של משכנתא חדשה */
   copy?: Partial<AuctionCopy>;
+  /** האישורים העקרוניים: צפייה בהם ליד כל בנק, או העלאה */
+  approvals?: BankApprovalAccess;
+  /** סבבי המיקוח — רק למי שמזין ריביות */
+  negotiation?: {
+    state: AuctionNegotiation;
+    onChange: (next: AuctionNegotiation) => void;
+    bankers: Record<string, BankerContact>;
+    onEmail?: ((to: string, subject: string, text: string) => void) | null;
+    formatRate: (value: number) => string;
+  };
 }
 
 /**
@@ -105,7 +120,12 @@ export function AuctionWorkspace({
   approvedBanks = [],
   lockBanks = false,
   copy,
+  approvals,
+  negotiation,
 }: AuctionWorkspaceProps) {
+  /** הבנק שטבלת הריביות שלו פתוחה בשורת הבנקים */
+  const [openBank, setOpenBank] = useState<MortgageBank | null>(null);
+  const pricingPanel = useRef<HTMLDivElement>(null);
   const [banks, setBanks] = useState<string[]>([]);
   /** ההצעה שפתוחה בדאשבורד. null — הזולה ביותר, שנבחרת אוטומטית */
   const [featuredId, setFeaturedId] = useState<string | null>(null);
@@ -123,8 +143,9 @@ export function AuctionWorkspace({
   const available = useMemo(() => banksWithOffers(priced), [priced]);
 
   /* ההצעה הזולה נגזרת מכל ההצעות ולא מהמסוננות: השורה העליונה אומרת מה הטוב
-     ביותר שיש על השולחן, ולא מה הטוב ביותר מבין מה שסומן כרגע. */
-  const winner = useMemo(() => winningPricedMix(priced), [priced]);
+     ביותר שיש על השולחן, ולא מה הטוב ביותר מבין מה שסומן כרגע. הזולה נקבעת
+     לפי הריבית הכוללת המשוקללת — אותה הצעה שהמיקוח ממליץ עליה. */
+  const winner = useMemo(() => cheapestByWeightedRate(priced), [priced]);
   const costliest = useMemo(() => costliestPricedMix(priced), [priced]);
 
   const featured = useMemo(() => {
@@ -146,6 +167,52 @@ export function AuctionWorkspace({
 
   const takenNames = useMemo(() => savedMixes.map((item) => item.mix.name), [savedMixes]);
   const canPrice = (role === 'self' || role === 'advisor') && Boolean(onSavePriced);
+
+  /** פתיחת טבלת הריביות של בנק מתוך המיקוח, וגלילה אליה */
+  const enterRates = (bank: MortgageBank) => {
+    setOpenBank(bank);
+    window.setTimeout(
+      () => pricingPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      50
+    );
+  };
+
+  /*
+    ריביות שנשמרות מבנק שכבר נתן הצעה הן התשובה שלו בסבב הנוכחי. אחרי שהמיקוח
+    הסתיים, הצעה חדשה (מאישור משופר) פותחת אותו מחדש.
+  */
+  const savePriced = onSavePriced
+    ? async (quoted: WorkspaceMix) => {
+        const bank = quoted.quote?.bank ?? quoted.bank ?? null;
+        const hadOffer = bank ? (offersPerBank[bank] ?? 0) > 0 : false;
+        await onSavePriced(quoted);
+        if (!negotiation) return;
+        if (bank && hadOffer) negotiation.onChange(withResponse(negotiation.state, bank, 'UPDATED'));
+        else if (negotiation.state.endedAt) negotiation.onChange({ ...negotiation.state, endedAt: null });
+      }
+    : undefined;
+
+  /* כשכל הבנקים שנשאלו ענו ולפחות אחד שיפר — מתחיל הסבב הבא */
+  const negotiationState = negotiation?.state;
+  const onNegotiationChange = negotiation?.onChange;
+  useEffect(() => {
+    if (!negotiationState || !onNegotiationChange) return;
+    if (nextRoundDue(negotiationState, priced)) {
+      onNegotiationChange({ ...negotiationState, round: negotiationState.round + 1 });
+    }
+  }, [negotiationState, onNegotiationChange, priced]);
+
+  /* אישור שהועלה מכאן — נפתחת מיד טבלת הריביות של אותו בנק, להזנת מה שבאישור */
+  const approvalAccess: BankApprovalAccess | undefined = approvals
+    ? {
+        ...approvals,
+        onUpload: async (bank, file) => {
+          const done = await approvals.onUpload(bank, file);
+          if (done && canPrice) enterRates(bank as MortgageBank);
+          return done;
+        },
+      }
+    : undefined;
 
   /** הריביות של הבנק שהעכבר עליו, להצצה בתוך הפסים */
   const previewRates = useMemo(() => {
@@ -251,15 +318,32 @@ export function AuctionWorkspace({
         onSelectBank={priced.length > 0 ? onSelectBank : undefined}
       />
 
+      {/* המיקוח: ההצעה הזולה, שליחתה לשאר הבנקים והריביות המעודכנות */}
+      {canPrice && negotiation && (
+        <NegotiationPanel
+          priced={priced}
+          approvedBanks={approvedBanks}
+          negotiation={negotiation.state}
+          onChange={negotiation.onChange}
+          onEnterRates={enterRates}
+          onDecline={(bank) => negotiation.onChange(withResponse(negotiation.state, bank, 'DECLINED'))}
+          approvals={approvalAccess}
+          bankers={negotiation.bankers}
+          onEmail={negotiation.onEmail}
+          formatRate={negotiation.formatRate}
+        />
+      )}
+
       {/* שורת הבנקים להזנת ריביות — רק למי שמזין */}
-      {canPrice && onSavePriced && (
+      {canPrice && savePriced && (
+        <div ref={pricingPanel} className="scroll-mt-24">
         <StagePanel
           title={copy?.pricingTitle ?? 'הזנת הריביות מהבנקים'}
           description={
             copy?.pricingDescription ??
             (approvedBanks.length > 0
-              ? 'הבנקים שנתנו אישור עקרוני פתוחים כאן לתמחור. לחיצה על שם בנק פותחת את טבלת הריביות שלו, ואחרי השמירה ההצעה מצטרפת לשורת הבנקים שמתחת.'
-              : 'לחיצה על שם בנק פותחת את טבלת הריביות שלו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת.')
+              ? 'הבנקים שנתנו אישור עקרוני פתוחים כאן לתמחור. לחיצה על שם בנק פותחת את טבלת הריביות שלו, והאייקון שלידו פותח את האישור העקרוני שהועלה ממנו. אחרי השמירה ההצעה מצטרפת לשורת הבנקים שמתחת.'
+              : 'לחיצה על שם בנק פותחת את טבלת הריביות שלו, והאייקון שלידו מעלה את האישור העקרוני שהתקבל ממנו. אחרי השמירה הטבלה נסגרת, וההצעה מצטרפת לשורת הבנקים שמתחת.')
           }
         >
           <BankPricingRow
@@ -268,9 +352,14 @@ export function AuctionWorkspace({
             offersPerBank={offersPerBank}
             approvedBanks={approvedBanks}
             lockBanks={lockBanks}
-            onSave={onSavePriced}
+            onSave={savePriced}
+            open={openBank}
+            onOpenChange={setOpenBank}
+            approvals={approvalAccess}
+            previousOf={(bank) => latestOfBank(priced, bank)?.mix ?? null}
           />
         </StagePanel>
+        </div>
       )}
 
       {/* 3. רשימת העבודה של היועץ — קיימת רק אצלו, ולא במסך של הלקוח */}

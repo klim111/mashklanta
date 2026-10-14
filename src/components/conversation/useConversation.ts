@@ -59,7 +59,8 @@ export function useConversationSummary(clientUserId: string | null | undefined, 
   return { summary, refresh };
 }
 
-export function useChat(clientUserId: string | null | undefined, enabled: boolean) {
+/** `ms` — כל כמה זמן הרשימה מתרעננת; בשיחת וידאו מהר יותר */
+export function useChat(clientUserId: string | null | undefined, enabled: boolean, ms = 8000) {
   const [messages, setMessages] = useState<ChatMessageView[]>([]);
   const [ready, setReady] = useState(false);
   const [sending, setSending] = useState(false);
@@ -78,7 +79,7 @@ export function useChat(clientUserId: string | null | undefined, enabled: boolea
     }
   }, [clientUserId]);
 
-  usePolling(() => void refresh(), 8000, enabled);
+  usePolling(() => void refresh(), ms, enabled);
 
   const send = useCallback(
     async (

@@ -6,7 +6,9 @@ import {
   MAX_VIEW_MS,
   isBotAgent,
   isTrackingId,
+  locationFromHeaders,
   normalizeDevice,
+  parseUserAgent,
   normalizePath,
   referrerHost,
 } from '@/lib/site-analytics';
@@ -52,6 +54,11 @@ export async function POST(request: NextRequest) {
     const session = await getServerAuth().catch(() => null);
     if (session?.user?.role === 'ADVISOR') return done;
 
+    // מאיזו כתובת ומאיזה מכשיר — רק למשתמש מחובר, כדי שהיועץ יראה מי התחבר
+    const userId = session?.user?.id ?? null;
+    const ip = userId ? getClientIp(request) : null;
+    const agent = userId ? parseUserAgent(request.headers.get('user-agent')) : null;
+
     await prisma.siteVisit.create({
       data: {
         id: body.id,
@@ -60,7 +67,11 @@ export async function POST(request: NextRequest) {
         path,
         referrer: referrerHost(body.referrer, request.nextUrl.hostname),
         device: normalizeDevice(body.device),
-        userId: session?.user?.id ?? null,
+        userId,
+        ip: ip && ip !== 'unknown' ? ip.slice(0, 64) : null,
+        browser: agent?.browser ?? null,
+        os: agent?.os ?? null,
+        location: userId ? locationFromHeaders(request.headers) : null,
       },
     });
   } catch {

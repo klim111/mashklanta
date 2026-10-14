@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { emptyPlanData } from './mortgage-plan';
+import type { RefinanceMixData } from './mortgage-plan';
 import type { PlanDocumentView } from './plan-documents';
 import type { ClientTaskView } from './client-tasks';
-import { customDocumentKey, customDocumentStage, documentProgress } from './document-progress';
+import { customDocumentKey, customDocumentStage, documentProgress, preApprovalTarget } from './document-progress';
 import { vaultCounts } from './plan-document-catalog';
 import { demoDocuments, demoPlanData } from './demo-plan';
 
@@ -48,6 +49,25 @@ describe('customDocumentKey', () => {
 });
 
 describe('documentProgress', () => {
+  it('מיחזור: השלבים בסדר של התהליך, ובמיחזור פנימי רק שלושת השלבים שלו', () => {
+    const external = emptyPlanData();
+    external.MIX = { ...external.MIX, refinance: { mode: 'EXTERNAL' } as RefinanceMixData };
+    expect(documentProgress(external, []).stages.map((row) => row.stage)).toEqual([
+      'MIX',
+      'ANALYSIS',
+      'APPLICATIONS',
+      'AUCTION',
+      'SIGNING',
+    ]);
+
+    const internal = emptyPlanData();
+    internal.MIX = { ...internal.MIX, refinance: { mode: 'INTERNAL' } as RefinanceMixData };
+    const progress = documentProgress(internal, [], [task({ stage: 'SIGNING' })]);
+    expect(progress.stages.map((row) => row.stage)).toEqual(['MIX', 'APPLICATIONS', 'AUCTION']);
+    // מסמכי החתימה של מיחזור פנימי נספרים בשלב האחרון, שבו נמצאת החתימה
+    expect(progress.stages.find((row) => row.stage === 'AUCTION')?.total).toBe(1);
+  });
+
   it('תהליך ריק: מסמכי הפרופיל ושלושת האישורים נספרים, שלב התמהיל לא', () => {
     const progress = documentProgress(emptyPlanData(), []);
     const byStage = Object.fromEntries(progress.stages.map((row) => [row.stage, row]));
@@ -125,5 +145,21 @@ describe('ספירת תיק המסמכים', () => {
       { key: 'b1:identity', name: 'ת"ז', group: 'ל1', stage: 'APPLICATIONS' as const },
     ];
     expect(vaultCounts(requirements, [])).toEqual({ uploaded: 0, total: 1, extras: 0 });
+  });
+});
+
+describe('pre-approval target', () => {
+  it('internal refinance counts one bank approval as the full set', () => {
+    const data = emptyPlanData();
+    expect(preApprovalTarget(data)).toBe(3);
+    data.MIX = {
+      ...data.MIX,
+      refinance: { mode: 'INTERNAL' } as NonNullable<typeof data.MIX.refinance>,
+    };
+    expect(preApprovalTarget(data)).toBe(1);
+    const stage = documentProgress(data, []).stages.find((item) => item.stage === 'APPLICATIONS');
+    expect(stage?.total).toBe(1);
+    data.MIX.refinance!.mode = 'EXTERNAL';
+    expect(preApprovalTarget(data)).toBe(3);
   });
 });

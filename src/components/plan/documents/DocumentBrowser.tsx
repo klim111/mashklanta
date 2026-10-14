@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react';
 import { Download, Eye, FileText, Search, Tags, Trash2, X } from 'lucide-react';
 import { formatDate } from '@/lib/advisor-crm';
-import { PLAN_STAGES } from '@/lib/mortgage-plan';
-import type { PlanStageId } from '@/lib/mortgage-plan';
+import { NEW_PLAN_FLOW, flowStages, planStageNumber } from '@/lib/mortgage-plan';
+import type { PlanFlow, PlanStageId } from '@/lib/mortgage-plan';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import {
   DOCUMENT_CATEGORIES,
@@ -14,7 +14,7 @@ import {
   filterDocuments,
 } from '@/lib/document-organize';
 import type { DocumentCategory, DocumentMeta } from '@/lib/document-organize';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { planStageMeta } from '@/data/platform/planStages';
 import { documentDownloadUrl } from './usePlanDocuments';
 
 const CATEGORY_TONES: Record<DocumentCategory, string> = {
@@ -27,20 +27,22 @@ const CATEGORY_TONES: Record<DocumentCategory, string> = {
 const selectClass =
   'rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
 
-/** שם השלב לתצוגה, עם המספר שלו בתהליך */
-export function stageLabel(stage: PlanStageId): string {
-  return `${PLAN_STAGES.indexOf(stage) + 1}. ${journeyStageFor(stage).shortTitle}`;
+/** שם השלב לתצוגה, עם המספר שלו בתהליך — לפי סוג התהליך, כמו בסרגל השלבים */
+export function stageLabel(stage: PlanStageId, flow: PlanFlow = NEW_PLAN_FLOW): string {
+  return `${planStageNumber(stage, flow)}. ${planStageMeta(stage, flow).shortTitle}`;
 }
 
-/** בחירת שלב לשיוך — כל השלבים, ו«ללא שלב» */
+/** בחירת שלב לשיוך — כל השלבים של התהליך, ו«ללא שלב» */
 export function StageSelect({
   value,
   onChange,
   className = selectClass,
+  flow = NEW_PLAN_FLOW,
 }: {
   value: PlanStageId | null;
   onChange: (stage: PlanStageId | 'NONE') => void;
   className?: string;
+  flow?: PlanFlow;
 }) {
   return (
     <select
@@ -49,9 +51,9 @@ export function StageSelect({
       className={className}
       aria-label="שיוך לשלב"
     >
-      {PLAN_STAGES.map((stage) => (
+      {flowStages(flow).map((stage) => (
         <option key={stage} value={stage}>
-          {stageLabel(stage)}
+          {stageLabel(stage, flow)}
         </option>
       ))}
       <option value="NONE">ללא שלב</option>
@@ -98,11 +100,14 @@ export function DocumentBrowser({
   onView,
   onRemove,
   onUpdateMeta,
+  flow = NEW_PLAN_FLOW,
 }: {
   planId: string;
   documents: PlanDocumentView[];
   busyKey: string | null;
   demo?: boolean;
+  /** סוג התהליך — קובע אילו שלבים יש בו ובאיזה סדר */
+  flow?: PlanFlow;
   onView: (document: PlanDocumentView) => void;
   onRemove: (document: PlanDocumentView) => void;
   onUpdateMeta: (documentId: string, meta: DocumentMeta) => void;
@@ -147,9 +152,9 @@ export function DocumentBrowser({
           aria-label="סינון לפי שלב"
         >
           <option value="">כל השלבים</option>
-          {PLAN_STAGES.map((id) => (
+          {flowStages(flow).map((id) => (
             <option key={id} value={id}>
-              {stageLabel(id)}
+              {stageLabel(id, flow)}
             </option>
           ))}
           <option value="NONE">ללא שלב</option>
@@ -216,7 +221,7 @@ export function DocumentBrowser({
                             {document.fileName} · {formatDate(document.uploadedAt)}
                           </p>
                           <p className="mt-0.5 text-2xs font-bold text-slate-500">
-                            {docStage ? `הועלה בשלב ${stageLabel(docStage)}` : 'לא משויך לשלב'}
+                            {docStage ? `הועלה בשלב ${stageLabel(docStage, flow)}` : 'לא משויך לשלב'}
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -269,7 +274,7 @@ export function DocumentBrowser({
                             onChange={(next) => onUpdateMeta(document.id, { category: next })}
                           />
                           <span className="text-xs font-bold text-slate-600">שלב</span>
-                          <StageSelect value={docStage} onChange={(next) => onUpdateMeta(document.id, { stage: next })} />
+                          <StageSelect flow={flow} value={docStage} onChange={(next) => onUpdateMeta(document.id, { stage: next })} />
                         </div>
                       )}
                     </li>

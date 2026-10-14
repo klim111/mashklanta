@@ -100,8 +100,8 @@ export function signParams(config: HypConfig, request: HypPaymentRequest): URLSe
     // HYP חותמת על התוצאה, כדי שנוכל לאמת אותה (VERIFY)
     Sign: 'True',
     MoreData: 'True',
-    // תעודת זהות לא נאספת — הלקוח ממלא אותה בעמוד של HYP אם המסוף דורש
-    UserId: '000000000',
+    // תעודת זהות לא נשלחת: הלקוח ממלא אותה בעמוד של HYP. ערך ממולא מראש
+    // (כמו 000000000) יושב בשדה ומפריע להקליד בו את המספר האמיתי
     ClientName: first,
     ClientLName: last,
     email: request.email.trim(),
