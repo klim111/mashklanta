@@ -72,6 +72,50 @@ export function isBotAgent(userAgent: string | null): boolean {
   return !userAgent || BOT_PATTERN.test(userAgent);
 }
 
+/**
+ * הדפדפן ומערכת ההפעלה מתוך ה-User-Agent, בשמות קצרים לטבלת ההתחברויות של
+ * היועץ ("Chrome 129", "iOS 18"). הסדר חשוב: Edge ו-Opera מתחזים ל-Chrome,
+ * ו-Chrome מתחזה ל-Safari.
+ */
+export function parseUserAgent(userAgent: string | null): { browser: string | null; os: string | null } {
+  if (!userAgent) return { browser: null, os: null };
+  const ua = userAgent;
+  const major = (pattern: RegExp) => ua.match(pattern)?.[1]?.split('.')[0] ?? '';
+  const named = (name: string, version: string) => (version ? `${name} ${version}` : name);
+
+  let browser: string | null = null;
+  if (/EdgA?\/|Edg\//.test(ua)) browser = named('Edge', major(/EdgA?\/([\d.]+)/));
+  else if (/OPR\/|Opera/.test(ua)) browser = named('Opera', major(/OPR\/([\d.]+)/));
+  else if (/SamsungBrowser\//.test(ua)) browser = named('Samsung Internet', major(/SamsungBrowser\/([\d.]+)/));
+  else if (/FBAN|FBAV|Instagram/.test(ua)) browser = /Instagram/.test(ua) ? 'Instagram' : 'Facebook';
+  else if (/FxiOS\/|Firefox\//.test(ua)) browser = named('Firefox', major(/(?:FxiOS|Firefox)\/([\d.]+)/));
+  else if (/CriOS\/|Chrome\//.test(ua)) browser = named('Chrome', major(/(?:CriOS|Chrome)\/([\d.]+)/));
+  else if (/Safari\//.test(ua)) browser = named('Safari', major(/Version\/([\d.]+)/));
+
+  let os: string | null = null;
+  if (/iPhone|iPad|iPod/.test(ua)) os = named(/iPad/.test(ua) ? 'iPadOS' : 'iOS', major(/OS (\d+)[_.]/));
+  else if (/Android/.test(ua)) os = named('Android', major(/Android ([\d.]+)/));
+  else if (/Windows NT/.test(ua)) os = 'Windows';
+  else if (/Mac OS X|Macintosh/.test(ua)) os = 'macOS';
+  else if (/CrOS/.test(ua)) os = 'ChromeOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+
+  return { browser, os };
+}
+
+/** "Tel Aviv, IL" מכותרות המיקום של Vercel. שם העיר מגיע מקודד ל-URL */
+export function locationFromHeaders(headers: Headers): string | null {
+  const country = headers.get('x-vercel-ip-country')?.trim() || '';
+  let city = headers.get('x-vercel-ip-city')?.trim() || '';
+  try {
+    city = decodeURIComponent(city);
+  } catch {
+    // שם עיר שלא מפוענח — נשאר כמו שהוא
+  }
+  const value = [city, country].filter(Boolean).join(', ');
+  return value ? value.slice(0, 80) : null;
+}
+
 /** שמות העמודים בעברית, לטבלה של היועץ */
 const PAGE_LABELS: Record<string, string> = {
   '/': 'דף הבית',
@@ -125,6 +169,78 @@ export type VisitRow = {
   durationMs: number;
   startedAt: Date;
 };
+
+/** צפייה של משתמש מחובר, עם פרטי ההתחברות שנשמרו בה */
+export type LoginVisitRow = {
+  sessionId: string;
+  userId: string;
+  path: string;
+  device: string | null;
+  ip?: string | null;
+  browser?: string | null;
+  os?: string | null;
+  location?: string | null;
+  durationMs: number;
+  startedAt: Date;
+};
+
+/** ביקור אחד של משתמש מחובר — לטבלת "מי התחבר" אצל היועץ */
+export type LoginSession = {
+  sessionId: string;
+  userId: string;
+  startedAt: string;
+  lastAt: string;
+  pages: number;
+  /** זמן שהעמודים היו גלויים, בשניות */
+  seconds: number;
+  /** העמוד הראשון בביקור */
+  entryPath: string;
+  device: string | null;
+  ip: string | null;
+  browser: string | null;
+  os: string | null;
+  location: string | null;
+};
+
+/**
+ * הביקורים של משתמשים מחוברים, ביקור לכל לשונית שנפתחה, מהחדש לישן. פרטי
+ * ההתחברות נלקחים מהצפייה הראשונה בביקור שיש בה ערך — צפיות מלפני שהתחילו
+ * לשמור אותם נשארות ריקות.
+ */
+export function summarizeLogins(rows: LoginVisitRow[], limit = 300): LoginSession[] {
+  const sessions = new Map<string, LoginSession>();
+  const ordered = [...rows].sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+  for (const row of ordered) {
+    const at = row.startedAt.toISOString();
+    const found = sessions.get(row.sessionId);
+    if (!found) {
+      sessions.set(row.sessionId, {
+        sessionId: row.sessionId,
+        userId: row.userId,
+        startedAt: at,
+        lastAt: at,
+        pages: 1,
+        seconds: Math.round(row.durationMs / 1000),
+        entryPath: row.path,
+        device: row.device,
+        ip: row.ip ?? null,
+        browser: row.browser ?? null,
+        os: row.os ?? null,
+        location: row.location ?? null,
+      });
+      continue;
+    }
+    found.lastAt = at;
+    found.pages += 1;
+    found.seconds += Math.round(row.durationMs / 1000);
+    found.device ??= row.device;
+    found.ip ??= row.ip ?? null;
+    found.browser ??= row.browser ?? null;
+    found.os ??= row.os ?? null;
+    found.location ??= row.location ?? null;
+  }
+  return [...sessions.values()].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, limit);
+}
 
 export type PageStat = {
   path: string;

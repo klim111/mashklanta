@@ -20,6 +20,7 @@ import { cookies } from "next/headers";
 import { sendWelcomeEmail } from "@/lib/client-emails";
 import { carryIntoAccount, takeGuestCarry } from "@/lib/guest-carry";
 import { ensureClientLinkSafely } from "@/lib/advisor-link";
+import { emailAdvisorAboutSignup } from "@/lib/advisor-notify";
 import {
   ADVISOR_DEVICE_COOKIE,
   AdvisorLinkError,
@@ -149,6 +150,8 @@ export const authOptions: NextAuthOptions = {
         await sendWelcomeEmail(user.id);
         // הלקוח משויך מיד ליועץ של הפלטפורמה, ומופיע ברשימת הלקוחות שלו
         await ensureClientLinkSafely(user.id);
+        // מייל ליועץ על כל הרשמה חדשה
+        await emailAdvisorAboutSignup(user.id);
         return {
           id: user.id,
           email: user.email ?? undefined,
@@ -303,7 +306,9 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async createUser({ user }) {
-      if (user.id) await ensureClientLinkSafely(user.id);
+      if (!user.id) return;
+      await ensureClientLinkSafely(user.id);
+      await emailAdvisorAboutSignup(user.id);
     },
   },
 };
