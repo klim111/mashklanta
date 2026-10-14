@@ -13,6 +13,7 @@ import type {
   NoteVisibility,
   PlanStageId,
 } from '@/lib/advisor-crm';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * הנתונים של לוח הבקרה, מבסיס הנתונים.
@@ -207,6 +208,9 @@ export interface NewMeetingInput {
   stage?: PlanStageId | null;
 }
 
+/** כל כמה זמן רשימת הפגישות מתרעננת כשהעמוד פתוח */
+const MEETINGS_REFRESH_MS = 15000;
+
 /**
  * הפגישות של המשתמש המחובר. אותו hook משרת את שני הצדדים: היועץ מקבל את
  * הפגישות שקבע, והלקוח את אלה שהוצעו לו.
@@ -224,7 +228,9 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
     }
     try {
       const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
-      setMeetings(await readJson<AdvisorMeetingView[]>(`/api/meetings${query}`));
+      const next = await readJson<AdvisorMeetingView[]>(`/api/meetings${query}`);
+      // רענון שלא הביא שום שינוי לא מרנדר מחדש את כל המסך
+      setMeetings((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
       setError(null);
     } catch {
       setError('לא הצלחנו לטעון את הפגישות');
@@ -236,6 +242,9 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // פגישה שהצד השני קבע, אישר או הזיז מופיעה בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), MEETINGS_REFRESH_MS, enabled);
 
   const propose = useCallback(
     async (input: NewMeetingInput): Promise<string | null> => {

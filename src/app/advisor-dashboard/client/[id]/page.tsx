@@ -4,12 +4,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, ArrowRight, Mail, MessageCircle, Phone, Video } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Mail, MessageCircle, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StageRail } from '@/components/plan/StageRail';
 import { NEW_PLAN_FLOW, PLAN_STAGES, flowStages } from '@/lib/mortgage-plan';
-import { meetingIsLive } from '@/lib/advisor-crm';
 import type { PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import { AdvisoryStatusBar } from '@/components/advisor/AdvisoryStatusBar';
 import { ClientContextRow } from '@/components/advisor/ClientContextRow';
@@ -20,6 +19,7 @@ import { SendAuthorizationButton } from '@/components/advisor/ClientAuthorizatio
 import { TaskDialog } from '@/components/advisor/TaskDialog';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
+import { VideoCallPicker } from '@/components/meeting-call/VideoCallPicker';
 import {
   useAdvisorNotes,
   useAdvisorTasks,
@@ -104,20 +104,6 @@ export default function AdvisorClientPage() {
     setMeetingOpen(true);
   };
 
-  /**
-   * שיחת וידאו עם הלקוח: נפתחת בחדר של הפגישה הפעילה הקרובה איתו — זו שעכשיו,
-   * או הבאה בתור. כשאין פגישה כזו נפתחת קביעת פגישה, כי השיחה תמיד שייכת לפגישה.
-   */
-  const startVideoCall = () => {
-    const now = Date.now();
-    const next = meetings.meetings
-      .filter((meeting) => meetingIsLive(meeting.status))
-      .filter((meeting) => new Date(meeting.startsAt).getTime() + meeting.durationMinutes * 60 * 1000 >= now)
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
-    if (next) window.open(`/meeting/${encodeURIComponent(next.id)}`, '_blank', 'noopener');
-    else openMeeting(null);
-  };
-
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
       {/* ראש העמוד: זהות הלקוח, הגישה המהירה וסרגל חמשת השלבים */}
@@ -172,14 +158,8 @@ export default function AdvisorClientPage() {
 
             <SendAuthorizationButton clientId={client.id} clientName={client.name} />
 
-            <button
-              type="button"
-              onClick={startVideoCall}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
-            >
-              <Video className="h-4 w-4" />
-              שיחת וידאו
-            </button>
+            {/* שיחה אחת נפתחת מיד; כשנקבעו כמה, בוחרים לאיזו להתחבר; בלי פגישה — קובעים אחת */}
+            <VideoCallPicker meetings={meetings.meetings} onSchedule={() => openMeeting(null)} />
 
             {client.userId && (
               <button
