@@ -1770,3 +1770,28 @@ model SignupDraft {
   @@index([email])
   @@index([updatedAt])
 }
+
+/**
+ * לקוח שהסיר את החשבון שלו (src/lib/account-deletion.ts). כל המידע שלו נמחק,
+ * ורק רשומות התשלום נשמרות כאן בשביל היועץ, תחת "לקוחות שעזבו": מי שילם,
+ * מתי ועל מה. אין כאן קישור לשום שורה אחרת, כי כולן נמחקו.
+ */
+model DepartedClient {
+  id           String    @id @default(cuid())
+  /** היועץ שליווה אותו, כשהיה כרטיס לקוח */
+  advisorId    String?
+  name         String
+  email        String?
+  phone        String?
+  registeredAt DateTime
+  departedAt   DateTime  @default(now())
+  firstPaidAt  DateTime?
+  lastPaidAt   DateTime?
+  accessEndsAt DateTime?
+  /** בשקלים */
+  totalPaid    Float     @default(0)
+  /** התשלומים, מהחדש לישן: [{ kind, paidAt, amount, title, accessUntil }] */
+  paymentsJson Json
+
+  @@index([advisorId, departedAt])
+}
