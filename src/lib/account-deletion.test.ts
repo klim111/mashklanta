@@ -16,12 +16,14 @@ const { calls, db, del } = vi.hoisted(() => {
 
 const db = {
   user: { ...model('user'), findUnique: vi.fn() },
-  client: model('client', [{ id: 'c1' }]),
+  client: model('client', [{ id: 'c1', advisorId: 'a1', name: 'דנה', email: 'dana@example.com', phone: null }]),
   mortgagePlan: model('mortgagePlan', [{ id: 'p1' }]),
   planDocument: model('planDocument', [{ blobPath: 'plans/p1/a.pdf' }]),
   advisorLead: model('advisorLead', [{ files: [{ id: 'f', fileName: 'x.pdf', contentType: 'application/pdf', size: 1, blob: 'leads/b/x.pdf' }] }]),
   document: model('document', [{ s3Key: null }]),
   paymentLink: model('paymentLink'),
+  platformPayment: model('platformPayment', [{ userId: 'u1', createdAt: new Date('2026-09-01'), amountAgorot: 9900, status: 'PAID' }]),
+  departedClient: { create: vi.fn(async () => { calls.push('departedClient.create'); return {}; }) },
   mortgageMix: model('mortgageMix'),
   bankRateRequest: model('bankRateRequest'),
   advisorServiceOrder: model('advisorServiceOrder'),
@@ -76,8 +78,15 @@ describe('deleteClientAccount', () => {
     expect(calls).toEqual([]);
   });
 
-  it('מוחק את המשתמש, את מה שלא נמחק איתו ואת הקבצים', async () => {
-    db.user.findUnique.mockResolvedValueOnce({ id: 'u1', email: 'dana@example.com', role: 'CLIENT' });
+  it('שומר את התשלומים ליועץ ומוחק את המשתמש, את מה שלא נמחק איתו ואת הקבצים', async () => {
+    db.user.findUnique.mockResolvedValueOnce({
+      id: 'u1',
+      name: 'דנה',
+      email: 'dana@example.com',
+      role: 'CLIENT',
+      createdAt: new Date('2026-08-01'),
+      platformAccessAt: null,
+    });
     const result = await deleteClientAccount('u1');
     expect(result.ok).toBe(true);
     expect(calls).toContain('advisorLead.deleteMany');
@@ -85,6 +94,12 @@ describe('deleteClientAccount', () => {
     expect(calls).toContain('pendingRegistration.deleteMany');
     expect(calls).toContain('signupDraft.deleteMany');
     expect(calls.at(-1)).toBe('user.delete');
+    // רשומות התשלום נשמרות ליועץ, וקישורי התשלום שלו לא נמחקים
+    expect(calls[0]).toBe('departedClient.create');
+    expect(calls).not.toContain('paymentLink.deleteMany');
+    const saved = (db.departedClient.create.mock.calls[0] as unknown as [{ data: { totalPaid: number; advisorId: string } }])[0].data;
+    expect(saved.totalPaid).toBe(99);
+    expect(saved.advisorId).toBe('a1');
     const deleted = del.mock.calls.flat().flat();
     expect(deleted).toEqual(
       expect.arrayContaining(['plans/p1/a.pdf', 'leads/b/x.pdf', 'conversation/u1/chat.pdf'])

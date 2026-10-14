@@ -2,26 +2,38 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, ChevronDown, ChevronLeft, Search } from 'lucide-react';
+import { BadgeCheck, ChevronDown, ChevronLeft, Search, UserMinus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatDate } from '@/lib/advisor-crm';
 import { EmptyState, formatShekel } from './ui';
 import type { AdvisorClient } from './useAdvisorClients';
 
+/** מה שהטבלה צריכה על כל לקוח — גם לקוח שהסיר את החשבון, שאין לו כרטיס */
+export type PayingClientRow = Pick<
+  AdvisorClient,
+  'id' | 'name' | 'email' | 'phone' | 'registeredAt' | 'firstPaidAt' | 'lastPaidAt' | 'payments' | 'accessEndsAt'
+> & {
+  /** מתי הסיר את החשבון — רק ב"לקוחות שעזבו" */
+  departedAt?: string;
+};
+
 /**
  * הלקוחות המשלמים, עם כל הפרטים: מתי נרשמו, כל תאריכי התשלום, ומתי פג המנוי
  * שעליו שילמו. שורה נפתחת מציגה את פירוט התשלומים, והשם מוביל לדף הלקוח.
+ * ב"לקוחות שעזבו" (departed) אין דף לקוח, ובמקום זה מוצג מתי הסיר את החשבון.
  */
 export function PayingClientsTable({
   clients,
   ready,
   query = '',
   onQueryChange,
+  departed = false,
 }: {
-  clients: AdvisorClient[];
+  clients: PayingClientRow[];
   ready: boolean;
   query?: string;
   onQueryChange?: (value: string) => void;
+  departed?: boolean;
 }) {
   const [internalQuery, setInternalQuery] = useState('');
   const term = (onQueryChange ? query : internalQuery).trim().toLowerCase();
@@ -34,8 +46,12 @@ export function PayingClientsTable({
         .filter((client) =>
           term ? [client.name, client.email, client.phone ?? ''].some((field) => field.toLowerCase().includes(term)) : true
         )
-        .sort((a, b) => (b.lastPaidAt ?? '').localeCompare(a.lastPaidAt ?? '')),
-    [clients, term]
+        .sort((a, b) =>
+          departed
+            ? (b.departedAt ?? '').localeCompare(a.departedAt ?? '')
+            : (b.lastPaidAt ?? '').localeCompare(a.lastPaidAt ?? '')
+        ),
+    [clients, term, departed]
   );
   const now = Date.now();
 
@@ -55,8 +71,14 @@ export function PayingClientsTable({
 
       {rows.length === 0 ? (
         <EmptyState
-          icon={<BadgeCheck className="h-6 w-6" />}
-          title={clients.length === 0 ? 'עדיין אין לקוחות ששילמו' : 'אין לקוח שמתאים לחיפוש'}
+          icon={departed ? <UserMinus className="h-6 w-6" /> : <BadgeCheck className="h-6 w-6" />}
+          title={
+            clients.length > 0
+              ? 'אין לקוח שמתאים לחיפוש'
+              : departed
+                ? 'אף לקוח משלם לא הסיר את החשבון'
+                : 'עדיין אין לקוחות ששילמו'
+          }
         />
       ) : (
         <div className="overflow-x-auto">
@@ -70,6 +92,7 @@ export function PayingClientsTable({
                 <th className="py-2 font-semibold">תשלום אחרון</th>
                 <th className="py-2 font-semibold">תשלומים</th>
                 <th className="py-2 font-semibold">המנוי פג</th>
+                {departed && <th className="py-2 font-semibold">הסיר את החשבון</th>}
               </tr>
             </thead>
             <tbody>
@@ -93,13 +116,20 @@ export function PayingClientsTable({
                         </button>
                       </td>
                       <td className="py-2">
-                        <Link
-                          href={`/advisor-dashboard/client/${client.id}?tab=summary`}
-                          className="flex items-center gap-1.5 font-bold text-slate-900 hover:text-blue-700"
-                        >
-                          <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                          <span className="truncate">{client.name}</span>
-                        </Link>
+                        {departed ? (
+                          <span className="flex items-center gap-1.5 font-bold text-slate-900">
+                            <UserMinus className="h-4 w-4 shrink-0 text-slate-400" />
+                            <span className="truncate">{client.name}</span>
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/advisor-dashboard/client/${client.id}?tab=summary`}
+                            className="flex items-center gap-1.5 font-bold text-slate-900 hover:text-blue-700"
+                          >
+                            <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                            <span className="truncate">{client.name}</span>
+                          </Link>
+                        )}
                         <span dir="ltr" className="block text-right text-2xs text-slate-500">
                           {client.email}
                         </span>
@@ -123,11 +153,14 @@ export function PayingClientsTable({
                           <span className="text-2xs text-slate-500">ללא מנוי חודשי</span>
                         )}
                       </td>
+                      {departed && (
+                        <td className="py-2 text-slate-700">{client.departedAt ? formatDate(client.departedAt) : '—'}</td>
+                      )}
                     </tr>
                     {expanded && (
                       <tr className="border-b border-slate-100 bg-slate-50/60">
                         <td />
-                        <td colSpan={6} className="py-2">
+                        <td colSpan={departed ? 7 : 6} className="py-2">
                           <ul className="space-y-1">
                             {payments.map((payment, index) => (
                               <li key={`${payment.paidAt}-${index}`} className="flex flex-wrap gap-x-4 text-info">

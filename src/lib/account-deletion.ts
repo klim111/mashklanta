@@ -1,17 +1,21 @@
 import { DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { Prisma } from '@prisma/client';
 import { del, list } from '@vercel/blob';
 import { prisma } from './db';
 import { conversationFilePrefix } from './conversation';
+import { clientBillingSummaries } from './clients';
 import { storedLeadFiles } from './lead-files';
 import { blobIsConfigured, planDocumentPrefix } from './plan-documents';
 import { S3_BUCKET, s3 } from './s3';
 
 /**
- * הסרת חשבון לקוח לבקשתו — מוחקת את המשתמש ואת כל מה שקשור אליו.
+ * הסרת חשבון לקוח לבקשתו — מוחקת את המשתמש ואת כל מה שקשור אליו, חוץ
+ * מרשומות התשלום: קישורי התשלום של היועץ נשארים כמו שהם, ומה ששילם נשמר
+ * ב-DepartedClient, שהיועץ רואה תחת "לקוחות שעזבו".
  *
  * רוב הטבלאות נמחקות יחד עם המשתמש (onDelete: Cascade). כאן נמחקות גם השורות
- * שהיו נשארות בלעדיו: מה שהיועץ יצר לכרטיס הלקוח (תמהילים, תהליכים, מסמכים,
- * קישורי תשלום), פניות ליועץ, ההרשמה הממתינה, טיוטת ההרשמה והביקורים באתר. אחרי
+ * שהיו נשארות בלעדיו: מה שהיועץ יצר לכרטיס הלקוח (תמהילים, תהליכים, מסמכים),
+ * פניות ליועץ, ההרשמה הממתינה, טיוטת ההרשמה והביקורים באתר. אחרי
  * המחיקה במסד נמחקים גם הקבצים עצמם מחנות הקבצים. אחר כך אפשר להירשם מחדש עם
  * אותו מייל, כמו משתמש חדש לגמרי.
  */
@@ -36,15 +40,18 @@ export type DeleteAccountResult = { ok: true } | { ok: false; status: number; er
 export async function deleteClientAccount(userId: string): Promise<DeleteAccountResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, role: true },
+    select: { id: true, name: true, email: true, role: true, createdAt: true, platformAccessAt: true },
   });
   if (!user) return { ok: false, status: 404, error: 'החשבון לא נמצא' };
   if (user.role !== 'CLIENT') return { ok: false, status: 403, error: 'אפשר להסיר מכאן רק חשבון לקוח' };
 
   const email = user.email?.trim() || null;
-  const clientIds = (
-    await prisma.client.findMany({ where: { userId }, select: { id: true } })
-  ).map((row) => row.id);
+  const clients = await prisma.client.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, advisorId: true, name: true, email: true, phone: true },
+  });
+  const clientIds = clients.map((row) => row.id);
   const byClient = clientIds.length > 0 ? [{ clientId: { in: clientIds } }] : [];
 
   const planIds = (
@@ -73,12 +80,35 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
   }
   const s3Keys = documents.map((doc) => doc.s3Key).filter((key): key is string => Boolean(key));
 
+  // רשומות התשלום נשמרות ליועץ לפני שהן נמחקות יחד עם המשתמש
+  const card = clients[0];
+  const subject = {
+    id: card?.id ?? userId,
+    userId,
+    email: card?.email ?? email ?? '',
+    user: { platformAccessAt: user.platformAccessAt },
+  };
+  const billing = (await clientBillingSummaries([subject])).get(subject.id);
+
   await prisma.$transaction(
     async (tx) => {
+      if (billing?.paid) {
+        await tx.departedClient.create({
+          data: {
+            advisorId: card?.advisorId ?? null,
+            name: card?.name || user.name || email || 'לקוח',
+            email: email ?? card?.email ?? null,
+            phone: card?.phone ?? null,
+            registeredAt: user.createdAt,
+            firstPaidAt: billing.firstPaidAt,
+            lastPaidAt: billing.lastPaidAt,
+            accessEndsAt: billing.accessEndsAt,
+            totalPaid: billing.totalPaid,
+            paymentsJson: billing.payments as unknown as Prisma.InputJsonValue,
+          },
+        });
+      }
       await tx.advisorLead.deleteMany({ where: leadWhere });
-      await tx.paymentLink.deleteMany({
-        where: { OR: [...byClient, ...(email ? [{ clientEmail: sameEmail(email) }] : [])] },
-      });
       await tx.mortgageMix.deleteMany({ where: { OR: [{ ownerId: userId }, ...byClient] } });
       await tx.bankRateRequest.deleteMany({ where: { OR: [{ ownerId: userId }, ...byClient] } });
       await tx.advisorServiceOrder.deleteMany({
@@ -98,7 +128,7 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
         await tx.pendingRegistration.deleteMany({ where: { email: sameEmail(email) } });
         await tx.signupDraft.deleteMany({ where: { email: sameEmail(email) } });
       }
-      // השאר — הכרטיס אצל היועץ, השיחה, המיילים, המשימות, התשלומים, תיק האישור —
+      // השאר — הכרטיס אצל היועץ, השיחה, המיילים, המשימות, חבילות הגישה, תיק האישור —
       // נמחק יחד עם המשתמש
       await tx.user.delete({ where: { id: userId } });
     },
@@ -145,4 +175,40 @@ async function deleteStoredFiles(userId: string, planIds: string[], paths: strin
       )
       .catch((error) => console.error('[account-deletion] s3 delete failed:', error));
   }
+}
+
+export interface DepartedClientView {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  registeredAt: string;
+  departedAt: string;
+  firstPaidAt: string | null;
+  lastPaidAt: string | null;
+  accessEndsAt: string | null;
+  payments: Array<{ paidAt: string; title: string; amount: number | null; accessUntil: string | null }>;
+}
+
+/** "לקוחות שעזבו" בלוח היועץ: מי שהסיר את החשבון, ומה ששילם עד אז */
+export async function listDepartedClients(advisorId: string): Promise<DepartedClientView[]> {
+  const rows = await prisma.departedClient.findMany({
+    where: { OR: [{ advisorId }, { advisorId: null }] },
+    orderBy: { departedAt: 'desc' },
+    take: 500,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    registeredAt: row.registeredAt.toISOString(),
+    departedAt: row.departedAt.toISOString(),
+    firstPaidAt: row.firstPaidAt?.toISOString() ?? null,
+    lastPaidAt: row.lastPaidAt?.toISOString() ?? null,
+    accessEndsAt: row.accessEndsAt?.toISOString() ?? null,
+    payments: Array.isArray(row.paymentsJson)
+      ? (row.paymentsJson as unknown as DepartedClientView['payments'])
+      : [],
+  }));
 }
