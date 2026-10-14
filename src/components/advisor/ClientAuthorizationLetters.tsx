@@ -14,6 +14,7 @@ import type { AuthorizationLettersView } from '@/lib/authorization-letter-store'
 import { AUTHORIZATION_BANKS } from '@/lib/authorization-forms';
 import { BankMark } from '@/components/plan/stages/preapproval/BankMark';
 import { SectionCard } from './ui';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /** כל מופעי ההוק בעמוד מתרעננים יחד אחרי שליחה */
 const CHANGE_EVENT = 'mashklanta:authorization-letters-changed';
@@ -41,6 +42,8 @@ function useAuthorizationLetters(clientId: string) {
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => window.removeEventListener(CHANGE_EVENT, onChange);
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const send = useCallback(async (): Promise<boolean> => {
     setSending(true);

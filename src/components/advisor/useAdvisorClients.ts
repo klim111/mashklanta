@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientStage } from '@/lib/client-process';
 import type { PlanStageId } from '@/lib/advisor-crm';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export interface AdvisorClient {
   id: string;
@@ -77,6 +78,8 @@ export function useAdvisorClients(enabled = true) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), enabled);
 
   /** צירוף לקוח קיים. מחזיר הודעת שגיאה בעברית, או null כשהצליח */
   const addClient = useCallback(

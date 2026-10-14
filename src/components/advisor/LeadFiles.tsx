@@ -5,6 +5,7 @@ import { Eye, Paperclip } from 'lucide-react';
 import type { AdvisorLeadView } from '@/lib/advisor-leads';
 import { pageLabel } from '@/lib/page-labels';
 import { SectionCard } from './ui';
+import { useLiveVersion } from '@/hooks/useLiveRefresh';
 
 function sizeLabel(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
@@ -40,6 +41,8 @@ export function LeadFilesList({ lead }: { lead: Pick<AdvisorLeadView, 'id' | 'fi
 export function ClientLeadFiles({ clientId }: { clientId: string }) {
   const [leads, setLeads] = useState<AdvisorLeadView[]>([]);
 
+  // קובץ שהלקוח צירף לפנייה מופיע בלי לרענן את העמוד
+  const version = useLiveVersion();
   useEffect(() => {
     let cancelled = false;
     void fetch('/api/advisor/leads', { cache: 'no-store' })
@@ -52,7 +55,7 @@ export function ClientLeadFiles({ clientId }: { clientId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, version]);
 
   if (leads.length === 0) return null;
   return (

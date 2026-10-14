@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ClientTaskKind, ClientTaskView } from '@/lib/client-tasks';
 import type { PlanStageId } from '@/lib/mortgage-plan';
 import { isDemoPlan } from '@/lib/demo-plan';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export interface NewClientTaskInput {
   planId: string | null;
@@ -61,6 +62,8 @@ export function useClientTasks(options: { planId?: string | null; includeDone?: 
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => window.removeEventListener(CHANGE_EVENT, onChange);
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const notify = () => window.dispatchEvent(new Event(CHANGE_EVENT));
 

@@ -6,6 +6,7 @@ import type { PlanDocumentView } from '@/lib/plan-documents';
 import { cleanDocumentMeta } from '@/lib/document-organize';
 import type { DocumentMeta } from '@/lib/document-organize';
 import { demoDocuments, isDemoPlan } from '@/lib/demo-plan';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * כל מופעי ההוק מקשיבים לאותו אירוע, כדי שהעלאה מחלון אחד — משימת מסמך,
@@ -81,6 +82,8 @@ export function usePlanDocuments(planId: string | null) {
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => window.removeEventListener(CHANGE_EVENT, onChange);
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   /**
    * העלאת קובץ.

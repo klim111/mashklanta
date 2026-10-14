@@ -8,6 +8,7 @@ import { usePricing } from '@/components/pricing/PricingProvider';
 import type { PaymentLinkView } from '@/lib/payment-links';
 import type { AdvisorClient } from './useAdvisorClients';
 import { SectionCard, formatShekel } from './ui';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 const selectClass =
   'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
@@ -62,6 +63,8 @@ export function PaymentLinksPanel({ clients }: { clients: AdvisorClient[] }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const set = (patch: Partial<typeof EMPTY>) => setForm((current) => ({ ...current, ...patch }));
 

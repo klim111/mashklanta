@@ -21,6 +21,7 @@ import { getFieldDef, isFieldRequired } from '@/lib/principal-approval/schema';
 import { validateValue } from '@/lib/principal-approval/validation';
 import type { CaseDTO, ConflictDTO, EntityDTO, FieldMeta } from '@/lib/principal-approval/types';
 import { canEditField } from '@/lib/principal-approval/access';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export const CASE_ENTITY_ID = 'case';
 const AUTOSAVE_DEBOUNCE_MS = 500;
@@ -106,6 +107,31 @@ export function CaseProvider({
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * מה שהצד השני מילא בתיק מופיע בלי לרענן את העמוד. כל עוד יש כאן שדה
+   * שעוד לא נשמר, הטעינה מחכה, כדי לא לדרוס את מה שמוקלד עכשיו.
+   */
+  const localValuesRef = useRef(localValues);
+  localValuesRef.current = localValues;
+  const reload = useCallback(async () => {
+    const editing = () =>
+      Object.keys(timers.current).length > 0 || Object.keys(localValuesRef.current).length > 0;
+    if (editing()) return;
+    try {
+      const url = clientRecordId
+        ? `/api/principal-approval/case?clientRecordId=${encodeURIComponent(clientRecordId)}`
+        : '/api/principal-approval/case';
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok || editing()) return;
+      const json = (await res.json()) as CaseDTO;
+      if (editing()) return;
+      setData((current) => (JSON.stringify(current) === JSON.stringify(json) ? current : json));
+    } catch {
+      // הבדיקה הבאה תשלים
+    }
+  }, [clientRecordId]);
+  useLiveRefresh(() => void reload());
 
   // Flush anything still queued when the tab is closed or hidden.
   useEffect(() => {

@@ -7,6 +7,7 @@ import type { BankPreApproval } from '@/lib/mortgage-plan';
 import type { AdvisorHandoffView, HandoffMeetingView } from '@/lib/preapproval-handoff-store';
 import { meetingAwaits, meetingStatusLabel } from '@/lib/advisor-crm';
 import { fromLocalInputValue, toLocalInputValue } from './ui';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * הבנקים שהלקוח העביר ליועץ בשלב האישור העקרוני ("הגשה באמצעות יועץ משכלנתא").
@@ -33,6 +34,8 @@ export function AdvisorBankHandoffs({ planId }: { planId: string | null }) {
   useEffect(() => {
     void load();
   }, [load]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void load());
 
   const patch = async (body: Record<string, unknown>): Promise<boolean> => {
     if (!planId) return false;

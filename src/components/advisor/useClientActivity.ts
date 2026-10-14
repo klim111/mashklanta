@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientActivity } from '@/lib/client-activity';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /** סיכום הפעילות של לקוח — לטאב "סיכום פעילות" וללוח הבקרה בדף הלקוח */
 export function useClientActivity(clientId: string, enabled = true) {
@@ -26,6 +27,8 @@ export function useClientActivity(clientId: string, enabled = true) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), enabled);
 
   return { activity, ready, error, refresh };
 }

@@ -6,6 +6,7 @@ import type { WorkspaceMix } from '../engine';
 import type { RateRequestDetails, RateRequestDocument } from './document';
 import { toSavedRateRequest } from './record';
 import type { SavedRateRequest } from './record';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * בקשות הריביות נשמרות בחשבון, כדי שיהיו זמינות מכל מכשיר וגם ליועץ. מי שעדיין
@@ -156,6 +157,8 @@ export function useRateRequests() {
       window.removeEventListener('storage', onChange);
     };
   }, [status, signedIn, refresh]);
+  // בקשה שהצד השני עדכן מופיעה בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), signedIn);
 
   const save = useCallback(
     async (document: RateRequestDocument, mix: WorkspaceMix): Promise<SavedRateRequest> => {

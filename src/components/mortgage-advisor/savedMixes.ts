@@ -7,6 +7,7 @@ import type { WorkspaceMix } from './engine';
 import { toSavedMix } from './mixRecord';
 import type { SavedMix } from './mixRecord';
 import { demoSavedMix, isDemoPlan } from '@/lib/demo-plan';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export type { SavedMix } from './mixRecord';
 
@@ -205,6 +206,8 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
       window.removeEventListener('storage', onChange);
     };
   }, [status, signedIn, demo, refresh]);
+  // תמהיל שהצד השני שמר מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), signedIn && !demo);
 
   const save = useCallback(
     async (mix: WorkspaceMix, target?: SaveTarget): Promise<SavedMix> => {

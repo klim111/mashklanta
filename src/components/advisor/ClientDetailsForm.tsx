@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
@@ -56,13 +56,33 @@ export function ClientDetailsForm({
   const [saved, setSaved] = useState(false);
   const shows = (section: ClientDetailsSection) => sections.includes(section);
 
-  const set = <K extends keyof ClientDetailsValues>(key: K, value: ClientDetailsValues[K]) =>
+  /**
+   * שדות שהיועץ שינה בטופס ועוד לא שמר. כל שאר השדות מתעדכנים מיד כשהלקוח
+   * משנה אותם אצלו, בלי לרענן את העמוד.
+   */
+  const touched = useRef(new Set<keyof ClientDetailsValues>());
+  const incoming = JSON.stringify(values);
+  useEffect(() => {
+    setDraft((current) => {
+      const next = { ...current };
+      (Object.keys(values) as Array<keyof ClientDetailsValues>).forEach((key) => {
+        if (!touched.current.has(key)) (next as Record<string, unknown>)[key] = values[key];
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming]);
+
+  const set = <K extends keyof ClientDetailsValues>(key: K, value: ClientDetailsValues[K]) => {
+    touched.current.add(key);
     setDraft((current) => ({ ...current, [key]: value }));
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
     await onSubmit(draft);
+    touched.current.clear();
     setBusy(false);
     if (confirmOnSave) setSaved(true);
   };

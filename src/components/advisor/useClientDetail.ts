@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientDocumentStatus } from '@/lib/client-process';
 import type { ClientDetail } from './clientDetail';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * כרטיס הלקוח אצל היועץ: הפרטים, השלב ותיק המסמכים.
@@ -32,6 +33,8 @@ export function useClientDetail(clientId: string) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {

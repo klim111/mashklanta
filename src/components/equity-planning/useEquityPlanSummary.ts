@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { equityCalendarExpenses } from '@/lib/equity-planning';
 import type { EquityCalendarExpense, EquityPlanView } from '@/lib/equity-planning';
 import { EQUITY_PLAN_CHANGED_EVENT } from './useEquityPlan';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * התכנון השמור של הלקוח, לקריאה בלבד — לדאשבורד וללוח השנה.
@@ -41,6 +42,8 @@ export function useEquityPlanSummary() {
     window.addEventListener(EQUITY_PLAN_CHANGED_EVENT, onChange);
     return () => window.removeEventListener(EQUITY_PLAN_CHANGED_EVENT, onChange);
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   // מיוצב כדי שלוח השנה של הדאשבורד לא יחושב מחדש בכל רינדור
   const expenses: EquityCalendarExpense[] = useMemo(() => equityCalendarExpenses(plan), [plan]);

@@ -12,6 +12,7 @@ import type {
 } from '@/lib/mortgage-plan';
 import type { ProcessAccess } from '@/lib/process-access';
 import { DEMO_ADDRESS, DEMO_MORTGAGE, DEMO_PLAN_ID, DEMO_PROPERTY_VALUE, demoPlanData, isDemoPlan } from '@/lib/demo-plan';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export { DEMO_PLAN_ID, isDemoPlan };
 
@@ -183,6 +184,8 @@ export function usePlans() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const start = useCallback(async (name?: string) => {
     try {
@@ -249,6 +252,8 @@ export function usePlan(planId: string) {
 
   const pending = useRef<Map<PlanStageId, unknown>>(new Map());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** שמירות שנשלחו לשרת ועוד לא חזרו */
+  const saving = useRef(0);
   const demo = isDemoPlan(planId);
 
   useEffect(() => {
@@ -306,6 +311,7 @@ export function usePlan(planId: string) {
         return;
       }
       setSaveState('saving');
+      saving.current += 1;
       try {
         const response = await fetch(`/api/plans/${planId}/stages/${stage}`, {
           method: 'PATCH',
@@ -330,10 +336,35 @@ export function usePlan(planId: string) {
         setSaveState('saved');
       } catch {
         setSaveState('error');
+      } finally {
+        saving.current -= 1;
       }
     },
     [planId, demo]
   );
+
+  /**
+   * מה שהצד השני הזין בתהליך — הלקוח או היועץ — מופיע בלי לרענן את העמוד.
+   * כל עוד יש כאן עריכה שעוד לא נשמרה, הטעינה מחכה, כדי לא לדרוס את מה
+   * שמוקלד עכשיו.
+   */
+  const editing = useCallback(
+    () => pending.current.size > 0 || timer.current !== null || saving.current > 0,
+    []
+  );
+  const reload = useCallback(async () => {
+    if (editing()) return;
+    try {
+      const response = await fetch(`/api/plans/${planId}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const loaded = await readPlan(response);
+      if (editing()) return;
+      setPlan((current) => (current && JSON.stringify(current) === JSON.stringify(loaded) ? current : loaded));
+    } catch {
+      // הבדיקה הבאה תשלים
+    }
+  }, [planId, editing]);
+  useLiveRefresh(() => void reload(), !demo && Boolean(planId));
 
   const flush = useCallback(async () => {
     if (timer.current) {

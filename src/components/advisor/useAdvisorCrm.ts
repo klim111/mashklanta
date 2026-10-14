@@ -87,6 +87,8 @@ export function useAdvisorOverview(enabled = true) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), enabled);
 
   return { overview, ready, refresh };
 }
@@ -140,6 +142,8 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), enabled);
 
   const create = useCallback(
     async (input: NewTaskInput): Promise<string | null> => {
@@ -208,9 +212,6 @@ export interface NewMeetingInput {
   stage?: PlanStageId | null;
 }
 
-/** כל כמה זמן רשימת הפגישות מתרעננת כשהעמוד פתוח */
-const MEETINGS_REFRESH_MS = 15000;
-
 /**
  * הפגישות של המשתמש המחובר. אותו hook משרת את שני הצדדים: היועץ מקבל את
  * הפגישות שקבע, והלקוח את אלה שהוצעו לו.
@@ -242,9 +243,8 @@ export function useMeetings(options: { clientId?: string; enabled?: boolean } = 
   useEffect(() => {
     void refresh();
   }, [refresh]);
-
   // פגישה שהצד השני קבע, אישר או הזיז מופיעה בלי לרענן את העמוד
-  useLiveRefresh(() => void refresh(), MEETINGS_REFRESH_MS, enabled);
+  useLiveRefresh(() => void refresh(), enabled);
 
   const propose = useCallback(
     async (input: NewMeetingInput): Promise<string | null> => {
@@ -333,6 +333,8 @@ export function useAdvisorNotes(options: { clientId?: string; enabled?: boolean 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh(), enabled);
 
   const create = useCallback(
     async (input: { stage: PlanStageId; body: string; visibility: NoteVisibility }) => {
@@ -553,6 +555,8 @@ export function useClientProcess(clientId: string, planId?: string) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   return { process, ready, error, refresh };
 }

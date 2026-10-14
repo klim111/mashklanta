@@ -12,6 +12,8 @@ import {
 } from './client-financials';
 import type { ClientFinancials, EncryptedFinancialField } from './client-financials';
 import { listMixesForClient } from './mixes';
+import { parseClientProfile } from './client-profile';
+import { withClientInputs } from './client-inputs';
 import { EMPTY_BILLING, summarizeClientBilling } from './client-billing';
 import type { ClientBillingSummary } from './client-billing';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
@@ -348,9 +350,39 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
   });
   if (!client) return null;
 
-  const mixes = await listMixesForClient(clientId);
+  const [mixes, owner, deal] = await Promise.all([
+    listMixesForClient(clientId),
+    prisma.user.findUnique({ where: { id: client.userId }, select: { profileJson: true } }),
+    prisma.mortgagePlan.findFirst({
+      where: { ownerId: client.userId, status: 'IN_PROGRESS' },
+      orderBy: { updatedAt: 'desc' },
+      select: { propertyValue: true, propertyAddress: true, mortgageAmount: true },
+    }),
+  ]);
   const plannedMonthlyPayment = mixes[0]?.summary.monthlyPayment ?? null;
-  const financials = decryptFinancials(client);
+  // מה שהלקוח מילא בעצמו משלים כל שדה שהיועץ עוד לא מילא
+  const card = withClientInputs(
+    {
+      household: client.household,
+      age: client.age,
+      partnerName: client.partnerName,
+      partnerAge: client.partnerAge,
+      ...decryptFinancials(client),
+      propertyValue: client.propertyValue,
+      propertyAddress: client.propertyAddress,
+      mortgageAmount: client.mortgageAmount,
+    },
+    owner?.profileJson ? parseClientProfile(owner.profileJson) : null,
+    deal
+  );
+  const financials: ClientFinancials = {
+    income: card.income,
+    partnerIncome: card.partnerIncome,
+    expenses: card.expenses,
+    existingLoans: card.existingLoans,
+    creditScore: card.creditScore,
+    downPayment: card.downPayment,
+  };
 
   return {
     id: client.id,
@@ -363,19 +395,19 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     status: client.status,
     stage: client.stage as ClientStage,
     progress: client.progress,
-    household: client.household,
-    age: client.age,
-    partnerName: client.partnerName,
-    partnerAge: client.partnerAge,
+    household: card.household,
+    age: card.age,
+    partnerName: card.partnerName,
+    partnerAge: card.partnerAge,
     income: financials.income,
     partnerIncome: financials.partnerIncome,
     expenses: financials.expenses,
     existingLoans: financials.existingLoans,
     creditScore: financials.creditScore,
     downPayment: financials.downPayment,
-    propertyValue: client.propertyValue,
-    propertyAddress: client.propertyAddress,
-    mortgageAmount: client.mortgageAmount,
+    propertyValue: card.propertyValue,
+    propertyAddress: card.propertyAddress,
+    mortgageAmount: card.mortgageAmount,
     dealType: client.dealType,
     incomeBucket: client.incomeBucket,
     notes: client.notes,

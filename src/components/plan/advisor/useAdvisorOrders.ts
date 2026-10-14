@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AdvisorOrder } from '@/lib/advisor-orders';
 import type { PlanStageId } from '@/lib/mortgage-plan';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export interface PaymentDetails {
   payerName: string;
@@ -38,6 +39,8 @@ export function useAdvisorOrders(planId: string) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const request = useCallback(
     async (stages: PlanStageId[], note?: string): Promise<AdvisorOrder | null> => {

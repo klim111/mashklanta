@@ -7,6 +7,7 @@ import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { PayingClientsTable } from './PayingClientsTable';
 import type { PayingClientRow } from './PayingClientsTable';
 import type { AdvisorClient } from './useAdvisorClients';
+import { useLiveVersion } from '@/hooks/useLiveRefresh';
 
 export type ClientGroup = 'unfinished' | 'registered' | 'paying' | 'departed';
 
@@ -19,6 +20,7 @@ const GROUPS: Array<{ id: ClientGroup; label: string; hint: string; icon: typeof
 
 /** לקוחות משלמים שהסירו את החשבון — נשמרו מהם רק רשומות התשלום */
 function useDepartedClients(): { rows: PayingClientRow[]; ready: boolean } {
+  const version = useLiveVersion();
   const [rows, setRows] = useState<PayingClientRow[]>([]);
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -41,12 +43,13 @@ function useDepartedClients(): { rows: PayingClientRow[]; ready: boolean } {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
   return { rows, ready };
 }
 
 /** כמה הרשמות לא הושלמו — לתג שעל הלשונית, בלי לטעון את כל הרשימה מראש */
 function useUnfinishedCount(): number | null {
+  const version = useLiveVersion();
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +62,7 @@ function useUnfinishedCount(): number | null {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
   return count;
 }
 

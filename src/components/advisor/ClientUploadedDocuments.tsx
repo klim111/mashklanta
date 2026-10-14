@@ -5,6 +5,7 @@ import { Eye, FileText, Loader2, Lock } from 'lucide-react';
 import type { PlanDocumentView } from '@/lib/plan-documents';
 import { isAuthorizationDocumentKey } from '@/lib/authorization-letters';
 import { SectionCard, EmptyState } from './ui';
+import { useLiveVersion } from '@/hooks/useLiveRefresh';
 
 /**
  * המסמכים שהלקוח העלה בעצמו באזור האישי.
@@ -16,6 +17,8 @@ export function ClientUploadedDocuments({ clientId }: { clientId: string }) {
   const [documents, setDocuments] = useState<PlanDocumentView[]>([]);
   const [ready, setReady] = useState(false);
 
+  // מסמך שהלקוח העלה מופיע בלי לרענן את העמוד
+  const version = useLiveVersion();
   useEffect(() => {
     let cancelled = false;
     void fetch(`/api/clients/${clientId}/plan-documents`, { cache: 'no-store' })
@@ -34,7 +37,7 @@ export function ClientUploadedDocuments({ clientId }: { clientId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, version]);
 
   return (
     <SectionCard

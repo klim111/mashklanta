@@ -9,6 +9,7 @@ import {
   type UnfinishedSignup,
   type UnfinishedStatus,
 } from '@/lib/site-analytics';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 const STATUS: Record<UnfinishedStatus, { label: string; className: string }> = {
   typing: { label: 'עזב באמצע ההקלדה', className: 'bg-amber-50 text-amber-800' },
@@ -77,8 +78,9 @@ export function UnfinishedSignupsPanel() {
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  /** `quiet` — רענון ברקע, בלי להחליף את הרשימה בטעינה */
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     setError(false);
     try {
       const response = await fetch('/api/advisor/signup-drafts', { cache: 'no-store' });
@@ -95,6 +97,8 @@ export function UnfinishedSignupsPanel() {
   useEffect(() => {
     load();
   }, [load]);
+  // הרשמה שהתחילה או הושלמה מופיעה בלי לרענן את העמוד
+  useLiveRefresh(() => void load(true));
 
   const remove = async (id: string) => {
     setSignups((current) => current?.filter((signup) => signup.id !== id) ?? null);
@@ -118,7 +122,7 @@ export function UnfinishedSignupsPanel() {
       action={
         <button
           type="button"
-          onClick={load}
+          onClick={() => void load()}
           className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}

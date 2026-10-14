@@ -24,6 +24,7 @@ import {
   CONTACTED_ADVISOR_EVENT,
   CONTACTED_ADVISOR_KEY,
 } from '@/components/plan/advisor/AdvisorLeadDialog';
+import { useLiveRefresh, useLiveVersion } from '@/hooks/useLiveRefresh';
 
 /**
  * כל הנתונים של האזור האישי, במקום אחד.
@@ -73,6 +74,8 @@ export function useClientDashboard() {
   useEffect(() => {
     void refreshAdvisorStages();
   }, [refreshAdvisorStages]);
+  // שלב שהיועץ קיבל לטיפול מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refreshAdvisorStages());
 
   /**
    * האם הלקוח כבר פנה ליועץ. הפנייה עצמה נשמרת בשרת בלי קשר לתהליך, ולכן
@@ -143,6 +146,8 @@ export function useClientDashboard() {
    * ללקוח שהבקשה הועברה ושהיועץ חוזר אליו — בשורה, במשימות ובלוח השנה.
    */
   const [openLeads, setOpenLeads] = useState<OwnLeadView[]>([]);
+  // פנייה שהיועץ טיפל בה מתעדכנת בלי לרענן את העמוד
+  const leadsVersion = useLiveVersion();
   useEffect(() => {
     const load = async () => {
       try {
@@ -156,7 +161,7 @@ export function useClientDashboard() {
     void load();
     window.addEventListener(CONTACTED_ADVISOR_EVENT, load);
     return () => window.removeEventListener(CONTACTED_ADVISOR_EVENT, load);
-  }, []);
+  }, [leadsVersion]);
   const hasUpcomingMeeting = meetingsState.meetings.some(
     (meeting) =>
       (meeting.status === 'PROPOSED' || meeting.status === 'CONFIRMED') &&

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
 import { usePricing } from '@/components/pricing/PricingProvider';
 import { passDays } from '@/lib/process-access';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export interface PlatformAccess {
   /** יש חבילת גישה פנויה לפתיחת תהליך משכנתא בלי תשלום נוסף */
@@ -75,6 +76,8 @@ export function usePlatformAccess() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   return { access, ready, refresh };
 }

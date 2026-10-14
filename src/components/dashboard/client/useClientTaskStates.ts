@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientTaskState } from '@/lib/client-agenda';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * המועדים והסימונים שהלקוח קבע למשימות ולהמלצות שלו.
@@ -36,6 +37,8 @@ export function useClientTaskStates() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   const patch = useCallback(async (key: string, change: Partial<ClientTaskState>) => {
     setStates((current) => {

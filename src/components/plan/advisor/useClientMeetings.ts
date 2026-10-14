@@ -43,7 +43,7 @@ export function useClientMeetings() {
   }, [refresh]);
 
   // פגישה שהיועץ קבע או הזיז מופיעה תוך שניות, וגם מיד בחזרה ללשונית
-  useLiveRefresh(() => void refresh(), 15000);
+  useLiveRefresh(() => void refresh());
 
   return { meetings, refresh };
 }

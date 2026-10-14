@@ -22,6 +22,7 @@ import { formatOrderPrice } from '@/lib/advisor-orders';
 import { planStageNumber } from '@/lib/mortgage-plan';
 import { EmptyState, SectionCard, StageChip } from './ui';
 import { LeadFilesList } from './LeadFiles';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 /**
  * בקשות הליווי שלקוחות שילמו עליהן.
@@ -50,6 +51,8 @@ export function useAdvisorRequests() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   return { requests, ready, refresh };
 }
@@ -75,6 +78,8 @@ export function useAdvisorLeads() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
 
   return { leads, ready, refresh };
 }
