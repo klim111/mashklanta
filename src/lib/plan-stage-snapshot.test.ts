@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLAN_STAGES, emptyPlanData } from './mortgage-plan';
-import type { PlanData } from './mortgage-plan';
+import type { PlanData, RefinanceMixData } from './mortgage-plan';
 import { stageSnapshot } from './plan-stage-snapshot';
 
 function filled(): PlanData {
@@ -121,5 +121,16 @@ describe('תמונת המצב של השלב', () => {
 
   it('שלב שנסגר מדווח על כך בכותרת', () => {
     expect(stageSnapshot('SIGNING', filled(), 'COMPLETED').headline).toBe('המשכנתא נחתמה');
+  });
+});
+
+describe('stageSnapshot במיחזור', () => {
+  it('הפרופיל אינו מציג הון עצמי, והתמהיל שנבחר מוצג כנבחר', () => {
+    const data = filled();
+    data.MIX = { ...data.MIX, totalAmount: 900_000, refinance: { mode: 'EXTERNAL' } as RefinanceMixData };
+    const profile = stageSnapshot('ANALYSIS', data);
+    expect(profile.items.map((item) => item.label)).not.toContain('הון עצמי נדרש');
+    expect(profile.items.find((item) => item.label === 'הסכום למיחזור')?.value).toContain('900,000');
+    expect(stageSnapshot('MIX', data, 'COMPLETED').headline).toBe('התמהיל למיחזור נבחר');
   });
 });

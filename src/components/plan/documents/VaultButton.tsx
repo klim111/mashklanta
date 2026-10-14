@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { FolderOpen, Lock } from 'lucide-react';
+import { planFlowOf } from '@/lib/mortgage-plan';
 import type { PlanData, PlanStageId, SigningData } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { planStageMeta } from '@/data/platform/planStages';
 import { DocumentVaultDialog, ProgressBar, useDocumentProgress } from './DocumentVaultDialog';
 import { demoId } from '@/demo/demo-attr';
 
@@ -105,7 +106,7 @@ export function VaultButton({
             {relevant.map((row) => (
               <span key={row.stage} className="block">
                 <span className="flex items-center justify-between gap-2 text-2xs font-bold text-white/60">
-                  <span className="truncate">{journeyStageFor(row.stage).shortTitle}</span>
+                  <span className="truncate">{planStageMeta(row.stage, planFlowOf(data)).shortTitle}</span>
                   <span className="shrink-0 tabular-nums">
                     {row.done}/{row.total}
                   </span>

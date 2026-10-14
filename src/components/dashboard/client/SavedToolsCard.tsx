@@ -11,7 +11,7 @@ import { DashCard } from './ui';
 
 const SHEKEL = new Intl.NumberFormat('he-IL', { maximumFractionDigits: 0 });
 
-function money(value: number): string {
+export function money(value: number): string {
   return `₪${SHEKEL.format(Math.round(value))}`;
 }
 
@@ -26,7 +26,7 @@ function sum(items: unknown, field: string): number {
     : 0;
 }
 
-interface ToolRow {
+export interface ToolRow {
   key: ToolDataKey;
   title: string;
   href: string;
@@ -34,7 +34,7 @@ interface ToolRow {
   summary: (value: unknown) => string;
 }
 
-const ROWS: ToolRow[] = [
+export const TOOL_ROWS: ToolRow[] = [
   {
     key: 'refinance',
     title: 'מיחזור משכנתא',
@@ -107,7 +107,7 @@ export function SavedToolsCard() {
     };
   }, []);
 
-  const rows = data ? ROWS.filter((row) => TOOL_HAS_CONTENT[row.key](data[row.key])) : [];
+  const rows = data ? TOOL_ROWS.filter((row) => TOOL_HAS_CONTENT[row.key](data[row.key])) : [];
   if (rows.length === 0) return null;
 
   return (

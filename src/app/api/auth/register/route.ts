@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { normalizeEmail } from '@/lib/find-user-by-login';
 import { passwordProblem } from '@/lib/password-policy';
+import { guestSnapshotToToolData } from '@/lib/tool-data';
 import {
   REGISTRATION_DEVICE_COOKIE,
   VERIFICATION_TTL_MINUTES,
@@ -30,6 +31,8 @@ const registerSchema = z.object({
   }),
   name: z.string().trim().min(2, 'השם חייב להכיל לפחות 2 תווים').max(80),
   callbackUrl: z.string().optional().nullable(),
+  /** מה שהוזן בכלים החינמיים לפני ההרשמה — נשמר עם ההרשמה ועובר לחשבון */
+  toolData: z.unknown().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -53,6 +56,7 @@ export async function POST(request: NextRequest) {
       callbackUrl,
       deviceToken,
       requestOrigin: request.nextUrl.origin,
+      toolData: guestSnapshotToToolData(validation.data.toolData),
     });
 
     if (result.status === 'exists') {

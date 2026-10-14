@@ -4,14 +4,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, Check, Loader2, Mail, UserRound, UserRoundCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { BankPreApproval } from '@/lib/mortgage-plan';
-import type { AdvisorHandoffView } from '@/lib/preapproval-handoff-store';
+import type { AdvisorHandoffView, HandoffMeetingView } from '@/lib/preapproval-handoff-store';
+import { meetingAwaits, meetingStatusLabel } from '@/lib/advisor-crm';
 import { fromLocalInputValue, toLocalInputValue } from './ui';
 
 /**
  * הבנקים שהלקוח העביר ליועץ בשלב האישור העקרוני ("הגשה באמצעות יועץ משכלנתא").
  *
- * כאן היועץ קובע מועד לפגישה להשלמת הפרטים — המועד שנקבע הוא הסופי, ומופיע
- * אצל הלקוח עם התאריך והשעה — ולכל בנק מזין את הבנקאי המטפל ואת יום קבלת
+ * כאן היועץ מציע מועד לפגישה להשלמת הפרטים — הוא מופיע אצל הלקוח עם התאריך
+ * והשעה וממתין לאישורו, כמו כל פגישה — ולכל בנק מזין את הבנקאי המטפל ואת יום קבלת
  * האישור העקרוני. הלקוח רואה את הבנקאי עם כפתור מייל אליו, ואת תוקף הריביות.
  */
 export function AdvisorBankHandoffs({ planId }: { planId: string | null }) {
@@ -73,8 +74,18 @@ export function AdvisorBankHandoffs({ planId }: { planId: string | null }) {
         </div>
 
         <MeetingPicker
-          startsAt={view.meeting?.startsAt ?? null}
+          meeting={view.meeting}
           onSave={(iso) => patch({ meetingAt: iso })}
+          onAccept={async () => {
+            if (!view.meeting) return;
+            const response = await fetch(`/api/meetings/${view.meeting.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'accept' }),
+            }).catch(() => null);
+            if (!response?.ok) setError('לא הצלחנו לאשר את המועד');
+            await load();
+          }}
         />
 
         <div className="grid gap-2 md:grid-cols-2">
@@ -90,12 +101,16 @@ export function AdvisorBankHandoffs({ planId }: { planId: string | null }) {
 }
 
 function MeetingPicker({
-  startsAt,
+  meeting,
   onSave,
+  onAccept,
 }: {
-  startsAt: string | null;
+  meeting: HandoffMeetingView | null;
   onSave: (iso: string) => Promise<boolean>;
+  onAccept: () => Promise<void>;
 }) {
+  const startsAt = meeting?.startsAt ?? null;
+  const awaitsMe = meeting ? meetingAwaits(meeting, 'ADVISOR') : false;
   const [value, setValue] = useState(startsAt ? toLocalInputValue(startsAt) : '');
   const [busy, setBusy] = useState(false);
   useEffect(() => setValue(startsAt ? toLocalInputValue(startsAt) : ''), [startsAt]);
@@ -125,12 +140,36 @@ function MeetingPicker({
         className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-black text-white hover:bg-violet-700 disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-        {startsAt ? 'שינוי המועד' : 'קביעת המועד'}
+        {startsAt ? (awaitsMe ? 'הצעת מועד אחר' : 'שינוי המועד') : 'הצעת המועד'}
       </button>
+      {awaitsMe && !changed && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await onAccept();
+            setBusy(false);
+          }}
+          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50"
+        >
+          <Check className="h-3.5 w-3.5" />
+          אישור המועד שהלקוח הציע
+        </button>
+      )}
+      {meeting && (
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
+            meeting.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+          }`}
+        >
+          {meetingStatusLabel(meeting, 'ADVISOR')}
+        </span>
+      )}
       <p className="w-full text-[11px] text-slate-500">
         {startsAt
-          ? 'המועד נקבע ומופיע אצל הלקוח בשלב האישור העקרוני ובלוח השנה שלו.'
-          : 'עוד לא נקבע מועד. המועד שתקבעו יופיע אצל הלקוח כפגישה קבועה.'}
+          ? 'המועד מופיע אצל הלקוח בשלב האישור העקרוני ובלוח השנה שלו. שינוי מועד נשלח לאישור הלקוח, והלקוח יכול לאשר או להציע מועד אחר.'
+          : 'עוד לא נקבע מועד. המועד שתציעו יופיע אצל הלקוח וימתין לאישורו.'}
       </p>
     </div>
   );

@@ -11,7 +11,7 @@
 
 import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import type { AdvisorMeetingView, AdvisorNoteView } from './advisor-crm';
-import { meetingIsLive } from './advisor-crm';
+import { meetingAwaits, meetingIsLive } from './advisor-crm';
 import {
   REPAYMENT_RATIO_COMFORT,
   analyzeProfile,
@@ -270,14 +270,15 @@ function activePlans(plans: AgendaPlan[]): AgendaPlan[] {
 export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTask[] {
   const tasks: ClientTask[] = [];
 
-  // פגישות שממתינות לאישור הלקוח — זה הדבר היחיד שהיועץ תקוע בלעדיו
+  // פגישות שממתינות לאישור הלקוח — זה הדבר היחיד שהיועץ תקוע בלעדיו. פגישה
+  // שהלקוח עצמו הציע לה מועד ממתינה ליועץ, ולכן היא לא משימה של הלקוח
   input.meetings
-    .filter((meeting) => meeting.status === 'PROPOSED')
+    .filter((meeting) => meetingAwaits(meeting, 'CLIENT'))
     .forEach((meeting) => {
       tasks.push({
         id: `meeting:${meeting.id}`,
         title: `אשרו את מועד הפגישה: ${meeting.title}`,
-        hint: `${meeting.advisorName} הציע/ה מועד. אישור כאן מכניס את הפגישה ליומן של שניכם.`,
+        hint: `${meeting.advisorName} הציע/ה מועד. אפשר לאשר אותו או להציע מועד אחר, ואישור מכניס את הפגישה ליומן של שניכם כמאושרת.`,
         tone: 'urgent',
         due: meeting.startsAt,
         scheduled: false,
@@ -466,9 +467,11 @@ export function buildClientTasks(input: AgendaInput, now = new Date()): ClientTa
   const latestNote = [...input.notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   if (latestNote) {
     const plan = activePlans(input.plans)[0];
+    // מספר השלב כמו בסרגל השלבים של התהליך — במיחזור הסדר שונה
+    const noteFlow = plan ? planFlowOf(plan.data) : undefined;
     tasks.push({
       id: `note:${latestNote.id}`,
-      title: `הערה מהיועץ ${latestNote.advisorName} בשלב ${planStageNumber(latestNote.stage)}`,
+      title: `הערה מהיועץ ${latestNote.advisorName} בשלב ${planStageNumber(latestNote.stage, noteFlow)}`,
       hint: latestNote.body.length > 90 ? `${latestNote.body.slice(0, 90)}…` : latestNote.body,
       tone: 'info',
       due: latestNote.createdAt,

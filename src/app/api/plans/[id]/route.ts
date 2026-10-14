@@ -9,7 +9,7 @@ import {
   updatePlanDeal,
 } from '@/lib/mortgage-plans';
 import { isPlanStage, planStageNumber } from '@/lib/mortgage-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { planStageMeta } from '@/data/platform/planStages';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -94,7 +94,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
 
   if (!result.ok && result.reason === 'locked') {
     const names = result.stages
-      .map((stage) => `שלב ${planStageNumber(stage)} · ${journeyStageFor(stage).shortTitle}`)
+      .map((stage) => `שלב ${planStageNumber(stage, result.flow)} · ${planStageMeta(stage, result.flow).shortTitle}`)
       .join(', ');
     return NextResponse.json(
       {

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import NavBar from '@/components/ui/navbar';
 import Mashkalanta from '@/components/ui/mashkalanta';
 import MortgageMarketDashboard from '@/components/home/MortgageMarketDashboard';
+import { ConsumerCreditMarket } from '@/components/consumer-loans/ConsumerCreditMarket';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { journeyStages } from '@/data/platform/journey';
@@ -299,6 +300,9 @@ export default function Home() {
         >
           <MortgageMarketDashboard />
         </motion.section>
+
+      {/* שוק ההלוואות הצרכניות — נתוני בנק ישראל, אותו חלק שבכלי ההלוואות */}
+      <ConsumerCreditMarket />
 
       </main>
 

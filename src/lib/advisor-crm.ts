@@ -111,15 +111,99 @@ export const MEETING_STATUSES = ['PROPOSED', 'CONFIRMED', 'DECLINED', 'CANCELLED
 export type MeetingStatus = (typeof MEETING_STATUSES)[number];
 
 export const MEETING_STATUS_LABELS: Record<MeetingStatus, string> = {
-  PROPOSED: 'פגישה מתוכננת',
+  PROPOSED: 'ממתינה לאישור',
   CONFIRMED: 'פגישה מאושרת',
-  DECLINED: 'הלקוח דחה את המועד',
+  DECLINED: 'המועד נדחה',
   CANCELLED: 'הפגישה בוטלה',
 };
 
 /** פגישה שעדיין תופסת מקום ביומן */
 export function meetingIsLive(status: MeetingStatus): boolean {
   return status === 'PROPOSED' || status === 'CONFIRMED';
+}
+
+/** שני הצדדים לפגישה */
+export type MeetingParty = 'ADVISOR' | 'CLIENT';
+
+/**
+ * הצד שהפגישה ממתינה לו — מי שלא הציע את המועד הנוכחי. ריק כשהפגישה כבר
+ * מאושרת, נדחתה או בוטלה.
+ */
+export function meetingAwaiting(meeting: Pick<AdvisorMeetingView, 'status' | 'proposedBy'>): MeetingParty | null {
+  if (meeting.status !== 'PROPOSED') return null;
+  return meeting.proposedBy === 'CLIENT' ? 'ADVISOR' : 'CLIENT';
+}
+
+/** הפגישה ממתינה לתשובה של הצד הזה */
+export function meetingAwaits(
+  meeting: Pick<AdvisorMeetingView, 'status' | 'proposedBy'>,
+  party: MeetingParty
+): boolean {
+  return meetingAwaiting(meeting) === party;
+}
+
+/** הסטטוס כפי שכל צד רואה אותו: למי הפגישה ממתינה, ומי הציע את המועד */
+export function meetingStatusLabel(
+  meeting: Pick<AdvisorMeetingView, 'status' | 'proposedBy'>,
+  viewer: MeetingParty
+): string {
+  const awaiting = meetingAwaiting(meeting);
+  if (!awaiting) return MEETING_STATUS_LABELS[meeting.status];
+  if (viewer === 'ADVISOR') {
+    return awaiting === 'ADVISOR' ? 'הלקוח הציע מועד · ממתינה לאישורך' : 'ממתינה לאישור הלקוח';
+  }
+  return awaiting === 'CLIENT' ? 'ממתינה לאישורכם' : 'הצעתם מועד · ממתינה לאישור היועץ';
+}
+
+/** תשובה של אחד הצדדים לפגישה */
+export type MeetingAnswer =
+  | { action: 'accept' }
+  | { action: 'propose'; startsAt: Date }
+  | { action: 'decline' };
+
+/** אותה תשובה כפי שהמסך שולח אותה לשרת — המועד כמחרוזת ISO */
+export type MeetingReply =
+  | { action: 'accept' }
+  | { action: 'propose'; startsAt: string }
+  | { action: 'decline' };
+
+export interface MeetingTransition {
+  status: MeetingStatus;
+  proposedBy: MeetingParty;
+  startsAt?: Date;
+  /** null — מנקה את מועד התשובה הקודם, כי יש הצעה חדשה */
+  respondedAt: Date | null;
+}
+
+/**
+ * המעבר של פגישה אחרי תשובה של אחד הצדדים — אותו כלל לכל סוגי הפגישות:
+ *
+ * - אישור: רק הצד שההצעה ממתינה לו יכול לאשר, והפגישה נעשית מאושרת אצל שניהם.
+ * - מועד אחר: כל צד יכול להציע מועד אחר לפגישה פעילה (ממתינה או מאושרת), והיא
+ *   עוברת לאישור הצד השני. כך הלוך ושוב, עד שהצד שקיבל את ההצעה מאשר.
+ * - דחייה: רק הצד שההצעה ממתינה לו.
+ *
+ * מחזיר null כשהתשובה לא מתאימה למצב הפגישה (למשל אישור של הצעה שלכם עצמכם).
+ */
+export function answerMeeting(
+  meeting: Pick<AdvisorMeetingView, 'status' | 'proposedBy'>,
+  party: MeetingParty,
+  answer: MeetingAnswer,
+  now: Date = new Date()
+): MeetingTransition | null {
+  if (!meetingIsLive(meeting.status)) return null;
+
+  if (answer.action === 'propose') {
+    if (Number.isNaN(answer.startsAt.getTime())) return null;
+    return { status: 'PROPOSED', proposedBy: party, startsAt: answer.startsAt, respondedAt: null };
+  }
+
+  if (!meetingAwaits(meeting, party)) return null;
+  return {
+    status: answer.action === 'accept' ? 'CONFIRMED' : 'DECLINED',
+    proposedBy: meeting.proposedBy,
+    respondedAt: now,
+  };
 }
 
 export interface AdvisorMeetingView {
@@ -136,6 +220,8 @@ export interface AdvisorMeetingView {
   location: string | null;
   note: string | null;
   status: MeetingStatus;
+  /** מי הציע את המועד הנוכחי — כשהפגישה ממתינה, הצד השני הוא שמאשר */
+  proposedBy: MeetingParty;
   respondedAt: string | null;
 }
 

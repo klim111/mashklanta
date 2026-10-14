@@ -27,6 +27,8 @@ import {
   usesPaymentSchedule,
   planFlowOf,
   previousPlanStage,
+  PRE_APPROVAL_MISSING,
+  banksWithPreApproval,
   stageIndex,
   stageIsComplete,
   unfinishedPrerequisites,
@@ -192,7 +194,7 @@ export function PlanWorkspace({
   /** סוג המיחזור שנבחר כרגע ונשמר — עד שהשרת פותח את השלב הבא */
   const [choosingMode, setChoosingMode] = useState<RefinanceMode | null>(null);
   const orders = useAdvisorOrders(planId);
-  const { meetings } = useClientMeetings();
+  const { meetings, refresh: refreshMeetings } = useClientMeetings();
   /** הריביות הממוצעות בשוק — לכלי המיחזור בתוך התהליך */
   const { market } = useMarketRates();
 
@@ -343,7 +345,18 @@ export function PlanWorkspace({
   const advisorRun = isAdvisorStage(orders.orders, stage);
   const showingDetails = detailStages.includes(stage);
   const advisorSummaryOnly = advisorRun && !showingDetails;
-  const showStageFooter = !tour && analysisOnLastSubstep && (canComplete || isDone);
+  /*
+    בשלב האישור העקרוני שורת המעבר מופיעה מהכניסה: מעליה כתוב שלהשלמת השלב
+    נדרש אישור עקרוני אחד לפחות, ואחרי ההעלאה הכפתור מסכם את השלב עם מספר
+    ההצעות שעולות למכרז הריביות.
+  */
+  const approvalsStage = stage === 'APPLICATIONS';
+  const approvalBanks = approvalsStage ? banksWithPreApproval(plan.data) : [];
+  const showStageFooter =
+    !tour && analysisOnLastSubstep && (canComplete || isDone || approvalsStage);
+  const footerMissing = approvalsStage
+    ? missing.filter((item) => item !== PRE_APPROVAL_MISSING)
+    : missing;
   const advisorName =
     orders.orders.find(
       (order) =>
@@ -397,6 +410,7 @@ export function PlanWorkspace({
       status={statuses[stage]}
       advisorName={advisorName}
       meeting={stageMeeting}
+      onMeetingChanged={refreshMeetings}
       detailsOpen={showingDetails}
       onToggleDetails={toggleStageDetails}
     />
@@ -437,7 +451,21 @@ export function PlanWorkspace({
   };
 
   const stageFooter = (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                {approvalsStage && !isDone && (
+                  approvalBanks.length === 0 ? (
+                    <p className="rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-2.5 text-center text-info font-black text-amber-900">
+                      להשלמת השלב יש לקבל ולהעלות לפחות אישור עקרוני אחד
+                    </p>
+                  ) : (
+                    <p className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center text-info font-black text-emerald-900">
+                      {approvalBanks.length === 1
+                        ? `התקבל אישור עקרוני אחד (${approvalBanks[0]}) — הצעה אחת עולה ל${next ? planStageMeta(next, flow).shortTitle : 'שלב הבא'}`
+                        : `התקבלו ${approvalBanks.length} אישורים עקרוניים (${approvalBanks.join(', ')}) — ${approvalBanks.length} הצעות עולות ל${next ? planStageMeta(next, flow).shortTitle : 'שלב הבא'}`}
+                    </p>
+                  )
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <button
                     type="button"
                     disabled={!previous}
@@ -449,13 +477,18 @@ export function PlanWorkspace({
                   </button>
 
                   <div className="flex flex-col items-end gap-1.5">
-                    {isDone && next ? (
+                    {(isDone || (approvalsStage && !canComplete)) && next ? (
+                      /* שלב שהושלם, או אישור עקרוני שעוד לא הושלם — מעבר בלבד, בלי סגירה */
                       <button
                         type="button"
                         onClick={() => selectStage(next)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-button font-black text-white transition-all hover:bg-blue-700"
+                        className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-black transition-all ${
+                          isDone
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
                       >
-                        המשיכו לשלב הבא
+                        {isDone ? 'המשיכו לשלב הבא' : 'לשלב הבא'}
                         <ArrowLeft className="h-4 w-4" />
                       </button>
                     ) : (
@@ -475,16 +508,18 @@ export function PlanWorkspace({
                           <Check className="h-4 w-4" />
                         )}
                         {next
-                          ? 'סגרו את השלב והמשיכו'
+                          ? approvalsStage && approvalBanks.length > 0
+                            ? `סכמו את השלב · ${approvalBanks.length === 1 ? 'הצעה אחת' : `${approvalBanks.length} הצעות`} · המשיכו ל${planStageMeta(next, flow).shortTitle}`
+                            : 'סגרו את השלב והמשיכו'
                           : planSigned
                             ? 'המשכנתא נחתמה'
                             : 'חתמתי על המשכנתא בבנק'}
                       </button>
                     )}
 
-                    {!canComplete && missing.length > 0 && (
+                    {!canComplete && footerMissing.length > 0 && (
                       <span className="text-2xs text-slate-400">
-                        כדי לסגור את השלב חסר: {missing.join(', ')}
+                        כדי לסגור את השלב חסר: {footerMissing.join(', ')}
                       </span>
                     )}
                     {blocked === stage && (
@@ -493,6 +528,7 @@ export function PlanWorkspace({
                       </span>
                     )}
                   </div>
+                </div>
                 </div>
   );
 
@@ -781,7 +817,7 @@ export function PlanWorkspace({
             {/* המשימות הפתוחות של השלב; הוספת משימה נמצאת בכפתור הפעולות */}
             {!tour && !advisorSummaryOnly && !needsIntro && (
               <div {...demoId('plan-stage-tasks')}>
-                <StageTasksPanel planId={plan.id} stage={stage} />
+                <StageTasksPanel planId={plan.id} stage={stage} flow={flow} />
               </div>
             )}
 
@@ -887,6 +923,7 @@ export function PlanWorkspace({
                     data={plan.data}
                     planId={plan.id}
                     onChange={(next: AuctionData) => updateStage('AUCTION', next)}
+                    onApplicationsChange={(next: PreApprovalData) => updateStage('APPLICATIONS', next)}
                     advisorRun={advisorRun}
                     refinance={refinance}
                   />
@@ -910,6 +947,7 @@ export function PlanWorkspace({
                           data={plan.data}
                           planId={plan.id}
                           onChange={(next: AuctionData) => updateStage('AUCTION', next)}
+                    onApplicationsChange={(next: PreApprovalData) => updateStage('APPLICATIONS', next)}
                           advisorRun={advisorRun}
                           banks={refinance ? [refinance.bank] : undefined}
                           refinance={refinance}
@@ -953,7 +991,8 @@ export function PlanWorkspace({
           stageLabel={`שלב ${index + 1} מתוך ${stages.length} · ${meta.shortTitle}`}
           title="היעזרו ביועץ משכנתא בשלב הזה"
           description={
-            stage === 'ANALYSIS' && !isRefinance
+            /* בשלב הפרופיל ההסבר זהה בכל סוגי התהליך: הפרופיל נבנה אותו דבר */
+            stage === 'ANALYSIS'
               ? undefined
               : `יועץ משכלנתא ייקח על עצמו את ${meta.title}${isRefinance ? ' במיחזור שלכם' : ''}: יבחן את מה שכבר הזנתם, ישלים את מה שחסר וילווה אתכם מול הבנק. הבקשה חינמית — התשלום מסודר מולו בהמשך, רק אם תחליטו להמשיך.`
           }

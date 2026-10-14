@@ -17,12 +17,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PrincipalApproval } from '@/components/principal-approval/PrincipalApproval';
 import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
+import { NEW_PLAN_FLOW, flowStages, planStageNumber } from '@/lib/mortgage-plan';
+import type { PlanFlow } from '@/lib/mortgage-plan';
 import { formatDate } from '@/lib/advisor-crm';
 import type {
   AdvisorMeetingView,
   AdvisorNoteView,
   AdvisorTaskView,
+  MeetingReply,
   NoteVisibility,
   PlanStageId,
 } from '@/lib/advisor-crm';
@@ -53,6 +56,8 @@ const STAGE_DOCUMENT_SCOPE: Record<PlanStageId, readonly ClientStage[]> = {
 interface ClientStageWorkspaceProps {
   client: ClientDetail;
   stage: PlanStageId;
+  /** סוג התהליך של הלקוח — שם השלב ומספרו כמו אצל הלקוח */
+  flow?: PlanFlow;
   /** מצב השלב אצל הלקוח, כשהוא פתח תהליך */
   stageView?: ClientStageBoardView;
   planId: string | null;
@@ -70,6 +75,8 @@ interface ClientStageWorkspaceProps {
   onNoteVisibility: (noteId: string, visibility: NoteVisibility) => void;
   onNoteDelete: (noteId: string) => void;
   onCancelMeeting: (meetingId: string) => void;
+  /** אישור או הצעת מועד אחר לפגישה */
+  onAnswerMeeting: (meetingId: string, reply: MeetingReply) => Promise<string | null>;
   onScheduleMeeting: () => void;
 }
 
@@ -81,8 +88,9 @@ interface ClientStageWorkspaceProps {
  * היועץ עצמה: המשימות, ההערות והפגישות שנקבעו לאותו שלב.
  */
 export function ClientStageWorkspace(props: ClientStageWorkspaceProps) {
-  const { client, stage, stageView, tasks, notes, meetings } = props;
+  const { client, stage, stageView, tasks, notes, meetings, flow = NEW_PLAN_FLOW } = props;
   const journey = journeyStageFor(stage);
+  const meta = planStageMeta(stage, flow);
   const StageIcon = journey.icon;
 
   const stageTasks = tasks.filter((task) => task.stage === stage);
@@ -108,7 +116,9 @@ export function ClientStageWorkspace(props: ClientStageWorkspaceProps) {
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-black text-slate-400">{journey.shortTitle}</span>
+              <span className="text-xs font-black text-slate-400">
+                שלב {planStageNumber(stage, flow)} מתוך {flowStages(flow).length} · {meta.shortTitle}
+              </span>
               {stageView?.completedByClient && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">
                   <Check className="h-3 w-3" />
@@ -117,8 +127,8 @@ export function ClientStageWorkspace(props: ClientStageWorkspaceProps) {
                 </span>
               )}
             </div>
-            <h2 className="text-lg font-black text-slate-900 md:text-xl">{journey.title}</h2>
-            <p className="text-sm text-slate-500">{journey.tagline}</p>
+            <h2 className="text-lg font-black text-slate-900 md:text-xl">{meta.title}</h2>
+            <p className="text-sm text-slate-500">{flow.kind === 'REFINANCE' ? meta.hint : journey.tagline}</p>
           </div>
         </div>
       </div>
@@ -184,6 +194,7 @@ export function ClientStageWorkspace(props: ClientStageWorkspaceProps) {
                   viewer="advisor"
                   linkToClient={false}
                   onCancel={() => props.onCancelMeeting(meeting.id)}
+                  onAnswer={(reply) => props.onAnswerMeeting(meeting.id, reply)}
                 />
               ))}
             </div>
@@ -198,6 +209,7 @@ export function ClientStageWorkspace(props: ClientStageWorkspaceProps) {
 function StageTools({
   client,
   stage,
+  flow = NEW_PLAN_FLOW,
   planId,
   onPatchClient,
   onDocumentStatus,
@@ -220,12 +232,20 @@ function StageTools({
     notes: client.notes,
   };
 
+  const order = flowStages(flow);
+  const isLastWithoutSigning = !order.includes('SIGNING') && order[order.length - 1] === stage;
+
   const documents = (
     <ClientDocumentsPanel
       documents={client.documents}
       stage={client.stage}
-      stages={STAGE_DOCUMENT_SCOPE[stage]}
-      title={`המסמכים של ${journeyStageFor(stage).shortTitle}`}
+      stages={
+        /* במיחזור פנימי החתימה היא חלק מהשלב האחרון, ולכן גם המסמכים שלה */
+        isLastWithoutSigning
+          ? [...STAGE_DOCUMENT_SCOPE[stage], ...STAGE_DOCUMENT_SCOPE.SIGNING]
+          : STAGE_DOCUMENT_SCOPE[stage]
+      }
+      title={`המסמכים של ${planStageMeta(stage, flow).shortTitle}`}
       onStageChange={onClientStage}
       onStatusChange={onDocumentStatus}
       action={

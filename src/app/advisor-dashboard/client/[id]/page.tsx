@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import VideoCallModal from '@/components/advisor-dashboard/VideoCallModal';
 import { StageRail } from '@/components/plan/StageRail';
-import { PLAN_STAGES } from '@/lib/mortgage-plan';
+import { NEW_PLAN_FLOW, PLAN_STAGES, flowStages } from '@/lib/mortgage-plan';
 import type { PlanStageId, PlanStageStatus } from '@/lib/mortgage-plan';
 import { AdvisoryStatusBar } from '@/components/advisor/AdvisoryStatusBar';
 import { ClientContextRow } from '@/components/advisor/ClientContextRow';
@@ -68,7 +68,11 @@ export default function AdvisorClientPage() {
     return map;
   }, [process]);
 
-  const stage = selectedStage ?? process?.currentStage ?? 'ANALYSIS';
+  /** סוג התהליך של הלקוח — אותם שלבים, באותו סדר ובאותם שמות שהוא רואה אצלו */
+  const flow = process?.flow ?? NEW_PLAN_FLOW;
+  const firstStage = flowStages(flow)[0];
+  const requested = selectedStage ?? process?.currentStage ?? firstStage;
+  const stage = flowStages(flow).includes(requested) ? requested : firstStage;
 
   if (status === 'loading' || loading) {
     return (
@@ -177,7 +181,7 @@ export default function AdvisorClientPage() {
           </div>
 
           <div className="mt-4">
-            <StageRail current={stage} statuses={statuses} onSelect={setSelectedStage} />
+            <StageRail current={stage} statuses={statuses} onSelect={setSelectedStage} flow={flow} />
             {!process?.planId && (
               <p className="mt-2 text-center text-[11px] text-white/50">
                 הלקוח עדיין לא פתח תהליך משלו. אפשר לעבוד בכל שלב — מה שתמלאו יחכה לו.
@@ -195,6 +199,7 @@ export default function AdvisorClientPage() {
         <ClientStageWorkspace
           client={client}
           stage={stage}
+          flow={flow}
           stageView={process?.stages.find((item) => item.stage === stage)}
           planId={process?.planId ?? null}
           tasks={tasks.tasks}
@@ -215,6 +220,7 @@ export default function AdvisorClientPage() {
           onNoteVisibility={(noteId, visibility) => void notes.setVisibility(noteId, visibility)}
           onNoteDelete={(noteId) => void notes.remove(noteId)}
           onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+          onAnswerMeeting={meetings.answer}
           onScheduleMeeting={() => openMeeting(stage)}
         />
 
@@ -227,6 +233,7 @@ export default function AdvisorClientPage() {
           onScheduleMeeting={() => openMeeting(null)}
           onAddTask={() => setTaskOpen(true)}
           onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+          onAnswerMeeting={meetings.answer}
           onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
           onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
           onTaskDelete={(taskId) => void tasks.remove(taskId)}

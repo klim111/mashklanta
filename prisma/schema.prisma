@@ -265,6 +265,11 @@ model PendingRegistration {
   /** hash של עוגיית הדפדפן שממנו נרשמו — אישור מדפדפן אחר דורש את הסיסמה */
   deviceHash        String?
   callbackUrl       String?
+  /**
+   * מה שהלקוח הזין בכלים החינמיים לפני ההרשמה, והשלב שבו עצר בכל כלי
+   * (src/lib/tool-data.ts). עובר לחשבון כשהמייל מאושר.
+   */
+  toolDataJson      Json?
   expires           DateTime
   sendCount         Int       @default(1)
   lastSentAt        DateTime  @default(now())
@@ -989,8 +994,9 @@ enum NoteVisibility {
 }
 
 /**
- * פגישה בין היועץ ללקוח. היועץ מציע מועד, והפגישה מופיעה מיד בלוח השנה שלו
- * כפגישה מתוכננת. אישור הלקוח הוא שהופך אותה למאושרת.
+ * פגישה בין היועץ ללקוח. צד אחד מציע מועד, והפגישה מופיעה מיד אצל שניהם. היא
+ * ממתינה לאישור הצד השני, שיכול לאשר או להציע מועד אחר — ואז היא עוברת לאישור
+ * של מי שהציע קודם, וכך עד שהצד שקיבל את ההצעה מאשר.
  */
 model AdvisorMeeting {
   id        String @id @default(cuid())
@@ -1012,6 +1018,11 @@ model AdvisorMeeting {
   location        String?
   note            String?
   status          MeetingStatus @default(PROPOSED)
+  /**
+   * מי הציע את המועד הנוכחי. כשהפגישה ממתינה (PROPOSED), הצד השני הוא שצריך
+   * לאשר או להציע מועד אחר
+   */
+  proposedBy      MeetingParty  @default(ADVISOR)
   respondedAt     DateTime?
 
   createdAt DateTime @default(now())
@@ -1023,15 +1034,20 @@ model AdvisorMeeting {
 
 enum MeetingStatus {
   /**
-   * הוצעה ללקוח וממתינה לאישורו
+   * הוצעה וממתינה לאישור הצד שלא הציע (ראו proposedBy)
    */
   PROPOSED
   /**
-   * הלקוח אישר את המועד
+   * הצד שקיבל את ההצעה אישר את המועד
    */
   CONFIRMED
   DECLINED
   CANCELLED
+}
+
+enum MeetingParty {
+  ADVISOR
+  CLIENT
 }
 
 /**
