@@ -4,7 +4,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, ArrowRight, Mail, MessageCircle, Phone } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BadgeCheck,
+  LayoutDashboard,
+  ListOrdered,
+  Mail,
+  MessageCircle,
+  Phone,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StageRail } from '@/components/plan/StageRail';
@@ -18,6 +28,9 @@ import { QuickActions } from '@/components/advisor/QuickActions';
 import { SendAuthorizationButton } from '@/components/advisor/ClientAuthorizationLetters';
 import { TaskDialog } from '@/components/advisor/TaskDialog';
 import { useClientDetail } from '@/components/advisor/useClientDetail';
+import { useClientActivity } from '@/components/advisor/useClientActivity';
+import { ClientActivitySummary } from '@/components/advisor/ClientActivitySummary';
+import { ClientControlBoard } from '@/components/advisor/ClientControlBoard';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 import { VideoCallPicker } from '@/components/meeting-call/VideoCallPicker';
 import {
@@ -27,12 +40,24 @@ import {
   useMeetings,
 } from '@/components/advisor/useAdvisorCrm';
 
+type ClientTab = 'stages' | 'summary' | 'board';
+
+const CLIENT_TABS: Array<{ id: ClientTab; label: string; icon: typeof Activity }> = [
+  { id: 'stages', label: 'שלבים', icon: ListOrdered },
+  { id: 'summary', label: 'סיכום פעילות', icon: Activity },
+  { id: 'board', label: 'לוח בקרה', icon: LayoutDashboard },
+];
+
 /**
  * דף הלקוח באזור היועץ.
  *
  * המבנה זהה לזה שהלקוח רואה בתהליך שלו: חמשת השלבים כסרגל ניווט בראש העמוד,
  * ומתחתיו מסך ראשי שמתחלף לפי השלב שנבחר ופותח את השדות והכלים שלו. השורה
  * שמתחת למסך הראשי — תיק המסמכים, הפגישות והמשימות של הלקוח — נשארת קבועה.
+ *
+ * לצד השלבים יש עוד שני טאבים: "סיכום פעילות" — מתי נרשם, מתי שילם, עד מתי
+ * הגישה בתשלום ושליחת מייל — ו"לוח בקרה" עם השיחות שנקבעו, לוח שנה וההודעות
+ * ממנו. `?tab=summary` או `?tab=board` פותחים את הדף ישר בטאב.
  */
 export default function AdvisorClientPage() {
   const params = useParams<{ id: string }>();
@@ -46,12 +71,19 @@ export default function AdvisorClientPage() {
   const [meetingStage, setMeetingStage] = useState<PlanStageId | null>(null);
   const [taskOpen, setTaskOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState<PlanStageId | null>(null);
+  const [tab, setTab] = useState<ClientTab>('stages');
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    if (requested && CLIENT_TABS.some((item) => item.id === requested)) setTab(requested as ClientTab);
+  }, []);
 
   const { client, loading, error, patch, setDocumentStatus } = useClientDetail(clientId);
   const { process, refresh: refreshProcess } = useClientProcess(clientId);
   const tasks = useAdvisorTasks({ clientId, includeClosed: true }, Boolean(clientId));
   const notes = useAdvisorNotes({ clientId, enabled: Boolean(clientId) });
   const meetings = useMeetings({ clientId, enabled: Boolean(clientId) });
+  const activity = useClientActivity(clientId, Boolean(clientId));
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -124,7 +156,15 @@ export default function AdvisorClientPage() {
             </Link>
 
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-xl font-black text-white md:text-2xl">{client.name}</h1>
+              <h1 className="flex items-center gap-2 truncate text-xl font-black text-white md:text-2xl">
+                <span className="truncate">{client.name}</span>
+                {activity.activity?.billing.paid && (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-400/20 px-2 py-0.5 text-2xs font-bold text-emerald-200">
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    שילם
+                  </span>
+                )}
+              </h1>
               <p className="flex flex-wrap items-center gap-x-3 text-[11px] text-white/50">
                 <span className="flex items-center gap-1">
                   <Mail className="h-3 w-3" />
@@ -173,64 +213,119 @@ export default function AdvisorClientPage() {
             )}
           </div>
 
-          <div className="mt-4">
-            <StageRail current={stage} statuses={statuses} onSelect={setSelectedStage} flow={flow} />
-            {!process?.planId && (
-              <p className="mt-2 text-center text-[11px] text-white/50">
-                הלקוח עדיין לא פתח תהליך משלו. אפשר לעבוד בכל שלב — מה שתמלאו יחכה לו.
-              </p>
-            )}
-          </div>
+          <nav className="mt-4 flex flex-wrap gap-2" aria-label="אזורי דף הלקוח">
+            {CLIENT_TABS.map((item) => {
+              const Icon = item.icon;
+              const active = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setTab(item.id);
+                    if (item.id !== 'stages') void activity.refresh();
+                  }}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-button font-bold transition-all ${
+                    active ? 'bg-white text-slate-900 shadow-lg' : 'bg-white/10 text-white/70 hover:bg-white/15 hover:text-white'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                  {item.id === 'board' && (activity.activity?.counts.unread ?? 0) > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 text-2xs font-black ${
+                        active ? 'bg-violet-100 text-violet-700' : 'bg-violet-500 text-white'
+                      }`}
+                    >
+                      {activity.activity?.counts.unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {tab === 'stages' && (
+            <div className="mt-4">
+              <StageRail current={stage} statuses={statuses} onSelect={setSelectedStage} flow={flow} />
+              {!process?.planId && (
+                <p className="mt-2 text-center text-[11px] text-white/50">
+                  הלקוח עדיין לא פתח תהליך משלו. אפשר לעבוד בכל שלב — מה שתמלאו יחכה לו.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
-        {process?.planId && process.advisory && (
-          <AdvisoryStatusBar planId={process.planId} advisory={process.advisory} onChanged={refreshProcess} />
+        {tab === 'summary' && (
+          <ClientActivitySummary activity={activity.activity} ready={activity.ready} error={activity.error} />
         )}
 
-        <ClientStageWorkspace
-          client={client}
-          stage={stage}
-          flow={flow}
-          stageView={process?.stages.find((item) => item.stage === stage)}
-          planId={process?.planId ?? null}
-          tasks={tasks.tasks}
-          notes={notes.notes}
-          meetings={meetings.meetings}
-          onPatchClient={patch}
-          onDocumentStatus={(documentId, next) => void setDocumentStatus(documentId, next)}
-          onClientStage={(next) => void patch({ stage: next })}
-          onCreateTask={async (input) => {
-            const failure = await tasks.create(input);
-            if (!failure) await refreshProcess();
-            return failure;
-          }}
-          onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
-          onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
-          onTaskDelete={(taskId) => void tasks.remove(taskId)}
-          onCreateNote={(body, visibility) => notes.create({ stage, body, visibility })}
-          onNoteVisibility={(noteId, visibility) => void notes.setVisibility(noteId, visibility)}
-          onNoteDelete={(noteId) => void notes.remove(noteId)}
-          onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
-          onAnswerMeeting={meetings.answer}
-          onScheduleMeeting={() => openMeeting(stage)}
-        />
+        {tab === 'board' && (
+          <ClientControlBoard
+            activity={activity.activity}
+            meetings={meetings.meetings}
+            tasks={tasks.tasks}
+            onOpenChat={client.userId ? () => setChatSignal((value) => value + 1) : undefined}
+            onScheduleMeeting={() => openMeeting(null)}
+            onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+            onAnswerMeeting={meetings.answer}
+          />
+        )}
 
-        <ClientContextRow
-          clientId={client.id}
-          clientName={client.name}
-          documents={client.documents}
-          meetings={meetings.meetings}
-          tasks={tasks.tasks}
-          onScheduleMeeting={() => openMeeting(null)}
-          onAddTask={() => setTaskOpen(true)}
-          onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
-          onAnswerMeeting={meetings.answer}
-          onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
-          onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
-          onTaskDelete={(taskId) => void tasks.remove(taskId)}
-        />
+        {tab === 'stages' && (
+          <>
+          {process?.planId && process.advisory && (
+            <AdvisoryStatusBar planId={process.planId} advisory={process.advisory} onChanged={refreshProcess} />
+          )}
+
+          <ClientStageWorkspace
+            client={client}
+            stage={stage}
+            flow={flow}
+            stageView={process?.stages.find((item) => item.stage === stage)}
+            planId={process?.planId ?? null}
+            tasks={tasks.tasks}
+            notes={notes.notes}
+            meetings={meetings.meetings}
+            onPatchClient={patch}
+            onDocumentStatus={(documentId, next) => void setDocumentStatus(documentId, next)}
+            onClientStage={(next) => void patch({ stage: next })}
+            onCreateTask={async (input) => {
+              const failure = await tasks.create(input);
+              if (!failure) await refreshProcess();
+              return failure;
+            }}
+            onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
+            onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
+            onTaskDelete={(taskId) => void tasks.remove(taskId)}
+            onCreateNote={(body, visibility) => notes.create({ stage, body, visibility })}
+            onNoteVisibility={(noteId, visibility) => void notes.setVisibility(noteId, visibility)}
+            onNoteDelete={(noteId) => void notes.remove(noteId)}
+            onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+            onAnswerMeeting={meetings.answer}
+            onScheduleMeeting={() => openMeeting(stage)}
+          />
+
+          <ClientContextRow
+            clientId={client.id}
+            clientName={client.name}
+            documents={client.documents}
+            meetings={meetings.meetings}
+            tasks={tasks.tasks}
+            onScheduleMeeting={() => openMeeting(null)}
+            onAddTask={() => setTaskOpen(true)}
+            onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
+            onAnswerMeeting={meetings.answer}
+            onTaskStatus={(taskId, next) => void tasks.update(taskId, { status: next })}
+            onTaskReschedule={(taskId, dueDate) => void tasks.update(taskId, { dueDate })}
+            onTaskDelete={(taskId) => void tasks.remove(taskId)}
+          />
+          </>
+        )}
       </main>
 
       <MeetingDialog

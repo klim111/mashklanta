@@ -14,6 +14,7 @@ import {
   paymentConfirmationEmail,
   renewalReminderEmail,
 } from './billing-emails';
+import { emailAdvisorAboutPayment } from './advisor-notify';
 import { RENEWAL_LINK_GRACE_DAYS, renewalToken, type RenewalReason } from './billing-links';
 
 /**
@@ -260,6 +261,17 @@ async function recordPlatformPayment(
     await sendEmail({ to: user.email, ...email }).catch((error) =>
       console.error('Payment confirmation email failed:', error)
     );
+  }
+  // מייל ליועץ על כל תשלום
+  if (payment) {
+    await emailAdvisorAboutPayment({
+      userId,
+      amount: payment.amountAgorot / 100,
+      paidAt: payment.createdAt,
+      accessUntil: passExpiresAt(payment.createdAt),
+      renewal: checkout.planId !== null,
+      invoiceNumber: payment.invoiceNumber,
+    });
   }
 }
 

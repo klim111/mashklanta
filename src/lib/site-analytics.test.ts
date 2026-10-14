@@ -1,12 +1,80 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildUnfinishedSignups,
+  locationFromHeaders,
   normalizePath,
+  parseUserAgent,
+  summarizeLogins,
   referrerHost,
   summarizeVisits,
   type DraftRow,
   type VisitRow,
 } from './site-analytics';
+
+describe('parseUserAgent', () => {
+  it('names the browser and the operating system', () => {
+    expect(
+      parseUserAgent(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+      )
+    ).toEqual({ browser: 'Safari 18', os: 'iOS 18' });
+    expect(
+      parseUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0'
+      )
+    ).toEqual({ browser: 'Edge 129', os: 'Windows' });
+    expect(
+      parseUserAgent(
+        'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.81 Mobile Safari/537.36'
+      )
+    ).toEqual({ browser: 'Chrome 129', os: 'Android 14' });
+    expect(parseUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14.6; rv:131.0) Gecko/20100101 Firefox/131.0')).toEqual({
+      browser: 'Firefox 131',
+      os: 'macOS',
+    });
+    expect(parseUserAgent(null)).toEqual({ browser: null, os: null });
+  });
+
+  it('reads the city and country Vercel adds', () => {
+    expect(locationFromHeaders(new Headers({ 'x-vercel-ip-city': 'Tel%20Aviv', 'x-vercel-ip-country': 'IL' }))).toBe(
+      'Tel Aviv, IL'
+    );
+    expect(locationFromHeaders(new Headers())).toBeNull();
+  });
+});
+
+describe('summarizeLogins', () => {
+  it('groups signed-in views into visits, newest first, with the login details', () => {
+    const at = (minute: number) => new Date(Date.UTC(2026, 9, 14, 9, minute));
+    const logins = summarizeLogins([
+      { sessionId: 's1', userId: 'u1', path: '/dashboard', device: 'phone', durationMs: 30_000, startedAt: at(0) },
+      {
+        sessionId: 's1',
+        userId: 'u1',
+        path: '/mortgage-planning',
+        device: 'phone',
+        ip: '1.2.3.4',
+        browser: 'Safari 18',
+        os: 'iOS 18',
+        location: 'Haifa, IL',
+        durationMs: 90_000,
+        startedAt: at(1),
+      },
+      { sessionId: 's2', userId: 'u2', path: '/dashboard', device: 'desktop', ip: '5.6.7.8', durationMs: 0, startedAt: at(5) },
+    ]);
+    expect(logins.map((login) => login.sessionId)).toEqual(['s2', 's1']);
+    expect(logins[1]).toMatchObject({
+      pages: 2,
+      seconds: 120,
+      entryPath: '/dashboard',
+      ip: '1.2.3.4',
+      browser: 'Safari 18',
+      os: 'iOS 18',
+      location: 'Haifa, IL',
+      lastAt: at(1).toISOString(),
+    });
+  });
+});
 
 describe('normalizePath', () => {
   it('drops query strings so verification tokens are never stored', () => {

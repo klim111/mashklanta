@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { EmptyState, SectionCard } from './ui';
 import type { VisitSummary } from '@/lib/site-analytics';
+import { LoginsTable, type LoginRow } from './LoginsTable';
 
 type AnalyticsResponse = {
   days: number;
@@ -24,6 +25,7 @@ type AnalyticsResponse = {
   liveVisitors: number;
   funnel: { startedSignup: number; submittedSignup: number; newClients: number };
   summary: VisitSummary;
+  logins?: LoginRow[];
 };
 
 const RANGES = [
@@ -294,6 +296,8 @@ export function SiteAnalyticsPanel() {
               ))}
             </div>
           </SectionCard>
+
+          <LoginsTable logins={data.logins ?? []} />
 
           <SectionCard title="לפי עמוד" icon={<Globe className="h-4 w-4 text-blue-600" />}>
             <div className="-mx-4 overflow-x-auto">

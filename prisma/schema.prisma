@@ -1724,6 +1724,17 @@ model SiteVisit {
   /** phone / tablet / desktop */
   device     String?
   userId     String?
+  /**
+   * פרטי ההתחברות — נשמרים רק בביקור של משתמש מחובר, כדי שהיועץ יראה מי נכנס
+   * לחשבון, מאיזו כתובת ומאיזה מכשיר. אצל אורחים הם נשארים ריקים.
+   */
+  ip         String?
+  /** הדפדפן, למשל "Chrome 129" */
+  browser    String?
+  /** מערכת ההפעלה, למשל "iOS 18" */
+  os         String?
+  /** העיר והמדינה לפי כתובת ה-IP (מ-Vercel), למשל "Tel Aviv, IL" */
+  location   String?
   /** זמן שהעמוד היה גלוי למבקר, באלפיות שנייה */
   durationMs Int      @default(0)
   startedAt  DateTime @default(now())
@@ -1731,6 +1742,7 @@ model SiteVisit {
   @@index([startedAt])
   @@index([path, startedAt])
   @@index([sessionId])
+  @@index([userId, startedAt])
 }
 
 /**
@@ -1757,4 +1769,29 @@ model SignupDraft {
 
   @@index([email])
   @@index([updatedAt])
+}
+
+/**
+ * לקוח שהסיר את החשבון שלו (src/lib/account-deletion.ts). כל המידע שלו נמחק,
+ * ורק רשומות התשלום נשמרות כאן בשביל היועץ, תחת "לקוחות שעזבו": מי שילם,
+ * מתי ועל מה. אין כאן קישור לשום שורה אחרת, כי כולן נמחקו.
+ */
+model DepartedClient {
+  id           String    @id @default(cuid())
+  /** היועץ שליווה אותו, כשהיה כרטיס לקוח */
+  advisorId    String?
+  name         String
+  email        String?
+  phone        String?
+  registeredAt DateTime
+  departedAt   DateTime  @default(now())
+  firstPaidAt  DateTime?
+  lastPaidAt   DateTime?
+  accessEndsAt DateTime?
+  /** בשקלים */
+  totalPaid    Float     @default(0)
+  /** התשלומים, מהחדש לישן: [{ kind, paidAt, amount, title, accessUntil }] */
+  paymentsJson Json
+
+  @@index([advisorId, departedAt])
 }
