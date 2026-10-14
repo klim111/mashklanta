@@ -12,6 +12,8 @@ import {
 } from './client-financials';
 import type { ClientFinancials, EncryptedFinancialField } from './client-financials';
 import { listMixesForClient } from './mixes';
+import { EMPTY_BILLING, summarizeClientBilling } from './client-billing';
+import type { ClientBillingSummary } from './client-billing';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
 /**
@@ -50,6 +52,13 @@ export interface ClientListItem {
   planProgress: number;
   /** נרשם לבד ומופיע ברשימה בכרטיס אוטומטי — עדיין לא לקוח בליווי */
   selfRegistered: boolean;
+  /** מתי נפתח החשבון של הלקוח */
+  registeredAt: string;
+  /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
+  paid: boolean;
+  lastPaidAt: string | null;
+  /** סוף הגישה בתשלום, לפי חבילת הגישה האחרונה */
+  accessEndsAt: string | null;
   updatedAt: string;
 }
 
@@ -109,6 +118,78 @@ async function crmCounters(advisorId: string, now: Date): Promise<CrmCounters> {
   return { openTasks, nextMeetingAt };
 }
 
+interface BillingSubject {
+  id: string;
+  userId: string;
+  email: string;
+  user: { platformAccessAt: Date | null } | null;
+}
+
+/**
+ * מה כל לקוח שילם — חבילות גישה, קישורי תשלום וליווי ששולם — לפי כרטיס. כמו
+ * המונים של ה-CRM, כשל על טבלה שעוד לא קיימת לא מפיל את רשימת הלקוחות.
+ */
+export async function clientBillingSummaries(
+  subjects: BillingSubject[],
+  now = new Date()
+): Promise<Map<string, ClientBillingSummary>> {
+  const result = new Map<string, ClientBillingSummary>();
+  if (subjects.length === 0) return result;
+  const userIds = [...new Set(subjects.map((subject) => subject.userId))];
+  const clientIds = subjects.map((subject) => subject.id);
+  const emails = [...new Set(subjects.map((subject) => subject.email.trim().toLowerCase()).filter(Boolean))];
+
+  try {
+    const [platformPayments, links, orders] = await Promise.all([
+      prisma.platformPayment.findMany({
+        where: { userId: { in: userIds }, status: 'PAID' },
+        select: { userId: true, createdAt: true, amountAgorot: true, status: true },
+      }),
+      prisma.paymentLink.findMany({
+        where: {
+          status: 'PAID',
+          OR: [
+            { clientId: { in: clientIds } },
+            ...(emails.length ? [{ clientEmail: { in: emails, mode: 'insensitive' as const } }] : []),
+          ],
+        },
+        select: { clientId: true, clientEmail: true, paidAt: true, amountAgorot: true, title: true },
+      }),
+      prisma.advisorServiceOrder.findMany({
+        where: { ownerId: { in: userIds }, status: 'PAID' },
+        select: { ownerId: true, paidAt: true, updatedAt: true, amount: true },
+      }),
+    ]);
+
+    for (const subject of subjects) {
+      const email = subject.email.trim().toLowerCase();
+      result.set(
+        subject.id,
+        summarizeClientBilling(
+          {
+            platformPayments: platformPayments.filter((payment) => payment.userId === subject.userId),
+            linkPayments: links.filter(
+              (link) =>
+                link.clientId === subject.id ||
+                (!link.clientId && Boolean(email) && link.clientEmail?.trim().toLowerCase() === email)
+            ),
+            // הזמנה שהיועץ סימן כשולמה בלי תאריך — התאריך הוא מועד העדכון שלה
+            advisoryOrders: orders
+              .filter((order) => order.ownerId === subject.userId)
+              .map((order) => ({ paidAt: order.paidAt ?? order.updatedAt, amount: order.amount })),
+            legacyAccessAt: subject.user?.platformAccessAt ?? null,
+          },
+          now
+        )
+      );
+    }
+  } catch (error) {
+    if (!isMissingSchema(error)) throw error;
+    console.warn('billing tables are missing — run prisma migrate deploy');
+  }
+  return result;
+}
+
 /** רשימת הלקוחות של היועץ, עם המספרים שמוצגים בשורת הלקוח */
 export async function listAdvisorClients(advisorId: string): Promise<ClientListItem[]> {
   const now = new Date();
@@ -117,6 +198,7 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
       where: { advisorId },
       orderBy: { updatedAt: 'desc' },
       include: {
+        user: { select: { createdAt: true, platformAccessAt: true } },
         _count: { select: { mixes: true } },
         documents: { select: { status: true, required: true } },
         plans: {
@@ -129,27 +211,35 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
     }),
     crmCounters(advisorId, now),
   ]);
+  const billing = await clientBillingSummaries(rows, now);
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    phone: row.phone,
-    status: row.status,
-    stage: row.stage as ClientStage,
-    progress: row.progress,
-    propertyValue: row.propertyValue,
-    mortgageAmount: row.mortgageAmount,
-    incomeBucket: row.incomeBucket,
-    mixCount: row._count.mixes,
-    openDocuments: row.documents.filter((doc) => doc.required && doc.status === 'PENDING').length,
-    openTasks: counters.openTasks.get(row.id) ?? 0,
-    nextMeetingAt: counters.nextMeetingAt.get(row.id)?.toISOString() ?? null,
-    planStage: (row.plans[0]?.currentStage as PlanStageId | undefined) ?? null,
-    planProgress: row.plans[0]?.progress ?? 0,
-    selfRegistered: row.autoLinked,
-    updatedAt: row.updatedAt.toISOString(),
-  }));
+  return rows.map((row) => {
+    const paid = billing.get(row.id) ?? EMPTY_BILLING;
+    return {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      status: row.status,
+      stage: row.stage as ClientStage,
+      progress: row.progress,
+      propertyValue: row.propertyValue,
+      mortgageAmount: row.mortgageAmount,
+      incomeBucket: row.incomeBucket,
+      mixCount: row._count.mixes,
+      openDocuments: row.documents.filter((doc) => doc.required && doc.status === 'PENDING').length,
+      openTasks: counters.openTasks.get(row.id) ?? 0,
+      nextMeetingAt: counters.nextMeetingAt.get(row.id)?.toISOString() ?? null,
+      planStage: (row.plans[0]?.currentStage as PlanStageId | undefined) ?? null,
+      planProgress: row.plans[0]?.progress ?? 0,
+      selfRegistered: row.autoLinked,
+      registeredAt: (row.user?.createdAt ?? row.createdAt).toISOString(),
+      paid: paid.paid,
+      lastPaidAt: paid.lastPaidAt,
+      accessEndsAt: paid.accessEndsAt,
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  });
 }
 
 /**

@@ -26,6 +26,13 @@ export interface AdvisorClient {
   planProgress: number;
   /** נרשם לבד ומופיע בכרטיס אוטומטי — עדיין לא לקוח בליווי */
   selfRegistered?: boolean;
+  /** מתי נפתח החשבון של הלקוח */
+  registeredAt?: string;
+  /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
+  paid?: boolean;
+  lastPaidAt?: string | null;
+  /** סוף הגישה בתשלום, לפי חבילת הגישה האחרונה */
+  accessEndsAt?: string | null;
   updatedAt: string;
 }
 
