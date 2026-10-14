@@ -30,7 +30,10 @@ export interface AdvisorClient {
   registeredAt?: string;
   /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
   paid?: boolean;
+  firstPaidAt?: string | null;
   lastPaidAt?: string | null;
+  /** כל התשלומים, מהחדש לישן */
+  payments?: Array<{ paidAt: string; title: string; amount: number | null; accessUntil: string | null }>;
   /** סוף הגישה בתשלום, לפי חבילת הגישה האחרונה */
   accessEndsAt?: string | null;
   updatedAt: string;

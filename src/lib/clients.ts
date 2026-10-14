@@ -56,7 +56,10 @@ export interface ClientListItem {
   registeredAt: string;
   /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
   paid: boolean;
+  firstPaidAt: string | null;
   lastPaidAt: string | null;
+  /** כל התשלומים, מהחדש לישן — לטבלת המשלמים */
+  payments: Array<{ paidAt: string; title: string; amount: number | null; accessUntil: string | null }>;
   /** סוף הגישה בתשלום, לפי חבילת הגישה האחרונה */
   accessEndsAt: string | null;
   updatedAt: string;
@@ -235,7 +238,9 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
       selfRegistered: row.autoLinked,
       registeredAt: (row.user?.createdAt ?? row.createdAt).toISOString(),
       paid: paid.paid,
+      firstPaidAt: paid.firstPaidAt,
       lastPaidAt: paid.lastPaidAt,
+      payments: paid.payments.map(({ paidAt, title, amount, accessUntil }) => ({ paidAt, title, amount, accessUntil })),
       accessEndsAt: paid.accessEndsAt,
       updatedAt: row.updatedAt.toISOString(),
     };

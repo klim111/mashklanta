@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BadgeCheck, UserCheck, UserX } from 'lucide-react';
 import { ClientList } from './ClientList';
 import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
+import { PayingClientsTable } from './PayingClientsTable';
 import type { AdvisorClient } from './useAdvisorClients';
 
 export type ClientGroup = 'unfinished' | 'registered' | 'paying';
@@ -34,8 +35,9 @@ function useUnfinishedCount(): number | null {
 
 /**
  * אזור הלקוחות בלוח היועץ: שלוש קבוצות — מי שנכנס ולא השלים הרשמה, הרשומים,
- * והמשלמים. ליד כל לקוח ששילם מופיע הסימן "שילם", ובחירה בלקוח פותחת את דף
- * הלקוח עם השלבים, סיכום הפעילות ולוח הבקרה שלו.
+ * והמשלמים — עם תאריכי הרישום, התשלומים ופקיעת המנוי. ליד כל לקוח ששילם
+ * מופיע הסימן "שילם", ובחירה בלקוח פותחת את דף הלקוח עם השלבים, סיכום
+ * הפעילות ולוח הבקרה שלו.
  */
 export function ClientsArea({
   clients,
@@ -106,17 +108,20 @@ export function ClientsArea({
 
       {group === 'unfinished' ? (
         <UnfinishedSignupsPanel />
+      ) : group === 'paying' ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <PayingClientsTable clients={paying} ready={ready} query={query} onQueryChange={onQueryChange} />
+        </div>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <ClientList
-            clients={group === 'paying' ? paying : clients}
+            clients={clients}
             ready={ready}
             error={error}
             onAddClient={onAddClient}
             onScheduleMeeting={onScheduleMeeting}
             query={query}
             onQueryChange={onQueryChange}
-            emptyHint={group === 'paying' ? 'עדיין אין לקוחות ששילמו.' : undefined}
           />
         </div>
       )}

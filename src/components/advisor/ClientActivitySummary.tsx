@@ -140,7 +140,7 @@ export function ClientActivitySummary({
           <EmptyState icon={<CreditCard className="h-6 w-6" />} title="עדיין אין תשלומים" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-info">
+            <table className="w-full text-right text-info">
               <thead>
                 <tr className="border-b border-slate-100 text-right text-2xs text-slate-500">
                   <th className="py-2 font-semibold">תאריך</th>
