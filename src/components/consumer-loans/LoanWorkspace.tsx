@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ArrowLeft,
   BarChart3,
   Coins,
   CreditCard,
@@ -106,6 +107,25 @@ export function LoanWorkspace() {
     typeof readConsumerLoansImportSession
   >>(null);
   const [ready, setReady] = useState(false);
+
+  /**
+   * מי שהגיע מהכלי "מה אני יכול להרשות לעצמי" (אחרי "עזרו לי עם ההלוואות")
+   * צריך דרך חזרה לבדיקה — הנתונים שהזין שמורים שם והכלי ייפתח איתם.
+   */
+  const affordabilityReturn = useMemo(() => {
+    if (searchParams.get('from') !== 'affordability') return null;
+    const fromPlan = searchParams.get('fromPlan');
+    const fromStage = searchParams.get('fromStage');
+    const planQuery = fromPlan
+      ? `&fromPlan=${encodeURIComponent(fromPlan)}${
+          fromStage ? `&fromStage=${encodeURIComponent(fromStage)}` : ''
+        }`
+      : '';
+    return {
+      href: `/mortgage-planning?flow=affordability${planQuery}`,
+      label: 'חזרה לבדיקה מה אני יכול להרשות לעצמי',
+    };
+  }, [searchParams]);
 
   /**
    * מה שנשמר בחשבון — כולל הלוואות שהוזנו לפני ההרשמה — כדי שהכלי ייפתח איתן
@@ -369,7 +389,7 @@ export function LoanWorkspace() {
       <div className="container mx-auto px-3 py-4 pb-10 sm:px-6 sm:py-6">
         {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
         <div className="mb-3">
-          <ReturnLink />
+          <ReturnLink target={affordabilityReturn ?? undefined} />
         </div>
 
         {/* כותרת הכלי */}
@@ -403,6 +423,23 @@ export function LoanWorkspace() {
             </div>
           )}
         </div>
+
+        {/* המשך לבדיקה של "מה אני יכול להרשות לעצמי" — למי שהגיע משם */}
+        {affordabilityReturn && !importSession && ready && (
+          <div className="mb-3 flex flex-col gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-bold leading-relaxed text-blue-900">
+              סיימתם עם ההלוואות? הנתונים שהזנתם בבדיקה שמורים, ואפשר להמשיך מאותה נקודה.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push(affordabilityReturn.href)}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-button font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
+            >
+              המשך לבדיקה מה אני יכול להרשות לעצמי
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        )}
 
         {/* אשף הייבוא מהפרופיל הפיננסי */}
         {importSession && (

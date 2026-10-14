@@ -1911,7 +1911,7 @@ export function MortgagePlanningContent({
                   />
                 </svg>
               </span>
-              <span className="absolute left-1/2 -translate-x-1/2 top-6 w-80 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-30 text-sm text-slate-700 font-normal text-right whitespace-normal">
+              <span className="absolute left-1/2 -translate-x-1/2 top-6 w-80 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-lg shadow-lg p-3 hidden group-hover:block z-30 text-sm text-slate-700 font-normal text-right whitespace-normal">
                 לחיצה על הריבית מאפשרת להזין את ההצעה שקיבלת מהבנק - כל החישובים יתעדכנו בהתאם.
                 הריבית המשוערת נועדה לסימולציה בלבד; הריביות הסופיות כפופות להיסטוריית האשראי של
                 הלקוח, לאופן בניית התמהיל, אחוז המימון, תקופת המשכנתא ולתוצאות תהליך המיקוח מול
@@ -1980,7 +1980,7 @@ export function MortgagePlanningContent({
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                         </svg>
                       </div>
-                      <div className="absolute right-0 top-7 w-72 bg-white border border-slate-200 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-10">
+                      <div className="absolute left-0 top-7 w-72 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-lg shadow-lg p-3 hidden group-hover:block z-10">
                         <div className="text-xs text-right">
                           <p className="font-semibold text-slate-900 mb-1">איך זה מחושב?</p>
                           <p className="text-slate-700 mb-1">
@@ -1991,7 +1991,7 @@ export function MortgagePlanningContent({
                             הזזת הסליידר תשנה את כל הערכים בעמוד בהתאם.
                           </p>
                         </div>
-                        <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-slate-200 transform rotate-45"></div>
+                        <div className="absolute -top-2 left-1 w-4 h-4 bg-white border-l border-t border-slate-200 transform rotate-45"></div>
                       </div>
                     </div>
                     </div>
@@ -2296,7 +2296,7 @@ export function MortgagePlanningContent({
                             />
                           </svg>
                         </span>
-                        <span className="absolute left-1/2 -translate-x-1/2 bottom-7 w-72 bg-white border border-slate-200 rounded-lg shadow-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-200 z-20 text-sm text-slate-700 font-normal text-right whitespace-normal">
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-7 w-72 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-lg shadow-lg p-3 hidden group-hover:block z-20 text-sm text-slate-700 font-normal text-right whitespace-normal">
                           {results.includesInsurance ? (
                             <>
                               <span className="block font-medium text-indigo-800 mb-1">
@@ -2791,8 +2791,9 @@ export function MortgagePlanningContent({
     );
   };
 
+  // overflow-x-clip: שום רכיב (כמו בועת הסבר) לא ירחיב את העמוד הצידה בטלפון
   return (
-    <div className={embedded ? '' : 'min-h-screen bg-slate-50'}>
+    <div className={embedded ? '' : 'min-h-screen overflow-x-clip bg-slate-50'}>
       {!embedded && (
       <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
