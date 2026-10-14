@@ -69,6 +69,8 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = pathname.startsWith('/auth');
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdvisorDashboard = pathname.startsWith('/advisor-dashboard');
+  /** שיחת הווידאו של פגישה — פתוחה לשני הצדדים, אבל רק למי שמחובר */
+  const isMeetingCall = pathname.startsWith('/meeting/');
   const isApi = pathname.startsWith('/api');
 
   if (!token) {
@@ -82,7 +84,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (isDashboard || isAdvisorDashboard) {
+    if (isDashboard || isAdvisorDashboard || isMeetingCall) {
       const url = new URL('/auth/login', request.url);
       url.searchParams.set('callbackUrl', `${pathname}${request.nextUrl.search}`);
       return NextResponse.redirect(url);
@@ -127,5 +129,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/advisor-dashboard/:path*', '/auth/:path*', '/api/:path*'],
+  matcher: ['/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
 };

@@ -5,10 +5,12 @@ import { CalendarCheck2, CalendarClock, Clock, Send } from 'lucide-react';
 import { meetingAwaits, meetingIsLive } from '@/lib/advisor-crm';
 import type { MeetingParty, MeetingReply, MeetingStatus } from '@/lib/advisor-crm';
 import { fromLocalInputValue, toLocalInputValue } from '@/components/advisor/ui';
+import { VideoCallButton } from '@/components/meeting-call/VideoCallButton';
 
 export interface AnswerableMeeting {
   id: string;
   startsAt: string;
+  durationMinutes?: number;
   status: MeetingStatus;
   proposedBy: MeetingParty;
 }
@@ -20,6 +22,7 @@ export interface AnswerableMeeting {
  * - כשהיועץ הציע מועד: לאשר אותו, או להציע מועד אחר — שעובר לאישור היועץ.
  * - כשהלקוח הציע מועד: הודעה שההצעה ממתינה לאישור היועץ, ואפשר לשנות אותה.
  * - כשהפגישה מאושרת: אפשר לבקש מועד אחר, שעובר לאישור היועץ.
+ * - בכל פגישה פעילה: כניסה לשיחת הווידאו של הפגישה.
  */
 export function ClientMeetingAnswer({
   meeting,
@@ -53,6 +56,11 @@ export function ClientMeetingAnswer({
 
   return (
     <div className="w-full space-y-2">
+      {!proposing && (
+        <div className="flex justify-center">
+          <VideoCallButton meeting={meeting} size="md" />
+        </div>
+      )}
       {awaitsAdvisor && !proposing && (
         <p className="flex items-center justify-center gap-1.5 text-sm font-bold text-amber-800">
           <Clock className="h-4 w-4 shrink-0" />
