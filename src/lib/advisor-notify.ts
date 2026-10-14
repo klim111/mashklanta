@@ -246,7 +246,7 @@ export async function emailAdvisorAboutAccountDeletion(input: {
 }): Promise<void> {
   const who = input.name?.trim() || input.email || 'לקוח';
   const paid = input.totalPaid !== null;
-  await sendAdvisorEvent({
+  await notifyAdmin({
     title: `לקוח הסיר את החשבון: ${who}`,
     lead: paid
       ? `${who} הסיר/ה את החשבון מהפלטפורמה. כל המידע שלו/ה נמחק, ורשומות התשלום נשמרו ב"לקוחות שעזבו".`
