@@ -30,6 +30,7 @@ import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { DocumentBrowser } from './DocumentBrowser';
 import { ScenarioPicker, resolveSelection } from '../stages/signing/ScenarioPicker';
 import { documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
+import { DocumentsLockedNotice } from './DocumentsLockedNotice';
 import { demoId } from '@/demo/demo-attr';
 
 /** ההתקדמות של התהליך — נקראת פעם אחת ומשמשת גם את הכפתור וגם את החלון */
@@ -37,11 +38,12 @@ export function useDocumentProgress(planId: string, data: PlanData): {
   progress: DocumentProgress;
   documents: PlanDocumentView[];
   ready: boolean;
+  locked: boolean;
 } {
-  const { documents, ready } = usePlanDocuments(planId);
+  const { documents, ready, locked } = usePlanDocuments(planId);
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
-  return { progress, documents, ready };
+  return { progress, documents, ready, locked };
 }
 
 /** פס התקדמות אחד — לשלב או לכל התהליך */
@@ -124,7 +126,7 @@ export function DocumentVaultDialog({
     }).catch(() => undefined);
   };
 
-  const { documents, ready, error, busyKey, remove, updateMeta } = usePlanDocuments(planId);
+  const { documents, ready, error, locked, busyKey, remove, updateMeta } = usePlanDocuments(planId);
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -160,12 +162,16 @@ export function DocumentVaultDialog({
               </span>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-xl font-black text-white">תיק המסמכים שלי</DialogTitle>
+                {!locked && (
                 <p className="mt-0.5 text-sm text-white/60">
                   {progress.overall.done} מתוך {progress.overall.total} מסמכים נאספו · {progress.overall.percent}%
                   מהתהליך
                 </p>
+                )}
               </div>
             </div>
+            {!locked && (
+            <>
             <div className="mt-4">
               <ProgressBar percent={progress.overall.percent} tone="white" />
             </div>
@@ -191,9 +197,16 @@ export function DocumentVaultDialog({
                 );
               })}
             </ul>
+            </>
+            )}
           </div>
         </div>
 
+        {locked ? (
+          <div className="p-6 md:p-8">
+            <DocumentsLockedNotice planId={planId} />
+          </div>
+        ) : (
         <div className="p-6 md:p-8" {...demoId('vault-list')}>
           {/*
             רשימת המסמכים לפי סוג העסקה: בוחרים כאן, בתוך התיק, את סוג העסקה,
@@ -350,6 +363,7 @@ export function DocumentVaultDialog({
             )}
           </div>
         </div>
+        )}
 
         <DocumentUploadDialog
           open={uploadOpen}

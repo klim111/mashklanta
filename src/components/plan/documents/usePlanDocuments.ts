@@ -38,23 +38,28 @@ export function usePlanDocuments(planId: string | null) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  /** התיק נעול בפני הלקוח — התהליך לא שולם, או שהסתיים חודש הגישה */
+  const [locked, setLocked] = useState(false);
   const demo = isDemoPlan(planId);
 
   const refresh = useCallback(async () => {
     if (demo) {
       setDocuments(readDemo());
+      setLocked(false);
       setReady(true);
       return;
     }
     // בלי תהליך אין תיק לטעון — למשל משימה כללית שנוספה מלוח השנה
     if (!planId) {
       setDocuments([]);
+      setLocked(false);
       setReady(true);
       return;
     }
     try {
       const response = await fetch(`/api/plans/${planId}/documents`, { cache: 'no-store' });
       const body = await response.json().catch(() => null);
+      setLocked(response.status === 402);
       if (!response.ok) {
         // תקלת הגדרה — טבלה שלא נוצרה או אחסון שלא הוגדר — נאמרת במפורש
         setError(typeof body?.error === 'string' ? body.error : 'לא הצלחנו לטעון את המסמכים');
@@ -211,7 +216,7 @@ export function usePlanDocuments(planId: string | null) {
     [planId, demo, refresh]
   );
 
-  return { documents, ready, error, busyKey, upload: uploadDocument, remove, refresh, updateMeta };
+  return { documents, ready, error, locked, busyKey, upload: uploadDocument, remove, refresh, updateMeta };
 }
 
 /** הכתובת המאומתת שממנה נצפה מסמך — תקפה רק למשתמש המחובר */

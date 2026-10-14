@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { planDocumentFailure, planDocumentsArchive } from '@/lib/plan-documents';
+import { DOCUMENTS_LOCKED_MESSAGE, documentsLockedFor } from '@/lib/plan-documents-lock';
+import {
+  planDocumentFailure,
+  planDocumentsArchive,
+} from '@/lib/plan-documents';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -14,6 +18,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
   try {
+    if (await documentsLockedFor(userId, id)) return NextResponse.json({ error: DOCUMENTS_LOCKED_MESSAGE, locked: true }, { status: 402 });
     const result = await planDocumentsArchive(userId, id);
     if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     if (result.count === 0) {

@@ -407,6 +407,15 @@ export async function planLockedFor(userId: string, planId: string): Promise<boo
   return processLocked(accessOf(row));
 }
 
+/**
+ * התהליכים של המשתמש שהכלים בהם נעולים בפניו — כדי לסנן מהם את תיק המסמכים
+ * גם במקומות שאינם עוברים דרך תהליך אחד, כמו צירוף קבצים מההתכתבות.
+ */
+export async function lockedPlanIdsFor(userId: string): Promise<Set<string>> {
+  const rows = await prisma.mortgagePlan.findMany({ where: { ownerId: userId }, select: planSelect });
+  return new Set(rows.filter((row) => processLocked(accessOf(row))).map((row) => row.id));
+}
+
 function money(value: number | null): string {
   return value != null && Number.isFinite(value) ? String(Math.round(value)) : '';
 }
