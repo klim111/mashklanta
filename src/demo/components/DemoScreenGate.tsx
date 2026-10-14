@@ -14,14 +14,15 @@ import { demoStore, useDemoRequest } from '../store';
 export function DemoScreenGate({ flowId, children }: { flowId: string; children: React.ReactNode }) {
   const request = useDemoRequest();
   /** כניסה ישירה בכתובת מתחילה את ההדגמה; יציאה מהדגמה שרצה כאן לא מתחילה אותה מחדש */
-  const autoStart = useRef(request === null);
+  const autoStart = useRef(true);
 
   useEffect(() => {
-    if (!request && autoStart.current) {
-      autoStart.current = false;
-      demoStore.start(flowId, { returnTo: '/' });
-    }
-  }, [request, flowId]);
+    if (!autoStart.current) return;
+    autoStart.current = false;
+    // בהידרציה request עדיין null (תמונת השרת), ולכן בודקים את הבקשה השמורה בדפדפן —
+    // אחרת הדגמה שכבר רצה (למשל במת ההקלטה) מוחלפת בהדגמה של המסך
+    if (!demoStore.getSnapshot()) demoStore.start(flowId, { returnTo: '/' });
+  }, [flowId]);
 
   if (!request) {
     return (
