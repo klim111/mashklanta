@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { calls, db, del } = vi.hoisted(() => {
+const { calls, db, del, notify } = vi.hoisted(() => {
   const calls: string[] = [];
   const model = (name: string, findMany: unknown[] = []) => ({
     findMany: vi.fn(async () => findMany),
@@ -36,10 +36,12 @@ const db = {
 };
 
 const del = vi.fn(async () => undefined);
-return { calls, db, del };
+  const notify = vi.fn(async (_input: unknown) => undefined);
+  return { calls, db, del, notify };
 });
 
 vi.mock('@/lib/db', () => ({ prisma: db }));
+vi.mock('./advisor-notify', () => ({ emailAdvisorAboutAccountDeletion: notify }));
 vi.mock('./db', () => ({ prisma: db }));
 vi.mock('@vercel/blob', () => ({
   del: (...args: unknown[]) => del(...(args as [])),
@@ -100,6 +102,7 @@ describe('deleteClientAccount', () => {
     const saved = (db.departedClient.create.mock.calls[0] as unknown as [{ data: { totalPaid: number; advisorId: string } }])[0].data;
     expect(saved.totalPaid).toBe(99);
     expect(saved.advisorId).toBe('a1');
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ email: 'dana@example.com', totalPaid: 99 }));
     const deleted = del.mock.calls.flat().flat();
     expect(deleted).toEqual(
       expect.arrayContaining(['plans/p1/a.pdf', 'leads/b/x.pdf', 'conversation/u1/chat.pdf'])

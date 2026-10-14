@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { del, list } from '@vercel/blob';
 import { prisma } from './db';
 import { conversationFilePrefix } from './conversation';
+import { emailAdvisorAboutAccountDeletion } from './advisor-notify';
 import { clientBillingSummaries } from './clients';
 import { storedLeadFiles } from './lead-files';
 import { blobIsConfigured, planDocumentPrefix } from './plan-documents';
@@ -136,6 +137,13 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
   );
 
   await deleteStoredFiles(userId, planIds, [...blobPaths], s3Keys);
+  await emailAdvisorAboutAccountDeletion({
+    name: card?.name || user.name,
+    email: email ?? card?.email ?? null,
+    registeredAt: user.createdAt,
+    deletedAt: new Date(),
+    totalPaid: billing?.paid ? billing.totalPaid : null,
+  });
   return { ok: true };
 }
 
