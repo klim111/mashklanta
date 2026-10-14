@@ -14,6 +14,7 @@ import {
 } from '@/lib/advisor-crm';
 import type { AdvisorMeetingView, MeetingParty, MeetingReply } from '@/lib/advisor-crm';
 import { StageChip, fromLocalInputValue, toLocalInputValue } from './ui';
+import { VideoCallButton } from '@/components/meeting-call/VideoCallButton';
 
 const STATUS_STYLES: Record<AdvisorMeetingView['status'], string> = {
   PROPOSED: 'bg-amber-100 text-amber-800',
@@ -77,7 +78,8 @@ export function MeetingRow({
         <span className="text-xs font-black leading-tight">{formatTime(meeting.startsAt)}</span>
       </div>
 
-      <div className="min-w-0 flex-1">
+      {/* רוחב מינימלי — בעמודה צרה הכפתורים יורדים שורה במקום לקצץ את הכותרת */}
+      <div className="min-w-[9rem] flex-1">
         <p className="truncate text-sm font-bold text-slate-900">{meeting.title}</p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
           <span className="font-semibold text-slate-700">
@@ -103,6 +105,8 @@ export function MeetingRow({
       >
         {meetingStatusLabel(meeting, party)}
       </span>
+
+      {live && !proposing && <VideoCallButton meeting={meeting} />}
 
       {onAnswer && live && !proposing && (
         <div className="flex items-center gap-1.5">

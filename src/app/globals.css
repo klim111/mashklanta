@@ -1144,3 +1144,40 @@ html.a11y-big-cursor button,
 html.a11y-big-cursor [role='button'] {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Cpath d='M9 11V4.5a1.5 1.5 0 013 0V10l.5-.1V8.5a1.5 1.5 0 013 0V10l.4-.1a1.5 1.5 0 013 .4V16a6 6 0 01-6 6h-1a6 6 0 01-4.9-2.5L4 14.8a1.5 1.5 0 012.3-1.9L9 15z' fill='%23fff' stroke='%23000' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 18 4, pointer !important;
 }
+
+/* כפתורי הסרגל בשיחת הווידאו (src/components/meeting-call) */
+.call-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 0.75rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  transition: background-color 0.15s;
+}
+.call-control:hover {
+  background: rgb(255 255 255 / 0.2);
+}
+.call-control[aria-pressed='true'] {
+  background: rgb(255 255 255 / 0.25);
+}
+/* מיקרופון או מצלמה כבויים */
+.call-control[data-lk-source='microphone'][data-lk-enabled='false'],
+.call-control[data-lk-source='camera'][data-lk-enabled='false'] {
+  background: rgb(244 63 94 / 0.35);
+}
+/* שיתוף מסך פעיל */
+.call-control[data-lk-source='screen_share'][data-lk-enabled='true'] {
+  background: rgb(37 99 235);
+}
+.call-control.call-control-leave {
+  color: #fff;
+  border-color: transparent;
+  background: rgb(225 29 72);
+}
+.call-control.call-control-leave:hover {
+  background: rgb(190 18 60);
+}
