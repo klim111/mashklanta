@@ -220,3 +220,34 @@ export async function emailAdvisorAboutPayment(input: {
     console.error('[advisor-notify] payment email failed:', error);
   }
 }
+
+/**
+ * מייל ליועץ כשלקוח הסיר את החשבון שלו. הפרטים מגיעים מבחוץ, כי המשתמש כבר
+ * נמחק כשהמייל נשלח.
+ */
+export async function emailAdvisorAboutAccountDeletion(input: {
+  name: string | null;
+  email: string | null;
+  registeredAt: Date;
+  deletedAt: Date;
+  /** כמה שילם בסך הכל, כשרשומות התשלום נשמרו ב"לקוחות שעזבו" */
+  totalPaid: number | null;
+}): Promise<void> {
+  const who = input.name?.trim() || input.email || 'לקוח';
+  const paid = input.totalPaid !== null;
+  await sendAdvisorEvent({
+    title: `לקוח הסיר את החשבון: ${who}`,
+    lead: paid
+      ? `${who} הסיר/ה את החשבון מהפלטפורמה. כל המידע שלו/ה נמחק, ורשומות התשלום נשמרו ב"לקוחות שעזבו".`
+      : `${who} הסיר/ה את החשבון מהפלטפורמה. כל המידע שלו/ה נמחק.`,
+    details: [
+      ['שם', input.name],
+      ['מייל', input.email],
+      ['נרשם', WHEN.format(input.registeredAt)],
+      ['הסיר את החשבון', WHEN.format(input.deletedAt)],
+      ['שילם בסך הכל', paid ? `₪${input.totalPaid!.toLocaleString('he-IL')}` : null],
+    ],
+    path: '/advisor-dashboard?tab=clients',
+    buttonLabel: 'לאזור הלקוחות',
+  });
+}

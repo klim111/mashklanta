@@ -1,19 +1,49 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, UserCheck, UserX } from 'lucide-react';
+import { BadgeCheck, UserCheck, UserMinus, UserX } from 'lucide-react';
 import { ClientList } from './ClientList';
 import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { PayingClientsTable } from './PayingClientsTable';
+import type { PayingClientRow } from './PayingClientsTable';
 import type { AdvisorClient } from './useAdvisorClients';
 
-export type ClientGroup = 'unfinished' | 'registered' | 'paying';
+export type ClientGroup = 'unfinished' | 'registered' | 'paying' | 'departed';
 
 const GROUPS: Array<{ id: ClientGroup; label: string; hint: string; icon: typeof UserCheck }> = [
   { id: 'unfinished', label: 'נכנסו ולא נרשמו', hint: 'התחילו להירשם ולא סיימו', icon: UserX },
   { id: 'registered', label: 'רשומים', hint: 'כל מי שפתח חשבון', icon: UserCheck },
   { id: 'paying', label: 'משלמים', hint: 'שילמו על גישה, קישור או ליווי', icon: BadgeCheck },
+  { id: 'departed', label: 'לקוחות שעזבו', hint: 'הסירו את החשבון · רשומות התשלום נשמרו', icon: UserMinus },
 ];
+
+/** לקוחות משלמים שהסירו את החשבון — נשמרו מהם רק רשומות התשלום */
+function useDepartedClients(): { rows: PayingClientRow[]; ready: boolean } {
+  const [rows, setRows] = useState<PayingClientRow[]>([]);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/advisor/departed-clients', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (cancelled || !Array.isArray(body?.clients)) return;
+        setRows(
+          body.clients.map((client: PayingClientRow & { email: string | null }) => ({
+            ...client,
+            email: client.email ?? '',
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return { rows, ready };
+}
 
 /** כמה הרשמות לא הושלמו — לתג שעל הלשונית, בלי לטעון את כל הרשימה מראש */
 function useUnfinishedCount(): number | null {
@@ -34,8 +64,8 @@ function useUnfinishedCount(): number | null {
 }
 
 /**
- * אזור הלקוחות בלוח היועץ: שלוש קבוצות — מי שנכנס ולא השלים הרשמה, הרשומים,
- * והמשלמים — עם תאריכי הרישום, התשלומים ופקיעת המנוי. ליד כל לקוח ששילם
+ * אזור הלקוחות בלוח היועץ: ארבע קבוצות — מי שנכנס ולא השלים הרשמה, הרשומים,
+ * המשלמים, ולקוחות משלמים שהסירו את החשבון — עם תאריכי הרישום, התשלומים ופקיעת המנוי. ליד כל לקוח ששילם
  * מופיע הסימן "שילם", ובחירה בלקוח פותחת את דף הלקוח עם השלבים, סיכום
  * הפעילות ולוח הבקרה שלו.
  */
@@ -58,17 +88,19 @@ export function ClientsArea({
 }) {
   const [group, setGroup] = useState<ClientGroup>('registered');
   const unfinished = useUnfinishedCount();
+  const departed = useDepartedClients();
   const paying = useMemo(() => clients.filter((client) => client.paid), [clients]);
 
   const counts: Record<ClientGroup, number | null> = {
     unfinished,
     registered: ready ? clients.length : null,
     paying: ready ? paying.length : null,
+    departed: departed.ready ? departed.rows.length : null,
   };
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="קבוצות לקוחות">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="tablist" aria-label="קבוצות לקוחות">
         {GROUPS.map((item) => {
           const Icon = item.icon;
           const active = group === item.id;
@@ -91,7 +123,9 @@ export function ClientsArea({
                     ? 'bg-emerald-100 text-emerald-700'
                     : item.id === 'unfinished'
                       ? 'bg-amber-100 text-amber-700'
-                      : 'bg-blue-100 text-blue-700'
+                      : item.id === 'departed'
+                        ? 'bg-slate-100 text-slate-600'
+                        : 'bg-blue-100 text-blue-700'
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -108,6 +142,16 @@ export function ClientsArea({
 
       {group === 'unfinished' ? (
         <UnfinishedSignupsPanel />
+      ) : group === 'departed' ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <PayingClientsTable
+            clients={departed.rows}
+            ready={departed.ready}
+            query={query}
+            onQueryChange={onQueryChange}
+            departed
+          />
+        </div>
       ) : group === 'paying' ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <PayingClientsTable clients={paying} ready={ready} query={query} onQueryChange={onQueryChange} />

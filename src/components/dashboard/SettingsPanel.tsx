@@ -20,6 +20,7 @@ import { NumberField, SegmentedField, TextField } from '@/components/plan/ui';
 import { demoId } from '@/demo/demo-attr';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { passwordProblem } from '@/lib/password-policy';
+import { DeleteAccountSection } from '@/components/dashboard/DeleteAccountSection';
 
 function newLoan(): ProfileLoan {
   return {
@@ -259,6 +260,8 @@ export function SettingsPanel() {
           {error && <span className="text-sm font-bold text-rose-600">{error}</span>}
         </div>
       </div>
+
+      <DeleteAccountSection />
     </div>
   );
 }
