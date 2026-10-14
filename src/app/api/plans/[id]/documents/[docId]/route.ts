@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { deletePlanDocument, planDocumentFailure, updatePlanDocumentMeta } from '@/lib/plan-documents';
+import { DOCUMENTS_LOCKED_MESSAGE, documentsLockedFor } from '@/lib/plan-documents-lock';
+import {
+  deletePlanDocument,
+  planDocumentFailure,
+  updatePlanDocumentMeta,
+} from '@/lib/plan-documents';
 
 interface RouteContext {
   params: Promise<{ id: string; docId: string }>;
@@ -12,8 +17,9 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { docId } = await params;
-  if (!(await deletePlanDocument(userId, docId))) {
+  const { id, docId } = await params;
+  if (await documentsLockedFor(userId, id)) return NextResponse.json({ error: DOCUMENTS_LOCKED_MESSAGE, locked: true }, { status: 402 });
+  if (!(await deletePlanDocument(userId, id, docId))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   return NextResponse.json({ ok: true });
@@ -25,10 +31,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { docId } = await params;
+  const { id, docId } = await params;
   const body = await req.json().catch(() => null);
   try {
-    const document = await updatePlanDocumentMeta(userId, docId, {
+    if (await documentsLockedFor(userId, id)) return NextResponse.json({ error: DOCUMENTS_LOCKED_MESSAGE, locked: true }, { status: 402 });
+    const document = await updatePlanDocumentMeta(userId, id, docId, {
       category: typeof body?.category === 'string' ? body.category : null,
       stage: typeof body?.stage === 'string' ? body.stage : null,
     });

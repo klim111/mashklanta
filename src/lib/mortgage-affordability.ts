@@ -5,7 +5,6 @@ import {
   sumIndividualLoanPayments,
   type BorrowerLoan,
 } from '@/lib/borrower-loans';
-import { INTEREST_RATES } from '@/lib/interest-rates';
 
 export type { BorrowerLoan };
 
@@ -100,6 +99,9 @@ export function getAffordabilityInputs(data: MortgagePlanningUserData) {
   };
 }
 
+/** ריבית ברירת המחדל של הסימולציה (קל"צ), באחוזים — עד שהלקוח מזין ריבית משלו */
+export const AFFORDABILITY_DEFAULT_RATE = 5.1;
+
 export interface AffordabilityResult {
   maxPropertyPrice: number;
   maxLoanAmount: number;
@@ -185,7 +187,7 @@ export interface CalculateMaxPropertyOptions {
   /**
    * Override the annual interest rate used for the simulation, given as a *percentage* (e.g. 4.85 for 4.85%).
    * When omitted (or non-finite / non-positive), falls back to the central קל"צ rate
-   * defined in `src/lib/interest-rates.ts` (`INTEREST_RATES.fixed_unlinked`).
+   * of this tool (`AFFORDABILITY_DEFAULT_RATE`).
    * Typically supplied when the user wants to test a specific bank quote.
    */
   interestRateOverride?: number;
@@ -247,14 +249,14 @@ export function calculateMaxProperty(
 
   // הריבית לחישוב הסימולציה:
   // 1. אם הלקוח הזין ריבית מותאמת אישית (לרוב על-בסיס הצעת בנק) - משתמשים בה.
-  // 2. אחרת - נטענת מקובץ הריביות המרכזי (`INTEREST_RATES.fixed_unlinked`).
+  // 2. אחרת - ריבית ברירת המחדל של הכלי (`AFFORDABILITY_DEFAULT_RATE`).
   const isValidOverride =
     typeof interestRateOverride === 'number' &&
     Number.isFinite(interestRateOverride) &&
     interestRateOverride > 0;
   const annualRatePct = isValidOverride
     ? (interestRateOverride as number)
-    : INTEREST_RATES.fixed_unlinked;
+    : AFFORDABILITY_DEFAULT_RATE;
   const annualRate = annualRatePct / 100;
   const monthlyRate = annualRate / 12;
   const numPayments = Math.round(effectivePeriodYears * 12);

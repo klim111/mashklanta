@@ -21,7 +21,8 @@ import type { PlanDocumentView } from '@/lib/plan-documents';
 import { documentProgress } from '@/lib/document-progress';
 import type { DocumentProgress } from '@/lib/document-progress';
 import { isDemoPlan } from '@/lib/demo-plan';
-import { journeyStageFor } from '@/data/platform/planStages';
+import { planStageMeta } from '@/data/platform/planStages';
+import { flowStages, planFlowOf, planStageNumber } from '@/lib/mortgage-plan';
 import { useClientTasks } from '../tasks/useClientTasks';
 import { planDocumentRequirements } from '@/lib/plan-document-catalog';
 import { DocumentUploadDialog } from './DocumentUploadDialog';
@@ -29,6 +30,7 @@ import { DocumentViewerDialog } from './DocumentViewerDialog';
 import { DocumentBrowser } from './DocumentBrowser';
 import { ScenarioPicker, resolveSelection } from '../stages/signing/ScenarioPicker';
 import { documentsArchiveUrl, usePlanDocuments } from './usePlanDocuments';
+import { DocumentsLockedNotice } from './DocumentsLockedNotice';
 import { demoId } from '@/demo/demo-attr';
 
 /** ההתקדמות של התהליך — נקראת פעם אחת ומשמשת גם את הכפתור וגם את החלון */
@@ -36,11 +38,12 @@ export function useDocumentProgress(planId: string, data: PlanData): {
   progress: DocumentProgress;
   documents: PlanDocumentView[];
   ready: boolean;
+  locked: boolean;
 } {
-  const { documents, ready } = usePlanDocuments(planId);
+  const { documents, ready, locked } = usePlanDocuments(planId);
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
-  return { progress, documents, ready };
+  return { progress, documents, ready, locked };
 }
 
 /** פס התקדמות אחד — לשלב או לכל התהליך */
@@ -123,7 +126,7 @@ export function DocumentVaultDialog({
     }).catch(() => undefined);
   };
 
-  const { documents, ready, error, busyKey, remove, updateMeta } = usePlanDocuments(planId);
+  const { documents, ready, error, locked, busyKey, remove, updateMeta } = usePlanDocuments(planId);
   const { tasks } = useClientTasks({ planId, includeDone: true });
   const progress = useMemo(() => documentProgress(data, documents, tasks), [data, documents, tasks]);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -159,19 +162,23 @@ export function DocumentVaultDialog({
               </span>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-xl font-black text-white">תיק המסמכים שלי</DialogTitle>
+                {!locked && (
                 <p className="mt-0.5 text-sm text-white/60">
                   {progress.overall.done} מתוך {progress.overall.total} מסמכים נאספו · {progress.overall.percent}%
                   מהתהליך
                 </p>
+                )}
               </div>
             </div>
+            {!locked && (
+            <>
             <div className="mt-4">
               <ProgressBar percent={progress.overall.percent} tone="white" />
             </div>
 
-            <ul className="mt-4 grid gap-2 sm:grid-cols-5">
+            <ul className={`mt-4 grid gap-2 ${progress.stages.length > 3 ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
               {progress.stages.map((row, index) => {
-                const journey = journeyStageFor(row.stage);
+                const journey = planStageMeta(row.stage, planFlowOf(data));
                 return (
                   <li
                     key={row.stage}
@@ -190,9 +197,16 @@ export function DocumentVaultDialog({
                 );
               })}
             </ul>
+            </>
+            )}
           </div>
         </div>
 
+        {locked ? (
+          <div className="p-6 md:p-8">
+            <DocumentsLockedNotice planId={planId} />
+          </div>
+        ) : (
         <div className="p-6 md:p-8" {...demoId('vault-list')}>
           {/*
             רשימת המסמכים לפי סוג העסקה: בוחרים כאן, בתוך התיק, את סוג העסקה,
@@ -312,7 +326,9 @@ export function DocumentVaultDialog({
               <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />
               <p className="text-sm font-black text-slate-700">עדיין לא הועלו מסמכים</p>
               <p className="mt-1 text-xs text-slate-500">
-                מסמכי הפרופיל מועלים בשלב 1, האישורים העקרוניים בשלב 3, וכל מסמך אחר — מכאן.
+                {flowStages(planFlowOf(data)).includes('ANALYSIS')
+                  ? `מסמכי הפרופיל מועלים בשלב ${planStageNumber('ANALYSIS', planFlowOf(data))}, האישורים העקרוניים בשלב ${planStageNumber('APPLICATIONS', planFlowOf(data))}, וכל מסמך אחר — מכאן.`
+                  : `האישור מהבנק מועלה בשלב ${planStageNumber('APPLICATIONS', planFlowOf(data))}, וכל מסמך אחר — מכאן.`}
               </p>
             </div>
           ) : (
@@ -322,6 +338,7 @@ export function DocumentVaultDialog({
                 documents={documents}
                 busyKey={busyKey}
                 demo={demo}
+                flow={planFlowOf(data)}
                 onView={setViewing}
                 onRemove={(document) => void remove(document.id, document.key)}
                 onUpdateMeta={(documentId, meta) => void updateMeta(documentId, meta)}
@@ -334,7 +351,8 @@ export function DocumentVaultDialog({
               <Lock className="h-3.5 w-3.5" />
               הקבצים באחסון פרטי — לכם וליועץ שמלווה אתכם בלבד
             </p>
-            {!demo && (
+            {/* במיחזור פנימי אין שלב פרופיל, ולכן גם אין לאן להפנות */}
+            {!demo && flowStages(planFlowOf(data)).includes('ANALYSIS') && (
               <Link
                 href={`/dashboard/plans/${planId}?stage=ANALYSIS`}
                 className="inline-flex items-center gap-1 text-xs font-black text-blue-600 hover:underline"
@@ -345,6 +363,7 @@ export function DocumentVaultDialog({
             )}
           </div>
         </div>
+        )}
 
         <DocumentUploadDialog
           open={uploadOpen}

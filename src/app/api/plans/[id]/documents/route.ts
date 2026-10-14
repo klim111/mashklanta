@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
+import { DOCUMENTS_LOCKED_MESSAGE, documentsLockedFor } from '@/lib/plan-documents-lock';
 import {
   isAllowedDocumentType,
   listPlanDocuments,
@@ -19,6 +20,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
   try {
+    if (await documentsLockedFor(userId, id)) return NextResponse.json({ error: DOCUMENTS_LOCKED_MESSAGE, locked: true }, { status: 402 });
     return NextResponse.json(await listPlanDocuments(userId, id));
   } catch (error) {
     console.error('[plan-documents] list failed', error);
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   }
 
   try {
+    if (await documentsLockedFor(userId, id)) return NextResponse.json({ error: DOCUMENTS_LOCKED_MESSAGE, locked: true }, { status: 402 });
     const document = await recordPlanDocument(userId, id, {
       key,
       name,

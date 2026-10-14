@@ -265,12 +265,33 @@ model PendingRegistration {
   /** hash של עוגיית הדפדפן שממנו נרשמו — אישור מדפדפן אחר דורש את הסיסמה */
   deviceHash        String?
   callbackUrl       String?
+  /**
+   * מה שהלקוח הזין בכלים החינמיים לפני ההרשמה, והשלב שבו עצר בכל כלי
+   * (src/lib/tool-data.ts). עובר לחשבון כשהמייל מאושר.
+   */
+  toolDataJson      Json?
   expires           DateTime
   sendCount         Int       @default(1)
   lastSentAt        DateTime  @default(now())
   createdAt         DateTime  @default(now())
 
   @@index([username])
+  @@index([expires])
+}
+
+/**
+ * מה שאורח הזין בכלים החינמיים, בדרך להתחברות עם גוגל. הדפדפן שולח אותו
+ * לפני היציאה לגוגל, כי הנתונים בדפדפן לא עוברים כשהאתר מעביר לכתובת הרשמית
+ * שלו, וכי קישור האימות של הרשמה חדשה עשוי להיפתח בדפדפן אחר. כשההתחברות
+ * חוזרת, הנתונים עוברים להרשמה הממתינה או לחשבון, והשורה נמחקת.
+ */
+model GuestCarry {
+  /** hash של המזהה שבעוגייה */
+  id           String   @id
+  toolDataJson Json
+  expires      DateTime
+  createdAt    DateTime @default(now())
+
   @@index([expires])
 }
 

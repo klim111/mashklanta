@@ -1,7 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import {
-  PLAN_STAGES,
   answerMeeting,
   meetingAwaits,
   meetingIsLive,
@@ -20,7 +19,8 @@ import type {
   NoteVisibility,
   PlanStageId,
 } from './advisor-crm';
-import type { PlanStageStatus } from './mortgage-plan';
+import { NEW_PLAN_FLOW, flowStages, parseStageData, planFlowOf } from './mortgage-plan';
+import type { PlanFlow, PlanStageStatus } from './mortgage-plan';
 
 /**
  * שכבת הגישה ללוח הבקרה של היועץ.
@@ -635,7 +635,10 @@ export interface ClientProcessView {
   currentStage: PlanStageId;
   progress: number;
   plans: ClientPlanSummary[];
+  /** השלבים של התהליך בסדר שלו — במיחזור הסדר שונה, ובמיחזור פנימי יש רק שלושה */
   stages: ClientStageView[];
+  /** סוג התהליך — כדי שהיועץ יראה את אותם שלבים, שמות ומספרים שהלקוח רואה */
+  flow: PlanFlow;
   advisory: ClientAdvisoryView | null;
 }
 
@@ -693,7 +696,16 @@ export async function getClientProcess(
     listAdvisorMeetings(advisorId, { clientId }),
   ]);
 
-  const stages: ClientStageView[] = PLAN_STAGES.map((stage) => {
+  // סוג התהליך נגזר משלב התמהיל, בדיוק כמו אצל הלקוח
+  const mixRow = active
+    ? await prisma.mortgagePlanStage.findUnique({
+        where: { planId_stage: { planId: active.id, stage: 'MIX' } },
+        select: { dataJson: true },
+      })
+    : null;
+  const flow = mixRow ? planFlowOf({ MIX: parseStageData('MIX', mixRow.dataJson) }) : NEW_PLAN_FLOW;
+
+  const stages: ClientStageView[] = flowStages(flow).map((stage) => {
     const found = byStage.get(stage);
     const status = (found?.status as PlanStageStatus) ?? 'PENDING';
     return {
@@ -722,6 +734,7 @@ export async function getClientProcess(
     progress: active?.progress ?? 0,
     plans,
     stages,
+    flow,
     advisory,
   };
 }

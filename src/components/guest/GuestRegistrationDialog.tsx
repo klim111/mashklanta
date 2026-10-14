@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { collectGuestSnapshot } from '@/components/tool-data/toolData';
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, LayoutDashboard, Loader2, Mail, Sparkles, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -103,6 +104,8 @@ export function GuestRegistrationDialog({
           email: email.trim(),
           password,
           callbackUrl: target,
+          // מה שהוזן בכלים החינמיים נשמר עם ההרשמה ועובר לחשבון
+          toolData: collectGuestSnapshot(),
         }),
       });
       const body = await response.json().catch(() => null);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import { collectGuestSnapshot } from '@/components/tool-data/toolData';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -95,6 +96,8 @@ function RegisterForm() {
           email: formData.email,
           password: formData.password,
           callbackUrl,
+          // מה שהוזן בכלים החינמיים נשמר עם ההרשמה ועובר לחשבון
+          toolData: collectGuestSnapshot(),
         }),
       });
 

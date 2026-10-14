@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
+import { DOCUMENTS_LOCKED_MESSAGE, documentsLockedFor } from '@/lib/plan-documents-lock';
 import { readPlanDocument } from '@/lib/plan-documents';
 
 interface RouteContext {
@@ -18,8 +19,11 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { docId } = await params;
-  const file = await readPlanDocument(userId, docId);
+  const { id, docId } = await params;
+  if (await documentsLockedFor(userId, id)) {
+    return NextResponse.json({ error: DOCUMENTS_LOCKED_MESSAGE, locked: true }, { status: 402 });
+  }
+  const file = await readPlanDocument(userId, id, docId);
   if (!file) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   /* `?download=1` מוריד את הקובץ במקום להציג אותו בדפדפן */
