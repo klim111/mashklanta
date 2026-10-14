@@ -5,6 +5,7 @@ import {
   authorizationDocumentKey,
   authorizationLettersHref,
   authorizationTaskSpec,
+  isAutomaticAuthorizationDue,
   isAuthorizationDocumentKey,
 } from './authorization-letters';
 import { buildCalendarEvents, buildClientTasks, EMPTY_AGENDA_INPUT } from './client-agenda';
@@ -24,12 +25,31 @@ describe('authorization letter keys', () => {
 });
 
 describe('authorizationTaskSpec', () => {
-  it('lands in the approval-in-principle stage three days out at ten', () => {
-    const spec = authorizationTaskSpec('דנה', NOW);
+  it('lands in the approval-in-principle stage with no date', () => {
+    const spec = authorizationTaskSpec('דנה');
     expect(spec.templateKey).toBe(AUTHORIZATION_TASK_KEY);
     expect(spec.stage).toBe('APPLICATIONS');
     expect(spec.details).toContain('היועץ דנה');
-    expect(spec.dueAt).toEqual(new Date(2026, 8, 26, 10, 0, 0));
+    expect(spec).not.toHaveProperty('dueAt');
+  });
+});
+
+describe('isAutomaticAuthorizationDue', () => {
+  const base = { templateKey: AUTHORIZATION_TASK_KEY, createdAt: NOW };
+
+  it('hides the date older tasks got automatically', () => {
+    expect(isAutomaticAuthorizationDue({ ...base, dueAt: new Date(2026, 8, 26, 10, 0, 0) })).toBe(true);
+  });
+
+  it('keeps a date the client picked', () => {
+    expect(isAutomaticAuthorizationDue({ ...base, dueAt: new Date(2026, 8, 27, 18, 30, 0) })).toBe(false);
+    expect(isAutomaticAuthorizationDue({ ...base, dueAt: null })).toBe(false);
+  });
+
+  it('leaves other tasks alone', () => {
+    expect(
+      isAutomaticAuthorizationDue({ ...base, templateKey: 'signing:bank-sign', dueAt: new Date(2026, 8, 26, 10, 0, 0) })
+    ).toBe(false);
   });
 });
 

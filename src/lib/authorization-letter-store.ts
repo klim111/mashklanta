@@ -114,8 +114,7 @@ export type SendAuthorizationResult =
  */
 export async function sendAuthorizationRequest(
   advisorId: string,
-  clientId: string,
-  now = new Date()
+  clientId: string
 ): Promise<SendAuthorizationResult> {
   const client = await clientOf(advisorId, clientId);
   if (!client) return { ok: false, status: 404, error: 'הלקוח לא נמצא' };
@@ -135,7 +134,7 @@ export async function sendAuthorizationRequest(
   });
   if (open) return { ok: true, request: toRequest(open), alreadyOpen: true };
 
-  const spec = authorizationTaskSpec(client.advisor.name, now);
+  const spec = authorizationTaskSpec(client.advisor.name);
   const row = await prisma.clientTask.create({
     data: {
       ownerId: client.userId,
@@ -145,7 +144,6 @@ export async function sendAuthorizationRequest(
       templateKey: spec.templateKey,
       title: spec.title,
       details: spec.details,
-      dueAt: spec.dueAt,
     },
     select: { id: true, status: true, createdAt: true, completedAt: true },
   });

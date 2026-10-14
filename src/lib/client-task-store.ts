@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import type { ClientTaskKind, ClientTaskStatus, ClientTaskView } from './client-tasks';
 import type { PlanStageId } from './mortgage-plan';
+import { isAutomaticAuthorizationDue } from './authorization-letters';
 
 /**
  * שכבת הגישה למשימות המתוכננות של הלקוח.
@@ -39,7 +40,7 @@ function toView(row: TaskRow): ClientTaskView {
     title: row.title,
     details: row.details,
     bank: row.bank,
-    dueAt: row.dueAt?.toISOString() ?? null,
+    dueAt: isAutomaticAuthorizationDue(row) ? null : (row.dueAt?.toISOString() ?? null),
     status: row.status as ClientTaskStatus,
     documentId: row.documentId,
     completedAt: row.completedAt?.toISOString() ?? null,
