@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('./db', () => ({ prisma: {} }));
 
-import { advisorRequestEmailContent } from './advisor-notify';
+import { advisorEventEmailContent, advisorRequestEmailContent } from './advisor-notify';
 import { cleanSourcePath, pageLabel } from './page-labels';
 
 describe('advisor request email', () => {
@@ -23,6 +23,26 @@ describe('advisor request email', () => {
     expect(text).toContain('טלפון: 050-1234567');
     expect(text).toContain('אפשר ביום ראשון?');
     expect(text).not.toContain('ריק:');
+  });
+});
+
+describe('advisor event email', () => {
+  it('links to the client file and drops empty rows', () => {
+    const { subject, html, text } = advisorEventEmailContent(
+      {
+        title: 'לקוח חדש נרשם: דנה <i>כהן</i>',
+        lead: 'דנה פתחה חשבון בפלטפורמה.',
+        details: [['מייל', 'dana@example.com'], ['טלפון', null]],
+        path: '/advisor-dashboard/client/c1?tab=summary',
+        buttonLabel: 'לכרטיס הלקוח',
+      },
+      'https://mashkalanta.com'
+    );
+    expect(subject).toBe('לקוח חדש נרשם: דנה <i>כהן</i>');
+    expect(html).toContain('דנה &lt;i&gt;כהן&lt;/i&gt;');
+    expect(html).toContain('https://mashkalanta.com/advisor-dashboard/client/c1?tab=summary');
+    expect(text).toContain('מייל: dana@example.com');
+    expect(text).not.toContain('טלפון');
   });
 });
 
