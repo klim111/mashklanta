@@ -8,6 +8,7 @@ import { lockedPlanIdsFor } from './mortgage-plans';
 import { canonicalSiteOrigin, publicSiteOrigin } from './auth-url';
 import { clientNoticeEmail, sendEmail } from './email';
 import { parseStageData } from './mortgage-plan';
+import { SITE_CONTACT } from './site-contact';
 import { deleteStoredFiles, readStoredFile, resolveOutgoingFiles } from './conversation-files';
 import {
   MAX_CHAT_LENGTH,
@@ -1049,7 +1050,9 @@ export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' 
   const owner = await mailboxOwner([...event.receivedFor, ...event.to, ...event.cc], domains);
   // מייל לכתובת כללית בדומיין (info@, hello@) — או לכתובת שאינה של אף לקוח
   if (!owner) {
-    const outcome = await forwardGeneralEmail(event, domains);
+    // הדומיין של כתובת הקשר באתר (info@) תמיד מועבר, גם כשלא הוגדר במשתני הסביבה
+    const contactDomain = SITE_CONTACT.email.slice(SITE_CONTACT.email.lastIndexOf('@') + 1);
+    const outcome = await forwardGeneralEmail(event, Array.from(new Set([...domains, contactDomain])));
     return outcome === true ? 'forwarded' : `skipped:${outcome}`;
   }
 
