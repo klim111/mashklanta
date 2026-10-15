@@ -151,7 +151,7 @@ export function ContinueToolsDialog() {
           onClick={close}
           className="mx-auto mt-1 block text-sm font-bold text-slate-500 hover:text-slate-700"
         >
-          לא עכשיו, אמשיך לדאשבורד
+          לא עכשיו, אמשיך לאזור האישי
         </button>
       </DialogContent>
     </Dialog>
