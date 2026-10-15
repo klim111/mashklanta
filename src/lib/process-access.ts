@@ -161,9 +161,37 @@ export interface ProcessAccessInput {
   ownerIsAdvisor: boolean;
   /** בעל התהליך שילם על מנוי חודשי לפני המעבר לתשלום לתהליך */
   ownerHadLegacyAccess: boolean;
+  /**
+   * עד מתי הגישה בתשלום שהיועץ הגדיר לבעל התהליך (src/lib/granted-access.ts).
+   * עד אז כל התהליכים שלו פתוחים, גם בלי תשלום דרך האתר
+   */
+  grantedUntil?: Date | string | null;
 }
 
 export function processAccess(input: ProcessAccessInput, now = new Date()): ProcessAccess {
+  const base = paidProcessAccess(input, now);
+  if (!input.grantedUntil || base.state === 'COMPLETED') return base;
+  const grantedUntil = new Date(input.grantedUntil);
+
+  if (grantedUntil > now) {
+    // גישה פתוחה ללא מועד (יועץ, ליווי, מנוי מהמודל הקודם) או חבילה ארוכה יותר — נשארות
+    if (base.state === 'ACTIVE' && (!base.expiresAt || new Date(base.expiresAt) >= grantedUntil)) return base;
+    return {
+      state: 'ACTIVE',
+      expiresAt: grantedUntil.toISOString(),
+      daysLeft: daysUntil(grantedUntil, now),
+      paid: base.paid,
+      advisoryEndedAt: null,
+    };
+  }
+  // התקופה שהיועץ הגדיר הסתיימה ואין תשלום אחר — הגישה פגה, לא "לא שולם"
+  if (base.state === 'UNPAID') {
+    return { ...base, state: 'EXPIRED', expiresAt: grantedUntil.toISOString(), daysLeft: 0 };
+  }
+  return base;
+}
+
+function paidProcessAccess(input: ProcessAccessInput, now: Date): ProcessAccess {
   const paid = input.payments.reduce((sum, payment) => sum + (payment.amountAgorot ?? 0), 0) / 100;
   const advisoryEndedAt = input.advisoryEndedAt ? new Date(input.advisoryEndedAt).toISOString() : null;
   const open = (state: ProcessAccessState): ProcessAccess => ({

@@ -2,31 +2,33 @@ import { passExpiresAt } from './process-access';
 
 /**
  * מה הלקוח שילם, בעיני היועץ: אם הוא לקוח משלם, מתי שילם ועד מתי הגישה
- * בתשלום פתוחה. ארבעה סוגי תשלום נספרים:
+ * בתשלום פתוחה. חמישה סוגי תשלום נספרים:
  *  - חבילת גישה לחודש (PlatformPayment) — פותחת חודש קלנדרי מיום התשלום
  *  - קישור תשלום שהיועץ יצר (PaymentLink) — שירות חד־פעמי, בלי תאריך תפוגה
  *  - הזמנת ליווי לשלבים ששולמה (AdvisorServiceOrder)
  *  - מנוי חודשי מהמודל הקודם (User.platformAccessAt), כשאין תשלום אחר
+ *  - גישה בתשלום שהיועץ הגדיר לתקופה שבחר (User.paidAccessUntil, src/lib/granted-access.ts)
  *
  * הקובץ טהור בכוונה, כדי שהחישוב ייבדק בבדיקות יחידה ויוצג זהה בשרת ובדפדפן.
  */
 
-export type ClientPaymentKind = 'PLATFORM' | 'LINK' | 'ADVISORY' | 'LEGACY';
+export type ClientPaymentKind = 'PLATFORM' | 'LINK' | 'ADVISORY' | 'LEGACY' | 'GRANT';
 
 export const PAYMENT_KIND_LABELS: Record<ClientPaymentKind, string> = {
   PLATFORM: 'גישה לפלטפורמה לחודש',
   LINK: 'קישור תשלום',
   ADVISORY: 'ליווי יועץ לשלבים',
   LEGACY: 'מנוי חודשי (המודל הקודם)',
+  GRANT: 'גישה שהיועץ הגדיר',
 };
 
 export interface ClientPayment {
   kind: ClientPaymentKind;
   paidAt: string;
-  /** בשקלים. ריק במנוי מהמודל הקודם, שהסכום שלו לא נשמר */
+  /** בשקלים. ריק במנוי מהמודל הקודם, שהסכום שלו לא נשמר, ובגישה שהיועץ הגדיר */
   amount: number | null;
   title: string;
-  /** עד מתי התשלום פותח את הפלטפורמה — רק בחבילת גישה */
+  /** עד מתי התשלום פותח את הפלטפורמה — בחבילת גישה ובגישה שהיועץ הגדיר */
   accessUntil: string | null;
 }
 
@@ -47,6 +49,8 @@ export interface ClientBillingInput {
   linkPayments: ReadonlyArray<{ paidAt: Date | string | null; amountAgorot: number; title: string }>;
   advisoryOrders: ReadonlyArray<{ paidAt: Date | string | null; amount: number }>;
   legacyAccessAt?: Date | string | null;
+  /** הגישה שהיועץ הגדיר — מתי התחילה ועד מתי */
+  grant?: { from: Date | string | null; until: Date | string | null; note?: string | null } | null;
 }
 
 const iso = (at: Date | string) => new Date(at).toISOString();
@@ -102,6 +106,16 @@ export function summarizeClientBilling(input: ClientBillingInput, now = new Date
       amount: null,
       title: PAYMENT_KIND_LABELS.LEGACY,
       accessUntil: passExpiresAt(input.legacyAccessAt).toISOString(),
+    });
+  }
+
+  if (input.grant?.until) {
+    payments.push({
+      kind: 'GRANT',
+      paidAt: iso(input.grant.from ?? input.grant.until),
+      amount: null,
+      title: input.grant.note ? `${PAYMENT_KIND_LABELS.GRANT} · ${input.grant.note}` : PAYMENT_KIND_LABELS.GRANT,
+      accessUntil: iso(input.grant.until),
     });
   }
 

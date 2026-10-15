@@ -41,7 +41,17 @@ export type DeleteAccountResult = { ok: true } | { ok: false; status: number; er
 export async function deleteClientAccount(userId: string): Promise<DeleteAccountResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, role: true, createdAt: true, platformAccessAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      platformAccessAt: true,
+      paidAccessFrom: true,
+      paidAccessUntil: true,
+      paidAccessNote: true,
+    },
   });
   if (!user) return { ok: false, status: 404, error: 'החשבון לא נמצא' };
   if (user.role !== 'CLIENT') return { ok: false, status: 403, error: 'אפשר להסיר מכאן רק חשבון לקוח' };
@@ -87,7 +97,12 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
     id: card?.id ?? userId,
     userId,
     email: card?.email ?? email ?? '',
-    user: { platformAccessAt: user.platformAccessAt },
+    user: {
+      platformAccessAt: user.platformAccessAt,
+      paidAccessFrom: user.paidAccessFrom,
+      paidAccessUntil: user.paidAccessUntil,
+      paidAccessNote: user.paidAccessNote,
+    },
   };
   const billing = (await clientBillingSummaries([subject])).get(subject.id);
 

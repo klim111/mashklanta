@@ -127,7 +127,12 @@ interface BillingSubject {
   id: string;
   userId: string;
   email: string;
-  user: { platformAccessAt: Date | null } | null;
+  user: {
+    platformAccessAt: Date | null;
+    paidAccessFrom?: Date | null;
+    paidAccessUntil?: Date | null;
+    paidAccessNote?: string | null;
+  } | null;
 }
 
 /**
@@ -183,6 +188,13 @@ export async function clientBillingSummaries(
               .filter((order) => order.ownerId === subject.userId)
               .map((order) => ({ paidAt: order.paidAt ?? order.updatedAt, amount: order.amount })),
             legacyAccessAt: subject.user?.platformAccessAt ?? null,
+            grant: subject.user?.paidAccessUntil
+              ? {
+                  from: subject.user.paidAccessFrom ?? null,
+                  until: subject.user.paidAccessUntil,
+                  note: subject.user.paidAccessNote ?? null,
+                }
+              : null,
           },
           now
         )
@@ -203,7 +215,15 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
       where: { advisorId },
       orderBy: { updatedAt: 'desc' },
       include: {
-        user: { select: { createdAt: true, platformAccessAt: true } },
+        user: {
+          select: {
+            createdAt: true,
+            platformAccessAt: true,
+            paidAccessFrom: true,
+            paidAccessUntil: true,
+            paidAccessNote: true,
+          },
+        },
         _count: { select: { mixes: true } },
         documents: { select: { status: true, required: true } },
         plans: {

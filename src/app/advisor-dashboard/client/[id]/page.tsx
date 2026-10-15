@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BadgeCheck,
+  CreditCard,
   LayoutDashboard,
   ListOrdered,
   Mail,
@@ -31,6 +32,7 @@ import { useClientDetail } from '@/components/advisor/useClientDetail';
 import { useClientActivity } from '@/components/advisor/useClientActivity';
 import { ClientActivitySummary } from '@/components/advisor/ClientActivitySummary';
 import { ClientControlBoard } from '@/components/advisor/ClientControlBoard';
+import { ClientPaymentSettings } from '@/components/advisor/ClientPaymentSettings';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 import { VideoCallPicker } from '@/components/meeting-call/VideoCallPicker';
 import {
@@ -40,12 +42,13 @@ import {
   useMeetings,
 } from '@/components/advisor/useAdvisorCrm';
 
-type ClientTab = 'stages' | 'summary' | 'board';
+type ClientTab = 'stages' | 'summary' | 'board' | 'payment';
 
 const CLIENT_TABS: Array<{ id: ClientTab; label: string; icon: typeof Activity }> = [
   { id: 'stages', label: 'שלבים', icon: ListOrdered },
   { id: 'summary', label: 'סיכום פעילות', icon: Activity },
   { id: 'board', label: 'לוח בקרה', icon: LayoutDashboard },
+  { id: 'payment', label: 'תשלום והרשאה', icon: CreditCard },
 ];
 
 /**
@@ -55,9 +58,10 @@ const CLIENT_TABS: Array<{ id: ClientTab; label: string; icon: typeof Activity }
  * ומתחתיו מסך ראשי שמתחלף לפי השלב שנבחר ופותח את השדות והכלים שלו. השורה
  * שמתחת למסך הראשי — תיק המסמכים, הפגישות והמשימות של הלקוח — נשארת קבועה.
  *
- * לצד השלבים יש עוד שני טאבים: "סיכום פעילות" — מתי נרשם, מתי שילם, עד מתי
+ * לצד השלבים יש עוד שלושה טאבים: "סיכום פעילות" — מתי נרשם, מתי שילם, עד מתי
  * הגישה בתשלום ושליחת מייל — ו"לוח בקרה" עם השיחות שנקבעו, לוח שנה וההודעות
- * ממנו. `?tab=summary` או `?tab=board` פותחים את הדף ישר בטאב.
+ * ממנו. "תשלום והרשאה" — גבייה ב-HYP, וסימון הלקוח כמשלם לתקופה שהיועץ בוחר.
+ * `?tab=summary`, `?tab=board` או `?tab=payment` פותחים את הדף ישר בטאב.
  */
 export default function AdvisorClientPage() {
   const params = useParams<{ id: string }>();
@@ -273,6 +277,14 @@ export default function AdvisorClientPage() {
             onScheduleMeeting={() => openMeeting(null)}
             onCancelMeeting={(meetingId) => void meetings.cancel(meetingId)}
             onAnswerMeeting={meetings.answer}
+          />
+        )}
+
+        {tab === 'payment' && (
+          <ClientPaymentSettings
+            clientId={clientId}
+            billing={activity.activity?.billing}
+            onChanged={() => void activity.refresh()}
           />
         )}
 
