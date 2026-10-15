@@ -70,7 +70,9 @@ export async function GET() {
     openProcesses: openPlans.length,
     openPlans,
     canOpenMore,
-    paidClient,
+    paidClient: false,
   };
+  // כל מה שפותח תהליך חדש (תשלום פנוי, ובהמשך גם גישה שהיועץ הגדיר) פותח גם את תיק המסמכים ובונה התמהילים
+  view.paidClient = view.active || paidClient;
   return NextResponse.json(view);
 }
