@@ -3,7 +3,12 @@ import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getPricing } from '@/lib/pricing-store';
 import { passDays, passExpiresAt } from '@/lib/process-access';
-import { canOpenAnotherPlan, listOpenSelfServicePlans, newProcessPassFor } from '@/lib/mortgage-plans';
+import {
+  canOpenAnotherPlan,
+  clientHasPaidAccess,
+  listOpenSelfServicePlans,
+  newProcessPassFor,
+} from '@/lib/mortgage-plans';
 import type { OpenProcessSummary } from '@/lib/mortgage-plans';
 
 export interface PlatformAccessView {
@@ -27,6 +32,11 @@ export interface PlatformAccessView {
    * וצריך לשלם על תהליך נוסף או למחוק את הקודם
    */
   canOpenMore: boolean;
+  /**
+   * הלקוח כבר רכש גישה — תהליך פתוח ששולם, ליווי, או תשלום פנוי. בלי זה תיק
+   * המסמכים ובונה התמהילים נעולים
+   */
+  paidClient: boolean;
 }
 
 /** האם למשתמש המחובר יש גישה פנויה לפתיחת תהליך משכנתא */
@@ -41,11 +51,12 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const [pass, openPlans, canOpenMore, pricing] = await Promise.all([
+  const [pass, openPlans, canOpenMore, pricing, paidClient] = await Promise.all([
     newProcessPassFor(userId),
     listOpenSelfServicePlans(userId),
     canOpenAnotherPlan(userId),
     getPricing(),
+    clientHasPaidAccess(userId),
   ]);
 
   // ליועץ הכלים פתוחים תמיד — הוא הצד שמפעיל אותם
@@ -59,6 +70,7 @@ export async function GET() {
     openProcesses: openPlans.length,
     openPlans,
     canOpenMore,
+    paidClient,
   };
   return NextResponse.json(view);
 }

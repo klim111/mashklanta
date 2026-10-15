@@ -8,6 +8,7 @@ import {
   Calculator,
   CreditCard,
   LineChart,
+  Lock,
   Wallet,
   RefreshCw,
   Search,
@@ -15,6 +16,8 @@ import {
 } from 'lucide-react';
 import { demoId } from '@/demo/demo-attr';
 import type { DashboardSection } from '@/lib/client-agenda';
+import { PAID_FEATURE_HINT } from '@/components/access/PaidFeatureLock';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
 type HubTool = {
   id: string;
@@ -27,6 +30,8 @@ type HubTool = {
   gradient: string;
   description: string;
   benefits: string[];
+  /** נפתח רק עם רכישת החבילה — ללקוח שעוד לא רכש מוצג בנפרד, מתחת לכלים החינמיים */
+  paid?: boolean;
 };
 
 const tools: HubTool[] = [
@@ -128,6 +133,7 @@ const tools: HubTool[] = [
     href: '/dashboard/mix-planner',
     title: 'כלי תכנון משכנתאות',
     tag: 'תמהילים ללא שיוך לנכס',
+    paid: true,
     icon: Calculator,
     gradient: 'from-cyan-500 to-blue-600',
     description:
@@ -141,6 +147,12 @@ const tools: HubTool[] = [
 ];
 
 export function ToolsHub({ onSection }: { onSection?: (section: DashboardSection) => void } = {}) {
+  const { access, ready } = usePlatformAccess();
+  // בונה התמהילים אינו כלי חינמי: עד רכישת החבילה הוא יורד מרשימת הכלים, ומוצג בנפרד עם מנעול
+  const locked = ready && !access.paidClient;
+  const shown = locked ? tools.filter((tool) => !tool.paid) : tools;
+  const lockedTools = locked ? tools.filter((tool) => tool.paid) : [];
+
   return (
     <div dir="rtl" className="space-y-6">
       <div className="relative overflow-hidden rounded-3xl bg-brand-dark p-6 shadow-xl md:p-8">
@@ -162,7 +174,7 @@ export function ToolsHub({ onSection }: { onSection?: (section: DashboardSection
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {tools.map((tool, index) => {
+        {shown.map((tool, index) => {
           const Icon = tool.icon;
           return (
             <motion.article
@@ -207,6 +219,40 @@ export function ToolsHub({ onSection }: { onSection?: (section: DashboardSection
           );
         })}
       </div>
+
+      {lockedTools.length > 0 && (
+        <section>
+          <h3 className="mb-3 flex items-center gap-1.5 text-subtitle font-black text-slate-900">
+            <Lock className="h-4 w-4 text-slate-500" />
+            נפתחים עם רכישת החבילה
+          </h3>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {lockedTools.map((tool) => {
+              const Icon = tool.icon;
+              return (
+                <article
+                  key={tool.id}
+                  className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-start md:p-6"
+                >
+                  <Link
+                    {...demoId(`dash-tool-${tool.id}`)}
+                    href={tool.href}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-slate-700 px-5 py-4 text-center text-sm font-black leading-snug text-white shadow-md transition-colors hover:bg-slate-800 sm:w-auto sm:min-w-[11.5rem]"
+                  >
+                    <Icon className="h-5 w-5" />
+                    {tool.title}
+                    <Lock className="h-4 w-4 opacity-80" />
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-2xs font-black tracking-wide text-slate-500">{PAID_FEATURE_HINT}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">{tool.description}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

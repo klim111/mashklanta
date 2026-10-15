@@ -18,6 +18,7 @@ import {
   Layers,
   ListChecks,
   Loader2,
+  Lock,
   PhoneCall,
   MapPin,
   Plus,
@@ -39,6 +40,9 @@ import { RateValidityDialog } from '@/components/plan/RateValidity';
 import { leadRateValidity, rateValidity } from '@/lib/rate-validity';
 import type { RateValidityRow } from '@/lib/rate-validity';
 import { AdvisorCta } from './AdvisorCta';
+import { ContactReceivedPanel, FreeToolsRow } from './ContactReceived';
+import { useOpenAdvisorLead } from '@/components/consult/useOpenAdvisorLead';
+import { PAID_FEATURE_HINT } from '@/components/access/PaidFeatureLock';
 import { MiniCalendar, eventTone } from './ClientCalendar';
 import { DeletePlanDialog } from './DeletePlanDialog';
 import { PlanMixDetail, planMixOf } from './PlanMixDetail';
@@ -123,6 +127,10 @@ export function OverviewSection({
   const cashFlow = useCashFlow(active[0] ?? null, plansState.ready);
   /** הקישור להרשמה בתשלום מוצג רק למי שעדיין אין לו גישה פעילה */
   const { access, ready: accessReady } = usePlatformAccess();
+  /** תיק המסמכים ובונה התמהילים נפתחים עם רכישת החבילה — עד אז הקישורים אומרים זאת */
+  const featureLocked = accessReady && !access.paidClient;
+  /** הלקוח כבר פנה ליועץ (מכל מקום): במקום "מה תרצו לעשות?" והפנייה ליועץ — הפנייה בטיפול והכלים החינמיים */
+  const { ready: leadReady, contacted } = useOpenAdvisorLead();
   const urgent = tasks.filter((task) => task.tone === 'urgent').length;
   const lead = summaries[0] ?? null;
   /** שלב האישור העקרוני של התהליך הפעיל הראשון — אם יש כזה ושלב ההגשה קיים בו */
@@ -332,7 +340,12 @@ export function OverviewSection({
           label="תמהילים שמורים"
           badge={requests.length}
         />
-        <QuickAction href="/dashboard/mix-planner" icon={<Calculator className="h-4 w-4" />} label="בניית תמהיל" />
+        <QuickAction
+          href="/dashboard/mix-planner"
+          icon={<Calculator className="h-4 w-4" />}
+          label="בניית תמהיל"
+          locked={featureLocked}
+        />
         <QuickAction
           href="/mortgage-planning?flow=affordability"
           icon={<Search className="h-4 w-4" />}
@@ -342,6 +355,7 @@ export function OverviewSection({
           onClick={() => onNavigate('documents')}
           icon={<FolderOpen className="h-4 w-4" />}
           label="תיק המסמכים שלי"
+          locked={featureLocked}
         />
         <QuickAction
           onClick={() => {
@@ -430,7 +444,7 @@ export function OverviewSection({
             <Calculator className="h-4 w-4" />
             לכלים המהירים
           </button>
-          {!access.active && accessReady && (
+          {!access.paidClient && accessReady && (
             <Link
               href="/dashboard/checkout"
               className="inline-flex items-center gap-1.5 rounded-xl border-2 border-blue-200 bg-white px-4 py-2 text-button font-black text-blue-700 transition-colors hover:border-blue-400"
@@ -497,7 +511,17 @@ export function OverviewSection({
             /*
               עדיין אין משכנתא או מיחזור פעילים — נקודת ההתחלה יושבת כאן, בתוך
               הכרטיס עצמו: "מה תרצו לעשות?" עם כל הכפתורים והפעולות שמתחתיו.
+              מי שכבר פנה ליועץ רואה כאן שהפנייה בטיפול, והכלים החינמיים בינתיים.
             */
+            !leadReady ? null : contacted ? (
+              <ContactReceivedPanel
+                paidClient={access.paidClient}
+                onStartSelf={() => {
+                  setAddGoal(null);
+                  setAddOpen(true);
+                }}
+              />
+            ) : (
             <MortgageEntry
               variant="hero"
               onStart={startPlan}
@@ -505,6 +529,7 @@ export function OverviewSection({
               hasPlans={completed.length > 0}
               deletePlan={plansState.remove}
             />
+            )
           ) : (
             <div className="space-y-3">
               {(plansOpen ? summaries : summaries.slice(0, 1)).map((summary, index) => (
@@ -562,6 +587,7 @@ export function OverviewSection({
             עכשיו — הערה אחת, והשאר ב"ראה עוד".
           */}
           {summaries.length === 0 ? (
+            !contacted && (
             <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
               <button
                 type="button"
@@ -575,6 +601,7 @@ export function OverviewSection({
                 משכנתא נוספת — מה תרצו לעשות?
               </button>
             </div>
+            )
           ) : (
             <PlanRecommendations
               plans={active}
@@ -604,7 +631,8 @@ export function OverviewSection({
       {/* מה שהוזן בכלי המיחזור, ההיתכנות וההלוואות — כולל לפני ההרשמה */}
       <SavedToolsCard />
 
-      <AdvisorCta variant="row" />
+      {/* מי שכבר פנה ליועץ לא מתבקש לפנות שוב — במקום זה, הכלים החינמיים */}
+      {leadReady && (contacted ? <FreeToolsRow /> : <AdvisorCta variant="row" />)}
       <MortgageEntry
         variant="dialog"
         open={addOpen}
@@ -801,12 +829,15 @@ function QuickAction({
   icon,
   label,
   badge,
+  locked = false,
 }: {
   href?: string;
   onClick?: () => void;
   icon: ReactNode;
   label: string;
   badge?: number;
+  /** נפתח עם רכישת החבילה — הקישור נשאר, ובמקום הכלי מוסבר מתי ייפתח */
+  locked?: boolean;
 }) {
   const className =
     'flex min-h-[60px] items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right text-info font-bold text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50/40';
@@ -815,7 +846,15 @@ function QuickAction({
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
         {icon}
       </span>
-      <span className="min-w-0 flex-1 leading-snug">{label}</span>
+      <span className="min-w-0 flex-1 leading-snug">
+        {label}
+        {locked && (
+          <span className="mt-0.5 flex items-center gap-1 text-xs font-bold text-slate-500">
+            <Lock className="h-3 w-3" />
+            {PAID_FEATURE_HINT}
+          </span>
+        )}
+      </span>
       {typeof badge === 'number' && badge > 0 && (
         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-black text-amber-800">{badge}</span>
       )}

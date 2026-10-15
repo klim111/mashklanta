@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { AlertCircle, CheckCircle2, Loader2, MessageCircle, Send } from 'lucide-react';
 import { LeadFileUpload, useLeadFiles } from '@/components/consult/LeadFileUpload';
+import { ALREADY_CONTACTED_MESSAGE } from '@/components/consult/AlreadyContactedDialog';
+import { useOpenAdvisorLead } from '@/components/consult/useOpenAdvisorLead';
 import NavBar from '@/components/ui/navbar';
 import Footer from '@/components/ui/footer';
 import { ReturnLink } from '@/components/navigation/ReturnLink';
@@ -44,6 +46,7 @@ function ConsultForm() {
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const leadFiles = useLeadFiles();
+  const { contacted } = useOpenAdvisorLead();
 
   // הגיעו מכפתור של מסלול בעמוד התמחור — שם המסלול נכנס להערה ליועץ
   useEffect(() => {
@@ -134,6 +137,25 @@ function ConsultForm() {
           className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-cta text-white shadow-lg transition-colors hover:bg-blue-700 sm:w-auto"
         >
           האזור האישי
+        </Link>
+      </div>
+    );
+  }
+
+  // לקוח רשום שכבר פנה ליועץ: הפנייה הקודמת בטיפול, ואין טופס נוסף
+  if (contacted) {
+    return (
+      <div className="rounded-3xl border border-emerald-200 bg-white p-6 text-center shadow-xl sm:p-10" role="status">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+        <h1 className="mt-4 text-title font-black text-slate-900">{ALREADY_CONTACTED_MESSAGE}</h1>
+        <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-slate-600">
+          בינתיים אפשר להמשיך באזור האישי וליהנות מהכלים החינמיים של משכלנתא.
+        </p>
+        <Link
+          href="/dashboard"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-cta text-white shadow-lg transition-colors hover:bg-blue-700 sm:w-auto"
+        >
+          לאזור האישי
         </Link>
       </div>
     );

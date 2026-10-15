@@ -4,11 +4,14 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { PaidFeatureNotice } from '@/components/access/PaidFeatureLock';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
 function MixPlannerBody() {
   const searchParams = useSearchParams();
   const mixKey = searchParams.get('mix');
+  const { access, ready } = usePlatformAccess();
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
@@ -24,11 +27,22 @@ function MixPlannerBody() {
           <p className="text-sm font-black text-slate-900">כלי תכנון משכנתאות · תמהילים ללא שיוך לנכס</p>
         </div>
       </div>
-      <MortgageWorkspace
-        soloMixKey={mixKey || undefined}
-        activeMixKey={mixKey}
-        hideSiteLinks
-      />
+      {/* הכלי פתוח ללקוח שרכש חבילה; לאחרים הקישורים נשארים ומסבירים מתי ייפתח */}
+      {!ready ? (
+        <div className="flex justify-center py-24">
+          <Loader2 className="h-7 w-7 animate-spin text-slate-300" />
+        </div>
+      ) : access.paidClient ? (
+        <MortgageWorkspace
+          soloMixKey={mixKey || undefined}
+          activeMixKey={mixKey}
+          hideSiteLinks
+        />
+      ) : (
+        <div className="mx-auto max-w-2xl px-4 py-10 md:py-16">
+          <PaidFeatureNotice feature="mix" />
+        </div>
+      )}
     </div>
   );
 }

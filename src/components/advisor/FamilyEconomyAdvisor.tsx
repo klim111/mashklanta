@@ -21,6 +21,8 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
 import { saveConsultPrefill } from '@/lib/consult-reasons';
+import { AlreadyContactedDialog, useAlreadyContacted } from '@/components/consult/AlreadyContactedDialog';
+import { CONTACTED_ADVISOR_EVENT } from '@/lib/contacted-advisor';
 
 /**
  * הפנייה ליועץ כלכלת המשפחה של משכלנתא — אותה פנייה מכל הכלים הפתוחים.
@@ -115,6 +117,9 @@ export function FamilyEconomyLeadDialog({
     setBusy(false);
   }, [open, session?.user?.name, session?.user?.email]);
 
+  // לקוח שכבר פנה ליועץ מקבל הודעה שהפנייה התקבלה, במקום טופס נוסף
+  const alreadyContacted = useAlreadyContacted(open);
+
   const digits = phone.replace(/\D/g, '');
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   // אורח עובר אחרי השליחה להרשמה, והמייל מקשר את הפנייה לחשבון שיפתח
@@ -161,6 +166,8 @@ export function FamilyEconomyLeadDialog({
         router.push('/auth/register?from=consult');
         return;
       }
+      // האזור האישי מציג מיד שהפנייה בטיפול
+      window.dispatchEvent(new Event(CONTACTED_ADVISOR_EVENT));
       setSent(true);
       setNote('');
     } catch {
@@ -169,6 +176,8 @@ export function FamilyEconomyLeadDialog({
       setBusy(false);
     }
   };
+
+  if (alreadyContacted) return <AlreadyContactedDialog open={open} onOpenChange={onOpenChange} />;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

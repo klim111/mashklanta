@@ -15,10 +15,10 @@ import type { LeadTopic } from '@/lib/advisor-lead-topics';
 import type { RequestKind } from '@/lib/advisor-requests';
 import { useClientConversation } from '@/components/conversation/ClientChatDock';
 import { RequestKindPicker, currentPagePath } from './RequestKindPicker';
+import { AlreadyContactedDialog, useAlreadyContacted } from '@/components/consult/AlreadyContactedDialog';
+import { CONTACTED_ADVISOR_EVENT, CONTACTED_ADVISOR_KEY } from '@/lib/contacted-advisor';
 
-/** סימון מקומי שנשלחה פנייה ליועץ — כדי שהדאשבורד לא יציג יותר מסך פתיחה */
-export const CONTACTED_ADVISOR_KEY = 'mashklanta:contacted-advisor';
-export const CONTACTED_ADVISOR_EVENT = 'mashklanta:contacted-advisor-changed';
+export { CONTACTED_ADVISOR_EVENT, CONTACTED_ADVISOR_KEY };
 
 /** הכפתור בטופס של לקוח רשום — לפי מה שהכפתור שפתח אותו מבקש */
 export const MEMBER_SUBMIT_LABELS: Record<RequestKind, string> = {
@@ -74,6 +74,9 @@ export function AdvisorLeadDialog({
     setError(null);
   }, [open, session?.user?.name, session?.user?.email, requestKind]);
 
+  // לקוח שכבר פנה ליועץ מקבל הודעה שהפנייה התקבלה, במקום טופס נוסף
+  const alreadyContacted = useAlreadyContacted(open);
+
   const ready = member || (name.trim().length > 1 && /\d{6,}/.test(phone.replace(/\D/g, '')) && email.includes('@'));
 
   const submit = async () => {
@@ -105,6 +108,8 @@ export function AdvisorLeadDialog({
       setSending(false);
     }
   };
+
+  if (alreadyContacted) return <AlreadyContactedDialog open={open} onOpenChange={onOpenChange} />;
 
   const field =
     'w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:font-normal placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10';

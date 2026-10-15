@@ -6,7 +6,7 @@ import { ArrowLeft, BookOpen, Calculator, CreditCard, Wallet, RefreshCw, Sparkle
 import type { LucideIcon } from 'lucide-react';
 import { demoId } from '@/demo/demo-attr';
 
-const FREE_TOOLS: Array<{
+export const FREE_TOOLS: Array<{
   id: string;
   href: string;
   title: string;

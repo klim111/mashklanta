@@ -23,6 +23,8 @@ export interface PlatformAccess {
    * תהליך נוסף או למחוק את הקודם
    */
   canOpenMore: boolean;
+  /** הלקוח כבר רכש גישה — בלי זה תיק המסמכים ובונה התמהילים נעולים */
+  paidClient: boolean;
 }
 
 const NO_ACCESS: PlatformAccess = {
@@ -35,6 +37,7 @@ const NO_ACCESS: PlatformAccess = {
   openProcesses: 0,
   openPlans: [],
   canOpenMore: true,
+  paidClient: false,
 };
 
 /**
@@ -64,6 +67,7 @@ export function usePlatformAccess() {
         openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
         openPlans: Array.isArray(body.openPlans) ? body.openPlans : [],
         canOpenMore: body.canOpenMore !== false,
+        paidClient: body.paidClient === true,
       };
     } catch {
       // בלי תשובה מהשרת — כאילו לא שולם, והמסך שולח לתשלום

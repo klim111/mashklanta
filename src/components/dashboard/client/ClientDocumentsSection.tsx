@@ -13,6 +13,8 @@ import { planFlowOf } from '@/lib/mortgage-plan';
 import type { DocumentsMode, PlanFlow } from '@/lib/mortgage-plan';
 import type { ClientDashboardData } from './useClientDashboard';
 import { DashCard } from './ui';
+import { PaidFeatureNotice } from '@/components/access/PaidFeatureLock';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
 /**
  * תיק המסמכים באזור האישי.
@@ -24,6 +26,7 @@ import { DashCard } from './ui';
 export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) {
   const plans = data.plansState.plans.filter((plan) => plan.status !== 'ARCHIVED');
   const [planId, setPlanId] = useState<string | null>(null);
+  const { access, ready: accessReady } = usePlatformAccess();
 
   useEffect(() => {
     if (plans.length === 0) {
@@ -33,12 +36,17 @@ export function ClientDocumentsSection({ data }: { data: ClientDashboardData }) 
     setPlanId((current) => (current && plans.some((plan) => plan.id === current) ? current : plans[0].id));
   }, [plans]);
 
-  if (!data.plansState.ready) {
+  if (!data.plansState.ready || (plans.length === 0 && !accessReady)) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-7 w-7 animate-spin text-slate-300" />
       </div>
     );
+  }
+
+  // עוד לא נרכשה חבילה — התיק נפתח איתה. בתהליך שנפתח בלי תשלום התיק עצמו מציג את אותו הסבר
+  if (plans.length === 0 && !access.paidClient) {
+    return <PaidFeatureNotice feature="documents" />;
   }
 
   if (plans.length === 0) {

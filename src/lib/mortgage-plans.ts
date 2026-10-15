@@ -416,6 +416,28 @@ export async function lockedPlanIdsFor(userId: string): Promise<Set<string>> {
   return new Set(rows.filter((row) => processLocked(accessOf(row))).map((row) => row.id));
 }
 
+/**
+ * האם הלקוח כבר רכש גישה: יש לו תהליך שהכלים בו פתוחים (תשלום על התהליך, ליווי
+ * ששולם או יועץ שמלווה אותו), תשלום פנוי לתהליך חדש, או כרטיס ליווי אצל יועץ
+ * עוד לפני שנפתח תהליך. לפי זה נפתחים תיק המסמכים ובונה התמהילים גם מחוץ
+ * לתהליך. הבדיקות עצמן הן אותן בדיקות של כל תהליך (`accessOf`), כדי שכל מה
+ * שפותח תהליך — גם סימון של היועץ — יפתח גם אותם.
+ */
+export async function clientHasPaidAccess(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) return false;
+  if (user.role === 'ADVISOR') return true;
+  if (await newProcessPassFor(userId)) return true;
+  const rows = await prisma.mortgagePlan.findMany({
+    where: { ownerId: userId, status: { not: 'ARCHIVED' } },
+    select: planSelect,
+  });
+  if (rows.some((row) => accessOf(row).state === 'ACTIVE')) return true;
+  // כרטיס שנפתח אוטומטית בהרשמה אינו ליווי
+  const accompanied = await prisma.client.findFirst({ where: { userId, autoLinked: false }, select: { id: true } });
+  return accompanied !== null;
+}
+
 function money(value: number | null): string {
   return value != null && Number.isFinite(value) ? String(Math.round(value)) : '';
 }

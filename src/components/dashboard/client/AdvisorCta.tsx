@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { HeartHandshake, Sparkles } from 'lucide-react';
+import { CheckCircle2, HeartHandshake, Sparkles } from 'lucide-react';
 import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
+import { useOpenAdvisorLead } from '@/components/consult/useOpenAdvisorLead';
 
 /**
  * "פנו ליועץ משכלנתא לבקשת ליווי" — נגיש מהדאשבורד עצמו, בלי להיכנס לשלב.
@@ -12,10 +13,23 @@ import { AdvisorLeadDialog } from '@/components/plan/advisor/AdvisorLeadDialog';
  */
 export function AdvisorCta({ variant }: { variant: 'sidebar' | 'banner' | 'row' }) {
   const [open, setOpen] = useState(false);
+  const { contacted } = useOpenAdvisorLead();
 
   const dialog = (
     <AdvisorLeadDialog open={open} onOpenChange={setOpen} topic="FULL_SERVICE" />
   );
+
+  // מי שכבר פנה ליועץ לא מתבקש לפנות שוב: בתפריט הצד — שהפנייה בטיפול
+  if (variant === 'sidebar' && contacted) {
+    return (
+      <div className="flex items-start gap-2.5 rounded-2xl bg-white/10 p-3 text-right" role="status">
+        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+        <span className="text-sm font-bold leading-snug text-white/85">
+          הפנייה שלכם ליועץ התקבלה ונמצאת בטיפול
+        </span>
+      </div>
+    );
+  }
 
   if (variant === 'sidebar') {
     return (

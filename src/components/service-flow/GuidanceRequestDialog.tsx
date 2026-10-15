@@ -13,6 +13,7 @@ import {
 } from '@/components/plan/advisor/AdvisorLeadDialog';
 import { RequestKindPicker, currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
 import type { RequestKind } from '@/lib/advisor-requests';
+import { AlreadyContactedDialog, useAlreadyContacted } from '@/components/consult/AlreadyContactedDialog';
 
 export interface GuidanceRequestDialogProps {
   open: boolean;
@@ -65,6 +66,9 @@ export function GuidanceRequestDialog({
     setBusy(false);
   }, [open]);
 
+  // לקוח שכבר פנה ליועץ מקבל הודעה שהפנייה התקבלה, במקום טופס נוסף
+  const alreadyContacted = useAlreadyContacted(open);
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
@@ -103,6 +107,8 @@ export function GuidanceRequestDialog({
       setBusy(false);
     }
   };
+
+  if (alreadyContacted) return <AlreadyContactedDialog open={open} onOpenChange={onOpenChange} />;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -236,7 +236,7 @@ export default function LearnPage() {
               מוכנים ליישם את מה שלמדתם?
             </h2>
             <p className="text-slate-100 mb-8 text-lg leading-relaxed">
-              השתמשו בכלים האינטראקטיביים שלנו לבניית תמהיל ותכנון משכנתא.
+              השתמשו בכלים החינמיים שלנו לתכנון ולבדיקה מקדימה של המשכנתא.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button
@@ -248,13 +248,6 @@ export default function LearnPage() {
                   הכלים החינמיים
                   <ChevronLeft className="w-5 h-5 mr-2" />
                 </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                className="border border-white/40 bg-white/15 px-8 text-base font-bold text-white shadow-none hover:bg-white/25 hover:text-white"
-              >
-                <Link href="/dashboard/mix-planner">בניית תמהיל</Link>
               </Button>
             </div>
           </motion.div>

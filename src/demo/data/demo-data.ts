@@ -227,5 +227,6 @@ export function demoPlatformAccess() {
     price: PLATFORM_PROCESS_PRICE,
     accessDays: passDays(new Date()),
     passExpiresAt: daysFromNow(15),
+    paidClient: true,
   };
 }
