@@ -1044,11 +1044,14 @@ const MAX_HELD_PER_DAY = 30;
  * של Resend, כי ה-webhook מחזיק רק את הכותרות. מייל משולח שהשיחה לא מכירה
  * נשמר כממתין לאישור הלקוח. מייל לכתובת כללית מועבר, ומייל שכבר נשמר מדולג.
  */
-export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' | 'held' | 'forwarded' | 'skipped'> {
+export async function ingestInboundEmail(event: InboundEvent): Promise<'stored' | 'held' | 'forwarded' | 'skipped' | `skipped:${string}`> {
   const domains = inboundDomains();
   const owner = await mailboxOwner([...event.receivedFor, ...event.to, ...event.cc], domains);
   // מייל לכתובת כללית בדומיין (info@, hello@) — או לכתובת שאינה של אף לקוח
-  if (!owner) return (await forwardGeneralEmail(event, domains)) ? 'forwarded' : 'skipped';
+  if (!owner) {
+    const outcome = await forwardGeneralEmail(event, domains);
+    return outcome === true ? 'forwarded' : `skipped:${outcome}`;
+  }
 
   const providerId = `in:${event.emailId}`;
   const existing = await prisma.conversationEmail.findUnique({ where: { providerId }, select: { id: true } });
@@ -1201,23 +1204,29 @@ async function notifyInboundEmail(
  * לכתובת שב-`EMAIL_FORWARD_TO`, עם השולח המקורי בשדה התשובה ועם הקבצים שצורפו.
  * כך שום מייל לדומיין לא הולך לאיבוד, גם כשכל הדומיין מקבל דרך Resend.
  */
-async function forwardGeneralEmail(event: InboundEvent, domains: readonly string[]): Promise<boolean> {
+/**
+ * מחזיר `true` כשהמייל הועבר, ואחרת את הסיבה שלא הועבר. הסיבה חוזרת בתשובת
+ * ה-webhook, כך שאפשר לראות אותה ב-Resend בלי גישה ללוגים.
+ */
+async function forwardGeneralEmail(event: InboundEvent, domains: readonly string[]): Promise<true | string> {
   const target = normalizeEmail(process.env.EMAIL_FORWARD_TO);
   const apiKey = process.env.RESEND_API_KEY;
   const addressedTo = addressedToDomains([...event.receivedFor, ...event.to, ...event.cc], domains);
-  if (!addressedTo || !apiKey || !isValidEmail(target)) {
-    if (addressedTo) console.warn(`[conversation] email to ${addressedTo} dropped: EMAIL_FORWARD_TO is not set`);
-    return false;
+  if (!addressedTo) return `not-an-inbound-domain (domains: ${domains.join(',') || 'none'})`;
+  if (!apiKey) return 'RESEND_API_KEY is not set';
+  if (!isValidEmail(target)) {
+    console.warn(`[conversation] email to ${addressedTo} dropped: EMAIL_FORWARD_TO is not set`);
+    return 'EMAIL_FORWARD_TO is not set';
   }
   const original = parseAddress(event.from);
   // לא מעבירים מייל שנשלח מהכתובת שאליה מעבירים — כדי לא ליצור לולאה
-  if (original.email === target) return false;
+  if (original.email === target) return 'sender is the forward address';
 
   const resend = new Resend(apiKey);
   const { data: email, error } = await resend.emails.receiving.get(event.emailId);
   if (!email) {
     console.error(`[conversation] forward ${event.emailId}: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`);
-    return false;
+    return `fetch failed: ${error?.name ?? 'unknown'}: ${error?.message ?? ''}`;
   }
 
   const { attachments } = await attachmentsForSending(
@@ -1241,7 +1250,7 @@ async function forwardGeneralEmail(event: InboundEvent, domains: readonly string
   });
   if (sendError) {
     console.error('[conversation] forward failed:', sendError);
-    return false;
+    return `send failed: ${sendError.name ?? 'unknown'}: ${sendError.message ?? ''}`;
   }
   return true;
 }
