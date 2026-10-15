@@ -155,6 +155,16 @@ model User {
    * נרשם ב-PlatformPayment ונקשר לתהליך שהוא פותח.
    */
   platformAccessAt DateTime?
+  /**
+   * גישה בתשלום שהיועץ הגדיר ללקוח (src/lib/granted-access.ts) — אחרי תשלום
+   * שגבה בעצמו, לתקופה שהוא בוחר. עד paidAccessUntil הלקוח נחשב משלם: התהליכים
+   * שלו פתוחים והוא יכול לפתוח תהליך חדש. היועץ מעדכן או מבטל בכל עת.
+   */
+  paidAccessFrom   DateTime?
+  paidAccessUntil  DateTime?
+  paidAccessSetAt  DateTime?
+  paidAccessSetBy  String?
+  paidAccessNote   String?
   platformPayments PlatformPayment[] @relation("PlatformPaymentUser")
   /**
    * מעברים לעמוד התשלום של HYP — נפתח לפני התשלום ונסגר כשהלקוח חוזר

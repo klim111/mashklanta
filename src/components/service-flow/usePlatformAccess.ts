@@ -7,7 +7,10 @@ import { passDays } from '@/lib/process-access';
 import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 
 export interface PlatformAccess {
-  /** יש חבילת גישה פנויה לפתיחת תהליך משכנתא בלי תשלום נוסף */
+  /**
+   * הלקוח משלם: יש חבילת גישה פנויה לפתיחת תהליך משכנתא בלי תשלום נוסף, או
+   * שהיועץ הגדיר לו גישה בתשלום שעוד בתוקף
+   */
   active: boolean;
   since: string | null;
   /** מה ששולם על הגישה הפנויה — מקוזז אם יוזמן ליווי */
@@ -23,6 +26,8 @@ export interface PlatformAccess {
    * תהליך נוסף או למחוק את הקודם
    */
   canOpenMore: boolean;
+  /** עד מתי פתוחה הגישה שהיועץ הגדיר ללקוח — null כשאין */
+  grantedUntil: string | null;
 }
 
 const NO_ACCESS: PlatformAccess = {
@@ -35,6 +40,7 @@ const NO_ACCESS: PlatformAccess = {
   openProcesses: 0,
   openPlans: [],
   canOpenMore: true,
+  grantedUntil: null,
 };
 
 /**
@@ -64,6 +70,7 @@ export function usePlatformAccess() {
         openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
         openPlans: Array.isArray(body.openPlans) ? body.openPlans : [],
         canOpenMore: body.canOpenMore !== false,
+        grantedUntil: typeof body.grantedUntil === 'string' ? body.grantedUntil : null,
       };
     } catch {
       // בלי תשובה מהשרת — כאילו לא שולם, והמסך שולח לתשלום

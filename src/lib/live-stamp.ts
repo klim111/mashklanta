@@ -98,7 +98,9 @@ export async function liveStampFor(userId: string, role: string | undefined): Pr
     queries.push(
       [prisma.user.aggregate({ where: { role: 'CLIENT' }, _count: true, _max: { createdAt: true } }), 'createdAt'],
       [prisma.signupDraft.aggregate({ ...updated }), 'updatedAt'],
-      [prisma.departedClient.aggregate({ _count: true, _max: { departedAt: true } }), 'departedAt']
+      [prisma.departedClient.aggregate({ _count: true, _max: { departedAt: true } }), 'departedAt'],
+      // קישורי תשלום ששלח — שולם או בוטל מופיע בטאב "תשלום והרשאה" בלי ריפרש
+      [prisma.paymentLink.aggregate({ where: { OR: [{ createdById: userId }, byClient] }, ...updated }), 'updatedAt']
     );
   }
 

@@ -30,6 +30,7 @@ import type {
 import { keepAdvisorRows } from './preapproval-handoff';
 import { saveMix } from './mixes';
 import { openPass, processAccess, processLocked } from './process-access';
+import { grantActive } from './granted-access';
 import type { ProcessAccess } from './process-access';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -76,6 +77,7 @@ const planSelect = {
       name: true,
       role: true,
       platformAccessAt: true,
+      paidAccessUntil: true,
       // הגישה נגזרת מכל התשלומים של הלקוח ומהתהליכים שסיים (src/lib/process-access.ts)
       platformPayments: { where: { status: 'PAID' }, select: { createdAt: true } },
       mortgagePlans: { where: { completedAt: { not: null } }, select: { completedAt: true } },
@@ -134,6 +136,7 @@ function accessOf(row: PlanRow): ProcessAccess {
     advisoryEndedAt: row.advisoryEndedAt,
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
     ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
+    grantedUntil: row.owner.paidAccessUntil,
   });
 }
 
@@ -371,14 +374,21 @@ export async function isOpenSelfServicePlan(planId: string): Promise<boolean> {
  * האם המשתמש רשאי לפתוח עכשיו תהליך נוסף. כל תשלום הוא עבור תהליך אחד: מי
  * שיש לו תהליך פתוח שעוד לא הסתיים צריך תשלום פנוי — לשלם על תהליך נוסף, או
  * למחוק את התהליך הקודם. מי שאין לו תהליך פתוח פותח תהליך, וכשאין תשלום פנוי
- * התהליך ממתין לתשלום. יועץ אינו מוגבל, וגם לקוח שיועץ מלווה אותו.
+ * התהליך ממתין לתשלום. יועץ אינו מוגבל, וגם לקוח שיועץ מלווה אותו או שהיועץ
+ * הגדיר לו גישה בתשלום.
  */
 export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true, advisedAs: { where: { autoLinked: false }, select: { id: true }, take: 1 } },
+    select: {
+      role: true,
+      paidAccessUntil: true,
+      advisedAs: { where: { autoLinked: false }, select: { id: true }, take: 1 },
+    },
   });
   if (!user || user.role === 'ADVISOR' || user.advisedAs.length > 0) return true;
+  // גישה שהיועץ הגדיר ללקוח פותחת תהליכים כמו תשלום, עד סוף התקופה
+  if (grantActive(user.paidAccessUntil)) return true;
   if ((await countOpenSelfServicePlans(userId)) === 0) return true;
   return (await newProcessPassFor(userId)) !== null;
 }

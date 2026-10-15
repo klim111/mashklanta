@@ -246,3 +246,44 @@ describe('processes opened before one payment per process', () => {
     expect(access.expiresAt).toBe('2026-12-15T00:00:00.000Z');
   });
 });
+
+describe('processAccess with access the advisor granted', () => {
+  const now = new Date('2026-10-15T12:00:00Z');
+
+  it('opens an unpaid process until the end of the granted period', () => {
+    const access = processAccess({ ...base, grantedUntil: '2027-01-15T21:59:59Z' }, now);
+    expect(access.state).toBe('ACTIVE');
+    expect(access.expiresAt).toBe('2027-01-15T21:59:59.000Z');
+    expect(access.daysLeft).toBe(93);
+    expect(processLocked(access)).toBe(false);
+  });
+
+  it('locks the process again once the granted period ended', () => {
+    const access = processAccess({ ...base, grantedUntil: '2026-10-14T21:59:59Z' }, now);
+    expect(access.state).toBe('EXPIRED');
+    expect(processLocked(access)).toBe(true);
+  });
+
+  it('keeps a later paid month over a shorter grant', () => {
+    const access = processAccess(
+      { ...base, payments: [{ createdAt: '2026-10-10T00:00:00Z', amountAgorot: 4900 }], grantedUntil: '2026-10-20T00:00:00Z' },
+      now
+    );
+    expect(access.expiresAt).toBe(passExpiresAt('2026-10-10T00:00:00Z').toISOString());
+  });
+
+  it('extends an expired paid month', () => {
+    const access = processAccess(
+      { ...base, payments: [{ createdAt: '2026-08-10T00:00:00Z' }], grantedUntil: '2026-12-01T00:00:00Z' },
+      now
+    );
+    expect(access.state).toBe('ACTIVE');
+    expect(access.expiresAt).toBe('2026-12-01T00:00:00.000Z');
+  });
+
+  it('does not change a completed process', () => {
+    expect(processAccess({ ...base, planStatus: 'COMPLETED', grantedUntil: '2026-12-01T00:00:00Z' }, now).state).toBe(
+      'COMPLETED'
+    );
+  });
+});

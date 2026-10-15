@@ -65,4 +65,20 @@ describe('summarizeClientBilling', () => {
     });
     expect(both.payments.map((payment) => payment.kind)).toEqual(['PLATFORM']);
   });
+
+  it('counts the access the advisor granted as paid, until its end', () => {
+    const summary = summarizeClientBilling(
+      {
+        platformPayments: [],
+        linkPayments: [],
+        advisoryOrders: [],
+        grant: { from: '2026-10-15T09:00:00Z', until: '2027-01-15T21:59:59Z', note: 'העברה בנקאית' },
+      },
+      new Date('2026-10-20T00:00:00Z')
+    );
+    expect(summary.paid).toBe(true);
+    expect(summary.accessActive).toBe(true);
+    expect(summary.accessEndsAt).toBe('2027-01-15T21:59:59.000Z');
+    expect(summary.payments[0]).toMatchObject({ kind: 'GRANT', amount: null, title: 'גישה שהיועץ הגדיר · העברה בנקאית' });
+  });
 });

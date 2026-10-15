@@ -75,7 +75,17 @@ export async function getClientActivity(advisorId: string, clientId: string): Pr
       phone: true,
       autoLinked: true,
       createdAt: true,
-      user: { select: { email: true, createdAt: true, emailVerified: true, platformAccessAt: true } },
+      user: {
+        select: {
+          email: true,
+          createdAt: true,
+          emailVerified: true,
+          platformAccessAt: true,
+          paidAccessFrom: true,
+          paidAccessUntil: true,
+          paidAccessNote: true,
+        },
+      },
     },
   });
   if (!client) return null;

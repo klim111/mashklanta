@@ -101,6 +101,22 @@ export async function listPaymentLinks(): Promise<PaymentLinkView[]> {
   return rows.map(toView);
 }
 
+/** קישורי התשלום של לקוח אחד — לפי הכרטיס, או לפי המייל בקישור שנוצר בלי כרטיס */
+export async function listClientPaymentLinks(clientId: string, email: string | null): Promise<PaymentLinkView[]> {
+  const address = email?.trim().toLowerCase();
+  const rows = await prisma.paymentLink.findMany({
+    where: {
+      OR: [
+        { clientId },
+        ...(address ? [{ clientId: null, clientEmail: { equals: address, mode: 'insensitive' as const } }] : []),
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+  return rows.map(toView);
+}
+
 export async function createPaymentLink(createdById: string, input: PaymentLinkInput): Promise<PaymentLinkView> {
   const row = await prisma.paymentLink.create({
     data: {

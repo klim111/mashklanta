@@ -3,13 +3,15 @@ import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getPricing } from '@/lib/pricing-store';
 import { passDays, passExpiresAt } from '@/lib/process-access';
+import { grantActive } from '@/lib/granted-access';
 import { canOpenAnotherPlan, listOpenSelfServicePlans, newProcessPassFor } from '@/lib/mortgage-plans';
 import type { OpenProcessSummary } from '@/lib/mortgage-plans';
 
 export interface PlatformAccessView {
   /**
    * האם אפשר לפתוח עכשיו תהליך משכנתא בלי לשלם: יש תשלום פנוי — שאינו קשור
-   * לתהליך (תשלום על תהליך נוסף, או של תהליך שנמחק) — שהחודש שלו עוד לא הסתיים.
+   * לתהליך (תשלום על תהליך נוסף, או של תהליך שנמחק) — שהחודש שלו עוד לא הסתיים,
+   * או שהיועץ הגדיר ללקוח גישה בתשלום שעוד בתוקף. זו הבדיקה "האם הלקוח משלם".
    */
   active: boolean;
   since: string | null;
@@ -27,6 +29,11 @@ export interface PlatformAccessView {
    * וצריך לשלם על תהליך נוסף או למחוק את הקודם
    */
   canOpenMore: boolean;
+  /**
+   * עד מתי פתוחה הגישה שהיועץ הגדיר ללקוח (src/lib/granted-access.ts). עד אז
+   * הלקוח נחשב משלם: `active` אמת, והתהליכים שלו פתוחים
+   */
+  grantedUntil: string | null;
 }
 
 /** האם למשתמש המחובר יש גישה פנויה לפתיחת תהליך משכנתא */
@@ -37,7 +44,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true },
+    select: { role: true, paidAccessUntil: true },
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -48,17 +55,22 @@ export async function GET() {
     getPricing(),
   ]);
 
-  // ליועץ הכלים פתוחים תמיד — הוא הצד שמפעיל אותם
+  const passEnds = pass ? passExpiresAt(pass.createdAt) : null;
+  const grantedUntil = grantActive(user.paidAccessUntil) ? user.paidAccessUntil : null;
+  const accessEnds = grantedUntil && (!passEnds || grantedUntil > passEnds) ? grantedUntil : passEnds;
+
+  // ליועץ הכלים פתוחים תמיד — הוא הצד שמפעיל אותם. לקוח שהיועץ הגדיר לו גישה — עד סוף התקופה
   const view: PlatformAccessView = {
-    active: user.role === 'ADVISOR' || pass !== null,
+    active: user.role === 'ADVISOR' || pass !== null || grantedUntil !== null,
     since: pass?.createdAt.toISOString() ?? null,
     paid: pass ? pass.amountAgorot / 100 : 0,
     price: pricing.platformPrice,
     accessDays: passDays(new Date()),
-    passExpiresAt: pass ? passExpiresAt(pass.createdAt).toISOString() : null,
+    passExpiresAt: accessEnds?.toISOString() ?? null,
     openProcesses: openPlans.length,
     openPlans,
     canOpenMore,
+    grantedUntil: grantedUntil?.toISOString() ?? null,
   };
   return NextResponse.json(view);
 }
