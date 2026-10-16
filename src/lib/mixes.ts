@@ -3,6 +3,8 @@ import { prisma } from './db';
 import { computeMix } from '@/components/mortgage-advisor/engine';
 import type { MixSummary, WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { toSavedMix } from '@/components/mortgage-advisor/mixRecord';
+import { clientHasPaidAccess } from './mortgage-plans';
+import { fillClientDealFromMix } from './clients';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
 /** השדות שנדרשים כדי להציג תמהיל ברשימה, בלי לטעון את כל הלוח */
@@ -101,7 +103,55 @@ export async function listMixesForUser(userId: string): Promise<SavedMix[]> {
     orderBy: { savedAt: 'desc' },
     select: mixSelect,
   });
+  /*
+    תמהיל שהיועץ בנה ושייך ללקוח הוא חלק מהשירות בתשלום: לקוח בלי גישה בתשלום
+    לא רואה אותו, ומי שקיבל גישה — ברכישה או בסימון של היועץ — רואה אותו מיד.
+  */
+  const fromAdvisor = (row: MixRow) => row.ownerId !== userId && row.owner?.role === 'ADVISOR';
+  if (rows.some(fromAdvisor) && !(await clientHasPaidAccess(userId))) {
+    return fromRows(rows.filter((row) => !fromAdvisor(row)));
+  }
   return fromRows(rows);
+}
+
+/**
+ * שיוך תמהיל של היועץ ללקוח שלו. מרגע השיוך התמהיל גלוי ללקוח: הוא מופיע אצלו
+ * בשלב בניית התמהיל כתמהיל שהיועץ בנה. תמהיל שהלקוח עצמו שמר נשאר כמו שהוא.
+ */
+export async function assignMixToClient(
+  advisorId: string,
+  recordId: string,
+  clientId: string
+): Promise<SavedMix | null> {
+  const client = await prisma.client.findFirst({ where: { id: clientId, advisorId }, select: { id: true } });
+  if (!client) return null;
+  const row = await prisma.mortgageMix.findUnique({
+    where: { id: recordId },
+    select: { ownerId: true, clientId: true, mixJson: true, client: { select: { advisorId: true } } },
+  });
+  if (!row) return null;
+
+  if (row.ownerId === advisorId) {
+    const updated = await prisma.mortgageMix.update({
+      where: { id: recordId },
+      data: {
+        clientId,
+        sharedWithClient: true,
+        // תמהיל שעבר ללקוח אחר כבר לא שייך לתהליך של הלקוח הקודם
+        ...(row.clientId && row.clientId !== clientId ? { planId: null } : {}),
+      },
+      select: mixSelect,
+    });
+    const saved = fromRow(updated);
+    if (saved) await fillClientDealFromMix(clientId, saved.mix).catch(() => undefined);
+    return saved;
+  }
+
+  if (row.clientId === clientId && row.client?.advisorId === advisorId) {
+    const current = await prisma.mortgageMix.findUnique({ where: { id: recordId }, select: mixSelect });
+    return current ? fromRow(current) : null;
+  }
+  return null;
 }
 
 /**

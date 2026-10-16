@@ -44,6 +44,8 @@ export function SaveMixDialog({
   const [planId, setPlanId] = useState<string>('');
   const [categoryId, setCategoryId] = useState<string>('');
   const [newCategory, setNewCategory] = useState('');
+  /** תמהיל שנשמר ללקוח מוצג לו מיד — אלא אם היועץ רוצה להשאיר אותו כטיוטה */
+  const [shareWithClient, setShareWithClient] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +58,7 @@ export function SaveMixDialog({
     setPlanId('');
     setCategoryId('');
     setNewCategory('');
+    setShareWithClient(true);
     setError(null);
   }, [open, lockedClientId]);
 
@@ -79,7 +82,7 @@ export function SaveMixDialog({
 
       await onSave(
         clientId
-          ? { clientId, planId: planId || null, categoryId: null }
+          ? { clientId, planId: planId || null, categoryId: null, shareWithClient }
           : { clientId: null, planId: null, categoryId: category }
       );
       onOpenChange(false);
@@ -153,6 +156,21 @@ export function SaveMixDialog({
                   : 'התמהיל יופיע אצל הלקוח תחת הנכס שנבחר.'}
               </span>
             </label>
+          ) : null}
+
+          {clientId ? (
+              <label className="flex items-start gap-2 rounded-lg bg-violet-50 p-2.5 text-[11px] leading-relaxed text-violet-900">
+                <input
+                  type="checkbox"
+                  checked={shareWithClient}
+                  onChange={(event) => setShareWithClient(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-violet-600"
+                />
+                <span>
+                  להציג ללקוח עכשיו. לקוח עם גישה בתשלום יראה אותו בשלב בניית התמהיל כתמהיל ברירת המחדל,
+                  מסומן כתמהיל שבנה היועץ. בלי הסימון התמהיל נשאר אצלכם כטיוטה.
+                </span>
+              </label>
           ) : (
             <div className="space-y-2">
               <label className="block">

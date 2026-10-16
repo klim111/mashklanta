@@ -146,8 +146,32 @@ export interface WorkspaceMix {
   locked?: boolean;
   /** הריביות בתמהיל התקבלו מבנק — מי הבנק ומתי התקבלו */
   quote?: BankQuote;
+  /**
+   * הלווים, כפי שהיועץ הזין אותם ישירות בכלי — כשהתמהיל נבנה בלי תיק לקוח
+   * ובלי פרופיל פיננסי שאפשר למשוך מהם. מופיעים בדוח התמהיל.
+   */
+  borrowers?: MixBorrower[];
+  /** ההסבר האחרון שהיועץ כתב לתמהיל בשליחה ללקוח או בהפקת דוח — נטען שוב בפעם הבאה */
+  explanation?: MixExplanation;
   createdAt: string;
   updatedAt: string;
+}
+
+/** לווה בתמהיל — מה שהיועץ מזין ישירות בכלי */
+export interface MixBorrower {
+  name: string;
+  age?: number;
+  /** הכנסה חודשית נטו */
+  monthlyIncome?: number;
+}
+
+/**
+ * ההסבר המובנה שמצורף לתמהיל: סקירה כללית, ושורת יתרונות לכל מסלול — לפי
+ * מזהה המסלול, כך שמספר שורות ההסבר תמיד כמספר המסלולים.
+ */
+export interface MixExplanation {
+  overview: string;
+  tracks: Record<string, string>;
 }
 
 /** תמהיל שבו המדד קפוא — לוח וסיכום כאילו אין שינוי במדד */

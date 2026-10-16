@@ -3,6 +3,7 @@ import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import {
   assignMixDeal,
+  assignMixToClient,
   canEditMix,
   markMixAsFinal,
   setMixCategory,
@@ -54,6 +55,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
   */
   if (body?.sharedWithClient === true) {
     const saved = await shareMixWithClient(userId, id);
+    if (!saved) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json(saved);
+  }
+
+  /*
+    שיוך תמהיל מתיק התמהילים של היועץ ללקוח. השיוך הוא גם השידור: מכאן
+    התמהיל מופיע אצל הלקוח בשלב בניית התמהיל כתמהיל שהיועץ בנה.
+  */
+  if (body?.share === true && typeof body?.clientId === 'string' && session.user.role === 'ADVISOR') {
+    const saved = await assignMixToClient(userId, id, body.clientId);
     if (!saved) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return NextResponse.json(saved);
   }

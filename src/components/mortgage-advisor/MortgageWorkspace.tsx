@@ -11,11 +11,13 @@ import {
   AlertTriangle,
   Banknote,
   CalendarClock,
+  FileText,
   Home,
   LogIn,
   Maximize2,
   Minimize2,
   Save,
+  Send,
   Settings2,
   ShieldAlert,
   Table2,
@@ -29,6 +31,8 @@ import { ClientList } from '@/components/advisor/ClientList';
 import { useAdvisorClients } from '@/components/advisor/useAdvisorClients';
 import type { AdvisorClient } from '@/components/advisor/useAdvisorClients';
 import { SaveMixDialog } from '@/components/advisor/SaveMixDialog';
+import { MixReportDialog } from '@/components/advisor/MixReportDialog';
+import { BorrowersPanel } from './workspace/BorrowersPanel';
 import { useAdvisorSettings } from '@/components/advisor/useAdvisorCrm';
 import { rateKey } from '@/lib/advisor-crm';
 import type { SaveTarget } from './savedMixes';
@@ -195,7 +199,7 @@ export function MortgageWorkspace({
   const [activeClientId, setActiveClientId] = useState<string | null>(clientId ?? null);
   const clients = useAdvisorClients(isAdvisor);
 
-  const { saved, save, rename, signedIn, ready, refresh } = useSavedMixes(
+  const { saved, save, rename, share, signedIn, ready, refresh } = useSavedMixes(
     activeClientId ? { clientId: activeClientId, planId } : { planId }
   );
 
@@ -229,6 +233,8 @@ export function MortgageWorkspace({
   }, [isAdvisor, advisorSettings.settings.rates, actions]);
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  /** דוח התמהיל — הפקה או שליחה ללקוח, מהכלי של היועץ */
+  const [reportIntent, setReportIntent] = useState<'send' | 'report' | null>(null);
 
   const [phase, setPhase] = useState<Phase>(initialMix ? 'ready' : 'loading');
   /** התמהיל החדש שנבנה עכשיו בכלי וטרם נשמר — עד שכל סכום המשכנתא משובץ */
@@ -415,6 +421,32 @@ export function MortgageWorkspace({
 
   const preferredKey = (preferredMixIds ?? []).join('|');
   const basketsOpened = useRef(false);
+
+  /**
+   * תמהיל שהיועץ בנה ושייך ללקוח הוא תמהיל ברירת המחדל בשלב בניית התמהיל:
+   * הלקוח (שיש לו גישה בתשלום — השרת לא מחזיר אותו לאחרים) נכנס לשלב והתמהיל
+   * של היועץ פתוח לפניו, כל עוד לא נבחר תמהיל סופי. החדש ביותר, אם יש כמה.
+   */
+  const advisorDefault = useMemo(() => {
+    if (!embedded || isAdvisor || finalMixKey || soloMixKey) return null;
+    const fromAdvisor = saved.filter(
+      (item) => item.ownerIsAdvisor && item.sharedWithClient !== false && (!planId || !item.planId || item.planId === planId)
+    );
+    if (fromAdvisor.length === 0) return null;
+    return [...fromAdvisor].sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt))[0];
+  }, [embedded, isAdvisor, finalMixKey, soloMixKey, saved, planId]);
+
+  const advisorDefaultOpened = useRef(false);
+  useEffect(() => {
+    if (advisorDefaultOpened.current || initialMix || !ready || !advisorDefault) return;
+    if (mixClaimed.current) return;
+    advisorDefaultOpened.current = true;
+    // הסלים והתמהיל האחרון של הלקוח נשארים ברשימה, אבל לא דורסים את ברירת המחדל
+    basketsOpened.current = true;
+    notifyActive(advisorDefault);
+    openMix(advisorDefault.mix);
+    actions.setCompared([]);
+  }, [ready, advisorDefault, initialMix, openMix, actions, notifyActive]);
   /**
    * בפתיחת הכלי נפתח התמהיל שהמשתמש עבד עליו לאחרונה, ואם אין כזה — האחרון
    * שנוצר. הסלים האחידים אינם נבחרים להשוואה מאליהם: השוואה היא פעולה שהמשתמש
@@ -890,6 +922,15 @@ export function MortgageWorkspace({
    * השוואה נעשית רק בין תמהילים לאותו נכס — או לאותו סכום משכנתא כשלא הוזנה
    * כתובת — כדי שההשוואה תהיה בין חלופות לאותה עסקה.
    */
+  /**
+   * תמהיל שהיועץ בנה ללקוח מופיע אצלו ברשימה ובטעינת התמהילים גם כשהנכס או
+   * הסכום שבו שונים מאלה שבעבודה — הוא ההצעה של היועץ, לא עוד חלופה לאותה עסקה.
+   */
+  const advisorListed = useCallback(
+    (item: SavedMix) => embedded && !isAdvisor && Boolean(item.ownerIsAdvisor),
+    [embedded, isAdvisor]
+  );
+
   const propertyMixes = useMemo(
     () =>
       saved.filter((item) => {
@@ -897,16 +938,26 @@ export function MortgageWorkspace({
         if (planId && item.planId && item.planId !== planId) return false;
         return (
           item.mix.id !== mix.id &&
-          sameProperty(item.mix, mix) &&
+          (sameProperty(item.mix, mix) || advisorListed(item)) &&
           !hiddenFromPage.has(item.mix.id)
         );
       }),
-    [saved, mix, hiddenFromPage, planId, soloMixKey]
+    [saved, mix, hiddenFromPage, planId, soloMixKey, advisorListed]
   );
 
   const propertySavedMixes = useMemo(
-    () => saved.filter((item) => sameProperty(item.mix, mix)),
-    [saved, mix]
+    () =>
+      saved
+        .filter((item) => sameProperty(item.mix, mix) || advisorListed(item))
+        // תמהילי היועץ בראש רשימת הטעינה — הם ברירת המחדל
+        .sort((a, b) => Number(Boolean(b.ownerIsAdvisor)) - Number(Boolean(a.ownerIsAdvisor))),
+    [saved, mix, advisorListed]
+  );
+
+  /** התמהיל שבעבודה נבנה על ידי היועץ — מוצג ללקוח בסימון ברור */
+  const activeByAdvisor = useMemo(
+    () => (isAdvisor ? null : saved.find((item) => item.mix.id === mix.id && item.ownerIsAdvisor) ?? null),
+    [isAdvisor, saved, mix.id]
   );
 
   const comparedCount = useMemo(
@@ -1240,6 +1291,31 @@ export function MortgageWorkspace({
             </Button>
           )}
 
+          {isAdvisor && phase === 'ready' && mix.tracks.length > 0 && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9"
+                onClick={() => setReportIntent('report')}
+                title="הפקת דוח PDF של התמהיל, עם הסבר ויתרונות לכל מסלול"
+              >
+                <FileText className="h-4 w-4 ml-1" />
+                <span className="hidden sm:inline">הפק דוח</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 border-blue-300 text-blue-700 hover:bg-blue-50"
+                onClick={() => setReportIntent('send')}
+                title="שליחת התמהיל ללקוח כהודעה בצ'אט עם דוח PDF"
+              >
+                <Send className="h-4 w-4 ml-1" />
+                <span className="hidden sm:inline">שלח תמהיל ללקוח</span>
+              </Button>
+            </>
+          )}
+
           {isAdvisor && (
             <ClientSelector
               clients={clients.clients}
@@ -1277,6 +1353,29 @@ export function MortgageWorkspace({
           notice={dealNotice}
           onDismissNotice={() => setDealNotice(null)}
         />
+
+        {/* פרטי הלווים — היועץ מזין אותם ישירות בכלי, בלי תיק לקוח ובלי פרופיל */}
+        {isAdvisor && !embedded && (
+          <BorrowersPanel
+            borrowers={mix.borrowers ?? []}
+            locked={Boolean(mix.locked)}
+            monthlyPayment={result.summary.monthlyPayment}
+            onChange={(borrowers) => actions.patchMix({ borrowers })}
+          />
+        )}
+
+        {activeByAdvisor && (
+          <div className="flex items-start gap-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
+            <span className="mt-0.5 rounded-full bg-violet-600 px-2 py-0.5 text-2xs font-black text-white">
+              נבנה על ידי היועץ
+            </span>
+            <p className="text-xs leading-relaxed text-violet-900">
+              {activeByAdvisor.ownerName ? `${activeByAdvisor.ownerName} בנה` : 'היועץ שלכם בנה'} את התמהיל הזה
+              עבורכם, והוא תמהיל ברירת המחדל. אפשר לעבוד עליו, להשוות אותו לתמהילים אחרים, או לטעון תמהיל אחר
+              מהרשימה.
+            </p>
+          </div>
+        )}
 
         {/* שינוי שנחסם בגלל חריגה מתקרת ההחזר. נדבק לראש המסך כדי שההודעה תיראה
             גם כשהשינוי נעשה בעריכת מסלול שרחוקה מכאן */}
@@ -1444,7 +1543,34 @@ export function MortgageWorkspace({
             notifyActive(stored);
             setSavedSignature(signatureOf(mix));
             if (target.clientId) setActiveClientId(target.clientId);
+            // תמהיל שיועץ שמר ללקוח כטיוטה קודם לכן נחשף ללקוח בשמירה הזו
+            if (target.clientId && target.shareWithClient && stored.sharedWithClient === false) {
+              await share(mix.id);
+            }
             await refresh();
+          }}
+        />
+      )}
+
+      {isAdvisor && reportIntent && (
+        <MixReportDialog
+          open
+          onOpenChange={(open) => !open && setReportIntent(null)}
+          mix={mix}
+          intent={reportIntent}
+          clients={clients.clients.map((client) => ({ id: client.id, name: client.name }))}
+          defaultClientId={activeClientId}
+          onPersist={async (next) => {
+            // ההסבר נשמר עם התמהיל, כדי שייטען שוב בפעם הבאה ולא יידרס בשמירה הבאה
+            actions.patchMix({ explanation: next.explanation });
+            const stored = await save(next, activeClientId ? { clientId: activeClientId } : undefined);
+            notifyActive(stored);
+            setSavedSignature(signatureOf(next));
+            return stored;
+          }}
+          onSent={(clientId) => {
+            setActiveClientId(clientId);
+            void refresh();
           }}
         />
       )}

@@ -49,6 +49,7 @@ import { setAdvisoryEnded } from './advisory-end';
 import { usePricing } from '@/components/pricing/PricingProvider';
 import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
+import { ADVISOR_TAB_EVENT } from '@/components/actions/AdvisorActionsMenu';
 
 type TabId =
   | 'clients'
@@ -104,6 +105,16 @@ export function AdvisorConsole() {
     if (requested && TABS.some((item) => item.id === requested)) setTab(requested as TabId);
     const client = params.get('client');
     if (client) setFocusClientId(client);
+  }, []);
+
+  // הפעולות המהירות מחליפות לשונית גם כשהלוח כבר פתוח
+  useEffect(() => {
+    const onTab = (event: Event) => {
+      const requested = (event as CustomEvent<string>).detail;
+      if (TABS.some((item) => item.id === requested)) setTab(requested as TabId);
+    };
+    window.addEventListener(ADVISOR_TAB_EVENT, onTab);
+    return () => window.removeEventListener(ADVISOR_TAB_EVENT, onTab);
   }, []);
 
   const { requests, ready: requestsReady, refresh: refreshRequests } = useAdvisorRequests();

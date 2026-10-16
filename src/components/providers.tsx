@@ -12,6 +12,7 @@ import { PhoneGate } from '@/components/device/PhoneGate';
 import { ClientConversationProvider } from '@/components/conversation/ClientChatDock';
 import { SiteVisitTracker } from '@/components/analytics/SiteVisitTracker';
 import { NewMeetingAlert } from '@/components/meetings/NewMeetingAlert';
+import { AdvisorActionsMenu } from '@/components/actions/AdvisorActionsMenu';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -40,6 +41,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <ClientConversationProvider>{children}</ClientConversationProvider>
             {/* פגישה שהיועץ קבע — התראה צפה בכל מסך של הלקוח */}
             <NewMeetingAlert />
+            {/* הפעולות המהירות של היועץ — בונה התמהילים וכלי הלקוח מכל עמוד */}
+            <AdvisorActionsMenu />
           </PhoneGate>
         </DemoHost>
       </MotionConfig>

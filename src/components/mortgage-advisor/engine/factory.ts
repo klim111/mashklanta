@@ -1,7 +1,7 @@
 import type { DealType, MortgageMix, MortgageTrack } from '../types';
 import { AMORTIZATION_TYPES, DEAL_TYPES, DEFAULT_INTEREST_RATES, MORTGAGE_BANKS, TRACK_TYPES } from '../types';
 import { DEFAULT_ASSUMPTIONS } from './types';
-import type { BankQuote } from './types';
+import type { BankQuote, MixBorrower, MixExplanation } from './types';
 import type { InflationForecast } from '@/lib/inflation-forecast';
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import type { Assumptions, TrackType, WorkspaceMix } from './types';
@@ -226,6 +226,41 @@ export function remainingAmount(mix: Pick<WorkspaceMix, 'tracks' | 'totalAmount'
  * ניקוי הריביות שהתקבלו מבנק. בלי שם בנק מוכר אין הצעה, ולכן מוחזר undefined
  * והתמהיל נשאר תמהיל רגיל.
  */
+const MAX_TEXT = 1200;
+
+function sanitizeBorrowers(raw: unknown): MixBorrower[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const rows = raw.slice(0, 6).flatMap((item): MixBorrower[] => {
+    if (!item || typeof item !== 'object') return [];
+    const source = item as Record<string, unknown>;
+    const name = typeof source.name === 'string' ? source.name.slice(0, 80) : '';
+    const age = finiteNumber(source.age, 0);
+    const income = finiteNumber(source.monthlyIncome, 0);
+    return [
+      {
+        name,
+        ...(age > 0 ? { age: Math.round(age) } : {}),
+        ...(income > 0 ? { monthlyIncome: Math.round(income) } : {}),
+      },
+    ];
+  });
+  return rows.length > 0 ? rows : undefined;
+}
+
+function sanitizeExplanation(raw: unknown): MixExplanation | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const source = raw as Record<string, unknown>;
+  const overview = typeof source.overview === 'string' ? source.overview.slice(0, MAX_TEXT * 2) : '';
+  const tracks: Record<string, string> = {};
+  if (source.tracks && typeof source.tracks === 'object') {
+    Object.entries(source.tracks as Record<string, unknown>).forEach(([id, text]) => {
+      if (typeof text === 'string' && text.trim()) tracks[id] = text.slice(0, MAX_TEXT);
+    });
+  }
+  if (!overview.trim() && Object.keys(tracks).length === 0) return undefined;
+  return { overview, tracks };
+}
+
 function sanitizeBankQuote(raw: unknown): BankQuote | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const source = raw as Partial<BankQuote>;
@@ -293,6 +328,8 @@ export function sanitizeMix(raw: unknown): WorkspaceMix | null {
         : finiteNumber(source.maxMonthlyPayment, 0) || undefined,
     locked: source.locked === true,
     quote: sanitizeBankQuote(source.quote),
+    borrowers: sanitizeBorrowers(source.borrowers),
+    explanation: sanitizeExplanation(source.explanation),
     createdAt: typeof source.createdAt === 'string' ? source.createdAt : now,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : now,
   });

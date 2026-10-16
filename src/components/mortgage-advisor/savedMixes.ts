@@ -92,6 +92,7 @@ async function postMix(
   if (extras?.clientId !== undefined) payload.clientId = extras.clientId;
   if (extras?.planId !== undefined) payload.planId = extras.planId;
   if (extras?.categoryId !== undefined) payload.categoryId = extras.categoryId;
+  if (extras?.shareWithClient) payload.sharedWithClient = true;
   const response = await fetch('/api/mixes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -139,6 +140,8 @@ export interface SaveTarget {
   planId?: string | null;
   /** קטגוריה של היועץ, לתמהיל שאינו משויך ללקוח */
   categoryId?: string | null;
+  /** היועץ שומר ללקוח ומציג לו את התמהיל מיד, בלי שלב שידור נפרד */
+  shareWithClient?: boolean;
 }
 
 interface UseSavedMixesOptions {
@@ -231,6 +234,7 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
           clientId: target?.clientId !== undefined ? target.clientId : clientId,
           planId: target?.planId !== undefined ? target.planId : planId,
           ...(target?.categoryId === undefined ? {} : { categoryId: target.categoryId }),
+          ...(target?.shareWithClient ? { shareWithClient: true } : {}),
         });
         if (stored) setSaved((items) => upsert(items, stored));
         setError(null);
@@ -317,18 +321,25 @@ export function useSavedMixes(options: UseSavedMixesOptions = {}) {
     [signedIn, recordIdOf, demo]
   );
 
-  /** שיוך תמהיל קיים ללקוח, או ניתוק השיוך */
+  /**
+   * שיוך תמהיל קיים ללקוח, או ניתוק השיוך. `share` — היועץ משייך מתיק
+   * התמהילים שלו, והתמהיל נעשה גלוי ללקוח באותה פעולה.
+   */
   const assign = useCallback(
-    async (mixId: string, targetClientId: string | null) => {
-      if (!signedIn) return;
+    async (mixId: string, targetClientId: string | null, options: { share?: boolean } = {}): Promise<boolean> => {
+      if (!signedIn) return false;
       const recordId = recordIdOf(mixId);
-      if (!recordId) return;
-      await fetch(`/api/mixes/${recordId}`, {
+      if (!recordId) return false;
+      const response = await fetch(`/api/mixes/${recordId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: targetClientId }),
+        body: JSON.stringify(
+          options.share && targetClientId ? { clientId: targetClientId, share: true } : { clientId: targetClientId }
+        ),
       });
+      if (!response.ok) setError('השיוך ללקוח לא נשמר. נסו שוב.');
       await refresh();
+      return response.ok;
     },
     [signedIn, recordIdOf, refresh]
   );

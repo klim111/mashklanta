@@ -72,7 +72,15 @@ export function SavedMixPicker({
                 summary={item.summary}
                 active={item.mix.id === activeId}
                 selected={item.mix.id === activeId}
-                highlight={item.mix.id === activeId ? 'בעבודה' : undefined}
+                highlight={
+                  item.mix.id === activeId
+                    ? item.ownerIsAdvisor
+                      ? 'בעבודה · נבנה על ידי היועץ'
+                      : 'בעבודה'
+                    : item.ownerIsAdvisor
+                      ? 'נבנה על ידי היועץ'
+                      : undefined
+                }
                 hint="לחצו להחזרה לסרגל התמהילים"
                 showExpandIcon={false}
                 onClick={() => {

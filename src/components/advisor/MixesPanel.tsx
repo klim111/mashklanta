@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FolderOpen, Home, PieChart, Plus, Tag, UserRound } from 'lucide-react';
+import { FileText, FolderOpen, Home, PieChart, Plus, Send, Tag, UserPlus, UserRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,9 @@ import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import { stageMixForWorkspace } from '@/components/mortgage-advisor/workspace/draft';
 import { EmptyState, SectionCard } from './ui';
 import { useMixCategories } from './useAdvisorCrm';
+import { useAdvisorClients } from './useAdvisorClients';
+import { AssignMixDialog } from './AssignMixDialog';
+import { MixReportDialog } from './MixReportDialog';
 
 type Mode = 'categories' | 'clients';
 
@@ -26,8 +29,20 @@ export function MixesPanel() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('categories');
   const [newCategory, setNewCategory] = useState('');
-  const { saved, ready, remove, rename } = useSavedMixes();
+  const { saved, ready, remove, rename, save, assign, refresh: refreshMixes } = useSavedMixes();
   const { categories, add, refresh } = useMixCategories();
+  const { clients } = useAdvisorClients(true);
+  const clientOptions = useMemo(() => clients.map((client) => ({ id: client.id, name: client.name })), [clients]);
+  /** התמהיל שהיועץ משייך עכשיו ללקוח */
+  const [assigning, setAssigning] = useState<SavedMix | null>(null);
+  /** התמהיל שהדוח שלו מופק או נשלח עכשיו */
+  const [reporting, setReporting] = useState<{ item: SavedMix; intent: 'send' | 'report' } | null>(null);
+
+  const actions: MixActions = {
+    onAssign: setAssigning,
+    onSend: (item) => setReporting({ item, intent: 'send' }),
+    onReport: (item) => setReporting({ item, intent: 'report' }),
+  };
 
   const unassigned = useMemo(() => saved.filter((item) => !item.clientId), [saved]);
   const assigned = useMemo(() => saved.filter((item) => item.clientId), [saved]);
@@ -160,6 +175,7 @@ export function MixesPanel() {
                     onOpen={openMix}
                     onDelete={remove}
                     onRename={rename}
+                    actions={actions}
                   />
                 ))}
 
@@ -171,6 +187,7 @@ export function MixesPanel() {
                   onOpen={openMix}
                   onDelete={remove}
                   onRename={rename}
+                  actions={actions}
                 />
               )}
             </>
@@ -193,12 +210,42 @@ export function MixesPanel() {
             onOpen={openMix}
             onDelete={remove}
             onRename={rename}
+            actions={actions}
             showPropertyLink
           />
         ))
       )}
+
+      <AssignMixDialog
+        item={assigning}
+        clients={clientOptions}
+        onOpenChange={(open) => !open && setAssigning(null)}
+        onAssign={async (clientId) => {
+          if (!assigning) return false;
+          return assign(assigning.mix.id, clientId, { share: true });
+        }}
+      />
+
+      {reporting && (
+        <MixReportDialog
+          open
+          onOpenChange={(open) => !open && setReporting(null)}
+          mix={reporting.item.mix}
+          intent={reporting.intent}
+          clients={clientOptions}
+          defaultClientId={reporting.item.clientId ?? null}
+          onPersist={(mix) => save(mix)}
+          onSent={() => void refreshMixes()}
+        />
+      )}
     </div>
   );
+}
+
+interface MixActions {
+  onAssign: (item: SavedMix) => void;
+  onSend: (item: SavedMix) => void;
+  onReport: (item: SavedMix) => void;
 }
 
 function MixGroup({
@@ -209,6 +256,7 @@ function MixGroup({
   onOpen,
   onDelete,
   onRename,
+  actions,
   showPropertyLink = false,
 }: {
   icon: React.ReactNode;
@@ -218,6 +266,7 @@ function MixGroup({
   onOpen: (item: SavedMix) => void;
   onDelete: (mixId: string) => void;
   onRename: (mixId: string, name: string) => void;
+  actions: MixActions;
   showPropertyLink?: boolean;
 }) {
   return (
@@ -250,6 +299,15 @@ function MixGroup({
                     תמהיל לא משויך לנכס
                   </Badge>
                 )}
+                {item.ownerIsAdvisor && item.sharedWithClient === false ? (
+                  <Badge className="bg-slate-100 text-[10px] text-slate-700 hover:bg-slate-100">
+                    טיוטה · הלקוח עוד לא רואה
+                  </Badge>
+                ) : item.ownerIsAdvisor ? (
+                  <Badge className="bg-violet-100 text-[10px] text-violet-800 hover:bg-violet-100">
+                    מוצג ללקוח
+                  </Badge>
+                ) : null}
               </div>
             )}
             <MixSummaryCard
@@ -260,9 +318,47 @@ function MixGroup({
               onDelete={item.locked ? undefined : () => onDelete(item.mix.id)}
               onRename={item.locked ? undefined : (name) => onRename(item.mix.id, name)}
             />
+            <div className="flex flex-wrap gap-1.5">
+              <MixAction icon={<UserPlus className="h-3.5 w-3.5" />} onClick={() => actions.onAssign(item)}>
+                {item.clientId ? 'שיוך ללקוח אחר' : 'שייך ללקוח'}
+              </MixAction>
+              <MixAction icon={<Send className="h-3.5 w-3.5" />} onClick={() => actions.onSend(item)} primary>
+                שלח תמהיל ללקוח
+              </MixAction>
+              <MixAction icon={<FileText className="h-3.5 w-3.5" />} onClick={() => actions.onReport(item)}>
+                דוח PDF
+              </MixAction>
+            </div>
           </div>
         ))}
       </div>
     </SectionCard>
+  );
+}
+
+function MixAction({
+  icon,
+  children,
+  onClick,
+  primary = false,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+        primary
+          ? 'bg-blue-600 text-white hover:bg-blue-700'
+          : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700'
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
   );
 }
