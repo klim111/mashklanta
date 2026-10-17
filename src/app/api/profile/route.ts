@@ -80,7 +80,8 @@ export async function PATCH(req: NextRequest) {
     data.username = username;
   }
 
-  if (typeof body.password === 'string' && body.password.length > 0) {
+  // סיסמת היועץ משתנה רק בהגדרות היועץ, ושם נדרשת הסיסמה הנוכחית (api/advisor/password)
+  if (typeof body.password === 'string' && body.password.length > 0 && session?.user?.role !== 'ADVISOR') {
     const problem = passwordProblem(body.password);
     if (problem) {
       return NextResponse.json({ error: problem }, { status: 400 });

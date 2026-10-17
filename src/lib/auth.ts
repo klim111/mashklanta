@@ -11,6 +11,7 @@ import { googleClientId, googleClientSecret, googleConfigured } from "@/lib/goog
 import {
   REGISTRATION_DEVICE_COOKIE,
   confirmRegistration,
+  generateToken,
   pendingMatchesLogin,
   safeCallbackUrl,
   startRegistration,
@@ -27,6 +28,7 @@ import {
   confirmAdvisorLink,
   notifyAdvisorLogin,
 } from "@/lib/advisor-access";
+import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from "@/lib/advisor-session";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
@@ -42,6 +44,15 @@ function readCookie(header: string | undefined, name: string): string | null {
     if (key === name) return decodeURIComponent(rest.join("="));
   }
   return null;
+}
+
+/** עוגיית ה-session של כניסת היועץ, או null כשאין (או מחוץ לבקשה) */
+async function advisorSessionCookie(): Promise<string | null> {
+  try {
+    return (await cookies()).get(ADVISOR_SESSION_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -170,19 +181,33 @@ export const authOptions: NextAuthOptions = {
       name: "Advisor link",
       credentials: {
         token: { label: "Token", type: "text" },
+        password: { label: "Password", type: "password" },
+        newPassword: { label: "New password", type: "password" },
       },
       async authorize(credentials, req) {
         const headers = (req?.headers ?? {}) as Record<string, string | undefined>;
         try {
           const advisor = await confirmAdvisorLink(
             String(credentials?.token ?? ""),
-            readCookie(headers.cookie, ADVISOR_DEVICE_COOKIE)
+            readCookie(headers.cookie, ADVISOR_DEVICE_COOKIE),
+            { password: credentials?.password ?? null, newPassword: credentials?.newPassword ?? null }
           );
           await notifyAdvisorLogin({
             ip: (headers["x-forwarded-for"] ?? "").split(",")[0]?.trim() || "לא ידוע",
             userAgent: headers["user-agent"] ?? null,
           });
-          return { ...advisor, email: advisor.email ?? undefined, advisorLink: true } as any;
+          /**
+           * עוגיית session בלי תאריך תפוגה — נמחקת כשהדפדפן נסגר — והטוקן תקף
+           * רק לצידה. ראו src/lib/advisor-session.ts.
+           */
+          const advisorSession = generateToken();
+          (await cookies()).set(ADVISOR_SESSION_COOKIE, advisorSession, {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+          });
+          return { ...advisor, email: advisor.email ?? undefined, advisorLink: true, advisorSession } as any;
         } catch (error) {
           if (error instanceof AdvisorLinkError) throw new Error(error.message);
           throw error;
@@ -273,6 +298,10 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = (user as any).id;
         token.advisorLink = (user as any).advisorLink === true;
+        if (token.advisorLink) {
+          token.advisorSession = (user as any).advisorSession;
+          token.advisorAt = Date.now();
+        }
         const existingRole = (user as any).role;
         if (existingRole) {
           token.role = existingRole;
@@ -294,6 +323,22 @@ export const authOptions: NextAuthOptions = {
         delete token.id;
         delete token.role;
       }
+      /**
+       * הכניסה של היועץ לא נשמרת: בלי עוגיית ה-session של הדפדפן, אחרי
+       * ADVISOR_IDLE_MINUTES בלי אזור יועץ פתוח, או ADVISOR_MAX_HOURS אחרי
+       * הכניסה — היא אינה תקפה, וצריך לעבור שוב את הקישור והסיסמה.
+       */
+      if (token.role === "ADVISOR") {
+        // ברגע הכניסה עצמה העוגייה רק נכתבה לתשובה, והטוקן נוצר יחד איתה
+        const cookie = user ? (token.advisorSession as string) : await advisorSessionCookie();
+        if (!advisorSessionValid(token, cookie)) {
+          delete token.id;
+          delete token.role;
+          delete token.advisorSession;
+        } else {
+          token.advisorSeen = Date.now();
+        }
+      }
       return token;
     },
     async session({ session, token }) {
@@ -305,6 +350,13 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
+    async signOut() {
+      try {
+        (await cookies()).delete(ADVISOR_SESSION_COOKIE);
+      } catch {
+        // מחוץ לבקשה אין עוגיות למחוק; הטוקן כבר נמחק
+      }
+    },
     async createUser({ user }) {
       if (!user.id) return;
       await ensureClientLinkSafely(user.id);
