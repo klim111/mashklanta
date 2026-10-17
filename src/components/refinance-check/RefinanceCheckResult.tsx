@@ -17,6 +17,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import {
+  ABOVE_AVERAGE_TOLERANCE,
   PAYMENT_TO_INCOME_LIMIT,
   REFI_CHECK_GOALS,
   TRACK_TYPE_LABELS,
@@ -87,6 +88,7 @@ export function RefinanceCheckResult({
               לאזן בין השניים.
             </p>
           )}
+          {result.improvement && result.savings.fees > 0 && <FeeNotice result={result} />}
         </section>
       )}
 
@@ -132,9 +134,16 @@ export function RefinanceCheckResult({
                     </span>
                   </td>
                   <td className="py-2.5 tabular-nums text-slate-700">{formatShekel(track.balance)}</td>
-                  <td className="py-2.5 tabular-nums font-bold text-slate-900">{formatRate(track.rate)}</td>
+                  <td className="py-2.5 tabular-nums font-bold text-slate-900">
+                    {formatRate(track.rate)}
+                    {track.margin && (
+                      <span className="block text-2xs font-semibold text-slate-500">מרווח {formatRate(track.margin.own)}</span>
+                    )}
+                  </td>
                   <td className="py-2.5 tabular-nums text-slate-700">
-                    {track.average !== null
+                    {track.margin
+                      ? `מרווח ${formatRate(track.margin.average)}`
+                      : track.average !== null
                       ? formatRate(track.average)
                       : track.primeMargin !== null
                         ? `פריים ${formatRate(averages.primeAnchor!)}`
@@ -143,20 +152,21 @@ export function RefinanceCheckResult({
                   <td className="py-2.5">
                     {track.aboveAverage ? (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-bold text-amber-800">
-                        מעל הממוצע ב-{(track.rate - track.average!).toFixed(2)}%
+                        {track.margin ? 'המרווח מעל הממוצע' : 'מעל הממוצע'} ב-
+                        {(track.rate - track.average!).toFixed(2)}%
                       </span>
                     ) : track.average !== null ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-2xs font-bold text-emerald-800">
-                        בממוצע או מתחתיו
+                        קרוב לממוצע או מתחתיו
                       </span>
                     ) : track.primeMargin !== null ? (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-bold text-slate-600">
                         מרווח {track.primeMargin >= 0 ? '+' : '−'}
-                        {Math.abs(track.primeMargin).toFixed(2)}% · אין ממוצע
+                        {Math.abs(track.primeMargin).toFixed(2)}% · אין ממוצע, לא נבדק
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-2xs font-bold text-slate-600">
-                        אין ממוצע · נשארת הריבית שלכם
+                        אין ממוצע · לא נבדק
                       </span>
                     )}
                   </td>
@@ -166,9 +176,11 @@ export function RefinanceCheckResult({
           </table>
         </div>
         <p className="mt-3 text-2xs leading-relaxed text-slate-500">
-          ריביות ממוצעות להלוואות חדשות לדיור בכל המערכת הבנקאית, בנק ישראל, {formatMonth(averages.asOf)}. לפריים,
-          למשתנה לא צמודה ולזכאות בנק ישראל אינו מפרסם ממוצע, ובהם החישוב נשאר עם הריבית שלכם. החישוב נומינלי,
-          בלי תחזית מדד ובלי עמלות פירעון מוקדם — הערכה בלבד, לא הצעה של בנק.
+          ריביות ממוצעות להלוואות חדשות לדיור בכל המערכת הבנקאית, בנק ישראל, {formatMonth(averages.asOf)}. מסלול
+          נחשב מעל הממוצע רק בפער של {ABOVE_AVERAGE_TOLERANCE}% ומעלה, ובמשתנה צמודה שהוזנה עם מרווח משווים את
+          המרווח למרווח הממוצע. לפריים, למשתנה לא צמודה ולזכאות בנק ישראל אינו מפרסם ממוצע, ולכן הכלי לא בודק
+          אותם והחישוב נשאר עם הריבית שלכם — את המרווח שם כדאי לבדוק עם יועץ. החישוב נומינלי, בלי תחזית מדד ולפני
+          עמלות פירעון מוקדם — הערכה בלבד, לא הצעה של בנק.
         </p>
       </section>
 
@@ -217,6 +229,8 @@ function checkSummary(result: Result): string {
     lines.push(`החזר חודשי מוצע: ${formatShekel(result.proposed.summary.payment)}`);
     if (result.savings.interest > 0) lines.push(`חיסכון מוערך בריבית: ${formatShekel(result.savings.interest)}`);
     if (result.savings.months > 0) lines.push(`סיום מוקדם ב-${formatTerm(result.savings.months)}`);
+    if (result.savings.fees > 0) lines.push(`עמלת פירעון מוקדם משוערת: עד ${formatShekel(result.savings.fees)}`);
+    if (result.mainlyFromTerm) lines.push('השיפור מגיע בעיקר משינוי התקופה או ההחזר, לא מריבית טובה יותר');
   } else if (result.reason) {
     lines.push(`תוצאה: ${result.reason}`);
   }
@@ -235,11 +249,29 @@ function Verdict({ result }: { result: Result }) {
   })();
   const sub = (() => {
     if (!result.improvement || !result.proposed) return result.reason;
-    if (result.goal === 'fast-payoff')
-      return `וחיסכון מוערך של ${formatShekel(result.savings.interest)} בריבית, בהחזר של ${formatShekel(result.proposed.summary.payment)} בחודש — בתוך מגבלת יחס ההחזר.`;
-    if (result.goal === 'reduce-interest')
-      return `הריביות שמעל הממוצע יורדות לממוצע, והמשכנתא מסתיימת בעוד ${formatTerm(result.proposed.summary.months)} — בלי להגדיל את ההחזר החודשי.`;
-    return `ההחזר יורד מ-${formatShekel(result.current.payment)} ל-${formatShekel(result.proposed.summary.payment)} בחודש.`;
+    const { savings } = result;
+    if (result.goal === 'fast-payoff') {
+      const text = `וחיסכון מוערך של ${formatShekel(savings.interest)} בריבית, בהחזר של ${formatShekel(result.proposed.summary.payment)} בחודש — בתוך מגבלת יחס ההחזר.`;
+      return result.mainlyFromTerm
+        ? `${text} רוב החיסכון מגיע מהגדלת ההחזר ולא מריבית טובה יותר, ולכן קיצור דומה אפשר להשיג גם בפירעון מוקדם חלקי, בלי מיחזור.`
+        : `${text} מתוכו כ-${formatShekel(savings.fromRates)} בזכות הוזלת הריביות.`;
+    }
+    if (result.goal === 'reduce-interest') {
+      const ends =
+        savings.months > 0
+          ? `והמשכנתא מסתיימת בעוד ${formatTerm(result.proposed.summary.months)}`
+          : 'בלי להאריך את המשכנתא';
+      const text = `הריביות שמעל הממוצע יורדות לממוצע, ${ends} — בלי להגדיל את ההחזר החודשי.`;
+      return result.mainlyFromTerm
+        ? `${text} רוב החיסכון מגיע מכך שממשיכים לשלם את ההחזר של היום לתקופה קצרה יותר, ורק כ-${formatShekel(savings.fromRates)} מההוזלה עצמה.`
+        : text;
+    }
+    const text = `ההחזר יורד מ-${formatShekel(result.current.payment)} ל-${formatShekel(result.proposed.summary.payment)} בחודש.`;
+    if (savings.fromRates >= 1 && !result.mainlyFromTerm)
+      return `${text} מתוכם כ-${formatShekel(savings.fromRates)} מריבית נמוכה יותר, והשאר מפריסה ל-30 שנה.`;
+    return savings.fromRates >= 1
+      ? `${text} רוב הירידה מגיעה מפריסה לתקופה ארוכה יותר, ורק כ-${formatShekel(savings.fromRates)} מריבית נמוכה יותר.`
+      : `${text} כל הירידה מגיעה מפריסה לתקופה ארוכה יותר, לא מריבית טובה יותר.`;
   })();
 
   return (
@@ -258,7 +290,11 @@ function Verdict({ result }: { result: Result }) {
           {goal.title}
         </span>
         <h2 className="mt-3 text-title font-black text-white">
-          {result.improvement ? 'יש מקום לשיפור' : 'לא מצאנו שיפור משמעותי'}
+          {!result.improvement
+            ? 'לא מצאנו שיפור משמעותי'
+            : result.mainlyFromTerm
+              ? 'אפשר לשפר, בעיקר בשינוי התקופה'
+              : 'יש מקום לשיפור'}
         </h2>
         {headline && (
           <div className="mt-3">
@@ -270,6 +306,23 @@ function Verdict({ result }: { result: Result }) {
         {sub && <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-white/90">{sub}</p>}
       </div>
     </motion.section>
+  );
+}
+
+/** אזהרת עמלת הפירעון המוקדם במסלולים הקבועים שמתומחרים מחדש */
+function FeeNotice({ result }: { result: Result }) {
+  const { fees, interest } = result.savings;
+  const mayCancel = result.goal !== 'reduce-payment' && fees >= interest;
+  return (
+    <p className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <Info className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>
+        במסלולים הקבועים שמעל הממוצע הבנק עשוי לגבות עמלת פירעון מוקדם (עמלת היוון) של עד כ-{formatShekel(fees)}.
+        העמלה בפועל תלויה בריבית הממוצעת ביום שלקחתם את ההלוואה ובהנחות לפי ותק, ולכן היא לרוב נמוכה יותר
+        {mayCancel ? ', אבל במקרה הגרוע היא מבטלת את כל החיסכון.' : ', אבל היא מקטינה את החיסכון.'} יועץ יכול
+        לקבל מהבנק את הסכום המדויק.
+      </span>
+    </p>
   );
 }
 

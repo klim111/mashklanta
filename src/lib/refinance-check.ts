@@ -9,17 +9,21 @@
  *  לשיפור, ובכמה בערך.
  *
  *  שלוש המטרות:
- *    • הקטנת ההחזר החודשי — ההחזר אם החוב נפרס ל-30 שנה בריביות הנוכחיות,
- *      והתמהיל ל-30 שנה בריביות הממוצעות. הנמוך מביניהם הוא ההערכה.
- *    • הקטנת סך הריביות — מסלולים שהריבית בהם מעל הממוצע מתומחרים לממוצע,
+ *    • הקטנת ההחזר החודשי — פריסה ל-30 שנה, כשהמסלולים שמעל הממוצע יורדים
+ *      לממוצע. התוצאה מפרידה בין מה שנחסך מהריביות לבין מה שנחסך מהפריסה.
+ *    • הקטנת סך הריביות — רק כשלפחות מסלול אחד מעל הממוצע: הוא מתומחר לממוצע,
  *      והתקופה מתקצרת כל עוד ההחזר לא עולה על ההחזר היום ועל מגבלת יחס ההחזר.
  *    • סילוק מהיר — התקופה הקצרה ביותר שההחזר בה עומד במגבלת יחס ההחזר.
+ *
+ *  מסלול נחשב מעל הממוצע רק בפער של 0.2% ומעלה. במשתנה צמודה שהוזנה כעוגן
+ *  ומרווח משווים את המרווח למרווח הממוצע. במסלול קבוע שמתומחר מחדש מוצגת
+ *  גם תקרה לעמלת ההיוון, כי היא עלולה לבטל חלק מהחיסכון.
  *
  *  הריביות הממוצעות: בנק ישראל מפרסם ממוצע לקבועה לא צמודה, לקבועה צמודה
  *  ולמשתנה צמודה (עוגן + מרווח). לפריים, למשתנה לא צמודה ולזכאות אין ממוצע —
  *  במסלולים האלה נשארת הריבית של הלקוח. אין ערכי נפילה שנכתבו בקוד.
  *
- *  החישוב נומינלי (בלי תחזית מדד) ואינו כולל עמלות פירעון מוקדם — זו הערכה.
+ *  החישוב נומינלי (בלי תחזית מדד), והחיסכון מוצג לפני עמלות — זו הערכה.
  * ============================================================================
  */
 
@@ -117,6 +121,8 @@ export interface AverageRates {
   fixed_unlinked: number | null;
   fixed_linked: number | null;
   variable_linked: number | null;
+  /** המרווח הממוצע מעל העוגן במשתנה צמודה */
+  variable_linked_margin: number | null;
   /** הפריים עצמו (העוגן), לא ממוצע למסלול */
   primeAnchor: number | null;
   /** החודש של נתוני הריביות */
@@ -131,6 +137,7 @@ export function averageRatesFromMarket(snapshot: MortgageMarketSnapshot): Averag
     fixed_unlinked: byKey.get('fixed_unlinked')?.rate ?? null,
     fixed_linked: byKey.get('fixed_linked')?.rate ?? null,
     variable_linked: byKey.get('variable_linked')?.rate ?? null,
+    variable_linked_margin: byKey.get('variable_linked')?.margin ?? null,
     primeAnchor: prime?.anchor ?? null,
     asOf: byKey.get('fixed_unlinked')?.asOf || snapshot.latestMonth,
   };
@@ -144,8 +151,13 @@ export function averageFor(type: RefiCheckTrackType, averages: AverageRates): nu
   return null;
 }
 
-/** ריבית מעל הממוצע — עם סבולת קטנה, כדי שעשירית האחוז לא תיחשב הזדמנות */
-const ABOVE_AVERAGE_TOLERANCE = 0.1;
+/** ריבית מעל הממוצע — רק פער של 0.2% ומעלה נחשב הזדמנות */
+export const ABOVE_AVERAGE_TOLERANCE = 0.2;
+
+/** מסלולים קבועים: פירעון לפני הסוף כרוך בעמלת היוון כשהריבית בשוק נמוכה מהריבית בחוזה */
+export function hasPrepaymentFee(type: RefiCheckTrackType): boolean {
+  return type === 'fixed_unlinked' || type === 'fixed_linked';
+}
 
 // ───────────────────────────── חישובי בסיס ─────────────────────────────
 
@@ -155,6 +167,19 @@ export function monthlyPayment(balance: number, annualRate: number, months: numb
   const r = annualRate / 100 / 12;
   if (r === 0) return balance / months;
   return (balance * r) / (1 - Math.pow(1 + r, -months));
+}
+
+/**
+ * תקרה להערכת עמלת ההיוון במסלול קבוע: הערך הנוכחי של התשלומים שנותרו, מהוון
+ * בריבית הממוצעת של היום, פחות היתרה. העמלה בפועל נמדדת מול הריבית הממוצעת
+ * ביום לקיחת ההלוואה (שהכלי לא יודע) ולפני הנחות ותק, ולכן היא לרוב נמוכה מזה.
+ */
+export function estimatePrepaymentFee(balance: number, rate: number, months: number, marketRate: number): number {
+  if (balance <= 0 || months <= 0 || marketRate >= rate) return 0;
+  const payment = monthlyPayment(balance, rate, months);
+  const r = marketRate / 100 / 12;
+  const presentValue = r === 0 ? payment * months : (payment * (1 - Math.pow(1 + r, -months))) / r;
+  return Math.max(0, presentValue - balance);
 }
 
 interface PricedTrack {
@@ -211,13 +236,20 @@ export interface TrackReview {
   balance: number;
   rate: number;
   months: number;
-  /** הריבית הממוצעת של בנק ישראל, או null כשאינה מתפרסמת */
+  /**
+   * הריבית הממוצעת להשוואה, או null כשבנק ישראל אינו מפרסם כזו. במשתנה צמודה
+   * שהוזנה כעוגן ומרווח — העוגן של הלקוח ועוד המרווח הממוצע.
+   */
   average: number | null;
+  /** במשתנה צמודה עם מרווח: המרווח של הלקוח מול המרווח הממוצע */
+  margin: { own: number; average: number } | null;
   aboveAverage: boolean;
   /** הריבית בחישוב החדש */
   newRate: number;
   /** בפריים: המרווח של הלקוח מעל הפריים של היום */
   primeMargin: number | null;
+  /** תקרה לעמלת הפירעון המוקדם, כשמסלול קבוע מתומחר מחדש */
+  prepaymentFee: number;
 }
 
 export interface RefiScenario {
@@ -235,12 +267,25 @@ export interface RefiCheckResult {
   proposed: RefiScenario | null;
   /** תרחיש נוסף להשוואה (בהקטנת החזר: פריסה בריביות הנוכחיות) */
   alternative: RefiScenario | null;
-  /** החיסכון המוערך */
+  /** החיסכון המוערך, לפני עמלות פירעון מוקדם */
   savings: {
     monthly: number;
     interest: number;
     months: number;
+    /** תקרה לעמלות הפירעון המוקדם במסלולים הקבועים שמתומחרים מחדש */
+    fees: number;
+    /**
+     * החלק מהחיסכון שמגיע מהוזלת ריביות (בהקטנת החזר — בש"ח לחודש, בשאר — בש"ח
+     * לאורך המשכנתא). השאר מגיע משינוי התקופה בלבד.
+     */
+    fromRates: number;
   };
+  /** כמה מסלולים הוזלו לממוצע */
+  repricedCount: number;
+  /** השיפור מגיע בעיקר משינוי התקופה או ההחזר, לא מריבית טובה יותר */
+  mainlyFromTerm: boolean;
+  /** סוגי מסלולים שאין להם ממוצע ולכן לא נבדקו */
+  unchecked: RefiCheckTrackType[];
   /** מגבלת יחס ההחזר, כשהמטרה דורשת אותה */
   affordability: {
     disposable: number;
@@ -264,6 +309,8 @@ export interface RefiCheckInput {
 const MIN_MONTHLY_SAVING = 100;
 const MIN_INTEREST_SAVING = 10_000;
 const MIN_MONTHS_SAVED = 12;
+/** מתחת לחלק הזה מהחיסכון שמגיע מריביות — השיפור נחשב "בעיקר מהתקופה" */
+const RATES_SHARE_FOR_REAL_GAIN = 0.25;
 
 export function validTracks(tracks: RefiCheckTrack[]): RefiCheckTrack[] {
   return tracks.filter(
@@ -271,10 +318,38 @@ export function validTracks(tracks: RefiCheckTrack[]): RefiCheckTrack[] {
   );
 }
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export function reviewTracks(tracks: RefiCheckTrack[], averages: AverageRates): TrackReview[] {
   return tracks.map((track) => {
-    const average = averageFor(track.type, averages);
-    const aboveAverage = average !== null && track.rate > average + ABOVE_AVERAGE_TOLERANCE;
+    let average = averageFor(track.type, averages);
+    let margin: TrackReview['margin'] = null;
+    let aboveAverage = average !== null && track.rate > average + ABOVE_AVERAGE_TOLERANCE;
+    let newRate = aboveAverage && average !== null ? average : track.rate;
+
+    // משתנה צמודה שהוזנה כעוגן ומרווח: העוגן נקבע לפי תחנת היציאה של הלקוח,
+    // ולכן משווים מרווח למרווח — ולא את הריבית כולה לממוצע אחד לכל התחנות
+    const spread = track.spread;
+    if (
+      track.type === 'variable_linked' &&
+      typeof spread === 'number' &&
+      Number.isFinite(spread) &&
+      averages.variable_linked_margin !== null
+    ) {
+      const averageMargin = averages.variable_linked_margin;
+      margin = { own: spread, average: averageMargin };
+      average = round2(track.rate - spread + averageMargin);
+      aboveAverage = spread > averageMargin + ABOVE_AVERAGE_TOLERANCE;
+      newRate = aboveAverage ? average : track.rate;
+    }
+
+    const prepaymentFee =
+      aboveAverage && hasPrepaymentFee(track.type)
+        ? estimatePrepaymentFee(track.balance, track.rate, track.months, newRate)
+        : 0;
+
     return {
       id: track.id,
       type: track.type,
@@ -282,20 +357,52 @@ export function reviewTracks(tracks: RefiCheckTrack[], averages: AverageRates): 
       rate: track.rate,
       months: track.months,
       average,
+      margin,
       aboveAverage,
-      newRate: aboveAverage && average !== null ? average : track.rate,
+      newRate,
       primeMargin:
-        track.type === 'prime' && averages.primeAnchor !== null
-          ? Math.round((track.rate - averages.primeAnchor) * 100) / 100
-          : null,
+        track.type === 'prime' && averages.primeAnchor !== null ? round2(track.rate - averages.primeAnchor) : null,
+      prepaymentFee,
     };
   });
+}
+
+/** סוגי המסלולים שאין להם ממוצע להשוואה, לפי הסדר הקבוע */
+function uncheckedTypes(reviews: TrackReview[]): RefiCheckTrackType[] {
+  const types = new Set(reviews.filter((r) => r.average === null).map((r) => r.type));
+  return TRACK_TYPE_ORDER.filter((type) => types.has(type));
+}
+
+function joinTypes(types: RefiCheckTrackType[]): string {
+  const labels = types.map((type) => TRACK_TYPE_LABELS[type]);
+  if (labels.length <= 1) return labels.join('');
+  return `${labels.slice(0, -1).join(', ')} ו${labels.at(-1)}`;
+}
+
+/** ההסבר כשאף ריבית אינה מעל הממוצע */
+function noRepricingReason(unchecked: RefiCheckTrackType[], allUnchecked: boolean): string {
+  if (allUnchecked) {
+    return `ל${joinTypes(unchecked)} בנק ישראל אינו מפרסם ריבית ממוצעת, ולכן הכלי לא יכול לבדוק אם הריבית שלכם גבוהה. כדאי שיועץ יבדוק את המרווח שקיבלתם`;
+  }
+  const base = `הריביות במסלולים שאפשר להשוות אינן גבוהות מהממוצע של בנק ישראל ביותר מ-${ABOVE_AVERAGE_TOLERANCE}%`;
+  return unchecked.length > 0
+    ? `${base}. ל${joinTypes(unchecked)} אין ממוצע להשוואה, ושם כדאי שיועץ יבדוק את המרווח`
+    : base;
+}
+
+/** המסלולים בתמחור החדש: מסלול שמעל הממוצע יורד לממוצע, והשאר נשארים */
+function repricedTracks(reviews: TrackReview[]) {
+  return reviews.map((r) => ({ balance: r.balance, rate: r.newRate, months: r.months }));
 }
 
 export function analyzeRefinance(input: RefiCheckInput): RefiCheckResult {
   const tracks = validTracks(input.tracks);
   const reviews = reviewTracks(tracks, input.averages);
   const current = totals(tracks);
+  const repricedCount = reviews.filter((r) => r.aboveAverage).length;
+  const fees = reviews.reduce((sum, r) => sum + r.prepaymentFee, 0);
+  const unchecked = uncheckedTypes(reviews);
+  const allUnchecked = reviews.length > 0 && reviews.every((r) => r.average === null);
 
   const base: RefiCheckResult = {
     goal: input.goal,
@@ -304,35 +411,48 @@ export function analyzeRefinance(input: RefiCheckInput): RefiCheckResult {
     improvement: false,
     proposed: null,
     alternative: null,
-    savings: { monthly: 0, interest: 0, months: 0 },
+    savings: { monthly: 0, interest: 0, months: 0, fees: 0, fromRates: 0 },
+    repricedCount,
+    mainlyFromTerm: false,
+    unchecked,
     affordability: null,
     reason: null,
   };
 
   if (tracks.length === 0) return { ...base, reason: 'לא הוזנו מסלולים לבדיקה' };
 
+  const repriced = repricedTracks(reviews);
+  // אותן תקופות, ריביות חדשות: כמה נחסך רק מהוזלת הריביות
+  const sameTerms = totals(repriced);
+
   if (input.goal === 'reduce-payment') {
-    // פריסה ל-30 שנה בריביות הנוכחיות
+    // פריסה ל-30 שנה: מסלולים שמעל הממוצע יורדים לממוצע, והשאר נשארים בריבית שלהם
+    const spread = totals(repriced.map((t) => ({ ...t, months: MAX_TERM_MONTHS })));
     const spreadNow = totals(tracks.map((t) => ({ ...t, months: MAX_TERM_MONTHS })));
-    // התמהיל ל-30 שנה בריביות הממוצעות: כל מסלול שבנק ישראל מפרסם לו ממוצע
-    // מתומחר לפי הממוצע, והשאר נשארים בריבית שלהם
-    const spreadAverage = totals(
-      reviews.map((r) => ({ balance: r.balance, rate: r.average ?? r.rate, months: MAX_TERM_MONTHS }))
-    );
 
-    const atAverage = { label: 'תמהיל ל-30 שנה בריביות הממוצעות', summary: spreadAverage };
-    const atCurrent = { label: 'פריסה ל-30 שנה בריביות הנוכחיות', summary: spreadNow };
-    const [best, other] =
-      spreadAverage.payment <= spreadNow.payment ? [atAverage, atCurrent] : [atCurrent, atAverage];
+    const proposed =
+      repricedCount > 0
+        ? { label: 'פריסה ל-30 שנה, והריביות שמעל הממוצע יורדות לממוצע', summary: spread }
+        : { label: 'פריסה ל-30 שנה בריביות הנוכחיות', summary: spreadNow };
+    const alternative =
+      repricedCount > 0 ? { label: 'פריסה ל-30 שנה בריביות הנוכחיות', summary: spreadNow } : null;
 
-    const monthly = current.payment - best.summary.payment;
+    const monthly = current.payment - proposed.summary.payment;
+    const fromRates = Math.max(0, current.payment - sameTerms.payment);
     const improvement = monthly >= Math.max(MIN_MONTHLY_SAVING, current.payment * 0.015);
     return {
       ...base,
       improvement,
-      proposed: best,
-      alternative: other,
-      savings: { monthly: Math.max(0, monthly), interest: current.totalInterest - best.summary.totalInterest, months: 0 },
+      proposed,
+      alternative,
+      savings: {
+        monthly: Math.max(0, monthly),
+        interest: current.totalPaid - proposed.summary.totalPaid,
+        months: 0,
+        fees: repricedCount > 0 ? fees : 0,
+        fromRates: Math.min(fromRates, Math.max(0, monthly)),
+      },
+      mainlyFromTerm: improvement && fromRates < monthly * RATES_SHARE_FOR_REAL_GAIN,
       reason: improvement
         ? null
         : 'המשכנתא כבר פרוסה לתקופה ארוכה בריביות סבירות, ולכן פריסה מחדש לא תוריד את ההחזר באופן משמעותי',
@@ -347,51 +467,79 @@ export function analyzeRefinance(input: RefiCheckInput): RefiCheckResult {
     maxPayment,
     currentOverLimit: current.payment > maxPayment + 0.5,
   };
-  const repriced = reviews.map((r) => ({ balance: r.balance, rate: r.newRate }));
 
   if (disposable <= 0) {
     return { ...base, affordability, reason: 'כדי לחשב את יחס ההחזר צריך להזין את ההכנסה החודשית נטו' };
   }
 
-  const cap = input.goal === 'fast-payoff' ? maxPayment : Math.min(maxPayment, current.payment);
-  const term = shortestTermWithin(repriced, cap);
+  const overLimitReason =
+    'ההחזר היום כבר גבוה ממגבלת יחס ההחזר, ולכן אין מקום לקצר את המשכנתא. כדאי לבדוק עם יועץ איך להקל על ההחזר';
 
-  if (term === null) {
+  if (input.goal === 'reduce-interest') {
+    // בלי הוזלה של לפחות מסלול אחד אין כאן מיחזור — רק שינוי מבנה של אותה משכנתא
+    if (repricedCount === 0) {
+      return { ...base, affordability, reason: noRepricingReason(unchecked, allUnchecked) };
+    }
+
+    // לא מגדילים את ההחזר, ולא מאריכים את המשכנתא רק כי ההחזר היום מעל המגבלה
+    const cap = affordability.currentOverLimit ? current.payment : Math.min(maxPayment, current.payment);
+    const term = shortestTermWithin(repriced, cap);
+    if (term === null) return { ...base, affordability, reason: overLimitReason };
+
+    const proposed = totals(repriced.map((t) => ({ ...t, months: term })));
+    const interest = current.totalPaid - proposed.totalPaid;
+    const fromRates = current.totalPaid - sameTerms.totalPaid;
+    const improvement = interest >= Math.max(MIN_INTEREST_SAVING, current.totalInterest * 0.03);
+
     return {
       ...base,
       affordability,
-      reason: affordability.currentOverLimit
-        ? 'ההחזר היום כבר גבוה ממגבלת יחס ההחזר, ולכן אין מקום לקצר את המשכנתא. כדאי לבדוק עם יועץ איך להקל על ההחזר'
-        : 'גם בתקופה של 30 שנה ההחזר חורג ממגבלת יחס ההחזר',
+      improvement,
+      proposed: { label: 'ריביות ממוצעות ותקופה קצרה יותר, בלי להגדיל את ההחזר', summary: proposed },
+      savings: {
+        monthly: current.payment - proposed.payment,
+        interest: Math.max(0, interest),
+        months: Math.max(0, current.months - term),
+        fees,
+        fromRates: Math.max(0, Math.min(fromRates, interest)),
+      },
+      mainlyFromTerm: improvement && fromRates < interest * RATES_SHARE_FOR_REAL_GAIN,
+      reason: improvement ? null : 'הפער מהממוצע קטן, ולכן החיסכון בריבית קטן',
     };
   }
 
+  // סילוק מהיר
+  if (affordability.currentOverLimit) return { ...base, affordability, reason: overLimitReason };
+
+  const term = shortestTermWithin(repriced, maxPayment);
+  if (term === null) return { ...base, affordability, reason: overLimitReason };
+
   const proposed = totals(repriced.map((t) => ({ ...t, months: term })));
-  const interest = current.totalInterest - proposed.totalInterest;
+  const interest = current.totalPaid - proposed.totalPaid;
   const monthsSaved = current.months - term;
 
-  const improvement =
-    input.goal === 'fast-payoff'
-      ? monthsSaved >= MIN_MONTHS_SAVED && interest > 0
-      : interest >= Math.max(MIN_INTEREST_SAVING, current.totalInterest * 0.03);
+  // אותו קיצור בלי מיחזור: הריביות של היום, וההחזר עולה עד המגבלה
+  const shortenTerm = shortestTermWithin(tracks, maxPayment);
+  const shortenOnly = shortenTerm === null ? null : totals(tracks.map((t) => ({ ...t, months: shortenTerm })));
+  const fromTerm = shortenOnly ? Math.max(0, current.totalPaid - shortenOnly.totalPaid) : 0;
+  const fromRates = Math.max(0, interest - fromTerm);
+
+  const improvement = monthsSaved >= MIN_MONTHS_SAVED && interest > 0;
 
   return {
     ...base,
     affordability,
     improvement,
-    proposed: {
-      label:
-        input.goal === 'fast-payoff'
-          ? 'סילוק מהיר במגבלת יחס ההחזר'
-          : 'ריביות ממוצעות ותקופה קצרה יותר, בלי להגדיל את ההחזר',
-      summary: proposed,
+    proposed: { label: 'סילוק מהיר במגבלת יחס ההחזר', summary: proposed },
+    savings: {
+      monthly: current.payment - proposed.payment,
+      interest: Math.max(0, interest),
+      months: Math.max(0, monthsSaved),
+      fees: repricedCount > 0 ? fees : 0,
+      fromRates,
     },
-    savings: { monthly: current.payment - proposed.payment, interest: Math.max(0, interest), months: Math.max(0, monthsSaved) },
-    reason: improvement
-      ? null
-      : input.goal === 'fast-payoff'
-        ? 'במגבלת יחס ההחזר אי אפשר לקצר את המשכנתא באופן משמעותי מעבר למה שהיא היום'
-        : 'הריביות שלכם קרובות לממוצע והתקופה כבר מותאמת להחזר, ולכן החיסכון בריבית קטן',
+    mainlyFromTerm: improvement && fromRates < interest * RATES_SHARE_FOR_REAL_GAIN,
+    reason: improvement ? null : 'במגבלת יחס ההחזר אי אפשר לקצר את המשכנתא באופן משמעותי מעבר למה שהיא היום',
   };
 }
 

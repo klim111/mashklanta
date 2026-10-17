@@ -36,7 +36,7 @@ import {
   TRACK_TYPE_LABELS,
   TRACK_TYPE_ORDER,
   analyzeRefinance,
-  averageFor,
+  reviewTracks,
   averageRatesFromMarket,
   disposableIncome,
   formatTerm,
@@ -491,8 +491,9 @@ function TracksStep({
 
         <ul className="mt-5 space-y-3">
           {tracks.map((track, index) => {
-            const average = averages ? averageFor(track.type, averages) : null;
-            const above = average !== null && track.rate > average + 0.1;
+            const review = averages ? reviewTracks([track], averages)[0] : null;
+            const average = review?.average ?? null;
+            const above = review?.aboveAverage ?? false;
             const end = endOf(track.months);
             return (
               <CurrentTrackRow
@@ -545,7 +546,9 @@ function TracksStep({
                           track.rate > 0 && above ? 'bg-amber-100 text-amber-800' : 'bg-slate-200/70 text-slate-600'
                         )}
                       >
-                        ממוצע בנק ישראל {formatRate(average)}
+                        {review?.margin
+                          ? `מרווח ממוצע בבנק ישראל ${formatRate(review.margin.average)}`
+                          : `ממוצע בנק ישראל ${formatRate(average)}`}
                         {track.rate > 0 && above && ' · אתם מעל הממוצע'}
                       </span>
                     )}
