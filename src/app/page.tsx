@@ -9,13 +9,13 @@ import MortgageMarketDashboard from '@/components/home/MortgageMarketDashboard';
 import { ConsumerCreditMarket } from '@/components/consumer-loans/ConsumerCreditMarket';
 import Footer from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
-import { journeyStages } from '@/data/platform/journey';
 import { GuestStart } from '@/components/service-flow/GuestStart';
 import { FreeToolsSection } from '@/components/service-flow/FreeToolsSection';
 import { PricingModelStrip } from '@/components/service-flow/PricingModelStrip';
 import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingNotes';
 import { usePricing } from '@/components/pricing/PricingProvider';
 import { HeroPromoVideo } from '@/components/home/HeroPromoVideo';
+import { HeroCarousel } from '@/components/home/hero-carousel/HeroCarousel';
 import { demoId } from '@/demo/demo-attr';
 
 export default function Home() {
@@ -73,154 +73,7 @@ export default function Home() {
 
         {/* קרוסלת היתרונות: במה משלה בזרימת הדף, בין הטקסט לכפתורים, כך שבשום גודל מסך
             היא לא נכנסת מתחת לטקסט או לכפתורים. הגובה נגזר מהמקום שנשאר במסך */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none relative my-4 hidden min-h-[220px] w-full max-w-3xl flex-1 md:block lg:min-h-[240px] xl:max-h-[460px]"
-        >
-      
-        {/* Slide 1: שוויון כוחות — מאזניים שנוטים לצד הבנק, ומתיישרים כשהכלים של משכלנתא נוחתים בצד שלכם */}
-        <div className="absolute inset-0 opacity-0 animate-carousel-slide-1 flex items-center justify-center">
-          <div className="h-full w-full px-4">
-            <svg viewBox="40 40 720 360" className="h-full w-full">
-              {/* עמוד ובסיס */}
-              <path d="M400 112 L400 292" stroke="rgba(51, 65, 85, 0.55)" strokeWidth="6" strokeLinecap="round" />
-              <rect x="330" y="290" width="140" height="14" rx="7" fill="rgba(51, 65, 85, 0.45)" />
-              <circle cx="400" cy="104" r="10" fill="rgba(59, 130, 246, 0.85)" />
-
-              {/* הקורה */}
-              <g className="animate-balance-beam">
-                <path d="M200 110 L600 110" stroke="rgba(51, 65, 85, 0.7)" strokeWidth="6" strokeLinecap="round" />
-              </g>
-
-              {/* הכף שלכם (שמאל): הכלים נוחתים בה אחד אחרי השני */}
-              <g className="animate-balance-pan-light">
-                <path d="M200 110 L125 200 M200 110 L275 200" stroke="rgba(100, 116, 139, 0.6)" strokeWidth="2" />
-                <g className="animate-balance-drop-1">
-                  <rect x="126" y="170" width="46" height="26" rx="8" fill="rgba(16, 185, 129, 0.85)" />
-                  <text x="149" y="188" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold" direction="rtl">ידע</text>
-                </g>
-                <g className="animate-balance-drop-2">
-                  <rect x="177" y="170" width="46" height="26" rx="8" fill="rgba(59, 130, 246, 0.85)" />
-                  <text x="200" y="188" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold" direction="rtl">כלים</text>
-                </g>
-                <g className="animate-balance-drop-3">
-                  <rect x="228" y="170" width="46" height="26" rx="8" fill="rgba(139, 92, 246, 0.85)" />
-                  <text x="251" y="188" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" direction="rtl">שקיפות</text>
-                </g>
-                <path d="M115 200 Q200 244 285 200 Z" fill="rgba(59, 130, 246, 0.25)" stroke="rgba(59, 130, 246, 0.7)" strokeWidth="3" />
-                <text x="200" y="262" textAnchor="middle" fill="rgba(30, 64, 175, 0.9)" fontSize="20" fontWeight="bold" direction="rtl">אתם</text>
-              </g>
-
-              {/* הכף של הבנק (ימין) */}
-              <g className="animate-balance-pan-heavy">
-                <path d="M600 110 L525 200 M600 110 L675 200" stroke="rgba(100, 116, 139, 0.6)" strokeWidth="2" />
-                <path d="M566 162 L600 144 L634 162 Z" fill="rgba(71, 85, 105, 0.75)" />
-                <rect x="570" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
-                <rect x="586" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
-                <rect x="607" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
-                <rect x="623" y="164" width="7" height="28" fill="rgba(71, 85, 105, 0.6)" />
-                <rect x="564" y="192" width="72" height="6" rx="2" fill="rgba(71, 85, 105, 0.75)" />
-                <path d="M515 200 Q600 244 685 200 Z" fill="rgba(100, 116, 139, 0.2)" stroke="rgba(71, 85, 105, 0.7)" strokeWidth="3" />
-                <text x="600" y="262" textAnchor="middle" fill="rgba(51, 65, 85, 0.9)" fontSize="20" fontWeight="bold" direction="rtl">הבנק</text>
-              </g>
-
-              {/* Title */}
-              <text x="400" y="350" textAnchor="middle" fill="rgba(59, 130, 246, 0.9)"
-                    fontSize="32" fontWeight="bold" direction="rtl">שוויון כוחות מול הבנק</text>
-              <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)"
-                    fontSize="17" direction="rtl">לבנק יש ידע וכוח. חמושים בכלים של משכלנתא, גם אתם מגיעים מוכנים למערכה.</text>
-            </svg>
-          </div>
-        </div>
-
-        {/* Slide 2: Transparency & Simplicity */}
-        <div className="absolute inset-0 opacity-0 animate-carousel-slide-2 flex items-center justify-center">
-          <div className="h-full w-full px-4">
-            <svg viewBox="40 40 720 360" className="h-full w-full">
-              {/* Shield Icon */}
-              <path d="M400 50 L350 80 L350 200 Q350 250 400 280 Q450 250 450 200 L450 80 Z" 
-                    fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.6)" strokeWidth="3" className="animate-pulse-glow" />
-            
-              {/* Checkmarks inside shield */}
-              <path d="M370 150 L385 165 L420 130" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" />
-              <path d="M370 180 L385 195 L420 160" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" style={{animationDelay: '0.5s'}} />
-              <path d="M370 210 L385 225 L420 190" stroke="rgba(34, 197, 94, 0.8)" strokeWidth="4" fill="none" className="animate-draw-line" style={{animationDelay: '1s'}} />
-            
-              {/* Floating Elements */}
-              <circle cx="300" cy="120" r="15" fill="rgba(59, 130, 246, 0.3)" className="animate-float-up" />
-              <rect x="480" y="140" width="30" height="20" rx="5" fill="rgba(99, 102, 241, 0.3)" className="animate-float-up" style={{animationDelay: '0.7s'}} />
-              <polygon points="520,200 540,220 520,240" fill="rgba(139, 92, 246, 0.3)" className="animate-float-up" style={{animationDelay: '1.4s'}} />
-            
-              {/* Title */}
-              <text x="400" y="350" textAnchor="middle" fill="rgba(59, 130, 246, 0.9)" 
-                    fontSize="32" fontWeight="bold">פשטות ושקיפות מלאה</text>
-              <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                    fontSize="18" direction="rtl">בכל שלב אתם רואים את תוצרי העבודה של היועץ.</text>
-            </svg>
-          </div>
-        </div>
-
-        {/* Slide 3: Navigation & Guidance — חמשת שלבי המשכנתא */}
-        <div className="absolute inset-0 opacity-0 animate-carousel-slide-3 flex items-center justify-center">
-          <div className="w-full px-4" dir="rtl">
-            <div className="relative mb-6 lg:mb-10">
-              <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 rounded-full bg-slate-200 md:block" />
-              <div className="absolute top-7 right-[6%] left-[6%] hidden h-1 overflow-hidden rounded-full md:block">
-                <div className="h-full w-full bg-gradient-to-l from-blue-500 via-violet-500 to-rose-500 animate-draw-line" />
-              </div>
-              <ol className="relative mx-auto grid max-w-xs grid-cols-5 gap-0.5 sm:max-w-md sm:gap-1 md:max-w-none md:gap-2">
-                {journeyStages.map((stage) => (
-                  <li key={stage.id} className="flex flex-col items-center text-center">
-                    <span
-                      className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black text-white shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl sm:text-base md:h-14 md:w-14 md:text-lg ${stage.gradient} animate-pulse-glow`}
-                    >
-                      {stage.number}
-                    </span>
-                    <span className="mt-1.5 text-2xs font-bold leading-tight text-slate-800 sm:mt-3 sm:text-2xs md:text-sm">
-                      {stage.shortTitle}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <p className="text-center text-2xl font-black text-emerald-600 md:text-3xl">
-              ניווט לאורך כל השלבים
-            </p>
-            <p className="mt-1 text-center text-base text-slate-600 md:text-lg">
-              מנהלים את כל התהליך מול כל הגורמים, עם כל החישובים והמסמכים, במקום אחד.
-            </p>
-          </div>
-        </div>
-
-        {/* Slide 4: Optimal Mix */}
-        <div className="absolute inset-0 opacity-0 animate-carousel-slide-4 flex items-center justify-center">
-          <div className="h-full w-full px-4">
-            <svg viewBox="40 40 720 360" className="h-full w-full">
-              {/* Multiple Charts Representing Mix */}
-              <rect x="150" y="180" width="100" height="120" rx="10" fill="rgba(168, 85, 247, 0.3)" className="animate-float-up" />
-              <rect x="280" y="160" width="100" height="140" rx="10" fill="rgba(139, 92, 246, 0.4)" className="animate-float-up" style={{animationDelay: '0.5s'}} />
-              <rect x="410" y="140" width="100" height="160" rx="10" fill="rgba(124, 58, 237, 0.5)" className="animate-float-up" style={{animationDelay: '1s'}} />
-              <rect x="540" y="170" width="100" height="130" rx="10" fill="rgba(109, 40, 217, 0.4)" className="animate-float-up" style={{animationDelay: '1.5s'}} />
-            
-              {/* Connecting Lines */}
-              <path d="M200 150 Q300 100 400 120 Q500 100 600 150" 
-                    stroke="rgba(34, 197, 94, 0.6)" strokeWidth="3" fill="none" className="animate-draw-line" />
-            
-              {/* Percentage Labels */}
-              <text x="200" y="170" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">25%</text>
-              <text x="330" y="150" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">35%</text>
-              <text x="460" y="130" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">30%</text>
-              <text x="590" y="160" textAnchor="middle" fill="rgba(255, 255, 255, 0.9)" fontSize="16" fontWeight="bold">10%</text>
-            
-              {/* Title */}
-              <text x="400" y="350" textAnchor="middle" fill="rgba(168, 85, 247, 0.9)" 
-                    fontSize="32" fontWeight="bold">תמהיל אופטימלי מותאם</text>
-              <text x="400" y="380" textAnchor="middle" fill="rgba(75, 85, 99, 0.8)" 
-                    fontSize="18">התאמה מושלמת לצרכים שלכם</text>
-            </svg>
-          </div>
-        </div>
-      </div>
+        <HeroCarousel className="pointer-events-none relative my-4 hidden min-h-[220px] w-full max-w-3xl flex-1 md:block lg:min-h-[240px] xl:max-h-[460px]" />
 
         {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — סרטון שנפתח בחלון */}
         <div className="flex w-full items-center justify-center pt-4 md:pt-0">

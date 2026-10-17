@@ -344,11 +344,7 @@ body.driver-active .mk-demo-cursor * {
 }
 
 /* בזמן הדגמה הקרוסלה של דף הבית נעצרת — ההדגמה היא האנימציה */
-body.mk-demo-active .animate-carousel-slide-1,
-body.mk-demo-active .animate-carousel-slide-2,
-body.mk-demo-active .animate-carousel-slide-3,
-body.mk-demo-active .animate-carousel-slide-4 {
-  animation: none !important;
+body.mk-demo-active .hero-carousel {
   opacity: 0 !important;
 }
 

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { FormattedNumberValueInput } from '@/components/ui/formatted-number-input';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,7 +26,6 @@ import {
   equityOf,
   ltvOf,
   maxMortgageFor,
-  requiredEquityFor,
 } from '../propertyContext';
 import { MaxPaymentDialog } from './MaxPaymentDialog';
 import { formatPayment, formatShekel } from './primitives';
@@ -37,6 +35,7 @@ import type { DealField } from '../dealGuard';
 export interface DealPatch {
   propertyValue?: number;
   totalAmount?: number;
+  equity?: number;
   maxMonthlyPayment?: number;
   dealType?: DealType;
   propertyAddress?: string;
@@ -51,11 +50,11 @@ interface PropertyHeaderProps {
   /** תקרה שחושבה מהפרופיל — 40% מההכנסה הפנויה של היחיד או של הזוג */
   profileMaxMonthlyPayment?: number;
   /**
-   * עריכת פרטי העסקה. מחזירה false כשהעריכה נחסמה בגלל מגבלת רגולציה —
-   * ההודעה מגיעה דרך `notice` ומוצגת כאן, מתחת לשדות.
+   * עריכת פרטי העסקה. העריכה נשמרת תמיד; חריגה ממגבלת רגולציה מגיעה כהתראה
+   * דרך `notice` ומוצגת כאן, מתחת לשדות.
    */
   onCommitDeal: (patch: DealPatch, edited: DealField) => boolean;
-  /** הודעת חסימה מהבדיקה הרגולטורית */
+  /** התראה מהבדיקה הרגולטורית */
   notice?: string | null;
   onDismissNotice?: () => void;
   /**
@@ -69,8 +68,8 @@ interface PropertyHeaderProps {
 
 /**
  * כותרת הנכס שמעל התמהילים: סכום המשכנתא, עלות הנכס, ההון העצמי, סוג העסקה
- * וכתובת הנכס. כל ערך ניתן לעריכה בלחיצה עליו, וסכום המשכנתא מוגבל לתקרת
- * המימון של בנק ישראל לפי סוג העסקה — חריגה ממנה דורשת הגדלת ההון העצמי.
+ * וכתובת הנכס. כל ערך ניתן לעריכה בלחיצה עליו ומשנה רק את עצמו. חריגה מתקרת
+ * המימון, מההון העצמי המינימלי או מתקרת ההחזר מוצגת כהתראה מתחת לשדות.
  */
 export function PropertyHeader({
   mix,
@@ -83,8 +82,6 @@ export function PropertyHeader({
   advisory = false,
   maxPaymentFromIncome = false,
 }: PropertyHeaderProps) {
-  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
-  const [draftEquity, setDraftEquity] = useState(0);
   const [showMaxPayment, setShowMaxPayment] = useState(false);
 
   const dealType = dealTypeOf(mix);
@@ -97,68 +94,33 @@ export function PropertyHeader({
   const overPayment =
     (mix.maxMonthlyPayment ?? 0) > 0 && monthlyPayment > (mix.maxMonthlyPayment ?? 0) + 1;
 
-  const requiredEquity = pendingAmount === null ? 0 : requiredEquityFor(pendingAmount, dealType);
+  const minEquity = propertyValue > 0 ? Math.max(0, propertyValue - maxMortgage) : 0;
+  /** הון שהוזן בנפרד ונמוך מהמינימום. בתמהיל ישן ההון נגזר, והחריגה היא חריגת המימון */
+  const lowEquity = mix.equity !== undefined && propertyValue > 0 && equity < minEquity - 1;
+  /** משכנתא והון עצמי שלא מכסים יחד את עלות הנכס */
+  const fundingGap =
+    mix.equity !== undefined && propertyValue > 0 && mix.totalAmount > 0
+      ? propertyValue - mix.totalAmount - equity
+      : 0;
 
-  /** הגדלת המשכנתא מעל התקרה לא מתבצעת ישירות — היא ממתינה להגדלת ההון העצמי. */
+  /**
+   * כל שדה מעדכן רק את עצמו: סכום המשכנתא, עלות הנכס וההון העצמי נשמרים כפי
+   * שהוזנו ולא מזיזים זה את זה. חריגה ממגבלה לא חוסמת — היא מוצגת כהתראה.
+   */
   const commitAmount = (next: number) => {
     if (next <= 0) return;
-    if (advisory || propertyValue <= 0 || next <= maxMortgage + 1) {
-      setPendingAmount(null);
-      onCommitDeal({ totalAmount: next }, 'totalAmount');
-      return;
-    }
-    setPendingAmount(next);
-    setDraftEquity(Math.round(requiredEquityFor(next, dealType)));
+    onCommitDeal({ totalAmount: next }, 'totalAmount');
   };
 
-  /**
-   * ההון העצמי הוא ההפרש מעלות הנכס, ולכן עריכתו משנה את סכום המשכנתא. כשעלות
-   * הנכס עוד לא הוזנה, ההון העצמי מצטרף לסכום המשכנתא ויחד הם עלות הנכס — כך
-   * אפשר להזין אותו גם בלי שהפרופיל הפיננסי מולא קודם. אם סכום המשכנתא שהכלי
-   * נפתח איתו גבוה מדי להון הזה, הוא יורד למקסימום שההון מאפשר לסוג העסקה.
-   */
   const commitEquity = (next: number) => {
-    const equityValue = Math.max(0, next);
-    if (propertyValue <= 0) {
-      if (equityValue <= 0) return;
-      const maxByEquity = Math.floor((equityValue * ltvLimit) / (100 - ltvLimit));
-      const amount = advisory && mix.totalAmount > 0 ? mix.totalAmount : Math.min(mix.totalAmount, maxByEquity);
-      onCommitDeal(
-        { propertyValue: Math.round(amount + equityValue), totalAmount: amount },
-        'equity'
-      );
-      return;
-    }
-    onCommitDeal({ totalAmount: Math.max(0, propertyValue - equityValue) }, 'equity');
+    onCommitDeal({ equity: Math.max(0, next) }, 'equity');
   };
 
-  /**
-   * עלות נכס שמוזנת לראשונה (כשנכנסו לכלי לפני הפרופיל) לא נחסמת בגלל סכום
-   * המשכנתא ההתחלתי: אם הוא חורג מתקרת המימון, הוא יורד לתקרה של העסקה.
-   */
   const commitPropertyValue = (next: number) => {
-    const value = Math.max(0, next);
-    if (!advisory && propertyValue <= 0 && value > 0) {
-      const cap = Math.floor(maxMortgageFor(value, dealType));
-      if (mix.totalAmount > cap + 1) {
-        onCommitDeal({ propertyValue: value, totalAmount: cap }, 'propertyValue');
-        return;
-      }
-    }
-    onCommitDeal({ propertyValue: value }, 'propertyValue');
-  };
-
-  const applyPendingWithEquity = () => {
-    if (pendingAmount === null || draftEquity < requiredEquity - 1) return;
-    const accepted = onCommitDeal(
-      { propertyValue: Math.round(pendingAmount + draftEquity), totalAmount: pendingAmount },
-      'totalAmount'
-    );
-    if (accepted) setPendingAmount(null);
+    onCommitDeal({ propertyValue: Math.max(0, next) }, 'propertyValue');
   };
 
   const changeDealType = (next: DealType) => {
-    setPendingAmount(null);
     onCommitDeal({ dealType: next }, 'dealType');
   };
 
@@ -249,8 +211,8 @@ export function PropertyHeader({
           onCommit={commitEquity}
           hint={
             propertyValue > 0
-              ? `נדרש לפחות ${formatShekel(propertyValue - maxMortgage)}`
-              : 'הזנה תשלים את עלות הנכס: משכנתא + הון עצמי'
+              ? `נדרש לפחות ${formatShekel(minEquity)}`
+              : 'ההון העצמי שעומד לרשות הלקוח'
           }
         />
         <EditableAmount
@@ -283,18 +245,18 @@ export function PropertyHeader({
       </div>
 
       {notice && (
-        <div className="flex items-start gap-2 border-t border-red-300 bg-red-50 p-3">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+        <div className="flex items-start gap-2 border-t border-amber-300 bg-amber-50 p-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="text-xs font-bold text-red-900">השינוי חורג ממגבלות בנק ישראל</p>
-            <p className="text-2xs leading-relaxed text-red-800">{notice}</p>
+            <p className="text-xs font-bold text-amber-900">שימו לב: הנתונים חורגים ממגבלות בנק ישראל</p>
+            <p className="text-2xs leading-relaxed text-amber-800">{notice}</p>
           </div>
           {onDismissNotice && (
             <button
               type="button"
               onClick={onDismissNotice}
               title="סגירת ההודעה"
-              className="rounded-md p-1 text-red-400 transition-colors hover:bg-red-100 hover:text-red-700"
+              className="rounded-md p-1 text-amber-500 transition-colors hover:bg-amber-100 hover:text-amber-800"
             >
               <X className="h-4 w-4" />
             </button>
@@ -302,57 +264,28 @@ export function PropertyHeader({
         </div>
       )}
 
-      {pendingAmount !== null && (
-        <div className="border-t border-red-200 bg-red-50 p-3 space-y-2.5">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-            <div className="min-w-0 space-y-1">
-              <p className="text-xs font-bold text-red-900">עליך להגדיל את ההון העצמי</p>
-              <p className="text-2xs text-red-800 leading-relaxed">
-                משכנתא של {formatShekel(pendingAmount)} חורגת מתקרת המימון — ב{DEAL_TYPES[dealType]}{' '}
-                מותר עד {ltvLimit}% משווי הנכס, כלומר {formatShekel(maxMortgage)} לנכס הנוכחי. כדי
-                לקחת את הסכום הזה נדרש הון עצמי של {formatShekel(requiredEquity)} לפחות, ועלות הנכס
-                תעודכן בהתאם.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1">
-              <Label className="text-2xs text-red-900">הון עצמי (₪)</Label>
-              <FormattedNumberValueInput
-                className="h-9 w-40 bg-white"
-                autoFocus
-                value={draftEquity || ''}
-                onValueChange={setDraftEquity}
-              />
-            </div>
-            <Button
-              size="sm"
-              className="h-9 text-xs"
-              disabled={draftEquity < requiredEquity - 1}
-              onClick={applyPendingWithEquity}
-            >
-              אשר משכנתא של {formatShekel(pendingAmount)}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 text-xs text-red-700"
-              onClick={() => setPendingAmount(null)}
-            >
-              בטל
-            </Button>
-            {draftEquity >= requiredEquity - 1 && (
-              <span className="text-2xs text-red-800">
-                עלות הנכס תתעדכן ל{formatShekel(pendingAmount + draftEquity)}
-              </span>
-            )}
-          </div>
+      {lowEquity && (
+        <div className="flex items-start gap-2 border-t border-red-200 bg-red-50 p-3">
+          <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+          <p className="text-2xs text-red-800 leading-relaxed">
+            ההון העצמי ({formatShekel(equity)}) נמוך מהמינימום של בנק ישראל ל{DEAL_TYPES[dealType]}: לנכס
+            בעלות {formatShekel(propertyValue)} נדרש הון עצמי של {formatShekel(minEquity)} לפחות (
+            {100 - ltvLimit}% מעלות הנכס).
+          </p>
         </div>
       )}
 
-      {overFinanced && pendingAmount === null && (
+      {fundingGap > 1 && (
+        <div className="flex items-start gap-2 border-t border-amber-200 bg-amber-50 p-3">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-2xs text-amber-800 leading-relaxed">
+            המשכנתא וההון העצמי יחד ({formatShekel(mix.totalAmount + equity)}) נמוכים מעלות הנכס ב
+            {formatShekel(fundingGap)}.
+          </p>
+        </div>
+      )}
+
+      {overFinanced && (
         <div className="flex flex-wrap items-center gap-2 border-t border-red-200 bg-red-50 p-3">
           <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
           <p className="min-w-0 flex-1 text-2xs text-red-800 leading-relaxed">
@@ -371,7 +304,7 @@ export function PropertyHeader({
         </div>
       )}
 
-      {overPayment && (
+      {overPayment && !notice && (
         <div className="flex items-start gap-2 border-t border-amber-200 bg-amber-50 p-3">
           <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-2xs text-amber-800 leading-relaxed">

@@ -330,6 +330,7 @@ export function TrackCompositionStrip({
           <button
             key={track.id}
             type="button"
+            data-track-segment
             disabled={!clickable}
             onClick={() => onTrackClick?.(track.id)}
             style={{ width: `calc(${Math.max(share, 0)}% - 0.375rem)`, minWidth: '150px' }}

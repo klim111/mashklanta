@@ -52,4 +52,17 @@ describe('מגבלות רגולציה על עריכת העסקה', () => {
       checkDealLimits({ ...base, profileCap: undefined, monthlyPayment: 8_200 }, 'totalAmount')
     ).toHaveLength(1);
   });
+
+  it('הון עצמי שנשמר בנפרד נבדק בנפרד מיחס המימון', () => {
+    expect(checkDealLimits({ ...base, equity: 600_000 }, 'totalAmount')).toEqual([]);
+    const low = checkDealLimits({ ...base, equity: 400_000 }, 'equity');
+    expect(low.map((v) => v.kind)).toEqual(['equity']);
+    expect(low[0].message).toContain('₪500,000');
+    const both = checkDealLimits({ ...base, totalAmount: 1_600_000, equity: 400_000 }, 'totalAmount');
+    expect(both.map((v) => v.kind)).toEqual(['ltv', 'equity']);
+  });
+
+  it('עריכת הון עצמי שנשמר בנפרד לא בודקת את ההחזר — הסכום לא השתנה', () => {
+    expect(checkDealLimits({ ...base, equity: 600_000, monthlyPayment: 8_400 }, 'equity')).toEqual([]);
+  });
 });

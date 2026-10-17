@@ -62,8 +62,11 @@ export function requiredEquityFor(mortgageAmount: number, dealType: DealType): n
   return (mortgageAmount * (100 - ltv)) / ltv;
 }
 
-/** ההון העצמי הוא ההפרש בין עלות הנכס לסכום המשכנתא */
-export function equityOf(mix: Pick<WorkspaceMix, 'propertyValue' | 'totalAmount'>): number {
+/** ההון העצמי שהוזן לתמהיל, ובתמהיל שאין בו ערך כזה — ההפרש בין עלות הנכס למשכנתא */
+export function equityOf(
+  mix: Pick<WorkspaceMix, 'propertyValue' | 'totalAmount'> & { equity?: number }
+): number {
+  if (mix.equity !== undefined && Number.isFinite(mix.equity)) return Math.max(0, mix.equity);
   const propertyValue = mix.propertyValue ?? 0;
   if (propertyValue <= 0) return 0;
   return Math.max(0, propertyValue - mix.totalAmount);

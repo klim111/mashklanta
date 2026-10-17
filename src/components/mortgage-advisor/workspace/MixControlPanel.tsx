@@ -109,8 +109,19 @@ export function MixControlPanel({
   const remaining = remainingAmount(mix);
   const allocated = allocatedAmount(mix);
 
+  /**
+   * לחיצה בפאנל שאינה על כרטיס מסלול מאפסת את בחירת המסלול. אירוע שהגיע מחלון
+   * קופץ או מרשימה נפתחת (הוא עולה דרך React מחוץ לפאנל) לא נחשב.
+   */
+  const resetOnOutsideTrack = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!focusTrackId || !onFocusTrack) return;
+    const target = event.target as HTMLElement;
+    if (!event.currentTarget.contains(target) || target.closest('[data-track-card]')) return;
+    onFocusTrack(null);
+  };
+
   return (
-    <div className="space-y-2 p-2">
+    <div className="space-y-2 p-2" onClick={resetOnOutsideTrack}>
       {locked && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
           <Lock className="h-4 w-4 shrink-0" />
@@ -307,6 +318,7 @@ function TrackControlCard({
       השורה, וכפתור המחיקה יושב למטה בצד שמאל.
     */
     <div
+      data-track-card
       className={`rounded-lg border bg-white transition-colors ${
         focused ? 'border-violet-400 ring-1 ring-violet-200' : 'border-slate-200'
       }`}

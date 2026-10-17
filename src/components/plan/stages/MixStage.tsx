@@ -137,8 +137,13 @@ export function MixStage({
     return fromBaskets;
   }, [preApproval.baskets, data.MIX.mixKey]);
   const prepayments = plannedPrepayments(data);
-  /** ברירת מחדל: מחיר הנכס לפי אחוז המימון שהוזן בפרופיל, או פחות ההון העצמי */
+  /**
+   * ברירת מחדל: סכום המשכנתא שנשמר בפרופיל, ובלעדיו מחיר הנכס לפי אחוז המימון
+   * או פחות ההון העצמי. הסכום השמור קודם, כדי שעריכת ההון או עלות הנכס בכלי
+   * לא תחשב מחדש את סכום המשכנתא.
+   */
   const defaultMortgage =
+    (profile.mortgageAmount && profile.mortgageAmount > 0 ? profile.mortgageAmount : null) ??
     requestedMortgage(
       profile.propertyValue ?? 0,
       profile.equity,

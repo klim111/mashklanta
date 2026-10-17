@@ -83,6 +83,7 @@ export function createFirstMix(options: {
       propertyValue,
       propertyAddress,
       maxMonthlyPayment,
+      ...(seed?.equity != null && seed.equity >= 0 ? { equity: Math.round(seed.equity) } : {}),
       tracks: [],
     })
   );
