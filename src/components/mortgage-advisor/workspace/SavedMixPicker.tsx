@@ -21,6 +21,9 @@ interface SavedMixPickerProps {
   totalAmount: number;
   activeId?: string;
   onSelect: (item: SavedMix) => void;
+  /** כותרת והסבר אחרים — בכלי של היועץ מוצגים כל התמהילים השמורים שלו */
+  title?: string;
+  description?: string;
 }
 
 /**
@@ -35,10 +38,14 @@ export function SavedMixPicker({
   totalAmount,
   activeId,
   onSelect,
+  title,
+  description,
 }: SavedMixPickerProps) {
-  const scope = address?.trim()
-    ? `לנכס ב${address.trim()}`
-    : `למשכנתא בסך ${formatShekel(totalAmount)}`;
+  const scope = title
+    ? ''
+    : address?.trim()
+      ? `לנכס ב${address.trim()}`
+      : `למשכנתא בסך ${formatShekel(totalAmount)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,18 +53,18 @@ export function SavedMixPicker({
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2 text-base">
             <BookmarkCheck className="h-4 w-4 text-blue-600" />
-            תמהילים שמורים {scope}
+            {title ?? `תמהילים שמורים ${scope}`}
           </DialogTitle>
           <DialogDescription className="text-right text-xs leading-relaxed">
-            מוצגים תמהילים שמורים לאותו נכס, כולל כאלה שהוסרו מאזור העבודה. בחירה מחזירה את התמהיל
-            לסרגל, ומשם אפשר להעלות אותו לעבודה או לסמן אותו להשוואה.
+            {description ??
+              'מוצגים תמהילים שמורים לאותו נכס, כולל כאלה שהוסרו מאזור העבודה. בחירה מחזירה את התמהיל לסרגל, ומשם אפשר להעלות אותו לעבודה או לסמן אותו להשוואה.'}
           </DialogDescription>
         </DialogHeader>
 
         {items.length === 0 ? (
           <div className="py-8 text-center">
             <PieChart className="mx-auto mb-2 h-10 w-10 text-slate-300" />
-            <p className="text-sm text-slate-500">אין תמהילים שמורים {scope}.</p>
+            <p className="text-sm text-slate-500">{title ? 'אין עדיין תמהילים שמורים.' : `אין תמהילים שמורים ${scope}.`}</p>
           </div>
         ) : (
           <div className="space-y-2">

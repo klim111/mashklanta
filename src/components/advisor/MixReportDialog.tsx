@@ -25,6 +25,7 @@ import {
   mixReportModel,
   trackTitle,
 } from '@/lib/mix-report';
+import { assignmentGaps, assignmentGapsMessage } from '@/lib/mix-assignment';
 
 export interface MixReportDialogProps {
   open: boolean;
@@ -43,6 +44,8 @@ export interface MixReportDialogProps {
   onPersist: (mix: WorkspaceMix) => Promise<SavedMix | null>;
   /** אחרי שליחה מוצלחת — כדי לרענן את הרשימות */
   onSent?: (clientId: string) => void;
+  /** פתיחת התמהיל בבונה כדי להשלים מחיר נכס או הכנסה — מתיק התמהילים */
+  onCompleteMix?: () => void;
 }
 
 async function buildPdf(mix: WorkspaceMix, explanation: MixExplanation, preparedBy: string | null, clientName: string | null) {
@@ -72,6 +75,7 @@ export function MixReportDialog({
   intent = 'send',
   onPersist,
   onSent,
+  onCompleteMix,
 }: MixReportDialogProps) {
   const { data: session } = useSession();
   const preparedBy = session?.user?.name || null;
@@ -94,6 +98,7 @@ export function MixReportDialog({
   }, [open, mix.id, defaultClientId]);
 
   const gaps = useMemo(() => explanationGaps(mix, explanation), [mix, explanation]);
+  const missingForAssign = useMemo(() => assignmentGaps(mix), [mix]);
   const model = useMemo(() => mixReportModel({ mix, explanation }), [mix, explanation]);
   const clientName = clients.find((client) => client.id === clientId)?.name ?? null;
 
@@ -124,6 +129,10 @@ export function MixReportDialog({
     setShowGaps(true);
     if (!clientId) {
       setError('בחרו את הלקוח שהתמהיל יישלח אליו.');
+      return;
+    }
+    if (missingForAssign.length > 0) {
+      setError(assignmentGapsMessage(missingForAssign));
       return;
     }
     if (gaps.length > 0) {
@@ -182,6 +191,17 @@ export function MixReportDialog({
           </div>
         ) : (
           <div className="space-y-4">
+            {intent === 'send' && missingForAssign.length > 0 && (
+              <p className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <span className="flex-1">{assignmentGapsMessage(missingForAssign)}</span>
+                {onCompleteMix && (
+                  <Button size="sm" variant="outline" className="h-7 shrink-0 bg-white text-2xs" onClick={onCompleteMix}>
+                    השלמה בבונה
+                  </Button>
+                )}
+              </p>
+            )}
             <label className="block">
               <span className="mb-1 flex items-center gap-1.5 text-xs font-bold text-slate-700">
                 <UserRound className="h-3.5 w-3.5 text-blue-600" />

@@ -6,7 +6,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { conversationFilePrefix } from '@/lib/conversation';
 import { postChatMessage } from '@/lib/conversation-store';
 import { blobIsConfigured } from '@/lib/plan-documents';
-import { assignMixToClient } from '@/lib/mixes';
+import { assignMixToClient, MixIncompleteError } from '@/lib/mixes';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -54,7 +54,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     select: { id: true, userId: true, name: true },
   });
   if (!client) return NextResponse.json({ error: 'הלקוח לא נמצא ברשימת הלקוחות שלך' }, { status: 403 });
-  const assigned = await assignMixToClient(userId, id, client.id);
+  let assigned;
+  try {
+    assigned = await assignMixToClient(userId, id, client.id);
+  } catch (error) {
+    if (error instanceof MixIncompleteError) return NextResponse.json({ error: error.message }, { status: 422 });
+    throw error;
+  }
   if (!assigned) return NextResponse.json({ error: 'התמהיל לא נמצא' }, { status: 404 });
 
   const name =
