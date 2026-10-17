@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyKnownMortgage,
+  mortgagePayment,
+  mortgagePaymentAt,
+  mortgageSchedule,
   amountForPayment,
   annuityPayment,
   cashFlowAlerts,
@@ -98,5 +102,39 @@ describe('storage', () => {
     expect(seeded.mortgage.rate).toBeCloseTo(4.5, 2);
     expect(summarize(seeded).income).toBe(24000);
     expect(summarize(seeded).longLoansPayment).toBe(1200);
+  });
+});
+
+describe('mortgage tracks', () => {
+  const tracks = [
+    { id: 'a', name: 'קבועה', amount: 600_000, rate: 4.5, months: 300 },
+    { id: 'b', name: 'פריים', amount: 400_000, rate: 6, months: 120 },
+  ];
+  const known = { tracks, source: { kind: 'mix' as const, key: 'mix:1:final', label: 'התמהיל הסופי שבחרתם' } };
+
+  it('computes the payment per track and drops a track when it ends', () => {
+    const state = applyKnownMortgage(emptyCashFlow(), known);
+    expect(state.mortgage.amount).toBe(1_000_000);
+    expect(state.mortgage.rate).toBeCloseTo(5.1, 2);
+    const first = annuityPayment(600_000, 4.5, 300) + annuityPayment(400_000, 6, 120);
+    expect(mortgagePayment(state.mortgage)).toBeCloseTo(first, 6);
+    expect(mortgagePaymentAt(state.mortgage, 120)).toBeCloseTo(annuityPayment(600_000, 4.5, 300), 6);
+    const points = timeline(state);
+    expect(points.length).toBeGreaterThan(120);
+    expect(points[121].mortgage).toBeCloseTo(annuityPayment(600_000, 4.5, 300), 6);
+    expect(mortgageSchedule(state.mortgage)).toHaveLength(300);
+  });
+
+  it('keeps the client edits to the same mix and replaces them for another one', () => {
+    const state = applyKnownMortgage(emptyCashFlow(), known);
+    const edited = { ...state, mortgage: { ...state.mortgage, tracks: [{ ...tracks[0], rate: 4 }] } };
+    expect(applyKnownMortgage(edited, known)).toBe(edited);
+    const other = { ...known, source: { ...known.source, key: 'mix:2:final' } };
+    expect(applyKnownMortgage(edited, other).mortgage.tracks).toHaveLength(2);
+    expect(applyKnownMortgage(edited, known, true).mortgage.tracks).toHaveLength(2);
+    // נשמר ונקרא חזרה עם המסלולים
+    const parsed = parseCashFlow(JSON.parse(JSON.stringify(edited)));
+    expect(parsed?.mortgage.tracks?.[0].rate).toBe(4);
+    expect(parsed?.mortgage.source?.key).toBe('mix:1:final');
   });
 });

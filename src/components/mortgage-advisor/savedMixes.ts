@@ -72,7 +72,7 @@ function upsert(items: SavedMix[], saved: SavedMix): SavedMix[] {
   return next;
 }
 
-async function fetchMixes(clientId?: string): Promise<SavedMix[]> {
+export async function fetchMixes(clientId?: string): Promise<SavedMix[]> {
   const query = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
   const response = await fetch(`/api/mixes${query}`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`failed to load mixes: ${response.status}`);

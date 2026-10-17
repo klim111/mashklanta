@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { parseCashFlow, seedCashFlow } from '@/lib/cash-flow';
+import { applyKnownMortgage, parseCashFlow, seedCashFlow } from '@/lib/cash-flow';
 import type { CashFlowSeed, CashFlowState } from '@/lib/cash-flow';
 import { parseClientProfile } from '@/lib/client-profile';
 import type { PlanView } from '@/components/plan/usePlan';
+import { loadKnownMortgage } from './knownMortgage';
 
 /** כל שמירה של הכלי מעדכנת גם את הכרטיס בסקירה, אם הוא פתוח במקום אחר */
 export const CASH_FLOW_CHANGED_EVENT = 'mashkalanta:cash-flow-changed';
@@ -44,6 +45,19 @@ async function loadSeed(plan: PlanView | null): Promise<CashFlowSeed> {
   };
 }
 
+async function persist(value: CashFlowState): Promise<boolean> {
+  try {
+    const response = await fetch('/api/cash-flow', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * `ready` — התהליכים כבר נטענו. בלי ההמתנה הזו, לקוח שעוד לא שמר כלום היה
  * מקבל נתוני פתיחה בלי המשכנתא שלו.
@@ -55,18 +69,30 @@ export function useCashFlow(plan: PlanView | null, ready = true) {
   const planRef = useRef(plan);
   planRef.current = plan;
 
+  /**
+   * המשכנתא שהלקוח כבר הזין — התמהיל הסופי או המשכנתא מכלי המיחזור — היא
+   * ברירת המחדל של אזור המשכנתא, מסלול אחר מסלול. תמהיל אחר מזה שנטען קודם
+   * מחליף את המסלולים; עריכות של הלקוח לאותו תמהיל נשמרות.
+   */
+  const known = useRef<Awaited<ReturnType<typeof loadKnownMortgage>>>(null);
+  const [knownSource, setKnownSource] = useState<string | null>(null);
+
   const load = useCallback(async () => {
+    const knownMortgage = loadKnownMortgage(planRef.current);
+    let stored: CashFlowState | null = null;
     try {
       const response = await fetch('/api/cash-flow', { cache: 'no-store' });
-      const stored = response.ok ? parseCashFlow(await response.json()) : null;
-      if (stored) {
-        setState(stored);
-        return;
-      }
+      stored = response.ok ? parseCashFlow(await response.json()) : null;
     } catch {
       /* נטען מהפרופיל */
     }
-    setState(seedCashFlow(await loadSeed(planRef.current)));
+    const base = stored ?? seedCashFlow(await loadSeed(planRef.current));
+    known.current = await knownMortgage;
+    setKnownSource(known.current?.source.label ?? null);
+    const next = applyKnownMortgage(base, known.current);
+    setState(next);
+    // המשכנתא החדשה נשמרת מיד, כדי שהכרטיס בסקירה ובדוחות יראו אותה
+    if (next !== base) void persist(next);
   }, []);
 
   useEffect(() => {
@@ -100,24 +126,21 @@ export function useCashFlow(plan: PlanView | null, ready = true) {
     setSaved('saving');
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(async () => {
-      try {
-        const response = await fetch('/api/cash-flow', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(value),
-        });
-        setSaved(response.ok ? 'saved' : 'error');
-      } catch {
-        setSaved('error');
-      }
+      setSaved((await persist(value)) ? 'saved' : 'error');
     }, 700);
     window.dispatchEvent(new CustomEvent(CASH_FLOW_CHANGED_EVENT, { detail: { state: value, source: timer } }));
   }, []);
 
   /** חזרה לנתונים מהפרופיל ומהתהליך */
   const reset = useCallback(async () => {
-    update(seedCashFlow(await loadSeed(planRef.current)));
+    update(applyKnownMortgage(seedCashFlow(await loadSeed(planRef.current)), known.current, true));
   }, [update]);
 
-  return { state, update, reset, saved };
+  /** חזרה למסלולי התמהיל שהלקוח הזין, בלי לגעת בהכנסות ובהלוואות */
+  const resetMortgage = useCallback(() => {
+    if (!known.current) return;
+    update((current) => applyKnownMortgage(current, known.current, true));
+  }, [update]);
+
+  return { state, update, reset, saved, knownSource, resetMortgage };
 }

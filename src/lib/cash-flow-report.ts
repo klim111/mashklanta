@@ -20,8 +20,10 @@ import {
   loanPayment,
   maxMortgageAmount,
   monthLabel,
+  mortgageMonths,
   summarize,
   timeline,
+  trackPayment,
 } from './cash-flow';
 import type { CashFlowState, IncomeOwner } from './cash-flow';
 import type { XlsxCell, XlsxSheet, XlsxStyle } from './xlsx';
@@ -101,11 +103,21 @@ export function cashFlowSheets(state: CashFlowState, generatedAt = new Date()): 
         c('משכנתא', text),
         c(state.mortgage.amount ?? 0, money),
         c(state.mortgage.rate ?? '—', percent),
-        c((state.mortgage.years ?? 0) * 12, integer),
+        c(mortgageMonths(state.mortgage), integer),
         c(summary.mortgagePayment, moneyBold),
         c('—', text),
       ],
     },
+    ...(state.mortgage.tracks ?? []).map((track) => ({
+      cells: [
+        c(`  ${track.name || 'מסלול'}`, text),
+        c(track.amount ?? 0, money),
+        c(track.rate ?? '—', percent),
+        c(track.months ?? 0, integer),
+        c(trackPayment(track), money),
+        c('—', text),
+      ],
+    })),
     ...state.loans.map((loan, index) => ({
       cells: [
         c(loanTitle(state, index), text),
@@ -322,12 +334,22 @@ export async function cashFlowPdf(state: CashFlowState, fontBytes: Uint8Array | 
       'משכנתא',
       state.mortgage.amount ? shekel(state.mortgage.amount) : '—',
       state.mortgage.rate !== null ? `${state.mortgage.rate}%` : '—',
-      state.mortgage.years ? `${state.mortgage.years * 12}` : '—',
+      mortgageMonths(state.mortgage) ? `${mortgageMonths(state.mortgage)}` : '—',
       shekel(summary.mortgagePayment),
       '—',
     ],
     true
   );
+  (state.mortgage.tracks ?? []).forEach((track) => {
+    tableRow([
+      track.name || 'מסלול',
+      track.amount ? shekel(track.amount) : '—',
+      track.rate !== null ? `${track.rate}%` : '—',
+      track.months ? `${track.months}` : '—',
+      shekel(trackPayment(track)),
+      '—',
+    ]);
+  });
   state.loans.forEach((loan, index) => {
     tableRow(
       [
