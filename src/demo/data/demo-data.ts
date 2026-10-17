@@ -214,6 +214,10 @@ export function demoProfile(): ClientProfile {
     primaryBank: analysis.primaryBank,
     years: analysis.years,
     name: DEMO_PERSONA.name,
+    firstName: 'דנה',
+    lastName: 'לוי',
+    partnerFirstName: 'אורי',
+    partnerLastName: 'לוי',
     email: DEMO_PERSONA.email,
     username: DEMO_PERSONA.username,
   };

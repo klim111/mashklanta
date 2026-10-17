@@ -150,6 +150,8 @@ export class DemoApiRouter {
   private contacts: ConversationContact[] = [...DEMO_CONTACTS];
   private contactRows: ContactView[] = [];
   private expertRequestedAt: string | null = null;
+  /** חותמת השינויים של `/api/live`: עולה כשתהליך מתעדכן, כדי שכל המסכים הפתוחים יטענו אותו מחדש */
+  private liveStamp = 1;
 
   /** קבצים שצורפו בהדגמה — רק השם נשמר, והתצוגה המקדימה היא PDF לדוגמה */
   private demoFiles(value: unknown): AttachmentView[] {
@@ -259,6 +261,10 @@ export class DemoApiRouter {
       return json(this.cashFlow);
     }
 
+    if (path === '/api/live') {
+      return json({ stamp: `demo-${this.liveStamp}` });
+    }
+
     // ─── תהליכי משכנתא ───
     if (parts[1] === 'plans') {
       if (parts.length === 2) {
@@ -307,6 +313,7 @@ export class DemoApiRouter {
             if (typeof deal.mortgageAmount === 'number') plan.mortgageAmount = deal.mortgageAmount;
           }
           plan.updatedAt = nowIso();
+          this.liveStamp += 1;
         }
         return json(plan);
       }
@@ -324,6 +331,9 @@ export class DemoApiRouter {
         }
         plan.updatedAt = nowIso();
         return json(plan);
+      }
+      if (parts[3] === 'authorization-advisor') {
+        return json({ advisor: DEMO_AUTHORIZATION_ADVISOR, missing: [] });
       }
       if (parts[3] === 'advisor-orders') {
         if (method === 'POST') {
@@ -734,7 +744,18 @@ const DEMO_CONTACTS: ConversationContact[] = [
   { kind: 'BANKER', email: 'michal.cohen@leumi.example', name: 'מיכל כהן', bank: 'לאומי' },
   { kind: 'ADVISOR', email: 'ron@mashkalanta.example', name: 'רון, יועץ משכלנתא', bank: null },
   { kind: 'CLIENT', email: DEMO_PERSONA.email, name: DEMO_PERSONA.name, bank: null },
+  { kind: 'CONTACT', email: 'yael.barak@law.example', name: 'עו״ד יעל ברק', bank: null, role: 'LAWYER' },
+  { kind: 'CONTACT', email: 'avi.levin@shamaut.example', name: 'אבי לוין, שמאי', bank: null, role: 'APPRAISER' },
 ];
+
+/** פרטי היועץ בכתבי ההסמכה של ההדגמה — כולם לדוגמה */
+const DEMO_AUTHORIZATION_ADVISOR = {
+  name: 'רון אלון',
+  idNumber: '012345678',
+  phone: '050-1234567',
+  companyName: 'משכלנתא ייעוץ משכנתאות בע"מ',
+  companyNumber: '515000000',
+};
 
 function hoursAgo(hours: number): string {
   return new Date(Date.now() - hours * 3600 * 1000).toISOString();
@@ -774,6 +795,40 @@ function demoChat(): ChatMessageView[] {
 
 function demoEmails(): ConversationEmailView[] {
   return [
+    {
+      id: 'demo-email-5',
+      direction: 'INBOUND',
+      senderRole: null,
+      fromAddress: 'avi.levin@shamaut.example',
+      fromName: 'אבי לוין, שמאי',
+      toAddresses: [DEMO_PERSONA.email],
+      ccAddresses: ['ron@mashkalanta.example'],
+      subject: 'תיאום ביקור שמאי בנכס',
+      text: 'שלום דנה,\nאשמח להגיע לנכס ביום שלישי בעשר בבוקר. דוח השמאות יישלח לבנק ולתיק שלכם עד סוף השבוע.\nאבי',
+      bank: null,
+      createdAt: hoursAgo(0.5),
+      unread: true,
+      held: false,
+      archived: false,
+      attachments: [],
+    },
+    {
+      id: 'demo-email-4',
+      direction: 'INBOUND',
+      senderRole: null,
+      fromAddress: 'yael.barak@law.example',
+      fromName: 'עו״ד יעל ברק',
+      toAddresses: [DEMO_PERSONA.email],
+      ccAddresses: ['ron@mashkalanta.example'],
+      subject: 'טיוטת חוזה המכר',
+      text: 'שלום דנה ואורי,\nמצורפת טיוטת החוזה. סימנתי את מועדי התשלום כדי שיתאימו למועד העמדת המשכנתא.\nיעל',
+      bank: null,
+      createdAt: hoursAgo(0.8),
+      unread: true,
+      held: false,
+      archived: false,
+      attachments: [],
+    },
     {
       id: 'demo-email-3',
       direction: 'INBOUND',
