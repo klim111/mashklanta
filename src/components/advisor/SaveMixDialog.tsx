@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import type { SaveTarget } from '@/components/mortgage-advisor/savedMixes';
 import { useClientProcess, useMixCategories } from './useAdvisorCrm';
+import { assignmentGapsMessage } from '@/lib/mix-assignment';
 
 interface SaveMixDialogProps {
   open: boolean;
@@ -23,6 +24,8 @@ interface SaveMixDialogProps {
   /** הלקוח שהכלי נפתח עבורו. אז השמירה מתבצעת עליו ואין מה לבחור */
   lockedClientId?: string | null;
   onSave: (target: SaveTarget) => Promise<void>;
+  /** מה חסר בתמהיל לפני שיוך ללקוח (מחיר נכס, הכנסה). כל עוד יש חוסר — שמירה ללקוח חסומה */
+  assignGaps?: string[];
 }
 
 /**
@@ -39,6 +42,7 @@ export function SaveMixDialog({
   clients,
   lockedClientId,
   onSave,
+  assignGaps = [],
 }: SaveMixDialogProps) {
   const [clientId, setClientId] = useState<string>(lockedClientId ?? '');
   const [planId, setPlanId] = useState<string>('');
@@ -94,6 +98,7 @@ export function SaveMixDialog({
   };
 
   const plans = process?.plans ?? [];
+  const blocked = Boolean(clientId) && assignGaps.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -208,6 +213,13 @@ export function SaveMixDialog({
             </div>
           )}
 
+          {blocked && (
+            <p className="flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+              {assignmentGapsMessage(assignGaps)} ההחזר החודשי המקסימלי יחושב מההכנסה לבד.
+            </p>
+          )}
+
           {error && (
             <p className="flex items-center gap-1 text-xs text-red-600">
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -216,7 +228,7 @@ export function SaveMixDialog({
           )}
 
           <DialogFooter className="gap-2 sm:justify-start">
-            <Button type="submit" disabled={busy} className="h-9 text-xs">
+            <Button type="submit" disabled={busy || blocked} className="h-9 text-xs">
               <Building2 className="ml-1 h-4 w-4" />
               {busy ? 'שומר...' : 'שמור תמהיל'}
             </Button>

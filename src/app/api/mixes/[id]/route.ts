@@ -6,6 +6,7 @@ import {
   assignMixToClient,
   canEditMix,
   markMixAsFinal,
+  MixIncompleteError,
   setMixCategory,
   shareMixWithClient,
   unmarkMixAsFinal,
@@ -64,7 +65,13 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     התמהיל מופיע אצל הלקוח בשלב בניית התמהיל כתמהיל שהיועץ בנה.
   */
   if (body?.share === true && typeof body?.clientId === 'string' && session.user.role === 'ADVISOR') {
-    const saved = await assignMixToClient(userId, id, body.clientId);
+    let saved;
+    try {
+      saved = await assignMixToClient(userId, id, body.clientId);
+    } catch (error) {
+      if (error instanceof MixIncompleteError) return NextResponse.json({ error: error.message }, { status: 422 });
+      throw error;
+    }
     if (!saved) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return NextResponse.json(saved);
   }
