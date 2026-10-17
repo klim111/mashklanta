@@ -1,10 +1,11 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './db';
-import { computeMix } from '@/components/mortgage-advisor/engine';
+import { computeMix, sanitizeMix } from '@/components/mortgage-advisor/engine';
 import type { MixSummary, WorkspaceMix } from '@/components/mortgage-advisor/engine';
 import { toSavedMix } from '@/components/mortgage-advisor/mixRecord';
 import { clientHasPaidAccess } from './mortgage-plans';
 import { fillClientDealFromMix } from './clients';
+import { assignmentGaps, assignmentGapsMessage } from './mix-assignment';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
 
 /** השדות שנדרשים כדי להציג תמהיל ברשימה, בלי לטעון את כל הלוח */
@@ -118,6 +119,13 @@ export async function listMixesForUser(userId: string): Promise<SavedMix[]> {
  * שיוך תמהיל של היועץ ללקוח שלו. מרגע השיוך התמהיל גלוי ללקוח: הוא מופיע אצלו
  * בשלב בניית התמהיל כתמהיל שהיועץ בנה. תמהיל שהלקוח עצמו שמר נשאר כמו שהוא.
  */
+/** תמהיל שחסרים בו מחיר הנכס או הכנסת הלווים — לא משויך ללקוח */
+export class MixIncompleteError extends Error {
+  constructor(readonly gaps: string[]) {
+    super(assignmentGapsMessage(gaps));
+  }
+}
+
 export async function assignMixToClient(
   advisorId: string,
   recordId: string,
@@ -132,6 +140,9 @@ export async function assignMixToClient(
   if (!row) return null;
 
   if (row.ownerId === advisorId) {
+    const current = sanitizeMix(row.mixJson);
+    const gaps = current ? assignmentGaps(current) : [];
+    if (gaps.length > 0) throw new MixIncompleteError(gaps);
     const updated = await prisma.mortgageMix.update({
       where: { id: recordId },
       data: {

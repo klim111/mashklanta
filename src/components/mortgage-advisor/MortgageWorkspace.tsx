@@ -19,6 +19,8 @@ import {
   Save,
   Send,
   Settings2,
+  FolderOpen,
+  Plus,
   ShieldAlert,
   Table2,
   Target,
@@ -48,6 +50,7 @@ import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
 import { checkDealLimits } from './dealGuard';
+import { assignmentGaps, borrowersIncome, maxPaymentFromIncome } from '@/lib/mix-assignment';
 import type { DealField } from './dealGuard';
 import type { DealPatch } from './workspace/PropertyHeader';
 import { DEFAULT_CONSTRAINTS, useMortgageWorkspace } from './workspace/useMortgageWorkspace';
@@ -191,8 +194,13 @@ export function MortgageWorkspace({
   onReopenFinal,
 }: MortgageWorkspaceProps) {
   const { mix, result, baseResult, scenarioActive, state, actions } = useMortgageWorkspace(initialMix);
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const isAdvisor = session?.user?.role === 'ADVISOR';
+  /**
+   * הכלי העצמאי של היועץ נפתח על תמהיל ריק, בלי טיוטה ובלי נתונים קודמים:
+   * מזינים סכום משכנתא ובונים. תמהיל שמור נטען במפורש מ"טען תמהיל שמור".
+   */
+  const advisorBuilder = isAdvisor && !embedded && !clientId;
   const personalAreaHref = isAdvisor ? '/advisor-dashboard' : '/dashboard';
 
   /** הלקוח שהתמהילים נשמרים עבורו. ריק כשעובדים בלי שיוך ללקוח */
@@ -387,9 +395,9 @@ export function MortgageWorkspace({
   // היועץ יבחר במפורש להמשיך ממנה
   useEffect(() => {
     if (phase !== 'ready') return;
-    if (embedded) return;
+    if (embedded || advisorBuilder) return;
     writeDraft({ mix, constraints: state.constraints });
-  }, [phase, mix, state.constraints, embedded]);
+  }, [phase, mix, state.constraints, embedded, advisorBuilder]);
 
   /**
    * כפתור השמירה מהבהב פעם אחת כשנוצר שינוי, ולא באופן מתמשך. בזמן גרירת
@@ -513,7 +521,17 @@ export function MortgageWorkspace({
   const firstMixSeeded = useRef(false);
   useEffect(() => {
     if (firstMixSeeded.current || mixClaimed.current || initialMix || !ready) return;
+    // עד שידוע אם זה יועץ — כדי לא לשחזר טיוטה בכלי שאמור להיפתח ריק
+    if (sessionStatus === 'loading') return;
     firstMixSeeded.current = true;
+
+    if (advisorBuilder) {
+      const blank = createFirstMix({ blank: true, existingMixes: saved });
+      setNewMixId(blank.id);
+      openMix(blank);
+      setEditorOpen(true);
+      return;
+    }
 
     const draft = embedded ? null : readDraft();
     if (draft && draft.mix.tracks.length > 0) {
@@ -528,7 +546,7 @@ export function MortgageWorkspace({
     setNewMixId(first.id);
     openMix(first);
     setEditorOpen(true);
-  }, [ready, initialMix, embedded, defaultSetupSeed, saved, openMix]);
+  }, [ready, initialMix, embedded, defaultSetupSeed, saved, openMix, sessionStatus, advisorBuilder]);
 
   const persistMix = useCallback(
     (next: WorkspaceMix) => {
@@ -696,7 +714,8 @@ export function MortgageWorkspace({
         },
         edited
       );
-      if (violations.length > 0) {
+      // אצל היועץ אין חסימה: החריגה מוצגת כאזהרה בכותרת הנכס, והערך משתנה
+      if (violations.length > 0 && !isAdvisor) {
         setDealNotice(violations.map((violation) => violation.message).join(' '));
         return false;
       }
@@ -724,7 +743,25 @@ export function MortgageWorkspace({
       });
       return true;
     },
-    [mix, result.summary.monthlyPayment, profileCap, actions, onDealChange]
+    [mix, result.summary.monthlyPayment, profileCap, actions, onDealChange, isAdvisor]
+  );
+
+  /**
+   * פרטי הלווים בכלי של היועץ. ההחזר החודשי המקסימלי מחושב לבד מההכנסות —
+   * 40% מסך ההכנסה נטו — ומתעדכן בכל שינוי בהן.
+   */
+  const updateBorrowers = useCallback(
+    (borrowers: NonNullable<WorkspaceMix['borrowers']>) => {
+      const before = maxPaymentFromIncome(borrowersIncome(mix));
+      const cap = maxPaymentFromIncome(borrowersIncome({ borrowers }));
+      if (cap > 0 && cap !== before) {
+        actions.patchMix({ borrowers, maxMonthlyPayment: cap });
+        actions.setConstraints({ maxMonthlyPayment: cap });
+        return;
+      }
+      actions.patchMix({ borrowers });
+    },
+    [mix, actions]
   );
 
   /**
@@ -890,6 +927,23 @@ export function MortgageWorkspace({
       setEditorOpen(true);
     },
     [keepCurrentMix, defaultSetupSeed, saved, openMix]
+  );
+
+  /** "צור תמהיל חדש" של היועץ — תמהיל ריק לגמרי, בלי פרטי הנכס של התמהיל הקודם */
+  const startBlankMix = useCallback(() => {
+    keepCurrentMix();
+    const next = createFirstMix({ blank: true, existingMixes: saved });
+    setNewMixId(next.id);
+    openMix(next);
+    actions.setCompared([]);
+    setDealNotice(null);
+    setEditorOpen(true);
+  }, [keepCurrentMix, saved, openMix, actions]);
+
+  /** כל התמהילים השמורים של היועץ, החדשים קודם — לטעינה בכלי שלו */
+  const advisorSavedMixes = useMemo(
+    () => (advisorBuilder ? [...saved].sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt)) : []),
+    [advisorBuilder, saved]
   );
 
   /** תמהיל נוסף לאותו נכס — פרטי הנכס והעסקה עוברים כמו שהם */
@@ -1278,6 +1332,31 @@ export function MortgageWorkspace({
           </Button>
           )}
 
+          {advisorBuilder && phase === 'ready' && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9"
+                onClick={startBlankMix}
+                title="תמהיל ריק חדש — מזינים סכום משכנתא ובונים"
+              >
+                <Plus className="h-4 w-4 ml-1" />
+                <span className="hidden sm:inline">צור תמהיל חדש</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9"
+                onClick={() => setSavedPickerOpen(true)}
+                title="פתיחת תמהיל מהתמהילים השמורים"
+              >
+                <FolderOpen className="h-4 w-4 ml-1" />
+                <span className="hidden sm:inline">טען תמהיל שמור</span>
+              </Button>
+            </>
+          )}
+
           {isAdvisor && phase === 'ready' && (
             <Button
               size="sm"
@@ -1352,6 +1431,8 @@ export function MortgageWorkspace({
           onCommitDeal={commitDeal}
           notice={dealNotice}
           onDismissNotice={() => setDealNotice(null)}
+          advisory={isAdvisor}
+          maxPaymentFromIncome={isAdvisor && !embedded && borrowersIncome(mix) > 0}
         />
 
         {/* פרטי הלווים — היועץ מזין אותם ישירות בכלי, בלי תיק לקוח ובלי פרופיל */}
@@ -1360,7 +1441,7 @@ export function MortgageWorkspace({
             borrowers={mix.borrowers ?? []}
             locked={Boolean(mix.locked)}
             monthlyPayment={result.summary.monthlyPayment}
-            onChange={(borrowers) => actions.patchMix({ borrowers })}
+            onChange={updateBorrowers}
           />
         )}
 
@@ -1538,6 +1619,7 @@ export function MortgageWorkspace({
           mixName={mix.name}
           clients={clients.clients.map((client) => ({ id: client.id, name: client.name }))}
           lockedClientId={enteredFromClient ? activeClientId : null}
+          assignGaps={advisorBuilder ? assignmentGaps(mix) : []}
           onSave={async (target: SaveTarget) => {
             const stored = await save(mix, target);
             notifyActive(stored);
@@ -1578,7 +1660,13 @@ export function MortgageWorkspace({
       <SavedMixPicker
           open={savedPickerOpen}
           onOpenChange={setSavedPickerOpen}
-          items={propertySavedMixes}
+          items={advisorBuilder ? advisorSavedMixes : propertySavedMixes}
+          {...(advisorBuilder
+            ? {
+                title: 'טעינת תמהיל שמור',
+                description: 'כל התמהילים ששמרתם, החדשים קודם. בחירה פותחת את התמהיל בבונה, והתמהיל שבעבודה נשמר.',
+              }
+            : {})}
           address={mix.propertyAddress}
           totalAmount={mix.totalAmount}
           activeId={mix.id}

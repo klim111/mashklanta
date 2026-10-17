@@ -29,7 +29,8 @@ export function BorrowersPanel({
   monthlyPayment: number;
   onChange: (next: MixBorrower[]) => void;
 }) {
-  const [open, setOpen] = useState(borrowers.length > 0);
+  // פתוח מההתחלה: ההכנסה נדרשת לפני שיוך ללקוח, וממנה מחושב ההחזר המקסימלי
+  const [open, setOpen] = useState(true);
   const rows = borrowers.length > 0 ? borrowers : [{ name: '' }];
   const income = borrowers.reduce((sum, item) => sum + (item.monthlyIncome ?? 0), 0);
   const ratio = income > 0 ? (monthlyPayment / income) * 100 : null;
@@ -53,7 +54,7 @@ export function BorrowersPanel({
         </span>
         <span className="text-sm font-black text-slate-900">פרטי הלווים</span>
         <span className="text-xs text-slate-500">
-          {named.length > 0 ? named.join(' ו') : 'לא הוזנו — מופיעים בדוח התמהיל'}
+          {named.length > 0 ? named.join(' ו') : 'לא הוזנו — ההכנסה נדרשת לשיוך ללקוח, וממנה מחושב ההחזר המקסימלי'}
         </span>
         {ratio !== null && (
           <span

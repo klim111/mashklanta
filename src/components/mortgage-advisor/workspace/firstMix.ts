@@ -61,10 +61,12 @@ export function nextFreeMixName(property: PropertyKey, existingMixes: NamedMix[]
 export function createFirstMix(options: {
   seed?: Partial<PropertySetup>;
   existingMixes?: NamedMix[];
+  /** תמהיל ריק לגמרי — בלי סכום משכנתא. הכלי של היועץ נפתח כך, והסכום מוזן ראשון */
+  blank?: boolean;
 } = {}): WorkspaceMix {
-  const { seed, existingMixes = [] } = options;
+  const { seed, existingMixes = [], blank = false } = options;
   const dealType = seed?.dealType ?? DEFAULT_DEAL_TYPE;
-  const totalAmount = seedTotalAmount(seed, dealType);
+  const totalAmount = blank ? 0 : seedTotalAmount(seed, dealType);
   const propertyAddress = seed?.propertyAddress?.trim() || undefined;
   const propertyValue =
     seed?.propertyValue && seed.propertyValue > 0 ? Math.round(seed.propertyValue) : undefined;
