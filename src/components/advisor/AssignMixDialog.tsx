@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
+import { assignmentGaps, assignmentGapsMessage } from '@/lib/mix-assignment';
 
 /**
  * שיוך תמהיל מתיק התמהילים ללקוח מרשימת הלקוחות. השיוך גם מציג את התמהיל
@@ -24,11 +25,14 @@ export function AssignMixDialog({
   clients,
   onOpenChange,
   onAssign,
+  onCompleteMix,
 }: {
   item: SavedMix | null;
   clients: Array<{ id: string; name: string }>;
   onOpenChange: (open: boolean) => void;
   onAssign: (clientId: string) => Promise<boolean>;
+  /** פתיחת התמהיל בבונה כדי להשלים את מה שחסר לפני השיוך */
+  onCompleteMix?: (item: SavedMix) => void;
 }) {
   const [query, setQuery] = useState('');
   const [clientId, setClientId] = useState('');
@@ -47,7 +51,10 @@ export function AssignMixDialog({
     return term ? clients.filter((client) => client.name.toLowerCase().includes(term)) : clients;
   }, [clients, query]);
 
+  const missing = useMemo(() => (item ? assignmentGaps(item.mix) : []), [item]);
+
   const submit = async () => {
+    if (missing.length > 0) return;
     if (!clientId) {
       setError('בחרו לקוח מהרשימה.');
       return;
@@ -73,6 +80,20 @@ export function AssignMixDialog({
             בלי גישה בתשלום יראה אותו כשהגישה תיפתח.
           </DialogDescription>
         </DialogHeader>
+
+        {missing.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">
+            <p className="flex items-start gap-1.5">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+              {assignmentGapsMessage(missing)} ההחזר החודשי המקסימלי יחושב מההכנסה לבד.
+            </p>
+            {onCompleteMix && item && (
+              <Button size="sm" variant="outline" className="h-8 bg-white text-xs" onClick={() => onCompleteMix(item)}>
+                פתח בבונה התמהילים להשלמה
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="relative">
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -120,7 +141,7 @@ export function AssignMixDialog({
         )}
 
         <DialogFooter className="gap-2 sm:justify-start">
-          <Button onClick={() => void submit()} disabled={busy || !clientId} className="h-9 text-xs">
+          <Button onClick={() => void submit()} disabled={busy || !clientId || missing.length > 0} className="h-9 text-xs">
             {busy ? 'משייך...' : 'שייך ללקוח'}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-9 text-xs">

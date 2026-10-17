@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -58,6 +58,13 @@ interface PropertyHeaderProps {
   /** הודעת חסימה מהבדיקה הרגולטורית */
   notice?: string | null;
   onDismissNotice?: () => void;
+  /**
+   * הכלי של היועץ: כל ערך משתנה מיד, גם מעל תקרת המימון או ההחזר. החריגה
+   * מוצגת כאזהרה מתחת לשדות ולא חוסמת — היועץ בונה גם תרחישים שחורגים.
+   */
+  advisory?: boolean;
+  /** ההחזר המקסימלי מחושב מהכנסת הלווים שהוזנה בכלי */
+  maxPaymentFromIncome?: boolean;
 }
 
 /**
@@ -73,6 +80,8 @@ export function PropertyHeader({
   onCommitDeal,
   notice,
   onDismissNotice,
+  advisory = false,
+  maxPaymentFromIncome = false,
 }: PropertyHeaderProps) {
   const [pendingAmount, setPendingAmount] = useState<number | null>(null);
   const [draftEquity, setDraftEquity] = useState(0);
@@ -93,7 +102,7 @@ export function PropertyHeader({
   /** הגדלת המשכנתא מעל התקרה לא מתבצעת ישירות — היא ממתינה להגדלת ההון העצמי. */
   const commitAmount = (next: number) => {
     if (next <= 0) return;
-    if (propertyValue <= 0 || next <= maxMortgage + 1) {
+    if (advisory || propertyValue <= 0 || next <= maxMortgage + 1) {
       setPendingAmount(null);
       onCommitDeal({ totalAmount: next }, 'totalAmount');
       return;
@@ -113,7 +122,7 @@ export function PropertyHeader({
     if (propertyValue <= 0) {
       if (equityValue <= 0) return;
       const maxByEquity = Math.floor((equityValue * ltvLimit) / (100 - ltvLimit));
-      const amount = Math.min(mix.totalAmount, maxByEquity);
+      const amount = advisory && mix.totalAmount > 0 ? mix.totalAmount : Math.min(mix.totalAmount, maxByEquity);
       onCommitDeal(
         { propertyValue: Math.round(amount + equityValue), totalAmount: amount },
         'equity'
@@ -129,7 +138,7 @@ export function PropertyHeader({
    */
   const commitPropertyValue = (next: number) => {
     const value = Math.max(0, next);
-    if (propertyValue <= 0 && value > 0) {
+    if (!advisory && propertyValue <= 0 && value > 0) {
       const cap = Math.floor(maxMortgageFor(value, dealType));
       if (mix.totalAmount > cap + 1) {
         onCommitDeal({ propertyValue: value, totalAmount: cap }, 'propertyValue');
@@ -163,7 +172,7 @@ export function PropertyHeader({
           <EditableText
             value={mix.propertyAddress ?? ''}
             placeholder="הוסיפו כתובת נכס"
-            emptyLabel={`משכנתא בסך ${formatShekel(mix.totalAmount)}`}
+            emptyLabel={mix.totalAmount > 0 ? `משכנתא בסך ${formatShekel(mix.totalAmount)}` : 'תמהיל חדש'}
             onCommit={(propertyAddress) =>
               onCommitDeal({ propertyAddress: propertyAddress.trim() }, 'propertyAddress')
             }
@@ -212,11 +221,14 @@ export function PropertyHeader({
           label="סכום המשכנתא"
           value={mix.totalAmount}
           emphasized
+          startEditing={advisory && mix.totalAmount <= 0}
           onCommit={commitAmount}
           hint={
-            propertyValue > 0
-              ? `מקסימום ל${DEAL_TYPES[dealType]} — ${formatShekel(maxMortgage)}`
-              : 'הזינו עלות נכס כדי לבדוק את תקרת המימון'
+            mix.totalAmount <= 0
+              ? 'הזינו את סכום המשכנתא כדי להתחיל לבנות את התמהיל'
+              : propertyValue > 0
+                ? `מקסימום ל${DEAL_TYPES[dealType]} — ${formatShekel(maxMortgage)}`
+                : 'הזינו עלות נכס כדי לבדוק את תקרת המימון'
           }
         />
         <EditableAmount
@@ -257,7 +269,9 @@ export function PropertyHeader({
             </Button>
           }
           hint={
-            (mix.maxMonthlyPayment ?? 0) > 0
+            maxPaymentFromIncome
+              ? `40% מהכנסת הלווים · בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
+              : (mix.maxMonthlyPayment ?? 0) > 0
               ? profileMaxMonthlyPayment
                 ? `40% מההכנסה הפנויה · בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
                 : `בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
@@ -387,6 +401,7 @@ function EditableAmount({
   hint,
   action,
   emphasized = false,
+  startEditing = false,
   onCommit,
 }: {
   icon: React.ReactNode;
@@ -395,10 +410,17 @@ function EditableAmount({
   hint?: string;
   action?: React.ReactNode;
   emphasized?: boolean;
+  /** השדה נפתח לעריכה מיד — סכום המשכנתא בתמהיל ריק */
+  startEditing?: boolean;
   onCommit: (value: number) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    if (!startEditing) return;
+    setDraft(0);
+    setEditing(true);
+  }, [startEditing]);
 
   const start = () => {
     setDraft(Math.round(value));
