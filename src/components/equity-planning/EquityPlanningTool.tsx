@@ -14,6 +14,7 @@ import {
   FileText,
   Home as HomeIcon,
   Loader2,
+  Pencil,
   PieChart,
   RotateCcw,
   Sparkles,
@@ -76,6 +77,8 @@ import {
   shekel,
 } from './theme';
 import { demoId } from '@/demo/demo-attr';
+import { useKnownDetails } from '@/components/known-details/useKnownDetails';
+import { financingProfileForDeal, knownSourceLabel } from '@/lib/known-details';
 
 const STEPS = [
   { title: 'הנכס והמימון', description: 'מחיר, פרופיל ומועד יעד' },
@@ -108,6 +111,30 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
   const previous = useRef({ price: 0, profile: 'first-home' as FinancingProfileId, targetDate: '' });
 
   const { propertyData, expenses } = data;
+
+  /**
+   * מחיר הנכס וסוג העסקה שכבר הוזנו במקום אחר בפלטפורמה. תכנון שעוד אין בו
+   * מחיר נפתח איתם, והמחיר מוצג כעובדה עם «שינוי» — לא נשאל שוב.
+   */
+  const { details: known } = useKnownDetails();
+  // מחיר שמקורו בתכנון הזה עצמו אינו «פרט שהוזן במקום אחר»
+  const knownPrice =
+    known?.propertyValue && known.propertyValue > 0 && known.sources.propertyValue !== 'equityPlan'
+      ? Math.round(known.propertyValue)
+      : null;
+  const [editingPrice, setEditingPrice] = useState(false);
+  const knownSeeded = useRef(false);
+  useEffect(() => {
+    if (!ready || !signedIn || knownSeeded.current || !knownPrice) return;
+    knownSeeded.current = true;
+    if (propertyData.price > 0) return;
+    const profile = financingProfileForDeal(known?.dealType ?? null);
+    setData((prev) => ({
+      ...prev,
+      propertyData: { ...prev.propertyData, price: knownPrice, ...(profile ? { financingProfile: profile } : {}) },
+    }));
+  }, [ready, signedIn, knownPrice, known?.dealType, propertyData.price, setData]);
+  const priceShownAsKnown = !editingPrice && knownPrice !== null && propertyData.price === knownPrice;
   const totals = useMemo(() => calculateEquityTotals(data), [data]);
   const required = minEquityRequired(propertyData);
 
@@ -473,21 +500,42 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
     >
       <div className="space-y-4 lg:col-span-2">
         <Panel demoKey="eq-property" title="פרטי הנכס" icon={HomeIcon} hint="המספרים האלה מזינים את כל הטבלה">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-black text-slate-600">מחיר הנכס</span>
-            <div className="relative">
-              <FormattedNumberValueInput
-                {...demoId('eq-price')}
-                value={propertyData.price || ''}
-                onValueChange={(next) => setProperty({ price: next })}
-                placeholder="0"
-                className="h-14 rounded-2xl border-2 border-slate-200 bg-white pl-10 text-2xl font-black text-slate-900 focus-visible:ring-4 focus-visible:ring-blue-500/10"
-              />
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-300">
-                ₪
+          {priceShownAsKnown ? (
+            <div className="block">
+              <span className="mb-1.5 block text-sm font-black text-slate-600">מחיר הנכס</span>
+              <div className="flex h-14 items-center justify-between gap-2 rounded-2xl border-2 border-slate-200 bg-slate-50 px-4">
+                <span className="text-2xl font-black text-slate-900">{shekel(propertyData.price)}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditingPrice(true)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-black text-blue-700 transition-colors hover:bg-blue-50"
+                >
+                  <Pencil className="h-4 w-4" />
+                  שינוי
+                </button>
+              </div>
+              <span className="mt-1 block text-xs font-bold text-slate-400">
+                {knownSourceLabel(known, 'propertyValue') ?? 'הוזן קודם בפלטפורמה'}
               </span>
             </div>
-          </label>
+          ) : (
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-black text-slate-600">מחיר הנכס</span>
+              <div className="relative">
+                <FormattedNumberValueInput
+                  {...demoId('eq-price')}
+                  value={propertyData.price || ''}
+                  onValueChange={(next) => setProperty({ price: next })}
+                  placeholder="0"
+                  autoFocus={editingPrice}
+                  className="h-14 rounded-2xl border-2 border-slate-200 bg-white pl-10 text-2xl font-black text-slate-900 focus-visible:ring-4 focus-visible:ring-blue-500/10"
+                />
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-300">
+                  ₪
+                </span>
+              </div>
+            </label>
+          )}
 
           <div className="mt-5">
             <span className="mb-2 block text-sm font-black text-slate-600">פרופיל מימון</span>

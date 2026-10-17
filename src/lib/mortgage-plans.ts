@@ -40,6 +40,8 @@ import type { DealType } from '@/components/mortgage-advisor/types';
 import { defaultMortgagePlanningUserData } from './mortgage-affordability';
 import { createEmptyLoan } from './borrower-loans';
 import { analysisFromToolData } from './tool-data';
+import { dealTypeForFinancingProfile } from './known-details';
+import type { FinancingProfileId } from './equity-planning';
 import { analysisFromProfile, mergeProfiles, parseClientProfile, withRegisteredName } from './client-profile';
 import { parseStages } from './advisor-orders';
 import type { SavedMix } from '@/components/mortgage-advisor/mixRecord';
@@ -280,7 +282,49 @@ async function seedAnalysis(
     }
   }
 
+  // הפרופיל השמור לא כולל פרטי נכס. אם הלקוח כבר הזין מחיר נכס בכלי המחשבון או
+  // בתכנון ההון העצמי, התהליך החדש נפתח איתו ולא שואל עליו שוב
+  if (analysisJson && fromTools) {
+    const seeded = analysisJson as unknown as AnalysisData;
+    if (!seeded.propertyValue) {
+      try {
+        const deal = await knownDealFor(userId, user?.toolDataJson);
+        if (deal) analysisJson = { ...seeded, ...deal } as unknown as Prisma.InputJsonValue;
+      } catch {
+        // פרטי הנכס הם רק נקודת פתיחה
+      }
+    }
+  }
+
   return { clientId: client?.id ?? null, analysisJson };
+}
+
+/** מחיר הנכס וסוג העסקה שהוזנו בכלים, לתהליך חדש שהפרופיל שלו בלי נכס */
+async function knownDealFor(
+  userId: string,
+  toolDataJson: unknown
+): Promise<Pick<AnalysisData, 'propertyValue' | 'dealType' | 'mortgageAmount' | 'targetLtvPercent'> | null> {
+  const tools = analysisFromToolData(toolDataJson);
+  if (tools?.propertyValue) {
+    return {
+      propertyValue: tools.propertyValue,
+      dealType: tools.dealType,
+      mortgageAmount: tools.mortgageAmount,
+      targetLtvPercent: tools.targetLtvPercent,
+    };
+  }
+  const equity = await prisma.equityPlan.findUnique({
+    where: { ownerId: userId },
+    select: { propertyPrice: true, financingProfile: true },
+  });
+  if (!equity || !(equity.propertyPrice > 0)) return null;
+  const profile = equity.financingProfile as FinancingProfileId;
+  return {
+    propertyValue: equity.propertyPrice,
+    dealType: dealTypeForFinancingProfile(profile),
+    mortgageAmount: null,
+    targetLtvPercent: null,
+  };
 }
 
 /**
