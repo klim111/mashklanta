@@ -18,6 +18,8 @@ const flow: DemoFlow = {
     { id: 'equity', route: '/equity-planning', caption: ' ', duration: 0, pauseAfter: true },
     { id: 'dashboard', route: '/demo/dashboard', caption: ' ', duration: 0, pauseAfter: true },
     { id: 'plan', route: '/demo/plan', caption: ' ', duration: 0, pauseAfter: true },
+    { id: 'authorization', route: '/demo/authorization-letters', caption: ' ', duration: 0, pauseAfter: true },
+    { id: 'meeting', route: '/demo/meeting', caption: ' ', duration: 0, pauseAfter: true },
   ],
 };
 

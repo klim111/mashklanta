@@ -37,9 +37,9 @@ const ClientConversationContext = createContext<ClientConversationApi | null>(nu
 
 /**
  * מסכים שאין בהם חלון ההתכתבות: אזור היועץ (גם advisor-dashboard), ההתחברות,
- * ושיחת הווידאו — שבה הצ'אט פתוח בתוך השיחה עצמה
+ * ושיחת הווידאו (גם בהדגמה) — שבה הצ'אט פתוח בתוך השיחה עצמה
  */
-const HIDDEN_PREFIXES = ['/advisor', '/auth', '/meeting/'];
+const HIDDEN_PREFIXES = ['/advisor', '/auth', '/meeting/', '/demo/meeting'];
 
 /**
  * הצ׳אט עם נציג משכלנתא, בכל מסכי הלקוח המחובר.
