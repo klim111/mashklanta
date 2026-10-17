@@ -184,6 +184,14 @@ describe('השוואה לריבית הממוצעת בבנק ישראל', () => {
     const good = track({ interestRate: 4.1, endDate: '2036-09-30', paymentDay: 10 });
     expect(findAboveMarketTracks([good], market, from)).toHaveLength(0);
   });
+
+  it('גם פער קטן מוצג כפי שהוא, בלי סף', () => {
+    const from = new Date(2026, 8, 5);
+    const slightly = track({ interestRate: 4.88, endDate: '2036-09-30', paymentDay: 10 });
+    const findings = findAboveMarketTracks([slightly], market, from);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].gap).toBeCloseTo(0.03, 5);
+  });
 });
 
 describe('הכוונה לפי מטרת המיחזור', () => {
