@@ -1,7 +1,9 @@
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { sendEmail, emailTemplates } from '@/lib/email';
 import { canonicalSiteOrigin } from '@/lib/auth-url';
 import { normalizeEmail } from '@/lib/find-user-by-login';
+import { passwordProblem } from '@/lib/password-policy';
 import { rateLimit } from '@/lib/rate-limit';
 import { generateToken, hashToken, sameHash } from '@/lib/registration';
 import { ADVISOR_EMAIL, ensureSingleAdvisor } from '@/lib/single-advisor';
@@ -9,15 +11,19 @@ import { ADVISOR_EMAIL, ensureSingleAdvisor } from '@/lib/single-advisor';
 /**
  * הכניסה הנסתרת של היועץ.
  *
- * אין קישור אליה מאף מקום באתר, ואין בה סיסמה: מי שמקליד בה את מייל היועץ
- * מקבל לתיבת המייל של היועץ (ורק לשם) קישור חד-פעמי ל-15 דקות. הקישור עובד רק
+ * אין קישור אליה מאף מקום באתר. מי שמקליד בה את מייל היועץ מקבל לתיבת
+ * המייל של היועץ (ורק לשם) קישור חד-פעמי ל-15 דקות, ואחרי פתיחת הקישור נדרשת
+ * גם סיסמת היועץ (בכניסה הראשונה היועץ בוחר אותה). הקישור עובד רק
  * באותו דפדפן שביקש אותו — הדפדפן מקבל עוגייה סודית, והקישור קשור אליה — כך
  * שמייל שהועבר הלאה, דלף או נפתח במכשיר אחר לא מכניס אף אחד.
  *
  * כל מה שמוקלד בעמוד מקבל אותה תשובה, כדי שהעמוד לא יגלה דבר למי שמצא אותו.
  *
  * הקישור נשמר בטבלת VerificationToken הקיימת (בלי שינוי במסד):
- *   identifier = "advisor-login:<SHA-256 של עוגיית הדפדפן>", token = SHA-256 של הטוקן שבמייל.
+ *   identifier = "advisor-login:<SHA-256 של עוגיית הדפדפן>[:<ניסיונות סיסמה שגויים>]",
+ *   token = SHA-256 של הטוקן שבמייל.
+ * הסיסמה נשמרת ב-User.hashedPassword של היועץ. ההתחברות הרגילה בסיסמה עדיין
+ * דוחה את היועץ — הסיסמה תקפה רק אחרי הקישור.
  */
 
 export const ADVISOR_LINK_TTL_MINUTES = 15;
@@ -70,23 +76,95 @@ export async function requestAdvisorLink(
 
 export class AdvisorLinkError extends Error {}
 
+/** ניסיונות סיסמה שגויים לכל קישור. אחריהם הקישור נמחק וצריך לבקש חדש */
+export const ADVISOR_PASSWORD_ATTEMPTS = 5;
+
 /**
- * מאשרת את הקישור ומחזירה את היועץ להתחברות. הקישור נמחק בשימוש — המחיקה היא
- * שמכריעה מרוץ בין שני שימושים — ורק אז המסד מובא למצב של יועץ יחיד.
+ * מזהה הקישור: "advisor-login:<hash של עוגיית הדפדפן>", ואחרי ניסיון סיסמה
+ * שגוי גם ":<מספר הניסיונות>".
  */
-export async function confirmAdvisorLink(token: string, deviceToken: string | null) {
+function parseIdentifier(identifier: string): { deviceHash: string; attempts: number } {
+  const rest = identifier.slice(IDENTIFIER_PREFIX.length);
+  const [deviceHash, attempts] = rest.split(':');
+  return { deviceHash, attempts: Number(attempts) || 0 };
+}
+
+/** בודקת שהקישור תקף ושייך לדפדפן הזה, בלי להשתמש בו */
+async function inspectAdvisorLink(token: string, deviceToken: string | null) {
   if (!token) throw new AdvisorLinkError('AdvisorLinkInvalid');
   const row = await prisma.verificationToken.findUnique({ where: { token: hashToken(token) } });
   if (!row || !row.identifier.startsWith(IDENTIFIER_PREFIX)) throw new AdvisorLinkError('AdvisorLinkInvalid');
-  if (!deviceToken || !sameHash(row.identifier.slice(IDENTIFIER_PREFIX.length), hashToken(deviceToken))) {
+  const { deviceHash, attempts } = parseIdentifier(row.identifier);
+  if (!deviceToken || !sameHash(deviceHash, hashToken(deviceToken))) {
     throw new AdvisorLinkError('AdvisorLinkOtherBrowser');
   }
   if (row.expires.getTime() < Date.now()) throw new AdvisorLinkError('AdvisorLinkExpired');
+  return { row, deviceHash, attempts };
+}
+
+async function advisorPasswordHash(): Promise<string | null> {
+  const advisor = await prisma.user.findFirst({
+    where: { email: { equals: ADVISOR_EMAIL, mode: 'insensitive' } },
+    select: { hashedPassword: true },
+  });
+  return advisor?.hashedPassword ?? null;
+}
+
+/**
+ * מה עמוד הכניסה מציג אחרי פתיחת הקישור: הקלדת הסיסמה, או — בכניסה הראשונה,
+ * כשעוד לא נקבעה סיסמה — בחירת סיסמה.
+ */
+export async function advisorLinkStep(token: string, deviceToken: string | null): Promise<'password' | 'create'> {
+  await inspectAdvisorLink(token, deviceToken);
+  return (await advisorPasswordHash()) ? 'password' : 'create';
+}
+
+/**
+ * מאשרת את הקישור ואת הסיסמה ומחזירה את היועץ להתחברות.
+ *
+ * סיסמה שגויה לא מבטלת את הקישור, אבל כל ניסיון נספר עליו, ואחרי
+ * ADVISOR_PASSWORD_ATTEMPTS הקישור נמחק. רק כשהסיסמה נכונה הקישור נמחק
+ * בשימוש — המחיקה היא שמכריעה מרוץ בין שני שימושים — ואז המסד מובא למצב של
+ * יועץ יחיד.
+ */
+export async function confirmAdvisorLink(
+  token: string,
+  deviceToken: string | null,
+  secret: { password?: string | null; newPassword?: string | null } = {}
+) {
+  const { row, deviceHash, attempts } = await inspectAdvisorLink(token, deviceToken);
+  const stored = await advisorPasswordHash();
+
+  let newHash: string | null = null;
+  if (stored) {
+    const ok = Boolean(secret.password) && (await bcrypt.compare(String(secret.password), stored));
+    if (!ok) {
+      const used = attempts + 1;
+      if (used >= ADVISOR_PASSWORD_ATTEMPTS) {
+        await prisma.verificationToken.deleteMany({ where: { token: row.token } });
+        throw new AdvisorLinkError('AdvisorPasswordLocked');
+      }
+      await prisma.verificationToken.updateMany({
+        where: { token: row.token },
+        data: { identifier: `${IDENTIFIER_PREFIX}${deviceHash}:${used}` },
+      });
+      throw new AdvisorLinkError('AdvisorPasswordWrong');
+    }
+  } else {
+    // הכניסה הראשונה: היועץ בוחר עכשיו את הסיסמה
+    const chosen = String(secret.newPassword ?? '');
+    if (!chosen || passwordProblem(chosen)) throw new AdvisorLinkError('AdvisorPasswordWeak');
+    newHash = await bcrypt.hash(chosen, 12);
+  }
 
   const { count } = await prisma.verificationToken.deleteMany({ where: { token: row.token } });
   if (count !== 1) throw new AdvisorLinkError('AdvisorLinkInvalid');
 
   const { advisor } = await ensureSingleAdvisor();
+  if (newHash) {
+    // רק אם בינתיים לא נקבעה סיסמה אחרת
+    await prisma.user.updateMany({ where: { id: advisor.id, hashedPassword: null }, data: { hashedPassword: newHash } });
+  }
   return advisor;
 }
 

@@ -134,19 +134,22 @@ export async function ensureSingleAdvisor(): Promise<SingleAdvisorResult> {
 
       let advisor = await tx.user.findFirst({
         where: { email: { equals: ADVISOR_EMAIL, mode: 'insensitive' } },
-        select: { id: true, role: true, name: true, hashedPassword: true, advisorDetailsJson: true },
+        select: { id: true, role: true, name: true, advisorDetailsJson: true },
       });
 
       if (!advisor) {
         advisor = await tx.user.create({
           data: { email: ADVISOR_EMAIL, name: ADVISOR_NAME, role: 'ADVISOR', emailVerified: new Date() },
-          select: { id: true, role: true, name: true, hashedPassword: true, advisorDetailsJson: true },
+          select: { id: true, role: true, name: true, advisorDetailsJson: true },
         });
-      } else if (advisor.role !== 'ADVISOR' || advisor.name !== ADVISOR_NAME || advisor.hashedPassword) {
-        // אין כניסה ליועץ בסיסמה; הכניסה היחידה היא הקישור למייל
+      } else if (advisor.role !== 'ADVISOR' || advisor.name !== ADVISOR_NAME) {
+        /**
+         * הסיסמה נשארת: היא השלב השני של הכניסה, אחרי הקישור במייל
+         * (src/lib/advisor-access.ts). לבדה היא לא מכניסה את היועץ.
+         */
         await tx.user.update({
           where: { id: advisor.id },
-          data: { role: 'ADVISOR', name: ADVISOR_NAME, hashedPassword: null },
+          data: { role: 'ADVISOR', name: ADVISOR_NAME },
         });
       }
 

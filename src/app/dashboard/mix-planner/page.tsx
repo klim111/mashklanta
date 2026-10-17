@@ -1,17 +1,34 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { MortgageWorkspace } from '@/components/mortgage-advisor/MortgageWorkspace';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { PaidFeatureNotice } from '@/components/access/PaidFeatureLock';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
+import { useKnownDetails } from '@/components/known-details/useKnownDetails';
 
 function MixPlannerBody() {
   const searchParams = useSearchParams();
   const mixKey = searchParams.get('mix');
-  const { access, ready } = usePlatformAccess();
+  const { access, ready: accessReady } = usePlatformAccess();
+  // מחיר הנכס, סכום המשכנתא וההון העצמי שכבר הוזנו בפלטפורמה — התמהיל הראשון
+  // נפתח איתם במקום סכום ברירת מחדל, ולכן הכלי ממתין להם
+  const { details: known, ready: knownReady } = useKnownDetails();
+  const ready = accessReady && knownReady;
+  const seed = useMemo(
+    () =>
+      known
+        ? {
+            dealType: known.dealType ?? undefined,
+            totalAmount: known.mortgageAmount ?? undefined,
+            propertyValue: known.propertyValue ?? undefined,
+            equity: known.equity ?? undefined,
+          }
+        : undefined,
+    [known]
+  );
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
@@ -36,6 +53,7 @@ function MixPlannerBody() {
         <MortgageWorkspace
           soloMixKey={mixKey || undefined}
           activeMixKey={mixKey}
+          defaultSetupSeed={seed}
           hideSiteLinks
         />
       ) : (

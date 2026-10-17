@@ -13,6 +13,7 @@ import { ClientConversationProvider } from '@/components/conversation/ClientChat
 import { SiteVisitTracker } from '@/components/analytics/SiteVisitTracker';
 import { NewMeetingAlert } from '@/components/meetings/NewMeetingAlert';
 import { AdvisorActionsMenu } from '@/components/actions/AdvisorActionsMenu';
+import { AdvisorTabGuard } from '@/components/auth/AdvisorTabGuard';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -34,17 +35,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
       refetchOnWindowFocus={!demo}
     >
       <MotionConfig reducedMotion={stopMotion ? 'always' : 'user'}>
-        <DemoHost>
-          <SiteVisitTracker />
-          <PhoneGate>
-            {/* ההתכתבות עם היועץ — בתוך PhoneGate, כך שלא תופיע מעל מסך החסימה בטלפון */}
-            <ClientConversationProvider>{children}</ClientConversationProvider>
-            {/* פגישה שהיועץ קבע — התראה צפה בכל מסך של הלקוח */}
-            <NewMeetingAlert />
-            {/* הפעולות המהירות של היועץ — בונה התמהילים וכלי הלקוח מכל עמוד */}
-            <AdvisorActionsMenu />
-          </PhoneGate>
-        </DemoHost>
+        {/* הכניסה של היועץ לא נשמרת: ביקור חדש מנתק אותו לפני שמשהו מוצג */}
+        <AdvisorTabGuard>
+          <DemoHost>
+            <SiteVisitTracker />
+            <PhoneGate>
+              {/* ההתכתבות עם היועץ — בתוך PhoneGate, כך שלא תופיע מעל מסך החסימה בטלפון */}
+              <ClientConversationProvider>{children}</ClientConversationProvider>
+              {/* פגישה שהיועץ קבע — התראה צפה בכל מסך של הלקוח */}
+              <NewMeetingAlert />
+              {/* הפעולות המהירות של היועץ — בונה התמהילים וכלי הלקוח מכל עמוד */}
+              <AdvisorActionsMenu />
+            </PhoneGate>
+          </DemoHost>
+        </AdvisorTabGuard>
       </MotionConfig>
     </SessionProvider>
   );

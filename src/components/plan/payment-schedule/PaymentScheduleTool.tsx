@@ -45,6 +45,9 @@ import {
 } from '@/lib/payment-schedule';
 import type { PaymentInstallment, PaymentSchedule, PaymentSource } from '@/lib/payment-schedule';
 import { AUTHORIZATION_FONT_PATH } from '@/lib/authorization-forms';
+import { KnownValueField } from '@/components/known-details/KnownValueField';
+import { useKnownDetails } from '@/components/known-details/useKnownDetails';
+import { KNOWN_SOURCE_LABELS, knownSourceLabel } from '@/lib/known-details';
 import { usePlan } from '../usePlan';
 import { formatShekel } from '../ui';
 
@@ -68,11 +71,29 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
+  const { details: known } = useKnownDetails();
   const profile = plan?.data.ANALYSIS;
-  const profilePrice = profile?.propertyValue ?? null;
-  const profileBank =
+  const mix = plan?.data.MIX;
+  // מחיר הנכס וסכום המשכנתא שכבר הוזנו: בפרופיל של התהליך, בתמהיל שנבחר בו,
+  // ואם לא שם — במקום אחר בפלטפורמה. הם מוצגים ולא נשאלים שוב
+  const mixBank = mix?.mixKey && mix.totalAmount && mix.totalAmount > 0 ? mix.totalAmount : null;
+  const planPrice = profile?.propertyValue || mix?.propertyValue || null;
+  const planBank =
+    mixBank ??
     profile?.mortgageAmount ??
-    (profilePrice && profile?.equity != null ? Math.max(0, profilePrice - profile.equity) : null);
+    (planPrice && profile?.equity != null ? Math.max(0, planPrice - profile.equity) : null);
+  const profilePrice = planPrice ?? known?.propertyValue ?? null;
+  const profileBank = planBank ?? (planPrice ? null : known?.mortgageAmount ?? null);
+  const priceSourceLabel = profile?.propertyValue
+    ? KNOWN_SOURCE_LABELS.plan
+    : planPrice
+      ? KNOWN_SOURCE_LABELS.mix
+      : knownSourceLabel(known, 'propertyValue');
+  const bankSourceLabel = mixBank
+    ? KNOWN_SOURCE_LABELS.mix
+    : planBank
+      ? KNOWN_SOURCE_LABELS.plan
+      : knownSourceLabel(known, 'mortgageAmount');
 
   const stored = plan?.data.SIGNING.paymentSchedule ?? null;
   // עד העריכה הראשונה מוצג הלוח ההתחלתי מהפרופיל; הוא נשמר עם השינוי הראשון
@@ -263,14 +284,16 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
         {/* מחיר הנכס והחלוקה */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div dir="rtl" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <AmountField
+            <KnownValueField
               label="מחיר הנכס בחוזה"
               value={schedule.propertyPrice}
+              source={schedule.propertyPrice === profilePrice ? priceSourceLabel : 'כפי שעדכנתם כאן'}
               onChange={(value) => save({ ...schedule, propertyPrice: value })}
             />
-            <AmountField
+            <KnownValueField
               label="סכום המשכנתא מהבנק"
               value={schedule.bankAmount}
+              source={schedule.bankAmount === profileBank ? bankSourceLabel : 'כפי שעדכנתם כאן'}
               onChange={(value) => save({ ...schedule, bankAmount: value })}
             />
             <div>
@@ -323,14 +346,14 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
               {profileDiffers && (
                 <p dir="rtl" className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
                   <Info className="h-4 w-4 shrink-0 text-slate-400" />
-                  בפרופיל הפיננסי: מחיר {formatShekel(profilePrice)}, משכנתא {formatShekel(profileBank)}.
+                  מה שהוזן קודם: מחיר {formatShekel(profilePrice)}, משכנתא {formatShekel(profileBank)}.
                   <button
                     type="button"
                     onClick={resetFromProfile}
                     className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-black text-blue-700 hover:bg-blue-50"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
-                    בנייה מחדש לפי הפרופיל
+                    בנייה מחדש לפי הסכומים האלה
                   </button>
                 </p>
               )}
@@ -496,26 +519,6 @@ export function PaymentScheduleTool({ planId }: { planId: string }) {
         </section>
       </main>
     </div>
-  );
-}
-
-function AmountField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
-}) {
-  return (
-    <label className="block">
-      <span dir="rtl" className="mb-1.5 block text-xs font-bold text-slate-600">{label}</span>
-      <div dir="rtl" className="relative">
-        <NumericInput integer value={value} onChange={onChange} className={`${inputClass} pl-9 font-black`} />
-        <span dir="rtl" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₪</span>
-      </div>
-    </label>
   );
 }
 
