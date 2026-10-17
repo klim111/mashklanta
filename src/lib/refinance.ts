@@ -194,8 +194,11 @@ export function rateGapVsMarket(
   return track.interestRate - average;
 }
 
-/** רגישות: פער של פחות מ-0.05% הוא רעש ולא הזדמנות */
-export const MARKET_RATE_TOLERANCE = 0.05;
+/**
+ * בכלי המלא אין סף: כל ריבית שגבוהה מהממוצע מוצגת עם המספרים עצמם, והלווה
+ * מחליט אם הפער מצדיק מיחזור.
+ */
+export const MARKET_RATE_TOLERANCE = 0;
 
 export interface MarketRateFinding {
   track: MortgageTrack;
