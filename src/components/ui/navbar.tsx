@@ -165,7 +165,8 @@ export default function NavBar() {
               <MenuIcon className="w-6 h-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="bg-white overflow-y-auto" dir="rtl">
+          {/* בטאבלט: מקום בסוף הרשימה כדי שהכפתור האחרון יעלה מעל סרגל הדפדפן והפס התחתון */}
+          <SheetContent side="left" className="bg-white overflow-y-auto overscroll-contain pb-[calc(3rem+env(safe-area-inset-bottom))]" dir="rtl">
             <div className="flex flex-col gap-6 pt-6">
               <SheetClose asChild>
                 <Link href="/" className="pb-4 border-b border-gray-200">
