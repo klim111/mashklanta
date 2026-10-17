@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { safeCallbackPath } from '@/lib/auth-url';
+import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from '@/lib/advisor-session';
 
 /**
  * מסלולי ה-API שפתוחים גם בלי התחברות: נתוני שוק מבנק ישראל, שערי מטבע, חיפוש
@@ -62,8 +63,33 @@ async function readToken(request: NextRequest) {
   return getToken({ req: request, secret, secureCookie: !secureCookie });
 }
 
+const SESSION_COOKIES = ['next-auth.session-token', '__Secure-next-auth.session-token', ADVISOR_SESSION_COOKIE];
+
+type Token = Awaited<ReturnType<typeof readToken>>;
+
 export async function middleware(request: NextRequest) {
   const token = await readToken(request);
+
+  /**
+   * התחברות של יועץ שאינה תקפה עוד — הדפדפן נסגר, האזור לא היה פתוח זמן רב,
+   * או שעברו יותר מדי שעות מהכניסה (src/lib/advisor-session.ts) — נמחקת
+   * מהדפדפן, והבקשה ממשיכה כאילו אין התחברות.
+   */
+  if (
+    (token as { role?: string } | null)?.role === 'ADVISOR' &&
+    !advisorSessionValid(token!, request.cookies.get(ADVISOR_SESSION_COOKIE)?.value)
+  ) {
+    // גם הדף או ה-API שמטפלים בבקשה הזו כבר לא רואים את ההתחברות
+    SESSION_COOKIES.forEach((name) => request.cookies.delete(name));
+    const response = routeRequest(request, null);
+    SESSION_COOKIES.forEach((name) => response.cookies.delete(name));
+    return response;
+  }
+
+  return routeRequest(request, token);
+}
+
+function routeRequest(request: NextRequest, token: Token): NextResponse {
   const { pathname } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith('/auth');
@@ -80,7 +106,7 @@ export async function middleware(request: NextRequest) {
      * לזהות שהמשתמש אינו מחובר.
      */
     if (isApi) {
-      if (isPublicApi(pathname)) return NextResponse.next();
+      if (isPublicApi(pathname)) return NextResponse.next({ request: { headers: request.headers } });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -90,7 +116,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: request.headers } });
   }
 
   const userRole = (token as { role?: string })?.role;
@@ -125,7 +151,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: request.headers } });
 }
 
 export const config = {

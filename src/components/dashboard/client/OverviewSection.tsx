@@ -78,8 +78,11 @@ export function OverviewSection({
   detailPlanId,
   onDetailPlan,
   onNavigate,
+  onOpenMortgage,
   workspace = null,
 }: {
+  /** פתיחת "המשכנתא שלי" על משכנתא שנחתמה */
+  onOpenMortgage?: (planId: string) => void;
   data: ClientDashboardData;
   /** אזור שנפתח לרוחב שלוש העמודות כבר בכניסה — למשל `#cash-flow` */
   workspace?: WorkspaceId | null;
@@ -553,33 +556,41 @@ export function OverviewSection({
             </div>
           )}
 
-          {/* משכנתאות שהסתיימו — שורה מקופלת אחת */}
+          {/* המשכנתא שלי — משכנתאות שנחתמו, וכניסה ללוח המעקב של כל אחת */}
           {completed.length > 0 && (
-            <details className="group mt-3 border-t border-slate-100 pt-3">
-              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-black text-slate-500">
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-black text-slate-500">
                 <Check className="h-4 w-4 text-emerald-600" />
-                משכנתאות שלקחתי ({completed.length})
-                <span className="text-blue-600 group-open:hidden">· ראה עוד</span>
-              </summary>
-              <div className="mt-2 space-y-2">
+                {completed.length === 1 ? 'המשכנתא שלי' : `המשכנתאות שלי (${completed.length})`}
+              </p>
+              <div className="space-y-2">
                 {completed.map((plan) => (
-                  <Link
+                  <button
                     key={plan.id}
-                    href={`/dashboard/plans/${plan.id}`}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-info transition-colors hover:border-emerald-400"
+                    type="button"
+                    onClick={() => onOpenMortgage?.(plan.id)}
+                    className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-right text-info transition-colors hover:border-emerald-400"
                   >
-                    <span className="min-w-0 truncate font-black text-slate-900">
-                      {plan.propertyAddress || plan.name}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-black text-slate-900">
+                        {plan.propertyAddress || plan.name}
+                      </span>
+                      <span className="block text-sm font-bold text-emerald-800">
+                        נחתמה
+                        {plan.data.SIGNING.signingDate || plan.completedAt
+                          ? ` ב-${formatDate(plan.data.SIGNING.signingDate || plan.completedAt || '')}`
+                          : ''}
+                        {plan.data.SIGNING.bank ? ` · בנק ${plan.data.SIGNING.bank}` : ''}
+                      </span>
                     </span>
-                    <span className="shrink-0 text-sm font-bold text-emerald-800">
-                      התהליך הסתיים
-                      {plan.completedAt ? ` · ${formatDate(plan.completedAt)}` : ''}
-                      {plan.data.SIGNING.bank ? ` · בנק ${plan.data.SIGNING.bank}` : ''}
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-black text-white">
+                      למעקב המשכנתא
+                      <ArrowLeft className="h-4 w-4" />
                     </span>
-                  </Link>
+                  </button>
                 ))}
               </div>
-            </details>
+            </div>
           )}
 
           {/*

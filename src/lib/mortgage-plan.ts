@@ -56,6 +56,8 @@ import {
 import type { CollateralFormState, ContractAnswer, PaymentSchedule, TiyulimFormState } from './payment-schedule';
 import { emptyVisits, parseVisits } from './signing-visits';
 import type { SigningVisits } from './signing-visits';
+import { emptyLoanTracker, parseLoanTracker } from './loan-tracker';
+import type { LoanTrackerState } from './loan-tracker';
 
 /**
  * סדר השלבים בתהליך. הבקשה לאישור עקרוני קודמת לבניית התמהיל, כי הריביות
@@ -714,6 +716,8 @@ export interface SigningData {
   tiyulim: TiyulimFormState;
   /** ההגעות לסניף: הגשת מקורות הבטחונות והחתימה על התיק — העתק של המשימות */
   visits: SigningVisits;
+  /** "המשכנתא שלי" אחרי החתימה: תאריך התשלום הראשון והפירעונות המוקדמים */
+  tracker: LoanTrackerState;
 }
 
 export interface PlanStageDataMap {
@@ -839,6 +843,7 @@ const EMPTY: PlanData = {
     collateral: { ...EMPTY_COLLATERAL },
     tiyulim: { ...EMPTY_TIYULIM },
     visits: emptyVisits(),
+    tracker: emptyLoanTracker(),
   },
 };
 
@@ -1449,6 +1454,7 @@ export function parseStageData<S extends PlanStageId>(stage: S, raw: unknown): P
         collateral: parseCollateral(source.collateral),
         tiyulim: parseTiyulim(source.tiyulim),
         visits: parseVisits(source.visits),
+        tracker: parseLoanTracker(source.tracker),
       } as PlanStageDataMap[S];
     }
 

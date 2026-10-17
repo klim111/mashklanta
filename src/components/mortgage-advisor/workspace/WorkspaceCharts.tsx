@@ -66,6 +66,9 @@ interface WorkspaceChartsProps {
    * שהתוצאות יישארו על המסך בזמן שמשנים פרמטרים במסלולים.
    */
   split?: boolean;
+  /** שמות הקווים בהשוואה — למשל "בלי פירעון מוקדם" מול "עם הפירעון" במעקב המשכנתא */
+  baseLabel?: string;
+  scenarioLabel?: string;
 }
 
 interface TrackRow {
@@ -152,6 +155,8 @@ export function WorkspaceCharts({
   showCompositionStrip = true,
   bare = false,
   split = false,
+  baseLabel = 'בסיס',
+  scenarioLabel = 'תרחיש נבחר',
 }: WorkspaceChartsProps) {
   /**
    * פריסת אזור הגרפים: 2+1 (הגרף השלישי ברוחב מלא), ושלוש בשורה רק ממסך רחב
@@ -347,7 +352,7 @@ export function WorkspaceCharts({
               <Line
                 type="monotone"
                 dataKey="baseBalance"
-                name="בסיס"
+                name={baseLabel}
                 stroke={CHART_COLORS.base}
                 strokeWidth={2}
                 strokeDasharray="5 4"
@@ -358,7 +363,7 @@ export function WorkspaceCharts({
             <Line
               type="monotone"
               dataKey="balance"
-              name={scenarioActive ? 'תרחיש נבחר' : 'יתרת חוב'}
+              name={scenarioActive ? scenarioLabel : 'יתרת חוב'}
               stroke={scenarioActive ? CHART_COLORS.scenario : CHART_COLORS.base}
               strokeWidth={2.5}
               dot={false}
@@ -421,7 +426,7 @@ export function WorkspaceCharts({
               <Line
                 type="monotone"
                 dataKey="basePayment"
-                name="בסיס"
+                name={baseLabel}
                 stroke={CHART_COLORS.base}
                 strokeWidth={2}
                 strokeDasharray="5 4"
@@ -432,7 +437,7 @@ export function WorkspaceCharts({
             <Line
               type="monotone"
               dataKey="payment"
-              name={scenarioActive ? 'תרחיש נבחר' : 'החזר חודשי'}
+              name={scenarioActive ? scenarioLabel : 'החזר חודשי'}
               stroke={scenarioActive ? CHART_COLORS.scenario : CHART_COLORS.base}
               strokeWidth={2.5}
               dot={false}

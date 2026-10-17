@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 
 /**
  * הברכה אחרי "חתמתי על המשכנתא בבנק". סגירת החלון, בכל דרך, מובילה לאזור
- * האישי — שם המשכנתא מופיעה כמשכנתא שהתהליך שלה הסתיים.
+ * האישי — שם המשכנתא מופיעה ב"המשכנתא שלי", לוח המעקב אחריה.
  */
 export function PlanCompletedDialog({
   open,
@@ -41,7 +41,7 @@ export function PlanCompletedDialog({
         <DialogDescription className="mt-2 text-center text-info leading-relaxed text-slate-600">
           {bank ? `חתמתם מול בנק ${bank}, ` : ''}
           והתהליך עם משכלנתא הסתיים בהצלחה. עשיתם את זה בדרך הנכונה: הגעתם לבנק עם תכנון, מספרים
-          והשוואה, ולא עם ניחושים. בהצלחה בבית, והמשכנתא נשארת זמינה אצלכם באזור האישי.
+          והשוואה, ולא עם ניחושים. בהצלחה בבית! מעכשיו המשכנתא מחכה לכם באזור האישי, ב"המשכנתא שלי": לוח התשלומים, פירעון מוקדם ומעקב לאורך השנים.
         </DialogDescription>
         <button
           type="button"

@@ -15,6 +15,7 @@ import { useMarketRates } from '@/hooks/use-market-rates';
 import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
 import { SectionCard } from './ui';
 import { AdvisorFormDetailsCard } from './AdvisorFormDetailsCard';
+import { AdvisorPasswordCard } from './AdvisorPasswordCard';
 import { useAdvisorSettings } from './useAdvisorCrm';
 
 type TrackType = keyof typeof TRACK_TYPES;
@@ -204,6 +205,8 @@ export function AdvisorSettingsPanel({
           )}
         </div>
       </SectionCard>
+
+      <AdvisorPasswordCard />
 
       <AdvisorFormDetailsCard />
 

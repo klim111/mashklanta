@@ -35,6 +35,12 @@ export function authErrorMessage(code: string | null | undefined): string {
       return "פג תוקף הקישור. בקש קישור חדש.";
     case "AdvisorLinkOtherBrowser":
       return "הקישור עובד רק בדפדפן שבו ביקשת אותו. פתח אותו שם, או בקש קישור חדש מהדפדפן הזה.";
+    case "AdvisorPasswordWrong":
+      return "הסיסמה שגויה. נסה שוב.";
+    case "AdvisorPasswordLocked":
+      return "יותר מדי ניסיונות סיסמה שגויים, והקישור בוטל. בקש קישור חדש.";
+    case "AdvisorPasswordWeak":
+      return "הסיסמה אינה עומדת בדרישות.";
     case "GoogleEmailUnverified":
       return "Google לא אישרה את כתובת המייל של החשבון הזה, ולכן אי אפשר להתחבר איתו.";
     case "VerificationInvalid":

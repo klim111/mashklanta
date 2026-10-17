@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Gavel,
   Home as HomeIcon,
+  Landmark,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -44,6 +45,7 @@ import { ContactsSection } from './ContactsSection';
 import { ExpensesSection } from './ExpensesSection';
 import { CashFlowTool } from '@/components/cash-flow/CashFlowTool';
 import { OverviewSection } from './OverviewSection';
+import { MyMortgageSection } from './my-mortgage/MyMortgageSection';
 import { ContinueToolsDialog } from './ContinueToolsDialog';
 import { useClientDashboard } from './useClientDashboard';
 import { demoId } from '@/demo/demo-attr';
@@ -65,6 +67,14 @@ const SECTIONS: SectionMeta[] = [
     title: 'האזור האישי שלי',
     description: 'איפה אתם עומדים, מה קרוב ביומן ומה הפעולה הבאה — הכול במסך אחד.',
     icon: LayoutDashboard,
+  },
+  {
+    id: 'my-mortgage',
+    label: 'המשכנתא שלי',
+    title: 'המשכנתא שלי',
+    description:
+      'לוח המעקב אחרי המשכנתא שנחתמה: כמה עבר, התשלום האחרון והקרוב, לוח התשלומים, פירעון מוקדם וגרפים שזזים עם הזמן.',
+    icon: Landmark,
   },
   {
     id: 'agenda',
@@ -164,6 +174,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   const [agendaDay, setAgendaDay] = useState<string | undefined>(undefined);
   /** התהליך שהתמהיל שלו מוצג בשורת הפירוט שבסקירה */
   const [detailPlanId, setDetailPlanId] = useState<string | null>(null);
+  /** המשכנתא שמוצגת ב"המשכנתא שלי" — ברירת המחדל היא האחרונה שנחתמה */
+  const [mortgagePlanId, setMortgagePlanId] = useState<string | null>(null);
   const data = useClientDashboard();
   const { startPlan, busy: startBusy } = useStartPlan(data.plansState.start);
   /**
@@ -251,8 +263,18 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
     </button>
   );
 
+  /** "המשכנתא שלי" מופיעה בתפריט רק אחרי שמשכנתא נחתמה */
+  const hasSignedMortgage = data.plansState.plans.some((plan) => plan.status === 'COMPLETED');
+  const openMortgage = useCallback(
+    (planId: string) => {
+      setMortgagePlanId(planId);
+      navigate('my-mortgage');
+    },
+    [navigate]
+  );
+
   const navItems = (tone: 'sidebar' | 'bar') =>
-    SECTIONS.map((item) => {
+    SECTIONS.filter((item) => item.id !== 'my-mortgage' || hasSignedMortgage).map((item) => {
       const Icon = item.icon;
       const active = section === item.id;
       const badge = badges[item.id];
@@ -420,6 +442,15 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                   detailPlanId={detailPlanId}
                   onDetailPlan={setDetailPlanId}
                   onNavigate={navigate}
+                  onOpenMortgage={openMortgage}
+                />
+              )}
+
+              {section === 'my-mortgage' && (
+                <MyMortgageSection
+                  plans={data.plansState.plans}
+                  planId={mortgagePlanId}
+                  onSelect={setMortgagePlanId}
                 />
               )}
 

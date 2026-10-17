@@ -42,6 +42,8 @@ import { LoanPrepaymentDialog } from './LoanPrepaymentDialog';
 import { AmortTable } from './AmortTable';
 import { LoanPlanningImportWizard } from './LoanPlanningImportWizard';
 import { ConsumerCreditMarket, MARKET_SECTION_ID } from './ConsumerCreditMarket';
+import { useKnownDetails } from '@/components/known-details/useKnownDetails';
+import { knownDisposableIncome, planningFromKnown } from '@/lib/known-details';
 import {
   FamilyEconomyFloatingCta,
   FamilyEconomyLeadDialog,
@@ -136,8 +138,11 @@ export function LoanWorkspace() {
 
   /* ---------------- טעינה ושמירה ---------------- */
 
+  /** הפרטים שכבר הוזנו במקום אחר בפלטפורמה — ההכנסה וההלוואות מהפרופיל */
+  const { details: known, ready: knownReady } = useKnownDetails();
+
   useEffect(() => {
-    if (!toolData.ready) return;
+    if (!toolData.ready || !knownReady) return;
     try {
       const fromPlanning = searchParams.get('import') === 'planning';
       const session = fromPlanning ? readConsumerLoansImportSession() : null;
@@ -152,13 +157,18 @@ export function LoanWorkspace() {
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) setState(normalizeState(JSON.parse(saved) as LoanPlannerState));
+        else {
+          // כלי שעוד לא נשמר בו דבר נפתח עם ההכנסה הפנויה שכבר ידועה
+          const income = knownDisposableIncome(known);
+          if (income) setState((prev) => ({ ...prev, monthlyIncome: income }));
+        }
       }
     } catch (error) {
       console.error('שגיאה בטעינת נתוני ההלוואות:', error);
     } finally {
       setReady(true);
     }
-  }, [searchParams, toolData.ready, toolData.initial]);
+  }, [searchParams, toolData.ready, toolData.initial, knownReady, known]);
 
   useEffect(() => {
     // עד שהנתונים נטענו אין מה לשמור — אחרת המצב הריק היה דורס אותם
@@ -191,10 +201,13 @@ export function LoanWorkspace() {
     try {
       const raw = localStorage.getItem('mortgagePlanningData');
       const saved = raw ? (JSON.parse(raw) as { userData?: Record<string, unknown> }) : null;
-      if (saved?.userData) {
+      // בלי נתונים בדפדפן — ההלוואות שכבר הוזנו בפרופיל הפיננסי
+      const fromKnown =
+        !saved?.userData && known ? planningFromKnown(known, defaultMortgagePlanningUserData()).userData : null;
+      if (saved?.userData || fromKnown) {
         const userData = migrateMortgagePlanningUserData({
           ...defaultMortgagePlanningUserData(),
-          ...saved.userData,
+          ...(saved?.userData ?? fromKnown),
         });
         if (startConsumerLoansImport(userData)) {
           const session = readConsumerLoansImportSession();
@@ -208,7 +221,7 @@ export function LoanWorkspace() {
       console.error('שגיאה בייבוא ההלוואות מכלי כושר ההחזר:', error);
     }
     router.push('/mortgage-planning?flow=affordability');
-  }, [router]);
+  }, [router, known]);
 
   /* ---------------- נתונים נגזרים ---------------- */
 
