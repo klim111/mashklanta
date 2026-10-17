@@ -224,6 +224,7 @@ export function MixesPanel() {
           if (!assigning) return false;
           return assign(assigning.mix.id, clientId, { share: true });
         }}
+        onCompleteMix={openMix}
       />
 
       {reporting && (
@@ -236,6 +237,7 @@ export function MixesPanel() {
           defaultClientId={reporting.item.clientId ?? null}
           onPersist={(mix) => save(mix)}
           onSent={() => void refreshMixes()}
+          onCompleteMix={() => openMix(reporting.item)}
         />
       )}
     </div>

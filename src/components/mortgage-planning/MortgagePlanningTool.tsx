@@ -71,6 +71,8 @@ import { RegisterTeaserCarousel } from '@/components/guest/RegisterTeaserCarouse
 import { useSliderEngagement } from '@/hooks/use-slider-engagement';
 import { demoId } from '@/demo/demo-attr';
 import { useToolData } from '@/components/tool-data/toolData';
+import { useKnownDetails } from '@/components/known-details/useKnownDetails';
+import { planningFromKnown } from '@/lib/known-details';
 import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
 import { touchGuestData } from '@/components/guest/guestData';
 import { affordabilityHasContent } from '@/lib/tool-data';
@@ -276,6 +278,9 @@ export function MortgagePlanningContent({
     (value) => value as { userData?: Record<string, unknown>; currentStep?: string }
   );
   const saveToolData = toolData.save;
+  /** הפרטים שכבר הוזנו במקום אחר בפלטפורמה — ממלאים כלי שעוד לא נשמר בו דבר */
+  const { details: known, ready: knownReady } = useKnownDetails();
+  const [prefilledFromKnown, setPrefilledFromKnown] = useState(false);
 
   // Entry flow from home page (?flow=affordability|existing|refinance)
   useEffect(() => {
@@ -319,6 +324,26 @@ export function MortgagePlanningContent({
     // מחכים לחשבון, כדי לא להציג טופס ריק ואז להחליף אותו בנתונים השמורים
     if (!toolData.ready) return;
     const savedData = toolData.initial ? null : localStorage.getItem('mortgagePlanningData');
+    if (!toolData.initial && !savedData) {
+      // כלום עוד לא נשמר בכלי, אבל הלקוח אולי כבר הזין את הפרטים במקום אחר
+      // בפלטפורמה: הם ממלאים את הכלי, וכשכולם ידועים הוא נפתח ישר בתוצאה
+      if (!knownReady) return;
+      if (known) {
+        const seeded = planningFromKnown(known, defaultMortgagePlanningUserData());
+        if (seeded.hasAny) {
+          setUserData(
+            formatMoneyFields(seeded.userData as unknown as Record<string, unknown>) as unknown as MortgagePlanningUserData
+          );
+          setPrefilledFromKnown(true);
+          if (seeded.complete && (!flowFromUrl || flowFromUrl === 'affordability')) {
+            setUserData((prev) => ({ ...prev, calculationType: AFFORDABILITY_CALCULATION }));
+            setCurrentStep('results');
+          }
+        }
+      }
+      setHydrated(true);
+      return;
+    }
     if (toolData.initial || savedData) {
       try {
         const parsedData = toolData.initial ?? JSON.parse(savedData!);
@@ -337,7 +362,7 @@ export function MortgagePlanningContent({
       }
     }
     setHydrated(true);
-  }, [searchParams, embedded, toolData.ready, toolData.initial]);
+  }, [searchParams, embedded, toolData.ready, toolData.initial, knownReady, known]);
 
   // Load analyzed terms if available
   useEffect(() => {
@@ -2829,6 +2854,30 @@ export function MortgagePlanningContent({
               <ArrowRight className="h-4 w-4" />
               חזרה לתהליך
             </Link>
+          </div>
+        )}
+
+        {prefilledFromKnown && !embedded && (
+          <div
+            dir="rtl"
+            className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-right text-sm text-blue-950"
+          >
+            <span className="min-w-0 flex-1 font-bold">
+              {currentStep === 'results'
+                ? 'החישוב מבוסס על הפרטים שכבר הזנתם בפלטפורמה, ולכן לא שאלנו עליהם שוב.'
+                : 'מילאנו כאן את הפרטים שכבר הזנתם בפלטפורמה. אפשר לשנות כל אחד מהם.'}
+            </span>
+            {currentStep === 'results' && (
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentStep(userData.applicationType === 'couple' ? 'personal-info-couple' : 'personal-info')
+                }
+                className="shrink-0 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm font-black text-blue-700 transition-colors hover:bg-blue-100"
+              >
+                שינוי הפרטים
+              </button>
+            )}
           </div>
         )}
 

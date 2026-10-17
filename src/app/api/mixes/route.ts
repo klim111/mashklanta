@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { listMixesForClient, listMixesForUser, saveMix } from '@/lib/mixes';
 import { fillClientDealFromMix, findAccessibleClient } from '@/lib/clients';
 import { sanitizeMix } from '@/components/mortgage-advisor/engine';
+import { assignmentGaps, assignmentGapsMessage } from '@/lib/mix-assignment';
 
 /**
  * התמהילים השמורים. בלי פרמטר מוחזרים כל התמהילים שהמשתמש רשאי לראות, ועם
@@ -80,6 +81,12 @@ export async function POST(req: NextRequest) {
   */
   const isAdvisorDraft =
     session?.user?.role === 'ADVISOR' && typeof requestedClientId === 'string';
+
+  // יועץ שמציג תמהיל ללקוח כבר בשמירה — רק אחרי שהוזנו מחיר הנכס והכנסת הלווים
+  if (isAdvisorDraft && body?.sharedWithClient === true) {
+    const gaps = assignmentGaps(mix);
+    if (gaps.length > 0) return NextResponse.json({ error: assignmentGapsMessage(gaps) }, { status: 422 });
+  }
 
   const saved = await saveMix({
     ownerId: userId,
