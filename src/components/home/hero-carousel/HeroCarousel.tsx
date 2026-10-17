@@ -3,8 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BalanceSlide, BALANCE_MS, MixSlide, TransparencySlide } from './SvgSlides';
-import { ThreadsSlide, THREADS_MS } from './ThreadsSlide';
-import { StormSlide, STORM_MS } from './StormSlide';
+import { StagesSlide } from './StagesSlide';
 
 type Slide = {
   id: string;
@@ -12,46 +11,13 @@ type Slide = {
   render: () => ReactNode;
 };
 
-/** כותרת ושורת הסבר מתחת לבמה של מסכי החוטים והסופה, באותו סגנון כמו מסכי ה-SVG */
-function StageSlide({ stage, title, text, titleClass }: { stage: ReactNode; title: string; text: string; titleClass: string }) {
-  return (
-    <div className="flex h-full w-full flex-col items-center px-4" dir="rtl">
-      <div className="flex min-h-0 w-full flex-1 justify-center">{stage}</div>
-      <p className={`mt-3 text-center text-2xl font-black md:text-3xl ${titleClass}`}>{title}</p>
-      <p className="mt-1 text-center text-base text-slate-600 md:text-lg">{text}</p>
-    </div>
-  );
-}
-
-// הסדר: מאזניים (הארוך מכולם), חוטים, סופה, שקיפות, תמהיל
+// הסדר: מאזניים (הארוך מכולם), שקיפות, שלבים, תמהיל. מסכי החוטים והסופה (ThreadsSlide,
+// StormSlide) עברו לסרטון ההדגמה
 const SLIDES: Slide[] = [
   { id: 'balance', ms: BALANCE_MS, render: () => <BalanceSlide /> },
-  {
-    id: 'threads',
-    ms: THREADS_MS + 500,
-    render: () => (
-      <StageSlide
-        stage={<ThreadsSlide />}
-        title="ניווט לאורך כל השלבים"
-        text="משכלנתא פורמת את הסבך לחמישה שלבים ברורים, ואתם תמיד יודעים מה הצעד הבא."
-        titleClass="text-emerald-600"
-      />
-    ),
-  },
-  {
-    id: 'storm',
-    ms: STORM_MS + 500,
-    render: () => (
-      <StageSlide
-        stage={<StormSlide />}
-        title="כל המשכנתא במקום אחד"
-        text="חוזה, שמאות, בנקים, ביטוחים ולוחות סילוקין. משכלנתא מסדרת את הכול בשבילכם."
-        titleClass="text-blue-600"
-      />
-    ),
-  },
-  { id: 'transparency', ms: 6000, render: () => <TransparencySlide /> },
-  { id: 'mix', ms: 6000, render: () => <MixSlide /> },
+  { id: 'transparency', ms: 4000, render: () => <TransparencySlide /> },
+  { id: 'stages', ms: 4000, render: () => <StagesSlide /> },
+  { id: 'mix', ms: 4000, render: () => <MixSlide /> },
 ];
 
 /**
