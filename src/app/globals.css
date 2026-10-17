@@ -172,97 +172,93 @@
 }
 
 /*
- * קרוסלת הראש: ארבעה מסכים מתחלפים — שוויון כוחות מול הבנק, פשטות ושקיפות,
- * ניווט לאורך השלבים ותמהיל אופטימלי. כל מסך מוצג כארבע שניות מתוך מחזור של 16.
- */
-@keyframes carousel-slide {
-  0% {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-  2%, 23% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  25%, 100% {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-}
-
-.animate-carousel-slide-1 {
-  animation: carousel-slide 16s ease-in-out infinite;
-}
-
-.animate-carousel-slide-2 {
-  animation: carousel-slide 16s ease-in-out infinite 4s;
-}
-
-.animate-carousel-slide-3 {
-  animation: carousel-slide 16s ease-in-out infinite 8s;
-}
-
-.animate-carousel-slide-4 {
-  animation: carousel-slide 16s ease-in-out infinite 12s;
-}
-
-/*
- * מסך המאזניים (המסך הראשון בקרוסלה, אותו מחזור של 16 שניות): הקורה נוטה לצד
- * הבנק, שלושת הכלים נוחתים בכף שלכם, והמאזניים מתיישרים. 1% מהמחזור = 0.16 שניות.
+ * מסך המאזניים בקרוסלת הראש (10.5 שניות, רץ פעם אחת בכל הצגה): משכלנתא מרחפת מעל הכף
+ * שלכם ומפילה לתוכה ידע, כלים ושקיפות, והמאזניים מתקרבים לאיזון עם כל לבנה. אחר כך
+ * משכלנתא נופלת בעצמה על הכף, והמאזניים מתאזנים סופית. 1% מהמחזור = 0.105 שניות.
  */
 @keyframes balance-beam {
-  0%, 12% { transform: rotate(8deg); }
-  17%, 100% { transform: rotate(0deg); }
+  0%, 15% { transform: rotate(8deg); }
+  18%, 23% { transform: rotate(6.5deg); }
+  26%, 30% { transform: rotate(5deg); }
+  33%, 43% { transform: rotate(3.5deg); }
+  48% { transform: rotate(-0.8deg); }
+  52%, 100% { transform: rotate(0deg); }
 }
 
 @keyframes balance-pan-light {
-  0%, 12% { transform: translateY(-28px); }
-  17%, 100% { transform: translateY(0); }
+  0%, 15% { transform: translateY(-28px); }
+  18%, 23% { transform: translateY(-23px); }
+  26%, 30% { transform: translateY(-17.5px); }
+  33%, 43% { transform: translateY(-12px); }
+  48% { transform: translateY(3px); }
+  52%, 100% { transform: translateY(0); }
 }
 
 @keyframes balance-pan-heavy {
-  0%, 12% { transform: translateY(28px); }
-  17%, 100% { transform: translateY(0); }
+  0%, 15% { transform: translateY(28px); }
+  18%, 23% { transform: translateY(23px); }
+  26%, 30% { transform: translateY(17.5px); }
+  33%, 43% { transform: translateY(12px); }
+  48% { transform: translateY(-3px); }
+  52%, 100% { transform: translateY(0); }
+}
+
+/* משכלנתא נכנסת מעל הכף, ואחרי שלוש הלבנים נופלת עליהן */
+@keyframes balance-logo {
+  0%, 3% { opacity: 0; transform: translateY(-14px) scale(0.85); }
+  8%, 36% { opacity: 1; transform: translateY(0) scale(1); }
+  43% { opacity: 1; transform: translateY(64px) scale(1); }
+  45.5% { transform: translateY(58px) scale(1); }
+  48%, 100% { opacity: 1; transform: translateY(64px) scale(1); }
 }
 
 @keyframes balance-drop-1 {
-  0%, 3% { opacity: 0; transform: translateY(-70px); }
-  6%, 100% { opacity: 1; transform: translateY(0); }
+  0%, 10% { opacity: 0; transform: translateY(-90px); }
+  10.5% { opacity: 1; transform: translateY(-90px); }
+  15%, 100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes balance-drop-2 {
-  0%, 6% { opacity: 0; transform: translateY(-70px); }
-  9%, 100% { opacity: 1; transform: translateY(0); }
+  0%, 18% { opacity: 0; transform: translateY(-90px); }
+  18.5% { opacity: 1; transform: translateY(-90px); }
+  23%, 100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes balance-drop-3 {
-  0%, 9% { opacity: 0; transform: translateY(-70px); }
-  12%, 100% { opacity: 1; transform: translateY(0); }
+  0%, 25% { opacity: 0; transform: translateY(-90px); }
+  25.5% { opacity: 1; transform: translateY(-90px); }
+  30%, 100% { opacity: 1; transform: translateY(0); }
 }
 
 .animate-balance-beam {
   transform-origin: 400px 110px;
-  animation: balance-beam 16s ease-in-out infinite;
+  animation: balance-beam 10.5s ease-in-out both;
 }
 
 .animate-balance-pan-light {
-  animation: balance-pan-light 16s ease-in-out infinite;
+  animation: balance-pan-light 10.5s ease-in-out both;
 }
 
 .animate-balance-pan-heavy {
-  animation: balance-pan-heavy 16s ease-in-out infinite;
+  animation: balance-pan-heavy 10.5s ease-in-out both;
+}
+
+.animate-balance-logo {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: balance-logo 10.5s ease-in both;
 }
 
 .animate-balance-drop-1 {
-  animation: balance-drop-1 16s ease-out infinite;
+  animation: balance-drop-1 10.5s ease-in both;
 }
 
 .animate-balance-drop-2 {
-  animation: balance-drop-2 16s ease-out infinite;
+  animation: balance-drop-2 10.5s ease-in both;
 }
 
 .animate-balance-drop-3 {
-  animation: balance-drop-3 16s ease-out infinite;
+  animation: balance-drop-3 10.5s ease-in both;
 }
 
 /* Financial Elements Animation */
