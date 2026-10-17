@@ -1,0 +1,160 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import {
+  blankInstallment,
+  draftSchedule,
+  equityPaidBeforeBank,
+  insertInstallment,
+  requiredEquityBeforeBank,
+  parsePaymentSchedule,
+  scheduleDefined,
+  scheduleIssues,
+  sumBySource,
+} from './payment-schedule';
+import type { PaymentSchedule } from './payment-schedule';
+import { emptyPlanData, missingForStage, parseStageData, stageIsComplete } from './mortgage-plan';
+import { scheduleReportHtml } from './payment-schedule-report';
+import { scheduleReportPdf } from './payment-schedule-pdf';
+
+describe('draftSchedule', () => {
+  it('splits the price into equity first and bank money last', () => {
+    const schedule = draftSchedule(2_550_000, 1_800_000);
+    expect(sumBySource(schedule, 'EQUITY')).toBe(750_000);
+    expect(sumBySource(schedule, 'BANK')).toBe(1_800_000);
+    expect(schedule.installments.at(-1)?.source).toBe('BANK');
+    expect(scheduleIssues(schedule)).toEqual([]);
+  });
+
+  it('is empty without a property price', () => {
+    expect(draftSchedule(null, null).installments).toEqual([]);
+  });
+});
+
+describe('scheduleIssues', () => {
+  const base = (): PaymentSchedule => draftSchedule(1_000_000, 600_000);
+
+  it('allows equity after bank money when no percentage is required', () => {
+    const schedule = base();
+    schedule.installments = [schedule.installments.at(-1)!, ...schedule.installments.slice(0, -1)];
+    expect(schedule.installments[0].source).toBe('BANK');
+    expect(scheduleIssues(schedule)).toEqual([]);
+  });
+
+  it('alerts when less equity than the bank requires is paid before the bank money', () => {
+    const schedule = { ...base(), bankRequiredEquityPercent: 50 };
+    expect(requiredEquityBeforeBank(schedule)).toBe(200_000);
+    expect(scheduleIssues(schedule)).toEqual([]);
+
+    // רק הפעימה הראשונה (100,000) לפני הבנק
+    const bankRow = schedule.installments.at(-1)!;
+    schedule.installments = [schedule.installments[0], bankRow, ...schedule.installments.slice(1, -1)];
+    expect(equityPaidBeforeBank(schedule)).toBe(100_000);
+    const issue = scheduleIssues(schedule).find((item) => item.kind === 'bank-required-equity');
+    expect(issue?.message).toContain('50%');
+    expect(issue?.message).toContain('100,000');
+  });
+
+  it('inserts new equity before the first bank installment', () => {
+    const schedule = base();
+    const added = insertInstallment(schedule.installments, blankInstallment('EQUITY'));
+    expect(added.at(-1)?.source).toBe('BANK');
+    expect(insertInstallment(schedule.installments, blankInstallment('BANK')).at(-1)?.source).toBe('BANK');
+  });
+
+  it('checks the equity and bank totals against the split', () => {
+    const schedule = base();
+    schedule.installments[0] = { ...schedule.installments[0], amount: 50_000 };
+    expect(scheduleIssues(schedule).map((issue) => issue.kind)).toContain('equity-total');
+    schedule.bankAmount = 700_000;
+    const kinds = scheduleIssues(schedule).map((issue) => issue.kind);
+    expect(kinds).toContain('bank-total');
+  });
+
+  it('counts as defined only once confirmed and valid', () => {
+    const schedule = base();
+    expect(scheduleDefined(schedule)).toBe(false);
+    expect(scheduleDefined({ ...schedule, confirmedAt: new Date().toISOString() })).toBe(true);
+  });
+});
+
+describe('signing stage', () => {
+  it('keeps the schedule through parsing and requires it to close a new-mortgage signing', () => {
+    const data = emptyPlanData();
+    data.SIGNING.bank = 'לאומי';
+    data.SIGNING.checklist = Object.fromEntries(
+      Object.keys(parseStageData('SIGNING', {}).checklist).map((key) => [key, true])
+    );
+    const all = parseStageData('SIGNING', { ...data.SIGNING, checklist: {} });
+    expect(all.paymentSchedule).toBeNull();
+
+    const schedule = { ...draftSchedule(1_000_000, 600_000), confirmedAt: new Date().toISOString() };
+    const parsed = parseStageData('SIGNING', { ...data.SIGNING, paymentSchedule: schedule, contractAnswer: 'NOT_YET' });
+    expect(parsed.paymentSchedule?.installments).toHaveLength(schedule.installments.length);
+    expect(parsed.contractAnswer).toBe('NOT_YET');
+    expect(parsePaymentSchedule({ installments: [{ source: 'X', amount: -5 }] })?.installments[0]).toMatchObject({
+      source: 'EQUITY',
+      amount: null,
+    });
+
+    expect(missingForStage('SIGNING', data)).toContain('הגדרת פעימות התשלום');
+    data.SIGNING.paymentSchedule = schedule;
+    expect(missingForStage('SIGNING', data)).not.toContain('הגדרת פעימות התשלום');
+  });
+
+  it('closes stage 5 once the signing at the bank is marked done', () => {
+    const data = emptyPlanData();
+    data.ANALYSIS.dealType = 'any_purpose';
+    expect(stageIsComplete('SIGNING', data)).toBe(false);
+    expect(missingForStage('SIGNING', data)).toContain('סימון שהחתימה על תיק המשכנתא בבנק בוצעה');
+    const parsed = parseStageData('SIGNING', {
+      visits: { 'bank-sign': { date: '2026-11-02', doneAt: '2026-11-02T10:00:00.000Z' }, 'collateral-submit': { date: 'bad' } },
+      tiyulim: { documentId: 'd1', sentTo: 'a@b.co', documentsProvided: true },
+    });
+    expect(parsed.visits['collateral-submit']).toEqual({ date: null, doneAt: null });
+    expect(parsed.tiyulim).toMatchObject({ documentId: 'd1', sentTo: 'a@b.co', documentsProvided: true, sentAt: null });
+    data.SIGNING = parsed;
+    expect(stageIsComplete('SIGNING', data)).toBe(true);
+  });
+
+  it('keeps internal refinance open until the signing is done', () => {
+    const data = emptyPlanData();
+    data.MIX.refinance = { mode: 'INTERNAL' } as typeof data.MIX.refinance;
+    data.AUCTION.signedMix = {
+      mixKey: 'm1', mixRecordId: null, bank: 'לאומי', name: 'x', monthlyPayment: 5000,
+      averageRate: 4, totalInterest: null, totalPaid: null, months: null, chosenAt: '2026-10-01T00:00:00Z',
+    };
+    expect(stageIsComplete('AUCTION', data)).toBe(false);
+    data.SIGNING.visits['bank-sign'].doneAt = '2026-11-02T10:00:00.000Z';
+    expect(stageIsComplete('AUCTION', data)).toBe(true);
+  });
+
+  it('does not require a schedule for refinance', () => {
+    const data = emptyPlanData();
+    data.MIX.refinancePending = true;
+    expect(missingForStage('SIGNING', data)).not.toContain('הגדרת פעימות התשלום');
+    expect(stageIsComplete('SIGNING', data)).toBe(false);
+  });
+});
+
+describe('reports', () => {
+  const input = {
+    schedule: draftSchedule(2_550_000, 1_800_000),
+    title: 'תכנון משכנתא',
+    propertyAddress: 'הרצל 1, תל אביב <script>',
+    generatedAt: new Date('2026-10-05T08:00:00Z'),
+  };
+
+  it('builds an escaped standalone HTML page', () => {
+    const html = scheduleReportHtml(input);
+    expect(html).toContain('פעימות התשלום למוכר');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).not.toContain('<script>');
+  });
+
+  it('builds a PDF with the Hebrew font', async () => {
+    const font = readFileSync(path.join(__dirname, '../../public/fonts/Assistant-Regular.ttf'));
+    const bytes = await scheduleReportPdf(input, font);
+    expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe('%PDF-');
+  });
+});

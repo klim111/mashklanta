@@ -110,7 +110,7 @@ export function StageCard({
 
         {/* Title and Description */}
         <div className="space-y-2 mb-4">
-          <h3 className="text-xl font-semibold text-slate-800">
+          <h3 className="text-subtitle font-semibold text-slate-800">
             {title}
           </h3>
           <p className="text-slate-600 leading-relaxed">
@@ -164,7 +164,7 @@ export function StageCard({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="border-t border-slate-200 bg-slate-50/50 overflow-hidden"
+            className="border-t border-slate-200 bg-slate-50 overflow-hidden"
           >
             <div className="p-6 space-y-4">
               {/* Full Requirements List */}
@@ -235,7 +235,7 @@ export function StageCards({ stages }: StageCardsProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold text-slate-800 mb-2">
+        <h2 className="text-subtitle font-semibold text-slate-800 mb-2">
           שלבי התהליך
         </h2>
         <p className="text-slate-600">

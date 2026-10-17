@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Banknote, Hash } from 'lucide-react';
+import { formatNumberInput, parseFormattedNumberInput } from '@/lib/currency';
 
 interface Question {
   id: string;
@@ -26,18 +27,13 @@ interface SingleQuestionScreenProps {
 }
 
 export function SingleQuestionScreen({ question, value, onChange }: SingleQuestionScreenProps) {
-  const formatCurrency = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '');
-    return new Intl.NumberFormat('he-IL').format(Number(numericValue));
-  };
-
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[^\d]/g, '');
-    onChange(Number(rawValue));
+    const numValue = parseFormattedNumberInput(e.target.value);
+    onChange(numValue);
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numValue = Number(e.target.value);
+    const numValue = parseFormattedNumberInput(e.target.value);
     if (question.min !== undefined && numValue < question.min) return;
     if (question.max !== undefined && numValue > question.max) return;
     onChange(numValue);
@@ -53,7 +49,7 @@ export function SingleQuestionScreen({ question, value, onChange }: SingleQuesti
             </div>
             <motion.input
               type="text"
-              value={value ? formatCurrency(value.toString()) : ''}
+              value={value ? formatNumberInput(String(value)) : ''}
               onChange={handleCurrencyChange}
               placeholder={question.placeholder}
               className="w-full pr-12 pl-6 py-4 text-xl bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -73,12 +69,11 @@ export function SingleQuestionScreen({ question, value, onChange }: SingleQuesti
               <Hash className="w-5 h-5" />
             </div>
             <motion.input
-              type="number"
-              value={value || ''}
+              type="text"
+              inputMode="numeric"
+              value={value ? formatNumberInput(String(value)) : ''}
               onChange={handleNumberChange}
               placeholder={question.placeholder}
-              min={question.min}
-              max={question.max}
               className="w-full pr-12 pl-6 py-4 text-xl bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               whileFocus={{ scale: 1.01 }}
               dir="rtl"

@@ -13,12 +13,6 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
   const [hoveredMode, setHoveredMode] = useState<string | null>(null);
   const [expandedInfo, setExpandedInfo] = useState<string | null>(null);
 
-  // Test function to verify the component is working
-  const testClick = () => {
-    alert('Test click function called!');
-    console.log('Test click function called!');
-  };
-
   const modes = [
     {
       id: 'guided',
@@ -53,34 +47,24 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="text-center mb-12"
+        className="text-center mb-8 sm:mb-12"
       >
-        <h1 className="text-4xl font-semibold text-slate-800 mb-4">
+        <h1 className="text-title font-semibold text-slate-800 mb-4">
           בואו נתחיל את המסע
         </h1>
-        <p className="text-xl text-slate-600 max-w-2xl">
+        <p className="text-base text-slate-600 max-w-2xl sm:text-xl">
           איך תרצו לנווט בתהליך המשכנתא? בחרו את הדרך המתאימה לכם
         </p>
       </motion.div>
 
       {/* Mode Cards */}
-      <div className="grid md:grid-cols-2 gap-8 max-w-5xl w-full">
-        {/* Test Button */}
-        <div className="col-span-2 mb-4">
-          <button 
-            onClick={testClick}
-            className="bg-red-500 text-white px-4 py-2 rounded"
-          >
-            Test Button - Click Me
-          </button>
-        </div>
-        
+      <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-5xl w-full">
         {modes.map((mode, index) => {
           const Icon = mode.icon;
           const isHovered = hoveredMode === mode.id;
@@ -104,10 +88,7 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                 onHoverEnd={() => setHoveredMode(null)}
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.2 }}
-                onClick={() => {
-                  console.log('Card clicked for mode:', mode.id);
-                  alert(`Card clicked for mode: ${mode.id}`);
-                }}
+                onClick={() => onModeSelect(mode.id as ApplicationMode)}
               >
                 {/* Background Gradient */}
                 <motion.div
@@ -127,7 +108,7 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                 {/* Content */}
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-2xl font-semibold text-slate-800 mb-2">
+                    <h3 className="text-subtitle font-semibold text-slate-800 mb-2">
                       {mode.title}
                     </h3>
                     <p className="text-sm text-slate-500 mb-3">
@@ -196,9 +177,6 @@ export function ModeSelectionScreen({ onModeSelect }: ModeSelectionScreenProps) 
                     `}
                     onClick={(e) => {
                       e.stopPropagation();
-                      alert(`Button clicked for mode: ${mode.id}`);
-                      console.log('Button clicked for mode:', mode.id);
-                      console.log('onModeSelect function:', onModeSelect);
                       onModeSelect(mode.id as ApplicationMode);
                     }}
                   >

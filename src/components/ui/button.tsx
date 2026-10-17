@@ -5,28 +5,30 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:transform hover:scale-105 active:scale-95",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-button font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:transform hover:scale-105 active:scale-95",
   {
     variants: {
       variant: {
         default:
-          "bg-financial-gradient text-white shadow-lg hover:shadow-xl border-0",
+          "bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:shadow-xl border-0",
         destructive:
           "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg hover:shadow-xl",
         outline:
-          "border-2 border-financial-primary bg-white text-financial-primary shadow-md hover:bg-financial-primary hover:text-white hover:shadow-lg",
+          "border border-slate-200 bg-white text-slate-900 shadow-md hover:bg-slate-50 hover:shadow-lg",
         secondary:
           "bg-financial-gray-100 text-financial-gray-800 shadow-md hover:bg-financial-gray-200 hover:shadow-lg",
         ghost: "hover:bg-financial-gray-100 hover:text-financial-gray-900 text-financial-gray-700",
-        link: "text-financial-primary underline-offset-4 hover:underline hover:text-financial-primary-dark",
-        success: "bg-financial-success-gradient text-white shadow-lg hover:shadow-xl",
+        link: "text-blue-600 underline-offset-4 hover:underline hover:text-blue-700",
+        success: "bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 hover:shadow-xl",
         warning: "bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg hover:shadow-xl",
       },
       size: {
         default: "h-11 px-6 py-3",
-        sm: "h-9 rounded-lg px-4 text-xs",
-        lg: "h-12 rounded-xl px-8 text-base",
-        xl: "h-14 rounded-xl px-10 text-lg",
+        sm: "h-9 rounded-lg px-4 text-sm",
+        lg: "h-12 rounded-xl px-8 text-cta",
+        xl: "h-14 rounded-xl px-10 text-cta",
+        // כפתור קריאה לפעולה ראשית במסך
+        cta: "h-12 rounded-xl px-8 text-cta",
         icon: "h-11 w-11",
       },
     },

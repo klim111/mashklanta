@@ -299,7 +299,7 @@ const getDocumentStatusIcon = (status?: string) => {
       return <FileClock className="w-4 h-4 text-yellow-500" />;
     case 'pending':
     default:
-      return <FileX className="w-4 h-4 text-gray-400" />;
+      return <FileX className="w-4 h-4 text-slate-400" />;
   }
 };
 
@@ -475,21 +475,21 @@ export default function AdvancedMortgageJourney({
   const visibleDays = generateVisibleDays();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="flex h-screen overflow-hidden">
+    <div className="min-h-screen bg-slate-50">
+      <div className="flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden">
         {/* Right Panel - Vertical Map */}
-        <div className="w-80 bg-white shadow-2xl overflow-y-auto border-l border-gray-200">
-          <div className="sticky top-0 bg-white z-20 border-b border-gray-200">
+        <div className="w-full lg:w-72 xl:w-80 shrink-0 max-h-[60vh] lg:max-h-none bg-white shadow-2xl overflow-y-auto border-b lg:border-b-0 lg:border-l border-slate-200">
+          <div className="sticky top-0 bg-white z-20 border-b border-slate-200">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
                   <Navigation className="w-6 h-6 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h2 className="text-subtitle font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   מפת המסע שלך
                 </h2>
               </div>
-              <p className="text-sm text-gray-600">נווט בין השלבים לקבלת המשכנתא</p>
+              <p className="text-sm text-slate-600">נווט בין השלבים לקבלת המשכנתא</p>
             </div>
           </div>
 
@@ -583,8 +583,8 @@ export default function AdvancedMortgageJourney({
 
                             {/* Category Info */}
                             <div className="flex-1">
-                              <h3 className="font-bold text-gray-900">{category.name}</h3>
-                              <p className="text-xs text-gray-600">{category.description}</p>
+                              <h3 className="font-bold text-slate-900">{category.name}</h3>
+                              <p className="text-xs text-slate-600">{category.description}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline" className="text-xs">
                                   {categorySteps.length} שלבים
@@ -606,7 +606,7 @@ export default function AdvancedMortgageJourney({
                               animate={{ rotate: isExpanded ? 180 : 0 }}
                               transition={{ duration: 0.3 }}
                             >
-                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                              <ChevronDown className="w-5 h-5 text-slate-400" />
                             </motion.div>
                           </div>
 
@@ -629,7 +629,7 @@ export default function AdvancedMortgageJourney({
                             transition={{ duration: 0.3 }}
                             className="overflow-hidden"
                           >
-                            <div className="ml-6 mt-2 space-y-2 pl-6 border-l-2 border-gray-200">
+                            <div className="ml-6 mt-2 space-y-2 pl-6 border-l-2 border-slate-200">
                               {categorySteps.map((step, stepIndex) => {
                                 const isStepActive = step.id === selectedStep;
                                 const stepComplete = isStepComplete(step);
@@ -642,7 +642,7 @@ export default function AdvancedMortgageJourney({
                                     transition={{ delay: stepIndex * 0.05 }}
                                     className={`
                                       p-3 rounded-lg cursor-pointer transition-all
-                                      ${isStepActive ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 hover:bg-gray-100'}
+                                      ${isStepActive ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 hover:bg-slate-100'}
                                       border
                                     `}
                                     onClick={(e) => {
@@ -653,7 +653,7 @@ export default function AdvancedMortgageJourney({
                                     <div className="flex items-center gap-2">
                                       <div className={`
                                         w-6 h-6 rounded-full flex items-center justify-center
-                                        ${stepComplete ? 'bg-green-500' : isStepActive ? 'bg-blue-500' : 'bg-gray-300'}
+                                        ${stepComplete ? 'bg-green-500' : isStepActive ? 'bg-blue-500' : 'bg-slate-300'}
                                       `}>
                                         {stepComplete ? (
                                           <Check className="w-3 h-3 text-white" />
@@ -663,7 +663,7 @@ export default function AdvancedMortgageJourney({
                                       </div>
                                       <span className={`
                                         text-sm font-medium
-                                        ${stepComplete ? 'text-green-600 line-through' : 'text-gray-700'}
+                                        ${stepComplete ? 'text-green-600 line-through' : 'text-slate-700'}
                                       `}>
                                         {step.title}
                                       </span>
@@ -702,8 +702,8 @@ export default function AdvancedMortgageJourney({
         </div>
 
         {/* Center Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
+        <div className="flex-1 min-w-0 lg:overflow-y-auto">
+          <div className="p-4 sm:p-6 xl:p-8">
             <AnimatePresence mode="wait">
               {showWelcome ? (
                 /* Welcome Screen */
@@ -712,10 +712,10 @@ export default function AdvancedMortgageJourney({
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="flex items-center justify-center min-h-[600px]"
+                  className="flex items-center justify-center min-h-[400px] lg:min-h-[600px]"
                 >
                   <Card className="max-w-2xl w-full bg-white shadow-2xl border-0 overflow-hidden">
-                    <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-8 text-white">
+                    <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-6 xl:p-8 text-white">
                       <motion.div
                         initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
@@ -725,48 +725,49 @@ export default function AdvancedMortgageJourney({
                         <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-4">
                           <Rocket className="w-10 h-10 text-white" />
                         </div>
-                        <h1 className="text-4xl font-bold mb-2">ברוכים הבאים למסע המשכנתא</h1>
+                        <h1 className="text-title font-bold mb-2 break-words text-white">ברוכים הבאים למסע המשכנתא</h1>
                         <p className="text-lg text-white/90">נלווה אותך צעד אחר צעד עד לקבלת המשכנתא המושלמת</p>
                       </motion.div>
                     </div>
-                    <CardContent className="p-8">
+                    <CardContent className="p-6 xl:p-8">
                       <div className="space-y-6">
-                        <div className="grid grid-cols-3 gap-4">
+                        {/* ברוחב צר (כולל lg עם שלוש עמודות דף) – הפיצ'רים נערמים */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-4">
                           <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="text-center"
+                            className="text-center min-w-0"
                           >
                             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                               <Target className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h3 className="font-semibold text-gray-900">מפה ברורה</h3>
-                            <p className="text-xs text-gray-600 mt-1">תצוגה ויזואלית של כל השלבים</p>
+                            <h3 className="font-semibold text-slate-900">מפה ברורה</h3>
+                            <p className="text-xs text-slate-600 mt-1">תצוגה ויזואלית של כל השלבים</p>
                           </motion.div>
                           <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
-                            className="text-center"
+                            className="text-center min-w-0"
                           >
                             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
                               <FileCheck className="w-6 h-6 text-green-600" />
                             </div>
-                            <h3 className="font-semibold text-gray-900">ניהול מסמכים</h3>
-                            <p className="text-xs text-gray-600 mt-1">מעקב אחר כל המסמכים הנדרשים</p>
+                            <h3 className="font-semibold text-slate-900">ניהול מסמכים</h3>
+                            <p className="text-xs text-slate-600 mt-1">מעקב אחר כל המסמכים הנדרשים</p>
                           </motion.div>
                           <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.5 }}
-                            className="text-center"
+                            className="text-center min-w-0"
                           >
                             <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
                               <TrendingUp className="w-6 h-6 text-purple-600" />
                             </div>
-                            <h3 className="font-semibold text-gray-900">מעקב התקדמות</h3>
-                            <p className="text-xs text-gray-600 mt-1">ראה את ההתקדמות שלך בזמן אמת</p>
+                            <h3 className="font-semibold text-slate-900">מעקב התקדמות</h3>
+                            <p className="text-xs text-slate-600 mt-1">ראה את ההתקדמות שלך בזמן אמת</p>
                           </motion.div>
                         </div>
 
@@ -789,7 +790,7 @@ export default function AdvancedMortgageJourney({
                   </Card>
                 </motion.div>
               ) : (
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
                   {/* Right Module - Step Details */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -800,14 +801,14 @@ export default function AdvancedMortgageJourney({
                       <CardHeader className="border-b">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900">פרטי השלב</h3>
+                            <h3 className="text-subtitle font-bold text-slate-900">פרטי השלב</h3>
                             {selectedStepData && (
-                              <p className="text-sm text-gray-600 mt-1">{selectedStepData.title}</p>
+                              <p className="text-sm text-slate-600 mt-1">{selectedStepData.title}</p>
                             )}
                           </div>
                           {selectedCategory && (
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-500">התקדמות בקטגוריה:</span>
+                              <span className="text-sm text-slate-500">התקדמות בקטגוריה:</span>
                               <div className="flex items-center gap-2">
                                 <Progress value={categoryProgress} className="w-24 h-2" />
                                 <span className="text-sm font-bold">{categoryProgress}%</span>
@@ -824,19 +825,19 @@ export default function AdvancedMortgageJourney({
                               <div className="flex items-start gap-3">
                                 <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                                 <div>
-                                  <h4 className="font-semibold text-gray-900 mb-1">תיאור השלב</h4>
-                                  <p className="text-sm text-gray-700">{selectedStepData.description}</p>
+                                  <h4 className="font-semibold text-slate-900 mb-1">תיאור השלב</h4>
+                                  <p className="text-sm text-slate-700">{selectedStepData.description}</p>
                                 </div>
                               </div>
                             </div>
 
                             {/* Manual Complete Option */}
                             {selectedStepData.manualComplete && !selectedStepData.requiresDocuments && (
-                              <div className="p-4 bg-gray-50 rounded-lg">
+                              <div className="p-4 bg-slate-50 rounded-lg">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <h4 className="font-semibold text-gray-900">סטטוס השלב</h4>
-                                    <p className="text-sm text-gray-600 mt-1">
+                                    <h4 className="font-semibold text-slate-900">סטטוס השלב</h4>
+                                    <p className="text-sm text-slate-600 mt-1">
                                       {selectedStepData.status === 'completed' 
                                         ? 'השלב הושלם בהצלחה' 
                                         : 'סמן כאשר השלב הושלם'}
@@ -902,7 +903,7 @@ export default function AdvancedMortgageJourney({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                          <div className="flex flex-col items-center justify-center h-64 text-slate-400">
                             <Compass className="w-12 h-12 mb-3" />
                             <p className="text-lg">בחר שלב מהמפה כדי להתחיל</p>
                           </div>
@@ -922,9 +923,9 @@ export default function AdvancedMortgageJourney({
                         <CardHeader className="border-b">
                           <div className="flex items-center gap-2">
                             <FolderOpen className="w-5 h-5 text-blue-600" />
-                            <h3 className="text-xl font-bold text-gray-900">מסמכים נדרשים</h3>
+                            <h3 className="text-subtitle font-bold text-slate-900">מסמכים נדרשים</h3>
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-slate-600 mt-1">
                             {selectedStepData.documents.filter(d => d.status === 'ready').length} מתוך {selectedStepData.documents.length} מסמכים מוכנים
                           </p>
                         </CardHeader>
@@ -935,14 +936,14 @@ export default function AdvancedMortgageJourney({
                                 key={doc.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                                className="p-4 bg-slate-50 rounded-lg border border-slate-200 hover:shadow-md transition-shadow"
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
                                     {getDocumentStatusIcon(doc.status)}
                                     <div>
-                                      <p className="font-medium text-gray-900">{doc.name}</p>
-                                      <p className="text-xs text-gray-500">{getDocumentStatusText(doc.status)}</p>
+                                      <p className="font-medium text-slate-900">{doc.name}</p>
+                                      <p className="text-xs text-slate-500">{getDocumentStatusText(doc.status)}</p>
                                       {doc.optional && (
                                         <Badge variant="outline" className="text-xs mt-1">אופציונלי</Badge>
                                       )}
@@ -971,7 +972,7 @@ export default function AdvancedMortgageJourney({
                                       size="sm"
                                       variant={doc.status === 'pending' ? 'default' : 'outline'}
                                       onClick={() => updateDocumentStatus(selectedStepData.id, doc.id, 'pending')}
-                                      className={doc.status === 'pending' ? 'bg-gray-500 hover:bg-gray-600' : ''}
+                                      className={doc.status === 'pending' ? 'bg-slate-500 hover:bg-slate-600' : ''}
                                     >
                                       <FileX className="w-3 h-3 mr-1" />
                                       ממתין
@@ -985,7 +986,7 @@ export default function AdvancedMortgageJourney({
                           {/* Documents Progress */}
                           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-700">התקדמות במסמכים</span>
+                              <span className="text-sm font-medium text-slate-700">התקדמות במסמכים</span>
                               <span className="text-sm font-bold text-blue-600">
                                 {Math.round((selectedStepData.documents.filter(d => d.status === 'ready').length / selectedStepData.documents.length) * 100)}%
                               </span>
@@ -1006,8 +1007,8 @@ export default function AdvancedMortgageJourney({
         </div>
 
         {/* Left Panel - Calendar */}
-        <div className="w-96 bg-white shadow-2xl overflow-y-auto border-r border-gray-200">
-          <div className="sticky top-0 bg-white z-20 border-b border-gray-200">
+        <div className="w-full lg:w-80 xl:w-96 shrink-0 bg-white shadow-2xl lg:overflow-y-auto border-t lg:border-t-0 lg:border-r border-slate-200">
+          <div className="lg:sticky top-0 bg-white z-20 border-b border-slate-200">
             <div className="p-6">
               <div className="flex items-center justify-between">
                 <Button
@@ -1022,8 +1023,8 @@ export default function AdvancedMortgageJourney({
                   <ChevronRight className="w-4 h-4" />
                 </Button>
                 <div className="text-center">
-                  <h3 className="text-lg font-bold text-gray-800">לוח זמנים</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 className="text-subtitle font-bold text-slate-800">לוח זמנים</h3>
+                  <p className="text-sm text-slate-600">
                     {visibleDays[3]?.monthName} {visibleDays[3]?.year}
                   </p>
                 </div>
@@ -1047,7 +1048,7 @@ export default function AdvancedMortgageJourney({
             <div className="grid grid-cols-7 gap-1">
               {/* Day Headers */}
               {['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-gray-600 py-2">
+                <div key={day} className="text-center text-xs font-medium text-slate-600 py-2">
                   {day}
                 </div>
               ))}
@@ -1059,14 +1060,14 @@ export default function AdvancedMortgageJourney({
                   className={`
                     aspect-square p-2 rounded-lg border transition-all
                     ${day.isToday ? 'ring-2 ring-blue-400 bg-blue-50' : 'bg-white'}
-                    ${day.date.getDay() === 6 ? 'bg-gray-100' : 'hover:bg-gray-50'}
+                    ${day.date.getDay() === 6 ? 'bg-slate-100' : 'hover:bg-slate-50'}
                   `}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.02 }}
                 >
                   <div className="text-center">
-                    <div className={`text-sm font-bold ${day.isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                    <div className={`text-sm font-bold ${day.isToday ? 'text-blue-600' : 'text-slate-900'}`}>
                       {day.day}
                     </div>
                   </div>
@@ -1075,8 +1076,8 @@ export default function AdvancedMortgageJourney({
             </div>
 
             {/* Calendar Legend */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-3">מקרא</h4>
+            <div className="mt-6 p-4 bg-slate-50 rounded-lg">
+              <h4 className="font-semibold text-slate-900 mb-3">מקרא</h4>
               <div className="space-y-2">
                 {categories.map((cat) => (
                   <div key={cat.id} className="flex items-center gap-2">
@@ -1084,7 +1085,7 @@ export default function AdvancedMortgageJourney({
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: cat.color }}
                     />
-                    <span className="text-sm text-gray-700">{cat.name}</span>
+                    <span className="text-sm text-slate-700">{cat.name}</span>
                   </div>
                 ))}
               </div>

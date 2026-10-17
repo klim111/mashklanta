@@ -22,13 +22,8 @@ export function MortgageApplication() {
     setCurrentStep 
   } = useMortgageApplication();
 
-  console.log('MortgageApplication render - current mode:', mode);
-
   const handleModeSelect = (selectedMode: ApplicationMode) => {
-    console.log('handleModeSelect called with:', selectedMode);
-    console.log('Current mode before update:', mode);
     setMode(selectedMode);
-    console.log('Mode state updated to:', selectedMode);
   };
 
   const handleReset = () => {
@@ -38,11 +33,6 @@ export function MortgageApplication() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 text-right" dir="rtl">
-      {/* Debug Info */}
-      <div className="fixed top-4 left-4 bg-white p-2 rounded shadow z-50 text-sm">
-        Debug: Mode = {mode || 'null'}
-      </div>
-      
       {/* Cost Rail - Always visible when mode is selected */}
       <AnimatePresence>
         {mode && (
@@ -63,7 +53,6 @@ export function MortgageApplication() {
 
       {/* Main Content */}
       <div className="relative">
-        {/* Simplified rendering for debugging */}
         {!mode && (
           <div>
             <ModeSelectionScreen onModeSelect={handleModeSelect} />
