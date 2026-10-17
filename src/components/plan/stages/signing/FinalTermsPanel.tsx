@@ -19,7 +19,7 @@ import { EmptyHint, Metric, Panel, formatPercent, formatShekel } from '../../ui'
  * המתואם, מסלול מול מסלול. אם אין כזה, מוצג התמהיל הסופי שננעל בשלב בניית
  * התמהיל, יחד עם התנאים שהבנק הזוכה נקב.
  */
-function pickPricedMix(
+export function pickPricedMix(
   mixes: SavedMix[],
   data: PlanData,
   winnerBank: string | null

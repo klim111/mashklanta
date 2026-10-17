@@ -737,10 +737,10 @@ export function PlanWorkspace({
               </div>
             </div>
             <Link
-              href="/dashboard"
+              href="/dashboard#my-mortgage"
               className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-emerald-700"
             >
-              למעקב באזור האישי
+              למשכנתא שלי
             </Link>
           </motion.div>
         )}
@@ -1035,7 +1035,7 @@ export function PlanWorkspace({
         bank={plan.data.SIGNING.bank || refinance?.bank || null}
         onDone={() => {
           setCelebrate(false);
-          router.push('/dashboard');
+          router.push('/dashboard#my-mortgage');
         }}
       />
 

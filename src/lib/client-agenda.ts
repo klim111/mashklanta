@@ -46,6 +46,7 @@ export function clientTaskIdOf(id: string): string | null {
 /** אזורי הדאשבורד — הניווט הראשי של האזור האישי */
 export const DASHBOARD_SECTIONS = [
   'overview',
+  'my-mortgage',
   'agenda',
   'meetings',
   'expenses',
