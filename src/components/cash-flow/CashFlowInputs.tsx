@@ -1,17 +1,20 @@
 'use client';
 
-import { Calculator, CalendarRange, Home, Plus, Trash2, Users, UserRound, Wallet } from 'lucide-react';
+import { Calculator, CalendarRange, Home, Layers, Plus, RotateCcw, Trash2, Users, UserRound, Wallet } from 'lucide-react';
 import {
   LONG_LOAN_MONTHS,
   amountForPayment,
   cashFlowId,
+  hasTracks,
   incomeTotal,
   isLongLoan,
   loanPayment,
   maxMortgageAmount,
   mortgagePayment,
+  trackPayment,
+  withTrackTotals,
 } from '@/lib/cash-flow';
-import type { CashFlowLoan, CashFlowState, CashFlowSummary, IncomeOwner } from '@/lib/cash-flow';
+import type { CashFlowLoan, CashFlowState, CashFlowSummary, CashFlowTrack, IncomeOwner } from '@/lib/cash-flow';
 import { MiniNumber, SHEKEL, ToolPanel } from './fields';
 import { loanColor } from './palette';
 
@@ -123,18 +126,26 @@ export function MortgagePanel({
   update,
   summary,
   onSchedule,
+  knownSource,
+  onResetMortgage,
 }: {
   state: CashFlowState;
   update: Update;
   summary: CashFlowSummary;
   onSchedule: () => void;
+  /** המשכנתא שהלקוח הזין בפלטפורמה, כשיש כזו — «התמהיל הסופי שבחרתם» */
+  knownSource?: string | null;
+  onResetMortgage?: () => void;
 }) {
   const mortgage = state.mortgage;
   const set = (patch: Partial<CashFlowState['mortgage']>) =>
     update((current) => ({ ...current, mortgage: { ...current.mortgage, ...patch } }));
   const payment = mortgagePayment(mortgage);
   const maxAmount = maxMortgageAmount(state, summary);
-  const canSchedule = !!(mortgage.amount && mortgage.years && mortgage.rate !== null);
+  const tracked = hasTracks(mortgage);
+  const canSchedule = tracked || !!(mortgage.amount && mortgage.years && mortgage.rate !== null);
+  const setTracks = (tracks: CashFlowTrack[]) =>
+    update((current) => ({ ...current, mortgage: withTrackTotals({ ...current.mortgage, tracks }) }));
 
   return (
     <ToolPanel
@@ -153,6 +164,15 @@ export function MortgagePanel({
         ) : undefined
       }
     >
+      {tracked ? (
+        <TracksSummary
+          tracks={mortgage.tracks ?? []}
+          total={payment}
+          sourceLabel={mortgage.source?.label ?? knownSource ?? null}
+          onChange={setTracks}
+          onReset={onResetMortgage}
+        />
+      ) : (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <MiniNumber label="גובה המשכנתא" value={mortgage.amount} suffix="₪" onChange={(amount) => set({ amount })} />
         <MiniNumber label="ריבית ממוצעת" value={mortgage.rate} suffix="%" integer={false} onChange={(rate) => set({ rate })} />
@@ -172,6 +192,7 @@ export function MortgagePanel({
           }}
         />
       </div>
+      )}
       {maxAmount !== null && (
         <p
           className={`mt-3 rounded-xl px-3 py-2 text-sm font-semibold ${
@@ -183,6 +204,106 @@ export function MortgagePanel({
         </p>
       )}
     </ToolPanel>
+  );
+}
+
+/**
+ * תקציר התמהיל: מסלול בשורה, עם סכום, ריבית ותקופה שאפשר לשנות. ההחזר של
+ * כל מסלול מחושב מהם, וכל מסלול מסתיים בזמנו על ציר הזמן.
+ */
+function TracksSummary({
+  tracks,
+  total,
+  sourceLabel,
+  onChange,
+  onReset,
+}: {
+  tracks: CashFlowTrack[];
+  total: number;
+  sourceLabel: string | null;
+  onChange: (tracks: CashFlowTrack[]) => void;
+  onReset?: () => void;
+}) {
+  const patch = (id: string, change: Partial<CashFlowTrack>) =>
+    onChange(tracks.map((track) => (track.id === id ? { ...track, ...change } : track)));
+
+  return (
+    <div className="space-y-2">
+      {sourceLabel && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-900">
+          <Layers className="h-4 w-4 shrink-0 text-blue-600" />
+          <span className="min-w-0 flex-1 font-semibold">
+            {sourceLabel}. אפשר לשנות כאן סכום, ריבית ותקופה בכל מסלול, והחישוב והגרפים מתעדכנים.
+          </span>
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-black text-blue-700 hover:bg-blue-100"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              חזרה לתמהיל שלי
+            </button>
+          )}
+        </div>
+      )}
+      {tracks.map((track) => (
+        <div
+          key={track.id}
+          className="grid grid-cols-2 items-end gap-2 rounded-xl border border-slate-100 p-2 sm:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))_auto]"
+        >
+          <label className="col-span-2 block min-w-0 sm:col-span-1">
+            <span className="mb-1 block truncate text-2xs font-bold text-slate-500">מסלול</span>
+            <input
+              value={track.name}
+              maxLength={60}
+              onChange={(event) => patch(track.id, { name: event.target.value })}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+            />
+          </label>
+          <MiniNumber label="סכום" value={track.amount} suffix="₪" onChange={(amount) => patch(track.id, { amount })} />
+          <MiniNumber
+            label="ריבית"
+            value={track.rate}
+            suffix="%"
+            integer={false}
+            onChange={(rate) => patch(track.id, { rate })}
+          />
+          <MiniNumber label="תקופה" value={track.months} suffix="חודשים" onChange={(months) => patch(track.id, { months })} />
+          <MiniNumber
+            label="החזר חודשי"
+            value={Math.round(trackPayment(track)) || null}
+            suffix="₪"
+            tone="result"
+            onChange={() => undefined}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(tracks.filter((item) => item.id !== track.id))}
+            aria-label="הסרת המסלול"
+            className="flex h-9 w-9 items-center justify-center self-end rounded-lg text-slate-300 hover:bg-rose-50 hover:text-rose-600"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() =>
+            onChange([...tracks, { id: cashFlowId('trk'), name: `מסלול ${tracks.length + 1}`, amount: null, rate: 5, months: 300 }])
+          }
+          disabled={tracks.length >= 12}
+          className="inline-flex items-center gap-1 rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-blue-400 hover:text-blue-700 disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          הוספת מסלול
+        </button>
+        <span className="text-sm font-black text-slate-900">
+          החזר חודשי כולל <span className="tabular-nums text-blue-700">{SHEKEL(total)}</span>
+        </span>
+      </div>
+    </div>
   );
 }
 

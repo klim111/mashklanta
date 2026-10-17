@@ -12,7 +12,7 @@ import {
   Table2,
   XCircle,
 } from 'lucide-react';
-import { MORTGAGE_RATIO_LIMIT, cashFlowAlerts, loanSchedule, mortgageMonths, summarize, amortization } from '@/lib/cash-flow';
+import { MORTGAGE_RATIO_LIMIT, amortization, cashFlowAlerts, loanSchedule, mortgageSchedule, summarize } from '@/lib/cash-flow';
 import type { AlertTone, CashFlowLoan } from '@/lib/cash-flow';
 import { AUTHORIZATION_FONT_PATH } from '@/lib/authorization-forms';
 import type { PlanView } from '@/components/plan/usePlan';
@@ -40,7 +40,7 @@ export type CashFlowStore = ReturnType<typeof useCashFlow>;
 
 /** הכלי עצמו, על נתונים שנטענו בחוץ — כשהסקירה מציגה גם את כרטיס התקציר שלו */
 export function CashFlowWorkspace({ store }: { store: CashFlowStore }) {
-  const { state, update, reset, saved } = store;
+  const { state, update, reset, saved, knownSource, resetMortgage } = store;
   const [schedule, setSchedule] = useState<ScheduleView | null>(null);
   const [preset, setPreset] = useState<CalculatorPreset | null>(null);
   const [busy, setBusy] = useState<'pdf' | 'xlsx' | null>(null);
@@ -165,11 +165,13 @@ export function CashFlowWorkspace({ store }: { store: CashFlowStore }) {
             state={state}
             update={update}
             summary={summary}
+            knownSource={knownSource}
+            onResetMortgage={knownSource ? resetMortgage : undefined}
             onSchedule={() =>
               setSchedule({
                 kind: 'loan',
                 title: 'לוח סילוקין · משכנתא',
-                rows: amortization(state.mortgage.amount ?? 0, state.mortgage.rate ?? 0, mortgageMonths(state.mortgage)),
+                rows: mortgageSchedule(state.mortgage),
               })
             }
           />

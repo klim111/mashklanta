@@ -51,12 +51,36 @@ export interface CashFlowLoan {
   payment: number | null;
 }
 
+/** מסלול אחד במשכנתא — נפרס בשפיצר לפי הסכום, הריבית והתקופה שלו */
+export interface CashFlowTrack {
+  id: string;
+  name: string;
+  amount: number | null;
+  /** ריבית שנתית באחוזים */
+  rate: number | null;
+  months: number | null;
+}
+
+/** מאיפה הגיעו המסלולים: התמהיל הסופי, או המשכנתא שהוזנה בכלי המיחזור */
+export interface CashFlowMortgageSource {
+  kind: 'mix' | 'refinance';
+  /** מזהה התמהיל שממנו נטענו המסלולים — תמהיל אחר מחליף אותם */
+  key: string;
+  label: string;
+}
+
 export interface CashFlowMortgage {
   amount: number | null;
   rate: number | null;
   years: number | null;
   /** החזר ידוע, כשחסרים נתונים לחישוב (למשל הוזן רק ההחזר מההצעה) */
   payment: number | null;
+  /**
+   * מסלולי המשכנתא, כשהיא ידועה במלואה. כשיש מסלולים, ההחזר והתזרים מחושבים
+   * מכל מסלול לחוד, והסכום, הריבית והתקופה שלמעלה הם הסיכום שלהם.
+   */
+  tracks?: CashFlowTrack[];
+  source?: CashFlowMortgageSource | null;
 }
 
 export interface CashFlowState {
@@ -154,7 +178,45 @@ export function isLongLoan(loan: CashFlowLoan): boolean {
   return !loan.months || loan.months > LONG_LOAN_MONTHS;
 }
 
+export function hasTracks(mortgage: CashFlowMortgage): boolean {
+  return (mortgage.tracks?.length ?? 0) > 0;
+}
+
+export function trackPayment(track: CashFlowTrack): number {
+  if (!track.amount || !track.months || track.rate === null) return 0;
+  return annuityPayment(track.amount, track.rate, track.months);
+}
+
+/** ההחזר של המשכנתא בחודש `month` (0 — החודש הנוכחי) */
+export function mortgagePaymentAt(mortgage: CashFlowMortgage, month: number): number {
+  if (hasTracks(mortgage)) {
+    return (mortgage.tracks ?? []).reduce(
+      (sum, track) => sum + (month < (track.months ?? 0) ? trackPayment(track) : 0),
+      0
+    );
+  }
+  const end = mortgageMonths(mortgage) || Infinity;
+  return month < end ? mortgagePayment(mortgage) : 0;
+}
+
+/** הסכום, הריבית המשוקללת והתקופה הארוכה של המסלולים — לשדות הסיכום */
+export function withTrackTotals(mortgage: CashFlowMortgage): CashFlowMortgage {
+  const tracks = mortgage.tracks ?? [];
+  if (tracks.length === 0) return mortgage;
+  const amount = tracks.reduce((sum, track) => sum + (track.amount ?? 0), 0);
+  const weighted = tracks.reduce((sum, track) => sum + (track.amount ?? 0) * (track.rate ?? 0), 0);
+  const months = tracks.reduce((max, track) => Math.max(max, track.months ?? 0), 0);
+  return {
+    ...mortgage,
+    amount: amount > 0 ? Math.round(amount) : null,
+    rate: amount > 0 ? Math.round((weighted / amount) * 100) / 100 : null,
+    years: months > 0 ? Math.round((months / 12) * 10) / 10 : null,
+    payment: null,
+  };
+}
+
 export function mortgagePayment(mortgage: CashFlowMortgage): number {
+  if (hasTracks(mortgage)) return mortgagePaymentAt(mortgage, 0);
   if (mortgage.amount && mortgage.years && mortgage.rate !== null) {
     return annuityPayment(mortgage.amount, mortgage.rate, mortgage.years * 12);
   }
@@ -162,6 +224,7 @@ export function mortgagePayment(mortgage: CashFlowMortgage): number {
 }
 
 export function mortgageMonths(mortgage: CashFlowMortgage): number {
+  if (hasTracks(mortgage)) return (mortgage.tracks ?? []).reduce((max, track) => Math.max(max, track.months ?? 0), 0);
   return Math.max(0, Math.round((mortgage.years ?? 0) * 12));
 }
 
@@ -186,6 +249,25 @@ export function amortization(amount: number, annualRate: number, months: number)
     const principal = month === months ? balance : payment - interest;
     balance = Math.max(0, balance - principal);
     rows.push({ month, payment: principal + interest, principal, interest, balance });
+  }
+  return rows;
+}
+
+/** לוח הסילוקין של המשכנתא — סכום הלוחות של כל המסלולים */
+export function mortgageSchedule(mortgage: CashFlowMortgage): AmortRow[] {
+  if (!hasTracks(mortgage)) {
+    return amortization(mortgage.amount ?? 0, mortgage.rate ?? 0, mortgageMonths(mortgage));
+  }
+  const rows: AmortRow[] = [];
+  for (const track of mortgage.tracks ?? []) {
+    if (!track.amount || !track.months || track.rate === null) continue;
+    amortization(track.amount, track.rate, track.months).forEach((row, index) => {
+      const target = rows[index] ?? (rows[index] = { month: index + 1, payment: 0, principal: 0, interest: 0, balance: 0 });
+      target.payment += row.payment;
+      target.principal += row.principal;
+      target.interest += row.interest;
+      target.balance += row.balance;
+    });
   }
   return rows;
 }
@@ -296,17 +378,20 @@ export interface TimelinePoint {
 
 /** האופק של הגרף: עד סוף ההלוואה האחרונה ועוד חצי שנה, לפחות שנתיים */
 export function timelineHorizon(state: CashFlowState): number {
-  const last = state.loans.reduce((max, loan) => Math.max(max, loan.months ?? 0), 0);
+  let last = state.loans.reduce((max, loan) => Math.max(max, loan.months ?? 0), 0);
+  // מסלול שמסתיים בתוך כמה שנים משנה את התזרים — הגרף מגיע גם אליו
+  const tracks = (state.mortgage.tracks ?? []).map((track) => track.months ?? 0).sort((a, b) => a - b);
+  const total = tracks.length ? tracks[tracks.length - 1] : 0;
+  for (const end of tracks) if (end < total && end <= 240) last = Math.max(last, end);
   return Math.min(360, Math.max(24, last + 6));
 }
 
 export function timeline(state: CashFlowState, horizon = timelineHorizon(state)): TimelinePoint[] {
   const income = incomeTotal(state);
-  const mortgage = mortgagePayment(state.mortgage);
-  const mortgageEnd = mortgageMonths(state.mortgage) || Infinity;
   const points: TimelinePoint[] = [];
   for (let month = 0; month < horizon; month += 1) {
-    const mortgageNow = month < mortgageEnd ? mortgage : 0;
+    // כל מסלול מסתיים בזמנו, וההחזר יורד בהתאם
+    const mortgageNow = mortgagePaymentAt(state.mortgage, month);
     const loans: Record<string, number> = {};
     let loansTotal = 0;
     let longNow = 0;
@@ -480,6 +565,49 @@ function parseIncomes(value: unknown): IncomeRow[] {
     .map((row) => ({ id: str(row.id) || cashFlowId('inc'), label: str(row.label).slice(0, 60), amount: num(row.amount) }));
 }
 
+function parseTracks(value: unknown): CashFlowTrack[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object')
+    .slice(0, 12)
+    .map((row) => ({
+      id: str(row.id) || cashFlowId('trk'),
+      name: str(row.name).slice(0, 60),
+      amount: num(row.amount),
+      rate: num(row.rate),
+      months: num(row.months),
+    }));
+}
+
+function withTracks(
+  tracks: CashFlowTrack[] | undefined,
+  source: CashFlowMortgageSource | null
+): Pick<CashFlowMortgage, 'tracks' | 'source'> {
+  return tracks && tracks.length > 0 ? { tracks, source } : {};
+}
+
+function parseSource(value: unknown): CashFlowMortgageSource | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  if (raw.kind !== 'mix' && raw.kind !== 'refinance') return null;
+  return { kind: raw.kind, key: str(raw.key).slice(0, 120), label: str(raw.label).slice(0, 80) };
+}
+
+/**
+ * המשכנתא שהלקוח כבר הזין — התמהיל הסופי או המשכנתא מכלי המיחזור — במקום
+ * המשכנתא שבכלי. ההכנסות וההלוואות לא משתנות. מסלולים מאותו תמהיל שהלקוח
+ * כבר ערך כאן נשארים כפי שערך, אלא אם `force`.
+ */
+export function applyKnownMortgage(
+  state: CashFlowState,
+  known: { tracks: CashFlowTrack[]; source: CashFlowMortgageSource } | null,
+  force = false
+): CashFlowState {
+  if (!known || known.tracks.length === 0) return state;
+  if (!force && state.mortgage.source?.key === known.source.key && hasTracks(state.mortgage)) return state;
+  return { ...state, mortgage: withTrackTotals({ ...state.mortgage, tracks: known.tracks, source: known.source }) };
+}
+
 /** קריאה בטוחה של מה שנשמר — גם מהשרת, גם מהדפדפן */
 export function parseCashFlow(value: unknown): CashFlowState | null {
   if (!value || typeof value !== 'object') return null;
@@ -497,6 +625,7 @@ export function parseCashFlow(value: unknown): CashFlowState | null {
       rate: num(mortgage.rate),
       years: num(mortgage.years),
       payment: num(mortgage.payment),
+      ...withTracks(parseTracks(mortgage.tracks), parseSource(mortgage.source)),
     },
     loans: loans
       .filter((loan): loan is Record<string, unknown> => !!loan && typeof loan === 'object')
