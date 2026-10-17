@@ -1609,6 +1609,11 @@ export function MortgageWorkspace({
         )}
         </div>
 
+        {/*
+          הגובה לפי dvh: בטאבלט 100vh גבוה מהחלק הגלוי כשסרגל הדפדפן מוצג, וסוף העמודה
+          נחתך. עצירת הגלילה בקצה העמודה רק עם עכבר — במגע הגלילה ממשיכה לעמוד,
+          אחרת החלק התחתון של העמודה לא עולה למסך כל עוד היא עוד לא נדבקה למעלה.
+        */}
         <div
           className={`min-w-0 space-y-3 ${
             layout === 'editor'
@@ -1616,8 +1621,8 @@ export function MortgageWorkspace({
               : layout === 'analysis'
                 ? ''
                 : layout === 'wide'
-                  ? 'lg:sticky lg:top-0 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-1'
-                  : 'xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto xl:overscroll-contain xl:pb-1'
+                  ? 'lg:sticky lg:top-0 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pb-1 [@media(pointer:fine)]:lg:overscroll-contain'
+                  : 'xl:sticky xl:top-[4.25rem] xl:max-h-[calc(100dvh-5rem)] xl:overflow-y-auto xl:pb-1 [@media(pointer:fine)]:xl:overscroll-contain'
           }`}
         >
         {areaBar('analysis')}

@@ -134,7 +134,7 @@ export function DashboardWorkspace({
       </motion.div>
 
       {/* סרגל הצד: שני האזורים האחרים, ותמיד אפשר לחזור לשלוש העמודות */}
-      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
+      <aside className="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto">
         {others.map((meta) => (
           <button
             key={meta.id}
