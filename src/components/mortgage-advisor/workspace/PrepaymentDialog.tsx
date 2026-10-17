@@ -15,7 +15,7 @@ import {
   recurringPaymentAfter,
 } from '../engine';
 import type { MixResult, PrepaymentEvent, PrepaymentMode, WorkspaceMix } from '../engine';
-import { SliderField, formatShekel } from './primitives';
+import { SliderField, formatPayment, formatShekel } from './primitives';
 import type { SavedMix } from '../savedMixes';
 import { isIndexLinked } from '../scenarioCalculations';
 
@@ -402,14 +402,14 @@ export function PrepaymentDialog({
                     label="הקטנת ההחזר"
                     value={
                       newMonthly + 1 < baseResult.summary.monthlyPayment
-                        ? formatShekel(baseResult.summary.monthlyPayment - newMonthly)
+                        ? formatPayment(baseResult.summary.monthlyPayment - newMonthly)
                         : 'ללא שינוי'
                     }
                   />
                 )}
                 <PreviewStat
                   label={mode === 'reduce_payment' ? 'החזר חודשי חדש' : 'החזר חודשי'}
-                  value={formatShekel(mode === 'reduce_payment' ? newMonthly : preview.summary.monthlyPayment)}
+                  value={formatPayment(mode === 'reduce_payment' ? newMonthly : preview.summary.monthlyPayment)}
                 />
                 {mode === 'shorten_term' && (
                   <PreviewStat label="משך חדש" value={formatDuration(preview.summary.months)} />

@@ -791,7 +791,6 @@ function BorrowerBasicsCard({
             value={income}
             onChange={onIncome}
             suffix="₪"
-            placeholder="15,000"
           />
           {/*
             הבנק עובד על ממוצע שלושה חודשים ולא על המשכורת האחרונה, ורוב
@@ -806,7 +805,7 @@ function BorrowerBasicsCard({
             עזרו לי לחשב את ההכנסה הפנויה
           </button>
         </div>
-        <NumberField label="גיל" value={age} onChange={onAge} max={90} placeholder="35" />
+        <NumberField label="גיל" value={age} onChange={onAge} max={90} />
       </div>
 
       <IncomeCalculatorDialog
@@ -975,7 +974,6 @@ function BorrowerWorkCard({
                       )
                     }
                     suffix="₪"
-                    placeholder="2,500"
                   />
                   <NumberField
                     label="חודשים שנותרו"
@@ -988,7 +986,6 @@ function BorrowerWorkCard({
                     }
                     suffix="חודשים"
                     max={360}
-                    placeholder="36"
                   />
                 </div>
                 {(loans.length > 1 || allowShared) && (
@@ -1057,7 +1054,6 @@ function SharedLoanRow({
             value={loan.monthlyPayment}
             onChange={onChange}
             suffix="₪"
-            placeholder="2,500"
           />
           <NumberField
             label="חודשים שנותרו"
@@ -1065,7 +1061,6 @@ function SharedLoanRow({
             onChange={onRemainingChange}
             suffix="חודשים"
             max={360}
-            placeholder="36"
           />
         </div>
         <button
@@ -1300,7 +1295,6 @@ function PropertyPanel({
               value={profile.propertyValue}
               onChange={(value) => applyPropertyValue(value, profile.dealType)}
               suffix="₪"
-              placeholder="2,000,000"
             />
           </div>
         </div>
@@ -1396,7 +1390,6 @@ function PropertyPanel({
                 value={profile.equity}
                 onChange={applyEquity}
                 suffix="₪"
-                placeholder="500,000"
               />
             </div>
 
@@ -1653,7 +1646,6 @@ function FutureIncomePanel({
                         value={item.amount}
                         onChange={(amount) => updateLumpSum(item.id, { amount })}
                         suffix="₪"
-                        placeholder="150,000"
                       />
                       <NumberField
                         label="בעוד"
@@ -1715,7 +1707,6 @@ function FutureIncomePanel({
               value={profile.futureMonthlyIncrease}
               onChange={(futureMonthlyIncrease) => patch({ futureMonthlyIncrease })}
               suffix="₪"
-              placeholder="1,500"
             />
             <NumberField
               label="בעוד כמה שנים"

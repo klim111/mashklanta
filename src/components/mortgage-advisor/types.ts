@@ -14,6 +14,11 @@ export interface MortgageTrack {
    * לא זזה מעצמה.
    */
   rateSpread?: number;
+  /**
+   * עוגן שהוזן ידנית במקום הערך שנמשך מבנק ישראל. נשמר עם התמהיל, והריבית
+   * הסופית היא אז העוגן הזה ועוד המרווח. איפוס מוחק אותו ומחזיר לנתון השוק.
+   */
+  anchorOverride?: number;
   years: number; // תקופה בשנים
   monthlyPayment?: number; // תשלום חודשי מחושב
   totalInterest?: number; // סך הריבית

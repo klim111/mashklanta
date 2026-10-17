@@ -26,6 +26,7 @@ import {
   uniqueQuoteName,
 } from '@/components/mortgage-advisor/bankQuote/quote';
 import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
+import { roundRate } from '@/lib/rate-anchors';
 import { useMarketRates } from '@/hooks/use-market-rates';
 import { bankTone } from './pricedMixes';
 
@@ -54,6 +55,8 @@ const fieldClass =
 interface RateEntry {
   rate: number;
   spread: number | null;
+  /** עוגן שהוזן ידנית בהצעה הזו; undefined — העוגן של בנק ישראל */
+  anchorOverride?: number;
   /** האם הריבית עודכנה בפועל, או שהיא עדיין ריבית התכנון */
   touched: boolean;
 }
@@ -99,8 +102,18 @@ export function BankRateEntry({
         const breakdown = trackRateBreakdown(track, marketRates);
         const before = previousRate(track.id, index);
         next[track.id] = before
-          ? { rate: before.interestRate, spread: before.rateSpread ?? breakdown.spread, touched: false }
-          : { rate: track.interestRate, spread: breakdown.spread, touched: false };
+          ? {
+              rate: before.interestRate,
+              spread: before.rateSpread ?? breakdown.spread,
+              anchorOverride: before.anchorOverride,
+              touched: false,
+            }
+          : {
+              rate: track.interestRate,
+              spread: breakdown.spread,
+              anchorOverride: track.anchorOverride,
+              touched: false,
+            };
       });
       setEntries(next);
     },
@@ -146,7 +159,12 @@ export function BankRateEntry({
     // המרווח שהוזן נשמר על המסלול, כדי שעדכון עוגן בבנק ישראל יגלגל את ההצעה
     candidate.tracks = candidate.tracks.map((track) => {
       const entry = entries[track.id];
-      return entry && entry.spread !== null ? { ...track, rateSpread: entry.spread } : track;
+      if (!entry) return track;
+      const next = entry.spread !== null ? { ...track, rateSpread: entry.spread } : { ...track };
+      // העוגן הידני של ההצעה מחליף את זה של התכנון, ואיפוס בהצעה מוחק אותו
+      if (entry.anchorOverride !== undefined) next.anchorOverride = entry.anchorOverride;
+      else delete next.anchorOverride;
+      return next;
     });
     return { mix: candidate, summary: computeMix(candidate).summary };
   }, [ready, bank, mix, receivedAt, rates, name, notes, entries]);
@@ -230,7 +248,10 @@ export function BankRateEntry({
               const before = previousRate(track.id, index);
               const months = Math.max(1, Math.round(track.years * 12));
               const entry = entries[track.id];
-              const breakdown = trackRateBreakdown(track, marketRates);
+              const breakdown = trackRateBreakdown(
+                { ...track, anchorOverride: entry ? entry.anchorOverride : track.anchorOverride },
+                marketRates
+              );
               const rate = entry?.rate ?? track.interestRate;
               const delta = rate - track.interestRate;
 
@@ -288,12 +309,30 @@ export function BankRateEntry({
                         setEntries((current) => ({
                           ...current,
                           [track.id]: {
+                            ...current[track.id],
                             rate: next.rate,
                             spread: next.spread ?? current[track.id]?.spread ?? null,
                             touched: true,
                           },
                         }))
                       }
+                      onAnchorChange={(value) => {
+                        const anchor = breakdown.anchor;
+                        if (!anchor) return;
+                        setEntries((current) => {
+                          const spread = current[track.id]?.spread ?? breakdown.spread ?? 0;
+                          const nextAnchor = value ?? anchor.marketRate ?? anchor.rate;
+                          return {
+                            ...current,
+                            [track.id]: {
+                              rate: roundRate(nextAnchor + spread),
+                              spread,
+                              anchorOverride: value ?? undefined,
+                              touched: true,
+                            },
+                          };
+                        });
+                      }}
                     />
                   </td>
                 </tr>

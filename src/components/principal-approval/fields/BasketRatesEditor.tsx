@@ -73,7 +73,6 @@ export function BasketRatesEditor({
                       max={20}
                       readOnly={readOnly}
                       disabled={readOnly}
-                      placeholder="0.00"
                       className={cn(
                         'h-9 w-full rounded-lg border border-slate-200 bg-white px-2 pl-6 text-sm shadow-sm',
                         'focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-50',

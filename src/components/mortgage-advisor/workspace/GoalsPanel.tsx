@@ -13,7 +13,7 @@ import {
   formatDuration,
 } from '../engine';
 import type { MixResult, OptimizationConstraints, OptimizationGoal, OptimizationOutcome } from '../engine';
-import { SliderField, TermMonthsSlider, formatShekel } from './primitives';
+import { SliderField, TermMonthsSlider, formatPayment, formatShekel } from './primitives';
 
 const GOAL_ORDER: OptimizationGoal[] = [
   'lower_monthly',
@@ -115,14 +115,14 @@ export function GoalsPanel({
             )}
             <div className="text-2xs leading-relaxed">
               <p className={capStatus.withinCap ? 'text-emerald-800' : 'text-red-800'}>
-                ההחזר ההתחלתי {formatShekel(result.summary.monthlyPayment)}
+                ההחזר ההתחלתי {formatPayment(result.summary.monthlyPayment)}
                 {capStatus.withinCap
                   ? ` — בתוך התקרה, עם מרווח של ${formatShekel(-capStatus.gap)}.`
                   : ` — חורג מהתקרה ב-${formatShekel(capStatus.gap)}.`}
               </p>
               {!capStatus.peakWithinCap && (
                 <p className="text-amber-700 mt-1">
-                  שיא ההחזר לאורך התקופה מגיע ל-{formatShekel(result.summary.peakMonthlyPayment)} בגלל הצמדה או
+                  שיא ההחזר לאורך התקופה מגיע ל-{formatPayment(result.summary.peakMonthlyPayment)} בגלל הצמדה או
                   עליית ריבית, ולכן חורג מהתקרה בהמשך הדרך.
                 </p>
               )}
@@ -153,7 +153,7 @@ export function GoalsPanel({
                   <div className="mt-2 pt-2 border-t border-slate-100 text-2xs text-slate-600 space-y-0.5">
                     {preview.feasible ? (
                       <>
-                        <p>החזר חודשי: {formatShekel(preview.after.monthlyPayment)}</p>
+                        <p>החזר חודשי: {formatPayment(preview.after.monthlyPayment)}</p>
                         <p>סך ריבית: {formatShekel(preview.after.totalInterest)}</p>
                         <p>משך: {formatDuration(preview.after.months)}</p>
                       </>
@@ -182,8 +182,8 @@ export function GoalsPanel({
               </ul>
             )}
             <p className="text-2xs text-blue-900 pt-1">
-              החזר חודשי {formatShekel(lastOptimization.before.monthlyPayment)} →{' '}
-              {formatShekel(lastOptimization.after.monthlyPayment)} · סך ריבית{' '}
+              החזר חודשי {formatPayment(lastOptimization.before.monthlyPayment)} →{' '}
+              {formatPayment(lastOptimization.after.monthlyPayment)} · סך ריבית{' '}
               {formatShekel(lastOptimization.before.totalInterest)} →{' '}
               {formatShekel(lastOptimization.after.totalInterest)}
             </p>

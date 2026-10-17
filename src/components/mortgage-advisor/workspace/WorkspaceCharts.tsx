@@ -22,7 +22,7 @@ import type { MixResult, TrackResult } from '../engine';
 import { TrackCompositionStrip } from '../analysisDashboard';
 import { formatPercentage } from '../mortgageCalculations';
 import { AMORTIZATION_TYPES, TRACK_TYPES } from '../types';
-import { CHART_COLORS, compactCurrency, formatShekel, trackColor } from './primitives';
+import { CHART_COLORS, compactCurrency, formatPayment, formatShekel, trackColor, trackPaymentsOf } from './primitives';
 import {
   CURRENT_RATE_PAYMENT_NOTE,
   PrimeForwardChart,
@@ -272,7 +272,7 @@ export function WorkspaceCharts({
               <span className="rounded-full bg-violet-100 px-2 py-0.5 text-2xs font-bold text-violet-800">
                 {TRACK_TYPES[focusTrack.track.type]}
               </span>
-              {split && onFocusTrack && (
+              {onFocusTrack && (
                 <button
                   type="button"
                   onClick={() => onFocusTrack(null)}
@@ -288,7 +288,7 @@ export function WorkspaceCharts({
             {focusTrack
               ? split
                 ? 'מוצגים הגרפים של המסלול שנבחר'
-                : 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו חוזרת לכל התמהיל'
+                : 'מוצגים הגרפים של המסלול שנבחר — לחיצה נוספת עליו או על "חזרה לכל התמהיל" מאפסת את הבחירה'
               : split
                 ? 'לחיצה על מסלול בפס שבאזור העבודה מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'
                 : 'לחיצה על מסלול בפס מציגה את הגרפים שלו; לחיצה על נקודה בגרף מציגה את מצב המשכנתא באותו מועד'}
@@ -305,6 +305,7 @@ export function WorkspaceCharts({
           <TrackCompositionStrip
             tracks={result.mix.tracks}
             trackMonths={Object.fromEntries(result.tracks.map((t) => [t.track.id, t.months]))}
+            trackPayments={trackPaymentsOf(result.tracks)}
             activeTrackId={focusTrackId}
             onTrackClick={
               onFocusTrack
@@ -582,7 +583,7 @@ function TrackFocusCharts({
     <>
       <div className={fullRow}>
         <div className="grid gap-2 rounded-xl border border-violet-200 bg-violet-50 p-2.5 sm:grid-cols-2 lg:grid-cols-4">
-          <TrackStat label="החזר חודשי" value={track.monthlyPayment > 0.01 ? formatShekel(track.monthlyPayment) : 'אין החזר שוטף'} />
+          <TrackStat label="החזר חודשי" value={track.monthlyPayment > 0.01 ? formatPayment(track.monthlyPayment) : 'אין החזר שוטף'} />
           <TrackStat label="סך ריבית" value={formatShekel(track.totalInterest)} />
           <TrackStat label="סך תשלום" value={formatShekel(track.totalPaid)} />
           <TrackStat
@@ -719,7 +720,7 @@ function TrackFocusCharts({
               </>
             ) : (
               <>
-                בגרייס חלקי משולמת מדי חודש הריבית בלבד ({formatShekel(track.monthlyPayment)}), הקרן
+                בגרייס חלקי משולמת מדי חודש הריבית בלבד ({formatPayment(track.monthlyPayment)}), הקרן
                 אינה קטנה לאורך התקופה, ובסופה היא נפרעת בתשלום אחד של{' '}
                 {formatShekel(track.balloonPayment)}.
               </>

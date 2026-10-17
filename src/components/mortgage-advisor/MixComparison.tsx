@@ -31,7 +31,7 @@ import {
 import { formatPercentage } from './mortgageCalculations';
 import { computeMix, formatDuration, mixHasForecastSensitiveTracks, yearlySeries } from './engine';
 import type { MixResult, SeriesPoint, WorkspaceMix } from './engine';
-import { compactCurrency, formatShekel } from './workspace/primitives';
+import { compactCurrency, formatPayment, formatShekel } from './workspace/primitives';
 import { ForecastDisclaimer } from './workspace/ForecastDisclaimer';
 
 const SERIES_COLORS = ['#2563eb', '#f97316', '#10b981', '#8b5cf6', '#ec4899', '#0891b2'];
@@ -212,7 +212,7 @@ export function MixComparison({
                   </td>
                   <td className="p-2 text-left font-semibold">
                     {item.result.summary.monthlyPayment > 0.01
-                      ? formatShekel(item.result.summary.monthlyPayment)
+                      ? formatPayment(item.result.summary.monthlyPayment)
                       : 'אין החזר שוטף'}
                     {best?.byMonthly.id === item.id && (
                       <Badge className="ml-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-2xs">
@@ -543,7 +543,7 @@ function globalMetrics(
     {
       id: 'monthly',
       title: 'ההפרש בתשלום החודשי',
-      value: formatShekel(Math.max(0, monthlySave)),
+      value: formatPayment(Math.max(0, monthlySave)),
       footnote: `ההחזר הנמוך ביותר: ${best.byMonthly.label}`,
       tone: mixedWinners ? 'mixed' : 'better',
       icon: <Banknote className="h-5 w-5" />,
@@ -682,7 +682,7 @@ function MixFaceCard({
         <div className="flex items-baseline justify-between gap-2">
           <dt className="text-info text-slate-600">החזר חודשי</dt>
           <dd className={`text-lg ${wins.monthly ? valueWin : winCount === 0 ? valueLose : valueNeutral}`}>
-            {formatShekel(item.result.summary.monthlyPayment)}
+            {formatPayment(item.result.summary.monthlyPayment)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-2">

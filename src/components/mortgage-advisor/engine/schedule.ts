@@ -153,6 +153,12 @@ export function simulateTrack({
   let balance = track.amount;
   /** ריבית שנצברה ולא שולמה — קיימת רק בגרייס מלא */
   let deferredInterest = 0;
+  /**
+   * החלק מהריבית שנצברה שכבר התווסף לקרן ונושא ריבית בעצמו. בגרייס מלא הריבית
+   * מצטרפת לחוב פעם ב-12 חודשים ולא בכל חודש: ריבית שנתית של 5% על 100,000
+   * צוברת 5,000 בשנה הראשונה, ורק מהשנה השנייה היא נושאת ריבית.
+   */
+  let capitalizedInterest = 0;
   let baseRate = track.interestRate;
   let currentType: TrackType = track.type;
   let amortType: AmortizationType = track.amortizationType || 'spitzer';
@@ -237,9 +243,10 @@ export function simulateTrack({
     }
 
     const monthlyRate = annualRate / 100 / 12;
-    // בגרייס מלא הריבית שנצברה מצטרפת לחוב וצוברת ריבית בעצמה, ולכן היא חלק
-    // מהבסיס לחישוב הריבית החודשית. בכל שאר הלוחות היא תמיד אפס.
-    const interest = (balance + deferredInterest) * monthlyRate;
+    // בגרייס מלא הריבית שנצברה מצטרפת לחוב בסוף כל 12 חודשים ומשם צוברת ריבית
+    // בעצמה, ולכן רק החלק שכבר צורף הוא חלק מהבסיס לחישוב הריבית החודשית. בכל
+    // שאר הלוחות שני הערכים תמיד אפס.
+    const interest = (balance + capitalizedInterest) * monthlyRate;
     const balanceStart = balance + deferredInterest;
     const remainingBeforePrepay = remainingMonths;
     const finalMonth = remainingMonths <= 1;
@@ -260,8 +267,11 @@ export function simulateTrack({
         actualPayment = principal + deferredPaid + interest;
         balloon = actualPayment;
         deferredInterest = 0;
+        capitalizedInterest = 0;
       } else {
         deferredInterest += interest;
+        // סוף שנת גרייס — כל מה שנצבר עד עכשיו מצטרף לבסיס של השנה הבאה
+        if (monthWithinTerm % 12 === 0) capitalizedInterest = deferredInterest;
       }
     } else if (amortType === 'partial_grace') {
       // הריבית משולמת במלואה כל חודש, והקרן נפרעת בתשלום אחד בסוף התקופה.
@@ -328,6 +338,7 @@ export function simulateTrack({
       actualPayment += deferredInterest;
       balloon += deferredInterest;
       deferredInterest = 0;
+      capitalizedInterest = 0;
     }
 
     cumulativeInterest += interest;

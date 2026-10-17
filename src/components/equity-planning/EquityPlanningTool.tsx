@@ -526,7 +526,6 @@ export default function EquityPlanningTool({ embedded = false }: { embedded?: bo
                   {...demoId('eq-price')}
                   value={propertyData.price || ''}
                   onValueChange={(next) => setProperty({ price: next })}
-                  placeholder="0"
                   autoFocus={editingPrice}
                   className="h-14 rounded-2xl border-2 border-slate-200 bg-white pl-10 text-2xl font-black text-slate-900 focus-visible:ring-4 focus-visible:ring-blue-500/10"
                 />

@@ -28,6 +28,8 @@ export interface CurrentTrackValue {
   rate: number;
   /** המרווח מעל העוגן — רק כשהריבית פורקה לעוגן ולמרווח */
   spread?: number;
+  /** עוגן שהוזן ידנית במקום הערך של בנק ישראל */
+  anchorOverride?: number;
   /** תחנת היציאה של מסלול משתנה, בשנים */
   variablePeriod?: number;
   endYear: number;
@@ -40,6 +42,8 @@ export interface CurrentTrackPatch {
   rate?: number;
   /** null — המרווח נמחק (סוג מסלול בלי עוגן, או סוג שהוחלף) */
   spread?: number | null;
+  /** null — העוגן הידני נמחק וחוזר העוגן של בנק ישראל */
+  anchorOverride?: number | null;
   variablePeriod?: number;
   endYear?: number;
   endMonth?: number;
@@ -78,7 +82,10 @@ export function CurrentTrackRow({
   footer?: ReactNode;
 }) {
   const { snapshot, refresh } = useMarketRates();
-  const anchor = anchorForTrack(value.type, snapshot, { variablePeriod: value.variablePeriod });
+  const anchor = anchorForTrack(value.type, snapshot, {
+    variablePeriod: value.variablePeriod,
+    anchorOverride: value.anchorOverride,
+  });
   const hasSpread = typeof value.spread === 'number' && Number.isFinite(value.spread);
 
   /*
@@ -197,6 +204,16 @@ export function CurrentTrackRow({
             onChange={({ rate, spread }) =>
               onChange({ rate: Math.min(19.99, Math.max(0, rate)), spread: spread ?? null })
             }
+            onAnchorChange={(next) => {
+              if (!anchor) return;
+              const spread = hasSpread ? (value.spread as number) : roundRate(value.rate - anchor.rate);
+              const base = next ?? anchor.marketRate ?? anchor.rate;
+              onChange({
+                anchorOverride: next,
+                spread,
+                rate: Math.min(19.99, Math.max(0, roundRate(base + spread))),
+              });
+            }}
           />
         </div>
 

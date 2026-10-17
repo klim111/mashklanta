@@ -1,17 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Landmark, Plus, Equal, RefreshCcw } from 'lucide-react';
+import { Landmark, Plus, Equal, RefreshCcw, RotateCcw } from 'lucide-react';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { roundRate, type RateAnchor } from '@/lib/rate-anchors';
 
 /**
  * שדה ריבית מפורק: עוגן + מרווח = ריבית סופית.
  *
- * העוגן אינו ניתן לעריכה — הוא נתון שנמשך מבנק ישראל ומוצג אוטומטית ברגע
- * שנבחר סוג המסלול. המרווח מוזן ידנית, והריבית הסופית היא סכומם. אפשר גם
- * להזין את הריבית הסופית ישירות, ואז המרווח מתעדכן כדי לשמור על הזהות
- * `עוגן + מרווח = ריבית` — העוגן עצמו נשאר נתון השוק ולא זז.
+ * העוגן הוא נתון שנמשך מבנק ישראל ומוצג אוטומטית ברגע שנבחר סוג המסלול.
+ * המרווח מוזן ידנית, והריבית הסופית היא סכומם. אפשר גם להזין את הריבית
+ * הסופית ישירות, ואז המרווח מתעדכן כדי לשמור על הזהות `עוגן + מרווח = ריבית`.
+ *
+ * כשהרכיב מקבל `onAnchorChange` גם העוגן ניתן לעריכה ידנית: המרווח נשמר,
+ * והריבית הסופית זזה עם העוגן שהוזן. עוגן ידני מסומן בצבע, ולידו כפתור
+ * שמחזיר אותו לערך של בנק ישראל.
  */
 export interface AnchorSpreadRateProps {
   /** העוגן העדכני, או null למסלול שאין לו עוגן שוק */
@@ -23,6 +26,11 @@ export interface AnchorSpreadRateProps {
   onChange: (next: { rate: number; spread?: number }) => void;
   /** רענון יזום של נתוני בנק ישראל */
   onRefreshAnchor?: () => void;
+  /**
+   * עריכה ידנית של העוגן. מספר — העוגן שהוזן; null — איפוס לערך שנמשך מבנק
+   * ישראל. בלי הפונקציה הזו העוגן מוצג לקריאה בלבד.
+   */
+  onAnchorChange?: (anchor: number | null) => void;
   /** תווית לשדה הריבית הסופית */
   rateLabel?: string;
   /**
@@ -57,6 +65,7 @@ export function AnchorSpreadRate({
   rate,
   onChange,
   onRefreshAnchor,
+  onAnchorChange,
   rateLabel = 'ריבית שנתית',
   compact = false,
   disabled = false,
@@ -104,10 +113,19 @@ export function AnchorSpreadRate({
   };
 
   const field = baseField;
-  const sourceNote =
-    anchor.source === 'boi'
+  const manual = anchor.source === 'manual';
+  const marketAnchor = typeof anchor.marketRate === 'number' ? roundRate(anchor.marketRate) : null;
+  const sourceNote = manual
+    ? `עוגן שהוזן ידנית${marketAnchor !== null ? ` · בבנק ישראל ${marketAnchor.toFixed(2)}%` : ''} · ${anchor.label}`
+    : anchor.source === 'boi'
       ? `${anchor.label} · נמשך מבנק ישראל${anchor.asOf ? ` · ${anchor.asOf}` : ''}`
       : `${anchor.label} · לא נמשך מבנק ישראל — ערך נפילה`;
+
+  /** עוגן ידני: המרווח נשמר והריבית הסופית זזה עם העוגן */
+  const setAnchor = (value: number | null) => {
+    if (!onAnchorChange || value === null) return;
+    onAnchorChange(value);
+  };
 
   /*
     לכל שדה כותרת משלו, ממורכזת מעליו — "עוגן", "מרווח", "ריבית" — במקום
@@ -124,19 +142,45 @@ export function AnchorSpreadRate({
   return (
     <div className={`${compact ? '' : 'space-y-1.5'} ${className}`}>
       <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-end gap-1">
-        <label className="min-w-0" title={sourceNote}>
-          <span className={labelClass}>
+        <div className="min-w-0" title={sourceNote}>
+          <span className={`${labelClass} ${manual ? '!text-amber-700' : ''}`}>
             {!compact && <Landmark className="h-3 w-3 text-blue-600" />}
-            עוגן
+            {manual ? 'עוגן ידני' : 'עוגן'}
+            {manual && onAnchorChange && (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onAnchorChange(null)}
+                title={`איפוס לעוגן של בנק ישראל${marketAnchor !== null ? ` (${marketAnchor.toFixed(2)}%)` : ''}`}
+                aria-label="איפוס העוגן לבנק ישראל"
+                className="mr-0.5 inline-flex rounded p-px text-amber-700 hover:bg-amber-100"
+              >
+                <RotateCcw className="h-2.5 w-2.5" />
+              </button>
+            )}
           </span>
-          <input
-            readOnly
-            dir="ltr"
-            value={anchorRate.toFixed(2)}
-            aria-label="עוגן"
-            className={`${field} cursor-default bg-slate-100 text-left font-semibold text-slate-700`}
-          />
-        </label>
+          {onAnchorChange ? (
+            <NumericInput
+              className={`${field} text-left font-semibold ${
+                manual ? 'border-amber-300 bg-amber-50 text-amber-900' : 'bg-slate-50 text-slate-700'
+              }`}
+              value={anchorRate}
+              disabled={disabled}
+              allowNegative
+              onChange={setAnchor}
+              aria-label="עוגן"
+              title={`${sourceNote} · אפשר לשנות ידנית`}
+            />
+          ) : (
+            <input
+              readOnly
+              dir="ltr"
+              value={anchorRate.toFixed(2)}
+              aria-label="עוגן"
+              className={`${field} cursor-default bg-slate-100 text-left font-semibold text-slate-700`}
+            />
+          )}
+        </div>
 
         <Plus className={operatorClass} aria-hidden />
 
@@ -173,7 +217,11 @@ export function AnchorSpreadRate({
       {!compact && (
         <p className="flex flex-wrap items-center gap-1 text-2xs leading-snug text-slate-500">
           <span>{anchor.label}</span>
-          {anchor.source === 'boi' ? (
+          {manual ? (
+            <span className="text-amber-700">
+              · עוגן שהוזן ידנית{marketAnchor !== null ? ` (בבנק ישראל ${marketAnchor.toFixed(2)}%)` : ''}
+            </span>
+          ) : anchor.source === 'boi' ? (
             <span className="text-emerald-700">
               · נמשך מבנק ישראל{anchor.asOf ? ` · ${anchor.asOf}` : ''}
             </span>

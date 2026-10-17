@@ -4,7 +4,7 @@ import { BadgePercent, Gavel } from 'lucide-react';
 import { TRACK_TYPES } from '../types';
 import { formatDuration } from '../engine';
 import type { MixSummary, WorkspaceMix } from '../engine';
-import { CompositionBar, formatShekel, trackColor } from './primitives';
+import { CompositionBar, formatPayment, formatShekel, trackColor } from './primitives';
 import { formatQuoteDate } from '../bankQuote/quote';
 
 /**
@@ -139,7 +139,7 @@ export function MixStripCard({
         </p>
       )}
       <p className="mt-0.5 truncate text-2xs text-slate-500">
-        {formatShekel(summary.monthlyPayment)} לחודש · {mix.tracks.length} מסלולים ·{' '}
+        {formatPayment(summary.monthlyPayment)} לחודש · {mix.tracks.length} מסלולים ·{' '}
         {formatDuration(summary.months)}
       </p>
       <div className="mt-2">

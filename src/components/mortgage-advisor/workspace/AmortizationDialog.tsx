@@ -8,7 +8,7 @@ import { Download, Flame, MousePointerClick, Table2, TrendingUp } from 'lucide-r
 import { computeMix, formatFullDate, inflationIsApplied, withFrozenInflation } from '../engine';
 import type { MixResult } from '../engine';
 import { isIndexLinked } from '../scenarioCalculations';
-import { formatShekel } from './primitives';
+import { formatPayment, formatShekel } from './primitives';
 import { ForecastDisclaimer } from './ForecastDisclaimer';
 
 interface AmortizationDialogProps {
@@ -395,7 +395,7 @@ export function AmortizationDialog({
                   {ratesVary && (
                     <td className="p-2 text-left text-orange-700">{row.annualRate.toFixed(2)}%</td>
                   )}
-                  <td className="p-2 text-left font-semibold text-slate-900">{formatShekel(row.payment)}</td>
+                  <td className="p-2 text-left font-semibold text-slate-900">{formatPayment(row.payment)}</td>
                   <td className="p-2 text-left text-red-600">{formatShekel(row.interest)}</td>
                   {hasDeferred && (
                     <td className="p-2 text-left text-amber-700">

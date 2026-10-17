@@ -103,7 +103,6 @@ export function IncomeCalculatorDialog({
                         current.map((item, position) => (position === index ? value : item))
                       )
                     }
-                    placeholder="12,000"
                     aria-label={`משכורת נטו — ${label}`}
                     className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 text-center text-lg font-black text-slate-900 outline-none transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                   />
@@ -149,7 +148,6 @@ export function IncomeCalculatorDialog({
                             current.map((item) => (item.id === extra.id ? { ...item, amount } : item))
                           )
                         }
-                        placeholder="3,000"
                         aria-label="סכום חודשי"
                         className="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-center text-base font-black text-slate-900 outline-none focus:border-emerald-500"
                       />

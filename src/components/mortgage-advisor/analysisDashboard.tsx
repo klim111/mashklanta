@@ -6,8 +6,8 @@ import type { MortgageCalculation, MortgageTrack } from './types';
 import { TRACK_TYPES } from './types';
 import { formatCurrency, formatPercentage } from './mortgageCalculations';
 import { formatDuration } from './engine';
-import type { MixResult } from './engine';
-import { trackColor } from './workspace/primitives';
+import type { MixResult, TrackResult } from './engine';
+import { formatPayment, trackColor } from './workspace/primitives';
 
 /**
  * ============================================================================
@@ -55,6 +55,28 @@ export function snapshotFromMixResult(result: MixResult): StateSnapshot {
 }
 
 
+/** מצב של מסלול בודד — הדאשבורד העליון כשנבחר מסלול */
+export function snapshotFromTrackResult(track: TrackResult): StateSnapshot {
+  return {
+    monthlyPayment: track.monthlyPayment,
+    totalInterest: track.totalInterest,
+    totalPaid: track.totalPaid,
+    principal: track.track.amount,
+    months: track.months,
+  };
+}
+
+/** האם המסלול השתנה מול הגרסה שלו בתמהיל כפי שנפתח */
+export function trackChanged(current: TrackResult, baseline: TrackResult): boolean {
+  return (
+    Math.abs(current.monthlyPayment - baseline.monthlyPayment) > 0.005 ||
+    Math.abs(current.totalInterest - baseline.totalInterest) > 1 ||
+    Math.abs(current.totalPaid - baseline.totalPaid) > 1 ||
+    Math.abs(current.months - baseline.months) > 0.5 ||
+    Math.abs(current.track.amount - baseline.track.amount) > 1
+  );
+}
+
 /**
  * הצבע של בלוק "אחרי השינויים" נגזר מהשינוי עצמו.
  *
@@ -96,6 +118,8 @@ export function StateBlocksRow({
   snapshot,
   baseline,
   tone,
+  precisePayment = false,
+  action,
 }: {
   title: string;
   caption?: string;
@@ -103,6 +127,10 @@ export function StateBlocksRow({
   /** מצב הייחוס — ההפרש מולו מוצג בכל בלוק */
   baseline?: StateSnapshot;
   tone: 'current' | 'refinanced';
+  /** ההחזר החודשי עם שתי ספרות אחרי הנקודה, ולא מעוגל לשקל */
+  precisePayment?: boolean;
+  /** פעולה בשורת הכותרת — למשל חזרה מהמסלול שנבחר לכל התמהיל */
+  action?: React.ReactNode;
 }) {
   const current = tone === 'current';
   return (
@@ -116,14 +144,16 @@ export function StateBlocksRow({
           {title}
         </p>
         {caption && <p className="text-2xs text-slate-500">{caption}</p>}
+        {action && <div className="mr-auto">{action}</div>}
       </div>
 
       <div className="grid grid-cols-2 items-stretch gap-2 lg:grid-cols-5">
         <StateBlock
           icon={Wallet}
           label="החזר חודשי"
-          value={formatCurrency(snapshot.monthlyPayment)}
+          value={precisePayment ? formatPayment(snapshot.monthlyPayment) : formatCurrency(snapshot.monthlyPayment)}
           delta={baseline ? snapshot.monthlyPayment - baseline.monthlyPayment : undefined}
+          deltaFormat={precisePayment ? 'payment' : 'currency'}
           gradient={
             baseline
               ? deltaGradient(snapshot.monthlyPayment - baseline.monthlyPayment, baseline.monthlyPayment)
@@ -193,15 +223,17 @@ function StateBlock({
   value: string;
   gradient: string;
   delta?: number;
-  deltaFormat?: 'currency' | 'months';
+  deltaFormat?: 'currency' | 'payment' | 'months';
 }) {
-  const threshold = deltaFormat === 'months' ? 0.5 : 1;
+  const threshold = deltaFormat === 'months' ? 0.5 : deltaFormat === 'payment' ? 0.005 : 1;
   const hasDelta = typeof delta === 'number' && Math.abs(delta) > threshold;
   const improved = (delta ?? 0) < 0;
   const amount =
     deltaFormat === 'months'
       ? `${Math.abs(Math.round(delta ?? 0))} חודשים`
-      : formatCurrency(Math.abs(delta ?? 0));
+      : deltaFormat === 'payment'
+        ? formatPayment(Math.abs(delta ?? 0))
+        : formatCurrency(Math.abs(delta ?? 0));
 
   /*
     הבלוק נמוך במכוון. שורת ה-&nbsp; שהייתה כאן שמרה על גובה אחיד גם כשאין
@@ -270,9 +302,15 @@ export function TrackCompositionStrip({
   activeTrackId,
   actionLabel = 'לפירוט ולגרפים של המסלול',
   activeActionLabel = 'סגירת פירוט המסלול',
+  trackPayments,
 }: {
   tracks: MortgageTrack[];
   trackMonths?: Record<string, number>;
+  /**
+   * ההחזר החודשי של כל מסלול שהוזנו כל פרטיו. מוצג בכותרת המסלול ומתעדכן עם
+   * כל עריכה; מסלול שחסר בו פרט נשאר בלי החזר בכותרת.
+   */
+  trackPayments?: Record<string, number>;
   onTrackClick?: (trackId: string) => void;
   activeTrackId?: string | null;
   actionLabel?: string;
@@ -308,8 +346,13 @@ export function TrackCompositionStrip({
               className="block h-2.5 w-full rounded-full"
               style={{ backgroundColor: trackColor(track.type) }}
             />
-            <span className="mt-1 block text-sm font-bold leading-tight text-slate-900">
-              {TRACK_TYPES[track.type]}
+            <span className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 text-sm font-bold leading-tight text-slate-900">
+              <span>{TRACK_TYPES[track.type]}</span>
+              {typeof trackPayments?.[track.id] === 'number' && (
+                <span className="text-xs font-black tabular-nums text-violet-800">
+                  {formatPayment(trackPayments[track.id])} לחודש
+                </span>
+              )}
             </span>
             <span className="block text-xs leading-tight text-slate-600">
               {formatCurrency(track.amount)} · {formatPercentage(track.interestRate)} ·{' '}

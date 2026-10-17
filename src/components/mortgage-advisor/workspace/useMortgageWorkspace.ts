@@ -4,6 +4,7 @@ import { useMemo, useReducer } from 'react';
 import type { MortgageTrack } from '../types';
 import {
   allocatedAmount,
+  autoTrackName,
   applyMarketRates,
   computeMix,
   createEmptyMix,
@@ -29,7 +30,13 @@ import type {
 import type { PrimeForecast } from '@/lib/prime-forward-curve';
 import type { InflationForecast } from '@/lib/inflation-forecast';
 import { fallbackMarketRates, type MarketRatesSnapshot } from '@/lib/market-rates';
-import { anchorForTrack, defaultRateFor as marketDefaultRate, roundRate } from '@/lib/rate-anchors';
+import {
+  anchorForTrack,
+  defaultRateFor as marketDefaultRate,
+  defaultSpreadFor,
+  hasAnchorOverride,
+  roundRate,
+} from '@/lib/rate-anchors';
 
 export interface WorkspaceState {
   mix: WorkspaceMix;
@@ -79,7 +86,7 @@ function defaultRateFor(
   state: WorkspaceState,
   type: TrackType,
   amortizationType: MortgageTrack['amortizationType'] = 'spitzer',
-  context: { variablePeriod?: number } = {}
+  context: { variablePeriod?: number; anchorOverride?: number } = {}
 ): { interestRate: number; rateSpread?: number } {
   const bank = state.mix.bank;
   const anchor = anchorForTrack(type, state.marketRates, context);
@@ -98,7 +105,9 @@ function defaultRateFor(
       : { interestRate: savedRate };
   }
 
-  const interestRate = marketDefaultRate(type, state.marketRates, context);
+  const interestRate = hasAnchorOverride(context.anchorOverride) && anchor
+    ? roundRate(anchor.rate + defaultSpreadFor(type, context))
+    : marketDefaultRate(type, state.marketRates, context);
   return anchor
     ? { interestRate, rateSpread: roundRate(interestRate - anchor.rate) }
     : { interestRate };
@@ -273,8 +282,21 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
         ) {
           Object.assign(
             next,
-            defaultRateFor(state, next.type, action.patch.amortizationType, { variablePeriod: next.variablePeriod })
+            defaultRateFor(state, next.type, action.patch.amortizationType, {
+              variablePeriod: next.variablePeriod,
+              anchorOverride: next.anchorOverride,
+            })
           );
+        }
+        /*
+          עוגן ידני שייך לעקום ולטווח שבהם הוזן. סוג מסלול אחר או תחנת שינוי אחרת
+          מתומחרים מול עוגן אחר, ולכן העוגן הידני נמחק והעוגן של בנק ישראל חוזר.
+        */
+        if (
+          (action.patch.type && action.patch.type !== t.type) ||
+          (action.patch.variablePeriod !== undefined && action.patch.variablePeriod !== t.variablePeriod)
+        ) {
+          if (!('anchorOverride' in action.patch)) delete next.anchorOverride;
         }
         // החלפת סוג מסלול מביאה איתה את ריבית ברירת המחדל ואת השדות הרלוונטיים.
         if (action.patch.type && action.patch.type !== t.type) {
@@ -310,10 +332,16 @@ export function workspaceReducer(state: WorkspaceState, action: Action): Workspa
             typeof spread === 'number' && Number.isFinite(spread)
               ? anchorForTrack(next.type, state.marketRates, {
                   variablePeriod: next.variablePeriod,
+                  anchorOverride: next.anchorOverride,
                 })
               : null;
           if (anchor) next.interestRate = roundRate(anchor.rate + spread!);
         }
+
+        // שם אוטומטי נגזר מהמסלול הסופי — אחרי שהריבית של סוג המסלול החדש נקבעה
+        const autoName =
+          t.name === autoTrackName(t) || action.patch.name === autoTrackName({ ...t, ...action.patch });
+        if (autoName) next.name = autoTrackName(next);
 
         return next;
       });

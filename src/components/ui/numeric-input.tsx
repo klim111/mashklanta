@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { formatNumberInput, parseDecimalInput, sanitizeDecimalInput } from '@/lib/currency';
-import { moveCaretToEnd } from '@/lib/caret';
+import { selectValueOnFocus } from '@/lib/caret';
 
 type NumericInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'max'> & {
   value: number | null;
@@ -47,9 +47,8 @@ function caretAfterDigits(text: string, digits: number): number {
  * שדה שמחזיק אפס נפתח ריק בכניסה אליו, כדי שלא יהיה צורך למחוק את האפס
  * לפני ההקלדה.
  *
- * בכניסה לשדה הסמן עובר לסוף הערך: הטקסט מיושר לימין בתוך שדה LTR, ולכן
- * לחיצה על החלק הריק שלו הייתה מציבה את הסמן לפני הספרה הראשונה — ומקש
- * המחיקה לא עשה כלום עד שהמשתמש הזיז את הסמן ידנית.
+ * בכניסה לשדה כל הערך נבחר, כך שהקלדה מחליפה אותו: גם שדה שנפתח עם ערך
+ * (ברירת מחדל, או פרט שהוזן במקום אחר) לא דורש מחיקה לפני הזנת הערך הרצוי.
  */
 export function NumericInput({
   value,
@@ -108,7 +107,7 @@ export function NumericInput({
               : String(value)
         );
         setFocused(true);
-        moveCaretToEnd(event.currentTarget);
+        selectValueOnFocus(event.currentTarget);
         onFocus?.(event);
       }}
       onBlur={(event) => {

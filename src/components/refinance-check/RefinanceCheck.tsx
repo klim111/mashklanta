@@ -504,6 +504,7 @@ function TracksStep({
                   balance: track.balance,
                   rate: track.rate,
                   spread: track.spread,
+                  anchorOverride: track.anchorOverride,
                   variablePeriod: track.variablePeriod,
                   endYear: end.year,
                   endMonth: end.month,
@@ -511,9 +512,15 @@ function TracksStep({
                 onChange={(patch) => {
                   const next: Partial<RefiCheckTrack> = {};
                   if (patch.type) next.type = patch.type as RefiCheckTrackType;
+                  // עוגן ידני שייך לסוג המסלול ולתחנה שבהם הוזן
+                  if ((patch.type && patch.type !== track.type) ||
+                    (patch.variablePeriod !== undefined && patch.variablePeriod !== track.variablePeriod)) {
+                    next.anchorOverride = undefined;
+                  }
                   if (patch.balance !== undefined) next.balance = patch.balance;
                   if (patch.rate !== undefined) next.rate = patch.rate;
                   if (patch.spread !== undefined) next.spread = patch.spread ?? undefined;
+                  if (patch.anchorOverride !== undefined) next.anchorOverride = patch.anchorOverride ?? undefined;
                   if (patch.variablePeriod !== undefined) next.variablePeriod = patch.variablePeriod;
                   if (patch.endYear !== undefined || patch.endMonth !== undefined) {
                     next.months = clampMonths(

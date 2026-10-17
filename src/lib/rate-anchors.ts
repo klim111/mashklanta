@@ -5,8 +5,10 @@
  *
  *  ריבית סופית = עוגן + מרווח.
  *
- *  העוגן הוא נתון שוק שנמשך מבנק ישראל ואינו ניתן לעריכה ידנית; המרווח הוא מה
- *  שהבנק גובה מעל העוגן, והוא מה שהיועץ מזין. הפירוק הזה מאפשר שני דברים:
+ *  העוגן הוא נתון שוק שנמשך מבנק ישראל; המרווח הוא מה שהבנק גובה מעל העוגן,
+ *  והוא מה שהיועץ מזין. אפשר גם לדרוס את העוגן ידנית (למשל כשהבנק תמחר מול
+ *  עוגן של יום אחר) — אז הערך שהוזן נשמר עם המסלול ומחליף את נתון השוק עד
+ *  שמאפסים אותו חזרה לבנק ישראל. הפירוק הזה מאפשר שני דברים:
  *  להשוות הצעות של בנקים על בסיס המרווח בלבד, ולעדכן את הריבית הסופית אוטומטית
  *  בכל פעם שנתוני בנק ישראל מתעדכנים.
  *
@@ -48,7 +50,10 @@ export interface RateAnchor {
   label: string;
   /** החודש/התאריך שהנתון מתייחס אליו */
   asOf: string;
-  source: 'boi' | 'fallback';
+  /** manual — העוגן הוזן ידנית ודורס את נתון השוק */
+  source: 'boi' | 'fallback' | 'manual';
+  /** כשהעוגן הוזן ידנית — הערך שנמשך מבנק ישראל, לתצוגה ולאיפוס */
+  marketRate?: number;
 }
 
 export interface AnchorContext {
@@ -58,6 +63,24 @@ export interface AnchorContext {
    * מתומחר מול העקום לשנתיים גם כשהוא נפרס ל-25 שנה.
    */
   variablePeriod?: number;
+  /** עוגן שהוזן ידנית ונשמר עם המסלול — דורס את הערך שנמשך מבנק ישראל */
+  anchorOverride?: number;
+}
+
+/** האם יש על המסלול עוגן ידני תקין */
+export function hasAnchorOverride(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** העוגן אחרי החלת עוגן ידני, אם הוזן כזה */
+function withOverride(anchor: RateAnchor, context: AnchorContext): RateAnchor {
+  if (!hasAnchorOverride(context.anchorOverride)) return anchor;
+  return {
+    ...anchor,
+    rate: context.anchorOverride,
+    source: 'manual',
+    marketRate: anchor.rate,
+  };
 }
 
 /**
@@ -138,14 +161,17 @@ export function anchorForTrack(
   if (!curve) return null;
 
   if (curve === 'prime') {
-    return {
-      rate: snapshot.primeRate,
-      curve,
-      years: 0,
-      label: 'ריבית הפריים במשק (ריבית בנק ישראל + 1.5%)',
-      asOf: snapshot.boiRateAsOf,
-      source: snapshot.boiRateSource,
-    };
+    return withOverride(
+      {
+        rate: snapshot.primeRate,
+        curve,
+        years: 0,
+        label: `ריבית הפריים במשק (ריבית בנק ישראל ${roundRate(snapshot.boiRate).toFixed(2)}% + 1.5%)`,
+        asOf: snapshot.boiRateAsOf,
+        source: snapshot.boiRateSource,
+      },
+      context
+    );
   }
 
   const source: CurveSnapshot = curve === 'nominal' ? snapshot.nominalCurve : snapshot.realCurve;
@@ -154,14 +180,17 @@ export function anchorForTrack(
   if (rate === null) return null;
 
   const curveName = curve === 'nominal' ? 'עקום אפס נומינלי' : 'עקום אפס ריאלי';
-  return {
-    rate,
-    curve,
-    years,
-    label: `${curveName} של בנק ישראל ל${yearsLabel(years)} · ${source.month}`,
-    asOf: source.asOf || source.month,
-    source: source.source,
-  };
+  return withOverride(
+    {
+      rate,
+      curve,
+      years,
+      label: `${curveName} של בנק ישראל ל${yearsLabel(years)} · ${source.month}`,
+      asOf: source.asOf || source.month,
+      source: source.source,
+    },
+    context
+  );
 }
 
 /** עיגול ריבית לשתי ספרות — הדיוק שבו ריביות משכנתא מצוטטות */
@@ -211,7 +240,7 @@ export function resolveRate(
  */
 export function defaultSpreadFor(type: MortgageTrackType, context: AnchorContext = {}): number {
   const quoted = getStaticInterestRate(type, { variablePeriodYears: context.variablePeriod });
-  const anchor = anchorForTrack(type, fallbackMarketRates(), context);
+  const anchor = anchorForTrack(type, fallbackMarketRates(), { variablePeriod: context.variablePeriod });
   if (!anchor) return 0;
   return roundRate(quoted - anchor.rate);
 }

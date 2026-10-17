@@ -44,8 +44,11 @@ import {
   NoChangeNotice,
   StateBlocksRow,
   snapshotFromMixResult,
+  snapshotFromTrackResult,
+  trackChanged,
 } from './analysisDashboard';
-import { formatShekel } from './workspace/primitives';
+import { formatPayment, formatShekel } from './workspace/primitives';
+import { TRACK_TYPES } from './types';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
 import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
@@ -1108,6 +1111,14 @@ export function MortgageWorkspace({
     );
   }, [result.summary, baselineResult]);
 
+  /** המסלול שנבחר, אם נבחר — הדאשבורד העליון מציג אז את נתוניו בלבד */
+  const focusedTrack = focusTrackId
+    ? result.tracks.find((item) => item.track.id === focusTrackId) ?? null
+    : null;
+  const baselineFocusedTrack = focusTrackId
+    ? baselineResult?.tracks.find((item) => item.track.id === focusTrackId) ?? null
+    : null;
+
   const comparisonEntries = useMemo<ComparisonEntry[]>(() => {
     const compared = propertyMixes.filter((item) => state.comparedIds.includes(item.mix.id));
     if (compared.length === 0) return [];
@@ -1714,25 +1725,61 @@ export function MortgageWorkspace({
           }`}
         >
         {areaBar('analysis')}
-        {/* דאשבורד: מצב התמהיל שבפאנל, ומה השתנה מאז שנפתח */}
+        {/*
+          דאשבורד: מצב התמהיל שבפאנל, ומה השתנה מאז שנפתח. כשנבחר מסלול — באזור
+          הגרפים, בפס או בכרטיס המסלול — גם השורה הזו מציגה את נתוני המסלול
+          לבדו, עם כפתור שמאפס את הבחירה וחוזר לכל המסלולים שבתמהיל.
+        */}
         <div className="space-y-2">
-          <StateBlocksRow
-            title={panelChanged ? 'התמהיל כפי שנפתח' : 'מצב התמהיל'}
-            caption={`${mix.name || 'התמהיל בעבודה'} · ${formatShekel(mix.totalAmount)}`}
-            snapshot={snapshotFromMixResult(panelChanged && baselineResult ? baselineResult : result)}
-            tone="current"
-          />
-
-          {panelChanged && baselineResult ? (
-            <StateBlocksRow
-              title="אחרי השינויים בתמהיל בפאנל השליטה"
-              caption="ההפרש מול התמהיל כפי שנפתח"
-              snapshot={snapshotFromMixResult(result)}
-              baseline={snapshotFromMixResult(baselineResult)}
-              tone="refinanced"
-            />
+          {focusedTrack ? (
+            <>
+              <StateBlocksRow
+                precisePayment
+                title={`המסלול שנבחר · ${TRACK_TYPES[focusedTrack.track.type]}`}
+                caption={`${focusedTrack.track.name || TRACK_TYPES[focusedTrack.track.type]} · ${formatShekel(focusedTrack.track.amount)}`}
+                snapshot={snapshotFromTrackResult(focusedTrack)}
+                baseline={
+                  baselineFocusedTrack && trackChanged(focusedTrack, baselineFocusedTrack)
+                    ? snapshotFromTrackResult(baselineFocusedTrack)
+                    : undefined
+                }
+                tone="current"
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setFocusTrackId(null)}
+                    className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-white px-2.5 py-1 text-2xs font-bold text-violet-700 transition-colors hover:bg-violet-50"
+                  >
+                    <Undo2 className="h-3 w-3" />
+                    איפוס בחירה · כל התמהיל
+                  </button>
+                }
+              />
+              <NoChangeNotice text="מוצגים נתוני המסלול שנבחר בלבד. איפוס הבחירה מציג שוב את ההחזר ואת כל הנתונים של כלל המסלולים בתמהיל." />
+            </>
           ) : (
-            <NoChangeNotice text="טרם בוצע שינוי בתמהיל — שנו פרמטר בפאנל השליטה כדי לראות כאן את ההפרש." />
+            <>
+              <StateBlocksRow
+                precisePayment
+                title={panelChanged ? 'התמהיל כפי שנפתח' : 'מצב התמהיל'}
+                caption={`${mix.name || 'התמהיל בעבודה'} · ${formatShekel(mix.totalAmount)}`}
+                snapshot={snapshotFromMixResult(panelChanged && baselineResult ? baselineResult : result)}
+                tone="current"
+              />
+
+              {panelChanged && baselineResult ? (
+                <StateBlocksRow
+                  precisePayment
+                  title="אחרי השינויים בתמהיל בפאנל השליטה"
+                  caption="ההפרש מול התמהיל כפי שנפתח"
+                  snapshot={snapshotFromMixResult(result)}
+                  baseline={snapshotFromMixResult(baselineResult)}
+                  tone="refinanced"
+                />
+              ) : (
+                <NoChangeNotice text="טרם בוצע שינוי בתמהיל — שנו פרמטר בפאנל השליטה כדי לראות כאן את ההפרש." />
+              )}
+            </>
           )}
         </div>
 
@@ -1902,7 +1949,7 @@ export function MortgageWorkspace({
                 </p>
                 <p className="mt-0.5 text-xs font-bold text-blue-800">
                   {formatShekel(finalCandidate.totalAmount)} · {finalCandidate.tracks} מסלולים ·
-                  החזר חודשי {formatShekel(finalCandidate.summary.monthlyPayment)}
+                  החזר חודשי {formatPayment(finalCandidate.summary.monthlyPayment)}
                 </p>
               </div>
             )}

@@ -50,7 +50,13 @@ const ZCM_NOMINAL_URL =
   `${SDMX_BASE}/ZCM/1.0?c%5BDATA_TYPE%5D=ZC_YTM&c%5BNOMINAL_REAL%5D=N&lastNObservations=${ZCM_OBSERVATIONS}&format=csv`;
 const ZCM_REAL_URL =
   `${SDMX_BASE}/ZCM/1.0?c%5BDATA_TYPE%5D=ZC_YTM&c%5BNOMINAL_REAL%5D=R&lastNObservations=${ZCM_OBSERVATIONS}&format=csv`;
-const BR_URL = `${SDMX_BASE}/BR/1.0?lastNObservations=1&format=csv`;
+/**
+ * הסדרה היומית של ריבית בנק ישראל. זרימת BR מכילה כמה סדרות, ובלי סינון
+ * נבחרה הסדרה הראשונה לפי סדר הקודים — לא בהכרח הריבית המוניטרית — והפריים
+ * בבונה התמהילים לא תאם את מה שמוצג בדאשבורד השוק, שכבר מסנן לפי הקוד הזה.
+ */
+export const BOI_RATE_SERIES = 'MNT_RIB_BOI_D';
+const BR_URL = `${SDMX_BASE}/BR/1.0?c%5BSERIES_CODE%5D=${BOI_RATE_SERIES}&lastNObservations=5&format=csv`;
 
 const FETCH_TIMEOUT_MS = 12_000;
 
@@ -325,6 +331,17 @@ export function latestObservation(
   };
 }
 
+/**
+ * השורות של ריבית בנק ישראל עצמה. כשהתשובה מסמנת קוד סדרה, נשמרות רק שורות
+ * הסדרה היומית — גם אם בנק ישראל יתעלם מהסינון בבקשה ויחזיר סדרות נוספות.
+ */
+export function boiRateRows(rows: Record<string, string>[]): Record<string, string>[] {
+  const coded = rows.filter((row) => row.SERIES_CODE);
+  if (coded.length === 0) return rows;
+  const matching = rows.filter((row) => row.SERIES_CODE === BOI_RATE_SERIES);
+  return matching.length > 0 ? matching : rows;
+}
+
 // ───────────────────────────── משיכה ─────────────────────────────
 
 async function fetchText(url: string): Promise<string> {
@@ -404,7 +421,7 @@ export async function fetchMarketRates(reference: Date = new Date()): Promise<Ma
   const nominalObs = nominalRes.status === 'fulfilled' ? zcmObservations(nominalRes.value, 'N') : [];
   const realObs = realRes.status === 'fulfilled' ? zcmObservations(realRes.value, 'R') : [];
 
-  const br = brRes.status === 'fulfilled' ? latestObservation(parseCsv(brRes.value)) : null;
+  const br = brRes.status === 'fulfilled' ? latestObservation(boiRateRows(parseCsv(brRes.value))) : null;
   const boiRate = br?.value ?? fallback.boiRate;
 
   // עקום אפס תקין דורש לפחות 3 נקודות — פחות מכך אינו עקום שאפשר לאנטרפלט עליו

@@ -282,3 +282,28 @@ describe('הזרמת הריביות לטבלה המרכזית', () => {
     expect(after.boiRate).toBeCloseTo(before.boiRate, 10);
   });
 });
+
+describe('manual anchor override', () => {
+  const snapshot = fallbackMarketRates(new Date('2026-09-10T00:00:00Z'));
+
+  it('replaces the Bank of Israel anchor and keeps the market value for a reset', () => {
+    const anchor = anchorForTrack('prime', snapshot, { anchorOverride: 5.75 });
+    expect(anchor?.rate).toBe(5.75);
+    expect(anchor?.source).toBe('manual');
+    expect(anchor?.marketRate).toBeCloseTo(snapshot.primeRate, 10);
+  });
+
+  it('prices the final rate as the manual anchor plus the spread', () => {
+    const resolved = resolveRate('variable_unlinked', snapshot, {
+      variablePeriod: 5,
+      anchorOverride: 4,
+      spread: 0.8,
+      currentRate: 0,
+    });
+    expect(resolved.rate).toBe(4.8);
+  });
+
+  it('does not move the default spread, which is measured against the market anchor', () => {
+    expect(defaultSpreadFor('prime', { anchorOverride: 9 })).toBe(defaultSpreadFor('prime'));
+  });
+});

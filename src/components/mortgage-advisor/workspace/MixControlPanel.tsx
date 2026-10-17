@@ -7,6 +7,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
 import { InfoTip, RATE_EXPLANATIONS } from '@/components/ui/info-tip';
 import { useMarketRates } from '@/hooks/use-market-rates';
+import { roundRate } from '@/lib/rate-anchors';
 import { trackRateBreakdown } from '../engine';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -41,8 +42,10 @@ import {
   TRACK_TERM_MONTHS_MAX,
   TRACK_TERM_MONTHS_MIN,
   clampTrackTermMonths,
+  formatPayment,
   formatShekel,
   trackColor,
+  trackPaymentsOf,
 } from './primitives';
 import { demoId } from '@/demo/demo-attr';
 
@@ -269,6 +272,8 @@ function TrackControlCard({
   const effectiveRate = result.schedule[0]?.annualRate ?? track.interestRate;
   const rateShifted = Math.abs(effectiveRate - track.interestRate) > 0.001;
   const months = clampTrackTermMonths(Math.round(track.years * 12));
+  /** ההחזר החודשי של המסלול, ברגע שהוזנו בו סכום, ריבית ותקופה */
+  const trackPayment = trackPaymentsOf([result])[track.id];
 
   /**
    * העוגן של המסלול לפי הנתונים שנמשכו מבנק ישראל. הוא נגזר מחדש בכל שינוי של
@@ -322,8 +327,16 @@ function TrackControlCard({
               style={{ backgroundColor: trackColor(track.type) }}
             />
             <span className="min-w-0 flex-1 !text-right">
-              <span className="block truncate text-xs font-bold leading-tight text-slate-900 !text-right">
-                {track.name || TRACK_TYPES[track.type]}
+              <span className="flex min-w-0 items-baseline gap-2 text-xs font-bold leading-tight text-slate-900 !text-right">
+                <span className="min-w-0 truncate">{track.name || TRACK_TYPES[track.type]}</span>
+                {trackPayment !== undefined && (
+                  <span
+                    className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-2xs font-black tabular-nums text-violet-800"
+                    title="ההחזר החודשי הראשון במסלול"
+                  >
+                    {formatPayment(trackPayment)} לחודש
+                  </span>
+                )}
               </span>
               <span className="block truncate text-2xs leading-tight text-slate-500 !text-right">
                 {formatShekel(track.amount)} · {track.percentage.toFixed(1)}% ·{' '}
@@ -464,6 +477,18 @@ function TrackControlCard({
               onChange={({ rate, spread }) =>
                 patchWithName({ interestRate: rate, rateSpread: spread })
               }
+              onAnchorChange={(value) => {
+                const anchor = rateBreakdown.anchor;
+                if (!anchor) return;
+                const spread = track.rateSpread ?? rateBreakdown.spread ?? 0;
+                // איפוס מחזיר את העוגן של בנק ישראל; המרווח נשמר והריבית זזה איתו
+                const nextAnchor = value ?? anchor.marketRate ?? anchor.rate;
+                patchWithName({
+                  anchorOverride: value ?? undefined,
+                  rateSpread: spread,
+                  interestRate: roundRate(nextAnchor + spread),
+                });
+              }}
             />
           </RowField>
           {isForeign && (
@@ -641,7 +666,8 @@ function InlineNumberBox({
         integer={integer}
         max={max}
         className="min-w-0 flex-1 bg-transparent text-center text-xs font-bold text-slate-700 outline-none"
-        value={value}
+        // אפס הוא "עוד לא הוזן" — השדה ריק ולא מציג 0 שצריך למחוק
+        value={value === 0 ? null : value}
         onChange={onChange}
       />
       <span className="shrink-0 text-2xs text-slate-400">{suffix}</span>

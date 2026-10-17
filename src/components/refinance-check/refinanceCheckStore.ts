@@ -67,6 +67,9 @@ export function draftAsMix(draft: RefinanceCheckDraft | null): MortgageMix | nul
     endDate: toDateInputValue(endDateFromMonths(track.months, DEFAULT_PAYMENT_DAY)),
     paymentDay: DEFAULT_PAYMENT_DAY,
     ...(typeof track.spread === 'number' && Number.isFinite(track.spread) ? { rateSpread: track.spread } : {}),
+    ...(typeof track.anchorOverride === 'number' && Number.isFinite(track.anchorOverride)
+      ? { anchorOverride: track.anchorOverride }
+      : {}),
     ...(track.variablePeriod ? { variablePeriod: track.variablePeriod } : {}),
   }));
   return {

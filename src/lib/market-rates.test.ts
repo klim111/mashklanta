@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BOI_RATE_SERIES,
+  boiRateRows,
   curveForMonth,
   fallbackMarketRates,
   latestCurve,
@@ -196,5 +198,23 @@ describe('תצלום הנפילה', () => {
       const nominal = snapshot.nominalCurve.spots.find((n) => n.years === spot.years);
       expect(nominal!.yieldPct).toBeGreaterThan(spot.yieldPct);
     });
+  });
+});
+
+describe('boiRateRows', () => {
+  it('keeps only the daily Bank of Israel rate when the dataflow returns other series too', () => {
+    const rows = parseCsv(
+      [
+        'SERIES_CODE,TIME_PERIOD,OBS_VALUE',
+        'AAA_OTHER_SERIES,2026-10-15,2.10',
+        `${BOI_RATE_SERIES},2026-10-15,4.00`,
+      ].join('\n')
+    );
+    expect(latestObservation(boiRateRows(rows))).toEqual({ value: 4, asOf: '2026-10-15', ambiguous: false });
+  });
+
+  it('leaves rows without a series code as they are', () => {
+    const rows = parseCsv('TIME_PERIOD,OBS_VALUE\n2026-10-15,4.00');
+    expect(boiRateRows(rows)).toHaveLength(1);
   });
 });

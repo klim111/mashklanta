@@ -24,9 +24,10 @@ import {
 } from './market-rates';
 
 /** המטמון הקצר — התשובה שמוגשת כל עוד היא טרייה */
-const FRESH_KEY = 'market:rates:v2';
+const FRESH_KEY = 'market:rates:v3';
 /** המשיכה המוצלחת האחרונה, ללא תפוגה */
-const LAST_GOOD_KEY = 'market:rates:last-good:v2';
+/** v3 — לפני תיקון סינון סדרת ריבית בנק ישראל נשמר כאן פריים שגוי */
+const LAST_GOOD_KEY = 'market:rates:last-good:v3';
 
 function isSnapshot(value: unknown): value is MarketRatesSnapshot {
   if (!value || typeof value !== 'object') return false;

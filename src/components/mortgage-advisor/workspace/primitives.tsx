@@ -60,6 +60,34 @@ export function formatShekel(value: number): string {
   return formatCurrency(Math.round(value));
 }
 
+/** החזר חודשי באגורות — שתי ספרות אחרי הנקודה, בלי עיגול לשקל */
+export function formatPayment(value: number): string {
+  return new Intl.NumberFormat('he-IL', {
+    style: 'currency',
+    currency: 'ILS',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/**
+ * ההחזר החודשי של כל מסלול שכל פרטיו הוזנו — סכום, ריבית ותקופה. מסלול שחסר
+ * בו פרט, או שאין בו החזר שוטף (גרייס מלא), אינו נכלל.
+ */
+export function trackPaymentsOf(
+  tracks: ReadonlyArray<{
+    track: { id: string; amount: number; interestRate: number; years: number };
+    monthlyPayment: number;
+  }>
+): Record<string, number> {
+  const map: Record<string, number> = {};
+  tracks.forEach(({ track, monthlyPayment }) => {
+    const complete = track.amount > 0 && track.interestRate > 0 && track.years > 0;
+    if (complete && monthlyPayment > 0.005) map[track.id] = monthlyPayment;
+  });
+  return map;
+}
+
 /** מדד יחיד בשורת ה-KPI, עם הפרש אופציונלי מול מצב הבסיס. */
 export function Metric({
   label,

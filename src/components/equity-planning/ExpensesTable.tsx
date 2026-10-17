@@ -332,7 +332,6 @@ function ExpenseRow({
               // שורה שטרם הוזנה נשארת ריקה, ולא מציגה אפס שנראה כמו ערך
               value={expense.amount || ''}
               onValueChange={(next) => onField(expense.id, 'amount', next)}
-              placeholder="0"
               className={`${inputBase} ${paid ? 'text-emerald-700 line-through' : ''}`}
             />
           )}

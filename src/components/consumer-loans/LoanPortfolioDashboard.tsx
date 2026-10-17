@@ -131,7 +131,6 @@ export function LoanPortfolioDashboard({
           <FormattedNumberValueInput
             value={monthlyIncome ?? ''}
             onValueChange={onMonthlyIncomeChange}
-            placeholder="0"
             aria-label="הכנסה חודשית פנויה"
             className="h-8 w-32 text-xs"
           />

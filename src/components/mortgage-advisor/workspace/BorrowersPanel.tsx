@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ChevronDown, Plus, Trash2, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { MixBorrower } from '../engine';
-import { formatShekel } from './primitives';
+import { formatPayment, formatShekel } from './primitives';
 
 const MAX_BORROWERS = 4;
 
@@ -125,7 +125,7 @@ export function BorrowersPanel({
             </button>
             {income > 0 && (
               <span className="text-2xs text-slate-500">
-                סך ההכנסות {formatShekel(income)} · החזר חודשי ראשון {formatShekel(monthlyPayment)}
+                סך ההכנסות {formatShekel(income)} · החזר חודשי ראשון {formatPayment(monthlyPayment)}
               </span>
             )}
           </div>

@@ -19,13 +19,15 @@ import type { MarketRatesSnapshot } from '@/lib/market-rates';
 import type { WorkspaceMix } from './types';
 
 /** ההקשר שקובע לאיזה טווח בעקום האפס העוגן של המסלול מתייחס */
-export function anchorContextFor(track: Pick<MortgageTrack, 'variablePeriod'>): AnchorContext {
-  return { variablePeriod: track.variablePeriod };
+export function anchorContextFor(
+  track: Pick<MortgageTrack, 'variablePeriod' | 'anchorOverride'>
+): AnchorContext {
+  return { variablePeriod: track.variablePeriod, anchorOverride: track.anchorOverride };
 }
 
 /** העוגן של מסלול לפי הנתונים העדכניים, או null כשאין לסוג המסלול עוגן שוק */
 export function trackAnchor(
-  track: Pick<MortgageTrack, 'type' | 'variablePeriod'>,
+  track: Pick<MortgageTrack, 'type' | 'variablePeriod' | 'anchorOverride'>,
   snapshot: MarketRatesSnapshot
 ): RateAnchor | null {
   return anchorForTrack(track.type, snapshot, anchorContextFor(track));
@@ -46,7 +48,7 @@ export interface TrackRateBreakdown {
  * כפי שהוזנה, והמרווח שמוצג הוא ההפרש בינה לבין העוגן.
  */
 export function trackRateBreakdown(
-  track: Pick<MortgageTrack, 'type' | 'interestRate' | 'rateSpread' | 'variablePeriod'>,
+  track: Pick<MortgageTrack, 'type' | 'interestRate' | 'rateSpread' | 'variablePeriod' | 'anchorOverride'>,
   snapshot: MarketRatesSnapshot
 ): TrackRateBreakdown {
   const resolved = resolveRate(track.type, snapshot, {

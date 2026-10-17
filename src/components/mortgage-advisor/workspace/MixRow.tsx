@@ -20,7 +20,7 @@ import {
 import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
 import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
-import { formatShekel } from './primitives';
+import { formatPayment, formatShekel, trackPaymentsOf } from './primitives';
 import { InfoTip, RATE_EXPLANATIONS } from '@/components/ui/info-tip';
 import { TrackCompositionStrip } from '../analysisDashboard';
 import { CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
@@ -146,6 +146,12 @@ export function MixRow({
     });
     return map;
   }, [resolvedResult]);
+
+  /** ההחזר החודשי של כל מסלול שהוזנו כל פרטיו — מוצג בכותרת המסלול בפס */
+  const trackPayments = useMemo(
+    () => trackPaymentsOf((resolvedResult ?? computeMix(mix)).tracks),
+    [resolvedResult, mix]
+  );
 
   useEffect(() => {
     if (!startRenaming) return;
@@ -329,7 +335,7 @@ export function MixRow({
             icon={<Wallet className="h-3 w-3 text-blue-600" />}
             label="החזר חודשי"
             value={
-              summary.monthlyPayment > 0.01 ? formatShekel(summary.monthlyPayment) : 'אין החזר שוטף'
+              summary.monthlyPayment > 0.01 ? formatPayment(summary.monthlyPayment) : 'אין החזר שוטף'
             }
             hint={paymentHint(summary, mix, resolvedResult)}
             emphasized
@@ -369,6 +375,7 @@ export function MixRow({
           <TrackCompositionStrip
             tracks={mix.tracks}
             trackMonths={trackMonths}
+            trackPayments={trackPayments}
             activeTrackId={focusTrackId}
             onTrackClick={
               onFocusTrack && ((trackId) => onFocusTrack(focusTrackId === trackId ? null : trackId))

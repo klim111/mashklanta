@@ -250,7 +250,6 @@ export function BankQuoteDialog({
                               setRates((current) => ({ ...current, [track.id]: next }))
                             }
                             max={20}
-                            placeholder="0.00"
                             aria-label={`ריבית שהתקבלה למסלול ${TRACK_TYPES[track.type]}`}
                             className="w-full rounded-lg border border-emerald-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                           />

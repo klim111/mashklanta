@@ -600,9 +600,9 @@ describe('grace amortization', () => {
       expect(result.lastMonthlyPayment).toBe(0);
     });
 
-    it('charges interest on the interest that piled up, like a balloon loan', () => {
-      // החוב אחרי 24 חודשים הוא הקרן מוכפלת בריבית החודשית 24 פעמים
-      const expected = 1_000_000 * Math.pow(1 + monthlyRate, 24);
+    it('adds the interest to the debt once every 12 months, not every month', () => {
+      // הריבית מצטרפת לחוב פעם בשנה: אחרי 24 חודשים החוב הוא הקרן כפול הריבית השנתית פעמיים
+      const expected = 1_000_000 * Math.pow(1 + 0.05, 2);
       expect(result.totalPaid).toBeCloseTo(expected, 2);
       expect(result.totalInterest).toBeCloseTo(expected - 1_000_000, 2);
     });
@@ -679,7 +679,8 @@ describe('paying off a full grace track early', () => {
     expect(track.months).toBe(12);
     // כל מה ששולם הוא הקרן והריבית שנצברה — בלי שקל שנעלם או נספר פעמיים
     expect(track.totalPaid).toBeCloseTo(500_000 + track.totalInterest, 4);
-    expect(track.totalInterest).toBeCloseTo(500_000 * (Math.pow(1 + 0.05 / 12, 12) - 1), 2);
+    // שנה של גרייס מלא צוברת בדיוק את הריבית השנתית — בלי ריבית על ריבית בתוך השנה
+    expect(track.totalInterest).toBeCloseTo(500_000 * 0.05, 2);
   });
 });
 
@@ -717,7 +718,7 @@ describe('paying off a full grace track early', () => {
     expect(last.balanceEnd).toBe(0);
     // הפרעון סוגר את הקרן, ובאותו חודש נפרעת גם כל הריבית שנצברה
     expect(result.totalPaid).toBeCloseTo(500_000 + result.totalInterest, 6);
-    expect(result.totalInterest).toBeCloseTo(500_000 * (Math.pow(1 + 0.05 / 12, 12) - 1), 2);
+    expect(result.totalInterest).toBeCloseTo(500_000 * 0.05, 2);
   });
 });
 

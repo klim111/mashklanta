@@ -15,7 +15,7 @@ import type { MortgageTrack } from '../types';
 import { computeMix, formatDuration, formatFullDate } from '../engine';
 import type { MixResult, RefinanceEvent, WorkspaceMix } from '../engine';
 import { NumericInput } from '@/components/ui/numeric-input';
-import { SliderField, TermMonthsSlider, formatShekel } from './primitives';
+import { SliderField, TermMonthsSlider, formatPayment, formatShekel } from './primitives';
 
 interface RefinanceDialogProps {
   open: boolean;
@@ -44,10 +44,15 @@ export function RefinanceDialog({
     defaultRateFor('fixed_unlinked', marketRates)
   );
   const [newSpread, setNewSpread] = useState<number | null>(null);
+  /** עוגן שהוזן ידנית למסלול החדש; null — העוגן של בנק ישראל */
+  const [anchorOverride, setAnchorOverride] = useState<number | null>(null);
   const [newAmortization, setNewAmortization] = useState<NonNullable<MortgageTrack['amortizationType']>>('spitzer');
   const [fee, setFee] = useState(0);
 
   const track = mix.tracks.find((t) => t.id === trackId);
+  const newAnchor = anchorForTrack(newType, marketRates, {
+    anchorOverride: anchorOverride ?? undefined,
+  });
   const trackResult = baseResult.tracks.find((t) => t.track.id === trackId);
   const maxMonth = Math.max(2, (trackResult?.schedule.length ?? 12) - 1);
 
@@ -59,6 +64,7 @@ export function RefinanceDialog({
     if (source) {
       setNewType(source.type);
       setNewRate(source.interestRate);
+      setAnchorOverride(null);
       setNewAmortization(source.amortizationType ?? 'spitzer');
     }
   }, [open, initialTrackId, mix.tracks]);
@@ -162,6 +168,7 @@ export function RefinanceDialog({
                   setNewType(type);
                   setNewRate(rate);
                   setNewSpread(anchor ? roundRate(rate - anchor.rate) : null);
+                  setAnchorOverride(null);
                 }}
               >
                 <SelectTrigger className="h-9 text-xs">
@@ -199,7 +206,7 @@ export function RefinanceDialog({
                 ריבית חדשה
               </span>
               <AnchorSpreadRate
-                anchor={anchorForTrack(newType, marketRates)}
+                anchor={newAnchor}
                 spread={newSpread}
                 rate={newRate}
                 rateLabel="ריבית חדשה"
@@ -207,6 +214,14 @@ export function RefinanceDialog({
                 onChange={({ rate, spread }) => {
                   setNewRate(rate);
                   setNewSpread(spread ?? null);
+                }}
+                onAnchorChange={(value) => {
+                  if (!newAnchor) return;
+                  const spread = newSpread ?? roundRate(newRate - newAnchor.rate);
+                  const nextAnchor = value ?? newAnchor.marketRate ?? newAnchor.rate;
+                  setAnchorOverride(value);
+                  setNewSpread(spread);
+                  setNewRate(roundRate(nextAnchor + spread));
                 }}
               />
             </div>
@@ -232,7 +247,7 @@ export function RefinanceDialog({
                 />
                 <PreviewStat
                   label="החזר חודשי"
-                  value={formatShekel(preview.summary.monthlyPayment)}
+                  value={formatPayment(preview.summary.monthlyPayment)}
                   hint={`${monthlyDelta >= 0 ? '+' : '−'}${formatShekel(Math.abs(monthlyDelta))}`}
                 />
                 <PreviewStat label="משך התמהיל" value={formatDuration(preview.summary.months)} />

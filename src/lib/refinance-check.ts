@@ -89,6 +89,8 @@ export interface RefiCheckTrack {
   months: number;
   /** המרווח מעל העוגן של בנק ישראל, כשהריבית הוזנה כעוגן ומרווח */
   spread?: number;
+  /** עוגן שהוזן ידנית במקום הערך של בנק ישראל */
+  anchorOverride?: number;
   /** תחנת היציאה של מסלול משתנה, בשנים — קובעת את העוגן */
   variablePeriod?: number;
 }

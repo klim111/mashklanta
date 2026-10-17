@@ -30,7 +30,7 @@ import {
   requiredEquityFor,
 } from '../propertyContext';
 import { MaxPaymentDialog } from './MaxPaymentDialog';
-import { formatShekel } from './primitives';
+import { formatPayment, formatShekel } from './primitives';
 import type { DealField } from '../dealGuard';
 
 /** עריכה של פרטי העסקה — כל השדות יחד, כדי שהבדיקה תיעשה על המצב הסופי */
@@ -270,11 +270,11 @@ export function PropertyHeader({
           }
           hint={
             maxPaymentFromIncome
-              ? `40% מהכנסת הלווים · בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
+              ? `40% מהכנסת הלווים · בתמהיל הנוכחי ${formatPayment(monthlyPayment)}`
               : (mix.maxMonthlyPayment ?? 0) > 0
               ? profileMaxMonthlyPayment
-                ? `40% מההכנסה הפנויה · בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
-                : `בתמהיל הנוכחי ${formatShekel(monthlyPayment)}`
+                ? `40% מההכנסה הפנויה · בתמהיל הנוכחי ${formatPayment(monthlyPayment)}`
+                : `בתמהיל הנוכחי ${formatPayment(monthlyPayment)}`
               : profileMaxMonthlyPayment
                 ? 'מחושב אוטומטית כ-40% מההכנסה הפנויה'
                 : 'לחצו על "חשב" לפי נתוני הלקוח'
@@ -375,7 +375,7 @@ export function PropertyHeader({
         <div className="flex items-start gap-2 border-t border-amber-200 bg-amber-50 p-3">
           <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-2xs text-amber-800 leading-relaxed">
-            ההחזר החודשי בתמהיל ({formatShekel(monthlyPayment)}) גבוה מההחזר המקסימלי שנקבע ללקוח (
+            ההחזר החודשי בתמהיל ({formatPayment(monthlyPayment)}) גבוה מההחזר המקסימלי שנקבע ללקוח (
             {formatShekel(mix.maxMonthlyPayment ?? 0)}). האריכו תקופה, הקטינו את המשכנתא או עדכנו את
             התקרה.
           </p>
