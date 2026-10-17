@@ -11,7 +11,8 @@ import { REPAYMENT_RATIO_LIMIT } from '@/lib/mortgage-plan';
  * - יחס מימון (LTV) לפי סוג העסקה;
  * - הון עצמי מינימלי — הצד השני של אותו כלל, מנוסח לפי מה שהלקוח ערך;
  * - יחס החזר — ההחזר החודשי לא יעלה על 40% מההכנסה הפנויה.
- * עריכה שחורגת נחסמת עם הסבר; עריכה תקינה נשמרת לתהליך ומשם נמשכת לכל המסכים.
+ * כל שדה נשמר כפי שהוזן ולא מזיז את השדות האחרים. עריכה שחורגת לא נחסמת —
+ * ההפרות מוצגות למשתמש כהתראה, והוא מחליט מה לתקן.
  */
 export type DealViolationKind = 'ltv' | 'equity' | 'ratio';
 
@@ -24,6 +25,8 @@ export interface DealCandidate {
   propertyValue: number;
   totalAmount: number;
   dealType: DealType;
+  /** ההון העצמי שהוזן. בלי ערך — ההפרש בין עלות הנכס למשכנתא */
+  equity?: number;
   /** תקרת ההחזר שנקבעה ללקוח בתמהיל (אם נקבעה) */
   maxMonthlyPayment?: number;
   /** ההחזר החודשי של התמהיל אחרי השינוי */
@@ -49,22 +52,31 @@ export function checkDealLimits(candidate: DealCandidate, edited: DealField): De
   const dealName = DEAL_TYPES[dealType];
   const ltvLimit = maxLtvPercent(dealType);
 
-  if (propertyValue > 0 && totalAmount > maxMortgageFor(propertyValue, dealType) + 1) {
-    const ltv = (totalAmount / propertyValue) * 100;
-    const maxMortgage = maxMortgageFor(propertyValue, dealType);
-    const requiredEquity = requiredEquityFor(totalAmount, dealType);
-    const equity = Math.max(0, propertyValue - totalAmount);
+  const maxMortgage = maxMortgageFor(propertyValue, dealType);
+  const overFinanced = propertyValue > 0 && totalAmount > maxMortgage + 1;
+  const minEquity = Math.max(0, propertyValue - maxMortgage);
+  const storedEquity = candidate.equity;
 
+  if (storedEquity !== undefined) {
+    // ההון העצמי נשמר בנפרד, ולכן נבדק בנפרד מיחס המימון
+    if (overFinanced) {
+      violations.push({ kind: 'ltv', message: ltvMessage(candidate, maxMortgage) });
+    }
+    if (propertyValue > 0 && storedEquity < minEquity - 1) {
+      violations.push({
+        kind: 'equity',
+        message: `הון עצמי של ${shekel(storedEquity)} נמוך מהמינימום ל${dealName}: לנכס בעלות ${shekel(propertyValue)} נדרש לפחות ${shekel(minEquity)} (${100 - ltvLimit}% מעלות הנכס).`,
+      });
+    }
+  } else if (overFinanced) {
+    const equity = Math.max(0, propertyValue - totalAmount);
     if (edited === 'equity') {
       violations.push({
         kind: 'equity',
-        message: `הון עצמי של ${shekel(equity)} נמוך מהמינימום ל${dealName}: לנכס בעלות ${shekel(propertyValue)} נדרש לפחות ${shekel(propertyValue - maxMortgage)} (${100 - ltvLimit}% מעלות הנכס). השינוי לא נשמר.`,
+        message: `הון עצמי של ${shekel(equity)} נמוך מהמינימום ל${dealName}: לנכס בעלות ${shekel(propertyValue)} נדרש לפחות ${shekel(minEquity)} (${100 - ltvLimit}% מעלות הנכס).`,
       });
     } else {
-      violations.push({
-        kind: 'ltv',
-        message: `משכנתא של ${shekel(totalAmount)} על נכס בעלות ${shekel(propertyValue)} היא מימון של ${ltv.toFixed(1)}% — מעל התקרה של ${ltvLimit}% ל${dealName}. אפשר עד ${shekel(maxMortgage)}, או הון עצמי של ${shekel(requiredEquity)} לפחות. השינוי לא נשמר.`,
-      });
+      violations.push({ kind: 'ltv', message: ltvMessage(candidate, maxMortgage) });
     }
   }
 
@@ -72,19 +84,26 @@ export function checkDealLimits(candidate: DealCandidate, edited: DealField): De
   if (cap > 0 && (candidate.maxMonthlyPayment ?? 0) > cap + 1) {
     violations.push({
       kind: 'ratio',
-      message: `החזר חודשי מקסימלי של ${shekel(candidate.maxMonthlyPayment ?? 0)} חורג מיחס ההחזר המותר — ${REPAYMENT_RATIO_LIMIT}% מההכנסה הפנויה, כלומר ${shekel(cap)} לפי הפרופיל הפיננסי. השינוי לא נשמר.`,
+      message: `החזר חודשי מקסימלי של ${shekel(candidate.maxMonthlyPayment ?? 0)} חורג מיחס ההחזר המותר — ${REPAYMENT_RATIO_LIMIT}% מההכנסה הפנויה, כלומר ${shekel(cap)} לפי הפרופיל הפיננסי.`,
     });
   }
 
   // ההחזר של התמהיל נבדק רק כשהסכום השתנה — שינוי בעלות הנכס או בכתובת לא מזיז אותו
-  const amountChanged = edited === 'totalAmount' || edited === 'equity';
+  const amountChanged =
+    edited === 'totalAmount' || (edited === 'equity' && storedEquity === undefined);
   const paymentCap = cap > 0 ? Math.min(cap, candidate.maxMonthlyPayment || cap) : candidate.maxMonthlyPayment ?? 0;
   if (amountChanged && paymentCap > 0 && candidate.monthlyPayment > paymentCap + 1) {
     violations.push({
       kind: 'ratio',
-      message: `אחרי השינוי ההחזר החודשי של התמהיל יהיה ${shekel(candidate.monthlyPayment)} — מעל תקרת ההחזר של ${shekel(paymentCap)} (${REPAYMENT_RATIO_LIMIT}% מההכנסה הפנויה). האריכו תקופה או הקטינו את המשכנתא לפני השינוי. השינוי לא נשמר.`,
+      message: `אחרי השינוי ההחזר החודשי של התמהיל יהיה ${shekel(candidate.monthlyPayment)} — מעל תקרת ההחזר של ${shekel(paymentCap)} (${REPAYMENT_RATIO_LIMIT}% מההכנסה הפנויה). האריכו תקופה או הקטינו את המשכנתא.`,
     });
   }
 
   return violations;
+}
+
+function ltvMessage(candidate: DealCandidate, maxMortgage: number): string {
+  const { propertyValue, totalAmount, dealType } = candidate;
+  const ltv = (totalAmount / propertyValue) * 100;
+  return `משכנתא של ${shekel(totalAmount)} על נכס בעלות ${shekel(propertyValue)} היא מימון של ${ltv.toFixed(1)}% — מעל התקרה של ${maxLtvPercent(dealType)}% ל${DEAL_TYPES[dealType]}. אפשר עד ${shekel(maxMortgage)}, או הון עצמי של ${shekel(requiredEquityFor(totalAmount, dealType))} לפחות.`;
 }

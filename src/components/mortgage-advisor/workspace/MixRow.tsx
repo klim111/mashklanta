@@ -15,12 +15,14 @@ import {
   LockOpen,
   Pencil,
   Percent,
+  Undo2,
   Wallet,
 } from 'lucide-react';
 import { formatPercentage } from '../mortgageCalculations';
 import { computeMix, formatDuration, remainingAmount } from '../engine';
 import type { MixResult, MixSummary, WorkspaceMix } from '../engine';
 import { formatPayment, formatShekel, trackPaymentsOf } from './primitives';
+import { TRACK_TYPES } from '../types';
 import { InfoTip, RATE_EXPLANATIONS } from '@/components/ui/info-tip';
 import { TrackCompositionStrip } from '../analysisDashboard';
 import { CURRENT_RATE_PAYMENT_NOTE, showsRateChangeNote } from './PrimeForwardChart';
@@ -147,11 +149,47 @@ export function MixRow({
     return map;
   }, [resolvedResult]);
 
+  /** נתוני כל מסלול — לכותרות בפס ההרכב ולמסלול שנבחר */
+  const trackResults = useMemo(() => (resolvedResult ?? computeMix(mix)).tracks, [resolvedResult, mix]);
+
   /** ההחזר החודשי של כל מסלול שהוזנו כל פרטיו — מוצג בכותרת המסלול בפס */
-  const trackPayments = useMemo(
-    () => trackPaymentsOf((resolvedResult ?? computeMix(mix)).tracks),
-    [resolvedResult, mix]
-  );
+  const trackPayments = useMemo(() => trackPaymentsOf(trackResults), [trackResults]);
+
+  /**
+   * המסלול שנבחר בפס ההרכב. כשיש כזה, המספרים בראש השורה הם של המסלול לבדו,
+   * ואיפוס הבחירה מחזיר אותם לסיכום של כל התמהיל.
+   */
+  const focusedTrack =
+    onFocusTrack && focusTrackId
+      ? trackResults.find((entry) => entry.track.id === focusTrackId) ?? null
+      : null;
+  const stats = focusedTrack
+    ? {
+        monthlyPayment: focusedTrack.monthlyPayment,
+        totalInterest: focusedTrack.totalInterest,
+        totalPaid: focusedTrack.totalPaid,
+        averageRate: focusedTrack.averageRate,
+        irr: focusedTrack.irr,
+      }
+    : {
+        monthlyPayment: summary.monthlyPayment,
+        totalInterest: summary.totalInterest,
+        totalPaid: summary.totalPaid,
+        averageRate: summary.averageRate,
+        irr,
+      };
+  const resetFocus = () => onFocusTrack?.(null);
+  /**
+   * לחיצה בתוך השורה שאינה על מסלול מאפסת את הבחירה. אירוע שהגיע מחלון קופץ
+   * (הוא עולה דרך React גם מחוץ לשורה) לא נחשב לחיצה בשורה.
+   */
+  const resetOnOutsideTrack = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const target = event.target as HTMLElement;
+    if (!focusedTrack || !event.currentTarget.contains(target)) return;
+    if (target.closest('[data-track-segment]')) return;
+    resetFocus();
+  };
 
   useEffect(() => {
     if (!startRenaming) return;
@@ -199,12 +237,19 @@ export function MixRow({
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
         aria-expanded={onClick ? expanded : undefined}
-        onClick={onClick}
+        onClick={(event) => {
+          if (focusedTrack) {
+            if (event.currentTarget.contains(event.target as Node)) resetFocus();
+            return;
+          }
+          onClick?.();
+        }}
         onKeyDown={(event) => {
           if (!onClick) return;
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            onClick();
+            if (focusedTrack) resetFocus();
+            else onClick();
           }
         }}
         className={`p-3 space-y-2.5 ${onClick ? 'cursor-pointer' : ''}`}
@@ -328,6 +373,28 @@ export function MixRow({
           )}
         </div>
 
+        {/* מסלול שנבחר: המספרים שמתחת הם שלו, והאיפוס מחזיר לכל התמהיל */}
+        {focusedTrack && (
+          <div
+            onClick={stopRowClick}
+            className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5"
+          >
+            <p className="min-w-0 flex-1 text-2xs font-bold text-violet-900">
+              מוצגים נתוני המסלול שנבחר בלבד ·{' '}
+              {focusedTrack.track.name || TRACK_TYPES[focusedTrack.track.type]} ·{' '}
+              {formatShekel(focusedTrack.track.amount)}
+            </p>
+            <button
+              type="button"
+              onClick={resetFocus}
+              className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-white px-2.5 py-1 text-2xs font-bold text-violet-700 transition-colors hover:bg-violet-100"
+            >
+              <Undo2 className="h-3 w-3" />
+              איפוס בחירה · כל התמהיל
+            </button>
+          </div>
+        )}
+
         {/* תת-השורה האחידה: ההחזר החודשי, סך הריבית, סך התשלום ושני מדדי הריבית */}
         {/* התיבות נשברות לשורה נוספת כשהעמודה צרה, כדי שהמספרים לא יחרגו מהן */}
         <div className="grid grid-cols-[repeat(auto-fit,minmax(118px,1fr))] gap-2">
@@ -335,32 +402,32 @@ export function MixRow({
             icon={<Wallet className="h-3 w-3 text-blue-600" />}
             label="החזר חודשי"
             value={
-              summary.monthlyPayment > 0.01 ? formatPayment(summary.monthlyPayment) : 'אין החזר שוטף'
+              stats.monthlyPayment > 0.01 ? formatPayment(stats.monthlyPayment) : 'אין החזר שוטף'
             }
-            hint={paymentHint(summary, mix, resolvedResult)}
+            hint={focusedTrack ? undefined : paymentHint(summary, mix, resolvedResult)}
             emphasized
           />
           <RowStat
             icon={<Banknote className="h-3 w-3 text-red-500" />}
             label="סך ריבית"
-            value={formatShekel(summary.totalInterest)}
+            value={formatShekel(stats.totalInterest)}
           />
           <RowStat
             icon={<Coins className="h-3 w-3 text-slate-500" />}
             label="סך תשלום"
-            value={formatShekel(summary.totalPaid)}
+            value={formatShekel(stats.totalPaid)}
           />
           <RowStat
             icon={<Percent className="h-3 w-3 text-amber-600" />}
-            label="ריבית ממוצעת"
-            value={formatPercentage(summary.averageRate)}
-            info={RATE_EXPLANATIONS.mixAverage}
+            label={focusedTrack ? 'ריבית המסלול' : 'ריבית ממוצעת'}
+            value={formatPercentage(stats.averageRate)}
+            info={focusedTrack ? undefined : RATE_EXPLANATIONS.mixAverage}
           />
           <RowStat
             icon={<Percent className="h-3 w-3 text-rose-600" />}
             label="מתואמת IRR"
-            value={formatPercentage(irr)}
-            info={RATE_EXPLANATIONS.mixIrr}
+            value={formatPercentage(stats.irr)}
+            info={focusedTrack ? undefined : RATE_EXPLANATIONS.mixIrr}
           />
         </div>
 
@@ -371,7 +438,7 @@ export function MixRow({
           רוחב כל קטע הוא חלקו של המסלול בתמהיל, והפרטים יושבים מתחת לקטע שלו
           ובאותו גודל. קודם הופיעה כאן רשימת נקודות שלא הייתה מיושרת לפס.
         */}
-        <div onClick={onFocusTrack ? stopRowClick : undefined}>
+        <div onClick={onFocusTrack ? resetOnOutsideTrack : undefined}>
           <TrackCompositionStrip
             tracks={mix.tracks}
             trackMonths={trackMonths}

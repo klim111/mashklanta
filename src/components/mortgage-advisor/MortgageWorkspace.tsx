@@ -51,7 +51,7 @@ import { formatPayment, formatShekel } from './workspace/primitives';
 import { TRACK_TYPES } from './types';
 import { useSavedMixes } from './savedMixes';
 import type { SavedMix } from './savedMixes';
-import { dealTypeOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
+import { dealTypeOf, equityOf, mixNameExistsForProperty, sameProperty } from './propertyContext';
 import { checkDealLimits } from './dealGuard';
 import { assignmentGaps, borrowersIncome, maxPaymentFromIncome } from '@/lib/mix-assignment';
 import type { DealField } from './dealGuard';
@@ -581,6 +581,7 @@ export function MortgageWorkspace({
   const seedAddress = defaultSetupSeed?.propertyAddress;
   const seedTotal = defaultSetupSeed?.totalAmount;
   const seedDealType = defaultSetupSeed?.dealType;
+  const seedEquity = defaultSetupSeed?.equity;
   useEffect(() => {
     if (!embedded || phase !== 'ready' || mix.locked) return;
     const patch: Partial<WorkspaceMix> = {};
@@ -589,6 +590,7 @@ export function MortgageWorkspace({
       if (!mix.dealType && seedDealType) patch.dealType = seedDealType;
     }
     if (seedAddress?.trim() && !mix.propertyAddress?.trim()) patch.propertyAddress = seedAddress.trim();
+    if (seedEquity != null && seedEquity >= 0 && mix.equity === undefined) patch.equity = Math.round(seedEquity);
     const resize =
       buildingNewMix &&
       Boolean(seedTotal && seedTotal > 0) &&
@@ -616,6 +618,7 @@ export function MortgageWorkspace({
     seedAddress,
     seedTotal,
     seedDealType,
+    seedEquity,
     buildingNewMix,
     savedSignature,
     signature,
@@ -660,25 +663,30 @@ export function MortgageWorkspace({
     []
   );
 
-  /** הודעת חסימה מעריכת פרטי העסקה שחרגה ממגבלות בנק ישראל */
+  /** התראה על פרטי עסקה שחורגים ממגבלות בנק ישראל */
   const [dealNotice, setDealNotice] = useState<string | null>(null);
 
   /**
-   * עריכת פרטי העסקה מכותרת הנכס. כל השדות התלויים נגזרים מהמצב הסופי —
-   * ההון העצמי מעלות הנכס פחות המשכנתא, יחס המימון משניהם, וההחזר החודשי
-   * מהתמהיל אחרי שינוי הסכום — ורק אם אף מגבלה לא נחרגה השינוי נכנס לתמהיל
-   * ונשלח לתהליך לשמירה. עריכה שחורגת נחסמת עם ההסבר ולא נשמרת.
+   * עריכת פרטי העסקה מכותרת הנכס. כל שדה נשמר כפי שהוזן ולא מזיז את האחרים —
+   * סכום המשכנתא, עלות הנכס וההון העצמי עצמאיים. אחרי השינוי נבדקות מגבלות
+   * בנק ישראל על המצב הסופי, וחריגה מוצגת כהתראה בלי לחסום את השינוי. העריכה
+   * נשלחת לתהליך לשמירה ומשם נמשכת לשאר המסכים.
    */
   const commitDeal = useCallback(
     (patch: DealPatch, edited: DealField): boolean => {
       if (mix.locked) return false;
+      // תמהיל בלי הון עצמי שמור (ישן, או חדש לפני שהוזן) — ההון נקבע לערכו
+      // הנוכחי, כדי שעריכת הסכום או עלות הנכס לא תזיז אותו
+      const frozenEquity = mix.equity === undefined ? equityOf(mix) : undefined;
+      const nextEquity = patch.equity ?? mix.equity ?? frozenEquity;
+      const equityPatch = patch.equity !== undefined || frozenEquity !== undefined;
       if (edited === 'propertyAddress') {
         const propertyAddress = patch.propertyAddress?.trim() || undefined;
         actions.patchMix({ propertyAddress });
         onDealChange?.({
           propertyValue: mix.propertyValue ?? null,
           mortgageAmount: Math.round(mix.totalAmount),
-          equity: mix.propertyValue ? Math.max(0, Math.round(mix.propertyValue - mix.totalAmount)) : null,
+          equity: nextEquity !== undefined ? Math.round(nextEquity) : null,
           dealType: dealTypeOf(mix),
           propertyAddress: propertyAddress ?? '',
           maxMonthlyPayment: mix.maxMonthlyPayment ?? null,
@@ -691,6 +699,7 @@ export function MortgageWorkspace({
         ...(patch.propertyValue !== undefined
           ? { propertyValue: patch.propertyValue > 0 ? patch.propertyValue : undefined }
           : {}),
+        ...(nextEquity !== undefined ? { equity: nextEquity } : {}),
         ...(patch.dealType ? { dealType: patch.dealType } : {}),
         ...(patch.propertyAddress !== undefined
           ? { propertyAddress: patch.propertyAddress.trim() || undefined }
@@ -711,21 +720,25 @@ export function MortgageWorkspace({
           propertyValue: candidate.propertyValue ?? 0,
           totalAmount: nextTotal,
           dealType: dealTypeOf(candidate),
+          equity: candidate.equity,
           maxMonthlyPayment: candidate.maxMonthlyPayment,
           monthlyPayment,
           profileCap,
         },
         edited
       );
-      // אצל היועץ אין חסימה: החריגה מוצגת כאזהרה בכותרת הנכס, והערך משתנה
-      if (violations.length > 0 && !isAdvisor) {
-        setDealNotice(violations.map((violation) => violation.message).join(' '));
-        return false;
-      }
-      setDealNotice(null);
+      // יחס המימון וההון העצמי מוצגים בכותרת הנכס כל עוד הם חורגים; כאן נשארות
+      // רק החריגות שאין להן התראה קבועה
+      const shownLive = candidate.equity !== undefined ? ['ltv', 'equity'] : ['ltv'];
+      const notice = violations
+        .filter((violation) => !shownLive.includes(violation.kind))
+        .map((violation) => violation.message)
+        .join(' ');
+      setDealNotice(notice || null);
 
       const mixPatch: Partial<WorkspaceMix> = {};
       if (patch.propertyValue !== undefined) mixPatch.propertyValue = candidate.propertyValue;
+      if (equityPatch) mixPatch.equity = candidate.equity;
       if (patch.dealType) mixPatch.dealType = candidate.dealType;
       if (patch.propertyAddress !== undefined) mixPatch.propertyAddress = candidate.propertyAddress;
       if (patch.maxMonthlyPayment !== undefined) mixPatch.maxMonthlyPayment = candidate.maxMonthlyPayment;
@@ -739,14 +752,14 @@ export function MortgageWorkspace({
       onDealChange?.({
         propertyValue,
         mortgageAmount: Math.round(nextTotal),
-        equity: propertyValue && propertyValue > 0 ? Math.max(0, Math.round(propertyValue - nextTotal)) : null,
+        equity: candidate.equity !== undefined ? Math.round(candidate.equity) : null,
         dealType: dealTypeOf(candidate),
         propertyAddress: candidate.propertyAddress ?? '',
         maxMonthlyPayment: candidate.maxMonthlyPayment ?? null,
       });
       return true;
     },
-    [mix, result.summary.monthlyPayment, profileCap, actions, onDealChange, isAdvisor]
+    [mix, result.summary.monthlyPayment, profileCap, actions, onDealChange]
   );
 
   /**
