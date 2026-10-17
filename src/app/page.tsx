@@ -72,8 +72,9 @@ export default function Home() {
         </div>
 
         {/* קרוסלת היתרונות: במה משלה בזרימת הדף, בין הטקסט לכפתורים, כך שבשום גודל מסך
-            היא לא נכנסת מתחת לטקסט או לכפתורים. הגובה נגזר מהמקום שנשאר במסך */}
-        <HeroCarousel className="pointer-events-none relative my-4 hidden min-h-[220px] w-full max-w-3xl flex-1 md:block lg:min-h-[240px] xl:max-h-[460px]" />
+            היא לא נכנסת מתחת לטקסט או לכפתורים. בטלפון הגובה קבוע; ממסך בינוני ומעלה הוא
+            נגזר מהמקום שנשאר במסך */}
+        <HeroCarousel className="pointer-events-none relative my-4 h-[19rem] w-full max-w-3xl md:h-auto md:min-h-[220px] md:flex-1 lg:min-h-[240px] xl:max-h-[460px]" />
 
         {/* מתחת לאנימציה: ההדגמה הקצרה של הפלטפורמה — סרטון שנפתח בחלון */}
         <div className="flex w-full items-center justify-center pt-4 md:pt-0">
