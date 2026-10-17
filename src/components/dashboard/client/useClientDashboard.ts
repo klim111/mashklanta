@@ -25,6 +25,7 @@ import {
   CONTACTED_ADVISOR_KEY,
 } from '@/components/plan/advisor/AdvisorLeadDialog';
 import { useLiveRefresh, useLiveVersion } from '@/hooks/useLiveRefresh';
+import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 
 /**
  * כל הנתונים של האזור האישי, במקום אחד.
@@ -38,6 +39,12 @@ export function useClientDashboard() {
   const mixesState = useSavedMixes();
   const meetingsState = useMeetings();
   const { requests, ready: requestsReady } = useRateRequests();
+  /**
+   * התמהילים השמורים הם חלק מכלי בניית התמהילים: לקוח שעוד לא שילם לא רואה
+   * אותם, לא בתפריט ולא במשימות.
+   */
+  const { access, ready: accessReady } = usePlatformAccess();
+  const mixesOpen = accessReady && access.paidClient;
   const { notes } = useAdvisorNotes();
   /** המשימות שהלקוח הוסיף לעצמו — לרשימת המשימות וללוח השנה */
   const clientTasksState = useClientTasks({});
@@ -98,7 +105,7 @@ export function useClientDashboard() {
 
   const rateRequests = useMemo<AgendaRateRequest[]>(
     () =>
-      requests.map((request) => ({
+      (mixesOpen ? requests : []).map((request) => ({
         id: request.id,
         mixName: request.document.mixName,
         bankName: request.document.details.bankName || null,
@@ -108,12 +115,12 @@ export function useClientDashboard() {
             (item.mix.quote.requestId === request.id || item.mix.quote.sourceMixId === request.mix.id)
         ).length,
       })),
-    [requests, mixesState.saved]
+    [requests, mixesState.saved, mixesOpen]
   );
 
   const unassignedMixes = useMemo(
-    () => mixesState.saved.filter(isUnassociatedMix).length,
-    [mixesState.saved]
+    () => (mixesOpen ? mixesState.saved.filter(isUnassociatedMix).length : 0),
+    [mixesState.saved, mixesOpen]
   );
 
   const input = useMemo<AgendaInput>(
@@ -252,6 +259,8 @@ export function useClientDashboard() {
     contactedAdvisor,
     pendingLead,
     firstVisit,
+    mixesOpen,
+    accessReady,
     ready: plansState.ready && mixesState.ready && meetingsState.ready && requestsReady,
   };
 }

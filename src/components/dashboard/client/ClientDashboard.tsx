@@ -48,6 +48,8 @@ import { OverviewSection } from './OverviewSection';
 import { MyMortgageSection } from './my-mortgage/MyMortgageSection';
 import { ContinueToolsDialog } from './ContinueToolsDialog';
 import { useClientDashboard } from './useClientDashboard';
+import { SavedMixesSection } from './SavedMixesSection';
+import { mixBuilderHref } from './mixBuilderLink';
 import { demoId } from '@/demo/demo-attr';
 import { ConversationDockSlot, useClientConversation } from '@/components/conversation/ClientChatDock';
 import { CHAT_TITLE } from '@/lib/conversation';
@@ -273,8 +275,17 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
     [navigate]
   );
 
+  /** התמהילים השמורים שייכים לכלי בניית התמהילים, ולכן מופיעים רק ללקוח ששילם */
+  const mixesOpen = data.mixesOpen;
+  useEffect(() => {
+    // קישור ישן ל-`#rate-requests` אצל לקוח שלא שילם חוזר לסקירה
+    if (data.accessReady && !mixesOpen && section === 'rate-requests') navigate('overview');
+  }, [data.accessReady, mixesOpen, section, navigate]);
   const navItems = (tone: 'sidebar' | 'bar') =>
-    SECTIONS.filter((item) => item.id !== 'my-mortgage' || hasSignedMortgage).map((item) => {
+    SECTIONS.filter(
+      (item) =>
+        (item.id !== 'my-mortgage' || hasSignedMortgage) && (item.id !== 'rate-requests' || mixesOpen)
+    ).map((item) => {
       const Icon = item.icon;
       const active = section === item.id;
       const badge = badges[item.id];
@@ -487,14 +498,24 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
               {section === 'contacts' && <ContactsSection />}
 
-              {section === 'rate-requests' && (
+              {section === 'rate-requests' && mixesOpen && (
                 <div className="space-y-5" {...demoId('dash-rate-requests')}>
+                  <SavedMixesSection
+                    plans={data.plansState.plans}
+                    saved={data.mixesState.saved}
+                    ready={data.mixesState.ready}
+                    onDelete={data.mixesState.remove}
+                    onRename={data.mixesState.rename}
+                  />
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-                    <BankRateRequests />
+                    <BankRateRequests builderHref={(target) => mixBuilderHref(data.plansState.plans, target)} />
                   </div>
                   <UnassignedMixesSection
                     mixes={data.mixesState.saved.filter(isUnassociatedMix)}
                     onDelete={data.mixesState.remove}
+                    openHref={(mix) =>
+                      mixBuilderHref(data.plansState.plans, { mixId: mix.mix.id, planId: mix.planId })
+                    }
                   />
                 </div>
               )}

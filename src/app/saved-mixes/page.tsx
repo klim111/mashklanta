@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -14,7 +15,16 @@ import NavBar from '@/components/ui/navbar';
 
 export default function SavedMixesPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const isClient = status === 'authenticated' && session?.user?.role !== 'ADVISOR';
+
+  /*
+    הלקוח רואה את התמהילים השמורים באזור האישי, ומשם הם נפתחים בשלב התמהיל
+    בתהליך שלו. העמוד הזה נשאר ליועץ ולמי שעוד לא התחבר.
+  */
+  useEffect(() => {
+    if (isClient) router.replace('/dashboard#rate-requests');
+  }, [isClient, router]);
   const { saved, ready, remove, rename, signedIn } = useSavedMixes();
 
   const personalAreaHref = session?.user?.role === 'ADVISOR' ? '/advisor-dashboard' : '/dashboard';
@@ -23,6 +33,8 @@ export default function SavedMixesPage() {
     stageMixForWorkspace(item.mix);
     router.push('/mortgage-advisor');
   };
+
+  if (isClient) return <div className="min-h-screen bg-slate-50" />;
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">

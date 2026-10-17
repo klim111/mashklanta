@@ -57,6 +57,7 @@ import { SnapshotFloat } from './SnapshotFloat';
 import type { SnapshotItem } from './SnapshotFloat';
 import { useCashFlow } from '@/components/cash-flow/useCashFlow';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
+import { mixBuilderHref } from './mixBuilderLink';
 import type { ClientDashboardData } from './useClientDashboard';
 
 /** "היום" / "מחר", ואחרת יום.חודש — קצר מספיק לתיבת המועד */
@@ -337,14 +338,17 @@ export function OverviewSection({
             label="אישור עקרוני — פרטי הבקשה"
           />
         )}
+        {/* התמהילים השמורים שייכים לכלי בניית התמהילים — רק ללקוח ששילם */}
+        {data.mixesOpen && (
+          <QuickAction
+            onClick={() => onNavigate('rate-requests')}
+            icon={<Gavel className="h-4 w-4" />}
+            label="תמהילים שמורים"
+            badge={requests.length}
+          />
+        )}
         <QuickAction
-          onClick={() => onNavigate('rate-requests')}
-          icon={<Gavel className="h-4 w-4" />}
-          label="תמהילים שמורים"
-          badge={requests.length}
-        />
-        <QuickAction
-          href="/dashboard/mix-planner"
+          href={mixBuilderHref(plansState.plans)}
           icon={<Calculator className="h-4 w-4" />}
           label="בניית תמהיל"
           locked={featureLocked}

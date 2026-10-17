@@ -23,12 +23,18 @@ export function isUnassociatedMix(mix: SavedMix): boolean {
   return !mix.planId && !(mix.mix.propertyAddress ?? '').trim();
 }
 
+/** בלי `openHref` התמהיל נפתח בכלי לתמהילים ללא נכס */
+const plannerHref = (mix: SavedMix) => `/dashboard/mix-planner?mix=${encodeURIComponent(mix.mix.id)}`;
+
 export function UnassignedMixesSection({
   mixes,
   onDelete,
+  openHref = plannerHref,
 }: {
   mixes: SavedMix[];
   onDelete: (mixId: string) => void;
+  /** לאן נכנסים לעריכת התמהיל — באזור האישי, לשלב התמהיל בתהליך הפתוח */
+  openHref?: (mix: SavedMix) => string;
 }) {
   if (mixes.length === 0) return null;
 
@@ -41,7 +47,7 @@ export function UnassignedMixesSection({
           {mixes.length}
         </span>
       </h2>
-      <UnassignedMixes mixes={mixes} onDelete={onDelete} />
+      <UnassignedMixes mixes={mixes} onDelete={onDelete} openHref={openHref} />
     </section>
   );
 }
@@ -49,9 +55,11 @@ export function UnassignedMixesSection({
 function UnassignedMixes({
   mixes,
   onDelete,
+  openHref,
 }: {
   mixes: SavedMix[];
   onDelete: (mixId: string) => void;
+  openHref: (mix: SavedMix) => string;
 }) {
   const router = useRouter();
   const { platformPrice } = usePricing();
@@ -126,6 +134,7 @@ function UnassignedMixes({
         <UnassignedMixCard
           key={mix.mix.id}
           mix={mix}
+          href={openHref(mix)}
           busy={busyId === mix.recordId}
           onAttach={(deal) => void attach(mix, deal)}
           onDelete={() => onDelete(mix.mix.id)}
@@ -137,11 +146,13 @@ function UnassignedMixes({
 
 function UnassignedMixCard({
   mix,
+  href,
   busy,
   onAttach,
   onDelete,
 }: {
   mix: SavedMix;
+  href: string;
   busy: boolean;
   onAttach: (deal: { address: string; value: number | null; amount: number | null }) => void;
   onDelete: () => void;
@@ -159,7 +170,7 @@ function UnassignedMixCard({
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href={`/dashboard/mix-planner?mix=${encodeURIComponent(mix.mix.id)}`}
+            href={href}
             className="text-xs font-black text-blue-600"
           >
             פתיחה בכלי התכנון
