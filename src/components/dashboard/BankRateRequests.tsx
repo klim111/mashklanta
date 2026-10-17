@@ -34,6 +34,7 @@ import { stageMixForWorkspace } from '@/components/mortgage-advisor/workspace/dr
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { formatDuration } from '@/components/mortgage-advisor/engine';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
+import type { MixBuilderTarget } from '@/components/dashboard/client/mixBuilderLink';
 import { demoId } from '@/demo/demo-attr';
 
 /**
@@ -42,7 +43,15 @@ import { demoId } from '@/demo/demo-attr';
  * כל בקשה נשמרת בלי ריביות — זה בדיוק מה שהבנק ממלא — ואפשר לפתוח אותה שוב
  * באותו נוסח ובאותו עיצוב, להוריד כ-PDF או כאקסל, ולהשוות מולה את ההצעות.
  */
-export function BankRateRequests() {
+export function BankRateRequests({
+  builderHref,
+}: {
+  /**
+   * באזור האישי של הלקוח כלי בניית התמהילים הוא שלב התמהיל בתהליך שלו. בלי
+   * זה (אצל היועץ) נפתח הכלי לתמהילים ללא נכס.
+   */
+  builderHref?: (target?: MixBuilderTarget) => string;
+} = {}) {
   const router = useRouter();
   const { requests, ready, error, signedIn, remove } = useRateRequests();
   const { saved, save } = useSavedMixes();
@@ -53,8 +62,17 @@ export function BankRateRequests() {
    * פתיחת תמהיל בכלי התמהילים של האזור האישי. תמהיל שכבר שמור בחשבון נפתח לפי
    * המזהה שלו; תמהיל שלא נשמר (למשל המבנה שהוגש בבקשה) מועבר לכלי כטיוטה.
    */
-  const openMixInTool = (mix: WorkspaceMix) => {
-    if (saved.some((item) => item.mix.id === mix.id)) {
+  const openMixInTool = async (mix: WorkspaceMix) => {
+    const stored = saved.find((item) => item.mix.id === mix.id);
+    if (builderHref) {
+      // שלב התמהיל בתהליך טוען רק תמהילים מהחשבון — מבנה שלא נשמר נשמר קודם
+      const item = stored ?? (await save(mix));
+      router.push(
+        builderHref({ mixId: item.mix.id, planId: item.planId, propertyAddress: item.mix.propertyAddress })
+      );
+      return;
+    }
+    if (stored) {
       router.push(`/dashboard/mix-planner?mix=${encodeURIComponent(mix.id)}`);
       return;
     }
@@ -91,7 +109,7 @@ export function BankRateRequests() {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/mix-planner">
+          <Link href={builderHref ? builderHref() : '/dashboard/mix-planner'}>
             <PieChart className="ml-1 h-4 w-4" />
             לכלי בניית התמהילים
           </Link>
@@ -125,7 +143,9 @@ export function BankRateRequests() {
               ושמרו את הבקשה כאן.
             </p>
             <Button asChild>
-              <Link href="/dashboard/mix-planner">פתחו את כלי בניית התמהילים</Link>
+              <Link href={builderHref ? builderHref() : '/dashboard/mix-planner'}>
+                פתחו את כלי בניית התמהילים
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -141,9 +161,9 @@ export function BankRateRequests() {
               onView={() => setOpen(item)}
               onPrint={() => printRateRequest(item.document)}
               onExcel={() => downloadRateRequestXlsx(item.document)}
-              onOpenInTool={() => openMixInTool(item.mix)}
+              onOpenInTool={() => void openMixInTool(item.mix)}
               onEnterQuote={() => setQuoteEntry(item)}
-              onOpenOffer={(offer) => openMixInTool(offer.mix)}
+              onOpenOffer={(offer) => void openMixInTool(offer.mix)}
               onDelete={() => remove(item.id)}
             />
           ))}
@@ -160,7 +180,7 @@ export function BankRateRequests() {
           onSave={async (quoted) => {
             await save(quoted);
           }}
-          onOpenSaved={openMixInTool}
+          onOpenSaved={(quoted) => void openMixInTool(quoted)}
         />
       )}
 
