@@ -188,29 +188,7 @@ export function LandingShell({ toolId, children }: { toolId: LandingToolId; chil
           </section>
         </main>
 
-        <footer className="bg-slate-900 px-4 py-8 text-sm text-slate-300 md:px-6 print:hidden">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
-            <p>
-              © {new Date().getFullYear()} {SITE_CONTACT.brand}. המחשבונים מציגים הערכה ואינם מהווים ייעוץ או הצעת אשראי.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-              <a href={SITE_CONTACT.phoneHref} className="inline-flex items-center gap-1.5 hover:text-white">
-                <Phone className="h-4 w-4" aria-hidden />
-                <span dir="ltr">{SITE_CONTACT.phone}</span>
-              </a>
-              <a href={SITE_CONTACT.emailHref} className="inline-flex items-center gap-1.5 hover:text-white">
-                <Mail className="h-4 w-4" aria-hidden />
-                {SITE_CONTACT.email}
-              </a>
-              <a href={platformUrl('/terms')} className="hover:text-white">
-                תנאי שימוש
-              </a>
-              <a href={platformUrl('/privacy')} className="hover:text-white">
-                מדיניות פרטיות
-              </a>
-            </div>
-          </div>
-        </footer>
+        <LandingFooter />
 
         {tool.advisor === 'family' ? (
           <FamilyEconomyLeadDialog open={leadOpen} onOpenChange={setLeadOpen} />
@@ -219,5 +197,34 @@ export function LandingShell({ toolId, children }: { toolId: LandingToolId; chil
         )}
       </div>
     </LandingModeProvider>
+  );
+}
+
+/** שורת פרטי הקשר והקישורים המשפטיים בתחתית דפי הנחיתה */
+export function LandingFooter() {
+  return (
+    <footer className="bg-slate-900 px-4 py-8 text-sm text-slate-300 md:px-6 print:hidden">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
+        <p>
+          © {new Date().getFullYear()} {SITE_CONTACT.brand}. המחשבונים מציגים הערכה ואינם מהווים ייעוץ או הצעת אשראי.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          <a href={SITE_CONTACT.phoneHref} className="inline-flex items-center gap-1.5 hover:text-white">
+            <Phone className="h-4 w-4" aria-hidden />
+            <span dir="ltr">{SITE_CONTACT.phone}</span>
+          </a>
+          <a href={SITE_CONTACT.emailHref} className="inline-flex items-center gap-1.5 hover:text-white">
+            <Mail className="h-4 w-4" aria-hidden />
+            {SITE_CONTACT.email}
+          </a>
+          <a href={platformUrl('/terms')} className="hover:text-white">
+            תנאי שימוש
+          </a>
+          <a href={platformUrl('/privacy')} className="hover:text-white">
+            מדיניות פרטיות
+          </a>
+        </div>
+      </div>
+    </footer>
   );
 }
