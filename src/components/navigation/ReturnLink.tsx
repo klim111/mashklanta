@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLandingMode } from '@/components/landing/LandingMode';
 
 export interface ReturnTarget {
   href: string;
@@ -54,7 +55,10 @@ export function ReturnLink({
   className?: string;
 }) {
   const fallback = useReturnTarget();
+  const landing = useLandingMode();
   const { href, label } = target ?? fallback;
+  // בדף נחיתה אין "דף בית" לחזור אליו — הכותרת של הדף מובילה לפלטפורמה
+  if (landing) return null;
   return (
     <Link
       href={href}

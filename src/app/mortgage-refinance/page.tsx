@@ -9,6 +9,7 @@ import type { MortgageMix } from '@/components/mortgage-advisor/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import NavBar from '@/components/ui/navbar';
+import { useLandingMode } from '@/components/landing/LandingMode';
 import { ScenarioAnalysis } from '@/components/mortgage-advisor/ScenarioAnalysis';
 import { MortgageDetailsModal } from '@/components/mortgage-advisor/MortgageDetailsModal';
 import { RefinanceMortgageInput } from '@/components/mortgage-refinance/RefinanceMortgageInput';
@@ -58,6 +59,7 @@ function RefinanceEntry() {
   const { status } = useSession();
   const view = useSearchParams().get('view');
   const isPhone = useIsPhone();
+  const landing = useLandingMode();
 
   if (status === 'loading') return <div className="min-h-screen bg-slate-50" />;
   if (status === 'authenticated') return <SignedInTool />;
@@ -70,9 +72,11 @@ function RefinanceEntry() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
-        <NavBar />
-      </div>
+      {!landing && (
+        <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
+          <NavBar />
+        </div>
+      )}
       <RefinanceCheck />
     </div>
   );
@@ -108,6 +112,7 @@ function FullRefinanceTool({
   onMixPersist?: (mix: MortgageMix) => void;
 } = {}) {
   const { data: session, status } = useSession();
+  const landing = useLandingMode();
   /** הכלי פתוח לכולם. למשתמש שאינו רשום הוא מוגבל לבדיקה אחת */
   const isGuest = status !== 'loading' && !session;
   const { market } = useMarketRates();
@@ -283,9 +288,11 @@ function FullRefinanceTool({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
-        <NavBar />
-      </div>
+      {!landing && (
+        <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
+          <NavBar />
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
