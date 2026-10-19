@@ -2,6 +2,7 @@ import './globals.css';
 import { Assistant } from 'next/font/google';
 import { Providers } from '@/components/providers';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
+import { NativeAppBridge } from '@/components/native-app/NativeAppBridge';
 import { A11Y_BOOT_SCRIPT } from '@/components/a11y/a11yConfig';
 import { PricingProvider } from '@/components/pricing/PricingProvider';
 import { getPricing } from '@/lib/pricing-store';
@@ -42,6 +43,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: A11Y_BOOT_SCRIPT }} />
       </head>
       <body>
+        <NativeAppBridge />
         <AccessibilityMenu />
         <PricingProvider config={pricing}>
           <Providers>

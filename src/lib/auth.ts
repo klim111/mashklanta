@@ -29,6 +29,7 @@ import {
   notifyAdvisorLogin,
 } from "@/lib/advisor-access";
 import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from "@/lib/advisor-session";
+import { consumeAppHandoff } from "@/lib/app-handoff";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
@@ -163,6 +164,35 @@ export const authOptions: NextAuthOptions = {
         await ensureClientLinkSafely(user.id);
         // מייל ליועץ על כל הרשמה חדשה
         await emailAdvisorAboutSignup(user.id);
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+          image: user.image ?? undefined,
+          role: user.role,
+        } as any;
+      },
+    }),
+    /**
+     * האפליקציה לנייד: הכניסה עם Google נעשית בדפדפן של המערכת, ומשם עוברת
+     * לאפליקציה בקוד חד-פעמי. ראו src/lib/app-handoff.ts.
+     */
+    Credentials({
+      id: "app-handoff",
+      name: "Mobile app sign-in",
+      credentials: {
+        code: { label: "Code", type: "text" },
+        verifier: { label: "Verifier", type: "text" },
+      },
+      async authorize(credentials) {
+        const userId = await consumeAppHandoff(String(credentials?.code ?? ""), String(credentials?.verifier ?? ""));
+        if (!userId) return null;
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, name: true, image: true, role: true },
+        });
+        // היועץ נכנס רק דרך הכניסה הנסתרת (advisor-link)
+        if (!user || user.role === "ADVISOR") return null;
         return {
           id: user.id,
           email: user.email ?? undefined,

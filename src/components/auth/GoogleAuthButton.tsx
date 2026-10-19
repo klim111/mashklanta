@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { GOOGLE_UNAVAILABLE_MESSAGE } from "@/lib/auth-errors";
 import { collectGuestSnapshot } from "@/components/tool-data/toolData";
+import { isNativeApp, startNativeGoogleSignIn } from "@/lib/native-app/native";
 
 /** תשובת `/api/auth-diagnostics` — מצב ההתחברות עם גוגל בבקשה הנוכחית. */
 type GoogleOAuthStatus = {
@@ -99,6 +100,12 @@ export function GoogleAuthButton({
        * לכתובת הרשמית ומתחילים את ההתחברות משם.
        */
       const carry = await carryGuestData();
+
+      // באפליקציה לנייד גוגל לא מאפשרת להתחבר מתוך ה-WebView — ממשיכים בדפדפן של המערכת
+      if (isNativeApp()) {
+        await startNativeGoogleSignIn(callbackUrl, carry);
+        return;
+      }
 
       const canonical = status?.canonicalOrigin;
       if (canonical && status && !status.originMatches && canonical !== window.location.origin) {
