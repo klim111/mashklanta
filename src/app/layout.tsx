@@ -1,5 +1,5 @@
 import './globals.css';
-import { Assistant } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Providers } from '@/components/providers';
 import { AccessibilityMenu } from '@/components/a11y/AccessibilityMenu';
 import { NativeAppBridge } from '@/components/native-app/NativeAppBridge';
@@ -7,10 +7,14 @@ import { A11Y_BOOT_SCRIPT } from '@/components/a11y/a11yConfig';
 import { PricingProvider } from '@/components/pricing/PricingProvider';
 import { getPricing } from '@/lib/pricing-store';
 
-// הגופן היחיד של הפלטפורמה. נטען מקומית בזמן הבנייה ונחשף כמשתנה --font-assistant
-const assistant = Assistant({
-  subsets: ['hebrew', 'latin'],
-  weight: ['400', '500', '600', '700', '800'],
+/**
+ * הגופן היחיד של הפלטפורמה, Assistant, כקובץ משתנה אחד (משקלים 200–800, עברית ולטינית)
+ * שנמצא בפרויקט — בלי הורדה מ-Google Fonts בזמן הבנייה, שנכשלה ב-Vercel.
+ * נחשף כמשתנה --font-assistant. רישיון: public/fonts/Assistant-OFL.txt
+ */
+const assistant = localFont({
+  src: './fonts/Assistant-Variable.woff2',
+  weight: '200 800',
   display: 'swap',
   variable: '--font-assistant',
 });
