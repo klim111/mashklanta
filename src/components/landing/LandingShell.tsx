@@ -12,11 +12,8 @@ import { SITE_CONTACT } from '@/lib/site-contact';
 import { LandingModeProvider } from './LandingMode';
 import { LANDING_TOOLS, LANDING_TOOL_ORDER, platformUrl } from './landingTools';
 import type { LandingToolId } from './landingTools';
-
-const ADVISOR_LABEL = {
-  mortgage: 'ייעוץ משכנתאות',
-  family: 'ייעוץ כלכלת המשפחה',
-} as const;
+import { listItems } from '@/lib/landing-content';
+import type { LandingContent } from '@/lib/landing-content';
 
 /**
  * דף נחיתה של כלי חינמי אחד — אתר עצמאי שנפתח ישר בכלי.
@@ -25,11 +22,21 @@ const ADVISOR_LABEL = {
  * קצרה ואז הכלי עצמו, בלי סרגל הניווט של הפלטפורמה. אחרי הכלי: הזמנה להצטרף
  * לקהילת משכלנתא בפלטפורמה המלאה, שלושת הכלים האחרים, ושורת פרטי קשר.
  */
-export function LandingShell({ toolId, children }: { toolId: LandingToolId; children: React.ReactNode }) {
+export function LandingShell({
+  toolId,
+  content,
+  children,
+}: {
+  toolId: LandingToolId;
+  /** הטקסטים של כל דפי הנחיתה, כפי שהיועץ ערך אותם */
+  content: LandingContent;
+  children: React.ReactNode;
+}) {
   const tool = LANDING_TOOLS[toolId];
   const Icon = tool.icon;
   const [leadOpen, setLeadOpen] = useState(false);
-  const advisorLabel = ADVISOR_LABEL[tool.advisor];
+  const text = content[toolId];
+  const advisorLabel = text.consultLabel;
   const others = LANDING_TOOL_ORDER.filter((id) => id !== toolId).map((id) => LANDING_TOOLS[id]);
 
   const scrollToTool = () => document.getElementById('tool')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -48,7 +55,7 @@ export function LandingShell({ toolId, children }: { toolId: LandingToolId; chil
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${tool.gradient}`}>
                   <Icon className="h-4 w-4 text-white" aria-hidden />
                 </span>
-                <span className="truncate text-button font-bold text-slate-700">{tool.name}</span>
+                <span className="truncate text-button font-bold text-slate-700">{text.name}</span>
               </span>
             </div>
 
@@ -85,12 +92,12 @@ export function LandingShell({ toolId, children }: { toolId: LandingToolId; chil
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   חינם · בלי הרשמה
                 </span>
-                <h1 className="mx-auto mt-3 max-w-3xl text-balance text-title font-black text-slate-900">{tool.headline}</h1>
+                <h1 className="mx-auto mt-3 max-w-3xl text-balance text-title font-black text-slate-900">{text.headline}</h1>
                 <p className="mx-auto mt-2 max-w-2xl text-balance text-sm leading-relaxed text-slate-600 md:mt-3 md:text-lg">
-                  {tool.subtitle}
+                  {text.subtitle}
                 </p>
                 <ul className="mt-5 hidden flex-wrap sm:flex items-center justify-center gap-2">
-                  {tool.highlights.map((item) => (
+                  {listItems(text.highlights).map((item) => (
                     <li
                       key={item}
                       className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm"
@@ -126,11 +133,10 @@ export function LandingShell({ toolId, children }: { toolId: LandingToolId; chil
                 קהילת משכלנתא
               </span>
               <h2 className="mx-auto mt-4 max-w-3xl text-balance text-title font-black text-white">
-                הצטרפו לקהילת משכלנתא והגדילו את כוח קהילת הלקוחות מול הבנקים
+                {text.communityTitle}
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-relaxed text-blue-100 md:text-lg">
-                הכלי הזה הוא חלק קטן מהפלטפורמה. בפלטפורמה המלאה של משכלנתא בונים תמהיל, משווים אישורים עקרוניים
-                מכל הבנקים ומנהלים את המשכנתא עד החתימה, עם שקיפות מלאה ויועץ לצידכם בכל שלב.
+                {text.communityText}
               </p>
               <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
                 <Button
@@ -174,8 +180,8 @@ export function LandingShell({ toolId, children }: { toolId: LandingToolId; chil
                       >
                         <OtherIcon className="h-6 w-6 text-white" aria-hidden />
                       </span>
-                      <span className="text-lg font-black leading-snug text-slate-900">{other.name}</span>
-                      <span className="mt-2 flex-1 text-sm leading-relaxed text-slate-500">{other.headline}</span>
+                      <span className="text-lg font-black leading-snug text-slate-900">{content[other.id].name}</span>
+                      <span className="mt-2 flex-1 text-sm leading-relaxed text-slate-500">{content[other.id].headline}</span>
                       <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-blue-600">
                         לכלי
                         <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" aria-hidden />

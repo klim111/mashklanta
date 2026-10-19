@@ -22,59 +22,22 @@ import { Button } from '@/components/ui/button';
 import { LandingFooter } from './LandingShell';
 import { OfficeLeadForm } from './OfficeLeadForm';
 import { LANDING_TOOLS, LANDING_TOOL_ORDER, platformUrl } from './landingTools';
+import { listItems } from '@/lib/landing-content';
+import type { LandingContent } from '@/lib/landing-content';
 
-const HERO_POINTS = [
-  'יועץ משכנתאות אישי שמלווה אתכם עד החתימה',
-  'הבנקים, עורך הדין והשמאי מנוהלים מאותו מסך',
-  'בלי לרוץ בין סניפים ובלי לאבד מסמכים בדרך',
+
+/** הסמל והצבע של כל כרטיס ב"מה המשרד הדיגיטלי עושה". הטקסטים נערכים מלוח היועץ */
+const FEATURE_STYLES: Array<{ icon: LucideIcon; tone: string }> = [
+  { icon: Landmark, tone: 'from-blue-500 to-cyan-500' },
+  { icon: Scale, tone: 'from-violet-500 to-purple-600' },
+  { icon: Video, tone: 'from-emerald-500 to-teal-600' },
+  { icon: FolderOpen, tone: 'from-amber-500 to-orange-600' },
+  { icon: Layers, tone: 'from-sky-500 to-indigo-600' },
+  { icon: Gavel, tone: 'from-rose-500 to-pink-600' },
 ];
 
-/** מה המשרד הדיגיטלי עושה — כל כרטיס הוא יכולת שקיימת היום בפלטפורמה */
-const OFFICE_FEATURES: Array<{ icon: LucideIcon; title: string; text: string; tone: string }> = [
-  {
-    icon: Landmark,
-    title: 'מול כל הבנקים במקביל',
-    text: 'הבקשות לאישור עקרוני יוצאות לכמה בנקים מהפלטפורמה, וההצעות שחוזרות מושוות זו לצד זו במכרז ריביות.',
-    tone: 'from-blue-500 to-cyan-500',
-  },
-  {
-    icon: Scale,
-    title: 'עורך דין, שמאי ובנקאי באותו מקום',
-    text: 'כל אנשי המקצוע של העסקה מרוכזים באנשי הקשר. המיילים אליהם יוצאים מהפלטפורמה ונשמרים בתיק שלכם.',
-    tone: 'from-violet-500 to-purple-600',
-  },
-  {
-    icon: Video,
-    title: 'יועץ אישי בצ׳אט ובווידאו',
-    text: 'שואלים בצ׳אט ונפגשים עם היועץ בשיחת וידאו מתוך הפלטפורמה, בלי לקבוע פגישה במשרד.',
-    tone: 'from-emerald-500 to-teal-600',
-  },
-  {
-    icon: FolderOpen,
-    title: 'תיק מסמכים דיגיטלי',
-    text: 'תלושים, דפי בנק, אישורים וחוזים בתיקייה אחת מסודרת לפי קטגוריות, מוכנים לשליחה לבנק בלחיצה.',
-    tone: 'from-amber-500 to-orange-600',
-  },
-  {
-    icon: Layers,
-    title: 'תמהיל שקוף, מסלול אחר מסלול',
-    text: 'רואים כל מסלול, כל ריבית וכל תרחיש, ומבינים בדיוק מה ההחזר החודשי ומה העלות הכוללת לאורך השנים.',
-    tone: 'from-sky-500 to-indigo-600',
-  },
-  {
-    icon: Gavel,
-    title: 'משא ומתן בשבילכם',
-    text: 'היועץ מנהל את סבבי המכרז מול הבנקאים, וכל ריבית משופרת שמגיעה נכנסת ישר להשוואה.',
-    tone: 'from-rose-500 to-pink-600',
-  },
-];
+const STEP_NUMBERS = [1, 2, 3, 4];
 
-const STEPS = [
-  { title: 'משאירים פרטים', text: 'בוחרים משכנתא חדשה או מיחזור, ויועץ חוזר אליכם.' },
-  { title: 'בונים את התיק', text: 'פרופיל פיננסי, מסמכים ותמהיל, הכול בפלטפורמה.' },
-  { title: 'יוצאים לבנקים', text: 'הגשה לכמה בנקים ומכרז ריביות שהיועץ מנהל.' },
-  { title: 'חותמים', text: 'עורך הדין, השמאי והבנקאי מתואמים מאותו מקום.' },
-];
 
 /**
  * "משרד משכנתאות דיגיטלי" — דף נחיתה לשירות הייעוץ עצמו, לא לכלי אחד.
@@ -83,7 +46,13 @@ const STEPS = [
  * מהפלטפורמה. בראש הדף טופס פנייה ליועץ (משכנתא חדשה או מיחזור), מתחתיו מה
  * המשרד הדיגיטלי עושה ואיך התהליך נראה, ובסוף הכלים החינמיים והגישה לפלטפורמה.
  */
-export function DigitalOfficeLanding() {
+export function DigitalOfficeLanding({ content }: { content: LandingContent }) {
+  const text = content.office;
+  const features = FEATURE_STYLES.map((style, index) => ({
+    ...style,
+    title: text[`feature${index + 1}Title`],
+    text: text[`feature${index + 1}Text`],
+  }));
   const scrollToForm = () => document.getElementById('lead-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   return (
@@ -130,17 +99,17 @@ export function DigitalOfficeLanding() {
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-sm font-black text-violet-800">
                 <Building2 className="h-4 w-4" aria-hidden />
-                משרד ייעוץ משכנתאות דיגיטלי
+                {text.badge}
               </span>
               <h1 className="mt-4 text-balance text-title font-black text-slate-900">
-                כל תהליך המשכנתא, <span className="text-violet-700">במשרד אחד דיגיטלי</span>
+                {text.title} <span className="text-violet-700">{text.titleAccent}</span>
               </h1>
               <p className="mt-4 max-w-xl text-balance text-base leading-relaxed text-slate-600 md:text-lg">
                 יועץ משכנתאות אישי, ואיתו כל מי שהעסקה צריכה: הבנקים, עורך הדין, השמאי והבנקאי. הכול מתנהל ישירות
                 מהפלטפורמה של משכלנתא, מהבקשה הראשונה ועד החתימה בבנק.
               </p>
               <ul className="mt-6 hidden space-y-2.5 sm:block">
-                {HERO_POINTS.map((point) => (
+                {listItems(text.heroPoints).map((point) => (
                   <li key={point} className="flex items-start gap-2 text-base font-semibold text-slate-800">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
                     {point}
@@ -156,11 +125,15 @@ export function DigitalOfficeLanding() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="scroll-mt-20 rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7"
             >
-              <h2 className="text-subtitle font-black text-slate-900">דברו עם יועץ משכנתאות</h2>
+              <h2 className="text-subtitle font-black text-slate-900">{text.formTitle}</h2>
               <p className="mb-4 mt-1 text-sm leading-relaxed text-slate-500">
-                השאירו פרטים, ויועץ של משכלנתא יחזור אליכם ויפתח איתכם את התיק.
+                {text.formSubtitle}
               </p>
-              <OfficeLeadForm />
+              <OfficeLeadForm
+                newMortgageLabel={text.newMortgageLabel}
+                refinanceLabel={text.refinanceLabel}
+                submitLabel={text.submitLabel}
+              />
             </motion.div>
           </div>
         </section>
@@ -169,13 +142,13 @@ export function DigitalOfficeLanding() {
         <section className="px-4 py-14 md:px-6 md:py-20">
           <div className="mx-auto max-w-6xl">
             <div className="text-center">
-              <h2 className="text-title font-black text-slate-900">משרד משכנתאות שלם, בלי ללכת למשרד</h2>
+              <h2 className="text-title font-black text-slate-900">{text.featuresTitle}</h2>
               <p className="mx-auto mt-3 max-w-2xl text-balance text-base leading-relaxed text-slate-600 md:text-lg">
-                כל מה שמשרד ייעוץ משכנתאות עושה בשבילכם, ועוד שקיפות מלאה: אתם רואים כל צעד, כל מסמך וכל הצעה.
+                {text.featuresSubtitle}
               </p>
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {OFFICE_FEATURES.map((feature, index) => {
+              {features.map((feature, index) => {
                 const Icon = feature.icon;
                 return (
                   <motion.div
@@ -203,15 +176,15 @@ export function DigitalOfficeLanding() {
         {/* איך זה עובד */}
         <section className="bg-slate-50 px-4 py-14 md:px-6 md:py-20">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center text-title font-black text-slate-900">מהפנייה ועד החתימה</h2>
+            <h2 className="text-center text-title font-black text-slate-900">{text.stepsTitle}</h2>
             <ol className="mt-10 grid gap-4 md:grid-cols-4">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className="relative rounded-3xl bg-white p-6 text-center shadow-md">
+              {STEP_NUMBERS.map((n) => (
+                <li key={n} className="relative rounded-3xl bg-white p-6 text-center shadow-md">
                   <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 text-lg font-black text-white shadow-lg">
-                    {index + 1}
+                    {n}
                   </span>
-                  <h3 className="mt-3 text-lg font-black text-slate-900">{step.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{step.text}</p>
+                  <h3 className="mt-3 text-lg font-black text-slate-900">{text[`step${n}Title`]}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{text[`step${n}Text`]}</p>
                 </li>
               ))}
             </ol>
@@ -222,7 +195,7 @@ export function DigitalOfficeLanding() {
                 className="bg-violet-600 px-8 py-4 text-cta font-bold text-white shadow-lg hover:bg-violet-700"
               >
                 <MessagesSquare className="ml-2 h-5 w-5" aria-hidden />
-                מתחילים בשיחה עם יועץ
+                {text.stepsCta}
               </Button>
             </div>
           </div>
@@ -236,9 +209,9 @@ export function DigitalOfficeLanding() {
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 חינם · בלי הרשמה
               </span>
-              <h2 className="mt-3 text-title font-black text-slate-900">רוצים לבדוק לבד קודם?</h2>
+              <h2 className="mt-3 text-title font-black text-slate-900">{text.toolsTitle}</h2>
               <p className="mx-auto mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
-                הכלים החינמיים של משכלנתא עושים את התכנון והבדיקה המקדימה, עוד לפני השיחה עם היועץ.
+                {text.toolsSubtitle}
               </p>
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -256,8 +229,8 @@ export function DigitalOfficeLanding() {
                     >
                       <Icon className="h-6 w-6 text-white" aria-hidden />
                     </span>
-                    <span className="text-lg font-black leading-snug text-slate-900">{tool.name}</span>
-                    <span className="mt-2 flex-1 text-sm leading-relaxed text-slate-500">{tool.headline}</span>
+                    <span className="text-lg font-black leading-snug text-slate-900">{content[id].name}</span>
+                    <span className="mt-2 flex-1 text-sm leading-relaxed text-slate-500">{content[id].headline}</span>
                     <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-blue-600">
                       לכלי
                       <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" aria-hidden />
@@ -279,11 +252,10 @@ export function DigitalOfficeLanding() {
               קהילת משכלנתא
             </span>
             <h2 className="mx-auto mt-4 max-w-3xl text-balance text-title font-black text-white">
-              הצטרפו לקהילת משכלנתא והגדילו את כוח קהילת הלקוחות מול הבנקים
+              {text.communityTitle}
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-relaxed text-blue-100 md:text-lg">
-              בפלטפורמה המלאה מנהלים את כל המשכנתא בעצמכם או עם יועץ: בונים תמהיל, משווים אישורים עקרוניים מכל הבנקים
-              ומגיעים לחתימה עם שקיפות מלאה.
+              {text.communityText}
             </p>
             <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               <Button asChild size="lg" className="bg-white px-8 py-4 text-cta font-bold text-blue-800 shadow-xl hover:bg-blue-50">
@@ -298,7 +270,7 @@ export function DigitalOfficeLanding() {
                 onClick={scrollToForm}
                 className="border-white/40 bg-white/10 px-8 py-4 text-cta font-bold text-white hover:bg-white/20 hover:text-white"
               >
-                ייעוץ משכנתאות
+                {text.formTitle}
               </Button>
             </div>
           </div>

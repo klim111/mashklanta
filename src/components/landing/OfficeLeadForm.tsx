@@ -9,9 +9,9 @@ import { saveConsultPrefill } from '@/lib/consult-reasons';
 import { CONTACTED_ADVISOR_EVENT, CONTACTED_ADVISOR_KEY } from '@/lib/contacted-advisor';
 import { platformUrl } from './landingTools';
 
-const GOALS: Array<{ topic: LeadTopic; label: string; hint: string; icon: LucideIcon }> = [
-  { topic: 'HOME_NEW_MORTGAGE', label: 'לקחת משכנתא חדשה', hint: 'דירה ראשונה, משפרי דיור או השקעה', icon: Home },
-  { topic: 'HOME_REFINANCE', label: 'לחסוך במשכנתא קיימת', hint: 'מיחזור המשכנתא שכבר יש לכם', icon: RefreshCw },
+const GOALS: Array<{ topic: LeadTopic; hint: string; icon: LucideIcon }> = [
+  { topic: 'HOME_NEW_MORTGAGE', hint: 'דירה ראשונה, משפרי דיור או השקעה', icon: Home },
+  { topic: 'HOME_REFINANCE', hint: 'מיחזור המשכנתא שכבר יש לכם', icon: RefreshCw },
 ];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,7 +25,15 @@ const inputClass =
  * הפלטפורמה, עם הנושא של "לקבל ייעוץ והכוונה" בעמוד הבית. לקוח מחובר לא
  * ממלא פרטים — הם נלקחים מהחשבון.
  */
-export function OfficeLeadForm() {
+export function OfficeLeadForm({
+  newMortgageLabel,
+  refinanceLabel,
+  submitLabel,
+}: {
+  newMortgageLabel: string;
+  refinanceLabel: string;
+  submitLabel: string;
+}) {
   const { data: session, status } = useSession();
   const member = status === 'authenticated' && session?.user?.role !== 'ADVISOR' && Boolean(session?.user?.email);
   const [topic, setTopic] = useState<LeadTopic>('HOME_NEW_MORTGAGE');
@@ -132,7 +140,7 @@ export function OfficeLeadForm() {
                   <Icon className="h-5 w-5" aria-hidden />
                 </span>
                 <span className={`text-button font-black leading-tight ${active ? 'text-violet-900' : 'text-slate-800'}`}>
-                  {goal.label}
+                  {goal.topic === 'HOME_REFINANCE' ? refinanceLabel : newMortgageLabel}
                 </span>
                 <span className="hidden text-xs leading-snug text-slate-500 sm:block">{goal.hint}</span>
               </label>
@@ -208,7 +216,7 @@ export function OfficeLeadForm() {
         className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-6 py-3.5 text-cta text-white shadow-lg transition-colors hover:bg-violet-700 disabled:opacity-60"
       >
         {busy ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
-        שלחו ויועץ יחזור אליכם
+        {submitLabel}
       </button>
       <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-slate-500">
         <Lock className="h-3.5 w-3.5" aria-hidden />

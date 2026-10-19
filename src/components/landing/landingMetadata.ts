@@ -1,22 +1,24 @@
 import type { Metadata } from 'next';
-import { LANDING_TOOLS } from './landingTools';
-import type { LandingToolId } from './landingTools';
+import type { LandingPageId } from '@/lib/landing-content';
+import { LANDING_PAGES } from '@/lib/landing-content';
+import { getLandingContent } from '@/lib/landing-content-store';
 
-/** הכותרת, התיאור והתצוגה בשיתוף של דף נחיתה — מאותו מקור כמו הטקסט שבדף */
-export function landingMetadata(id: LandingToolId): Metadata {
-  const tool = LANDING_TOOLS[id];
+/** הכותרת, התיאור והתצוגה בשיתוף של דף נחיתה — מהטקסטים שהיועץ ערך */
+export async function landingMetadata(id: LandingPageId): Promise<Metadata> {
+  const text = (await getLandingContent())[id];
+  const path = LANDING_PAGES.find((page) => page.id === id)!.path;
   return {
     metadataBase: new URL(process.env.NEXT_PUBLIC_PLATFORM_URL || 'https://mashkalanta.com'),
-    title: tool.metaTitle,
-    description: tool.metaDescription,
-    alternates: { canonical: tool.path },
+    title: text.metaTitle,
+    description: text.metaDescription,
+    alternates: { canonical: path },
     openGraph: {
-      title: tool.metaTitle,
-      description: tool.metaDescription,
+      title: text.metaTitle,
+      description: text.metaDescription,
       siteName: 'משכלנתא',
       locale: 'he_IL',
       type: 'website',
-      url: tool.path,
+      url: path,
     },
   };
 }
