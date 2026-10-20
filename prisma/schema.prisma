@@ -1511,6 +1511,24 @@ model LandingContent {
   updatedAt   DateTime @updatedAt
 }
 
+// החלפות הטקסט והבאנרים שהיועץ עורך ב"תוכן האתר" (src/lib/site-content.ts)
+model SiteContent {
+  id          String   @id @default("default")
+  contentJson Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+// תמונות הבאנרים — מוגשות לכל גולש מ-/api/site-images/<id>
+model SiteImage {
+  id          String   @id @default(cuid())
+  contentType String
+  data        Bytes
+  size        Int
+  createdById String?
+  createdAt   DateTime @default(now())
+}
+
 // ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────
 
 enum ClientTaskKind {

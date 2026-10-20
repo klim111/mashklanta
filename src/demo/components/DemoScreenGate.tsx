@@ -10,6 +10,7 @@
 import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { demoStore, useDemoRequest } from '../store';
+import { readEditFlag } from '@/components/site-content/editFlag';
 
 export function DemoScreenGate({ flowId, children }: { flowId: string; children: React.ReactNode }) {
   const request = useDemoRequest();
@@ -21,7 +22,8 @@ export function DemoScreenGate({ flowId, children }: { flowId: string; children:
     autoStart.current = false;
     // בהידרציה request עדיין null (תמונת השרת), ולכן בודקים את הבקשה השמורה בדפדפן —
     // אחרת הדגמה שכבר רצה (למשל במת ההקלטה) מוחלפת בהדגמה של המסך
-    if (!demoStore.getSnapshot()) demoStore.start(flowId, { returnTo: '/' });
+    // יועץ שעורך את תוכן המסך (src/components/site-content) — ההדגמה לא מתחילה לרוץ מעצמה
+    if (!demoStore.getSnapshot()) demoStore.start(flowId, { returnTo: '/', autoplay: !readEditFlag() });
   }, [flowId]);
 
   if (!request) {
