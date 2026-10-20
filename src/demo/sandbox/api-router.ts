@@ -46,7 +46,11 @@ import {
 /** נתיבי API ציבוריים של נתוני שוק — קריאה בלבד, מועברים לשרת כרגיל */
 export const PASSTHROUGH_PREFIXES = ['/api/boi', '/api/market', '/api/currency', '/api/addresses', '/api/banks', '/api/health'];
 
+/** עריכת תוכן האתר ישירות על מסכי ההדגמה נשמרת באתר האמיתי (src/lib/site-content.ts) */
+const SITE_CONTENT_PREFIX = '/api/advisor/site-content';
+
 export function isPassthrough(pathname: string, method: string): boolean {
+  if (pathname === SITE_CONTENT_PREFIX || pathname.startsWith(`${SITE_CONTENT_PREFIX}/`)) return true;
   if (method !== 'GET') return false;
   return PASSTHROUGH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }

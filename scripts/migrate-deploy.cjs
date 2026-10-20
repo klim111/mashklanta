@@ -27,6 +27,7 @@ const RETRYABLE_MIGRATIONS = new Set([
   '20261008170000_pricing_settings_and_payment_links',
   '20261009060000_plan_advisory_ended',
   '20261019150000_landing_content',
+  '20261020160000_site_content',
 ]);
 
 const databaseUrl = process.env.DATABASE_URL;

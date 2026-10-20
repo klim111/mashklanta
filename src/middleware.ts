@@ -31,6 +31,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/billing/renew',
   // תשלום בקישור תשלום שהיועץ שלח — הקישור עצמו מזהה על מה משלמים
   '/api/pay',
+  // תמונות הבאנרים שהיועץ העלה ("תוכן האתר") — מוצגות לכל גולש
+  '/api/site-images',
   // משימות מתוזמנות של Vercel — הנתיב עצמו בודק את CRON_SECRET
   '/api/cron',
 ];

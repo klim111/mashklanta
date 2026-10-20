@@ -27,6 +27,7 @@ import {
   CreditCard,
   Tag,
   LayoutTemplate,
+  PenLine,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
@@ -46,6 +47,7 @@ import type { AdvisorClient } from './useAdvisorClients';
 import { SiteAnalyticsPanel } from './SiteAnalyticsPanel';
 import { PricingEditorPanel } from './PricingEditorPanel';
 import { LandingContentEditorPanel } from './LandingContentEditorPanel';
+import { SiteContentEditorPanel } from './SiteContentEditorPanel';
 import { PaymentLinksPanel } from './PaymentLinksPanel';
 import { setAdvisoryEnded } from './advisory-end';
 import { usePricing } from '@/components/pricing/PricingProvider';
@@ -63,6 +65,7 @@ type TabId =
   | 'site-visits'
   | 'unfinished-signups'
   | 'pricing'
+  | 'site-content'
   | 'landing-pages'
   | 'payment-links'
   | 'settings';
@@ -77,6 +80,7 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
   { id: 'site-visits', label: 'ביקורים באתר', icon: Activity },
   { id: 'unfinished-signups', label: 'הרשמות שלא הושלמו', icon: UserX },
   { id: 'pricing', label: 'תמחור ומסלולים', icon: Tag },
+  { id: 'site-content', label: 'תוכן האתר', icon: PenLine },
   { id: 'landing-pages', label: 'דפי נחיתה', icon: LayoutTemplate },
   { id: 'payment-links', label: 'קישורי תשלום', icon: CreditCard },
   { id: 'settings', label: 'הגדרות', icon: Settings },
@@ -469,6 +473,8 @@ export function AdvisorConsole() {
           {tab === 'unfinished-signups' && <UnfinishedSignupsPanel />}
 
           {tab === 'pricing' && <PricingEditorPanel />}
+
+          {tab === 'site-content' && <SiteContentEditorPanel />}
 
           {tab === 'landing-pages' && <LandingContentEditorPanel />}
 
