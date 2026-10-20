@@ -55,6 +55,31 @@ interface CaseContextValue {
   lastSavedAt: Date | null;
   actionError: string | null;
   dismissActionError: () => void;
+  /**
+   * אצל היועץ, בתוך שלב של לקוח: מה שהוא ממלא נשמר כטיוטה שלו ועובר ללקוח רק
+   * ב"שדר". null כשהתיק עובד בשמירה רגילה תוך כדי הקלדה.
+   */
+  held: HeldState | null;
+}
+
+/** שדה שהיועץ מילא ועוד לא שידר */
+export interface HeldField {
+  entityType: EntityType;
+  entityId: string;
+  fieldKey: string;
+  value: unknown;
+  /** מה היה בתיק כשהיועץ התחיל לערוך את השדה */
+  base: unknown;
+}
+
+export interface HeldState {
+  fields: HeldField[];
+  /** שדות שהלקוח שינה אחרי שהיועץ התחיל לערוך אותם */
+  clientChanged: HeldField[];
+  busy: boolean;
+  error: string | null;
+  broadcast: () => Promise<void>;
+  discard: () => Promise<void>;
 }
 
 const CaseContext = createContext<CaseContextValue | null>(null);
@@ -68,10 +93,13 @@ export function useCase(): CaseContextValue {
 export function CaseProvider({
   children,
   clientRecordId,
+  holdForBroadcast = false,
 }: {
   children: React.ReactNode;
   /** `Client.id` — set on the advisor side to open that client's file. */
   clientRecordId?: string;
+  /** היועץ בתוך שלב של לקוח: מה שממולא מחכה ל"שדר" (ראו `held`) */
+  holdForBroadcast?: boolean;
 }) {
   const [data, setData] = useState<CaseDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,6 +112,13 @@ export function CaseProvider({
 
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const latestValue = useRef<Record<string, unknown>>({});
+  const held = useRef<Record<string, HeldField>>({});
+  const [heldVersion, setHeldVersion] = useState(0);
+  const [heldBusy, setHeldBusy] = useState(false);
+  const [heldError, setHeldError] = useState<string | null>(null);
+  const heldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heldValues = () =>
+    Object.fromEntries(Object.entries(held.current).map(([path, field]) => [path, field.value]));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,17 +131,53 @@ export function CaseProvider({
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? 'טעינת התיק נכשלה');
       setData(json as CaseDTO);
-      setLocalValues({});
+      // הטיוטה של היועץ נשארת מוצגת גם אחרי טעינה מחדש
+      setLocalValues(holdForBroadcast ? heldValues() : {});
     } catch (err: any) {
       setLoadError(err?.message ?? 'טעינת התיק נכשלה');
     } finally {
       setLoading(false);
     }
-  }, [clientRecordId]);
+  }, [clientRecordId, holdForBroadcast]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // הטיוטה ששמורה בשרת נטענת פעם אחת, כשהתיק נפתח
+  const caseId = data?.id ?? null;
+  useEffect(() => {
+    if (!holdForBroadcast || !caseId) return;
+    let cancelled = false;
+    void fetch(`/api/principal-approval/case/${caseId}/advisor-draft`, { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (cancelled || !body?.values) return;
+        held.current = body.values as Record<string, HeldField>;
+        Object.entries(held.current).forEach(([path, field]) => {
+          latestValue.current[path] = field.value;
+        });
+        setLocalValues((prev) => ({ ...heldValues(), ...prev }));
+        setHeldVersion((version) => version + 1);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [holdForBroadcast, caseId]);
+
+  const persistHeld = useCallback(async () => {
+    if (heldTimer.current) {
+      clearTimeout(heldTimer.current);
+      heldTimer.current = null;
+    }
+    if (!caseId) return;
+    await fetch(`/api/principal-approval/case/${caseId}/advisor-draft`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: held.current }),
+    }).catch(() => undefined);
+  }, [caseId]);
 
   /**
    * מה שהצד השני מילא בתיק מופיע בלי לרענן את העמוד. כל עוד יש כאן שדה
@@ -115,8 +186,10 @@ export function CaseProvider({
   const localValuesRef = useRef(localValues);
   localValuesRef.current = localValues;
   const reload = useCallback(async () => {
+    // בטיוטה של היועץ הערכים המקומיים הם הטיוטה עצמה, והם נשארים מעל מה שנטען
     const editing = () =>
-      Object.keys(timers.current).length > 0 || Object.keys(localValuesRef.current).length > 0;
+      Object.keys(timers.current).length > 0 ||
+      (!holdForBroadcast && Object.keys(localValuesRef.current).length > 0);
     if (editing()) return;
     try {
       const url = clientRecordId
@@ -130,7 +203,7 @@ export function CaseProvider({
     } catch {
       // הבדיקה הבאה תשלים
     }
-  }, [clientRecordId]);
+  }, [clientRecordId, holdForBroadcast]);
   useLiveRefresh(() => void reload());
 
   // Flush anything still queued when the tab is closed or hidden.
@@ -189,8 +262,8 @@ export function CaseProvider({
   );
 
   const commit = useCallback(
-    async (entityType: EntityType, entityId: string, fieldKey: string) => {
-      if (!data) return;
+    async (entityType: EntityType, entityId: string, fieldKey: string): Promise<boolean> => {
+      if (!data) return false;
       const path = fieldPath(entityType, entityId, fieldKey);
       const value = latestValue.current[path];
       setSaveStates((s) => ({ ...s, [path]: 'saving' }));
@@ -240,9 +313,11 @@ export function CaseProvider({
           delete next[path];
           return next;
         });
+        return true;
       } catch (err: any) {
         setSaveStates((s) => ({ ...s, [path]: 'error' }));
         setErrors((e) => ({ ...e, [path]: err?.message ?? 'השמירה נכשלה' }));
+        return false;
       }
     },
     [data],
@@ -268,13 +343,30 @@ export function CaseProvider({
         return;
       }
 
+      if (holdForBroadcast) {
+        // הטיוטה של היועץ: נשמרת אצלו, ועוברת ללקוח רק ב"שדר"
+        const server = serverValues(entityType, entityId)[fieldKey];
+        const same = JSON.stringify(server ?? null) === JSON.stringify(value ?? null);
+        if (same) {
+          delete held.current[path];
+        } else {
+          const base = held.current[path] ? held.current[path].base : (server ?? null);
+          held.current[path] = { entityType, entityId, fieldKey, value, base };
+        }
+        setSaveStates((s) => ({ ...s, [path]: 'idle' }));
+        setHeldVersion((version) => version + 1);
+        if (heldTimer.current) clearTimeout(heldTimer.current);
+        heldTimer.current = setTimeout(() => void persistHeld(), AUTOSAVE_DEBOUNCE_MS);
+        return;
+      }
+
       setSaveStates((s) => ({ ...s, [path]: 'pending' }));
       timers.current[path] = setTimeout(() => {
         delete timers.current[path];
         void commit(entityType, entityId, fieldKey);
       }, AUTOSAVE_DEBOUNCE_MS);
     },
-    [commit, valuesOf],
+    [commit, valuesOf, holdForBroadcast, serverValues, persistHeld],
   );
 
   const entities = useCallback(
@@ -375,6 +467,53 @@ export function CaseProvider({
     [saveStates],
   );
 
+  /** "שדר": כל שדה בטיוטה נשמר בתיק בשמירה הרגילה, עם הבדיקות שלה */
+  const broadcastHeld = useCallback(async () => {
+    setHeldBusy(true);
+    setHeldError(null);
+    if (heldTimer.current) clearTimeout(heldTimer.current);
+    const fields = Object.entries(held.current);
+    for (const [path, field] of fields) {
+      latestValue.current[path] = field.value;
+      const ok = await commit(field.entityType, field.entityId, field.fieldKey);
+      if (ok) delete held.current[path];
+    }
+    await persistHeld();
+    setHeldVersion((version) => version + 1);
+    if (Object.keys(held.current).length > 0) setHeldError('חלק מהשדות לא שודרו. הם נשארו אצלכם — בדקו אותם ונסו שוב.');
+    setHeldBusy(false);
+  }, [commit, persistHeld]);
+
+  const discardHeld = useCallback(async () => {
+    const paths = Object.keys(held.current);
+    held.current = {};
+    setLocalValues((prev) => {
+      const next = { ...prev };
+      paths.forEach((path) => delete next[path]);
+      return next;
+    });
+    setHeldVersion((version) => version + 1);
+    await persistHeld();
+  }, [persistHeld]);
+
+  const heldState = useMemo<HeldState | null>(() => {
+    if (!holdForBroadcast) return null;
+    const fields = Object.values(held.current);
+    return {
+      fields,
+      clientChanged: fields.filter(
+        (field) =>
+          JSON.stringify(serverValues(field.entityType, field.entityId)[field.fieldKey] ?? null) !==
+          JSON.stringify(field.base ?? null)
+      ),
+      busy: heldBusy,
+      error: heldError,
+      broadcast: broadcastHeld,
+      discard: discardHeld,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdForBroadcast, heldVersion, heldBusy, heldError, serverValues, broadcastHeld, discardHeld]);
+
   const value: CaseContextValue = {
     data,
     loading,
@@ -397,6 +536,7 @@ export function CaseProvider({
     lastSavedAt,
     actionError,
     dismissActionError: () => setActionError(null),
+    held: heldState,
   };
 
   return <CaseContext.Provider value={value}>{children}</CaseContext.Provider>;

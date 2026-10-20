@@ -142,9 +142,15 @@ export function AnalysisStage({
   onChangeSigning,
   refinance = false,
   flow = NEW_PLAN_FLOW,
+  syncProfile = true,
 }: {
   data: PlanData;
   onChange: (next: AnalysisData) => void;
+  /**
+   * לשמור כל הזנה גם בפרופיל של המשתמש המחובר. אצל היועץ זה כבוי: הפרופיל
+   * של הלקוח מתעדכן כשהיועץ משדר את השינויים.
+   */
+  syncProfile?: boolean;
   planId: string;
   /**
    * תהליך מיחזור. הנכס כבר בבעלות הלקוח והמשכנתא כבר קיימת, ולכן אין שאלה על
@@ -171,6 +177,7 @@ export function AnalysisStage({
   const patch = (next: Partial<AnalysisData>) => {
     const merged = { ...profile, ...next };
     onChange(merged);
+    if (!syncProfile) return;
 
     if (profileSaveTimer.current) clearTimeout(profileSaveTimer.current);
     profileSaveTimer.current = setTimeout(() => {

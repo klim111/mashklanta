@@ -8,6 +8,7 @@ import {
   CalendarPlus,
   Check,
   Home as HomeIcon,
+  Loader2,
   TrendingUp,
   UserRound,
   Users,
@@ -19,7 +20,7 @@ import { DEAL_TYPES } from '@/components/mortgage-advisor/types';
 import { formatShekel } from '@/components/mortgage-advisor/workspace/primitives';
 import { journeyStageFor, planStageMeta } from '@/data/platform/planStages';
 import { NEW_PLAN_FLOW, flowStages, planStageNumber } from '@/lib/mortgage-plan';
-import type { PlanFlow } from '@/lib/mortgage-plan';
+import type { AnalysisData, PlanFlow, SigningData } from '@/lib/mortgage-plan';
 import { formatDate } from '@/lib/advisor-crm';
 import type {
   AdvisorMeetingView,
@@ -36,6 +37,11 @@ import type { ClientDetailsValues } from './ClientDetailsForm';
 import { AdvisorAuctionPanel } from './AdvisorAuctionPanel';
 import { AdvisorBankHandoffs } from './AdvisorBankHandoffs';
 import { AdvisorMixPanel } from './AdvisorMixPanel';
+import { AdvisorBroadcastBar } from './AdvisorBroadcastBar';
+import { useAdvisorPlanDraft } from './useAdvisorPlanDraft';
+import type { AdvisorPlanDraft } from './useAdvisorPlanDraft';
+import { AnalysisStage } from '@/components/plan/stages/AnalysisStage';
+import { SigningStage } from '@/components/plan/stages/SigningStage';
 import { ClientDocumentsPanel } from './ClientDocumentsPanel';
 import { MeetingRow } from './MeetingRow';
 import { StageNotes } from './StageNotes';
@@ -215,6 +221,13 @@ function StageTools({
   onDocumentStatus,
   onClientStage,
 }: ClientStageWorkspaceProps) {
+  /*
+    כל עמוד של שלב אצל היועץ הוא העמוד שהלקוח רואה, על הנתונים העדכניים שלו.
+    מה שהיועץ משנה נשמר כטיוטה שלו ועובר ללקוח רק בלחיצה על "שדר" בפס שבראש
+    העמוד — במשכנתא חדשה ובמיחזור כאחד.
+  */
+  const draft = useAdvisorPlanDraft(planId);
+  const bar = planId ? <AdvisorBroadcastBar draft={draft} stage={stage} clientName={client.name} /> : null;
   const detailValues: ClientDetailsValues = {
     phone: client.phone,
     household: client.household,
@@ -256,6 +269,31 @@ function StageTools({
     />
   );
 
+  if (stage === 'ANALYSIS' && planId) {
+    return (
+      <div className="space-y-4">
+        <ClientSummary client={client} />
+        {bar}
+        <ClientStagePage draft={draft}>
+          {(plan) => (
+            <AnalysisStage
+              data={plan.data}
+              planId={plan.id}
+              planName={plan.propertyAddress || plan.name}
+              onChange={(next: AnalysisData) => draft.updateStage('ANALYSIS', next)}
+              onChangeSigning={(next: SigningData) => draft.updateStage('SIGNING', next)}
+              refinance={flow.kind === 'REFINANCE'}
+              flow={flow}
+              syncProfile={false}
+            />
+          )}
+        </ClientStagePage>
+        {documents}
+      </div>
+    );
+  }
+
+  // לקוח שעוד לא פתח תהליך: פרטי הכרטיס אצל היועץ
   if (stage === 'ANALYSIS') {
     return (
       <div className="space-y-4">
@@ -291,7 +329,7 @@ function StageTools({
             <p className="text-[11px] text-slate-500">
               תיק האישור העקרוני של {client.name} נפתח כאן, בתוך השלב עצמו: הלווים וההכנסות,
               החשבונות, ההלוואה והנכס, מקורות המימון, המסמכים והאישורים שהתקבלו מכל בנק. מה
-              שתמלאו נשמר תוך כדי הקלדה ומשותף עם הלקוח.
+              שתמלאו נשמר אצלכם, ועובר ללקוח כשתלחצו "שדר".
             </p>
           </CardContent>
         </Card>
@@ -300,7 +338,7 @@ function StageTools({
         <AdvisorBankHandoffs planId={planId} />
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <PrincipalApproval clientRecordId={client.id} embedded />
+          <PrincipalApproval clientRecordId={client.id} embedded broadcastTo={client.name} />
         </div>
 
         {documents}
@@ -315,7 +353,8 @@ function StageTools({
           שלב בניית התמהיל אצל היועץ הוא אותו מסך בדיוק שהלקוח רואה, בתוספת
           אזור השידור: מה שנשמר כאן נשאר אצל היועץ עד שישדר אותו.
         */}
-        <AdvisorMixPanel clientId={client.id} clientName={client.name} planId={planId} />
+        {bar}
+        <AdvisorMixPanel clientId={client.id} clientName={client.name} planId={planId} draft={draft} />
       </div>
     );
   }
@@ -327,13 +366,51 @@ function StageTools({
           שלב התמחור אצל היועץ הוא אותו מסך בדיוק שהלקוח רואה — אותם אזורים,
           אותה תצוגה ואותה התנהגות — בתוספת שידור ההצעה אליו.
         */}
-        <AdvisorAuctionPanel clientId={client.id} clientName={client.name} planId={planId} />
+        {bar}
+        <AdvisorAuctionPanel clientId={client.id} clientName={client.name} planId={planId} draft={draft} />
+        {documents}
+      </div>
+    );
+  }
+
+  if (stage === 'SIGNING' && planId) {
+    return (
+      <div className="space-y-4">
+        {bar}
+        <ClientStagePage draft={draft}>
+          {(plan) => (
+            <SigningStage
+              data={plan.data}
+              planId={plan.id}
+              onChange={(next: SigningData) => draft.updateStage('SIGNING', next)}
+              flow={flow}
+            />
+          )}
+        </ClientStagePage>
         {documents}
       </div>
     );
   }
 
   return <div className="space-y-4">{documents}</div>;
+}
+
+/** העמוד של הלקוח, אחרי שהתהליך שלו והטיוטה של היועץ נטענו */
+function ClientStagePage({
+  draft,
+  children,
+}: {
+  draft: AdvisorPlanDraft;
+  children: (plan: NonNullable<AdvisorPlanDraft['plan']>) => React.ReactNode;
+}) {
+  if (!draft.ready || !draft.plan) {
+    return (
+      <div className="flex min-h-[20vh] items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+  return <div className="rounded-3xl border border-slate-200 bg-white p-4 md:p-6">{children(draft.plan)}</div>;
 }
 
 /** תמונת המצב של הלקוח — הנכס, משק הבית, גובה המשכנתא והתזרים */

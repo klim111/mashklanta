@@ -655,6 +655,10 @@ model MortgagePlanStage {
   stage       PlanStage
   status      PlanStageStatus @default(PENDING)
   dataJson    Json?
+  /**
+   * טיוטת היועץ בשלב — מה ששינה ועוד לא שידר ללקוח (src/lib/advisor-draft.ts)
+   */
+  advisorDraftJson Json?
   completedAt DateTime?
 
   createdAt DateTime @default(now())
@@ -1214,6 +1218,10 @@ model MortgageCase {
   advisor   User?    @relation("ApprovalCaseAdvisor", fields: [advisorId], references: [id])
   title     String   @default("אישור עקרוני")
   status    String   @default("draft") // draft | submitted | approved | archived
+  /**
+   * שדות שהיועץ מילא ועוד לא שידר ללקוח: נתיב השדה → { entityType, entityId, fieldKey, value }
+   */
+  advisorDraftJson Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
