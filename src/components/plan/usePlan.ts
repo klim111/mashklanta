@@ -510,6 +510,8 @@ export function usePlan(planId: string) {
     markSigned,
     goToStage,
     rename,
+    /** טעינה מחדש מהשרת — מחכה כשיש עריכה שעוד לא נשמרה */
+    reload,
     flush,
   };
 }

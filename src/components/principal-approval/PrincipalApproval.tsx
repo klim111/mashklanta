@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { completeness, type EntityType } from '@/lib/principal-approval/schema';
+import { CaseBroadcastBar } from './CaseBroadcastBar';
 import { CaseProvider, useCase, CASE_ENTITY_ID } from './CaseContext';
 import { toApprovalSummary, type ApprovalSummary } from '@/lib/principal-approval/plan-bridge';
 import { ConflictResolver } from './ConflictResolver';
@@ -333,8 +334,14 @@ export function PrincipalApproval({
   clientRecordId,
   embedded = false,
   onApprovals,
+  broadcastTo,
 }: {
   clientRecordId?: string;
+  /**
+   * אצל היועץ בתוך שלב של לקוח: שם הלקוח. מה שהיועץ ממלא נשאר אצלו עד שהוא
+   * לוחץ "שדר" בפס שבראש התיק.
+   */
+  broadcastTo?: string;
   /** Rendered inside another screen (the plan flow), so it drops the page chrome. */
   embedded?: boolean;
   /** Called with the per-bank approvals whenever they change. */
@@ -342,7 +349,8 @@ export function PrincipalApproval({
 }) {
   if (embedded) {
     return (
-      <CaseProvider clientRecordId={clientRecordId}>
+      <CaseProvider clientRecordId={clientRecordId} holdForBroadcast={Boolean(broadcastTo)}>
+        {broadcastTo && <CaseBroadcastBar clientName={broadcastTo} />}
         {onApprovals && <ApprovalsReporter onApprovals={onApprovals} />}
         <ApprovalShell embedded />
       </CaseProvider>

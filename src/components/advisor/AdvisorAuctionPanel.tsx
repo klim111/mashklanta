@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { banksWithPreApproval } from '@/lib/mortgage-plan';
 import type { AuctionData, SignedMixChoice } from '@/lib/mortgage-plan';
-import { usePlan } from '@/components/plan/usePlan';
+import type { AdvisorPlanDraft } from './useAdvisorPlanDraft';
 import { useSavedMixes } from '@/components/mortgage-advisor/savedMixes';
 import type { SavedMix } from '@/components/mortgage-advisor/savedMixes';
 import type { WorkspaceMix } from '@/components/mortgage-advisor/engine';
@@ -25,12 +25,15 @@ export function AdvisorAuctionPanel({
   clientId,
   clientName,
   planId,
+  draft,
 }: {
   clientId: string;
   clientName: string;
   planId: string | null;
+  /** התהליך של הלקוח עם הטיוטה של היועץ — מה שמשתנה כאן מחכה ל"שדר" */
+  draft: AdvisorPlanDraft;
 }) {
-  const { plan, ready: planReady, updateStage } = usePlan(planId ?? '');
+  const { plan, ready: planReady, updateStage } = draft;
   const { saved, ready: mixesReady, save, remove, share } = useSavedMixes({
     clientId,
     planId: planId ?? undefined,

@@ -7,7 +7,7 @@ import type { MixData } from '@/lib/mortgage-plan';
 import { useMarketRates } from '@/hooks/useMarketRates';
 import { RefinanceMixStage } from '@/components/plan/stages/refinance/RefinanceMixStage';
 import { AdvisorRefinanceBroadcast } from './AdvisorRefinanceBroadcast';
-import { usePlan } from '@/components/plan/usePlan';
+import type { AdvisorPlanDraft } from './useAdvisorPlanDraft';
 import { MixStage } from '@/components/plan/stages/MixStage';
 import { StagePanel } from '@/components/plan/stages/auction/ui';
 import { AdvisorMixBroadcast } from './AdvisorMixBroadcast';
@@ -23,12 +23,15 @@ export function AdvisorMixPanel({
   clientId,
   clientName,
   planId,
+  draft,
 }: {
   clientId: string;
   clientName: string;
   planId: string | null;
+  /** התהליך של הלקוח עם הטיוטה של היועץ — מה שמשתנה כאן מחכה ל"שדר" */
+  draft: AdvisorPlanDraft;
 }) {
-  const { plan, ready, updateStage } = usePlan(planId ?? '');
+  const { plan, ready, updateStage } = draft;
   const { market } = useMarketRates();
 
   if (!planId) {
@@ -62,7 +65,11 @@ export function AdvisorMixPanel({
           clientName={clientName}
           planId={plan.id}
           mix={plan.data.MIX}
-          onChange={(next: MixData) => updateStage('MIX', next)}
+          onChange={(next: MixData) => {
+            // שידור התמהיל למיחזור הוא גם שידור של השלב
+            updateStage('MIX', next);
+            void draft.broadcast('MIX');
+          }}
         />
         <RefinanceMixStage
           data={plan.data}
