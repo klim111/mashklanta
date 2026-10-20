@@ -1503,6 +1503,14 @@ model PricingSettings {
   updatedAt   DateTime @updatedAt
 }
 
+// הטקסטים של דפי הנחיתה שהיועץ עורך (src/lib/landing-content.ts)
+model LandingContent {
+  id          String   @id @default("default")
+  contentJson Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
 // ─────────────────────── המשימות המתוכננות של הלקוח ───────────────────────
 
 enum ClientTaskKind {

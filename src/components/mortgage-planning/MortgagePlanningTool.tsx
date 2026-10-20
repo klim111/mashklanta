@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { formatMoneyFields, parseFormattedNumberInput } from '@/lib/currency';
 import NavBar from '@/components/ui/navbar';
+import { useLandingMode } from '@/components/landing/LandingMode';
 import EquityCalculator from '@/components/ui/equitycalc';
 import MortgageTermsTable from '@/components/mortgage-application/MortgageTermsTable';
 import { BorrowerTypeSelection } from '@/components/mortgage-planning/BorrowerTypeSelection';
@@ -93,6 +94,8 @@ export type MortgagePlanningEmbed = {
   onPersist?: (payload: MortgagePlanningPayload) => void;
   /** אחרי שמירת הפרופיל בתהליך — מעבר לשלב בניית התמהיל */
   onProfileReady?: () => void;
+  /** המסלול שהכלי נפתח בו, כשאין ?flow בכתובת — למשל בדף נחיתה של כלי אחד */
+  entryFlow?: EntryFlow;
 };
 
 type PlanningStep =
@@ -146,6 +149,7 @@ export function MortgagePlanningContent({
   initialPayload = null,
   onPersist,
   onProfileReady,
+  entryFlow: defaultEntryFlow,
 }: MortgagePlanningEmbed = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -156,6 +160,7 @@ export function MortgagePlanningContent({
    */
   useMarketRates();
   /** הגעה מתוך תהליך תכנון — מציגים דרך חזרה אליו במקום להשאיר את הלקוח תלוי באוויר */
+  const landing = useLandingMode();
   const returnPlanId = embedded ? null : searchParams.get('fromPlan');
   const returnStage = embedded ? null : searchParams.get('fromStage');
   /** כתובת התהליך שממנו הגיע הלקוח (כולל השלב), או null כשלא הגיע מתהליך */
@@ -284,12 +289,12 @@ export function MortgagePlanningContent({
 
   // Entry flow from home page (?flow=affordability|existing|refinance)
   useEffect(() => {
-    setEntryFlow(parseEntryFlow(searchParams.get('flow')));
-  }, [searchParams]);
+    setEntryFlow(parseEntryFlow(searchParams.get('flow')) ?? defaultEntryFlow ?? null);
+  }, [searchParams, defaultEntryFlow]);
 
   // Load data from localStorage on component mount — or from the תהליך, כשמוטמע
   useEffect(() => {
-    const flowFromUrl = parseEntryFlow(searchParams.get('flow'));
+    const flowFromUrl = parseEntryFlow(searchParams.get('flow')) ?? defaultEntryFlow ?? null;
     const payload = initialRef.current;
 
     if (payload?.userData) {
@@ -537,15 +542,22 @@ export function MortgagePlanningContent({
             </Button>
           )}
         </div>
-        <h1 className="text-title font-bold text-slate-900 mb-6">
-          כלי תכנון המשכנתא
-        </h1>
-        <p className="text-xl text-slate-600 mb-4">
-          שילווה אותכם צעד אחר צעד למשכנתא הטובה ביותר בעבורך
-        </p>
-        <p className="text-lg text-slate-500">
-          כן כן ממש כמו יועץ משכנתא אישי מבוסס בינה מלאכותית ואלגוריתמים כלכליים מתקדמים
-        </p>
+        {/* בדף נחיתה הכותרת הראשית כבר בראש הדף — כאן רק השאלה של הצעד */}
+        {landing ? (
+          <h2 className="text-subtitle font-black text-slate-900">באיזה נכס מדובר?</h2>
+        ) : (
+          <>
+            <h1 className="text-title font-bold text-slate-900 mb-6">
+              כלי תכנון המשכנתא
+            </h1>
+            <p className="text-xl text-slate-600 mb-4">
+              שילווה אותכם צעד אחר צעד למשכנתא הטובה ביותר בעבורך
+            </p>
+            <p className="text-lg text-slate-500">
+              כן כן ממש כמו יועץ משכנתא אישי מבוסס בינה מלאכותית ואלגוריתמים כלכליים מתקדמים
+            </p>
+          </>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -2819,7 +2831,7 @@ export function MortgagePlanningContent({
   // overflow-x-clip: שום רכיב (כמו בועת הסבר) לא ירחיב את העמוד הצידה בטלפון
   return (
     <div className={embedded ? '' : 'min-h-screen overflow-x-clip bg-slate-50'}>
-      {!embedded && (
+      {!embedded && !landing && (
       <div className="relative z-50 bg-white/98 backdrop-blur-sm shadow-sm border-b border-slate-100">
         <NavBar />
       </div>
@@ -2831,7 +2843,7 @@ export function MortgagePlanningContent({
         }`}
       >
         {/* קישור החזרה האחיד של הכלים: לתהליך, לאזור האישי או לדף הבית */}
-        {!embedded && (
+        {!embedded && !landing && (
           <div className="mx-auto mb-4 max-w-4xl">
             <ReturnLink />
           </div>
