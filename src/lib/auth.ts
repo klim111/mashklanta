@@ -1,44 +1,373 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
+import { findUserByLogin } from "@/lib/find-user-by-login";
+import { applyNormalizedAuthUrl } from "@/lib/auth-url";
+import { googleClientId, googleClientSecret, googleConfigured } from "@/lib/google-oauth";
+import {
+  REGISTRATION_DEVICE_COOKIE,
+  confirmRegistration,
+  generateToken,
+  pendingMatchesLogin,
+  safeCallbackUrl,
+  startRegistration,
+} from "@/lib/registration";
+import { canonicalSiteOrigin } from "@/lib/auth-url";
+import { cookies } from "next/headers";
+import { sendWelcomeEmail } from "@/lib/client-emails";
+import { carryIntoAccount, takeGuestCarry } from "@/lib/guest-carry";
+import { ensureClientLinkSafely } from "@/lib/advisor-link";
+import { emailAdvisorAboutSignup } from "@/lib/advisor-notify";
+import {
+  ADVISOR_DEVICE_COOKIE,
+  AdvisorLinkError,
+  confirmAdvisorLink,
+  notifyAdvisorLogin,
+} from "@/lib/advisor-access";
+import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from "@/lib/advisor-session";
+import { consumeAppHandoff } from "@/lib/app-handoff";
+
+/** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
+export const LoginError = {
+  EmailNotVerified: "EmailNotVerified",
+  GoogleEmailUnverified: "GoogleEmailUnverified",
+  GoogleNotAllowed: "GoogleNotAllowed",
+} as const;
+
+function readCookie(header: string | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(rest.join("="));
+  }
+  return null;
+}
+
+/** עוגיית ה-session של כניסת היועץ, או null כשאין (או מחוץ לבקשה) */
+async function advisorSessionCookie(): Promise<string | null> {
+  try {
+    return (await cookies()).get(ADVISOR_SESSION_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * היעד שהגולש ביקש לפני שיצא להתחבר עם גוגל (למשל המסלול שבחר בעמוד הבית),
+ * מתוך עוגיית ה-callback של NextAuth — כדי שיחכה לו גם אחרי אישור המייל.
+ */
+async function pendingGoogleCallbackUrl(): Promise<string | null> {
+  try {
+    const jar = await cookies();
+    const raw =
+      jar.get("__Secure-next-auth.callback-url")?.value ?? jar.get("next-auth.callback-url")?.value;
+    if (!raw) return null;
+    const url = new URL(raw, "http://local");
+    return safeCallbackUrl(`${url.pathname}${url.search}${url.hash}`);
+  } catch {
+    return null;
+  }
+}
+
+/** מה שהאורח הזין בכלים בדרך לגוגל עובר לחשבון שאליו נכנס (src/lib/guest-carry.ts) */
+async function carryGuestData(userId: string): Promise<void> {
+  const carried = await takeGuestCarry();
+  if (carried) await carryIntoAccount(userId, carried);
+}
+
+/**
+ * NEXTAUTH_URL מנורמל פעם אחת, בטעינת המודול: מרכאות עוטפות, רווח או סלאש
+ * בסוף משנים את כתובת הבסיס — ואיתה את ה-Redirect URI שנשלח לגוגל, שאז אינו
+ * זהה לזה שרשום ב-Google Cloud Console וגוגל עונה `redirect_uri_mismatch`.
+ */
+applyNormalizedAuthUrl();
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/auth/login",
+    error: "/auth/login",
+  },
   providers: [
+    ...(googleConfigured
+      ? [
+          Google({
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+            /**
+             * קישור לפי מייל בטוח כאן: משתמש נוצר רק אחרי שהמייל שלו אומת
+             * בקישור, וה-signIn שלמטה מקבל מגוגל רק מייל שגוגל אימתה.
+             */
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email as string | undefined;
+        const identifier = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
-        if (!email || !password) return null;
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.hashedPassword) return null;
-        const isValid = await bcrypt.compare(password, user.hashedPassword);
-        if (!isValid) return null;
-        return { 
-          id: user.id, 
-          email: user.email ?? undefined, 
-          name: user.name ?? undefined, 
+        if (!identifier || !password) return null;
+        const user = await findUserByLogin(identifier);
+        const isValid = Boolean(user?.hashedPassword) && (await bcrypt.compare(password, user!.hashedPassword!));
+        if (!user || !isValid) {
+          // נרשמו אבל עוד לא אישרו את המייל — אומרים את זה רק למי שיודע את הסיסמה
+          if (await pendingMatchesLogin(identifier, password)) {
+            throw new Error(LoginError.EmailNotVerified);
+          }
+          return null;
+        }
+        // היועץ נכנס רק דרך הכניסה הנסתרת (advisor-link), לעולם לא בסיסמה
+        if (user.role === "ADVISOR") return null;
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
           image: user.image ?? undefined,
-          role: user.role
+          role: user.role,
         } as any;
+      },
+    }),
+    /**
+     * אישור הקישור שנשלח במייל. זה הרגע היחיד שבו נוצר חשבון לקוח חדש, ומיד
+     * אחריו הלקוח מחובר ונכנס לאזור האישי.
+     */
+    Credentials({
+      id: "email-link",
+      name: "Email verification link",
+      credentials: {
+        token: { label: "Token", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials, req) {
+        const user = await confirmRegistration({
+          token: String(credentials?.token ?? ""),
+          password: credentials?.password ? String(credentials.password) : null,
+          deviceToken: readCookie(
+            (req?.headers as Record<string, string> | undefined)?.cookie,
+            REGISTRATION_DEVICE_COOKIE
+          ),
+        });
+        // מייל ברוכים הבאים, עם הכתובת האישית. כשל בשליחה לא עוצר את הכניסה
+        await sendWelcomeEmail(user.id);
+        // הלקוח משויך מיד ליועץ של הפלטפורמה, ומופיע ברשימת הלקוחות שלו
+        await ensureClientLinkSafely(user.id);
+        // מייל ליועץ על כל הרשמה חדשה
+        await emailAdvisorAboutSignup(user.id);
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+          image: user.image ?? undefined,
+          role: user.role,
+        } as any;
+      },
+    }),
+    /**
+     * האפליקציה לנייד: הכניסה עם Google נעשית בדפדפן של המערכת, ומשם עוברת
+     * לאפליקציה בקוד חד-פעמי. ראו src/lib/app-handoff.ts.
+     */
+    Credentials({
+      id: "app-handoff",
+      name: "Mobile app sign-in",
+      credentials: {
+        code: { label: "Code", type: "text" },
+        verifier: { label: "Verifier", type: "text" },
+      },
+      async authorize(credentials) {
+        const userId = await consumeAppHandoff(String(credentials?.code ?? ""), String(credentials?.verifier ?? ""));
+        if (!userId) return null;
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, name: true, image: true, role: true },
+        });
+        // היועץ נכנס רק דרך הכניסה הנסתרת (advisor-link)
+        if (!user || user.role === "ADVISOR") return null;
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+          image: user.image ?? undefined,
+          role: user.role,
+        } as any;
+      },
+    }),
+    /**
+     * הכניסה הנסתרת של היועץ: הקישור החד-פעמי שנשלח למייל היועץ, ורק מהדפדפן
+     * שביקש אותו. ראו advisor-access.
+     */
+    Credentials({
+      id: "advisor-link",
+      name: "Advisor link",
+      credentials: {
+        token: { label: "Token", type: "text" },
+        password: { label: "Password", type: "password" },
+        newPassword: { label: "New password", type: "password" },
+      },
+      async authorize(credentials, req) {
+        const headers = (req?.headers ?? {}) as Record<string, string | undefined>;
+        try {
+          const advisor = await confirmAdvisorLink(
+            String(credentials?.token ?? ""),
+            readCookie(headers.cookie, ADVISOR_DEVICE_COOKIE),
+            { password: credentials?.password ?? null, newPassword: credentials?.newPassword ?? null }
+          );
+          await notifyAdvisorLogin({
+            ip: (headers["x-forwarded-for"] ?? "").split(",")[0]?.trim() || "לא ידוע",
+            userAgent: headers["user-agent"] ?? null,
+          });
+          /**
+           * עוגיית session בלי תאריך תפוגה — נמחקת כשהדפדפן נסגר — והטוקן תקף
+           * רק לצידה. ראו src/lib/advisor-session.ts.
+           */
+          const advisorSession = generateToken();
+          (await cookies()).set(ADVISOR_SESSION_COOKIE, advisorSession, {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+          });
+          return { ...advisor, email: advisor.email ?? undefined, advisorLink: true, advisorSession } as any;
+        } catch (error) {
+          if (error instanceof AdvisorLinkError) throw new Error(error.message);
+          throw error;
+        }
       },
     }),
   ],
   callbacks: {
+    /**
+     * התחברות עם גוגל.
+     *
+     * גוגל חייבת להעיד שהמייל מאומת. חשבון גוגל שכבר מקושר, או מייל שכבר
+     * רשום אצלנו, נכנס כרגיל. מייל חדש לא הופך למשתמש: נפתחת הרשמה ממתינה,
+     * נשלח קישור אימות, והגולש מועבר למסך "בדקו את המייל".
+     */
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+
+      const email = (profile?.email ?? "").trim().toLowerCase();
+      const googleVerified = (profile as { email_verified?: boolean } | undefined)?.email_verified === true;
+      if (!email || !googleVerified) {
+        return `/auth/login?error=${LoginError.GoogleEmailUnverified}`;
+      }
+
+      const linked = await prisma.account.findUnique({
+        where: {
+          provider_providerAccountId: {
+            provider: "google",
+            providerAccountId: account.providerAccountId,
+          },
+        },
+        select: { user: { select: { id: true, role: true } } },
+      });
+      if (linked) {
+        // חשבון היועץ לא נפתח עם גוגל — רק בכניסה הנסתרת
+        if (linked.user.role === "ADVISOR") return `/auth/login?error=${LoginError.GoogleNotAllowed}`;
+        await carryGuestData(linked.user.id);
+        return true;
+      }
+
+      const existing = await prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+        select: {
+          id: true,
+          role: true,
+          emailVerified: true,
+          hashedPassword: true,
+          accounts: { select: { id: true } },
+        },
+      });
+      // חשבון היועץ לא נפתח עם גוגל — רק בכניסה הנסתרת
+      if (existing?.role === "ADVISOR") return `/auth/login?error=${LoginError.GoogleNotAllowed}`;
+      if (existing) {
+        /**
+         * חשבון ישן עם סיסמה שהמייל שלו מעולם לא אומת, ובלי שום חשבון מקושר:
+         * ייתכן שמישהו אחר פתח אותו עם המייל הזה ובחר את הסיסמה. גוגל מוכיחה
+         * עכשיו מי בעל המייל, ולכן הסיסמה הלא-מאומתת נמחקת לפני הקישור.
+         */
+        if (!existing.emailVerified && existing.hashedPassword && existing.accounts.length === 0) {
+          await prisma.user.update({
+            where: { id: existing.id },
+            data: { hashedPassword: null, emailVerified: new Date() },
+          });
+        }
+        await carryGuestData(existing.id);
+        return true;
+      }
+
+      const callbackUrl = await pendingGoogleCallbackUrl();
+      const result = await startRegistration({
+        email,
+        name: profile?.name ?? null,
+        image: (profile as { picture?: string } | undefined)?.picture ?? null,
+        provider: "google",
+        providerAccountId: account.providerAccountId,
+        callbackUrl,
+        requestOrigin: canonicalSiteOrigin(),
+        // מה שהוזן בכלים לפני ההרשמה — עובר לחשבון כשהמייל מאושר, בכל דפדפן
+        toolData: (await takeGuestCarry()) ?? undefined,
+      });
+      const params = new URLSearchParams({ via: "google", email });
+      // היעד המקורי ממשיך גם לקישורי "התחברו" / "הירשמו מחדש" שבמסך הבדיקה
+      if (callbackUrl) params.set("callbackUrl", callbackUrl);
+      if (result.status === "email-failed") params.set("error", "send");
+      return `/auth/check-email?${params.toString()}`;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
-        token.role = (user as any).role;
+        token.advisorLink = (user as any).advisorLink === true;
+        if (token.advisorLink) {
+          token.advisorSession = (user as any).advisorSession;
+          token.advisorAt = Date.now();
+        }
+        const existingRole = (user as any).role;
+        if (existingRole) {
+          token.role = existingRole;
+        } else if (token.id) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: String(token.id) },
+            select: { role: true },
+          });
+          token.role = dbUser?.role ?? "CLIENT";
+        } else {
+          token.role = "CLIENT";
+        }
+      }
+      /**
+       * התחברות של יועץ שלא עברה בכניסה הנסתרת — למשל של יועץ שנמחק, או
+       * מלפני שהכניסה בסיסמה בוטלה — אינה תקפה יותר.
+       */
+      if (token.role === "ADVISOR" && token.advisorLink !== true) {
+        delete token.id;
+        delete token.role;
+      }
+      /**
+       * הכניסה של היועץ לא נשמרת: בלי עוגיית ה-session של הדפדפן, אחרי
+       * ADVISOR_IDLE_MINUTES בלי אזור יועץ פתוח, או ADVISOR_MAX_HOURS אחרי
+       * הכניסה — היא אינה תקפה, וצריך לעבור שוב את הקישור והסיסמה.
+       */
+      if (token.role === "ADVISOR") {
+        // ברגע הכניסה עצמה העוגייה רק נכתבה לתשובה, והטוקן נוצר יחד איתה
+        const cookie = user ? (token.advisorSession as string) : await advisorSessionCookie();
+        if (!advisorSessionValid(token, cookie)) {
+          delete token.id;
+          delete token.role;
+          delete token.advisorSession;
+        } else {
+          token.advisorSeen = Date.now();
+        }
       }
       return token;
     },
@@ -48,6 +377,20 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role as string;
       }
       return session;
+    },
+  },
+  events: {
+    async signOut() {
+      try {
+        (await cookies()).delete(ADVISOR_SESSION_COOKIE);
+      } catch {
+        // מחוץ לבקשה אין עוגיות למחוק; הטוקן כבר נמחק
+      }
+    },
+    async createUser({ user }) {
+      if (!user.id) return;
+      await ensureClientLinkSafely(user.id);
+      await emailAdvisorAboutSignup(user.id);
     },
   },
 };

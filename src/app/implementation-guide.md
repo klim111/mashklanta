@@ -3,7 +3,7 @@
 
 ## 📋 **סיכום הניתוח - Analysis Summary**
 
-לאחר ניתוח מקיף של העיצוב הנוכחי של פרוייקט משכלתנא, זיהיתי את הנקודות הבאות:
+לאחר ניתוח מקיף של העיצוב הנוכחי של פרוייקט משכלנתא, זיהיתי את הנקודות הבאות:
 
 ### ✅ **נקודות חוזק**
 - מבנה טכני מתקדם (Next.js 15, TypeScript, Tailwind CSS)
@@ -134,7 +134,7 @@ const CardTitle = React.forwardRef<
       <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-professional">
         <Calculator className="w-5 h-5 text-white" />
       </div>
-      <span className="text-2xl font-black text-gradient-primary">משכלתנא</span>
+      <span className="text-2xl font-black text-gradient-primary">משכלנתא</span>
     </div>
   </div>
 
@@ -162,7 +162,7 @@ const CardTitle = React.forwardRef<
       className="text-center"
     >
       <h1 className="text-6xl md:text-7xl font-black mb-8 text-gradient-primary">
-        משכלתנא
+        משכלנתא
       </h1>
       <p className="text-xl md:text-2xl text-primary-700 mb-12 max-w-4xl mx-auto leading-relaxed">
         הפלטפורמה החכמה לייעוץ משכנתאות עם בינה מלאכותית מתקדמת

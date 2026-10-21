@@ -1,3 +1,4 @@
+import { SITE_CONTACT } from './site-contact';
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 
@@ -27,23 +28,47 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** לאן תגיע תשובה למייל — למשל ללקוח שפנה ליועץ. ברירת המחדל: כתובת הקשר */
+  replyTo?: string;
 }
 
-export async function sendEmail({ to, subject, html, text }: EmailOptions) {
-  const from = process.env.EMAIL_FROM || 'noreply@nadlanium.com';
-  const replyTo = process.env.EMAIL_REPLY_TO || 'support@nadlanium.com';
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Email send timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+export async function sendEmail({ to, subject, html, text, replyTo: replyToOverride }: EmailOptions) {
+  // בלי EMAIL_FROM המייל יוצא מהדומיין המאומת של משכלנתא לשליחה (mashkalanta.co.il)
+  const from = process.env.EMAIL_FROM || `${SITE_CONTACT.brand} <noreply@mashkalanta.co.il>`;
+  // תשובה למייל מערכת מגיעה לכתובת הקשר של משכלנתא (info@)
+  const replyTo = replyToOverride || process.env.EMAIL_REPLY_TO || SITE_CONTACT.email;
+  const timeoutMs = 8000;
 
   // Try Resend first
   if (resend) {
     try {
-      const result = await resend.emails.send({
-        from,
-        to,
-        subject,
-        html,
-        text,
-        replyTo,
-      });
+      const result = await withTimeout(
+        resend.emails.send({
+          from,
+          to,
+          subject,
+          html,
+          text,
+          replyTo,
+        }),
+        timeoutMs
+      );
       return { success: true, messageId: result.data?.id };
     } catch (error) {
       console.error('Resend email error:', error);
@@ -53,208 +78,209 @@ export async function sendEmail({ to, subject, html, text }: EmailOptions) {
   // Fallback to SMTP
   if (transporter) {
     try {
-      const result = await transporter.sendMail({
-        from,
-        to,
-        subject,
-        html,
-        text: text || html.replace(/<[^>]*>/g, ''),
-        replyTo,
-      });
+      const result = await withTimeout(
+        transporter.sendMail({
+          from,
+          to,
+          subject,
+          html,
+          text: text || html.replace(/<[^>]*>/g, ''),
+          replyTo,
+        }),
+        timeoutMs
+      );
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error('SMTP email error:', error);
     }
   }
 
-  // If no email service is configured, log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📧 Email would be sent:');
-    console.log('To:', to);
-    console.log('Subject:', subject);
-    console.log('Content:', text || html.substring(0, 200) + '...');
-    return { success: true, messageId: 'dev-' + Date.now() };
-  }
+  // בלי שירות מייל מוגדר ההרשמה עדיין חייבת להצליח — המשתמש כבר נשמר במסד
+  console.warn('No email service configured; skipped send to', to);
+  return { success: false, messageId: 'skipped' };
+}
 
-  throw new Error('No email service configured');
+/** בריחה של טקסט שהמשתמש הקליד (שם, שם משתמש) לפני שהוא נכנס ל-HTML של מייל */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const appName = () => process.env.PUBLIC_APP_NAME || 'משכלנתא';
+
+/** כפתור כחול למיילים — קישור אמיתי, לא טקסט שתלוי בזיהוי אוטומטי של תוכנת המייל */
+export function emailButton(href: string, label: string): string {
+  return `<div style="text-align:center;margin:24px 0;">
+    <a href="${escapeHtml(href)}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">${label}</a>
+  </div>`;
+}
+
+/** מעטפת אחידה למיילי המערכת: RTL, פונט מערכת, כפתור כחול, ופרטי הקשר בתחתית */
+export function authEmailShell(title: string, body: string): string {
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Assistant,Arial,sans-serif;direction:rtl;color:#0f172a;">
+  <div style="max-width:560px;margin:32px auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="background:#2563eb;color:#ffffff;padding:24px 28px;">
+      <div style="font-size:20px;font-weight:700;">${escapeHtml(appName())}</div>
+      <div style="font-size:15px;opacity:.9;margin-top:4px;">${title}</div>
+    </div>
+    <div style="padding:28px;font-size:15px;line-height:1.7;">${body}</div>
+    <div style="padding:16px 28px;border-top:1px solid #e2e8f0;color:#64748b;font-size:13px;">
+      שאלות? ${escapeHtml(SITE_CONTACT.brand)} — <a href="${SITE_CONTACT.phoneHref}" style="color:#2563eb;text-decoration:none;" dir="ltr">${SITE_CONTACT.phone}</a> · <a href="${SITE_CONTACT.emailHref}" style="color:#2563eb;text-decoration:none;" dir="ltr">${SITE_CONTACT.email}</a>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * התראה קצרה ללקוח (הודעה בצ'אט, מייל שהגיע לכתובת האישית): הטקסט כפי שהוא,
+ * ואחריו כפתור לפלטפורמה — באותה מעטפת של שאר מיילי הלקוח.
+ */
+export function clientNoticeEmail({
+  title,
+  text,
+  href,
+  label,
+}: {
+  title: string;
+  text: string;
+  href: string;
+  label: string;
+}): { html: string; text: string } {
+  const body = `<div>${escapeHtml(text).replace(/\r?\n/g, '<br>')}</div>${emailButton(href, escapeHtml(label))}`;
+  return {
+    html: authEmailShell(escapeHtml(title), body),
+    text: `${text}\n\n${label}: ${href}\n\nשאלות? ${SITE_CONTACT.phone} · ${SITE_CONTACT.email}`,
+  };
 }
 
 // Email templates
 export const emailTemplates = {
-  welcomeEmail: (name: string, verificationUrl: string) => ({
-    subject: `ברוכים הבאים ל-${process.env.PUBLIC_APP_NAME || 'Nadlanium'}!`,
-    html: `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="he">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
-            direction: rtl;
-          }
-          .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-          }
-          .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-          }
-          .header h1 {
-            margin: 0;
-            font-size: 28px;
-          }
-          .content {
-            padding: 40px 30px;
-          }
-          .button {
-            display: inline-block;
-            padding: 14px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            margin: 20px 0;
-          }
-          .footer {
-            background-color: #f8f9fa;
-            padding: 20px;
-            text-align: center;
-            color: #6c757d;
-            font-size: 14px;
-          }
-          .logo {
-            font-size: 40px;
-            margin-bottom: 10px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">🏠</div>
-            <h1>ברוכים הבאים ל-Nadlanium!</h1>
-          </div>
-          <div class="content">
-            <h2>שלום ${name || 'משתמש יקר'},</h2>
-            <p>תודה שנרשמת לשירות שלנו! אנחנו שמחים שהצטרפת אלינו.</p>
-            <p>כדי להשלים את תהליך ההרשמה ולהפעיל את החשבון שלך, אנא לחץ על הכפתור למטה:</p>
-            <div style="text-align: center;">
-              <a href="${verificationUrl}" class="button">אמת את כתובת המייל</a>
-            </div>
-            <p>או העתק את הקישור הבא לדפדפן שלך:</p>
-            <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
-              ${verificationUrl}
-            </p>
-            <p><strong>הקישור תקף ל-24 שעות.</strong></p>
-            <h3>מה הלאה?</h3>
-            <ul>
-              <li>גישה למחשבוני משכנתא מתקדמים</li>
-              <li>שמירת החישובים שלך</li>
-              <li>מעקב אחר המשכנתאות שלך</li>
-              <li>קבלת עדכונים על שינויים בריביות</li>
-            </ul>
-            <p>אם לא ביקשת ליצור חשבון, אנא התעלם מהודעה זו.</p>
-          </div>
-          <div class="footer">
-            <p>© 2024 Nadlanium. כל הזכויות שמורות.</p>
-            <p>אם יש לך שאלות, אל תהסס <a href="mailto:${process.env.EMAIL_REPLY_TO}">ליצור איתנו קשר</a></p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `,
-    text: `
-      ברוכים הבאים ל-Nadlanium!
-      
-      שלום ${name || 'משתמש יקר'},
-      
-      תודה שנרשמת לשירות שלנו! כדי להשלים את תהליך ההרשמה, אנא אמת את כתובת המייל שלך:
-      
-      ${verificationUrl}
-      
-      הקישור תקף ל-24 שעות.
-      
-      אם לא ביקשת ליצור חשבון, אנא התעלם מהודעה זו.
-      
-      בברכה,
-      צוות Nadlanium
-    `
+  /**
+   * קישור אימות להרשמה. מציין למי ומתי נפתח החשבון, ומבקש לא ללחוץ אם לא
+   * אתם נרשמתם — כך בעל המייל מזהה הרשמה שמישהו אחר פתח בשמו.
+   */
+  verificationEmail: ({
+    name,
+    email,
+    verificationUrl,
+    ttlMinutes,
+  }: {
+    name: string;
+    email: string;
+    verificationUrl: string;
+    ttlMinutes: number;
+  }) => {
+    const greeting = name ? `שלום ${escapeHtml(name)},` : 'שלום,';
+    return {
+      subject: `אישור ההרשמה ל${appName()}`,
+      html: authEmailShell(
+        'אישור כתובת המייל',
+        `<p style="margin:0 0 12px;">${greeting}</p>
+         <p style="margin:0 0 12px;">התקבלה בקשה לפתוח חשבון לקוח עבור <strong dir="ltr">${escapeHtml(email)}</strong>.</p>
+         <p style="margin:0 0 20px;">החשבון ייפתח רק אחרי שתאשרו שהמייל הזה שלכם:</p>
+         <div style="text-align:center;margin:0 0 20px;">
+           <a href="${verificationUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">אישור ההרשמה</a>
+         </div>
+         <p style="margin:0 0 12px;color:#475569;font-size:14px;">הקישור תקף ל-${ttlMinutes} דקות ולשימוש אחד בלבד.</p>
+         <p style="margin:0;color:#475569;font-size:14px;"><strong>לא אתם נרשמתם?</strong> אל תלחצו על הקישור. בלי אישור לא ייפתח חשבון, והבקשה תימחק מעצמה.</p>`
+      ),
+      text: `${name ? `שלום ${name},` : 'שלום,'}
+
+התקבלה בקשה לפתוח חשבון לקוח ב${appName()} עבור ${email}.
+
+לאישור ההרשמה (תקף ל-${ttlMinutes} דקות, לשימוש אחד):
+${verificationUrl}
+
+לא אתם נרשמתם? אל תלחצו על הקישור. בלי אישור לא ייפתח חשבון.`,
+    };
+  },
+
+  /** קישור לבחירת סיסמה חדשה, מעמוד "שכחתי סיסמה" */
+  passwordResetEmail: ({
+    name,
+    resetUrl,
+    ttlMinutes,
+  }: {
+    name: string | null;
+    resetUrl: string;
+    ttlMinutes: number;
+  }) => {
+    const greeting = name ? `שלום ${escapeHtml(name)},` : 'שלום,';
+    return {
+      subject: `בחירת סיסמה חדשה ל${appName()}`,
+      html: authEmailShell(
+        'בחירת סיסמה חדשה',
+        `<p style="margin:0 0 12px;">${greeting}</p>
+         <p style="margin:0 0 20px;">התקבלה בקשה לאפס את הסיסמה של החשבון שלכם. לבחירת סיסמה חדשה:</p>
+         <div style="text-align:center;margin:0 0 20px;">
+           <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">בחירת סיסמה חדשה</a>
+         </div>
+         <p style="margin:0 0 12px;color:#475569;font-size:14px;">הקישור תקף ל-${ttlMinutes} דקות ולשימוש אחד בלבד.</p>
+         <p style="margin:0;color:#475569;font-size:14px;"><strong>לא ביקשתם?</strong> אין צורך לעשות דבר. הסיסמה הנוכחית שלכם לא השתנתה.</p>`
+      ),
+      text: `${name ? `שלום ${name},` : 'שלום,'}
+
+התקבלה בקשה לאפס את הסיסמה של החשבון שלכם ב${appName()}.
+
+לבחירת סיסמה חדשה (תקף ל-${ttlMinutes} דקות, לשימוש אחד):
+${resetUrl}
+
+לא ביקשתם? אין צורך לעשות דבר. הסיסמה הנוכחית שלכם לא השתנתה.`,
+    };
+  },
+
+  /** קישור הכניסה הנסתרת של היועץ. עובד רק בדפדפן שביקש אותו */
+  advisorLoginEmail: ({ loginUrl, ttlMinutes }: { loginUrl: string; ttlMinutes: number }) => ({
+    subject: `קישור כניסה לאזור היועץ ב${appName()}`,
+    html: authEmailShell(
+      'כניסה לאזור היועץ',
+      `<p style="margin:0 0 20px;">התבקש קישור כניסה לאזור היועץ. לכניסה:</p>
+       <div style="text-align:center;margin:0 0 20px;">
+         <a href="${loginUrl}" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:700;font-size:17px;padding:14px 32px;border-radius:10px;">כניסה לאזור היועץ</a>
+       </div>
+       <p style="margin:0 0 12px;color:#475569;font-size:14px;">הקישור תקף ל-${ttlMinutes} דקות, לשימוש אחד, ועובד רק באותו דפדפן שבו ביקשת אותו.</p>
+       <p style="margin:0;color:#475569;font-size:14px;"><strong>לא ביקשת?</strong> אל תפתח את הקישור. בלי הדפדפן שביקש אותו הוא לא מכניס אף אחד.</p>`
+    ),
+    text: `התבקש קישור כניסה לאזור היועץ ב${appName()}.
+
+לכניסה (תקף ל-${ttlMinutes} דקות, לשימוש אחד, רק באותו דפדפן שבו ביקשת אותו):
+${loginUrl}
+
+לא ביקשת? אל תפתח את הקישור.`,
   }),
 
-  passwordResetEmail: (name: string, resetUrl: string) => ({
-    subject: 'איפוס סיסמה - Nadlanium',
-    html: `
-      <!DOCTYPE html>
-      <html dir="rtl" lang="he">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            direction: rtl;
-          }
-          .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 40px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          }
-          .button {
-            display: inline-block;
-            padding: 14px 30px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            margin: 20px 0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>איפוס סיסמה</h2>
-          <p>שלום ${name || 'משתמש יקר'},</p>
-          <p>קיבלנו בקשה לאיפוס הסיסמה שלך. לחץ על הכפתור למטה כדי ליצור סיסמה חדשה:</p>
-          <div style="text-align: center;">
-            <a href="${resetUrl}" class="button">איפוס סיסמה</a>
-          </div>
-          <p>הקישור תקף לשעה אחת בלבד.</p>
-          <p>אם לא ביקשת לאפס את הסיסמה, אנא התעלם מהודעה זו.</p>
-        </div>
-      </body>
-      </html>
-    `,
-    text: `
-      איפוס סיסמה - Nadlanium
-      
-      שלום ${name || 'משתמש יקר'},
-      
-      קיבלנו בקשה לאיפוס הסיסמה שלך. השתמש בקישור הבא:
-      ${resetUrl}
-      
-      הקישור תקף לשעה אחת בלבד.
-      
-      אם לא ביקשת לאפס את הסיסמה, אנא התעלם מהודעה זו.
-    `
-  })
+  /** הודעה אחרי כל כניסה לאזור היועץ */
+  advisorLoginNotice: ({ when, ip, userAgent }: { when: Date; ip: string; userAgent: string | null }) => {
+    const time = new Intl.DateTimeFormat('he-IL', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'Asia/Jerusalem',
+    }).format(when);
+    const device = userAgent ? escapeHtml(userAgent.slice(0, 200)) : 'לא ידוע';
+    return {
+      subject: `נכנסת לאזור היועץ ב${appName()}`,
+      html: authEmailShell(
+        'כניסה לאזור היועץ',
+        `<p style="margin:0 0 12px;">בוצעה כניסה לאזור היועץ.</p>
+         <p style="margin:0 0 4px;color:#475569;font-size:14px;">מתי: ${time}</p>
+         <p style="margin:0 0 4px;color:#475569;font-size:14px;">כתובת IP: ${escapeHtml(ip)}</p>
+         <p style="margin:0 0 16px;color:#475569;font-size:14px;">דפדפן: ${device}</p>
+         <p style="margin:0;color:#475569;font-size:14px;">אם זה לא היית אתה, החלף מיד את הסיסמה של תיבת המייל הזו.</p>`
+      ),
+      text: `בוצעה כניסה לאזור היועץ.
+מתי: ${time}
+כתובת IP: ${ip}
+דפדפן: ${userAgent ?? 'לא ידוע'}
+
+אם זה לא היית אתה, החלף מיד את הסיסמה של תיבת המייל הזו.`,
+    };
+  },
 };

@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity, TrendingUp, Calculator, PieChart, 
-  ChevronLeft, ArrowRight, Play, BarChart3,
+  ArrowRight, Play, BarChart3,
   DollarSign, Target, Zap, Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import NavBar from '@/components/ui/navbar';
 
 const simulations = [
   {
@@ -129,24 +130,8 @@ export default function SimulationsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
-      {/* Header */}
-      <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ChevronLeft className="w-4 h-4" />
-                  חזרה לעמוד הבית
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-6 h-6 text-indigo-600" />
-                <h1 className="text-xl font-bold text-gray-900">סימולציות פיננסיות</h1>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
       </div>
 
       {/* Hero Section */}
@@ -161,7 +146,7 @@ export default function SimulationsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl font-bold text-gray-900 mb-6"
+            className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-6"
           >
             כלי סימולציה מתקדמים
           </motion.h1>
@@ -179,7 +164,7 @@ export default function SimulationsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex justify-center gap-2 mb-8"
+            className="flex flex-wrap justify-center gap-2 mb-8"
           >
             <Button
               variant={selectedCategory === 'all' ? 'default' : 'outline'}
@@ -221,9 +206,9 @@ export default function SimulationsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   whileHover={{ scale: isComingSoon ? 1 : 1.02, y: isComingSoon ? 0 : -5 }}
-                  className={isComingSoon ? 'opacity-60' : ''}
+                  className={`h-full ${isComingSoon ? 'opacity-60' : ''}`}
                 >
-                  <Card className={`h-full border-2 ${isComingSoon ? 'border-gray-200' : simulation.borderColor} hover:${simulation.borderColor} transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl ${isComingSoon ? '' : 'cursor-pointer'} relative overflow-hidden`}>
+                  <Card className={`h-full flex flex-col border-2 ${isComingSoon ? 'border-gray-200' : simulation.borderColor} hover:${simulation.borderColor} transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-lg hover:shadow-xl ${isComingSoon ? '' : 'cursor-pointer'} relative overflow-hidden`}>
                     {simulation.recommended && (
                       <div className="absolute top-0 right-0 bg-gradient-to-br from-yellow-400 to-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                         מומלץ
@@ -258,7 +243,7 @@ export default function SimulationsPage() {
                       </CardDescription>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
+                    <CardContent className="flex flex-1 flex-col gap-4">
                       <p className="text-sm text-gray-600 leading-relaxed">
                         {simulation.longDescription}
                       </p>
@@ -275,8 +260,10 @@ export default function SimulationsPage() {
                         </ul>
                       </div>
 
+                      {/* הכפתור נדחף לתחתית כדי שיהיה מיושר בין הכרטיסים */}
+                      <div className="mt-auto pt-2">
                       {!isComingSoon ? (
-                        <Link href={simulation.href}>
+                        <Link href={simulation.href} className="block">
                           <Button className={`w-full bg-gradient-to-r ${simulation.color} hover:opacity-90 text-white shadow-md`}>
                             <Play className="w-4 h-4 ml-2" />
                             התחל סימולציה
@@ -288,6 +275,7 @@ export default function SimulationsPage() {
                           בקרוב...
                         </Button>
                       )}
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
