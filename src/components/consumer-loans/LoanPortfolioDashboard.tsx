@@ -44,18 +44,26 @@ import {
 export function LoanPortfolioDashboard({
   loans,
   stats,
+  paidSoFar = 0,
   monthlyIncome,
   onMonthlyIncomeChange,
 }: {
-  /** רק הלוואות שכל השדות שלהן הוזנו */
+  /**
+   * רק הלוואות שכל השדות שלהן הוזנו — מהיום והלאה: הלוואה שהוזן בה תאריך
+   * לקיחה מגיעה ביתרה של היום ובתשלומים שנותרו
+   */
   loans: Loan[];
   stats: PortfolioStats;
+  /** מה כבר שולם בהלוואות שהוזן בהן תאריך לקיחה */
+  paidSoFar?: number;
   monthlyIncome?: number;
   onMonthlyIncomeChange: (value: number) => void;
 }) {
   const series = React.useMemo(() => portfolioYearlySeries(loans), [loans]);
   const insights = React.useMemo(() => loanInsights(stats, monthlyIncome), [stats, monthlyIncome]);
   const has = stats.count > 0;
+  /** יש הלוואה שכבר ירדו בה תשלומים — המספרים הם מהיום והלאה */
+  const started = paidSoFar > 0;
   const ratio = has ? paymentToIncome(stats.monthlyPayment, monthlyIncome ?? 0) : null;
   // בלי הלוואה מלאה הגרף נשאר עם צירים ריקים — בלי קווים
   const chartData: Array<Record<string, number | null>> =
@@ -72,9 +80,13 @@ export function LoanPortfolioDashboard({
               {has ? `${stats.count} הלוואות · מתעדכן עם כל תזוזה בפאנל` : 'יתמלא תוך כדי הזנת ההלוואות'}
             </p>
           </div>
-          <Cell icon={Coins} label="סך חוב" value={has ? formatILS(stats.totalPrincipal) : '—'} />
+          <Cell icon={Coins} label={started ? 'יתרת חוב היום' : 'סך חוב'} value={has ? formatILS(stats.totalPrincipal) : '—'} />
           <Cell icon={Wallet} label="החזר חודשי" value={has ? formatILS(stats.monthlyPayment) : '—'} emphasized />
-          <Cell icon={Banknote} label="סך ריבית" value={has ? formatILS(stats.totalInterest) : '—'} />
+          <Cell
+            icon={Banknote}
+            label={started ? 'ריבית שנותרה' : 'סך ריבית'}
+            value={has ? formatILS(stats.totalInterest) : '—'}
+          />
           <Cell icon={Percent} label="ריבית משוקללת" value={has ? `${stats.weightedApr.toFixed(2)}%` : '—'} />
           <Cell
             icon={CalendarClock}
@@ -88,6 +100,19 @@ export function LoanPortfolioDashboard({
             }
           />
         </div>
+
+        {/* מה שולם ומה נותר — כשהוזנו תאריכי לקיחה */}
+        {started && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs">
+            <span className="text-slate-600">
+              שולם עד כה <strong className="text-emerald-700">{formatILS(paidSoFar)}</strong>
+            </span>
+            <span className="text-slate-600">
+              נותר לשלם <strong className="text-slate-900">{formatILS(stats.totalPaid)}</strong>
+            </span>
+            <span className="text-2xs text-slate-400">הנתונים בתיק הם מהיום והלאה</span>
+          </div>
+        )}
 
         {/* הרכב התיק */}
         {stats.totalPrincipal > 0 && (
@@ -300,6 +325,7 @@ export function LoanPortfolioDashboard({
         </div>
         <p className="mt-1 text-2xs text-slate-400">
           הציר האופקי: שנים מהיום · הסולם הימני: ההחזר החודשי
+          {started ? ' · הריבית המצטברת היא מהיום, בלי מה שכבר שולם' : ''}
         </p>
       </div>
     </div>

@@ -15,8 +15,10 @@ import { formatILS } from '@/lib/currency';
 import type { Loan, LoanPrepayment } from './types';
 import {
   buildLoanSchedule,
+  dateOnly,
   hasLoanDates,
   paymentDate,
+  paymentsMadeBy,
   resolvePrepaymentTiming,
   toISODate,
 } from './loanMath';
@@ -34,6 +36,10 @@ import { ParamRow, formatDateIL } from './LoanFields';
  * לפי תאריך. בפירעון לפי תאריך הסכום יורד מהיתרה ביום שנבחר, ועליו משולמת
  * הריבית היומית מהתשלום האחרון שלפניו ועד אותו יום. אפשר לפרוע עד התשלום
  * שלפני האחרון-אחד (תקופה פחות 2) — אחריו כבר אין טעם בפירעון מוקדם.
+ *
+ * כשהוזן תאריך לקיחה, הפירעון מתחיל מהתשלום הקרוב: תשלומים שכבר ירדו אי אפשר
+ * לבחור, ומספר התשלום נפתח על התשלום הבא (בהלוואה שנלקחה לפני שנתיים בדיוק —
+ * תשלום 25). גם בבחירה לפי תאריך אפשר לבחור רק מהיום והלאה.
  */
 
 type Timing = 'payment' | 'date';
@@ -59,10 +65,13 @@ export function LoanPrepaymentDialog({
   const [timing, setTiming] = useState<Timing>('payment');
   const [mode, setMode] = useState<LoanPrepayment['mode'] | null>(null);
 
+  /** התשלום הראשון שאפשר לפרוע איתו: הבא אחרי מה שכבר שולם */
+  const firstMonth = loan ? paymentsMadeBy(loan) + 1 : 1;
+
   useEffect(() => {
     if (!open) return;
     setAmount(null);
-    setMonth(null);
+    setMonth(loan && hasLoanDates(loan) ? firstMonth : null);
     setDate('');
     setTiming('payment');
     setMode(null);
@@ -72,10 +81,12 @@ export function LoanPrepaymentDialog({
   const dated = loan ? hasLoanDates(loan) : false;
   /** התשלום האחרון שאפשר לפרוע איתו: תקופת ההלוואה פחות 2 */
   const lastMonth = loan && base ? Math.min(loan.months, base.monthsActual) - 2 : 0;
-  const possible = lastMonth >= 1;
+  const possible = lastMonth >= firstMonth;
 
-  /** טווח התאריכים: מהתשלום הראשון ועד יום לפני התשלום שאחרי lastMonth */
-  const dateMin = loan && dated ? toISODate(paymentDate(loan, 1) as Date) : '';
+  /** טווח התאריכים: מהיום (או מהתשלום הראשון, אם עוד לא הגיע) ועד יום לפני התשלום שאחרי lastMonth */
+  const firstPaymentDay = loan && dated ? toISODate(paymentDate(loan, 1) as Date) : '';
+  const todayISO = toISODate(dateOnly(new Date()));
+  const dateMin = firstPaymentDay && firstPaymentDay > todayISO ? firstPaymentDay : firstPaymentDay ? todayISO : '';
   const dateMax =
     loan && dated && possible
       ? toISODate(new Date((paymentDate(loan, lastMonth + 1) as Date).getTime() - 86_400_000))
@@ -89,8 +100,8 @@ export function LoanPrepaymentDialog({
       if (!dateValid) return null;
       return resolvePrepaymentTiming(loan, { month: 0, date });
     }
-    return month === null ? null : { month, days: 0 };
-  }, [loan, timing, date, dateValid, month]);
+    return month === null || month < firstMonth ? null : { month, days: 0 };
+  }, [loan, timing, date, dateValid, month, firstMonth]);
 
   /** היתרה אחרי התשלום שנבחר — המקסימום שאפשר לפרוע בו */
   const balanceAt =
@@ -145,7 +156,9 @@ export function LoanPrepaymentDialog({
           <div className="space-y-3">
             {!possible ? (
               <p className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
-                בהלוואה של פחות משלושה תשלומים אין מקום לפירעון מוקדם.
+                {firstMonth > 1
+                  ? 'ההלוואה כבר בתשלומים האחרונים שלה, ואין בה מקום לפירעון מוקדם.'
+                  : 'בהלוואה של פחות משלושה תשלומים אין מקום לפירעון מוקדם.'}
               </p>
             ) : (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
@@ -165,7 +178,7 @@ export function LoanPrepaymentDialog({
                     disabled={option.id === 'date' && !dated}
                     title={
                       option.id === 'date' && !dated
-                        ? 'הזינו בכרטיס ההלוואה תאריך לקיחה ויום תשלום כדי לבחור לפי תאריך'
+                        ? 'הזינו בכרטיס ההלוואה תאריך לקיחה כדי לבחור לפי תאריך'
                         : undefined
                     }
                     onClick={() => setTiming(option.id)}
@@ -180,7 +193,7 @@ export function LoanPrepaymentDialog({
               </div>
               {!dated && (
                 <p className="text-2xs text-slate-500">
-                  כדי לבחור לפי תאריך, הזינו בכרטיס ההלוואה תאריך לקיחה ויום תשלום.
+                  כדי לבחור לפי תאריך ולהתחיל מהתשלום הקרוב, הזינו בכרטיס ההלוואה את תאריך הלקיחה.
                 </p>
               )}
 
@@ -192,10 +205,10 @@ export function LoanPrepaymentDialog({
                   onChange={(value) =>
                     setMonth(value === null || value < 1 ? null : Math.min(value, lastMonth))
                   }
-                  min={1}
+                  min={firstMonth}
                   max={lastMonth}
                   step={1}
-                  suffix={`עד ${lastMonth}`}
+                  suffix={firstMonth > 1 ? `${firstMonth}–${lastMonth}` : `עד ${lastMonth}`}
                   clampInput
                 />
               ) : (
@@ -236,7 +249,9 @@ export function LoanPrepaymentDialog({
                   : when === null
                     ? timing === 'date'
                       ? `בחרו תאריך בין ${formatDateIL(dateMin)} ל-${formatDateIL(dateMax)}. הסכום המקסימלי הוא היתרה באותו יום.`
-                      : `בחרו תשלום בין 1 ל-${lastMonth}. הסכום המקסימלי הוא היתרה שנשארת אחריו.`
+                      : month !== null && month < firstMonth
+                        ? `תשלומים 1–${firstMonth - 1} כבר שולמו. בחרו תשלום בין ${firstMonth} ל-${lastMonth}.`
+                        : `בחרו תשלום בין ${firstMonth} ל-${lastMonth}. הסכום המקסימלי הוא היתרה שנשארת אחריו.`
                     : timing === 'date'
                       ? `${when.days} ימים אחרי תשלום ${when.month} (${paymentDateLabel(when.month)}). היתרה: ${formatILS(capacity)}${
                           accruedInterest > 0 ? ` · ריבית יומית על הסכום עד יום הפירעון: ${formatILS(accruedInterest)}` : ''

@@ -22,7 +22,7 @@ import {
 import { formatILS } from '@/lib/currency';
 import type { Loan, LoanCategory, LoanDraft } from './types';
 import { LOAN_CATEGORY_LABELS, loanColor, loanStats } from './loanInsights';
-import { hasLoanDates, isCompleteLoan, paymentDate, toISODate } from './loanMath';
+import { buildLoanSchedule, hasLoanDates, isCompleteLoan, loanProgress, paymentDate, toISODate } from './loanMath';
 import { LoanDatesRow, ParamRow, formatDateIL, valueOrDash } from './LoanFields';
 import { RateInfoButton } from './RateInfoButton';
 
@@ -101,6 +101,9 @@ function LoanControlCard({
 }) {
   const complete = isCompleteLoan(loan);
   const stats = complete ? loanStats(loan) : null;
+  // כשהוזן תאריך לקיחה — איפה ההלוואה עומדת היום
+  const progress = complete ? loanProgress(loan, buildLoanSchedule(loan)) : null;
+  const started = !!progress && progress.paymentsMade > 0;
   const color = loanColor(loan);
   const prepayments = [...(loan.prepayments ?? [])].sort((a, b) => a.month - b.month);
 
@@ -192,16 +195,49 @@ function LoanControlCard({
           <p className="text-2xs text-slate-500">
             תשלום ראשון ב-{formatDateIL(toISODate(paymentDate(loan, 1) as Date))} · תשלום אחרון ב-
             {formatDateIL(toISODate(paymentDate(loan, loan.months) as Date))}
+            {!loan.paymentDay && ' · יום התשלום לפי יום הלקיחה'}
           </p>
         )}
       </div>
 
       {/* התוצאה החיה של ההלוואה */}
       <div className="grid grid-cols-3 gap-2 rounded-lg bg-slate-50 px-2 py-1.5">
-        <Figure label="החזר חודשי" value={valueOrDash(!!stats, formatILS(stats?.monthlyPayment ?? 0))} emphasized />
+        <Figure
+          label="החזר חודשי"
+          value={valueOrDash(!!stats, formatILS(started ? progress.currentPayment : stats?.monthlyPayment ?? 0))}
+          emphasized
+        />
         <Figure label="סך ריבית" value={valueOrDash(!!stats, formatILS(stats?.totalInterest ?? 0))} />
         <Figure label="סך תשלום" value={valueOrDash(!!stats, formatILS(stats?.totalPaid ?? 0))} />
       </div>
+
+      {/* איפה ההלוואה עומדת היום — כשהוזן תאריך לקיחה */}
+      {started && progress && (
+        <div className="space-y-1 rounded-lg border border-blue-100 bg-blue-50/50 px-2 py-1.5">
+          <div className="flex items-baseline justify-between gap-2 text-2xs text-slate-600">
+            <span>
+              שולמו <strong className="text-slate-900">{progress.paymentsMade}</strong> מתוך{' '}
+              {progress.totalPayments} תשלומים
+            </span>
+            <span>
+              {progress.nextPayment
+                ? `התשלום הבא: ${progress.nextPayment} ב-${formatDateIL(progress.nextPaymentDate)}`
+                : 'ההלוואה נפרעה'}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-white">
+            <span
+              className="block h-full rounded-full bg-emerald-500"
+              style={{ width: `${(progress.paymentsMade / progress.totalPayments) * 100}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Figure label="שולם עד כה" value={formatILS(progress.paidSoFar)} />
+            <Figure label="נותר לשלם" value={formatILS(progress.remainingToPay)} />
+            <Figure label="יתרת קרן היום" value={formatILS(progress.balanceNow)} />
+          </div>
+        </div>
+      )}
 
       {/* הפירעונות המוקדמים שהוזנו */}
       {prepayments.length > 0 && (

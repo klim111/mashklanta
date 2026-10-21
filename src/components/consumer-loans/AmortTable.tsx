@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
-import { Banknote, CalendarClock, Download, Percent, Table2, Wallet } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Banknote, CalendarCheck, CalendarClock, Download, Percent, Table2, Wallet } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { formatILS } from '@/lib/currency';
 import type { Loan } from './types';
-import { buildLoanSchedule, resolvePrepaymentTiming } from './loanMath';
+import { buildLoanSchedule, loanProgress, resolvePrepaymentTiming } from './loanMath';
 import { formatDateIL } from './LoanFields';
 import { AmortChart } from './AmortChart';
 
@@ -14,6 +14,10 @@ import { AmortChart } from './AmortChart';
  *
  * מציג את הגרף והטבלה, כולל הפירעונות המוקדמים שהוזנו בתיבת ההלוואה — הם
  * מסומנים בטבלה, והתשלומים שאחריהם מחושבים לפיהם. הטבלה מיוצאת ל-CSV.
+ *
+ * כשהוזן תאריך לקיחה, הטבלה נפתחת בתשלום הקרוב: התשלומים ששולמו נמצאים
+ * מעליו (גוללים למעלה כדי לראות אותם), ובראש החלון מוצג מה שולם עד כה ומה
+ * נותר לשלם.
  */
 export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void }) {
   const schedule = buildLoanSchedule(loan);
@@ -22,6 +26,22 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
     : schedule;
   const active = schedule !== baseline;
   const dated = schedule.rows.some((row) => row.date);
+  const progress = loanProgress(loan, schedule);
+  const made = progress?.paymentsMade ?? 0;
+
+  // פותחים בתשלום הקרוב — מה ששולם נשאר מעליו
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const todayRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const box = scrollRef.current;
+      const marker = todayRef.current;
+      if (!box || !marker) return;
+      const header = box.querySelector('thead')?.getBoundingClientRect().height ?? 0;
+      box.scrollTop = Math.max(0, marker.offsetTop - header);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [made]);
 
   const exportToCSV = () => {
     const headers = [
@@ -107,6 +127,24 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
             />
           </div>
 
+          {/* איפה ההלוואה עומדת היום */}
+          {progress && made > 0 && (
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5 sm:grid-cols-4">
+              <Figure icon={CalendarCheck} label="שולמו עד היום" value={`${made} מתוך ${progress.totalPayments}`} />
+              <Figure icon={Wallet} label="שולם עד כה" value={formatILS(progress.paidSoFar)} />
+              <Figure icon={Wallet} label="נותר לשלם" value={formatILS(progress.remainingToPay)} emphasized />
+              <Figure
+                icon={CalendarClock}
+                label="התשלום הבא"
+                value={
+                  progress.nextPayment
+                    ? `${progress.nextPayment} · ${formatDateIL(progress.nextPaymentDate)}`
+                    : 'ההלוואה נפרעה'
+                }
+              />
+            </div>
+          )}
+
           {/* הפירעונות המוקדמים שהוזנו בהלוואה */}
           {active && (
             <div className="flex flex-wrap gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-2xs font-bold text-emerald-900">
@@ -146,9 +184,9 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                 ייצוא ל-CSV
               </button>
             </div>
-            <div className="max-h-72 overflow-auto">
+            <div ref={scrollRef} className="relative max-h-72 overflow-auto">
               <table className="w-full text-2xs">
-                <thead className="sticky top-0 bg-white text-2xs font-bold text-slate-500 shadow-sm">
+                <thead className="sticky top-0 z-10 bg-white text-2xs font-bold text-slate-500 shadow-sm">
                   <tr>
                     <th className="p-2 text-right">חודש</th>
                     {dated && <th className="p-2 text-right">תאריך</th>}
@@ -161,30 +199,44 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
                   </tr>
                 </thead>
                 <tbody>
-                  {schedule.rows.map((row) => (
-                    <tr
-                      key={row.m}
-                      className={`border-t border-slate-100 ${
-                        row.prepay ? 'bg-emerald-50' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <td className="p-2 font-bold text-slate-700">{row.m}</td>
-                      {dated && <td className="whitespace-nowrap p-2 text-slate-500">{formatDateIL(row.date)}</td>}
-                      <td className="p-2 text-slate-600">{formatILS(row.balStart)}</td>
-                      <td className="p-2 font-bold text-slate-900">{formatILS(row.pay)}</td>
-                      <td className="p-2 text-rose-600">{formatILS(row.interest)}</td>
-                      <td className="p-2 text-emerald-600">{formatILS(row.principal)}</td>
-                      <td className="p-2 font-bold text-emerald-700">
-                        {row.prepay ? formatILS(row.prepay) : ''}
-                        {row.prepayInterest ? (
-                          <span className="block text-2xs font-normal text-rose-600">
-                            + ריבית יומית {formatILS(row.prepayInterest)}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="p-2 text-slate-600">{formatILS(row.balEnd)}</td>
-                    </tr>
-                  ))}
+                  {schedule.rows.map((row) => {
+                    const paid = row.m <= made;
+                    return (
+                      <React.Fragment key={row.m}>
+                        {made > 0 && row.m === made + 1 && (
+                          <tr ref={todayRef} className="border-t-2 border-blue-300 bg-blue-50">
+                            <td colSpan={dated ? 8 : 7} className="p-1.5 text-2xs font-black text-blue-800">
+                              היום · מכאן התשלומים הבאים · התשלומים ששולמו למעלה
+                            </td>
+                          </tr>
+                        )}
+                        <tr
+                          className={`border-t border-slate-100 ${
+                            row.prepay ? 'bg-emerald-50' : paid ? 'bg-slate-50 text-slate-400' : 'hover:bg-slate-50'
+                          } ${paid ? 'opacity-70' : ''}`}
+                        >
+                          <td className="p-2 font-bold text-slate-700">
+                            {row.m}
+                            {paid && <span className="mr-1 text-2xs font-normal text-emerald-600">✓ שולם</span>}
+                          </td>
+                          {dated && <td className="whitespace-nowrap p-2 text-slate-500">{formatDateIL(row.date)}</td>}
+                          <td className="p-2 text-slate-600">{formatILS(row.balStart)}</td>
+                          <td className="p-2 font-bold text-slate-900">{formatILS(row.pay)}</td>
+                          <td className="p-2 text-rose-600">{formatILS(row.interest)}</td>
+                          <td className="p-2 text-emerald-600">{formatILS(row.principal)}</td>
+                          <td className="p-2 font-bold text-emerald-700">
+                            {row.prepay ? formatILS(row.prepay) : ''}
+                            {row.prepayInterest ? (
+                              <span className="block text-2xs font-normal text-rose-600">
+                                + ריבית יומית {formatILS(row.prepayInterest)}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="p-2 text-slate-600">{formatILS(row.balEnd)}</td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

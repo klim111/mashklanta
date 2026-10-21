@@ -3,7 +3,10 @@ import {
   buildLoanSchedule,
   calculateLoanSummary,
   isCompleteLoan,
+  loanFromToday,
+  loanProgress,
   paymentDate,
+  paymentsMadeBy,
   resolvePrepaymentTiming,
   toISODate,
 } from '../src/components/consumer-loans/loanMath';
@@ -142,5 +145,59 @@ describe('loan dates and prepayment by date', () => {
 
   it('keeps the payment number when the loan has no dates', () => {
     expect(resolvePrepaymentTiming(loan(), { month: 7, date: '2026-05-25' })).toEqual({ month: 7, days: 0 });
+  });
+});
+
+describe('where a dated loan stands today', () => {
+  // נלקחה ב-21/10/2024: התשלום ה-24 יורד היום, 21/10/2026
+  const twoYears = loan({ principal: 100_000, apr: 12, months: 60, startDate: '2024-10-21' });
+  const today = new Date(2026, 9, 21);
+
+  it('pays on the start day when no payment day was entered, and counts the payments made', () => {
+    expect(toISODate(paymentDate(twoYears, 1)!)).toBe('2024-11-21');
+    expect(paymentsMadeBy(twoYears, today)).toBe(24);
+    expect(paymentsMadeBy(twoYears, new Date(2026, 9, 20))).toBe(23);
+    expect(paymentsMadeBy(twoYears, new Date(2024, 9, 25))).toBe(0);
+  });
+
+  it('splits the loan into what was paid and what is left, with payment 25 next', () => {
+    const schedule = buildLoanSchedule(twoYears);
+    const progress = loanProgress(twoYears, schedule, today)!;
+    expect(progress.paymentsMade).toBe(24);
+    expect(progress.nextPayment).toBe(25);
+    expect(progress.nextPaymentDate).toBe('2026-11-21');
+    expect(progress.paidSoFar).toBeCloseTo(schedule.paymentInitial * 24, 6);
+    expect(progress.paidSoFar + progress.remainingToPay).toBeCloseTo(schedule.totalPaid, 6);
+    expect(progress.balanceNow).toBeCloseTo(schedule.rows[23].balEnd, 6);
+    expect(loanProgress(loan(), undefined, today)).toBeNull();
+  });
+
+  it('turns the loan into the debt that is left from today', () => {
+    const schedule = buildLoanSchedule(twoYears);
+    const rest = loanFromToday(twoYears, today)!;
+    expect(rest.months).toBe(36);
+    expect(rest.principal).toBeCloseTo(schedule.rows[23].balEnd, 6);
+    expect(toISODate(paymentDate(rest, 1)!)).toBe('2026-11-21');
+    // אותו החזר חודשי, ואותה ריבית שנותרה
+    expect(buildLoanSchedule(rest).paymentInitial).toBeCloseTo(schedule.paymentInitial, 6);
+    expect(buildLoanSchedule(rest).totalInterest).toBeCloseTo(
+      loanProgress(twoYears, schedule, today)!.remainingInterest,
+      4
+    );
+    expect(loanFromToday(loan(), today)).toEqual(loan());
+    expect(loanFromToday({ ...twoYears, startDate: '2020-01-01' }, today)).toBeNull();
+  });
+
+  it('keeps future prepayments and drops the ones already paid', () => {
+    const withPrepay: Loan = {
+      ...twoYears,
+      prepayments: [
+        { id: 'past', amount: 5_000, month: 10, mode: 'reduce' },
+        { id: 'next', amount: 10_000, month: 30, mode: 'shorten', date: '2027-05-01' },
+      ],
+    };
+    const rest = loanFromToday(withPrepay, today)!;
+    expect(rest.prepayments).toEqual([{ id: 'next', amount: 10_000, month: 6, mode: 'shorten', date: '2027-05-01' }]);
+    expect(resolvePrepaymentTiming(rest, rest.prepayments![0])).toEqual({ month: 6, days: 10 });
   });
 });

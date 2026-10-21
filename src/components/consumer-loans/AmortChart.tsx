@@ -11,9 +11,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ReferenceArea,
+  ReferenceLine,
 } from 'recharts';
 import type { Loan } from './types';
-import { buildLoanSchedule } from './loanMath';
+import { buildLoanSchedule, loanProgress } from './loanMath';
 import { formatILS } from '@/lib/currency';
 
 interface AmortChartProps {
@@ -85,6 +87,9 @@ export function AmortChart({
 }: AmortChartProps) {
   // הלוח כולל את הפירעונות המוקדמים שהוזנו בהלוואה
   const schedule = buildLoanSchedule(loan);
+  // כשהוזן תאריך לקיחה: החודשים ששולמו מוצללים, וקו "היום" מפריד בינם לבין מה שנותר
+  const progress = loanProgress(loan, schedule);
+  const made = progress?.paymentsMade ?? 0;
 
   // נתוני הגרף:
   //   BALANCE_AREA_KEY = יתרת הקרן באותו חודש - מצויר כאזור ירוק תחת קו ירידת הקרן.
@@ -148,6 +153,18 @@ export function AmortChart({
             <Tooltip content={<AmortTooltip />} />
             {showLegend && (
               <Legend wrapperStyle={{ direction: 'rtl' }} />
+            )}
+
+            {made > 0 && (
+              <ReferenceArea x1={0} x2={made} fill="#94a3b8" fillOpacity={0.12} ifOverflow="extendDomain" />
+            )}
+            {made > 0 && (
+              <ReferenceLine
+                x={made}
+                stroke="#1e40af"
+                strokeDasharray="4 3"
+                label={{ value: 'היום', position: 'insideTopRight', fill: '#1e40af', fontSize: 12, fontWeight: 700 }}
+              />
             )}
 
             {/* אזור ירוק - יתרת הקרן הנותרת, ממלא את השטח מתחת לקו ירידת הקרן */}
@@ -218,6 +235,14 @@ export function AmortChart({
           <div className="font-bold text-slate-900">{formatILS(totalPaid)}</div>
         </div>
       </div>
+
+      {progress && made > 0 && (
+        <p className="rounded-md bg-slate-50 px-3 py-1.5 text-center text-xs text-slate-600">
+          עד היום שולמו {made} תשלומים, {formatILS(progress.paidSoFar)} — מתוכם{' '}
+          {formatILS(progress.interestPaidSoFar)} ריבית. נותרו לשלם {formatILS(progress.remainingToPay)}, מתוכם{' '}
+          {formatILS(progress.remainingInterest)} ריבית. השטח המוצלל בגרף הוא מה שכבר שולם.
+        </p>
+      )}
     </div>
   );
 }

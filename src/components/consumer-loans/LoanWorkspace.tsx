@@ -32,7 +32,7 @@ import type {
   LoanPrepayment,
   OptimizationInput,
 } from './types';
-import { isCompleteLoan } from './loanMath';
+import { isCompleteLoan, loanFromToday, loanProgress } from './loanMath';
 import { portfolioStats, savingsPotential } from './loanInsights';
 import { LoanControlPanel } from './LoanControlPanel';
 import { LoanPortfolioDashboard } from './LoanPortfolioDashboard';
@@ -226,7 +226,20 @@ export function LoanWorkspace() {
   /* ---------------- נתונים נגזרים ---------------- */
 
   const completeLoans = useMemo(() => state.loans.filter(isCompleteLoan), [state.loans]);
-  const stats = useMemo(() => portfolioStats(completeLoans), [completeLoans]);
+  /**
+   * החוב מהיום והלאה: הלוואה שהוזן בה תאריך לקיחה נכנסת לדאשבורד, לאיחוד
+   * ולאסטרטגיה ביתרה שלה היום ובתשלומים שנותרו; הלוואה שנגמרה יוצאת מהם.
+   */
+  const todayLoans = useMemo(
+    () => completeLoans.map((loan) => loanFromToday(loan)).filter((loan): loan is Loan => loan !== null),
+    [completeLoans]
+  );
+  const stats = useMemo(() => portfolioStats(todayLoans), [todayLoans]);
+  /** מה כבר שולם בהלוואות שהוזן בהן תאריך לקיחה */
+  const paidSoFar = useMemo(
+    () => completeLoans.reduce((sum, loan) => sum + (loanProgress(loan)?.paidSoFar ?? 0), 0),
+    [completeLoans]
+  );
   const potential = useMemo(() => (stats.count >= 2 ? savingsPotential(stats) : null), [stats]);
   const consolidation = state.consolidation;
   const strategyOpen = !!state.strategyOpen;
@@ -508,7 +521,7 @@ export function LoanWorkspace() {
                             הוספת הלוואה
                           </button>
                           <AnimatePresence initial={false}>
-                            {completeLoans.length >= 2 && (
+                            {todayLoans.length >= 2 && (
                               <motion.button
                                 key="consolidate"
                                 type="button"
@@ -528,7 +541,7 @@ export function LoanWorkspace() {
                                 {consolidation ? 'לאיחוד ההלוואות' : 'איחוד הלוואות'}
                               </motion.button>
                             )}
-                            {completeLoans.length >= 1 && (
+                            {todayLoans.length >= 1 && (
                               <motion.button
                                 key="strategy"
                                 type="button"
@@ -546,8 +559,8 @@ export function LoanWorkspace() {
                         </div>
 
                         <ConsolidationPicker
-                          open={pickerOpen && completeLoans.length >= 2}
-                          loans={completeLoans}
+                          open={pickerOpen && todayLoans.length >= 2}
+                          loans={todayLoans}
                           initial={consolidation?.loanIds ?? []}
                           onCancel={() => setPickerOpen(false)}
                           onConfirm={confirmConsolidation}
@@ -557,7 +570,7 @@ export function LoanWorkspace() {
 
                     {controlView === 'consolidation' && consolidation && (
                       <ConsolidationControl
-                        loans={completeLoans}
+                        loans={todayLoans}
                         plan={consolidation}
                         onChange={updateConsolidation}
                         onRemove={removeConsolidation}
@@ -594,8 +607,9 @@ export function LoanWorkspace() {
                   >
                     {dashView === 'portfolio' && (
                       <LoanPortfolioDashboard
-                        loans={completeLoans}
+                        loans={todayLoans}
                         stats={stats}
+                        paidSoFar={paidSoFar}
                         monthlyIncome={state.monthlyIncome}
                         onMonthlyIncomeChange={(value) =>
                           setState((prev) => ({ ...prev, monthlyIncome: value || undefined }))
@@ -603,10 +617,10 @@ export function LoanWorkspace() {
                       />
                     )}
                     {dashView === 'consolidation' && consolidation && (
-                      <ConsolidationDashboard loans={completeLoans} plan={consolidation} />
+                      <ConsolidationDashboard loans={todayLoans} plan={consolidation} />
                     )}
                     {dashView === 'strategy' && strategyOpen && (
-                      <StrategyDashboard loans={completeLoans} input={state.optimizationInput} />
+                      <StrategyDashboard loans={todayLoans} input={state.optimizationInput} />
                     )}
                   </motion.div>
                 </AnimatePresence>

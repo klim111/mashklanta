@@ -162,15 +162,21 @@ export function toISODate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** האם בהלוואה הוזנו תאריך לקיחה ויום תשלום — רק אז יש לתשלומים תאריכים */
+/**
+ * האם בהלוואה הוזן תאריך לקיחה — רק אז יש לתשלומים תאריכים. יום התשלום רשות:
+ * כשלא הוזן, התשלום יורד באותו יום בחודש שבו נלקחה ההלוואה.
+ */
 export function hasLoanDates(loan: { startDate?: string; paymentDay?: number }): boolean {
   return Boolean(
     loan.startDate &&
       parseDate(loan.startDate) &&
-      loan.paymentDay &&
-      loan.paymentDay >= 1 &&
-      loan.paymentDay <= 31
+      (loan.paymentDay === undefined || (loan.paymentDay >= 1 && loan.paymentDay <= 31))
   );
+}
+
+/** יום התשלום בפועל: מה שהוזן, או יום הלקיחה בחודש */
+function effectivePaymentDay(loan: { startDate?: string; paymentDay?: number }): number {
+  return loan.paymentDay ?? (parseDate(loan.startDate as string) as Date).getUTCDate();
 }
 
 /**
@@ -188,7 +194,27 @@ export function paymentDate(
   const year = start.getUTCFullYear();
   const month = start.getUTCMonth() + k;
   const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  return new Date(Date.UTC(year, month, Math.min(loan.paymentDay as number, lastDay)));
+  return new Date(Date.UTC(year, month, Math.min(effectivePaymentDay(loan), lastDay)));
+}
+
+/** היום, כתאריך בלבד (חצות UTC) — כדי להשוות אותו לתאריכי התשלומים */
+export function dateOnly(date: Date): Date {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+}
+
+/**
+ * כמה תשלומים כבר ירדו עד היום (כולל תשלום שיורד היום). בהלוואה בלי תאריך
+ * לקיחה — 0: היא נחשבת כאילו נלקחה היום.
+ */
+export function paymentsMadeBy(
+  loan: { startDate?: string; paymentDay?: number; months: number },
+  today: Date = new Date()
+): number {
+  if (!hasLoanDates(loan)) return 0;
+  const limit = dateOnly(today).getTime();
+  let k = 0;
+  while (k < loan.months && (paymentDate(loan, k + 1) as Date).getTime() <= limit) k += 1;
+  return k;
 }
 
 export function daysBetween(from: Date, to: Date): number {
@@ -299,6 +325,83 @@ export function buildLoanSchedule(loan: Loan): LoanSchedule {
     paymentInitial,
     monthsActual: rows.length,
     totalPrepaid,
+  };
+}
+
+/**
+ * איפה ההלוואה עומדת היום, כשהוזן תאריך הלקיחה: כמה תשלומים כבר ירדו, כמה
+ * שולם עד כה ומה נותר לשלם, היתרה וההחזר הנוכחי. התשלום הבא הוא זה שאחרי
+ * האחרון ששולם — למשל בהלוואה שנלקחה לפני שנתיים בדיוק, תשלום 25.
+ */
+export interface LoanProgress {
+  paymentsMade: number;
+  totalPayments: number;
+  /** התשלום הבא, או null כשההלוואה נגמרה */
+  nextPayment: number | null;
+  nextPaymentDate: string | null;
+  paidSoFar: number;
+  interestPaidSoFar: number;
+  remainingToPay: number;
+  remainingInterest: number;
+  /** יתרת הקרן היום, אחרי התשלום האחרון ששולם */
+  balanceNow: number;
+  /** ההחזר החודשי מהתשלום הבא */
+  currentPayment: number;
+}
+
+export function loanProgress(
+  loan: Loan,
+  schedule: LoanSchedule = buildLoanSchedule(loan),
+  today: Date = new Date()
+): LoanProgress | null {
+  if (!hasLoanDates(loan)) return null;
+  const rows = schedule.rows;
+  const made = Math.min(paymentsMadeBy(loan, today), rows.length);
+  const rowTotal = (row: AmortRow) => row.pay + (row.prepay ?? 0) + (row.prepayInterest ?? 0);
+  const rowInterest = (row: AmortRow) => row.interest + (row.prepayInterest ?? 0);
+  const past = rows.slice(0, made);
+  const paidSoFar = past.reduce((sum, row) => sum + rowTotal(row), 0);
+  const interestPaidSoFar = past.reduce((sum, row) => sum + rowInterest(row), 0);
+  const next = made < rows.length ? made + 1 : null;
+  return {
+    paymentsMade: made,
+    totalPayments: rows.length,
+    nextPayment: next,
+    nextPaymentDate: next ? toISODate(paymentDate(loan, next) as Date) : null,
+    paidSoFar,
+    interestPaidSoFar,
+    remainingToPay: Math.max(0, schedule.totalPaid - paidSoFar),
+    remainingInterest: Math.max(0, schedule.totalInterest - interestPaidSoFar),
+    balanceNow: made === 0 ? loan.principal : rows[made - 1].balEnd,
+    currentPayment: next ? rows[next - 1].pay : 0,
+  };
+}
+
+/**
+ * ההלוואה כפי שהיא מהיום והלאה: היתרה של היום כקרן, התשלומים שנותרו כתקופה,
+ * והפירעונות המוקדמים שעוד לא הגיע מועדם. כך הדאשבורד, האיחוד והאסטרטגיה
+ * עובדים על החוב שבאמת נשאר — ולא על הסכום שנלקח במקור. הלוואה בלי תאריך
+ * לקיחה, או שעוד לא ירד בה תשלום, חוזרת כמו שהיא. הלוואה שנגמרה — null.
+ */
+export function loanFromToday(loan: Loan, today: Date = new Date()): Loan | null {
+  const schedule = buildLoanSchedule(loan);
+  const made = Math.min(paymentsMadeBy(loan, today), schedule.rows.length);
+  if (made === 0) return loan;
+  const remaining = schedule.rows.length - made;
+  const balance = schedule.rows[made - 1].balEnd;
+  if (remaining <= 0 || balance <= 0.005) return null;
+  const prepayments = (loan.prepayments ?? [])
+    .map((item) => ({ item, timing: resolvePrepaymentTiming(loan, item) }))
+    .filter(({ timing }) => timing.month > made)
+    .map(({ item, timing }) => ({ ...item, month: timing.month - made }));
+  return {
+    ...loan,
+    principal: balance,
+    months: remaining,
+    // מהתשלום האחרון ששולם — כך התשלום הראשון של ההלוואה הנותרת הוא התשלום הבא
+    startDate: toISODate(paymentDate(loan, made) as Date),
+    paymentDay: effectivePaymentDay(loan),
+    prepayments,
   };
 }
 
