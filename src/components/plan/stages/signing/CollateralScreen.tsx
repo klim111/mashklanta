@@ -304,7 +304,7 @@ function FormCard({
         {/* 1. העלאה */}
         <li className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <StepMark done={Boolean(documentId)} number={1} />
-          <div className="min-w-0 flex-1 text-right">
+          <div className="min-w-0 flex-[1_1_14rem] text-right">
             <p dir="rtl" className="text-right text-info font-black text-slate-900">העלאת הטופס לפלטפורמה</p>
             <p dir="rtl" className="text-right text-sm text-slate-500">
               {documentId ? `בתיק המסמכים: ${fileName ?? documentTitle}` : 'PDF או תמונה של הטופס שקיבלתם מהבנק.'}
@@ -338,7 +338,7 @@ function FormCard({
         {/* 2. שליחה */}
         <li className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <StepMark done={send.done} number={2} />
-          <div className="min-w-0 flex-1 text-right">
+          <div className="min-w-0 flex-[1_1_14rem] text-right">
             <p dir="rtl" className="text-right text-info font-black text-slate-900">{send.title}</p>
             <p dir="rtl" className="text-right text-sm text-slate-500">{send.hint}</p>
             {failure && <p dir="rtl" className="mt-1 text-right text-sm font-bold text-rose-600">{failure}</p>}
@@ -359,7 +359,7 @@ function FormCard({
         <li className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
           <div className="flex flex-wrap items-start gap-3">
             <StepMark done={confirm.done} number={3} />
-            <div className="min-w-0 flex-1 text-right">
+            <div className="min-w-0 flex-[1_1_14rem] text-right">
               <p dir="rtl" className="text-right text-info font-black text-amber-950">{confirm.title}</p>
               <p dir="rtl" className="mt-0.5 text-right text-sm leading-relaxed text-amber-950">{confirm.hint}</p>
               {confirm.extra}

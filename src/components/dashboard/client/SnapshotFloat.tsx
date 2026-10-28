@@ -31,6 +31,7 @@ const SEEN_KEY = 'mashkalanta:snapshot-closed';
  *
  * בכניסה הראשונה בכל ביקור היא נפתחת כהתרעה; אחרי שנסגרה היא נשארת סגורה עד
  * לחיצה על הכפתור הצף "תמונת מצב". כך המידע זמין תמיד בלי לתפוס את ראש המסך.
+ * בטלפון היא לא נפתחת מעצמה: שם היא הייתה מכסה שליש מהמסך ואת הכפתורים שמתחתיה.
  */
 export function SnapshotFloat({ items, alert }: { items: SnapshotItem[]; alert: boolean }) {
   const [open, setOpen] = useState(false);
@@ -42,7 +43,8 @@ export function SnapshotFloat({ items, alert }: { items: SnapshotItem[]; alert: 
     } catch {
       closed = false;
     }
-    if (!closed) setOpen(true);
+    const roomy = window.matchMedia?.('(min-width: 640px)').matches ?? true;
+    if (!closed && roomy) setOpen(true);
   }, []);
 
   const close = () => {
@@ -55,7 +57,7 @@ export function SnapshotFloat({ items, alert }: { items: SnapshotItem[]; alert: 
   };
 
   return (
-    <div className="fixed bottom-5 left-5 z-40 flex flex-col items-start gap-2.5 print:hidden" dir="rtl">
+    <div data-floating-dock className="fixed bottom-5 left-5 z-40 flex flex-col items-end gap-5 print:hidden sm:items-start sm:gap-2.5" dir="rtl">
       <AnimatePresence>
         {open && (
           <motion.section
@@ -65,7 +67,7 @@ export function SnapshotFloat({ items, alert }: { items: SnapshotItem[]; alert: 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ duration: 0.2 }}
-            className="w-[min(27rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15"
+            className="max-h-[calc(100dvh-7rem)] w-[min(27rem,calc(100vw-2.5rem))] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15"
           >
             <header className="flex items-center justify-between gap-2 bg-brand-dark px-4 py-2.5">
               <span className="flex items-center gap-2 text-base font-black text-white">

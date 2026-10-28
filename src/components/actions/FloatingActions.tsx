@@ -79,6 +79,7 @@ export function FloatingActions({
 
       <div
         dir="rtl"
+        data-floating-dock={inline ? undefined : ''}
         className={`${inline ? 'relative' : 'fixed bottom-5 right-5'} z-40 flex flex-col items-start gap-3 print:hidden`}
       >
         <AnimatePresence>

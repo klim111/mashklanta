@@ -174,7 +174,7 @@ export function BranchVisitScreen({
         <ol className="mt-5 space-y-3">
           <li className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <StepMark done={Boolean(date)} number={1} />
-            <div className="min-w-0 flex-1 text-right">
+            <div className="min-w-0 flex-[1_1_14rem] text-right">
               <p dir="rtl" className="text-right text-info font-black text-slate-900">קביעת תאריך</p>
               <p dir="rtl" className="text-right text-sm text-slate-500">
                 {dayLabel

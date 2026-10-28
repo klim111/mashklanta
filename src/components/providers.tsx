@@ -40,7 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <DemoHost>
             <SiteVisitTracker />
             <PhoneGate>
-              {/* ההתכתבות עם היועץ — בתוך PhoneGate, כך שלא תופיע מעל מסך החסימה בטלפון */}
+              {/* ההתכתבות עם היועץ */}
               <ClientConversationProvider>{children}</ClientConversationProvider>
               {/* פגישה שהיועץ קבע — התראה צפה בכל מסך של הלקוח */}
               <NewMeetingAlert />

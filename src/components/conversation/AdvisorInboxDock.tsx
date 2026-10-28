@@ -60,6 +60,7 @@ export function AdvisorInboxDock({
       <button
         type="button"
         onClick={() => setMode('open')}
+        data-floating-dock
         className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 rounded-full bg-violet-600 px-5 py-3 text-button font-black text-white shadow-xl shadow-violet-600/30 transition-transform hover:-translate-y-0.5"
       >
         <MessageCircle className="h-5 w-5" />

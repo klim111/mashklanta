@@ -153,7 +153,7 @@ export function RateValidityDialog({
             {title} · הריביות בכל אישור עקרוני שמורות {RATE_VALIDITY_DAYS} ימים מיום קבלתו.
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+        <div className="max-h-[60dvh] space-y-2 overflow-y-auto">
           {ordered.map((row) => (
             <RateCountdown key={row.bank} row={row} />
           ))}

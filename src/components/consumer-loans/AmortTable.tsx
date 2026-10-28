@@ -99,7 +99,7 @@ export function AmortTable({ loan, onClose }: { loan: Loan; onClose: () => void 
           </div>
         </div>
 
-        <div className="max-h-[75vh] space-y-2.5 overflow-y-auto px-5 py-4">
+        <div className="max-h-[75dvh] space-y-2.5 overflow-y-auto px-5 py-4">
           {/* מצב ההלוואה */}
           <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 sm:grid-cols-4">
             <Figure

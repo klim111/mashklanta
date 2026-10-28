@@ -478,7 +478,7 @@ export default function AdvancedMortgageJourney({
     <div className="min-h-screen bg-slate-50">
       <div className="flex flex-col lg:flex-row lg:h-screen lg:overflow-hidden">
         {/* Right Panel - Vertical Map */}
-        <div className="w-full lg:w-72 xl:w-80 shrink-0 max-h-[60vh] lg:max-h-none bg-white shadow-2xl overflow-y-auto border-b lg:border-b-0 lg:border-l border-slate-200">
+        <div className="w-full lg:w-72 xl:w-80 shrink-0 max-h-[60dvh] lg:max-h-none bg-white shadow-2xl overflow-y-auto border-b lg:border-b-0 lg:border-l border-slate-200">
           <div className="sticky top-0 bg-white z-20 border-b border-slate-200">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-2">

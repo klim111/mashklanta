@@ -187,7 +187,7 @@ export function AddTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 md:p-8">
+      <DialogContent dir="rtl" className="max-h-[90dvh] max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 md:p-8">
         <div className="mb-5 flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-lg">
             <CalendarPlus className="h-5 w-5" />

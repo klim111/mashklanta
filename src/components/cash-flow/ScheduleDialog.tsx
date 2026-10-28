@@ -22,7 +22,7 @@ export function ScheduleDialog({
 }) {
   return (
     <Dialog open={!!view} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent dir="rtl" className="max-h-[85vh] max-w-4xl overflow-hidden">
+      <DialogContent dir="rtl" className="max-h-[85dvh] max-w-4xl overflow-hidden">
         {view?.kind === 'loan' && <LoanTable title={view.title} rows={view.rows} />}
         {view?.kind === 'flow' && <FlowTable state={state} />}
       </DialogContent>
@@ -44,7 +44,7 @@ function LoanTable({ title, rows }: { title: string; rows: AmortRow[] }) {
           {rows.length} תשלומים · סך הכול {SHEKEL(paid)} · מתוכם ריבית {SHEKEL(interest)}
         </DialogDescription>
       </DialogHeader>
-      <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-200">
+      <div className="max-h-[60dvh] overflow-auto rounded-xl border border-slate-200">
         <table className="w-full border-collapse">
           <thead>
             <tr>
@@ -84,7 +84,7 @@ function FlowTable({ state }: { state: CashFlowState }) {
           מה משלמים בכל חודש, כמה נשאר, ויחס ההחזר — עד סוף ההלוואה האחרונה
         </DialogDescription>
       </DialogHeader>
-      <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-200">
+      <div className="max-h-[60dvh] overflow-auto rounded-xl border border-slate-200">
         <table className="w-full border-collapse">
           <thead>
             <tr>

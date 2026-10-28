@@ -166,7 +166,7 @@ export function MixReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto text-right">
+      <DialogContent dir="rtl" className="max-h-[90dvh] max-w-2xl overflow-y-auto text-right">
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2 text-right">
             {intent === 'send' ? <Send className="h-5 w-5 text-blue-600" /> : <FileText className="h-5 w-5 text-blue-600" />}

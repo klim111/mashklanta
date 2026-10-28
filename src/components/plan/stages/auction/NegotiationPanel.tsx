@@ -146,7 +146,7 @@ export function NegotiationPanel({
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone.dot }} />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-[1_1_14rem]">
                     <p className="flex flex-wrap items-center gap-1.5 text-sm font-black text-slate-900">
                       {bank}
                       {isCheapest && !single && (

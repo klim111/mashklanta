@@ -410,7 +410,7 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
         </section>
 
         <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4">
-          <p dir="rtl" className="min-w-0 flex-1 text-right text-info text-slate-600">
+          <p dir="rtl" className="min-w-0 flex-[1_1_14rem] text-right text-info text-slate-600">
             {uploadedCount === 0
               ? 'עדיין לא נשמרו כתבים חתומים.'
               : uploadedCount === 1
@@ -526,7 +526,7 @@ function BankRow({
     >
       <div dir="rtl" className="flex flex-wrap items-center gap-3">
         <BankMark info={bank} size={40} />
-        <div dir="rtl" className="min-w-0 flex-1 text-right">
+        <div dir="rtl" className="min-w-0 flex-[1_1_14rem] text-right">
           <p dir="rtl" className="text-info font-black text-slate-900">{bank.fullName}</p>
           <p dir="rtl" className="mt-0.5 text-2xs text-slate-500">
             {letter ? (

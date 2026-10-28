@@ -27,7 +27,7 @@ export function PaymentScheduleReminder({
     return (
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-        <p dir="rtl" className="min-w-0 flex-1 text-right text-info font-black text-emerald-900">
+        <p dir="rtl" className="min-w-0 flex-[1_1_14rem] text-right text-info font-black text-emerald-900">
           פעימות התשלום הוגדרו מול החוזה
         </p>
         <Link
@@ -48,7 +48,7 @@ export function PaymentScheduleReminder({
       }`}
     >
       <CalendarRange className={`h-5 w-5 shrink-0 ${mandatory ? 'text-rose-600' : 'text-amber-600'}`} />
-      <p dir="rtl" className={`min-w-0 flex-1 text-right text-info leading-relaxed ${mandatory ? 'text-rose-950' : 'text-amber-950'}`}>
+      <p dir="rtl" className={`min-w-0 flex-[1_1_14rem] text-right text-info leading-relaxed ${mandatory ? 'text-rose-950' : 'text-amber-950'}`}>
         {mandatory && (
           <span dir="rtl" className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-2xs font-black text-white">חובה</span>
         )}

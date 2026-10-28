@@ -564,7 +564,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
           תמיד, גם אחרי גלילה. במסך רחב תפריט הצד תופס את הקצה הימני, והעיגול
           יושב משמאלו
         */}
-        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden lg:right-[calc(272px+1.25rem)]">
+        <div data-floating-dock className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2.5 print:hidden lg:right-[calc(272px+1.25rem)]">
           <ConversationDockSlot />
         </div>
       </div>

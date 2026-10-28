@@ -3,21 +3,18 @@
 /**
  * התאמת הפלטפורמה לטלפון נייד.
  *
- * בטלפון מוצגים במלואם רק דף הבית והכלים החינמיים, שעוצבו גם למסך קטן.
- * שאר המסכים שלפני ההתחברות (הרשמה, התחברות, תמחור וכו׳) נשארים שמישים, עם
- * הודעה שלהצגה מיטבית יש לפתוח מטאבלט או ממחשב. מסכי הפלטפורמה שאחרי
- * ההתחברות — הלוח ושלבי המשכנתא — אינם נפתחים בטלפון: במקומם מוצגת ההודעה
- * עם דרך חזרה לדף הבית ולכלים. טאבלטים ומחשבים אינם מושפעים.
+ * כל האתר נפתח בטלפון במלואו, כולל הלוח, שלבי המשכנתא ואזור היועץ. בכל מסך
+ * שאינו מהמסכים שעוצבו מלכתחילה לטלפון מוצגת בראש העמוד הודעה שלתצוגה
+ * מיטבית מומלץ לפתוח מטאבלט או ממחשב. ההודעה אינה חוסמת דבר, ואפשר לסגור
+ * אותה עד סוף הביקור. טאבלטים ומחשבים אינם מושפעים.
  */
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
-import { Check, Copy, Laptop, MonitorSmartphone, Tablet } from 'lucide-react';
+import { MonitorSmartphone, X } from 'lucide-react';
 import { useDemoRequest } from '@/demo/store';
 
-/** מסכים שמותאמים לטלפון ומוצגים בו כרגיל */
+/** מסכים שעוצבו מלכתחילה לטלפון — בהם לא מוצגת ההודעה */
 const PHONE_READY_PATHS = [
   '/',
   '/mortgage-planning',
@@ -33,14 +30,8 @@ const PHONE_READY_PATHS = [
   '/accessibility',
 ];
 
-/**
- * עמודי המידע הציבוריים שלא עוצבו במיוחד לטלפון. הם נפתחים בטלפון עם ההודעה
- * שבראש העמוד — לאורח וגם למשתמש מחובר, כי אין בהם מסכי פלטפורמה.
- */
-const PUBLIC_INFO_PATHS = ['/how-it-works', '/pricing', '/demo'];
-
-/** מסכי הפלטפורמה שאחרי ההתחברות — חסומים בטלפון גם בלי לבדוק את ה-session */
-const APP_PREFIXES = ['/dashboard', '/advisor-dashboard'];
+/** סגירת ההודעה נזכרת עד סוף הביקור, כדי שלא תחזור בכל מעבר עמוד */
+const NOTICE_DISMISSED_KEY = 'mashkalanta:phone-notice-dismissed';
 
 function matches(pathname: string, path: string) {
   return pathname === path || (path !== '/' && pathname.startsWith(`${path}/`));
@@ -73,31 +64,39 @@ export function useIsPhone(): boolean {
 export function PhoneGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? '/';
   const isPhone = useIsPhone();
-  const { status } = useSession();
   const demo = useDemoRequest();
+  const [dismissed, setDismissed] = useState(false);
 
-  // ההדגמה היא סיור מודרך; היא אינה נחסמת
-  if (!isPhone || demo) return <>{children}</>;
+  useEffect(() => {
+    try {
+      setDismissed(window.sessionStorage.getItem(NOTICE_DISMISSED_KEY) === '1');
+    } catch {
+      // אחסון חסום — ההודעה פשוט תוצג
+    }
+  }, []);
 
-  if (PHONE_READY_PATHS.some((path) => matches(pathname, path))) return <>{children}</>;
+  const showNotice =
+    isPhone && !demo && !dismissed && !PHONE_READY_PATHS.some((path) => matches(pathname, path));
 
-  const isPublicInfo = PUBLIC_INFO_PATHS.some((path) => matches(pathname, path));
-  const isAppScreen =
-    APP_PREFIXES.some((path) => matches(pathname, path)) ||
-    (status === 'authenticated' && !isPublicInfo);
-
-  if (isAppScreen) return <PhoneBlockedScreen signedIn={status === 'authenticated'} />;
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      window.sessionStorage.setItem(NOTICE_DISMISSED_KEY, '1');
+    } catch {
+      // אחסון חסום — ההודעה תחזור בעמוד הבא
+    }
+  };
 
   return (
     <>
-      <PhoneNoticeBanner />
+      {showNotice && <PhoneNoticeBanner onDismiss={dismiss} />}
       {children}
     </>
   );
 }
 
-/** הודעה בראש מסכים ציבוריים שאינם מותאמים לטלפון (הרשמה, התחברות, תמחור) */
-function PhoneNoticeBanner() {
+/** הודעה בראש המסכים שעוצבו קודם כול לטאבלט ולמחשב. אינה חוסמת דבר, ואפשר לסגור אותה */
+function PhoneNoticeBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div
       role="note"
@@ -105,78 +104,18 @@ function PhoneNoticeBanner() {
       className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-right"
     >
       <MonitorSmartphone className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden />
-      <p className="text-info leading-snug text-amber-900">
-        <span className="font-bold">לתצוגה מיטבית של הפלטפורמה יש לפתוח אותה מטאבלט או ממחשב.</span>{' '}
-        מהטלפון אפשר להירשם ולהשתמש בכלים החינמיים, ושלבי תכנון המשכנתא נפתחים בטאבלט או במחשב.
+      <p className="min-w-0 flex-1 text-info leading-snug text-amber-900">
+        <span className="font-bold">לתצוגה מיטבית של הפלטפורמה מומלץ לפתוח אותה מטאבלט או ממחשב.</span>{' '}
+        אפשר להמשיך לעבוד גם מהטלפון, וכל מה שתעשו כאן נשמר בחשבון.
       </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="סגירת ההודעה"
+        className="-m-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-amber-800 hover:bg-amber-100"
+      >
+        <X className="h-5 w-5" aria-hidden />
+      </button>
     </div>
-  );
-}
-
-/** המסך שמוצג בטלפון במקום הלוח ושלבי המשכנתא */
-export function PhoneBlockedScreen({ signedIn }: { signedIn: boolean }) {
-  const [copied, setCopied] = useState(false);
-
-  const shareLink = async () => {
-    const url = window.location.origin;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: 'משכלנתא', text: 'להמשך תכנון המשכנתא במחשב', url });
-        return;
-      }
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // המשתמש סגר את חלון השיתוף
-    }
-  };
-
-  return (
-    <main dir="rtl" className="flex min-h-[100svh] flex-col items-center justify-center bg-slate-50 px-5 py-10 text-center">
-      <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mx-auto mb-5 flex items-end justify-center gap-2 text-blue-600" aria-hidden>
-          <Tablet className="h-10 w-10" />
-          <Laptop className="h-14 w-14" />
-        </div>
-        <h1 className="text-title font-extrabold leading-tight text-slate-900">
-          פתחו את משכלנתא בטאבלט או במחשב
-        </h1>
-        <p className="mt-3 text-info leading-relaxed text-slate-600">
-          לתצוגה מיטבית של הפלטפורמה יש לפתוח אותה מטאבלט או ממחשב. שלבי תכנון המשכנתא, בניית התמהיל
-          והלוח האישי אינם זמינים מהטלפון.
-          {signedIn && ' החשבון שלכם שמור, והכול ממתין לכם שם.'}
-        </p>
-
-        <div className="mt-6 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={shareLink}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-button font-bold text-white hover:bg-blue-700"
-          >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'הקישור הועתק' : 'שלחו לעצמכם את הקישור'}
-          </button>
-          <Link
-            href="/#free-tools"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-button font-bold text-slate-800 hover:bg-slate-50"
-          >
-            לכלים החינמיים
-          </Link>
-          <Link href="/" className="text-button font-semibold text-blue-700 underline-offset-4 hover:underline">
-            לדף הבית
-          </Link>
-          {signedIn && (
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: '/' })}
-              className="text-2xs font-semibold text-slate-500 underline-offset-4 hover:underline"
-            >
-              התנתקות
-            </button>
-          )}
-        </div>
-      </div>
-    </main>
   );
 }

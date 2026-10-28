@@ -142,7 +142,7 @@ export function BankQuoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="flex max-h-[94vh] max-w-4xl flex-col gap-3">
+      <DialogContent dir="rtl" className="flex max-h-[94dvh] max-w-4xl flex-col gap-3">
         <DialogHeader className="shrink-0 pr-7">
           <DialogTitle className="flex items-center gap-2">
             <BadgePercent className="h-5 w-5 text-emerald-600" />

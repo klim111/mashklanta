@@ -335,7 +335,7 @@ export function FamilyEconomyFloatingCta({ context }: { context?: AdvisorLeadCon
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-5 left-4 z-40 flex flex-col items-start gap-3 print:hidden sm:left-5">
+      <div data-floating-dock className="pointer-events-none fixed bottom-5 left-4 z-40 flex flex-col items-start gap-3 print:hidden sm:left-5">
         <AnimatePresence>
           {open && (
             <motion.div

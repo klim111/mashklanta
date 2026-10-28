@@ -60,7 +60,7 @@ export function LenderRatesTable({ compact = true }: { compact?: boolean }) {
     .filter((group) => group.rows.length > 0);
 
   return (
-    <div className={compact ? 'max-h-[60vh] overflow-y-auto' : ''}>
+    <div className={compact ? 'max-h-[60dvh] overflow-y-auto' : ''}>
       {compact && (
         <div className="border-b border-slate-100 px-3 py-2">
           <p className="text-xs font-black text-slate-900">

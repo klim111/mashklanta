@@ -102,7 +102,7 @@ export function RefinanceDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent dir="rtl" className="max-w-2xl max-h-[92vh] overflow-y-auto">
+      <DialogContent dir="rtl" className="max-w-2xl max-h-[92dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RefreshCcw className="h-5 w-5 text-blue-600" />
