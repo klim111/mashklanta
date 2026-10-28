@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">משכלנתא</string>
+    <string name="title_activity_main">משכלנתא</string>
+    <string name="package_name">com.mashkalanta.app</string>
+    <string name="custom_url_scheme">com.mashkalanta.app</string>
+</resources>
