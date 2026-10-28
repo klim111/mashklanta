@@ -1,10 +1,11 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { safeCallbackUrl } from '@/lib/safe-path';
+import { trackEvent } from '@/lib/gtag';
 
 /**
  * לכאן הלקוח מגיע אחרי עמוד התשלום של HYP (דרך `/api/payments/hyp/return`,
@@ -19,6 +20,19 @@ function ResultBody() {
   /** תשלום בקישור תשלום של היועץ — לא קשור לגישה לפלטפורמה */
   const link = params.get('link');
   const linkPath = link && /^[A-Za-z0-9_-]{10,64}$/.test(link) ? `/pay/${link}` : null;
+
+  // תשלום שאושר נספר ב-Google Analytics פעם אחת, גם אם העמוד נטען מחדש
+  useEffect(() => {
+    if (status !== 'paid') return;
+    const key = `mk_purchase_sent:${window.location.search}`;
+    try {
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, '1');
+    } catch {
+      // בלי אחסון — שולחים בכל זאת
+    }
+    trackEvent('purchase', { kind: linkPath ? 'payment_link' : renewal ? 'renewal' : 'platform', currency: 'ILS' });
+  }, [status, linkPath, renewal]);
 
   const view =
     status === 'paid'

@@ -13,6 +13,7 @@ import { passwordProblem } from '@/lib/password-policy';
 import { authHref, safeCallbackPath } from '@/lib/auth-url';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
+import { trackEvent } from '@/lib/gtag';
 
 /**
  * ההרשמה שנפתחת מתוך הכלים הפתוחים.
@@ -121,6 +122,7 @@ export function GuestRegistrationDialog({
       }
 
       draft.markSubmitted();
+      trackEvent('sign_up', { method: 'email' });
       setDone(true);
     } catch {
       setError('ההרשמה נכשלה. בדקו את החיבור ונסו שוב.');
