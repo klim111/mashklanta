@@ -17,6 +17,7 @@ import { useClientConversation } from '@/components/conversation/ClientChatDock'
 import { RequestKindPicker, currentPagePath } from './RequestKindPicker';
 import { AlreadyContactedDialog, useAlreadyContacted } from '@/components/consult/AlreadyContactedDialog';
 import { CONTACTED_ADVISOR_EVENT, CONTACTED_ADVISOR_KEY } from '@/lib/contacted-advisor';
+import { trackEvent } from '@/lib/gtag';
 
 export { CONTACTED_ADVISOR_EVENT, CONTACTED_ADVISOR_KEY };
 
@@ -94,6 +95,7 @@ export function AdvisorLeadDialog({
         ),
       });
       if (!response.ok) throw new Error(String(response.status));
+      trackEvent('generate_lead', { topic });
       // הדאשבורד מציג מסך פתיחה אחר אחרי הפנייה הראשונה ליועץ
       try {
         window.localStorage.setItem(CONTACTED_ADVISOR_KEY, '1');

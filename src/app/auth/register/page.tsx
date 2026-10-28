@@ -16,6 +16,7 @@ import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 import { ConsultSentNotice } from '@/components/auth/ConsultSentNotice';
 import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
 import { authHref, safeCallbackPath } from '@/lib/auth-url';
+import { trackEvent } from '@/lib/gtag';
 
 function RegisterForm() {
   const router = useRouter();
@@ -121,6 +122,7 @@ function RegisterForm() {
           ההרשמה וממתינה לו אחרי האישור.
         */
         draft.markSubmitted();
+        trackEvent('sign_up', { method: 'email' });
         setSuccess('שלחנו לכם מייל לאישור ההרשמה');
         router.push(authHref('/auth/check-email', callbackUrl, { email: formData.email.trim().toLowerCase() }));
       }

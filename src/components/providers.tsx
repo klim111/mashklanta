@@ -11,6 +11,7 @@ import { DemoHost } from '@/demo/DemoHost';
 import { PhoneGate } from '@/components/device/PhoneGate';
 import { ClientConversationProvider } from '@/components/conversation/ClientChatDock';
 import { SiteVisitTracker } from '@/components/analytics/SiteVisitTracker';
+import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { NewMeetingAlert } from '@/components/meetings/NewMeetingAlert';
 import { AdvisorActionsMenu } from '@/components/actions/AdvisorActionsMenu';
 import { AdvisorTabGuard } from '@/components/auth/AdvisorTabGuard';
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AdvisorTabGuard>
           <DemoHost>
             <SiteVisitTracker />
+            <GoogleAnalytics />
             <PhoneGate>
               {/* ההתכתבות עם היועץ — בתוך PhoneGate, כך שלא תופיע מעל מסך החסימה בטלפון */}
               <ClientConversationProvider>{children}</ClientConversationProvider>

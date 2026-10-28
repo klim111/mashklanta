@@ -14,6 +14,7 @@ import {
 import { RequestKindPicker, currentPagePath } from '@/components/plan/advisor/RequestKindPicker';
 import type { RequestKind } from '@/lib/advisor-requests';
 import { AlreadyContactedDialog, useAlreadyContacted } from '@/components/consult/AlreadyContactedDialog';
+import { trackEvent } from '@/lib/gtag';
 
 export interface GuidanceRequestDialogProps {
   open: boolean;
@@ -92,6 +93,7 @@ export function GuidanceRequestDialog({
         setError(body?.error ?? 'שליחת הבקשה נכשלה. נסו שוב.');
         return;
       }
+      trackEvent('generate_lead', { topic: leadTopicFor(goal, serviceType) });
       // הדאשבורד מציג מסך פתיחה אחר אחרי הפנייה הראשונה ליועץ
       try {
         window.localStorage.setItem(CONTACTED_ADVISOR_KEY, '1');
