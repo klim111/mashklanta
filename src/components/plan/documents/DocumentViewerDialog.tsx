@@ -49,7 +49,7 @@ export function DocumentViewerDialog({
         <div className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-50">
           {isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt={document.name} className="mx-auto max-h-[65vh] w-auto" />
+            <img src={src} alt={document.name} className="mx-auto max-h-[65dvh] w-auto" />
           ) : (
             /*
               מציג ה-PDF המובנה של הדפדפן הוא תוסף, והוא נחסם בתוך iframe עם

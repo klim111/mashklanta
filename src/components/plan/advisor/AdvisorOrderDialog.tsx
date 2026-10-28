@@ -142,7 +142,7 @@ export function AdvisorOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="flex max-h-[94vh] max-w-3xl flex-col gap-3">
+      <DialogContent dir="rtl" className="flex max-h-[94dvh] max-w-3xl flex-col gap-3">
         <DialogHeader className="shrink-0 pr-7">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-violet-600" />

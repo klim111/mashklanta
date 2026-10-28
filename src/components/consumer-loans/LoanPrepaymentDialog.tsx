@@ -141,7 +141,7 @@ export function LoanPrepaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent dir="rtl" className="max-h-[92vh] max-w-xl overflow-y-auto text-right">
+      <DialogContent dir="rtl" className="max-h-[92dvh] max-w-xl overflow-y-auto text-right">
         <DialogHeader className="pr-8 text-right">
           <DialogTitle className="flex items-center gap-2">
             <Banknote className="h-5 w-5 text-emerald-600" />

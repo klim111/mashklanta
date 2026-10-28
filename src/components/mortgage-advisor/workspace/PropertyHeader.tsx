@@ -288,7 +288,7 @@ export function PropertyHeader({
       {overFinanced && (
         <div className="flex flex-wrap items-center gap-2 border-t border-red-200 bg-red-50 p-3">
           <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-          <p className="min-w-0 flex-1 text-2xs text-red-800 leading-relaxed">
+          <p className="min-w-0 flex-[1_1_14rem] text-2xs text-red-800 leading-relaxed">
             אחוז המימון ({ltv.toFixed(1)}%) גבוה מהתקרה של בנק ישראל ל{DEAL_TYPES[dealType]} (
             {ltvLimit}%). עליך להגדיל את ההון העצמי, או להקטין את המשכנתא עד{' '}
             {formatShekel(maxMortgage)}.

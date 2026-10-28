@@ -458,7 +458,7 @@ export default function EarlyRepaymentSimulation({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white w-full max-w-7xl rounded-t-3xl shadow-2xl max-h-[90vh] overflow-hidden"
+          className="bg-white w-full max-w-7xl rounded-t-3xl shadow-2xl max-h-[90dvh] overflow-hidden"
         >
           {/* Header */}
           <div className="bg-blue-600 p-6 text-white">

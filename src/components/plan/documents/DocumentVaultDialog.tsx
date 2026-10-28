@@ -149,7 +149,7 @@ export function DocumentVaultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90vh] max-w-3xl overflow-y-auto rounded-3xl bg-white p-0" {...demoId('vault-dialog')}>
+      <DialogContent dir="rtl" className="max-h-[90dvh] max-w-3xl overflow-y-auto rounded-3xl bg-white p-0" {...demoId('vault-dialog')}>
         <div className="relative overflow-hidden bg-brand-dark px-6 py-6 text-white md:px-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-blue-600/30 blur-3xl" />

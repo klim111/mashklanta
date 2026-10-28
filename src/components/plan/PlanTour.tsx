@@ -97,7 +97,7 @@ export function PlanTour({ index, onIndexChange, onTry, returnedAfterChanges = f
             transition={{ duration: 0.28 }}
             role="dialog"
             aria-modal="true"
-            className="max-h-[88vh] overflow-y-auto rounded-3xl bg-white shadow-2xl ring-1 ring-black/5"
+            className="max-h-[88dvh] overflow-y-auto rounded-3xl bg-white shadow-2xl ring-1 ring-black/5"
           >
             {isOffer ? (
               <OfferScreen onBack={prev} />

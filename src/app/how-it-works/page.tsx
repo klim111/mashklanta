@@ -239,7 +239,7 @@ export default function HowItWorksPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.4 }}
-          className="absolute bottom-6 text-white/60 transition-colors hover:text-white"
+          className="absolute bottom-6 hidden text-white/60 transition-colors hover:text-white md:block"
           aria-label="גלול למטה"
         >
           <ArrowDown className="h-8 w-8 animate-bounce" />
@@ -277,7 +277,7 @@ export default function HowItWorksPage() {
       </nav>
 
       {/* ─────────────────────────── The idea ─────────────────────────── */}
-      <section id="idea" className="scroll-mt-32 bg-white py-20 md:py-28">
+      <section id="idea" className="scroll-mt-32 overflow-x-clip bg-white py-20 md:py-28">
         <div className="mx-auto max-w-6xl px-4">
           <motion.div
             initial={{ opacity: 0, y: 24 }}

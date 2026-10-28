@@ -763,7 +763,7 @@ function PaydownPaceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         dir="rtl"
-        className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-6xl overflow-y-auto p-4 sm:w-full sm:p-6 sm:max-w-6xl [&>button]:left-4 [&>button]:right-auto"
+        className="max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-6xl overflow-y-auto p-4 sm:w-full sm:p-6 sm:max-w-6xl [&>button]:left-4 [&>button]:right-auto"
       >
         <DialogHeader>
           <DialogTitle className="text-right text-xl font-black text-slate-900">

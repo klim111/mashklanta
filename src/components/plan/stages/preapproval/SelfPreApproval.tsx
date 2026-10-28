@@ -653,7 +653,7 @@ function AdvisorBanker({
     <div className="mt-3 border-t border-slate-100 pt-3">
       <p dir="rtl" className="text-sm font-black text-slate-700">הבנקאי שמטפל בבקשה</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-[1_1_14rem]">
           {name && (
             <p dir="rtl" className="flex items-center gap-1.5 text-info font-black text-slate-900">
               <UserRound className="h-4 w-4 shrink-0 text-slate-400" />

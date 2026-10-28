@@ -379,7 +379,7 @@ export function MixRow({
             onClick={stopRowClick}
             className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5"
           >
-            <p className="min-w-0 flex-1 text-2xs font-bold text-violet-900">
+            <p className="min-w-0 flex-[1_1_14rem] text-2xs font-bold text-violet-900">
               מוצגים נתוני המסלול שנבחר בלבד ·{' '}
               {focusedTrack.track.name || TRACK_TYPES[focusedTrack.track.type]} ·{' '}
               {formatShekel(focusedTrack.track.amount)}

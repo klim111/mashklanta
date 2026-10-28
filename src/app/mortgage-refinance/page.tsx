@@ -25,7 +25,6 @@ import { RefinancePreviewBar } from '@/components/refinance-check/RefinancePrevi
 import { guestRefinanceMix, reviveMix, saveGuestMix } from '@/components/refinance-check/refinanceCheckStore';
 import { useToolData } from '@/components/tool-data/toolData';
 import { GuestSaveNotice } from '@/components/guest/GuestSaveNotice';
-import { PhoneBlockedScreen, useIsPhone } from '@/components/device/PhoneGate';
 
 type RefinanceStep = 'tracks' | 'goal';
 
@@ -58,17 +57,12 @@ export default function MortgageRefinancePage() {
 function RefinanceEntry() {
   const { status } = useSession();
   const view = useSearchParams().get('view');
-  const isPhone = useIsPhone();
   const landing = useLandingMode();
 
   if (status === 'loading') return <div className="min-h-screen bg-slate-50" />;
   if (status === 'authenticated') return <SignedInTool />;
 
-  if (view === 'preview') {
-    // הדאשבורד והשלבים אינם מותאמים לטלפון, ולכן גם ההצצה אליהם
-    if (isPhone) return <PhoneBlockedScreen signedIn={false} />;
-    return <PreviewTool />;
-  }
+  if (view === 'preview') return <PreviewTool />;
 
   return (
     <div className="min-h-screen bg-slate-50">

@@ -100,7 +100,7 @@ export function RefinanceSaveDialog({
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent dir="rtl" className="flex max-h-[94vh] max-w-4xl flex-col gap-3 overflow-y-auto">
+      <DialogContent dir="rtl" className="flex max-h-[94dvh] max-w-4xl flex-col gap-3 overflow-y-auto">
         <DialogHeader className="shrink-0 pr-7 text-right">
           <DialogTitle className="flex items-center gap-2">
             {phase === 'saved' ? (

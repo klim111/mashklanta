@@ -180,7 +180,7 @@ export function AdvisorActionsMenu() {
         )}
       </AnimatePresence>
 
-      <div dir="rtl" className="fixed bottom-5 right-5 z-40 flex flex-col items-start gap-3 print:hidden">
+      <div dir="rtl" data-floating-dock className="fixed bottom-5 right-5 z-40 flex flex-col items-start gap-3 print:hidden">
         <AnimatePresence>
           {open && (
             <motion.div

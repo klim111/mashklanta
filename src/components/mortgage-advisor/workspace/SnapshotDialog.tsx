@@ -28,7 +28,7 @@ export function SnapshotDialog({ result, month, onMonthChange, onClose }: Snapsh
     <Dialog open={month !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         dir="rtl"
-        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        className="max-w-3xl max-h-[90dvh] overflow-y-auto"
       >
         {snapshot && (
           <>

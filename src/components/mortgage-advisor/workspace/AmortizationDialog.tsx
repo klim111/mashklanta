@@ -247,7 +247,7 @@ export function AmortizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent dir="rtl" className="max-w-5xl max-h-[92vh] flex flex-col">
+      <DialogContent dir="rtl" className="max-w-5xl max-h-[92dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Table2 className="h-5 w-5 text-blue-600" />

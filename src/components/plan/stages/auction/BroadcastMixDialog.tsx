@@ -65,7 +65,7 @@ export function BroadcastMixDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="flex max-h-[94vh] max-w-2xl flex-col gap-3">
+      <DialogContent dir="rtl" className="flex max-h-[94dvh] max-w-2xl flex-col gap-3">
         <DialogHeader className="shrink-0 pr-7 text-center">
           <DialogTitle className="justify-center text-center">
             {sent ? 'התמהיל שודר ללקוח' : 'סיכום ההצעה לפני שידור'}

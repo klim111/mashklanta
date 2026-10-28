@@ -382,6 +382,17 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * בטלפון הכפתורים הצפים בתחתית המסך (פעולות, תמונת מצב, הודעות, פנייה ליועץ)
+ * יושבים מעל התוכן. מקום ריק בסוף העמוד מאפשר לגלול את השורה האחרונה אל מעליהם,
+ * כך ששום כפתור בסוף העמוד לא נשאר מתחתיהם.
+ */
+@media (max-width: 767px) {
+  body:has([data-floating-dock]) {
+    padding-bottom: 6rem;
+  }
+}
+
 /* Professional Typography Scale */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-app);

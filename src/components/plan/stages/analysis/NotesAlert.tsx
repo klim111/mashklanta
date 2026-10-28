@@ -69,7 +69,7 @@ export function NotesAlert({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent dir="rtl" className="max-h-[85vh] max-w-xl overflow-y-auto">
+        <DialogContent dir="rtl" className="max-h-[85dvh] max-w-xl overflow-y-auto">
           <DialogHeader className="text-center">
             <DialogTitle className="justify-center text-center text-subtitle font-black text-slate-900">
               {title}

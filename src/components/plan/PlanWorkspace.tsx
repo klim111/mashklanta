@@ -1071,7 +1071,7 @@ function PrerequisiteNotice({
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
       <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-      <p className="min-w-0 flex-1 text-info leading-relaxed text-amber-950">
+      <p className="min-w-0 flex-[1_1_14rem] text-info leading-relaxed text-amber-950">
         <span className="font-black">
           השלימו מילוי פרטים {stages.length > 1 ? 'בשלבים' : 'בשלב'} {names}.
         </span>{' '}

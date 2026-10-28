@@ -92,7 +92,7 @@ export function QuickActions({
 
       {/* מלוח הבקרה תיק המסמכים נפתח אחרי בחירת הלקוח שאליו הוא שייך */}
       <Dialog open={documentsOpen} onOpenChange={setDocumentsOpen}>
-        <DialogContent dir="rtl" className="max-h-[70vh] max-w-md overflow-y-auto text-right">
+        <DialogContent dir="rtl" className="max-h-[70dvh] max-w-md overflow-y-auto text-right">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center gap-2 text-right">
               <FolderOpen className="h-5 w-5 text-blue-600" />

@@ -49,7 +49,7 @@ export function SavedMixPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[80vh] max-w-2xl overflow-y-auto">
+      <DialogContent dir="rtl" className="max-h-[80dvh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2 text-base">
             <BookmarkCheck className="h-4 w-4 text-blue-600" />
