@@ -19,6 +19,17 @@ const EXEMPT_PREFIXES = ['/meeting/', '/auth/advisor-verify'];
 let loadVerdict: boolean | null = null;
 
 /**
+ * האם הטעינה הזו של הדף התחילה כשהיועץ כבר מחובר. null עד שה-session נטען
+ * לראשונה. לשונית שנטענה בלי התחברות של יועץ, ורק אחר כך קיבלה אותה — זו
+ * לשונית אחרת של האתר שהייתה פתוחה בזמן שהיועץ נכנס בלשונית שלידה. NextAuth
+ * מעדכן את כל הלשוניות הפתוחות בכל שינוי של ה-session, ולכן היא רואה פתאום
+ * יועץ מחובר. היא אינה "ביקור חדש": אם הייתה מנתקת, הניתוק היה מוחק את העוגייה
+ * המשותפת ומפיל גם את הלשונית שבה היועץ נכנס זה עתה (כך קרה בכרום במחשב,
+ * כשהקישור מהמייל נפתח בלשונית חדשה ולשונית הכניסה נשארה פתוחה).
+ */
+let loadStartedAsAdvisor: boolean | null = null;
+
+/**
  * האם הטעינה הזו ממשיכה את הכניסה של היועץ: רק הטעינה שמיד אחרי הכניסה,
  * או רענון של אותה לשונית. הקלדת כתובת האתר, לשונית חדשה או דפדפן שנפתח
  * מחדש — כל אלה ביקור חדש.
@@ -48,11 +59,14 @@ function thisLoadContinuesLogin(): boolean {
  * שוב את הקישור במייל והסיסמה.
  */
 export function AdvisorTabGuard({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname() ?? '';
   const isAdvisor = session?.user?.role === 'ADVISOR';
+  if (loadStartedAsAdvisor === null && status !== 'loading') loadStartedAsAdvisor = isAdvisor;
   const exempt = EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-  const allowed = !isAdvisor || exempt || thisLoadContinuesLogin();
+  // הכניסה נעשתה בלשונית אחרת: הלשונית הזו לא מציגה את אזור היועץ, אבל גם לא מנתקת
+  const otherTab = isAdvisor && !exempt && loadStartedAsAdvisor === false;
+  const allowed = !isAdvisor || exempt || otherTab || thisLoadContinuesLogin();
 
   useEffect(() => {
     if (allowed) return;
@@ -61,10 +75,20 @@ export function AdvisorTabGuard({ children }: { children: React.ReactNode }) {
 
   // בלי פעילות בלשונית פתוחה, ההתחברות הייתה פגה אחרי זמן ההמתנה המרבי
   useEffect(() => {
-    if (!isAdvisor || !allowed) return;
+    if (!isAdvisor || !allowed || otherTab) return;
     const timer = window.setInterval(() => void getSession(), KEEPALIVE_MS);
     return () => window.clearInterval(timer);
-  }, [isAdvisor, allowed]);
+  }, [isAdvisor, allowed, otherTab]);
+
+  if (otherTab) {
+    return (
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <p className="max-w-sm text-center text-slate-600">
+          נכנסת לאזור היועץ בלשונית אחרת. אפשר לסגור את הלשונית הזו.
+        </p>
+      </div>
+    );
+  }
 
   if (!allowed) {
     return (
