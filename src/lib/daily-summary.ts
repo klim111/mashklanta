@@ -1,4 +1,5 @@
 import { prisma } from './db';
+import { notStaffVisitor } from './staff-visitors';
 import { authEmailShell, escapeHtml, sendEmail } from './email';
 import { canonicalSiteOrigin } from './auth-url';
 import { NOTIFY_EMAIL } from './advisor-notify';
@@ -52,10 +53,12 @@ export interface DailySummary {
 export async function collectDailySummary(day: string): Promise<DailySummary> {
   const { from, to } = israelDayRange(day);
   const inDay = { gte: from, lt: to };
+  // הגלישה של היועץ עצמו לא נספרת
+  const notStaff = await notStaffVisitor();
 
   const [visits, startedSignup, users, platformPayments, links, orders] = await Promise.all([
     prisma.siteVisit.findMany({
-      where: { startedAt: inDay },
+      where: { startedAt: inDay, ...notStaff },
       select: { visitorId: true, sessionId: true, userId: true },
       take: 200_000,
     }),

@@ -15,6 +15,7 @@ import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { NewMeetingAlert } from '@/components/meetings/NewMeetingAlert';
 import { AdvisorActionsMenu } from '@/components/actions/AdvisorActionsMenu';
 import { AdvisorTabGuard } from '@/components/auth/AdvisorTabGuard';
+import { ClientViewBar } from '@/components/client-view/ClientViewBar';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -48,6 +49,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <NewMeetingAlert />
               {/* הפעולות המהירות של היועץ — בונה התמהילים וכלי הלקוח מכל עמוד */}
               <AdvisorActionsMenu />
+              {/* היועץ שגולש "כלקוח" — מצב אדמין, וחזרה לאזור היועץ */}
+              <ClientViewBar />
             </PhoneGate>
           </DemoHost>
         </AdvisorTabGuard>

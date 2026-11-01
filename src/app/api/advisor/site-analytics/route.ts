@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerAuth } from '@/lib/auth';
 import { summarizeLogins, summarizeVisits } from '@/lib/site-analytics';
+import { notStaffVisitor } from '@/lib/staff-visitors';
 
 /** תקרת שורות לחישוב אחד — מספיקה לעשרות אלפי צפיות בטווח */
 const MAX_ROWS = 100_000;
@@ -20,9 +21,12 @@ export async function GET(request: NextRequest) {
   const to = new Date();
   const from = new Date(to.getTime() - days * 24 * 3600 * 1000);
 
+  // הגלישה של היועץ עצמו — מכל דפדפן שהתחבר ממנו, גם כשגלש בו בלי להתחבר — לא נספרת
+  const notStaff = await notStaffVisitor();
+
   const [rows, liveSessions, drafts, submittedDrafts, newClients] = await Promise.all([
     prisma.siteVisit.findMany({
-      where: { startedAt: { gte: from } },
+      where: { startedAt: { gte: from }, ...notStaff },
       select: {
         visitorId: true,
         sessionId: true,
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
     }),
     // "עכשיו באתר": ביקורים שנפתח בהם עמוד בחמש הדקות האחרונות
     prisma.siteVisit.findMany({
-      where: { startedAt: { gte: new Date(to.getTime() - 5 * 60 * 1000) } },
+      where: { startedAt: { gte: new Date(to.getTime() - 5 * 60 * 1000) }, ...notStaff },
       distinct: ['visitorId'],
       select: { visitorId: true },
     }),
