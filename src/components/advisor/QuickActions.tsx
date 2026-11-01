@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarPlus, FolderOpen, ListChecks } from 'lucide-react';
+import { CalendarPlus, FolderOpen, FolderPlus, Link2, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { MeetingDialog } from './MeetingDialog';
 import { TaskDialog } from './TaskDialog';
+import { GuestMeetingDialog, useGuestMeetings } from './GuestMeetings';
+import { OpenClientFileDialog } from './OpenClientFileDialog';
 import type { NewMeetingInput, NewTaskInput } from './useAdvisorCrm';
 
 export interface QuickActionsProps {
@@ -44,6 +46,10 @@ export function QuickActions({
   const [taskOpen, setTaskOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [guestOpen, setGuestOpen] = useState(false);
+  const [fileOpen, setFileOpen] = useState(false);
+  // רק הקביעה — הרשימה עצמה מוצגת בלוח השנה
+  const guestMeetings = useGuestMeetings(false);
 
   const openDocuments = () => {
     if (clientId) router.push(`/advisor-dashboard/client/${clientId}/documents`);
@@ -70,7 +76,24 @@ export function QuickActions({
           <FolderOpen className="h-4 w-4" />
           תיק מסמכים
         </button>
+        {!clientId && (
+          <button type="button" onClick={() => setGuestOpen(true)} className={buttonClass}>
+            <Link2 className="h-4 w-4" />
+            לינק חד-פעמי לפגישה
+          </button>
+        )}
+        {!clientId && (
+          <button type="button" onClick={() => setFileOpen(true)} className={buttonClass}>
+            <FolderPlus className="h-4 w-4" />
+            פתיחת תיק לקוח
+          </button>
+        )}
       </div>
+
+      {!clientId && (
+        <GuestMeetingDialog open={guestOpen} onOpenChange={setGuestOpen} onCreate={guestMeetings.create} />
+      )}
+      {!clientId && <OpenClientFileDialog open={fileOpen} onOpenChange={setFileOpen} />}
 
       <TaskDialog
         open={taskOpen}

@@ -4,6 +4,8 @@ import { getToken } from 'next-auth/jwt';
 import { safeCallbackPath } from '@/lib/auth-url';
 import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from '@/lib/advisor-session';
 import { CLIENT_VIEW_COOKIE, clientViewCookieOn } from '@/lib/client-view';
+import { ACT_AS_HEADER, ACT_AS_PARAM, validClientId } from '@/lib/act-as-shared';
+import { FRAME_HEADER, demoPathFor } from '@/lib/frame-paths';
 
 /**
  * מסלולי ה-API שפתוחים גם בלי התחברות: נתוני שוק מבנק ישראל, שערי מטבע, חיפוש
@@ -36,6 +38,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/site-images',
   // משימות מתוזמנות של Vercel — הנתיב עצמו בודק את CRON_SECRET
   '/api/cron',
+  // הלינק החד-פעמי של פגישת אורח — הלינק עצמו הוא ההרשאה, ורק בזמן הפגישה
+  '/api/guest-meeting',
 ];
 
 function isPublicApi(pathname: string): boolean {
@@ -95,6 +99,15 @@ export async function middleware(request: NextRequest) {
 function routeRequest(request: NextRequest, token: Token): NextResponse {
   const { pathname } = request.nextUrl;
 
+  /**
+   * חלון ההדגמה של פגישה (הביקור הווירטואלי, או הכלים של האורח): האזורים
+   * המחוברים מוצגים בו על נתוני ההדגמה, ולא על החשבון של מי שמול המסך
+   */
+  if (request.headers.get(FRAME_HEADER) && !pathname.startsWith('/api')) {
+    const demoPath = demoPathFor(pathname);
+    if (demoPath) return NextResponse.redirect(new URL(demoPath, request.url));
+  }
+
   const isAuthPage = pathname.startsWith('/auth');
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdvisorDashboard = pathname.startsWith('/advisor-dashboard');
@@ -144,6 +157,21 @@ function routeRequest(request: NextRequest, token: Token): NextResponse {
           ? '/advisor-dashboard'
           : '/dashboard';
     return NextResponse.redirect(new URL(target, request.url));
+  }
+
+  /**
+   * החלון של תיק לקוח מתעניין (src/lib/act-as.ts): היועץ רואה בו את האזור
+   * האישי של הלקוח. הטעינה הראשונה מגיעה עם הפרמטר בכתובת, והמעברים שאחריה עם
+   * הכותרת שהחלון מוסיף; השרת בודק שהכרטיס באמת שלו.
+   */
+  if (userRole === 'ADVISOR') {
+    const param = request.nextUrl.searchParams.get(ACT_AS_PARAM);
+    const actAs = request.headers.get(ACT_AS_HEADER) ?? param;
+    if (validClientId(actAs)) {
+      const forwarded = new Headers(request.headers);
+      forwarded.set(ACT_AS_HEADER, actAs);
+      return NextResponse.next({ request: { headers: forwarded } });
+    }
   }
 
   // כל צד רואה את הלוח שלו בלבד — חוץ מהיועץ כשנכנס לפלטפורמה "כלקוח" (src/lib/client-view.ts)

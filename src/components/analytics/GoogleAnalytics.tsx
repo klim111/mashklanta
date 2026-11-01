@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useDemoRequest } from '@/demo/store';
+import { frameMode } from '@/components/frame-mode/frameMode';
 import { GA_MEASUREMENT_ID } from '@/lib/gtag';
 import { isStaffDevice } from '@/lib/staff-device';
 
@@ -19,7 +20,7 @@ export function GoogleAnalytics() {
   const [staff, setStaff] = useState<boolean | null>(null);
   useEffect(() => setStaff(isStaffDevice()), [session?.user?.role]);
 
-  if (!GA_MEASUREMENT_ID || demo || status === 'loading' || staff !== false || session?.user?.role === 'ADVISOR') {
+  if (!GA_MEASUREMENT_ID || demo || frameMode() || status === 'loading' || staff !== false || session?.user?.role === 'ADVISOR') {
     return null;
   }
 

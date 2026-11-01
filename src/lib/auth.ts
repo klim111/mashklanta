@@ -30,6 +30,7 @@ import {
 } from "@/lib/advisor-access";
 import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from "@/lib/advisor-session";
 import { consumeAppHandoff } from "@/lib/app-handoff";
+import { actAsSession } from "@/lib/act-as";
 
 /** קודי השגיאה שההתחברות מחזירה, ומתורגמים ב-auth-errors */
 export const LoginError = {
@@ -395,6 +396,11 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-export function getServerAuth() {
-  return getServerSession(authOptions);
+/**
+ * ההתחברות של הבקשה. בחלון של תיק לקוח מתעניין שהיועץ פתח, זה ה-session של
+ * הלקוח, עם `actingAdvisorId` של היועץ (src/lib/act-as.ts)
+ */
+export async function getServerAuth() {
+  const session = await getServerSession(authOptions);
+  return (await actAsSession(session)) ?? session;
 }

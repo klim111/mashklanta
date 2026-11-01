@@ -12,12 +12,15 @@ import type { PresentedDocument } from './types';
  */
 export function PresentedDocumentView({
   planId,
+  url,
   doc,
   mine,
   onStop,
   onHide,
 }: {
-  planId: string;
+  planId: string | null;
+  /** פגישת אורח: הקובץ שעבר בשיחה, מהזיכרון של הדפדפן */
+  url?: string;
   doc: PresentedDocument;
   /** אני מציג — אפשר להפסיק לשניהם */
   mine: boolean;
@@ -25,7 +28,8 @@ export function PresentedDocumentView({
   /** הצד שצופה יכול להסתיר אצלו */
   onHide: () => void;
 }) {
-  const src = documentContentUrl(planId, doc.id);
+  const src = url ?? (planId ? documentContentUrl(planId, doc.id) : '');
+  const download = url ?? (planId ? documentDownloadUrl(planId, doc.id) : '');
   const isImage = doc.contentType.startsWith('image/');
 
   return (
@@ -49,7 +53,8 @@ export function PresentedDocumentView({
             בחלון חדש
           </a>
           <a
-            href={documentDownloadUrl(planId, doc.id)}
+            href={download}
+            download={url ? doc.fileName : undefined}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-black text-slate-600 hover:bg-slate-100"
           >
             <Download className="h-3.5 w-3.5" />

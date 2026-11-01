@@ -27,6 +27,8 @@ export interface AdvisorClient {
   planProgress: number;
   /** נרשם לבד ומופיע בכרטיס אוטומטי — עדיין לא לקוח בליווי */
   selfRegistered?: boolean;
+  /** לקוח מתעניין שהיועץ פתח לו תיק, ועדיין לא נרשם */
+  prospect?: boolean;
   /** מתי נפתח החשבון של הלקוח */
   registeredAt?: string;
   /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
