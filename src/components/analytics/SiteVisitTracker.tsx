@@ -7,6 +7,7 @@ import { useDemoRequest } from '@/demo/store';
 import { frameMode } from '@/components/frame-mode/frameMode';
 import { deviceFromWidth } from '@/lib/site-analytics';
 import { randomTrackingId, visitSessionId, visitorId } from '@/lib/visitor-ids';
+import { isStaffDevice, markStaffDevice } from '@/lib/staff-device';
 
 /**
  * עמודים שלא נספרים: צד היועץ, הכניסה הנסתרת של היועץ (שהכתובת שלה לא תופיע
@@ -35,7 +36,10 @@ function send(body: Record<string, unknown>) {
 
 /**
  * רושם כל עמוד שנפתח באתר וכמה זמן היה גלוי למבקר, לדאשבורד הביקורים של
- * היועץ. זמן שבו הלשונית ברקע לא נספר. היועץ עצמו לא נספר.
+ * היועץ. זמן שבו הלשונית ברקע לא נספר.
+ *
+ * היועץ עצמו לא נספר — לא כשהוא מחובר (כולל כשהוא גולש "כלקוח"), ולא כשהוא
+ * גולש בלי להתחבר בדפדפן שכבר התחבר ממנו (src/lib/staff-device.ts).
  */
 export function SiteVisitTracker() {
   const pathname = usePathname();
@@ -43,9 +47,32 @@ export function SiteVisitTracker() {
   const demo = useDemoRequest();
   const role = session?.user?.role;
 
+  // דפדפן שהיועץ מחובר בו מסומן כדפדפן של הצוות, ומזהה המבקר שלו נשלח לשרת
+  // כדי שגם הביקורים שכבר נרשמו ממנו יסוננו מהדאשבורד
+  useEffect(() => {
+    if (role !== 'ADVISOR') return;
+    markStaffDevice();
+    let reported = false;
+    try {
+      reported = window.sessionStorage.getItem('mk_staff_sent') === '1';
+    } catch {
+      // שולחים שוב — הרישום בשרת לא מכפיל
+    }
+    if (reported) return;
+    fetch('/api/track/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitorId: visitorId() }),
+    })
+      .then((response) => {
+        if (response.ok) window.sessionStorage.setItem('mk_staff_sent', '1');
+      })
+      .catch(() => {});
+  }, [role]);
+
   useEffect(() => {
     // חלונות הפגישה (ביקור וירטואלי, כלי האורח, תיק לקוח שהיועץ פתח) אינם ביקור באתר
-    if (!pathname || demo || frameMode() || status === 'loading' || role === 'ADVISOR') return;
+    if (!pathname || demo || frameMode() || status === 'loading' || role === 'ADVISOR' || isStaffDevice()) return;
     if (IGNORED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return;
 
     const id = randomTrackingId();

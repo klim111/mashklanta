@@ -38,7 +38,22 @@ function sameEmail(email: string) {
 
 export type DeleteAccountResult = { ok: true } | { ok: false; status: number; error: string };
 
-export async function deleteClientAccount(userId: string): Promise<DeleteAccountResult> {
+export interface DeleteAccountOptions {
+  /**
+   * ניקוי חשבונות בדיקה מאזור היועץ (src/lib/test-data-cleanup.ts): בלי רשומה
+   * ב"לקוחות שעזבו", בלי מייל ליועץ ובלי מחיקת הקבצים מחנות הקבצים — כדי
+   * שאפשר יהיה לשחזר מהגיבוי.
+   */
+  testCleanup?: boolean;
+  /** פניות שאסור למחוק גם אם המייל שלהן זהה — של הלקוחות שנשמרים */
+  protectedLeadIds?: string[];
+}
+
+export async function deleteClientAccount(
+  userId: string,
+  options: DeleteAccountOptions = {}
+): Promise<DeleteAccountResult> {
+  const { testCleanup = false, protectedLeadIds = [] } = options;
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -74,6 +89,7 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
 
   const leadWhere = {
     OR: [{ ownerId: userId }, ...byClient, ...(email ? [{ email: sameEmail(email) }] : [])],
+    ...(protectedLeadIds.length > 0 ? { id: { notIn: protectedLeadIds } } : {}),
   };
 
   // הקבצים נאספים לפני המחיקה, כי אחריה אין דרך לדעת מה היה שלו
@@ -108,7 +124,7 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
 
   await prisma.$transaction(
     async (tx) => {
-      if (billing?.paid) {
+      if (billing?.paid && !testCleanup) {
         await tx.departedClient.create({
           data: {
             advisorId: card?.advisorId ?? null,
@@ -150,6 +166,8 @@ export async function deleteClientAccount(userId: string): Promise<DeleteAccount
     },
     { timeout: 60_000, maxWait: 10_000 }
   );
+
+  if (testCleanup) return { ok: true };
 
   await deleteStoredFiles(userId, planIds, [...blobPaths], s3Keys);
   await emailAdvisorAboutAccountDeletion({

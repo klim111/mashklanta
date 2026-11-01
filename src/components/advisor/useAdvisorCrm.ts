@@ -8,6 +8,7 @@ import type {
   AdvisorRateDefaultView,
   AdvisorTaskStatus,
   AdvisorTaskView,
+  DeletedAdvisorTaskView,
   MeetingReply,
   MixCategoryView,
   NoteVisibility,
@@ -100,6 +101,8 @@ export interface TaskFilter {
   clientId?: string;
   stage?: PlanStageId;
   includeClosed?: boolean;
+  /** רק המשימות שבוצעו — לרשימת "משימות שבוצעו" */
+  onlyDone?: boolean;
 }
 
 export interface NewTaskInput {
@@ -113,7 +116,7 @@ export interface NewTaskInput {
 }
 
 export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
-  const { clientId, stage, includeClosed } = filter;
+  const { clientId, stage, includeClosed, onlyDone } = filter;
   const [tasks, setTasks] = useState<AdvisorTaskView[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +130,7 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
     if (clientId) params.set('clientId', clientId);
     if (stage) params.set('stage', stage);
     if (includeClosed) params.set('all', '1');
+    if (onlyDone) params.set('status', 'DONE');
     const query = params.toString();
 
     try {
@@ -137,7 +141,7 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
     } finally {
       setReady(true);
     }
-  }, [enabled, clientId, stage, includeClosed]);
+  }, [enabled, clientId, stage, includeClosed, onlyDone]);
 
   useEffect(() => {
     void refresh();
@@ -173,7 +177,14 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
     ) => {
       // התצוגה מתעדכנת מיד כדי שסימון "בוצע" יגיב בלי המתנה לשרת
       setTasks((items) =>
-        items.map((task) => (task.id === taskId ? { ...task, ...patch } : task))
+        items
+          .map((task) => (task.id === taskId ? { ...task, ...patch } : task))
+          // משימה שעברה לרשימה אחרת (בוצעה, או הוחזרה לפתוחות) יוצאת מכאן מיד
+          .filter((task) =>
+            onlyDone
+              ? task.status === 'DONE'
+              : includeClosed || !(task.status === 'DONE' || task.status === 'CANCELLED')
+          )
       );
       try {
         await send<AdvisorTaskView>(`/api/advisor/tasks/${taskId}`, 'PATCH', patch);
@@ -181,7 +192,7 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
         await refresh();
       }
     },
-    [refresh]
+    [refresh, onlyDone, includeClosed]
   );
 
   const remove = useCallback(
@@ -197,6 +208,32 @@ export function useAdvisorTasks(filter: TaskFilter = {}, enabled = true) {
   );
 
   return { tasks, ready, error, refresh, create, update, remove };
+}
+
+/** רישום המשימות שהיועץ מחק — נטען רק כשפותחים את הרשימה */
+export function useDeletedAdvisorTasks(enabled = true) {
+  const [items, setItems] = useState<DeletedAdvisorTaskView[]>([]);
+  const [ready, setReady] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!enabled) {
+      setReady(true);
+      return;
+    }
+    try {
+      setItems(await readJson<DeletedAdvisorTaskView[]>('/api/advisor/tasks/deleted'));
+    } catch {
+      setItems([]);
+    } finally {
+      setReady(true);
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { items, ready, refresh };
 }
 
 // ───────────────────────────────── פגישות ─────────────────────────────────

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { usePersonalAreaHref } from '@/components/client-view/useClientView';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -204,7 +205,7 @@ export function MortgageWorkspace({
    * מזינים סכום משכנתא ובונים. תמהיל שמור נטען במפורש מ"טען תמהיל שמור".
    */
   const advisorBuilder = isAdvisor && !embedded && !clientId;
-  const personalAreaHref = isAdvisor ? '/advisor-dashboard' : '/dashboard';
+  const personalAreaHref = usePersonalAreaHref();
 
   /** הלקוח שהתמהילים נשמרים עבורו. ריק כשעובדים בלי שיוך ללקוח */
   const [activeClientId, setActiveClientId] = useState<string | null>(clientId ?? null);

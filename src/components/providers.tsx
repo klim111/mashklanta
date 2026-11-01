@@ -15,6 +15,7 @@ import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { NewMeetingAlert } from '@/components/meetings/NewMeetingAlert';
 import { AdvisorActionsMenu } from '@/components/actions/AdvisorActionsMenu';
 import { AdvisorTabGuard } from '@/components/auth/AdvisorTabGuard';
+import { ClientViewBar } from '@/components/client-view/ClientViewBar';
 import { activateSessionGuard } from '@/demo/sandbox/session-guard';
 import { installFrameMode } from '@/components/frame-mode/frameMode';
 import { FrameModeBanner } from '@/components/frame-mode/FrameModeBanner';
@@ -60,6 +61,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <NewMeetingAlert />
               {/* הפעולות המהירות של היועץ — בונה התמהילים וכלי הלקוח מכל עמוד */}
               <AdvisorActionsMenu />
+              {/* היועץ שגולש "כלקוח" — מצב אדמין, וחזרה לאזור היועץ */}
+              <ClientViewBar />
               {/* חלונות הפגישה: גישה מהירה לכל הכלים */}
               <FrameToolsMenu />
             </PhoneGate>

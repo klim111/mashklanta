@@ -28,7 +28,10 @@ import {
   Tag,
   LayoutTemplate,
   PenLine,
+  MonitorSmartphone,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { enterClientView } from '@/lib/client-view';
 import { Input } from '@/components/ui/input';
 import { formatTime, relativeDayLabel } from '@/lib/advisor-crm';
 import { ClientsArea } from './ClientsArea';
@@ -95,6 +98,7 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Users }> = [
  */
 export function AdvisorConsole() {
   const { data: session } = useSession();
+  const router = useRouter();
   const { platformPrice } = usePricing();
   const [tab, setTab] = useState<TabId>('clients');
   const [query, setQuery] = useState('');
@@ -182,6 +186,20 @@ export function AdvisorConsole() {
             </Link>
 
             <div className="flex items-center gap-2">
+              {/* הפלטפורמה כמו שלקוח רשום רואה אותה, עם גישה מלאה כאדמין (src/lib/client-view.ts) */}
+              <button
+                type="button"
+                onClick={() => {
+                  enterClientView();
+                  router.push('/dashboard');
+                }}
+                title="פותח את הפלטפורמה כמו שלקוח רשום רואה אותה, עם כל הכלים פתוחים. לא נספר כביקור"
+                className="flex items-center gap-2 rounded-xl bg-violet-500/90 px-3 py-2 text-sm font-bold text-white shadow-lg transition-colors hover:bg-violet-500"
+              >
+                <MonitorSmartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">כניסה לפלטפורמה כלקוח</span>
+                <span className="sm:hidden">כלקוח</span>
+              </button>
               <Link
                 href="/mortgage-advisor"
                 className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white md:flex"

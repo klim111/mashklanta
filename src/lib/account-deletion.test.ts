@@ -109,3 +109,31 @@ describe('deleteClientAccount', () => {
     );
   });
 });
+
+describe('deleteClientAccount במצב ניקוי בדיקות', () => {
+  beforeEach(() => {
+    calls.length = 0;
+    del.mockClear();
+    notify.mockClear();
+    process.env.BLOB_READ_WRITE_TOKEN = 'test';
+  });
+
+  it('לא רושם "לקוח שעזב", לא שולח מייל ולא מוחק קבצים', async () => {
+    db.user.findUnique.mockResolvedValueOnce({
+      id: 'u1',
+      name: 'דנה',
+      email: 'dana@example.com',
+      role: 'CLIENT',
+      createdAt: new Date('2026-08-01'),
+      platformAccessAt: null,
+    });
+    const result = await deleteClientAccount('u1', { testCleanup: true, protectedLeadIds: ['keep-lead'] });
+    expect(result.ok).toBe(true);
+    expect(calls).not.toContain('departedClient.create');
+    expect(calls.at(-1)).toBe('user.delete');
+    expect(del).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+    const leadDelete = db.advisorLead.deleteMany.mock.calls.at(-1) as unknown as [{ where: { id?: unknown } }];
+    expect(leadDelete[0].where.id).toEqual({ notIn: ['keep-lead'] });
+  });
+});

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { safeCallbackPath } from '@/lib/auth-url';
 import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from '@/lib/advisor-session';
+import { CLIENT_VIEW_COOKIE, clientViewCookieOn } from '@/lib/client-view';
 import { ACT_AS_HEADER, ACT_AS_PARAM, validClientId } from '@/lib/act-as-shared';
 import { FRAME_HEADER, demoPathFor } from '@/lib/frame-paths';
 
@@ -173,8 +174,8 @@ function routeRequest(request: NextRequest, token: Token): NextResponse {
     }
   }
 
-  // כל צד רואה את הלוח שלו בלבד
-  if (userRole === 'ADVISOR' && isDashboard) {
+  // כל צד רואה את הלוח שלו בלבד — חוץ מהיועץ כשנכנס לפלטפורמה "כלקוח" (src/lib/client-view.ts)
+  if (userRole === 'ADVISOR' && isDashboard && !clientViewCookieOn(request.cookies.get(CLIENT_VIEW_COOKIE)?.value)) {
     return NextResponse.redirect(new URL('/advisor-dashboard', request.url));
   }
   if (userRole === 'CLIENT' && isAdvisorDashboard) {
