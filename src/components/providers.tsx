@@ -49,7 +49,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <NewMeetingAlert />
               {/* הפעולות המהירות של היועץ — בונה התמהילים וכלי הלקוח מכל עמוד */}
               <AdvisorActionsMenu />
-              {/* היועץ שגולש "כלקוח" — מצב אדמין, וחזרה לאזור היועץ */}
+              {/* היועץ מחוץ לאזור היועץ — מצב יועץ (או "כלקוח"), וחזרה לאזור היועץ מכל מסך */}
               <ClientViewBar />
             </PhoneGate>
           </DemoHost>
