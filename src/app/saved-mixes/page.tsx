@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ArrowRight, BookmarkCheck, CloudOff, PieChart } from 'lucide-react';
+import { usePersonalAreaHref } from '@/components/client-view/useClientView';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SavedMixesBoard } from '@/components/mortgage-advisor/SavedMixesBoard';
@@ -27,7 +28,7 @@ export default function SavedMixesPage() {
   }, [isClient, router]);
   const { saved, ready, remove, rename, signedIn } = useSavedMixes();
 
-  const personalAreaHref = session?.user?.role === 'ADVISOR' ? '/advisor-dashboard' : '/dashboard';
+  const personalAreaHref = usePersonalAreaHref();
 
   const openInTool = (item: SavedMix) => {
     stageMixForWorkspace(item.mix);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerAuth } from '@/lib/auth';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { STAFF_DEVICE_COOKIE } from '@/lib/staff-device';
 import {
   MAX_VIEW_MS,
   isBotAgent,
@@ -25,6 +26,8 @@ export async function POST(request: NextRequest) {
   const done = new NextResponse(null, { status: 204 });
 
   if (isBotAgent(request.headers.get('user-agent'))) return done;
+  // דפדפן של היועץ — גם כשהוא לא מחובר בו (src/lib/staff-device.ts)
+  if (request.cookies.get(STAFF_DEVICE_COOKIE)?.value === '1') return done;
   const limited = await rateLimit(`track:${getClientIp(request)}`, { limit: 600, windowSeconds: 600 });
   if (!limited.allowed) return done;
 

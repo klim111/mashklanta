@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { usePersonalAreaHref } from '@/components/client-view/useClientView';
 import {
   Dialog,
   DialogContent,
@@ -159,8 +160,8 @@ export function RateRequestDialog({
   );
 
   /** היועץ נשלח ללוח שלו, והלקוח לאזור האישי — שניהם לאזור הבקשות לבנקים */
-  const personalAreaHref =
-    session?.user?.role === 'ADVISOR' ? '/advisor-dashboard' : '/dashboard#rate-requests';
+  const personalArea = usePersonalAreaHref();
+  const personalAreaHref = personalArea === '/dashboard' ? '/dashboard#rate-requests' : personalArea;
 
   const patch = (next: Partial<RateRequestDetails>) =>
     setDetails((current) => ({ ...current, ...next }));
