@@ -6,6 +6,7 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
+  Link2,
   ListChecks,
   Loader2,
 } from 'lucide-react';
@@ -17,6 +18,8 @@ import { MeetingRow } from './MeetingRow';
 import { TaskRow } from './TaskRow';
 import { MeetingDialog } from './MeetingDialog';
 import { useAdvisorTasks, useMeetings } from './useAdvisorCrm';
+import { GuestMeetingDialog, GuestMeetingRow, useGuestMeetings } from './GuestMeetings';
+import type { GuestMeetingView } from '@/lib/guest-meetings';
 import type { AdvisorClient } from './useAdvisorClients';
 
 const WEEKDAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
@@ -69,6 +72,7 @@ export function CalendarPanel({
   const [anchor, setAnchor] = useState(() => new Date());
   const [selected, setSelected] = useState(() => dayKey(new Date()));
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [guestOpen, setGuestOpen] = useState(false);
   const [clientFilter, setClientFilter] = useState(initialClientId ?? '');
   const [range, setRange] = useState<Range>('upcoming');
 
@@ -81,6 +85,14 @@ export function CalendarPanel({
     clientId: clientFilter || undefined,
   });
   const { meetings: allMeetings, ready: meetingsReady, propose, answer, cancel } = useMeetings();
+  const guestData = useGuestMeetings();
+
+  // פגישות בלינק חד-פעמי — בלי לקוח, או עם תיק שנפתח בהן
+  const guests = useMemo(() => {
+    if (clientFilter === UNASSIGNED) return guestData.meetings.filter((meeting) => !meeting.clientId);
+    if (!clientFilter) return guestData.meetings;
+    return guestData.meetings.filter((meeting) => meeting.clientId === clientFilter);
+  }, [guestData.meetings, clientFilter]);
 
   // פגישה תמיד שייכת ללקוח, ולכן סינון ל"בלי שיוך" משאיר משימות בלבד
   const meetings = useMemo(() => {
@@ -90,11 +102,15 @@ export function CalendarPanel({
   }, [allMeetings, clientFilter]);
 
   const byDay = useMemo(() => {
-    const map = new Map<string, { tasks: AdvisorTaskView[]; meetings: AdvisorMeetingView[] }>();
+    const map = new Map<string, { tasks: AdvisorTaskView[]; meetings: AdvisorMeetingView[]; guests: GuestMeetingView[] }>();
     const bucket = (key: string) => {
       const found = map.get(key);
       if (found) return found;
-      const created = { tasks: [] as AdvisorTaskView[], meetings: [] as AdvisorMeetingView[] };
+      const created = {
+        tasks: [] as AdvisorTaskView[],
+        meetings: [] as AdvisorMeetingView[],
+        guests: [] as GuestMeetingView[],
+      };
       map.set(key, created);
       return created;
     };
@@ -105,14 +121,15 @@ export function CalendarPanel({
     meetings.forEach((meeting) => {
       if (meetingIsLive(meeting.status)) bucket(dayKey(meeting.startsAt)).meetings.push(meeting);
     });
+    guests.forEach((meeting) => bucket(dayKey(meeting.startsAt)).guests.push(meeting));
 
     return map;
-  }, [tasks, meetings]);
+  }, [tasks, meetings, guests]);
 
   const days = useMemo(() => monthGrid(anchor), [anchor]);
   const todayKey = dayKey(new Date());
-  const selectedItems = byDay.get(selected) ?? { tasks: [], meetings: [] };
-  const ready = tasksReady && meetingsReady;
+  const selectedItems = byDay.get(selected) ?? { tasks: [], meetings: [], guests: [] };
+  const ready = tasksReady && meetingsReady && guestData.ready;
 
   /** כל הפריטים שיש להם מועד, בטווח שנבחר, ממוינים לפי זמן */
   const listed = useMemo(() => {
@@ -130,7 +147,11 @@ export function CalendarPanel({
     };
 
     const items: Array<
-      { at: string } & ({ kind: 'task'; task: AdvisorTaskView } | { kind: 'meeting'; meeting: AdvisorMeetingView })
+      { at: string } & (
+        | { kind: 'task'; task: AdvisorTaskView }
+        | { kind: 'meeting'; meeting: AdvisorMeetingView }
+        | { kind: 'guest'; guest: GuestMeetingView }
+      )
     > = [];
 
     tasks.forEach((task) => {
@@ -141,9 +162,12 @@ export function CalendarPanel({
         items.push({ at: meeting.startsAt, kind: 'meeting', meeting });
       }
     });
+    guests.forEach((guest) => {
+      if (inRange(guest.startsAt)) items.push({ at: guest.startsAt, kind: 'guest', guest });
+    });
 
     return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  }, [tasks, meetings, range, anchor]);
+  }, [tasks, meetings, guests, range, anchor]);
 
   const listedByDay = useMemo(() => {
     const map = new Map<string, typeof listed>();
@@ -301,6 +325,14 @@ export function CalendarPanel({
                             {meeting.clientName}
                           </span>
                         ))}
+                        {items?.guests.slice(0, 2).map((guest) => (
+                          <span
+                            key={guest.id}
+                            className="truncate rounded bg-violet-100 px-1 py-0.5 text-[9px] font-bold text-violet-800"
+                          >
+                            {guest.guestName || 'לינק חד-פעמי'}
+                          </span>
+                        ))}
                         {items && items.tasks.length > 0 && (
                           <span className="truncate rounded bg-blue-100 px-1 py-0.5 text-[9px] font-bold text-blue-800">
                             {items.tasks.length} משימות
@@ -319,18 +351,24 @@ export function CalendarPanel({
           title={relativeDayLabel(new Date(`${selected}T12:00:00`))}
           icon={<CalendarDays className="h-4 w-4 text-blue-600" />}
           action={
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={() => setMeetingOpen(true)}
-            >
-              <CalendarPlus className="ml-1 h-3.5 w-3.5" />
-              פגישה חדשה
-            </Button>
+            <div className="flex flex-wrap gap-1">
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setMeetingOpen(true)}>
+                <CalendarPlus className="ml-1 h-3.5 w-3.5" />
+                פגישה חדשה
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 border-violet-200 text-xs text-violet-700 hover:bg-violet-50"
+                onClick={() => setGuestOpen(true)}
+              >
+                <Link2 className="ml-1 h-3.5 w-3.5" />
+                לינק חד-פעמי
+              </Button>
+            </div>
           }
         >
-          {selectedItems.meetings.length === 0 && selectedItems.tasks.length === 0 ? (
+          {selectedItems.meetings.length === 0 && selectedItems.tasks.length === 0 && selectedItems.guests.length === 0 ? (
             <EmptyState
               icon={<CalendarDays className="h-6 w-6" />}
               title="אין כלום ביום הזה"
@@ -338,6 +376,14 @@ export function CalendarPanel({
             />
           ) : (
             <div className="space-y-3">
+              {selectedItems.guests.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black text-slate-500">פגישות בלינק חד-פעמי</p>
+                  {selectedItems.guests.map((guest) => (
+                    <GuestMeetingRow key={guest.id} meeting={guest} onCancel={() => void guestData.cancel(guest.id)} />
+                  ))}
+                </div>
+              )}
               {selectedItems.meetings.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[11px] font-black text-slate-500">פגישות</p>
@@ -404,7 +450,13 @@ export function CalendarPanel({
                   {relativeDayLabel(new Date(`${key}T12:00:00`))}
                 </p>
                 {items.map((item) =>
-                  item.kind === 'meeting' ? (
+                  item.kind === 'guest' ? (
+                    <GuestMeetingRow
+                      key={item.guest.id}
+                      meeting={item.guest}
+                      onCancel={() => void guestData.cancel(item.guest.id)}
+                    />
+                  ) : item.kind === 'meeting' ? (
                     <MeetingRow
                       key={item.meeting.id}
                       meeting={item.meeting}
@@ -440,6 +492,8 @@ export function CalendarPanel({
           </div>
         )}
       </SectionCard>
+
+      <GuestMeetingDialog open={guestOpen} onOpenChange={setGuestOpen} onCreate={guestData.create} />
 
       <MeetingDialog
         open={meetingOpen}

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 /** מסכים שבהם הכפתור לא מוצג: התחברות, שיחת וידאו וסיור ההדגמה */
-const HIDDEN_PREFIXES = ['/auth', '/meeting/', '/demo'];
+const HIDDEN_PREFIXES = ['/auth', '/meeting/', '/m/', '/demo'];
 
 /** לשונית בלוח הבקרה של היועץ. בלוח עצמו — מעבר בלי טעינה מחדש */
 export const ADVISOR_TAB_EVENT = 'mashkalanta:advisor-tab';

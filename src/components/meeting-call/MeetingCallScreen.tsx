@@ -19,7 +19,7 @@ import type { MeetingCallDetails } from './types';
  * איכות (simulcast), כך שהשרת שולח לכל צד את מה שהרשת שלו מחזיקה ולא מקפיא
  * את שניהם בגלל אחד; ותמונה שנשלחת רק כשמישהו באמת צופה בה (dynacast).
  */
-const ROOM_OPTIONS: RoomOptions = {
+export const ROOM_OPTIONS: RoomOptions = {
   adaptiveStream: true,
   dynacast: true,
   disconnectOnPageLeave: true,
@@ -35,7 +35,7 @@ const ROOM_OPTIONS: RoomOptions = {
 };
 
 /** שגיאת המכשיר של LiveKit, בשמות של הדפדפן */
-const FAILURE_ERRORS: Record<MediaDeviceFailure, string | undefined> = {
+export const FAILURE_ERRORS: Record<MediaDeviceFailure, string | undefined> = {
   [MediaDeviceFailure.PermissionDenied]: 'NotAllowedError',
   [MediaDeviceFailure.NotFound]: 'NotFoundError',
   [MediaDeviceFailure.DeviceInUse]: 'NotReadableError',
@@ -54,7 +54,14 @@ type Phase =
  * מסך שיחת הווידאו של פגישה: לובי עם פרטי הפגישה ובחירה אם להיכנס עם מצלמה
  * ומיקרופון, השיחה עצמה, ומסך סיום עם חזרה או כניסה מחדש.
  */
-export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
+export function MeetingCallScreen({
+  meetingId,
+  endpoint = `/api/meetings/${encodeURIComponent(meetingId)}/call`,
+}: {
+  meetingId: string;
+  /** פגישת אורח בלינק חד-פעמי נטענת מהמסלול של היועץ (src/lib/guest-meetings.ts) */
+  endpoint?: string;
+}) {
   const [details, setDetails] = useState<MeetingCallDetails | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [camera, setCamera] = useState(true);
@@ -64,9 +71,7 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const response = await fetch(`/api/meetings/${encodeURIComponent(meetingId)}/call`, { cache: 'no-store' }).catch(
-        () => null
-      );
+      const response = await fetch(endpoint, { cache: 'no-store' }).catch(() => null);
       const body = await response?.json().catch(() => null);
       if (!alive) return;
       if (!response?.ok || !body) {
@@ -79,7 +84,7 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
     return () => {
       alive = false;
     };
-  }, [meetingId]);
+  }, [endpoint]);
 
   const join = useCallback(async () => {
     setPhase({ kind: 'joining' });
@@ -89,16 +94,14 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
     setMic(devices.mic);
     setCamera(devices.camera);
     setDeviceIssue(devices.issue);
-    const response = await fetch(`/api/meetings/${encodeURIComponent(meetingId)}/call`, { method: 'POST' }).catch(
-      () => null
-    );
+    const response = await fetch(endpoint, { method: 'POST' }).catch(() => null);
     const body = await response?.json().catch(() => null);
     if (!response?.ok || !body?.token) {
       setPhase({ kind: 'failed', message: body?.error ?? 'לא הצלחנו להתחבר לשיחה. בדקו את החיבור ונסו שוב' });
       return;
     }
     setPhase({ kind: 'in-call', token: body.token, serverUrl: body.serverUrl });
-  }, [meetingId, mic, camera]);
+  }, [endpoint, mic, camera]);
 
   if (phase.kind === 'in-call' && details) {
     return (
@@ -165,10 +168,15 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
             <p className="mt-1 text-sm text-white/75">
               {details.role === 'ADVISOR' ? `עם ${details.clientName}` : `עם ${details.advisorName}`}
             </p>
+            {details.linkPath && <GuestLinkBox path={details.linkPath} endsAt={details.endsAt} />}
 
             {!details.configured ? (
               <p className="mt-6 rounded-xl bg-amber-400/15 p-3 text-sm font-bold text-amber-100">
                 שיחות הווידאו עוד לא הוגדרו באתר. {details.role === 'ADVISOR' ? 'צריך להוסיף את משתני LIVEKIT ב-Vercel.' : 'נסו שוב מאוחר יותר.'}
+              </p>
+            ) : details.guestState === 'expired' ? (
+              <p className="mt-6 rounded-xl bg-rose-400/15 p-3 text-sm font-bold text-rose-100">
+                הלינק של הפגישה פג. אפשר לקבוע פגישה חדשה מלוח השנה.
               </p>
             ) : details.status === 'CANCELLED' || details.status === 'DECLINED' ? (
               <p className="mt-6 rounded-xl bg-rose-400/15 p-3 text-sm font-bold text-rose-100">
@@ -224,6 +232,33 @@ export function MeetingCallScreen({ meetingId }: { meetingId: string }) {
   );
 }
 
+/** הלינק החד-פעמי, להעתקה ולשליחה לאורח */
+function GuestLinkBox({ path, endsAt }: { path: string; endsAt?: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+  return (
+    <div className="mt-4 rounded-xl bg-white/10 p-3">
+      <p className="text-xs font-bold text-white/60">
+        לינק חד-פעמי לאורח{endsAt ? ` · תקף עד ${formatTime(endsAt)}` : ''}
+      </p>
+      <div className="mt-1 flex items-center gap-2">
+        <code dir="ltr" className="min-w-0 flex-1 truncate text-xs text-white/90">
+          {url}
+        </code>
+        <button
+          type="button"
+          onClick={() => {
+            void navigator.clipboard?.writeText(url).then(() => setCopied(true));
+          }}
+          className="shrink-0 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-black hover:bg-white/25"
+        >
+          {copied ? 'הועתק' : 'העתקה'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BackLink({ details }: { details: MeetingCallDetails | null }) {
   const href = details ? returnHref(details) : '/';
   return (
@@ -232,12 +267,16 @@ function BackLink({ details }: { details: MeetingCallDetails | null }) {
       className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-black text-white/80 hover:bg-white/10 hover:text-white"
     >
       <ArrowRight className="h-4 w-4" />
-      {details?.role === 'ADVISOR' ? 'חזרה לכרטיס הלקוח' : 'חזרה לאזור האישי'}
+      {details?.role === 'ADVISOR'
+        ? details.kind === 'guest' && !details.clientId
+          ? 'חזרה ללוח השנה'
+          : 'חזרה לכרטיס הלקוח'
+        : 'חזרה לאזור האישי'}
     </Link>
   );
 }
 
-function ChoiceToggle({
+export function ChoiceToggle({
   on,
   onChange,
   onIcon,

@@ -1,3 +1,4 @@
+import { isProspectEmail } from './prospect-email';
 import { SITE_CONTACT } from './site-contact';
 import * as nodemailer from 'nodemailer';
 import { Resend } from 'resend';
@@ -49,6 +50,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export async function sendEmail({ to, subject, html, text, replyTo: replyToOverride }: EmailOptions) {
+  // החשבון הזמני של תיק לקוח מתעניין (src/lib/prospect-client.ts) — אין לאן לשלוח
+  if (isProspectEmail(to)) return { success: true, messageId: 'skipped' };
   // בלי EMAIL_FROM המייל יוצא מהדומיין המאומת של משכלנתא לשליחה (mashkalanta.co.il)
   const from = process.env.EMAIL_FROM || `${SITE_CONTACT.brand} <noreply@mashkalanta.co.il>`;
   // תשובה למייל מערכת מגיעה לכתובת הקשר של משכלנתא (info@)

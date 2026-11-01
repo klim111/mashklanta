@@ -302,6 +302,14 @@ function ClientRow({
               שילם
             </span>
           )}
+          {client.prospect && (
+            <span
+              title="תיק שנפתח בפגישה או באזור היועץ. הלקוח עדיין לא נרשם לפלטפורמה"
+              className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800"
+            >
+              מתעניין
+            </span>
+          )}
           {client.selfRegistered && (
             <span
               title="נרשם לבד לפלטפורמה. צירוף הלקוח בטופס הוספת לקוח הופך אותו ללקוח בליווי"

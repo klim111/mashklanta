@@ -3,6 +3,7 @@
 import Script from 'next/script';
 import { useSession } from 'next-auth/react';
 import { useDemoRequest } from '@/demo/store';
+import { frameMode } from '@/components/frame-mode/frameMode';
 import { GA_MEASUREMENT_ID } from '@/lib/gtag';
 
 /**
@@ -14,7 +15,7 @@ export function GoogleAnalytics() {
   const { data: session, status } = useSession();
   const demo = useDemoRequest();
 
-  if (!GA_MEASUREMENT_ID || demo || status === 'loading' || session?.user?.role === 'ADVISOR') return null;
+  if (!GA_MEASUREMENT_ID || demo || frameMode() || status === 'loading' || session?.user?.role === 'ADVISOR') return null;
 
   return (
     <>

@@ -84,6 +84,10 @@ model User {
    */
   advisorMeetings AdvisorMeeting[]     @relation("AdvisorMeetings")
   /**
+   * פגישות בלינק חד-פעמי שהיועץ קבע (src/lib/guest-meetings.ts)
+   */
+  guestMeetings   GuestMeeting[]       @relation("AdvisorGuestMeetings")
+  /**
    * ריביות ברירת המחדל של היועץ, לכל בנק ולכל לוח סילוקין
    */
   advisorRates    AdvisorRateDefault[] @relation("AdvisorRates")
@@ -396,6 +400,14 @@ model Client {
    * תשלום. כשהיועץ מצרף את הלקוח בעצמו, הסימון יורד
    */
   autoLinked Boolean @default(false)
+
+  /**
+   * לקוח מתעניין שהיועץ פתח לו תיק בעצמו, בלי שנרשם (src/lib/prospect-client.ts).
+   * מאחורי הכרטיס עומד חשבון זמני בלי סיסמה; היועץ עובד בכלים בשמו, וכשהלקוח
+   * נרשם עם אותו מייל — הכרטיס וכל מה שהוזן בו עוברים לחשבון שלו
+   */
+  prospect   Boolean @default(false)
+  guestMeetings GuestMeeting[]
 
   // ריביות מהבנקים
   bankRates Json?
@@ -1060,6 +1072,33 @@ model AdvisorMeeting {
 
   @@index([advisorId, startsAt])
   @@index([clientId, startsAt])
+}
+
+/**
+ * פגישת וידאו בלינק חד-פעמי, עם מי שאינו רשום. הלינק תקף מהמועד שנקבע ועוד
+ * תשעים דקות; מה שהאורח מזין בפגישה לא נשמר בשרת. אם היועץ פתח לאורח תיק לקוח
+ * במהלך הפגישה, הכרטיס נשמר כאן.
+ */
+model GuestMeeting {
+  id              String    @id @default(cuid())
+  advisorId       String
+  advisor         User      @relation("AdvisorGuestMeetings", fields: [advisorId], references: [id], onDelete: Cascade)
+  /**
+   * החלק הסודי בלינק. מי שמחזיק בו נכנס לפגישה, ורק בחלון הזמן שלה
+   */
+  token           String    @unique
+  title           String
+  guestName       String?
+  startsAt        DateTime
+  durationMinutes Int       @default(90)
+  note            String?
+  clientId        String?
+  client          Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  cancelledAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([advisorId, startsAt])
 }
 
 enum MeetingStatus {

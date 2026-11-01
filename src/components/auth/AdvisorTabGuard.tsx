@@ -13,7 +13,7 @@ const KEEPALIVE_MS = 5 * 60 * 1000;
  * חלון שיחת הווידאו נפתח בלשונית חדשה, והוא אינו כניסה לאזור היועץ. בעמוד
  * אישור הקישור היועץ מתחבר בזה הרגע, והטעינה הבאה היא זו שאחרי הכניסה.
  */
-const EXEMPT_PREFIXES = ['/meeting/', '/auth/advisor-verify'];
+const EXEMPT_PREFIXES = ['/meeting/', '/m/', '/auth/advisor-verify'];
 
 /** ההחלטה מתקבלת פעם אחת לכל טעינה של הדף, ומעבר בין עמודים באתר לא משנה אותה */
 let loadVerdict: boolean | null = null;

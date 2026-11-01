@@ -3,6 +3,7 @@ import { authEmailShell, escapeHtml, sendEmail } from './email';
 import { canonicalSiteOrigin } from './auth-url';
 import { NOTIFY_EMAIL } from './advisor-notify';
 import { israelDay } from './site-analytics';
+import { NOT_PROSPECT_USER } from '@/lib/prospect-client';
 
 /**
  * מייל הסיכום היומי ל-NOTIFY_EMAIL: כמה ביקורים היו באתר, כמה נרשמו וכמה שילמו
@@ -61,7 +62,7 @@ export async function collectDailySummary(day: string): Promise<DailySummary> {
     }),
     prisma.signupDraft.count({ where: { createdAt: inDay } }),
     prisma.user.findMany({
-      where: { role: 'CLIENT', createdAt: inDay },
+      where: { role: 'CLIENT', createdAt: inDay, ...NOT_PROSPECT_USER },
       orderBy: { createdAt: 'asc' },
       select: { name: true, email: true, createdAt: true },
     }),

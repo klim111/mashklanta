@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerAuth } from '@/lib/auth';
 import { summarizeLogins, summarizeVisits } from '@/lib/site-analytics';
+import { NOT_PROSPECT_USER } from '@/lib/prospect-client';
 
 /** תקרת שורות לחישוב אחד — מספיקה לעשרות אלפי צפיות בטווח */
 const MAX_ROWS = 100_000;
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     }),
     prisma.signupDraft.count({ where: { createdAt: { gte: from } } }),
     prisma.signupDraft.count({ where: { createdAt: { gte: from }, submitted: true } }),
-    prisma.user.count({ where: { role: 'CLIENT', createdAt: { gte: from } } }),
+    prisma.user.count({ where: { role: 'CLIENT', createdAt: { gte: from }, ...NOT_PROSPECT_USER } }),
   ]);
 
   // מי התחבר: הביקורים של משתמשים מחוברים, עם השם, הכרטיס אצל היועץ ופרטי ההתחברות

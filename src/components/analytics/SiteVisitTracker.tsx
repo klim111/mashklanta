@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useDemoRequest } from '@/demo/store';
+import { frameMode } from '@/components/frame-mode/frameMode';
 import { deviceFromWidth } from '@/lib/site-analytics';
 import { randomTrackingId, visitSessionId, visitorId } from '@/lib/visitor-ids';
 
@@ -17,6 +18,8 @@ const IGNORED_PREFIXES = [
   '/auth/advisor-verify',
   '/demo',
   '/meeting/',
+  // הלינק החד-פעמי של פגישת אורח
+  '/m/',
 ];
 
 function send(body: Record<string, unknown>) {
@@ -41,7 +44,8 @@ export function SiteVisitTracker() {
   const role = session?.user?.role;
 
   useEffect(() => {
-    if (!pathname || demo || status === 'loading' || role === 'ADVISOR') return;
+    // חלונות הפגישה (ביקור וירטואלי, כלי האורח, תיק לקוח שהיועץ פתח) אינם ביקור באתר
+    if (!pathname || demo || frameMode() || status === 'loading' || role === 'ADVISOR') return;
     if (IGNORED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return;
 
     const id = randomTrackingId();
