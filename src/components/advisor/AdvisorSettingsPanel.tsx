@@ -16,6 +16,7 @@ import { AnchorSpreadRate } from '@/components/ui/anchor-spread-rate';
 import { SectionCard } from './ui';
 import { AdvisorFormDetailsCard } from './AdvisorFormDetailsCard';
 import { AdvisorPasswordCard } from './AdvisorPasswordCard';
+import { TestDataCleanupCard } from './TestDataCleanupCard';
 import { useAdvisorSettings } from './useAdvisorCrm';
 
 type TrackType = keyof typeof TRACK_TYPES;
@@ -366,6 +367,8 @@ export function AdvisorSettingsPanel({
           </form>
         </div>
       </SectionCard>
+
+      <TestDataCleanupCard />
     </div>
   );
 }
