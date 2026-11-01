@@ -1,20 +1,27 @@
 'use client';
 
 import Script from 'next/script';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useDemoRequest } from '@/demo/store';
 import { GA_MEASUREMENT_ID } from '@/lib/gtag';
+import { isStaffDevice } from '@/lib/staff-device';
 
 /**
  * התג של Google Analytics. כמו מונה הביקורים הפנימי, הוא לא נטען אצל היועץ
- * ולא בהדגמה עם הנתונים הבדויים. מעברים בין עמודים בתוך האתר נספרים ב-GA4
+ * (גם לא בדפדפן שהיועץ התחבר ממנו, src/lib/staff-device.ts) ולא בהדגמה עם הנתונים הבדויים. מעברים בין עמודים בתוך האתר נספרים ב-GA4
  * עצמו (מדידה משופרת של שינויי היסטוריה בדפדפן).
  */
 export function GoogleAnalytics() {
   const { data: session, status } = useSession();
   const demo = useDemoRequest();
+  // הסימון נקרא אחרי הטעינה בדפדפן, כדי שהשרת והדפדפן יציגו את אותו דבר
+  const [staff, setStaff] = useState<boolean | null>(null);
+  useEffect(() => setStaff(isStaffDevice()), [session?.user?.role]);
 
-  if (!GA_MEASUREMENT_ID || demo || status === 'loading' || session?.user?.role === 'ADVISOR') return null;
+  if (!GA_MEASUREMENT_ID || demo || status === 'loading' || staff !== false || session?.user?.role === 'ADVISOR') {
+    return null;
+  }
 
   return (
     <>

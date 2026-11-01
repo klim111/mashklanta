@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ClientDashboard } from '@/components/dashboard/client/ClientDashboard';
+import { clientViewActive } from '@/lib/client-view';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -14,7 +15,8 @@ export default function DashboardPage() {
     if (status === 'loading') return;
     if (!session) {
       router.push('/auth/login');
-    } else if (session.user?.role === 'ADVISOR') {
+    } else if (session.user?.role === 'ADVISOR' && !clientViewActive()) {
+      // היועץ רואה את האזור האישי רק כשנכנס לפלטפורמה "כלקוח" (src/lib/client-view.ts)
       router.push('/advisor-dashboard');
     }
   }, [session, status, router]);
