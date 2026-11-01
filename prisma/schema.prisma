@@ -982,6 +982,28 @@ model AdvisorTask {
   @@index([clientId, stage])
 }
 
+/**
+ * רישום של משימה שהיועץ מחק. המשימה עצמה נמחקת, והרישום שומר עותק של מה שהיה
+ * בה ומתי נמחקה — כדי שתמיד אפשר יהיה לראות מה נמחק.
+ * אין כאן קשר ללקוח בכוונה: גם אם הלקוח יוסר, הרישום נשאר.
+ */
+model AdvisorTaskDeletion {
+  id            String            @id @default(cuid())
+  advisorId     String
+  taskId        String
+  clientId      String?
+  clientName    String?
+  stage         PlanStage
+  title         String
+  details       String?
+  dueDate       DateTime?
+  status        AdvisorTaskStatus
+  taskCreatedAt DateTime
+  deletedAt     DateTime          @default(now())
+
+  @@index([advisorId, deletedAt])
+}
+
 enum AdvisorTaskStatus {
   OPEN
   IN_PROGRESS
