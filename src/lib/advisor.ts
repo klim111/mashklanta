@@ -12,6 +12,7 @@ import type {
   AdvisorRateDefaultView,
   AdvisorTaskStatus,
   AdvisorTaskView,
+  DeletedAdvisorTaskView,
   MeetingAnswer,
   MeetingParty,
   MeetingStatus,
@@ -79,16 +80,28 @@ function toTaskView(row: TaskRow): AdvisorTaskView {
  */
 export async function listAdvisorTasks(
   advisorId: string,
-  filter: { clientId?: string | null; stage?: PlanStageId; includeClosed?: boolean } = {}
+  filter: {
+    clientId?: string | null;
+    stage?: PlanStageId;
+    includeClosed?: boolean;
+    /** רק המשימות שבוצעו — לרשימת "משימות שבוצעו", מהאחרונה שבוצעה */
+    onlyDone?: boolean;
+  } = {}
 ): Promise<AdvisorTaskView[]> {
   const rows = await prisma.advisorTask.findMany({
     where: {
       advisorId,
       ...(filter.clientId === undefined ? {} : { clientId: filter.clientId }),
       ...(filter.stage ? { stage: filter.stage } : {}),
-      ...(filter.includeClosed ? {} : { status: { in: ['OPEN', 'IN_PROGRESS'] } }),
+      ...(filter.onlyDone
+        ? { status: 'DONE' as const }
+        : filter.includeClosed
+          ? {}
+          : { status: { in: ['OPEN', 'IN_PROGRESS'] } }),
     },
-    orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
+    orderBy: filter.onlyDone
+      ? [{ completedAt: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }]
+      : [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
     select: taskSelect,
   });
   return rows.map(toTaskView);
@@ -168,9 +181,57 @@ export async function updateAdvisorTask(
   return toTaskView(row);
 }
 
+/**
+ * מחיקת משימה. המשימה עצמה נמחקת, ועותק שלה נשמר ברישום המשימות שנמחקו —
+ * באותה טרנזקציה, כך שאין מחיקה בלי רישום.
+ */
 export async function deleteAdvisorTask(advisorId: string, taskId: string): Promise<boolean> {
-  const result = await prisma.advisorTask.deleteMany({ where: { id: taskId, advisorId } });
-  return result.count > 0;
+  const existing = await prisma.advisorTask.findFirst({
+    where: { id: taskId, advisorId },
+    select: taskSelect,
+  });
+  if (!existing) return false;
+
+  await prisma.$transaction([
+    prisma.advisorTaskDeletion.create({
+      data: {
+        advisorId,
+        taskId: existing.id,
+        clientId: existing.clientId,
+        clientName: existing.client?.name ?? null,
+        stage: existing.stage,
+        title: existing.title,
+        details: existing.details,
+        dueDate: existing.dueDate,
+        status: existing.status,
+        taskCreatedAt: existing.createdAt,
+      },
+    }),
+    prisma.advisorTask.delete({ where: { id: existing.id } }),
+  ]);
+  return true;
+}
+
+/** רישום המשימות שהיועץ מחק, מהאחרונה שנמחקה */
+export async function listDeletedAdvisorTasks(advisorId: string): Promise<DeletedAdvisorTaskView[]> {
+  const rows = await prisma.advisorTaskDeletion.findMany({
+    where: { advisorId },
+    orderBy: { deletedAt: 'desc' },
+    take: 500,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    taskId: row.taskId,
+    clientId: row.clientId,
+    clientName: row.clientName,
+    stage: row.stage as PlanStageId,
+    title: row.title,
+    details: row.details,
+    dueDate: row.dueDate?.toISOString() ?? null,
+    status: row.status as AdvisorTaskStatus,
+    taskCreatedAt: row.taskCreatedAt.toISOString(),
+    deletedAt: row.deletedAt.toISOString(),
+  }));
 }
 
 // ───────────────────────────────── הערות ─────────────────────────────────
