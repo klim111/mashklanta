@@ -35,6 +35,7 @@ import { ClientControlBoard } from '@/components/advisor/ClientControlBoard';
 import { ClientPaymentSettings } from '@/components/advisor/ClientPaymentSettings';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 import { VideoCallPicker } from '@/components/meeting-call/VideoCallPicker';
+import { ProspectFileCard } from '@/components/advisor/ProspectFileCard';
 import {
   useAdvisorNotes,
   useAdvisorTasks,
@@ -162,6 +163,11 @@ export default function AdvisorClientPage() {
             <div className="min-w-0 flex-1">
               <h1 className="flex items-center gap-2 truncate text-xl font-black text-white md:text-2xl">
                 <span className="truncate">{client.name}</span>
+                {client.prospect && (
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-amber-400/20 px-2 py-0.5 text-2xs font-bold text-amber-200">
+                    מתעניין · לא רשום
+                  </span>
+                )}
                 {activity.activity?.billing.paid && (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-400/20 px-2 py-0.5 text-2xs font-bold text-emerald-200">
                     <BadgeCheck className="h-3.5 w-3.5" />
@@ -264,6 +270,7 @@ export default function AdvisorClientPage() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+        {client.prospect && <ProspectFileCard clientId={client.id} email={client.email} />}
         {tab === 'summary' && (
           <ClientActivitySummary activity={activity.activity} ready={activity.ready} error={activity.error} />
         )}

@@ -17,7 +17,7 @@ const MAX_SEEN = 200;
 const CLOSED_NOTE_MS = 5000;
 
 /** מסכים שאין בהם התראה: אזור היועץ, ההתחברות ושיחת הווידאו עצמה */
-const HIDDEN_PREFIXES = ['/advisor', '/auth', '/meeting/'];
+const HIDDEN_PREFIXES = ['/advisor', '/auth', '/meeting/', '/m/'];
 
 function readSeen(): Set<string> {
   try {

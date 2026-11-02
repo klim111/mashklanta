@@ -6,6 +6,11 @@ declare module "next-auth" {
     user: {
       id: string;
       role: string;
+      /**
+       * היועץ שעובד עכשיו בשם הלקוח, בתיק לקוח מתעניין (src/lib/act-as.ts).
+       * קיים רק בחלון של התיק, ולא אצל הלקוח עצמו
+       */
+      actingAdvisorId?: string;
     } & DefaultSession["user"];
   }
   interface User {

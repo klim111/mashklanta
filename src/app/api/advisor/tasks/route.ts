@@ -22,6 +22,7 @@ function readClientFilter(value: string | null): string | null | undefined {
 /**
  * המשימות של היועץ. בלי פרמטרים מוחזרות רק המשימות הפתוחות — זה מה שסדר היום
  * צריך — ועם `all=1` מוחזרות גם אלה שנסגרו, לתצוגת ההיסטוריה של הלקוח.
+ * `status=DONE` מחזיר רק את המשימות שבוצעו, לרשימת "משימות שבוצעו".
  */
 export async function GET(req: NextRequest) {
   const session = await getServerAuth();
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
       clientId: readClientFilter(params.get('clientId')),
       stage: stage ?? undefined,
       includeClosed: params.get('all') === '1',
+      onlyDone: params.get('status') === 'DONE',
     })
   );
 }

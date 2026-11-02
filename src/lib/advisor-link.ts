@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { syncStageDocuments } from './clients';
 import { ADVISOR_EMAIL } from './single-advisor';
+import { claimProspectFile } from './prospect-client';
 
 /**
  * שיוך לקוחות ליועץ.
@@ -46,6 +47,13 @@ export interface ClientLink {
  * הפעולה בטוחה לקריאה חוזרת. מחזיר null למשתמש שאינו לקוח, או כשאין יועץ.
  */
 export async function ensureClientLink(userId: string): Promise<ClientLink | null> {
+  // תיק מתעניין שהיועץ פתח עם המייל הזה עובר עכשיו לחשבון (src/lib/prospect-client.ts)
+  const claimed = await claimProspectFile(userId).catch((error) => {
+    console.error('[advisor-link] claiming the prospect file failed:', error);
+    return null;
+  });
+  if (claimed) return claimed;
+
   const existing = await prisma.client.findFirst({
     where: { userId },
     orderBy: { createdAt: 'asc' },

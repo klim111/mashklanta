@@ -11,21 +11,30 @@ import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { demoStore, useDemoRequest } from '../store';
 import { readEditFlag } from '@/components/site-content/editFlag';
+import { frameMode, useFrameMode } from '@/components/frame-mode/frameMode';
 
 export function DemoScreenGate({ flowId, children }: { flowId: string; children: React.ReactNode }) {
+  /**
+   * חלון ההדגמה של פגישה (ביקור וירטואלי או הכלים של האורח): ארגז החול כבר
+   * מותקן בחלון, והמסך מוצג חופשי, בלי הדגמה מודרכת שרצה עליו
+   */
+  const frame = useFrameMode();
+  const sandboxed = frame?.kind === 'visit' || frame?.kind === 'guest';
   const request = useDemoRequest();
   /** כניסה ישירה בכתובת מתחילה את ההדגמה; יציאה מהדגמה שרצה כאן לא מתחילה אותה מחדש */
   const autoStart = useRef(true);
 
   useEffect(() => {
-    if (!autoStart.current) return;
+    const inFrame = frameMode()?.kind === 'visit' || frameMode()?.kind === 'guest';
+    if (!autoStart.current || inFrame) return;
     autoStart.current = false;
     // בהידרציה request עדיין null (תמונת השרת), ולכן בודקים את הבקשה השמורה בדפדפן —
     // אחרת הדגמה שכבר רצה (למשל במת ההקלטה) מוחלפת בהדגמה של המסך
     // יועץ שעורך את תוכן המסך (src/components/site-content) — ההדגמה לא מתחילה לרוץ מעצמה
     if (!demoStore.getSnapshot()) demoStore.start(flowId, { returnTo: '/', autoplay: !readEditFlag() });
-  }, [flowId]);
+  }, [flowId, sandboxed]);
 
+  if (sandboxed) return <>{children}</>;
   if (!request) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500" dir="rtl">

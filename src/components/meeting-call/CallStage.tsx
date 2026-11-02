@@ -21,14 +21,28 @@ import {
   useTracks,
 } from '@livekit/components-react';
 import { RoomEvent, Track } from 'livekit-client';
-import { FolderOpen, MessageSquare, PhoneOff, X } from 'lucide-react';
+import { FolderOpen, FolderPlus, LayoutGrid, MessageSquare, MonitorPlay, PhoneOff, X } from 'lucide-react';
 import { formatTime } from '@/lib/advisor-crm';
 import { ChatPane } from '@/components/conversation/ChatPane';
 import { CallDocumentsPanel } from './CallDocumentsPanel';
 import { PresentedDocumentView } from './PresentedDocumentView';
 import type { CallSignal, MeetingCallDetails, PresentedDocument } from './types';
+import { EphemeralChat } from './EphemeralChat';
+import type { EphemeralMessage } from './EphemeralChat';
+import { GuestDocumentsPanel } from './GuestDocumentsPanel';
+import type { SharedFile } from './GuestDocumentsPanel';
+import { WorkspaceFrame } from './WorkspaceFrame';
+import type { Workspace } from './WorkspaceFrame';
+import { GUEST_FRAME_NAME } from '@/components/frame-mode/frameMode';
+import { OpenClientFileDialog } from '@/components/advisor/OpenClientFileDialog';
 
 const SIGNAL_TOPIC = 'mk-call';
+/** הקבצים של פגישת אורח עוברים בזרם בתים בערוץ של השיחה */
+const FILE_TOPIC = 'mk-call-file';
+
+function randomId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -57,6 +71,22 @@ export function CallStage({
   /** המסמך שאני מציג — כדי לשלוח אותו גם למי שמצטרף אחרי שההצגה התחילה */
   const mine = useRef<PresentedDocument | null>(null);
   const myName = details.role === 'ADVISOR' ? details.advisorName : details.clientName;
+  const guestMeeting = details.kind === 'guest';
+  const isAdvisor = details.role === 'ADVISOR';
+  /** פגישת אורח: הצ'אט והקבצים — בזיכרון בלבד */
+  const [messages, setMessages] = useState<EphemeralMessage[]>([]);
+  const [files, setFiles] = useState<SharedFile[]>([]);
+  const filesRef = useRef<SharedFile[]>([]);
+  /** התיקייה של קובץ שהצד השני שולח — יכולה להגיע לפני הקובץ עצמו */
+  const categories = useRef(new Map<string, string>());
+  filesRef.current = files;
+  /** היועץ: הביקור הווירטואלי או תיק הלקוח, בחלון שמשותף ללקוח */
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaceSeq, setWorkspaceSeq] = useState(0);
+  const [fileDialogOpen, setFileDialogOpen] = useState(false);
+  const [prospectId, setProspectId] = useState<string | null>(details.prospectClientId ?? null);
+  /** האורח: הכלים לזמן הפגישה */
+  const [guestTools, setGuestTools] = useState(false);
   const otherName = details.role === 'ADVISOR' ? details.clientName : details.advisorName;
   const canShareScreen = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getDisplayMedia);
 
@@ -88,6 +118,16 @@ export function CallStage({
       setPresented(null);
     } else if (signal.t === 'hello' && mine.current) {
       void broadcast({ t: 'present', doc: mine.current });
+    } else if (signal.t === 'msg') {
+      setMessages((list) =>
+        list.some((item) => item.id === signal.id)
+          ? list
+          : [...list, { id: signal.id, by: signal.by, text: signal.text, at: signal.at, mine: false }]
+      );
+      setUnread((value) => value + 1);
+    } else if (signal.t === 'file') {
+      categories.current.set(signal.id, signal.category);
+      setFiles((list) => list.map((file) => (file.id === signal.id ? { ...file, category: signal.category } : file)));
     }
   };
 
@@ -101,6 +141,101 @@ export function CallStage({
     },
     [send]
   );
+
+  // פגישת אורח: קבצים שהצד השני העלה מגיעים בזרם בתים, ונשמרים בזיכרון בלבד
+  useEffect(() => {
+    if (!guestMeeting) return;
+    room.registerByteStreamHandler(FILE_TOPIC, (reader, participant) => {
+      void (async () => {
+        try {
+          const chunks = await reader.readAll();
+          const info = reader.info;
+          const blob = new Blob(chunks as BlobPart[], { type: info.mimeType || 'application/octet-stream' });
+          const sender = room.remoteParticipants.get(participant.identity);
+          setFiles((list) => [
+            ...list,
+            {
+              id: info.id,
+              name: info.name,
+              category: categories.current.get(info.id) || 'אחר',
+              contentType: info.mimeType || 'application/octet-stream',
+              size: blob.size,
+              url: URL.createObjectURL(blob),
+              by: sender?.name || 'הצד השני',
+              mine: false,
+            },
+          ]);
+          setDocsSignal((value) => value + 1);
+        } catch (error) {
+          console.warn('[meeting-call] file not received', error);
+        }
+      })();
+    });
+    return () => {
+      room.unregisterByteStreamHandler(FILE_TOPIC);
+    };
+  }, [guestMeeting, room]);
+
+  // בסוף השיחה הקבצים נמחקים מהזיכרון
+  useEffect(
+    () => () => {
+      filesRef.current.forEach((file) => URL.revokeObjectURL(file.url));
+    },
+    []
+  );
+
+  const sendMessage = (text: string) => {
+    const message = { id: randomId(), by: myName, text, at: new Date().toISOString() };
+    setMessages((list) => [...list, { ...message, mine: true }]);
+    void broadcast({ t: 'msg', ...message });
+  };
+
+  const shareFile = async (file: File, category: string): Promise<string | null> => {
+    let id: string;
+    try {
+      const sent = await localParticipant.sendFile(file, {
+        topic: FILE_TOPIC,
+        mimeType: file.type || 'application/octet-stream',
+      });
+      id = sent.id;
+      void broadcast({ t: 'file', id, category });
+    } catch (error) {
+      console.warn('[meeting-call] file not sent', error);
+      return 'הקובץ לא הועבר. נסו שוב';
+    }
+    setFiles((list) => [
+      ...list,
+      {
+        id,
+        name: file.name,
+        category,
+        contentType: file.type || 'application/octet-stream',
+        size: file.size,
+        url: URL.createObjectURL(file),
+        by: myName,
+        mine: true,
+      },
+    ]);
+    return null;
+  };
+
+  const openWorkspace = (next: Workspace) => {
+    setWorkspaceSeq((value) => value + 1);
+    setWorkspace(next);
+  };
+
+  /** תיק הלקוח שנפתח בפגישה: נפתח בחלון המשותף, ובפגישת אורח גם נשמר עליה */
+  const onClientFileOpened = (clientId: string) => {
+    setProspectId(clientId);
+    openWorkspace({ kind: 'client', clientId });
+    if (guestMeeting) {
+      void fetch(`/api/advisor/guest-meetings/${encodeURIComponent(details.meetingId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      }).catch(() => undefined);
+    }
+  };
 
   // מי שנכנס מבקש מהצד השני את המסמך שמוצג עכשיו, אם יש
   useEffect(() => {
@@ -143,7 +278,71 @@ export function CallStage({
   const togglePanel = (next: Exclude<Panel, null>) => setPanel((current) => (current === next ? null : next));
   const panelOpen = panel !== null;
 
+  const presentedFile = presented && guestMeeting ? files.find((file) => file.id === presented.id) : undefined;
+
   const stage = (() => {
+    if (workspace && isAdvisor) {
+      return (
+        <div className="lk-focus-layout-wrapper">
+          <FocusLayoutContainer>
+            <CarouselLayout tracks={cameras}>
+              <ParticipantTile />
+            </CarouselLayout>
+            <WorkspaceFrame
+              key={workspaceSeq}
+              workspace={workspace}
+              autoShare
+              onClose={() => setWorkspace(null)}
+              onSwitch={openWorkspace}
+            />
+          </FocusLayoutContainer>
+        </div>
+      );
+    }
+    if (guestTools && !isAdvisor) {
+      return (
+        <div className="lk-focus-layout-wrapper">
+          <FocusLayoutContainer>
+            <CarouselLayout tracks={[...(screenShare ? [screenShare] : []), ...cameras]}>
+              <ParticipantTile />
+            </CarouselLayout>
+            <div dir="rtl" className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-white text-slate-900">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+                <p className="text-sm font-black">פעולות וכלים · לזמן הפגישה בלבד, שום דבר לא נשמר</p>
+                <button
+                  type="button"
+                  aria-label="סגירת הכלים"
+                  onClick={() => setGuestTools(false)}
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <iframe name={GUEST_FRAME_NAME} src="/demo/dashboard" title="כלים" className="min-h-0 flex-1 border-0" />
+            </div>
+          </FocusLayoutContainer>
+        </div>
+      );
+    }
+    if (presented && guestMeeting && presentedFile) {
+      return (
+        <div className="lk-focus-layout-wrapper">
+          <FocusLayoutContainer>
+            <CarouselLayout tracks={[...(screenShare ? [screenShare] : []), ...cameras]}>
+              <ParticipantTile />
+            </CarouselLayout>
+            <PresentedDocumentView
+              planId={null}
+              url={presentedFile.url}
+              doc={presented}
+              mine={mine.current?.id === presented.id}
+              onStop={stopPresenting}
+              onHide={() => setPresented(null)}
+            />
+          </FocusLayoutContainer>
+        </div>
+      );
+    }
     if (presented && details.planId) {
       return (
         <div className="lk-focus-layout-wrapper">
@@ -191,6 +390,7 @@ export function CallStage({
             <p className="truncate text-sm font-black">{details.title}</p>
             <p className="text-xs text-white/60">
               {alone ? `ממתינים ל${otherName} שיצטרף…` : `בשיחה עם ${otherName}`} · נקבעה ל-{formatTime(details.startsAt)}
+              {guestMeeting && details.endsAt && ` · הלינק פג ב-${formatTime(details.endsAt)}`}
             </p>
           </div>
           <StartAudio label="להפעלת השמע לחצו כאן" className="rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-black" />
@@ -233,6 +433,9 @@ export function CallStage({
               </div>
               {/* שני הלוחות נשארים טעונים, כדי שהמעבר ביניהם לא יאבד טיוטה */}
               <div className={`min-h-0 flex-1 flex-col ${panel === 'chat' ? 'flex' : 'hidden'}`}>
+                {guestMeeting ? (
+                  <EphemeralChat messages={messages} onSend={sendMessage} />
+                ) : (
                 <ChatPane
                   role={details.role}
                   clientUserId={details.role === 'ADVISOR' ? details.clientUserId : null}
@@ -240,8 +443,20 @@ export function CallStage({
                   refreshSignal={chatSignal}
                   onSent={() => void broadcast({ t: 'chat' })}
                 />
+                )}
               </div>
               <div className={`min-h-0 flex-1 flex-col ${panel === 'documents' ? 'flex' : 'hidden'}`}>
+                {guestMeeting ? (
+                  <GuestDocumentsPanel
+                    files={files}
+                    presentingId={presented?.id ?? null}
+                    onUpload={shareFile}
+                    onPresent={(file) =>
+                      present({ id: file.id, name: file.name, fileName: file.name, contentType: file.contentType })
+                    }
+                    onView={(file) => window.open(file.url, '_blank', 'noopener')}
+                  />
+                ) : (
                 <CallDocumentsPanel
                   details={details}
                   refreshSignal={docsSignal}
@@ -253,6 +468,7 @@ export function CallStage({
                     void broadcast({ t: 'chat' });
                   }}
                 />
+                )}
               </div>
             </aside>
           )}
@@ -285,11 +501,44 @@ export function CallStage({
             <FolderOpen className="h-4 w-4" />
             תיק המסמכים
           </ControlButton>
+          {isAdvisor && (
+            <ControlButton active={workspace?.kind === 'visit'} onClick={() => openWorkspace({ kind: 'visit' })}>
+              <MonitorPlay className="h-4 w-4" />
+              ביקור וירטואלי בפלטפורמה
+            </ControlButton>
+          )}
+          {isAdvisor && guestMeeting && (
+            <ControlButton
+              active={workspace?.kind === 'client'}
+              onClick={() =>
+                prospectId ? openWorkspace({ kind: 'client', clientId: prospectId }) : setFileDialogOpen(true)
+              }
+            >
+              <FolderPlus className="h-4 w-4" />
+              {prospectId ? 'תיק הלקוח' : 'פתח תיק לקוח'}
+            </ControlButton>
+          )}
+          {!isAdvisor && guestMeeting && (
+            <ControlButton active={guestTools} onClick={() => setGuestTools((value) => !value)}>
+              <LayoutGrid className="h-4 w-4" />
+              פעולות וכלים
+            </ControlButton>
+          )}
           <DisconnectButton className="call-control call-control-leave">
             <PhoneOff className="h-4 w-4" />
             יציאה
           </DisconnectButton>
         </footer>
+
+        {isAdvisor && guestMeeting && (
+          <OpenClientFileDialog
+            open={fileDialogOpen}
+            onOpenChange={setFileDialogOpen}
+            defaultName={details.clientName === 'האורח' ? '' : details.clientName}
+            note={`נפתח בפגישה "${details.title}"`}
+            onOpened={(clientId) => onClientFileOpened(clientId)}
+          />
+        )}
 
         <RoomAudioRenderer />
         <ConnectionStateToast />

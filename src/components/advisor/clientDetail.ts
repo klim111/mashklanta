@@ -23,6 +23,8 @@ export interface ClientDetail {
   id: string;
   /** חשבון הלקוח — מזהה את השיחה איתו בצ'אט ובמיילים */
   userId?: string;
+  /** תיק לקוח מתעניין שעדיין לא נרשם — היועץ עובד בכלים בשמו */
+  prospect?: boolean;
   name: string;
   email: string;
   phone: string | null;

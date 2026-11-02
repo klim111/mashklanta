@@ -54,6 +54,8 @@ export interface ClientListItem {
   planProgress: number;
   /** נרשם לבד ומופיע ברשימה בכרטיס אוטומטי — עדיין לא לקוח בליווי */
   selfRegistered: boolean;
+  /** לקוח מתעניין שהיועץ פתח לו תיק בעצמו, ועדיין לא נרשם (src/lib/prospect-client.ts) */
+  prospect: boolean;
   /** מתי נפתח החשבון של הלקוח */
   registeredAt: string;
   /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
@@ -258,6 +260,7 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
       planStage: (row.plans[0]?.currentStage as PlanStageId | undefined) ?? null,
       planProgress: row.plans[0]?.progress ?? 0,
       selfRegistered: row.autoLinked,
+      prospect: row.prospect,
       registeredAt: (row.user?.createdAt ?? row.createdAt).toISOString(),
       paid: paid.paid,
       firstPaidAt: paid.firstPaidAt,
@@ -312,6 +315,8 @@ export interface ClientDocumentView {
 }
 
 export interface ClientDetail {
+  /** תיק לקוח מתעניין שעדיין לא נרשם (src/lib/prospect-client.ts) */
+  prospect: boolean;
   id: string;
   advisorId: string;
   userId: string;
@@ -408,6 +413,7 @@ export async function getClientDetail(clientId: string): Promise<ClientDetail | 
     id: client.id,
     advisorId: client.advisorId,
     userId: client.userId,
+    prospect: client.prospect,
     name: client.name,
     email: client.email,
     phone: client.phone,

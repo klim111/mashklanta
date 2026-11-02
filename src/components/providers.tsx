@@ -16,6 +16,17 @@ import { NewMeetingAlert } from '@/components/meetings/NewMeetingAlert';
 import { AdvisorActionsMenu } from '@/components/actions/AdvisorActionsMenu';
 import { AdvisorTabGuard } from '@/components/auth/AdvisorTabGuard';
 import { ClientViewBar } from '@/components/client-view/ClientViewBar';
+import { activateSessionGuard } from '@/demo/sandbox/session-guard';
+import { installFrameMode } from '@/components/frame-mode/frameMode';
+import { FrameModeBanner } from '@/components/frame-mode/FrameModeBanner';
+import { FrameToolsMenu } from '@/components/frame-mode/FrameToolsMenu';
+
+/**
+ * החלונות של הפגישות — הביקור הווירטואלי, הכלים של האורח ותיק לקוח מתעניין
+ * (src/components/frame-mode/frameMode.ts). ההתקנה כאן, בטעינת המודול, כדי
+ * שתקדים את הבקשה הראשונה של ספק ה-session.
+ */
+installFrameMode(activateSessionGuard);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // בכל שדה מספרי בפלטפורמה הסמן נכנס בסוף הערך, כדי שמחיקה תעבוד מיד
@@ -42,6 +53,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <DemoHost>
             <SiteVisitTracker />
             <GoogleAnalytics />
+            <FrameModeBanner />
             <PhoneGate>
               {/* ההתכתבות עם היועץ */}
               <ClientConversationProvider>{children}</ClientConversationProvider>
@@ -51,6 +63,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <AdvisorActionsMenu />
               {/* היועץ מחוץ לאזור היועץ — מצב יועץ (או "כלקוח"), וחזרה לאזור היועץ מכל מסך */}
               <ClientViewBar />
+              {/* חלונות הפגישה: גישה מהירה לכל הכלים */}
+              <FrameToolsMenu />
             </PhoneGate>
           </DemoHost>
         </AdvisorTabGuard>

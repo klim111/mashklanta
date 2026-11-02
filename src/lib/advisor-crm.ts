@@ -47,6 +47,24 @@ export interface AdvisorTaskView {
   createdAt: string;
 }
 
+/** משימה שהיועץ מחק, כפי שנשמרה ברישום המשימות שנמחקו */
+export interface DeletedAdvisorTaskView {
+  id: string;
+  /** מזהה המשימה המקורית, שכבר אינה קיימת */
+  taskId: string;
+  clientId: string | null;
+  /** שם הלקוח ברגע המחיקה — נשמר גם אם הלקוח הוסר מאז */
+  clientName: string | null;
+  stage: PlanStageId;
+  title: string;
+  details: string | null;
+  dueDate: string | null;
+  /** הסטטוס שהיה למשימה כשנמחקה */
+  status: AdvisorTaskStatus;
+  taskCreatedAt: string;
+  deletedAt: string;
+}
+
 /**
  * המשימות שהיועץ עושה בכל שלב, כפי שהן מוצעות לו בלחיצה אחת.
  *

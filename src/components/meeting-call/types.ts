@@ -2,6 +2,11 @@ import type { MeetingParty, MeetingStatus } from '@/lib/advisor-crm';
 
 /** פרטי הפגישה כפי שמסך השיחה מקבל אותם מ-`/api/meetings/[id]/call` */
 export interface MeetingCallDetails {
+  /**
+   * פגישה עם לקוח רשום, או פגישת אורח בלינק חד-פעמי (src/lib/guest-meetings.ts).
+   * בפגישת אורח הצ'אט והקבצים עוברים בערוץ של השיחה בלבד, ולא נשמרים
+   */
+  kind?: 'client' | 'guest';
   meetingId: string;
   title: string;
   startsAt: string;
@@ -15,6 +20,13 @@ export interface MeetingCallDetails {
   planId: string | null;
   /** משתני LIVEKIT מוגדרים בסביבה */
   configured: boolean;
+  /** פגישת אורח: מתי הלינק פג — השיחה נסגרת אצל האורח ברגע הזה */
+  endsAt?: string;
+  guestState?: 'cancelled' | 'early' | 'open' | 'expired';
+  /** פגישת אורח, אצל היועץ: הנתיב של הלינק, להעתקה */
+  linkPath?: string;
+  /** תיק הלקוח המתעניין שנפתח לאורח במהלך הפגישה */
+  prospectClientId?: string | null;
 }
 
 /** מסמך מהתיק שמוצג לשני הצדדים בשיחה */
@@ -36,9 +48,17 @@ export type CallSignal =
   | { t: 'docs' }
   | { t: 'present'; doc: PresentedDocument }
   | { t: 'stop' }
-  | { t: 'hello' };
+  | { t: 'hello' }
+  /** פגישת אורח: הודעת צ'אט שעוברת רק בערוץ של השיחה */
+  | { t: 'msg'; id: string; by: string; text: string; at: string }
+  /** פגישת אורח: לאיזו תיקייה בתיק לדוגמה שייך קובץ שעבר בשיחה */
+  | { t: 'file'; id: string; category: string };
 
 /** הכתובת שאליה חוזרים מהשיחה */
-export function returnHref(details: Pick<MeetingCallDetails, 'role' | 'clientId'>): string {
+export function returnHref(details: Pick<MeetingCallDetails, 'role' | 'clientId' | 'kind'>): string {
+  if (details.kind === 'guest') {
+    if (details.role !== 'ADVISOR') return '/';
+    return details.clientId ? `/advisor-dashboard/client/${details.clientId}` : '/advisor-dashboard?tab=calendar';
+  }
   return details.role === 'ADVISOR' ? `/advisor-dashboard/client/${details.clientId}` : '/dashboard#agenda';
 }
