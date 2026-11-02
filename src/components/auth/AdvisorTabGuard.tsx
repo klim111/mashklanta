@@ -15,6 +15,16 @@ const KEEPALIVE_MS = 5 * 60 * 1000;
  */
 const EXEMPT_PREFIXES = ['/meeting/', '/m/', '/auth/advisor-verify'];
 
+/** לשונית חדשה שנפתחה מקישור בעמוד של האתר עצמו, ולא מכתובת שהוקלדה */
+function openedFromSite(): boolean {
+  if (!document.referrer) return false;
+  try {
+    return new URL(document.referrer).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 /** ההחלטה מתקבלת פעם אחת לכל טעינה של הדף, ומעבר בין עמודים באתר לא משנה אותה */
 let loadVerdict: boolean | null = null;
 
@@ -30,23 +40,24 @@ let loadVerdict: boolean | null = null;
 let loadStartedAsAdvisor: boolean | null = null;
 
 /**
- * האם הטעינה הזו ממשיכה את הכניסה של היועץ: רק הטעינה שמיד אחרי הכניסה,
- * או רענון של אותה לשונית. הקלדת כתובת האתר, לשונית חדשה או דפדפן שנפתח
- * מחדש — כל אלה ביקור חדש.
+ * האם הטעינה הזו ממשיכה את הכניסה של היועץ.
+ *
+ * ממשיכה: כל טעינה באותה לשונית שבה היועץ נכנס — מעבר לכלי, קישור שטוען את
+ * הדף מחדש, רענון, או חזרה אחורה — ולשונית חדשה שנפתחה מתוך עמוד באתר (קישור
+ * מאזור היועץ שנפתח בלשונית חדשה). כך כל מה שנפתח מאזור היועץ נשאר במצב יועץ.
+ *
+ * ביקור חדש, שמנתק: הקלדת כתובת האתר או מועדף בלשונית חדשה, או דפדפן שנפתח
+ * מחדש — כל טעינה בלשונית שלא נכנסו בה ושלא נפתחה מתוך האתר.
  */
 function thisLoadContinuesLogin(): boolean {
   if (loadVerdict !== null) return loadVerdict;
   try {
     const storage = window.sessionStorage;
+    storage.removeItem(ADVISOR_FRESH_KEY);
     const sameTab = storage.getItem(ADVISOR_TAB_KEY) === '1';
-    if (storage.getItem(ADVISOR_FRESH_KEY) === '1') {
-      storage.removeItem(ADVISOR_FRESH_KEY);
-      loadVerdict = sameTab;
-    } else {
-      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-      loadVerdict = sameTab && navigation?.type === 'reload';
-    }
-    if (!loadVerdict) storage.removeItem(ADVISOR_TAB_KEY);
+    loadVerdict = sameTab || openedFromSite();
+    if (loadVerdict) storage.setItem(ADVISOR_TAB_KEY, '1');
+    else storage.removeItem(ADVISOR_TAB_KEY);
   } catch {
     loadVerdict = false;
   }

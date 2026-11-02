@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLandingMode } from '@/components/landing/LandingMode';
+import { usePersonalAreaHref } from '@/components/client-view/useClientView';
 
 export interface ReturnTarget {
   href: string;
@@ -15,18 +16,21 @@ export interface ReturnTarget {
 /**
  * לאן חוזרים מכלי או ממסך משני. סדר העדיפויות זהה בכל האתר:
  * מי שהגיע מתהליך (?fromPlan) חוזר לתהליך ולשלב שממנו יצא (?fromStage),
- * לקוח מחובר חוזר לאזור האישי, ואורח חוזר לדף הבית.
+ * יועץ חוזר לאזור היועץ (אלא אם הוא גולש "כלקוח"), לקוח מחובר חוזר לאזור
+ * האישי, ואורח חוזר לדף הבית.
  */
 export function returnTargetFor(options: {
   fromPlan?: string | null;
   fromStage?: string | null;
   signedIn: boolean;
+  advisor?: boolean;
 }): ReturnTarget {
-  const { fromPlan, fromStage, signedIn } = options;
+  const { fromPlan, fromStage, signedIn, advisor } = options;
   if (fromPlan && /^[\w-]+$/.test(fromPlan)) {
     const stage = fromStage && /^[A-Z_]+$/.test(fromStage) ? `?stage=${fromStage}` : '';
     return { href: `/dashboard/plans/${fromPlan}${stage}`, label: 'חזרה לתהליך' };
   }
+  if (signedIn && advisor) return { href: '/advisor-dashboard', label: 'חזרה לאזור היועץ' };
   if (signedIn) return { href: '/dashboard', label: 'חזרה לאזור האישי' };
   return { href: '/', label: 'חזרה לדף הבית' };
 }
@@ -34,10 +38,12 @@ export function returnTargetFor(options: {
 export function useReturnTarget(): ReturnTarget {
   const searchParams = useSearchParams();
   const { status } = useSession();
+  const advisor = usePersonalAreaHref() === '/advisor-dashboard';
   return returnTargetFor({
     fromPlan: searchParams?.get('fromPlan'),
     fromStage: searchParams?.get('fromStage'),
     signedIn: status === 'authenticated',
+    advisor,
   });
 }
 

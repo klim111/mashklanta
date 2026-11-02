@@ -7,6 +7,7 @@ import { ChevronDown, MenuIcon, MessageCircle, Shield, LogIn, UserPlus } from "l
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { usePersonalAreaHref } from "@/components/client-view/useClientView";
 import Mashkalanta from "@/components/ui/mashkalanta";
 import { demoId } from '@/demo/demo-attr';
 import { CONSULT_REASONS, consultHref } from "@/lib/consult-reasons";
@@ -82,6 +83,8 @@ function ConsultMenu({ className = "" }: { className?: string }) {
 
 export default function NavBar() {
   const { data: session } = useSession();
+  // היועץ חוזר מכל מקום לאזור היועץ, אלא אם הוא גולש "כלקוח"
+  const personalAreaHref = usePersonalAreaHref();
   const onNavClick = useHashScroll();
 
   return (
@@ -117,14 +120,14 @@ export default function NavBar() {
         <div className="hidden xl:flex items-center gap-2 2xl:gap-3">
           {session ? (
             <>
-              <Link href="/dashboard">
+              <Link href={personalAreaHref}>
                 <Button
                   variant="outline"
                   size="lg"
                   className="px-4 2xl:px-6 font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300"
                 >
                   <Shield className="w-4 h-4 ml-2" />
-                  האזור האישי
+                  {personalAreaHref === '/advisor-dashboard' ? 'אזור היועץ' : 'האזור האישי'}
                 </Button>
               </Link>
               <Button
@@ -210,14 +213,14 @@ export default function NavBar() {
               <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
                 {session ? (
                   <div className="space-y-3">
-                    <Link href="/dashboard">
+                    <Link href={personalAreaHref}>
                       <Button
                         variant="outline"
                         size="lg"
                         className="w-full font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600"
                       >
                         <Shield className="w-4 h-4 ml-2" />
-                        האזור האישי
+                        {personalAreaHref === '/advisor-dashboard' ? 'אזור היועץ' : 'האזור האישי'}
                       </Button>
                     </Link>
                     <Button
