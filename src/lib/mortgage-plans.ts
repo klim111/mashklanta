@@ -73,7 +73,7 @@ const planSelect = {
   stages: { select: { stage: true, status: true, dataJson: true, completedAt: true } },
   platformPayments: { select: { createdAt: true, amountAgorot: true } },
   advisorOrders: { select: { status: true } },
-  client: { select: { autoLinked: true } },
+  client: { select: { autoLinked: true, selfPay: true } },
   owner: {
     select: {
       name: true,
@@ -133,8 +133,10 @@ function accessOf(row: PlanRow): ProcessAccess {
     ownerCompletions: completionsOf(row.owner.mortgagePlans),
     // ליווי ששולם, או לקוח שיועץ כבר מלווה אותו (כרטיס ליווי אצל יועץ). כרטיס
     // שנפתח אוטומטית ללקוח שנרשם לבד אינו ליווי
+    // ולא לקוח שהיועץ סימן כלקוח בתשלום (selfPay): הגישה שלו לפי התקופה ששולמה
     hasPaidAdvisory:
-      Boolean(row.client && !row.client.autoLinked) || row.advisorOrders.some((order) => order.status === 'PAID'),
+      Boolean(row.client && !row.client.autoLinked && !row.client.selfPay) ||
+      row.advisorOrders.some((order) => order.status === 'PAID'),
     advisoryEndedAt: row.advisoryEndedAt,
     ownerIsAdvisor: row.owner.role === 'ADVISOR',
     ownerHadLegacyAccess: row.owner.platformAccessAt !== null,
@@ -383,7 +385,7 @@ const OPEN_SELF_SERVICE = {
     { advisoryEndedAt: { not: null } },
     {
       // תהליך בלי ליווי — גם כשנפתח לו כרטיס אוטומטי אצל היועץ
-      OR: [{ clientId: null }, { client: { autoLinked: true } }],
+      OR: [{ clientId: null }, { client: { autoLinked: true } }, { client: { selfPay: true } }],
       advisorOrders: { none: { status: 'PAID' } },
     },
   ],
@@ -427,7 +429,7 @@ export async function canOpenAnotherPlan(userId: string): Promise<boolean> {
     select: {
       role: true,
       paidAccessUntil: true,
-      advisedAs: { where: { autoLinked: false }, select: { id: true }, take: 1 },
+      advisedAs: { where: { autoLinked: false, selfPay: false }, select: { id: true }, take: 1 },
     },
   });
   if (!user || user.role === 'ADVISOR' || user.advisedAs.length > 0) return true;
@@ -488,7 +490,11 @@ export async function clientHasPaidAccess(userId: string): Promise<boolean> {
   });
   if (rows.some((row) => accessOf(row).state === 'ACTIVE')) return true;
   // כרטיס שנפתח אוטומטית בהרשמה אינו ליווי
-  const accompanied = await prisma.client.findFirst({ where: { userId, autoLinked: false }, select: { id: true } });
+  // וגם לא כרטיס של לקוח בתשלום (selfPay) — אצלו הגישה לפי התקופה ששולמה
+  const accompanied = await prisma.client.findFirst({
+    where: { userId, autoLinked: false, selfPay: false },
+    select: { id: true },
+  });
   return accompanied !== null;
 }
 

@@ -96,8 +96,8 @@ export function OpenClientFileDialog({
             פתיחת תיק לקוח
           </DialogTitle>
           <DialogDescription className="text-right">
-            הלקוח נפתח כמתעניין שעדיין לא נרשם, ומופיע ברשימת הלקוחות שלך. כל מה שתזינו בכלים נשמר בתיק. כשהלקוח יירשם עם
-            המייל שרשום כאן, הוא יראה את זה אצלו.
+            הלקוח נפתח כמתעניין שעדיין לא נרשם, ומופיע ברשימת הלקוחות שלך. כל מה שתזינו בכלים נשמר בתיק. אחר כך שולחים לו מדף הלקוח
+            פרטי כניסה, והוא יראה את כל זה באזור האישי שלו.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">

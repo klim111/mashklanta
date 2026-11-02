@@ -124,6 +124,38 @@ export async function prospectFileFor(advisorId: string, clientId: string) {
   });
 }
 
+const GRANT_FIELDS = {
+  paidAccessFrom: true,
+  paidAccessUntil: true,
+  paidAccessSetAt: true,
+  paidAccessSetBy: true,
+  paidAccessNote: true,
+} as const;
+
+type GrantFields = {
+  paidAccessFrom: Date | null;
+  paidAccessUntil: Date | null;
+  paidAccessSetAt: Date | null;
+  paidAccessSetBy: string | null;
+  paidAccessNote: string | null;
+};
+
+/**
+ * הגישה שהיועץ הגדיר על החשבון הזמני, להעברה לחשבון של הלקוח — או null כשאין
+ * מה להעביר: אין גישה כזו, או שלחשבון החדש כבר יש גישה שנגמרת אחריה.
+ */
+export function carriedGrant(from: GrantFields | null | undefined, currentUntil: Date | null): GrantFields | null {
+  if (!from?.paidAccessUntil) return null;
+  if (currentUntil && currentUntil.getTime() >= from.paidAccessUntil.getTime()) return null;
+  return {
+    paidAccessFrom: from.paidAccessFrom,
+    paidAccessUntil: from.paidAccessUntil,
+    paidAccessSetAt: from.paidAccessSetAt,
+    paidAccessSetBy: from.paidAccessSetBy,
+    paidAccessNote: from.paidAccessNote,
+  };
+}
+
 /**
  * הלקוח נרשם בעצמו: תיק מתעניין שנפתח עם המייל שלו עובר לחשבון החדש.
  *
@@ -132,14 +164,17 @@ export async function prospectFileFor(advisorId: string, clientId: string) {
  * כשאין תיק כזה. הפעולה בטוחה לקריאה חוזרת.
  */
 export async function claimProspectFile(userId: string): Promise<{ clientId: string; advisorId: string } | null> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, role: true, toolDataJson: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, role: true, toolDataJson: true, paidAccessUntil: true },
+  });
   const email = user?.email?.trim().toLowerCase();
   if (!user || user.role !== 'CLIENT' || !email || isProspectEmail(email)) return null;
 
   const file = await prisma.client.findFirst({
     where: { prospect: true, email: { equals: email, mode: 'insensitive' } },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, advisorId: true, userId: true, user: { select: { toolDataJson: true } } },
+    select: { id: true, advisorId: true, userId: true, user: { select: { toolDataJson: true, ...GRANT_FIELDS } } },
   });
   if (!file || file.userId === userId) return null;
   const from = file.userId;
@@ -169,6 +204,10 @@ export async function claimProspectFile(userId: string): Promise<{ clientId: str
     if (carried && !user.toolDataJson) {
       await tx.user.update({ where: { id: userId }, data: { toolDataJson: carried as Prisma.InputJsonValue } });
     }
+    // הגישה בתשלום שהיועץ הגדיר בתיק — עוברת לחשבון החדש, אלא אם כבר יש לו
+    // גישה ארוכה יותר משלו (src/lib/granted-access.ts)
+    const grant = carriedGrant(file.user, user.paidAccessUntil);
+    if (grant) await tx.user.update({ where: { id: userId }, data: grant });
     await tx.conversationRecipient.updateMany({ where: { clientUserId: from }, data: { clientUserId: userId } });
     await tx.client.update({ where: { id: file.id }, data: { userId, prospect: false } });
     await tx.user.delete({ where: { id: from } });

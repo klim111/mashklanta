@@ -388,6 +388,14 @@ export const authOptions: NextAuthOptions = {
         // מחוץ לבקשה אין עוגיות למחוק; הטוקן כבר נמחק
       }
     },
+    async signIn({ user }) {
+      // לקוח שנכנס בפעם הראשונה לחשבון שהיועץ פתח לו (src/lib/client-invite.ts) —
+      // גם בכניסה עם Google, בלי לבחור סיסמה. מעכשיו זה תיק של לקוח רשום
+      if (!user?.id) return;
+      await prisma.client
+        .updateMany({ where: { userId: user.id, prospect: true }, data: { prospect: false } })
+        .catch((error) => console.error('[auth] clearing the prospect flag failed:', error));
+    },
     async createUser({ user }) {
       if (!user.id) return;
       await ensureClientLinkSafely(user.id);
