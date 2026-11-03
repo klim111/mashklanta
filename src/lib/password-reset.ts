@@ -18,8 +18,39 @@ import { generateToken, hashToken } from '@/lib/registration';
 export const RESET_TTL_MINUTES = 60;
 const IDENTIFIER_PREFIX = 'password-reset:';
 
-function resetUrl(token: string, requestOrigin?: string | null): string {
-  return `${publicSiteOrigin(requestOrigin)}/auth/reset-password?token=${encodeURIComponent(token)}`;
+/** קישור ההזמנה שהיועץ שולח ללקוח שפתח לו תיק (src/lib/client-invite.ts) תקף יותר זמן */
+export const INVITE_TTL_DAYS = 7;
+
+function resetUrl(token: string, requestOrigin?: string | null, invite = false): string {
+  const base = `${publicSiteOrigin(requestOrigin)}/auth/reset-password?token=${encodeURIComponent(token)}`;
+  return invite ? `${base}&invite=1` : base;
+}
+
+/** קישור חד-פעמי חדש למשתמש. מבטל את הקישורים הקודמים שלו ומנקה קישורים שפגו */
+async function issueToken(userId: string, ttlMs: number): Promise<string> {
+  const identifier = `${IDENTIFIER_PREFIX}${userId}`;
+  const token = generateToken();
+  const now = Date.now();
+  await prisma.$transaction([
+    // רק הקישור האחרון שנשלח תקף; מנקים גם קישורים ישנים של משתמשים אחרים
+    prisma.verificationToken.deleteMany({ where: { identifier } }),
+    prisma.verificationToken.deleteMany({
+      where: { identifier: { startsWith: IDENTIFIER_PREFIX }, expires: { lt: new Date(now) } },
+    }),
+    prisma.verificationToken.create({
+      data: { identifier, token: hashToken(token), expires: new Date(now + ttlMs) },
+    }),
+  ]);
+  return token;
+}
+
+/**
+ * קישור לקביעת סיסמה ללקוח שהיועץ פתח לו חשבון — לכניסה הראשונה. זה אותו
+ * קישור של "שכחתי סיסמה", לשבוע במקום לשעה, והעמוד מנוסח ככניסה ראשונה.
+ */
+export async function createInviteLink(userId: string, requestOrigin?: string | null): Promise<string> {
+  const token = await issueToken(userId, INVITE_TTL_DAYS * 24 * 60 * 60 * 1000);
+  return resetUrl(token, requestOrigin, true);
 }
 
 export type ResetRequestResult = 'sent' | 'cooldown' | 'limit' | 'email-failed';
@@ -46,24 +77,7 @@ export async function requestPasswordReset(
   // ליועץ אין סיסמה: הוא נכנס רק בקישור של הכניסה הנסתרת
   if (!user?.email || user.role === 'ADVISOR') return 'sent';
 
-  const identifier = `${IDENTIFIER_PREFIX}${user.id}`;
-  const token = generateToken();
-  const now = Date.now();
-
-  await prisma.$transaction([
-    // רק הקישור האחרון שנשלח תקף; מנקים גם קישורים ישנים של משתמשים אחרים
-    prisma.verificationToken.deleteMany({ where: { identifier } }),
-    prisma.verificationToken.deleteMany({
-      where: { identifier: { startsWith: IDENTIFIER_PREFIX }, expires: { lt: new Date(now) } },
-    }),
-    prisma.verificationToken.create({
-      data: {
-        identifier,
-        token: hashToken(token),
-        expires: new Date(now + RESET_TTL_MINUTES * 60 * 1000),
-      },
-    }),
-  ]);
+  const token = await issueToken(user.id, RESET_TTL_MINUTES * 60 * 1000);
 
   const url = resetUrl(token, requestOrigin);
   const template = emailTemplates.passwordResetEmail({
@@ -111,5 +125,8 @@ export async function resetPassword(token: string, password: string): Promise<Re
     // מי שפתח את הקישור הוכיח שהמייל שלו
     data: { hashedPassword, emailVerified: new Date() },
   });
-  return updated.count === 1 ? 'done' : 'invalid';
+  if (updated.count !== 1) return 'invalid';
+  // תיק שהיועץ פתח ללקוח הופך לתיק של לקוח רשום: מעכשיו הלקוח נכנס בעצמו
+  await prisma.client.updateMany({ where: { userId, prospect: true }, data: { prospect: false } });
+  return 'done';
 }

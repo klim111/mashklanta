@@ -23,6 +23,7 @@ import type { ClientPaymentSettings as Settings } from '@/lib/granted-access-sto
 import type { ClientBillingSummary } from '@/lib/client-billing';
 import type { PaymentLinkView } from '@/lib/payment-links';
 import { SectionCard, formatShekel } from './ui';
+import { ClientAccountCard } from './ClientAccountCard';
 
 const DATE = new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 const fmt = (iso: string | null | undefined) => (iso ? DATE.format(new Date(iso)) : '—');
@@ -97,7 +98,8 @@ export function ClientPaymentSettings({
 
   return (
     <div className="space-y-4 text-right" dir="rtl">
-      <AccessStatus grant={grant} billing={billing} />
+      <AccessStatus grant={grant} billing={billing} advised={!settings.account.selfRegistered && !settings.account.selfPay} />
+      <ClientAccountCard settings={settings} onChanged={changed} />
       <div className="grid gap-4 lg:grid-cols-2">
         <GrantForm clientId={clientId} grant={grant} links={settings.links} onChanged={changed} />
         <ChargeCard settings={settings} onChanged={changed} />
@@ -109,9 +111,12 @@ export function ClientPaymentSettings({
 function AccessStatus({
   grant,
   billing,
+  advised,
 }: {
   grant: Settings['grant'];
   billing: ClientBillingSummary | null | undefined;
+  /** לקוח בליווי — הכלים פתוחים לו בלי קשר לתשלום */
+  advised: boolean;
 }) {
   // הגישה שהלקוח שילם עליה בעצמו — בלי הגישה שהיועץ הגדיר, שמוצגת בנפרד
   const selfPaidEnds = useMemo(() => {
@@ -123,27 +128,32 @@ function AccessStatus({
   }, [billing]);
   const selfPaidActive = selfPaidEnds ? new Date(selfPaidEnds).getTime() > Date.now() : false;
   const paying = Boolean(grant?.active) || selfPaidActive;
+  const open = paying || advised;
 
   return (
     <section
       className={`flex flex-wrap items-center gap-4 rounded-2xl border p-4 shadow-sm ${
-        paying ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'
+        open ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white'
       }`}
     >
       <span
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-          paying ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+          open ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
         }`}
       >
-        {paying ? <BadgeCheck className="h-6 w-6" /> : <ShieldOff className="h-6 w-6" />}
+        {open ? <BadgeCheck className="h-6 w-6" /> : <ShieldOff className="h-6 w-6" />}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-subtitle text-slate-900">{paying ? 'לקוח משלם' : 'הלקוח לא מוגדר כמשלם'}</p>
+        <p className="text-subtitle text-slate-900">
+          {paying ? 'לקוח משלם' : advised ? 'לקוח בליווי' : 'הלקוח לא מוגדר כמשלם'}
+        </p>
         <p className="text-info text-slate-600">
           {grant?.active
             ? `גישה שהגדרת: מ-${fmt(grant.from)} עד ${fmt(grant.until)} · נשארו ${grant.daysLeft} ימים`
-            : grant
-              ? `הגישה שהגדרת הסתיימה ב-${fmt(grant.until)}`
+            : advised
+              ? 'הכלים באזור האישי פתוחים לו בלי תשלום, עד שתסמן בתהליך שהליווי הסתיים.'
+              : grant
+              ? `הגישה שהגדרת הסתיימה ב-${fmt(grant.until)}. האזור האישי נעול, והלקוח מתבקש לשלם.`
               : 'האזור האישי שלו נעול כמו של לקוח שלא שילם. אפשר לגבות ממנו כאן ולסמן אותו כמשלם.'}
         </p>
         {selfPaidEnds && (

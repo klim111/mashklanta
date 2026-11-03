@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Calculator, CreditCard, ExternalLink, FolderOpen, Home, RefreshCw } from 'lucide-react';
 import { actFrameName, actFrameUrl } from '@/components/frame-mode/frameMode';
+import { InviteButton } from './ClientAccountCard';
 
 /** פותח את תיק הלקוח המתעניין בלשונית שבה היועץ עובד בשם הלקוח (src/lib/act-as.ts) */
 export function openProspectWindow(clientId: string, path = '/dashboard/client-file') {
@@ -36,8 +37,8 @@ export function ProspectFileCard({ clientId, email }: { clientId: string; email:
       <p className="mt-1 text-sm text-emerald-900/80">
         הכלים נפתחים בלשונית של התיק, כמו שהלקוח יראה אותם. מה שתזינו נשמר כאן.{' '}
         {email
-          ? `כשהלקוח יירשם עם ${email}, התיק יעבור לחשבון שלו.`
-          : 'הוסיפו לתיק מייל, כדי שהתיק יעבור ללקוח כשיירשם.'}
+          ? `כשתסיימו, שלחו ללקוח פרטי כניסה: הוא יבחר סיסמה ויראה באזור האישי את כל מה שהוזן. אם יירשם בעצמו עם ${email}, התיק יעבור אליו גם כך.`
+          : 'הוסיפו לתיק מייל, כדי לשלוח ללקוח פרטי כניסה.'}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {button(<Home className="h-4 w-4" />, 'משכנתא חדשה', '/dashboard/client-file')}
@@ -45,6 +46,11 @@ export function ProspectFileCard({ clientId, email }: { clientId: string; email:
         {button(<CreditCard className="h-4 w-4" />, 'ליווי כלכלת המשפחה', '/consumer-loans')}
         {button(<Calculator className="h-4 w-4" />, 'בונה התמהילים', '/mortgage-advisor')}
       </div>
+      {email && (
+        <div className="mt-4 border-t border-emerald-200 pt-3">
+          <InviteButton clientId={clientId} />
+        </div>
+      )}
     </section>
   );
 }

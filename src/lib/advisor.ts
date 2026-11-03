@@ -730,7 +730,7 @@ export async function getClientProcess(
       updatedAt: true,
       stages: { select: { stage: true, status: true, completedAt: true } },
       advisoryEndedAt: true,
-      client: { select: { autoLinked: true } },
+      client: { select: { autoLinked: true, selfPay: true } },
       advisorOrders: { where: { status: 'PAID' }, select: { id: true }, take: 1 },
     },
   });
@@ -782,7 +782,9 @@ export async function getClientProcess(
 
   // כמו הגישה של הלקוח עצמו (src/lib/mortgage-plans.ts): לקוח שהיועץ מלווה, או
   // בקשת ליווי שהיועץ אישר שהתשלום עליה סודר
-  const advised = Boolean(active && (!active.client?.autoLinked || active.advisorOrders.length > 0));
+  const advised = Boolean(
+    active && ((!active.client?.autoLinked && !active.client?.selfPay) || active.advisorOrders.length > 0)
+  );
   const advisory: ClientAdvisoryView | null =
     active && (advised || active.advisoryEndedAt)
       ? { active: advised && !active.advisoryEndedAt, endedAt: active.advisoryEndedAt?.toISOString() ?? null }

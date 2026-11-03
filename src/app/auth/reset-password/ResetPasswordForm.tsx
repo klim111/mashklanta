@@ -7,7 +7,16 @@ import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { passwordProblem } from '@/lib/password-policy';
 
-export function ResetPasswordForm({ token, initiallyValid }: { token: string; initiallyValid: boolean }) {
+export function ResetPasswordForm({
+  token,
+  initiallyValid,
+  invite = false,
+}: {
+  token: string;
+  initiallyValid: boolean;
+  /** כניסה ראשונה לחשבון שהיועץ פתח — בוחרים סיסמה, לא מחליפים */
+  invite?: boolean;
+}) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,14 +66,28 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
               {done ? <CheckCircle className="h-8 w-8 text-white" /> : <KeyRound className="h-8 w-8 text-white" />}
             </AuthLogo>
             <h1 className="text-title font-bold text-slate-900">
-              {done ? 'הסיסמה עודכנה' : expired ? 'הקישור אינו תקף' : 'בחירת סיסמה חדשה'}
+              {done
+                ? invite
+                  ? 'הסיסמה נשמרה'
+                  : 'הסיסמה עודכנה'
+                : expired
+                  ? 'הקישור אינו תקף'
+                  : invite
+                    ? 'ברוכים הבאים! בחרו סיסמה'
+                    : 'בחירת סיסמה חדשה'}
             </h1>
             <p className="mt-2 text-info text-slate-600">
               {done
-                ? 'מעכשיו נכנסים עם הסיסמה החדשה. הסיסמה הקודמת כבר לא פעילה.'
+                ? invite
+                  ? 'מעכשיו נכנסים עם המייל שלכם והסיסמה שבחרתם. באזור האישי מחכה כל מה שהוזן בתיק שלכם.'
+                  : 'מעכשיו נכנסים עם הסיסמה החדשה. הסיסמה הקודמת כבר לא פעילה.'
                 : expired
-                  ? 'הקישור כבר שומש או שפג תוקפו (הוא תקף ל-60 דקות). בקשו קישור חדש.'
-                  : 'הסיסמה החדשה תחליף את הסיסמה הקודמת של החשבון.'}
+                  ? invite
+                    ? 'הקישור כבר שומש או שפג תוקפו. בקשו קישור חדש עם המייל שלכם, או פנו ליועץ.'
+                    : 'הקישור כבר שומש או שפג תוקפו (הוא תקף ל-60 דקות). בקשו קישור חדש.'
+                  : invite
+                    ? 'היועץ פתח לכם חשבון. בחרו סיסמה כדי להיכנס לאזור האישי.'
+                    : 'הסיסמה החדשה תחליף את הסיסמה הקודמת של החשבון.'}
             </p>
           </div>
 
@@ -80,7 +103,7 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
               href="/auth/login"
               className="flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-button font-semibold text-white hover:bg-blue-700"
             >
-              התחברות עם הסיסמה החדשה
+              {invite ? 'כניסה לאזור האישי' : 'התחברות עם הסיסמה החדשה'}
             </Link>
           ) : expired ? (
             <Link
@@ -93,7 +116,7 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
             <form onSubmit={submit} className="space-y-5">
               <div>
                 <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">
-                  סיסמה חדשה
+                  {invite ? 'סיסמה' : 'סיסמה חדשה'}
                 </label>
                 <PasswordField
                   id="password"
@@ -107,7 +130,7 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
               </div>
               <div>
                 <label htmlFor="confirm" className="mb-2 block text-sm font-medium text-slate-700">
-                  אימות הסיסמה החדשה
+                  {invite ? 'אימות הסיסמה' : 'אימות הסיסמה החדשה'}
                 </label>
                 <input
                   id="confirm"
@@ -127,12 +150,12 @@ export function ResetPasswordForm({ token, initiallyValid }: { token: string; in
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-button font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {busy && <Loader2 className="h-5 w-5 animate-spin" />}
-                שמירת הסיסמה החדשה
+                {invite ? 'שמירת הסיסמה' : 'שמירת הסיסמה החדשה'}
               </button>
             </form>
           )}
 
-          {!done && (
+          {!done && !invite && (
             <p className="mt-6 border-t border-slate-200 pt-4 text-center text-sm text-slate-600">
               נזכרתם בסיסמה?{' '}
               <Link href="/auth/login" className="font-semibold text-blue-600 hover:text-blue-700">

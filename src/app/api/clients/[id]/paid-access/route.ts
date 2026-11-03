@@ -6,6 +6,7 @@ import {
   getClientPaymentSettings,
   setClientGrantedAccess,
 } from '@/lib/granted-access-store';
+import { setClientSelfPay } from '@/lib/client-invite';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -14,6 +15,7 @@ interface RouteContext {
 /**
  * טאב "תשלום והרשאה" בדף הלקוח אצל היועץ: הגישה בתשלום שהיועץ הגדיר ללקוח
  * וקישורי התשלום שלו (GET), הגדרה או עדכון של התקופה (PUT), וביטול (DELETE).
+ * PATCH קובע את סוג הגישה: בליווי, או בתשלום לפי התקופה (src/lib/client-invite.ts).
  */
 async function advisorOf() {
   const session = await getServerAuth();
@@ -51,4 +53,16 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   return NextResponse.json({ grant: null });
+}
+
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
+  const auth = await advisorOf();
+  if ('error' in auth) return auth.error;
+  const { id } = await params;
+  const body = await req.json().catch(() => null);
+  if (typeof body?.selfPay !== 'boolean') return NextResponse.json({ error: 'נדרש סוג גישה' }, { status: 400 });
+  if (!(await setClientSelfPay(auth.advisorId, id, body.selfPay))) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+  return NextResponse.json({ selfPay: body.selfPay });
 }

@@ -20,6 +20,19 @@ const GRANT_SELECT = {
 
 export interface ClientPaymentSettings {
   client: { id: string; name: string; email: string; phone: string | null };
+  /**
+   * סוג הגישה ופרטי הכניסה (src/lib/client-invite.ts). `selfRegistered` — כרטיס
+   * שנפתח אוטומטית ללקוח שנרשם לבד: ממילא בתשלום, ואין לו מה לבחור
+   */
+  account: {
+    selfRegistered: boolean;
+    selfPay: boolean;
+    /** תיק שהיועץ פתח והלקוח עוד לא נכנס אליו */
+    prospect: boolean;
+    invitedAt: string | null;
+    /** ללקוח כבר יש סיסמה או כניסה עם Google */
+    canLogIn: boolean;
+  };
   grant: GrantedAccess | null;
   links: PaymentLinkView[];
 }
@@ -28,7 +41,18 @@ async function clientCard(advisorId: string, clientId: string) {
   if (!(await advisorOwnsClient(advisorId, clientId))) return null;
   return prisma.client.findUnique({
     where: { id: clientId },
-    select: { id: true, userId: true, name: true, email: true, phone: true, user: { select: { email: true } } },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      email: true,
+      phone: true,
+      autoLinked: true,
+      selfPay: true,
+      prospect: true,
+      invitedAt: true,
+      user: { select: { email: true, hashedPassword: true, accounts: { select: { id: true }, take: 1 } } },
+    },
   });
 }
 
@@ -43,7 +67,20 @@ export async function getClientPaymentSettings(
     listClientPaymentLinks(card.id, card.user?.email || card.email),
   ]);
   return {
-    client: { id: card.id, name: card.name, email: card.user?.email || card.email, phone: card.phone },
+    // בתיק מתעניין, החשבון עוד על מייל פנימי — המייל של הלקוח רשום בתיק
+    client: {
+      id: card.id,
+      name: card.name,
+      email: card.prospect ? card.email : card.user?.email || card.email,
+      phone: card.phone,
+    },
+    account: {
+      selfRegistered: card.autoLinked,
+      selfPay: card.selfPay,
+      prospect: card.prospect,
+      invitedAt: card.invitedAt?.toISOString() ?? null,
+      canLogIn: Boolean(card.user?.hashedPassword || card.user?.accounts.length),
+    },
     grant: user ? grantedAccessOf(user) : null,
     links,
   };
