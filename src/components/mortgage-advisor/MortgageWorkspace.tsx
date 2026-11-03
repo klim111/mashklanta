@@ -1781,18 +1781,19 @@ export function MortgageWorkspace({
                 tone="current"
               />
 
-              {panelChanged && baselineResult ? (
-                <StateBlocksRow
-                  precisePayment
-                  title="אחרי השינויים בתמהיל בפאנל השליטה"
-                  caption="ההפרש מול התמהיל כפי שנפתח"
-                  snapshot={snapshotFromMixResult(result)}
-                  baseline={snapshotFromMixResult(baselineResult)}
-                  tone="refinanced"
-                />
-              ) : (
-                <NoChangeNotice text="טרם בוצע שינוי בתמהיל — שנו פרמטר בפאנל השליטה כדי לראות כאן את ההפרש." />
-              )}
+              {/* שורת השיפור מוצגת תמיד מתחת למצב התמהיל — לפני שינוי ההפרש פשוט אפס */}
+              <StateBlocksRow
+                precisePayment
+                title="אחרי השינויים בתמהיל בפאנל השליטה"
+                caption={
+                  panelChanged
+                    ? 'ההפרש מול התמהיל כפי שנפתח'
+                    : 'טרם בוצע שינוי — שנו פרמטר בפאנל השליטה כדי לראות כאן את ההפרש'
+                }
+                snapshot={snapshotFromMixResult(result)}
+                baseline={snapshotFromMixResult(baselineResult ?? result)}
+                tone="refinanced"
+              />
             </>
           )}
         </div>
