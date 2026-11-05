@@ -174,7 +174,10 @@ function borrowerRows(
 }
 
 export interface AuthorizationFormSpec {
-  /** שאלת "לקוח הבנק" מופיעה בטופס */
+  /**
+   * שאלת "לקוח הבנק" מופיעה בטופס. הלקוח לא נשאל עליה במסך — כשאין תשובה
+   * התיבות נשארות ריקות, והבנק משלים אותן מול הלקוח אם צריך.
+   */
   asksCustomer: boolean;
   /** השדות שהטופס מבקש מהלווים, מעבר לשם ולת"ז */
   borrowerFields: Array<keyof AuthorizationBorrower>;
@@ -377,10 +380,27 @@ export function missingForBank(
     if (spec.borrowerFields.includes('phone') && borrower.phone.trim().length < 9) missing.push(`טלפון${who}`);
     if (spec.borrowerFields.includes('address') && !borrower.address.trim()) missing.push(`כתובת מגורים${who}`);
     if (spec.borrowerFields.includes('email') && !borrower.email.includes('@')) missing.push(`אימייל${who}`);
-    if (spec.asksCustomer && input.customer[index] == null) missing.push(`האם לקוח/ה של הבנק${who}`);
   });
   if (usesPlace && !input.place.trim()) missing.push('היישוב שבו אתם חותמים');
   return missing;
+}
+
+/**
+ * מה חסר כדי להפיק את הטפסים של כל הבנקים בבת אחת — האיחוד של מה שכל טופס
+ * מבקש, בלי כפילויות ובסדר שבו השדות מופיעים במסך. רשימה ריקה — אפשר להפיק
+ * הכול.
+ */
+export function missingForAllBanks(input: Pick<AuthorizationFillInput, 'borrowers' | 'place' | 'customer'>): string[] {
+  const all = new Set<string>();
+  AUTHORIZATION_BANKS.forEach((bank) => missingForBank(bank.slug, input).forEach((item) => all.add(item)));
+  return Array.from(all);
+}
+
+/** השדות שאחד הטפסים לפחות מבקש מהלווים — אלה השדות שחובה למלא במסך */
+export function requiredBorrowerFields(): Set<keyof AuthorizationBorrower> {
+  const fields = new Set<keyof AuthorizationBorrower>(['name', 'idNumber']);
+  Object.values(AUTHORIZATION_FORMS).forEach((spec) => spec.borrowerFields.forEach((field) => fields.add(field)));
+  return fields;
 }
 
 /** שם הקובץ של הכתב החתום */
