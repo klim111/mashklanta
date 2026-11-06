@@ -137,6 +137,8 @@ export type Placement =
       align?: 'right' | 'center';
       /** middle — תא בטבלה; bottom — קו מילוי */
       valign?: 'middle' | 'bottom';
+      /** שדה בשורה של לווה מסוים (למשל התאריך ליד החתימה) — לא נכתב כשהלווה הזה לא הוזן */
+      signer?: 0 | 1;
     }
   | { kind: 'signature'; page: number; signer: 0 | 1; box: Box }
   | { kind: 'check'; page: number; signer: 0 | 1; answer: boolean; at: [number, number] };
@@ -248,7 +250,7 @@ export const AUTHORIZATION_FORMS: Record<string, AuthorizationFormSpec> = {
       signature(1, 0, 140, 308, 522, 539),
       signature(1, 1, 140, 308, 536, 553),
       cell(1, 'date', 30.8, 135.3, 523.5, 537.5),
-      cell(1, 'date', 30.8, 135.3, 537.5, 551.2),
+      { ...cell(1, 'date', 30.8, 135.3, 537.5, 551.2), signer: 1 },
     ],
   },
   mercantile: {
@@ -280,7 +282,7 @@ export const AUTHORIZATION_FORMS: Record<string, AuthorizationFormSpec> = {
       line(1, 'b2.name', 407, 485, 359),
       line(1, 'b2.phone', 312, 368, 359),
       signature(1, 1, 195, 272, 335, 358),
-      line(1, 'date', 92, 148, 359),
+      { ...line(1, 'date', 92, 148, 359), signer: 1 },
     ],
   },
   discount: {
@@ -312,7 +314,7 @@ export const AUTHORIZATION_FORMS: Record<string, AuthorizationFormSpec> = {
       line(1, 'b2.name', 437, 520.5, 572.3),
       line(1, 'b2.phone', 316.7, 400.2, 572.3),
       signature(1, 1, 196.4, 280, 548, 571),
-      line(1, 'date', 75.9, 159.4, 572.3),
+      { ...line(1, 'date', 75.9, 159.4, 572.3), signer: 1 },
     ],
   },
   fibi: {

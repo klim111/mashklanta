@@ -45,6 +45,7 @@ export async function fillAuthorizationForm(
     if (!page) continue;
 
     if (placement.kind === 'text') {
+      if (placement.signer !== undefined && placement.signer >= input.borrowers.length) continue;
       // לווה שני שלא הוזן — אין מה לכתוב בשורה שלו
       const text = fieldValue(placement.field, input);
       if (!text) continue;
