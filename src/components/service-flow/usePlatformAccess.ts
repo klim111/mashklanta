@@ -1,0 +1,94 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { PLATFORM_PROCESS_PRICE } from '@/lib/service-flow';
+import { usePricing } from '@/components/pricing/PricingProvider';
+import { passDays } from '@/lib/process-access';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
+
+export interface PlatformAccess {
+  /**
+   * הלקוח משלם: יש חבילת גישה פנויה לפתיחת תהליך משכנתא בלי תשלום נוסף, או
+   * שהיועץ הגדיר לו גישה בתשלום שעוד בתוקף
+   */
+  active: boolean;
+  since: string | null;
+  /** מה ששולם על הגישה הפנויה — מקוזז אם יוזמן ליווי */
+  paid: number;
+  price: number;
+  accessDays: number;
+  passExpiresAt: string | null;
+  openProcesses: number;
+  /** התהליכים הפתוחים במסלול העצמאי, מהחדש לישן */
+  openPlans: { id: string; name: string }[];
+  /**
+   * כל תשלום הוא עבור תהליך אחד: עם תהליך פתוח ובלי תשלום פנוי, צריך לשלם על
+   * תהליך נוסף או למחוק את הקודם
+   */
+  canOpenMore: boolean;
+  /** הלקוח כבר רכש גישה — בלי זה תיק המסמכים ובונה התמהילים נעולים */
+  paidClient: boolean;
+  /** עד מתי פתוחה הגישה שהיועץ הגדיר ללקוח — null כשאין */
+  grantedUntil: string | null;
+}
+
+const NO_ACCESS: PlatformAccess = {
+  active: false,
+  since: null,
+  paid: 0,
+  price: PLATFORM_PROCESS_PRICE,
+  accessDays: passDays(new Date()),
+  passExpiresAt: null,
+  openProcesses: 0,
+  openPlans: [],
+  canOpenMore: true,
+  paidClient: false,
+  grantedUntil: null,
+};
+
+/**
+ * האם למשתמש המחובר יש גישה פנויה לפתיחת תהליך משכנתא.
+ *
+ * נקרא מהשרת ולא מה-session, כי הרכישה מתבצעת באמצע ההתחברות והטוקן לא
+ * מתעדכן — בסיס הנתונים הוא מקור האמת היחיד לשאלה "שילם או לא".
+ */
+export function usePlatformAccess() {
+  const { platformPrice } = usePricing();
+  const [access, setAccess] = useState<PlatformAccess>({ ...NO_ACCESS, price: platformPrice });
+  const [ready, setReady] = useState(false);
+
+  const refresh = useCallback(async (): Promise<PlatformAccess> => {
+    let next = NO_ACCESS;
+    try {
+      const response = await fetch('/api/platform/access', { cache: 'no-store' });
+      if (!response.ok) throw new Error(String(response.status));
+      const body = (await response.json()) as Partial<PlatformAccess>;
+      next = {
+        active: Boolean(body.active),
+        since: typeof body.since === 'string' ? body.since : null,
+        paid: typeof body.paid === 'number' ? body.paid : 0,
+        price: typeof body.price === 'number' ? body.price : platformPrice,
+        accessDays: typeof body.accessDays === 'number' ? body.accessDays : passDays(new Date()),
+        passExpiresAt: typeof body.passExpiresAt === 'string' ? body.passExpiresAt : null,
+        openProcesses: typeof body.openProcesses === 'number' ? body.openProcesses : 0,
+        openPlans: Array.isArray(body.openPlans) ? body.openPlans : [],
+        canOpenMore: body.canOpenMore !== false,
+        paidClient: body.paidClient === true,
+        grantedUntil: typeof body.grantedUntil === 'string' ? body.grantedUntil : null,
+      };
+    } catch {
+      // בלי תשובה מהשרת — כאילו לא שולם, והמסך שולח לתשלום
+    }
+    setAccess(next);
+    setReady(true);
+    return next;
+  }, [platformPrice]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  // מה שהצד השני הזין מופיע בלי לרענן את העמוד
+  useLiveRefresh(() => void refresh());
+
+  return { access, ready, refresh };
+}

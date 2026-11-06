@@ -88,4 +88,7 @@ npm run dev
 Notes:
 - OCR משתמש ב-`@google-cloud/vision`. הקפד להגדיר `GOOGLE_APPLICATION_CREDENTIALS` או קונפיג חלופית.
 - העלאות מתבצעות ישירות ל-S3 עם presigned URL.
-- `BOI_RATES_URL` צריך להפנות ל-endpoint של בנק ישראל לפי הצורך. 
+- הריביות והתחזיות נמשכות ישירות מ-SDMX של בנק ישראל (`edge.boi.gov.il`) ואינן דורשות
+  הגדרה. `MARKET_RATES_CACHE_TTL` (ברירת מחדל 900 שניות) קובע כל כמה זמן נמשך נתון
+  חדש; `GET /api/market/rates?refresh=1` מושך מיד. `GET /api/health` מדווח אם הנתונים
+  שבתוקף הם של בנק ישראל (`source: "boi"`) או ערכי נפילה. 

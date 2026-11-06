@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { formatNumberInput, parseFormattedNumberInput } from "@/lib/currency";
 
 export default function MortgageCalculator() {
   const [loanAmount, setLoanAmount] = useState('');
@@ -15,7 +16,7 @@ export default function MortgageCalculator() {
   const [selectedType, setSelectedType] = useState("");
 
   useEffect(() => {
-    const principal = parseFloat(loanAmount);
+    const principal = parseFormattedNumberInput(loanAmount);
     const annualInterestRate = parseFloat(interestRate) / 100;
     const numberOfPayments = parseInt(loanTermYears) * 12;
     const monthlyInterestRate = annualInterestRate / 12;
@@ -35,7 +36,7 @@ export default function MortgageCalculator() {
   }, [loanAmount, interestRate, loanTermYears]);
 
   const calculateSchedule = () => {
-    const principal = parseFloat(loanAmount);
+    const principal = parseFormattedNumberInput(loanAmount);
     const annualInterestRate = parseFloat(interestRate) / 100;
     const numberOfPayments = parseInt(loanTermYears) * 12;
     const monthlyInterestRate = annualInterestRate / 12;
@@ -90,14 +91,10 @@ export default function MortgageCalculator() {
 <Input
   className="text-right"
   type="text"
-  value={Number(loanAmount).toLocaleString()}
+  inputMode="numeric"
+  value={loanAmount}
   placeholder="₪"
-  onChange={(e) => {
-    const rawValue = e.target.value.replace(/,/g, '');
-    if (!isNaN(rawValue)) {
-      setLoanAmount(rawValue);
-    }
-  }}
+  onChange={(e) => setLoanAmount(formatNumberInput(e.target.value))}
 />
 
   </div>
