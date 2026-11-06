@@ -137,6 +137,8 @@ export type Placement =
       align?: 'right' | 'center';
       /** middle — תא בטבלה; bottom — קו מילוי */
       valign?: 'middle' | 'bottom';
+      /** שדה בשורה של לווה מסוים (למשל התאריך ליד החתימה) — לא נכתב כשהלווה הזה לא הוזן */
+      signer?: 0 | 1;
     }
   | { kind: 'signature'; page: number; signer: 0 | 1; box: Box }
   | { kind: 'check'; page: number; signer: 0 | 1; answer: boolean; at: [number, number] };
@@ -174,7 +176,10 @@ function borrowerRows(
 }
 
 export interface AuthorizationFormSpec {
-  /** שאלת "לקוח הבנק" מופיעה בטופס */
+  /**
+   * שאלת "לקוח הבנק" מופיעה בטופס. הלקוח לא נשאל עליה במסך — כשאין תשובה
+   * התיבות נשארות ריקות, והבנק משלים אותן מול הלקוח אם צריך.
+   */
   asksCustomer: boolean;
   /** השדות שהטופס מבקש מהלווים, מעבר לשם ולת"ז */
   borrowerFields: Array<keyof AuthorizationBorrower>;
@@ -245,7 +250,7 @@ export const AUTHORIZATION_FORMS: Record<string, AuthorizationFormSpec> = {
       signature(1, 0, 140, 308, 522, 539),
       signature(1, 1, 140, 308, 536, 553),
       cell(1, 'date', 30.8, 135.3, 523.5, 537.5),
-      cell(1, 'date', 30.8, 135.3, 537.5, 551.2),
+      { ...cell(1, 'date', 30.8, 135.3, 537.5, 551.2), signer: 1 },
     ],
   },
   mercantile: {
@@ -277,7 +282,7 @@ export const AUTHORIZATION_FORMS: Record<string, AuthorizationFormSpec> = {
       line(1, 'b2.name', 407, 485, 359),
       line(1, 'b2.phone', 312, 368, 359),
       signature(1, 1, 195, 272, 335, 358),
-      line(1, 'date', 92, 148, 359),
+      { ...line(1, 'date', 92, 148, 359), signer: 1 },
     ],
   },
   discount: {
@@ -309,7 +314,7 @@ export const AUTHORIZATION_FORMS: Record<string, AuthorizationFormSpec> = {
       line(1, 'b2.name', 437, 520.5, 572.3),
       line(1, 'b2.phone', 316.7, 400.2, 572.3),
       signature(1, 1, 196.4, 280, 548, 571),
-      line(1, 'date', 75.9, 159.4, 572.3),
+      { ...line(1, 'date', 75.9, 159.4, 572.3), signer: 1 },
     ],
   },
   fibi: {
@@ -377,10 +382,27 @@ export function missingForBank(
     if (spec.borrowerFields.includes('phone') && borrower.phone.trim().length < 9) missing.push(`טלפון${who}`);
     if (spec.borrowerFields.includes('address') && !borrower.address.trim()) missing.push(`כתובת מגורים${who}`);
     if (spec.borrowerFields.includes('email') && !borrower.email.includes('@')) missing.push(`אימייל${who}`);
-    if (spec.asksCustomer && input.customer[index] == null) missing.push(`האם לקוח/ה של הבנק${who}`);
   });
   if (usesPlace && !input.place.trim()) missing.push('היישוב שבו אתם חותמים');
   return missing;
+}
+
+/**
+ * מה חסר כדי להפיק את הטפסים של כל הבנקים בבת אחת — האיחוד של מה שכל טופס
+ * מבקש, בלי כפילויות ובסדר שבו השדות מופיעים במסך. רשימה ריקה — אפשר להפיק
+ * הכול.
+ */
+export function missingForAllBanks(input: Pick<AuthorizationFillInput, 'borrowers' | 'place' | 'customer'>): string[] {
+  const all = new Set<string>();
+  AUTHORIZATION_BANKS.forEach((bank) => missingForBank(bank.slug, input).forEach((item) => all.add(item)));
+  return Array.from(all);
+}
+
+/** השדות שאחד הטפסים לפחות מבקש מהלווים — אלה השדות שחובה למלא במסך */
+export function requiredBorrowerFields(): Set<keyof AuthorizationBorrower> {
+  const fields = new Set<keyof AuthorizationBorrower>(['name', 'idNumber']);
+  Object.values(AUTHORIZATION_FORMS).forEach((spec) => spec.borrowerFields.forEach((field) => fields.add(field)));
+  return fields;
 }
 
 /** שם הקובץ של הכתב החתום */
