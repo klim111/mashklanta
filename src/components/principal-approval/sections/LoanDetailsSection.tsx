@@ -15,7 +15,8 @@ export function LoanDetailsSection() {
   const c = completeness('case', values);
 
   const timingFields = CASE_FIELDS.filter((f) => TIMING_KEYS.includes(f.key));
-  const propertyFields = CASE_FIELDS.filter((f) => !TIMING_KEYS.includes(f.key));
+  // הערבים מסומנים בלשונית הערבים (ובטופס האחיד), לא בין פרטי הנכס
+  const propertyFields = CASE_FIELDS.filter((f) => !TIMING_KEYS.includes(f.key) && f.key !== 'hasGuarantors');
 
   // Surface the workplace/property city comparison as a live hint.
   const propertyCity = String(values.propertyCity ?? '').trim();

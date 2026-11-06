@@ -56,6 +56,9 @@ export interface CaseDTO {
   status: string;
   createdAt: string;
   updatedAt: string;
+  /** טופס פרטי הלקוח: מתי הופק ללקוח קישור, ומתי הלקוח שידר אותו ליועץ */
+  intakeRequestedAt: string | null;
+  intakeSubmittedAt: string | null;
   client: { id: string; name: string | null; email: string | null };
   advisor: { id: string; name: string | null; email: string | null } | null;
   viewer: ViewerContext;

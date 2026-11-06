@@ -461,6 +461,8 @@ export async function loadCase(caseId: string, userId: string): Promise<CaseDTO>
     status: mortgageCase.status,
     createdAt: mortgageCase.createdAt.toISOString(),
     updatedAt: mortgageCase.updatedAt.toISOString(),
+    intakeRequestedAt: mortgageCase.intakeRequestedAt?.toISOString() ?? null,
+    intakeSubmittedAt: mortgageCase.intakeSubmittedAt?.toISOString() ?? null,
     client: mortgageCase.client,
     advisor: mortgageCase.advisor,
     viewer,

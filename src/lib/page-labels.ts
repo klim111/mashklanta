@@ -17,6 +17,7 @@ const PAGES: Array<[prefix: string, label: string]> = [
   ['/how-it-works', 'איך זה עובד'],
   ['/learn', 'מידע ולמידה'],
   ['/principal-approval', 'אישור עקרוני'],
+  ['/client-details-form', 'טופס פרטי הלקוח'],
   ['/consult', 'היוועצו איתנו בתפריט העליון'],
 ];
 

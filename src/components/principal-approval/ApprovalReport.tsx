@@ -10,6 +10,8 @@ import {
   GUARANTOR_FIELDS,
   INCOME_FIELDS,
   PREV_EMPLOYMENT_FIELDS,
+  fieldLabel,
+  isFieldVisible,
   type EntityType,
   type FieldDef,
 } from '@/lib/principal-approval/schema';
@@ -60,6 +62,12 @@ function renderValue(def: FieldDef, raw: unknown, peopleLabels: Map<string, stri
   }
 }
 
+/** האם שדה של מקור מימון מוצג לפי סוג המקור (פירוט לא נדרש בחסכונות) */
+function visibleField(key: string, values: Record<string, unknown>): boolean {
+  const def = FUNDING_SOURCE_FIELDS.find((f) => f.key === key);
+  return def ? isFieldVisible(def, values) : true;
+}
+
 function DataGrid({
   fields,
   values,
@@ -69,7 +77,9 @@ function DataGrid({
   values: Record<string, unknown>;
   peopleLabels: Map<string, string>;
 }) {
+  // ערך ששייך לשדה מוסתר (למשל פירוט של מקור מימון שהוחלף לחסכונות) לא נכנס לדוח
   const filled = fields.filter((f) => {
+    if (!isFieldVisible(f, values)) return false;
     const v = values[f.key];
     return !(v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0));
   });
@@ -80,7 +90,7 @@ function DataGrid({
     <dl className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-3">
       {filled.map((field) => (
         <div key={field.key} className="break-inside-avoid border-b border-dashed border-slate-100 pb-1.5">
-          <dt className="text-2xs font-medium uppercase tracking-wide text-slate-400">{field.label}</dt>
+          <dt className="text-2xs font-medium uppercase tracking-wide text-slate-400">{fieldLabel(field, values)}</dt>
           <dd className="text-info font-semibold text-slate-800">
             {renderValue(field, values[field.key], peopleLabels)}
           </dd>
@@ -129,7 +139,8 @@ function printReport() {
  * dependency or server round-trip is needed and the output honours the RTL
  * print stylesheet in `globals.css`.
  */
-export function ApprovalReport() {
+export function ApprovalReport({ variant = 'approval' }: { variant?: 'approval' | 'intake' } = {}) {
+  const intake = variant === 'intake';
   const { data, valuesOf, entities } = useCase();
   const peopleOptions = usePeopleOptions();
   const peopleLabels = useMemo(
@@ -185,8 +196,14 @@ export function ApprovalReport() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div>
-          <h2 className="text-subtitle font-bold text-slate-900">דוח אישור עקרוני</h2>
-          <p className="text-sm text-slate-500">סיכום מלא של כל הנתונים שנאספו, מוכן להגשה לבנק</p>
+          <h2 className="text-subtitle font-bold text-slate-900">
+            {intake ? 'הדוח המסכם של טופס פרטי הלקוח' : 'דוח אישור עקרוני'}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {intake
+              ? 'כל הפרטים שהלקוח הזין בטופס, לפי הסדר של הטופס'
+              : 'סיכום מלא של כל הנתונים שנאספו, מוכן להגשה לבנק'}
+          </p>
         </div>
         <button
           type="button"
@@ -206,10 +223,19 @@ export function ApprovalReport() {
               <FileText className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-title font-black tracking-tight text-slate-900">בקשה לאישור עקרוני למשכנתא</h1>
+              <h1 className="text-title font-black tracking-tight text-slate-900">
+                {intake ? 'פרטי הלקוח לבקשת משכנתא' : 'בקשה לאישור עקרוני למשכנתא'}
+              </h1>
               <p className="text-sm text-slate-500">
                 {clientName} · הופק בתאריך {generatedAt}
               </p>
+              {intake && (
+                <p className="text-sm text-slate-500">
+                  {data.intakeSubmittedAt
+                    ? `הלקוח שידר את הטופס ב-${new Date(data.intakeSubmittedAt).toLocaleString('he-IL', { dateStyle: 'long', timeStyle: 'short' })}`
+                    : 'הלקוח עוד לא שידר את הטופס — מוצג מה שמולא עד עכשיו'}
+                </p>
+              )}
             </div>
           </div>
           <div className="text-left text-2xs text-slate-400">
@@ -234,7 +260,7 @@ export function ApprovalReport() {
         </div>
 
         {/* הסיכום לפי בנקים פותח את הדוח — זו התוצאה של השלב */}
-        <BankApprovalsReport approvals={approvals} />
+        {!intake && <BankApprovalsReport approvals={approvals} />}
 
         <ReportSection title="פרטי הלווים">
           {borrowers.map((borrower, index) => {
@@ -320,8 +346,15 @@ export function ApprovalReport() {
                       {renderValue(typeField, values.sourceType, peopleLabels)}
                     </td>
                     <td className="py-1.5 text-slate-700">{formatCurrency((values.amount as number) ?? null)}</td>
-                    <td className="py-1.5 text-slate-500">{formatDate(values.expectedDate as string)}</td>
-                    <td className="py-1.5 text-slate-500">{(values.details as string) || '—'}</td>
+                    <td className="py-1.5 text-slate-500">
+                      {visibleField('expectedDate', values) ? formatDate(values.expectedDate as string) : '—'}
+                    </td>
+                    <td className="py-1.5 text-slate-500">
+                      {visibleField('details', values) ? (values.details as string) || '—' : '—'}
+                      {visibleField('saleContractSigned', values) && values.saleContractSigned !== undefined && values.saleContractSigned !== null
+                        ? ` · חוזה מכירה: ${values.saleContractSigned === true ? 'נחתם' : 'לא נחתם'}`
+                        : ''}
+                    </td>
                   </tr>
                 );
               })}
@@ -338,7 +371,15 @@ export function ApprovalReport() {
           </table>
         </ReportSection>
 
-        {guarantors.length > 0 && (
+        {intake && guarantors.length === 0 && (
+          <ReportSection title="ערבים">
+            <p className="text-sm text-slate-600">
+              {caseValues.hasGuarantors === 'not_relevant' ? 'לא רלוונטי — אין ערבים לבקשה' : 'לא הוזנו ערבים'}
+            </p>
+          </ReportSection>
+        )}
+
+        {guarantors.length > 0 && (!intake || caseValues.hasGuarantors !== 'not_relevant') && (
           <ReportSection title="ערבים">
             {guarantors.map((guarantor, index) => {
               const values = valuesOf('guarantor', guarantor.id);
@@ -366,6 +407,7 @@ export function ApprovalReport() {
           </ReportSection>
         )}
 
+        {!intake && (
         <ReportSection title="תיק המסמכים">
           {(() => {
             const people = [
@@ -422,6 +464,7 @@ export function ApprovalReport() {
             );
           })()}
         </ReportSection>
+        )}
 
         <footer className="border-t border-slate-200 pt-4 text-2xs leading-relaxed text-slate-400">
           <p>

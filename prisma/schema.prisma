@@ -1283,6 +1283,12 @@ model MortgageCase {
    * שדות שהיועץ מילא ועוד לא שידר ללקוח: נתיב השדה → { entityType, entityId, fieldKey, value }
    */
   advisorDraftJson Json?
+  /**
+   * טופס פרטי הלקוח (/client-details-form): מתי היועץ הפיק ללקוח קישור לטופס,
+   * ומתי הלקוח לחץ בסופו "שדר ליועץ"
+   */
+  intakeRequestedAt DateTime?
+  intakeSubmittedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
