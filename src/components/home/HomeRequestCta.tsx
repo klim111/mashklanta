@@ -22,7 +22,7 @@ export function HomeRequestCta() {
       </p>
       <p className="mx-auto mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-center text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">
         <BadgeCheck className="h-4 w-4" />
-        הבדיקה בחינם! משלמים רק אחרי שהשגנו את הריביות
+        שתי הבדיקות בחינם — מכרז הריביות ובדיקת המיחזור!
       </p>
       <div className="mt-3 flex flex-col items-stretch justify-center gap-2 sm:flex-row">
         <Link
@@ -41,7 +41,7 @@ export function HomeRequestCta() {
         </Link>
       </div>
       <p className="mt-2 text-center text-xs text-slate-500">
-        גם בבדיקת המיחזור הבדיקה בחינם, ומשלמים רק אם הושגו התנאים שביקשתם.
+        משלמים רק אחרי שהשגנו לכם את הריביות במכרז, או את התנאים שביקשתם במיחזור.
       </p>
     </div>
   );
