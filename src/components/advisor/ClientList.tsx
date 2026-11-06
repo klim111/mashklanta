@@ -302,6 +302,22 @@ function ClientRow({
               שילם
             </span>
           )}
+          {client.requestKind === 'TENDER' && (
+            <span
+              title="שלח מהעמוד הראשי טופס פרטים מלא ובקשה למכרז ריביות"
+              className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800"
+            >
+              ביקש מכרז ריביות
+            </span>
+          )}
+          {client.requestKind === 'REFINANCE_CHECK' && (
+            <span
+              title="שלח מהעמוד הראשי טופס פרטים מלא ודוח יתרות, ומבקש לבחון מיחזור"
+              className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-800"
+            >
+              מבקש לבחון מיחזור
+            </span>
+          )}
           {client.prospect && (
             <span
               title="תיק שנפתח בפגישה או באזור היועץ. הלקוח עדיין לא נרשם לפלטפורמה"

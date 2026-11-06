@@ -407,6 +407,12 @@ model Client {
    * נרשם עם אותו מייל — הכרטיס וכל מה שהוזן בו עוברים לחשבון שלו
    */
   prospect   Boolean @default(false)
+  /**
+   * פנייה מהעמוד הראשי דרך טופס פרטי הלקוח: TENDER — בקשת מכרז ריביות למשכנתא
+   * חדשה, REFINANCE_CHECK — בקשה לבחון מיחזור משכנתא. ריק — לקוח רגיל
+   */
+  requestKind String?
+  requestedAt DateTime?
   guestMeetings GuestMeeting[]
 
   // ריביות מהבנקים

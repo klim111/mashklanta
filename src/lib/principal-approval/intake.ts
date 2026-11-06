@@ -33,12 +33,14 @@ export interface IntakeStatus {
   submittedAt: string | null;
   /** הלקוח רשום לאתר ויכול לפתוח את הטופס */
   registered: boolean;
+  /** פנייה מהעמוד הראשי: TENDER או REFINANCE_CHECK */
+  requestKind: string | null;
 }
 
 async function clientRecord(advisorId: string, clientRecordId: string) {
   return prisma.client.findFirst({
     where: { id: clientRecordId, advisorId },
-    select: { id: true, userId: true, name: true, email: true, prospect: true },
+    select: { id: true, userId: true, name: true, email: true, prospect: true, requestKind: true },
   });
 }
 
@@ -60,6 +62,7 @@ export async function intakeStatus(advisorId: string, clientRecordId: string): P
     requestedAt: found?.intakeRequestedAt?.toISOString() ?? null,
     submittedAt: found?.intakeSubmittedAt?.toISOString() ?? null,
     registered: !record.prospect,
+    requestKind: record.requestKind ?? null,
   };
 }
 
@@ -107,6 +110,7 @@ export async function requestIntake(
       requestedAt: updated.intakeRequestedAt?.toISOString() ?? null,
       submittedAt: updated.intakeSubmittedAt?.toISOString() ?? null,
       registered: true,
+      requestKind: record.requestKind ?? null,
     },
   };
 }

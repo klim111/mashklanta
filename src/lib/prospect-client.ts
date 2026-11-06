@@ -160,6 +160,8 @@ export async function claimProspectFile(userId: string): Promise<{ clientId: str
     await tx.advisorServiceOrder.updateMany(owned);
     await tx.advisorLead.updateMany(owned);
     await tx.clientTask.updateMany(owned);
+    // תיק האישור העקרוני וטופס פרטי הלקוח — אחרת היו נמחקים עם החשבון הזמני
+    await tx.mortgageCase.updateMany({ where: { clientId: from }, data: { clientId: userId } });
     const equity = await tx.equityPlan.findUnique({ where: { ownerId: userId }, select: { id: true } });
     if (!equity) await tx.equityPlan.updateMany(owned);
     await tx.conversationMessage.updateMany({ where: { clientUserId: from }, data: { clientUserId: userId } });

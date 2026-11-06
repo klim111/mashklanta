@@ -7,13 +7,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, ClipboardList, Copy, FileText, Link2, Loader2, Mail } from 'lucide-react';
+import { Check, ClipboardList, Copy, FileText, Link2, Loader2, Mail, PencilLine } from 'lucide-react';
 
 interface IntakeView {
   caseId: string | null;
   requestedAt: string | null;
   submittedAt: string | null;
   registered: boolean;
+  requestKind?: string | null;
   url: string;
   emailed?: boolean;
 }
@@ -76,6 +77,12 @@ export function ClientIntakeCard({ clientId, clientEmail }: { clientId: string; 
 
   if (!view) return null;
 
+  const requestLabel =
+    view.requestKind === 'TENDER'
+      ? 'בקשת מכרז ריביות מהעמוד הראשי'
+      : view.requestKind === 'REFINANCE_CHECK'
+        ? 'בקשה לבחון מיחזור מהעמוד הראשי · דוח היתרות בתיק המסמכים'
+        : null;
   const status = view.submittedAt
     ? { text: `הלקוח שידר את הטופס ב-${when(view.submittedAt)}`, tone: 'bg-emerald-100 text-emerald-800' }
     : view.requestedAt
@@ -93,10 +100,25 @@ export function ClientIntakeCard({ clientId, clientEmail }: { clientId: string; 
           <p className="mt-1 text-sm text-slate-600">
             טופס אחד עם כל הפרטים: לווים והכנסות, הלוואה ונכס, מקורות מימון, חשבונות בנק וערבים.
           </p>
-          <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${status.tone}`}>
-            {status.text}
-          </span>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-bold ${status.tone}`}>
+              {status.text}
+            </span>
+            {requestLabel && (
+              <span className="inline-block rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-800">
+                {requestLabel}
+              </span>
+            )}
+          </div>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <Link
+          href={`/client-details-form?client=${encodeURIComponent(clientId)}`}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-800 hover:border-slate-400"
+        >
+          <PencilLine className="h-4 w-4" />
+          מילוי ועריכת הטופס
+        </Link>
         <Link
           href={`/advisor-dashboard/client/${clientId}/client-details`}
           className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white hover:bg-slate-800"
@@ -104,7 +126,11 @@ export function ClientIntakeCard({ clientId, clientEmail }: { clientId: string; 
           <FileText className="h-4 w-4" />
           צפייה בדוח המסכם
         </Link>
+        </div>
       </div>
+      <p className="mt-2 text-xs text-slate-500">
+        מה שתמלאו בטופס נשמר מיד בתיק של הלקוח, והוא יראה את השדות כבר מלאים כשיפתח את הקישור.
+      </p>
 
       {view.registered ? (
         <div className="mt-4 flex flex-wrap gap-2">

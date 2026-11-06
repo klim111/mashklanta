@@ -13,11 +13,13 @@
  * רואה את הדוח המסכם בתיק הלקוח.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  BadgePercent,
   Building2,
   CheckCircle2,
+  RefreshCw,
   Cloud,
   CloudOff,
   HandCoins,
@@ -32,6 +34,7 @@ import {
   GUARANTORS_RELEVANCE_OPTIONS,
   BORROWER_FIELDS,
   GUARANTOR_FIELDS,
+  REFINANCE_GOAL_OPTIONS,
   completeness,
   type EntityType,
 } from '@/lib/principal-approval/schema';
@@ -43,9 +46,64 @@ import { FundingSection } from './sections/FundingSection';
 import { BankAccountsSection } from './sections/BankAccountsSection';
 import { usePeopleOptions } from './sections/PeopleSection';
 import { AddButton, EntityCard, SectionHeader } from './sections/SectionShell';
+import { LocalCaseProvider, clearLocalCase } from './LocalCaseProvider';
+import { LeadFileUpload, useLeadFiles } from '@/components/consult/LeadFileUpload';
+
+/**
+ * איזה טופס זה:
+ * - `intake` — טופס פרטי הלקוח שהיועץ שולח ללקוח (/client-details-form)
+ * - `TENDER` — "הגישו בקשות לכל הבנקים" מהעמוד הראשי (/tender-request)
+ * - `REFINANCE_CHECK` — בדיקת מיחזור מהעמוד הראשי (/refinance-request)
+ */
+export type IntakeMode = 'intake' | 'TENDER' | 'REFINANCE_CHECK';
+
+interface IntakeOptions {
+  mode: IntakeMode;
+  /** מבקר שלא מחובר — הטופס נשמר בדפדפן ונשלח בבת אחת */
+  local: boolean;
+  storageKey: string;
+  files: ReturnType<typeof useLeadFiles>;
+}
+
+const IntakeOptionsContext = createContext<IntakeOptions | null>(null);
+
+function useIntakeOptions(): IntakeOptions {
+  const options = useContext(IntakeOptionsContext);
+  if (!options) throw new Error('useIntakeOptions must be used inside ClientIntakeForm');
+  return options;
+}
+
+const TITLES: Record<IntakeMode, { title: string; intro: string }> = {
+  intake: {
+    title: 'טופס פרטי הלקוח',
+    intro: 'ממלאים פעם אחת את כל הפרטים לבקשת המשכנתא. כל שדה נשמר מיד, כך שאפשר לצאת ולחזור. בסוף הטופס לוחצים "שדר ליועץ".',
+  },
+  TENDER: {
+    title: 'הגישו בקשות לכל הבנקים עם משכלנתא',
+    intro: 'ממלאים פעם אחת את הפרטים, ומשכלנתא עושה מכרז ריביות מול כל הבנקים ודואגת להשיג לכם את הריביות הטובות ביותר.',
+  },
+  REFINANCE_CHECK: {
+    title: 'בדיקת מיחזור משכנתא עם משכלנתא',
+    intro: 'ממלאים פעם אחת את הפרטים ומצרפים דוח יתרות עדכני, ומשכלנתא בודקת מול כל הבנקים אם ואיך כדאי למחזר.',
+  },
+};
+
+/** "הבדיקה בחינם" — מופיע בראש טופסי הבקשה ובעמוד הראשי */
+export function FreeCheckNote({ mode }: { mode: 'TENDER' | 'REFINANCE_CHECK' }) {
+  return (
+    <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-base font-bold text-emerald-900 ring-1 ring-emerald-200">
+      הבדיקה בחינם!{' '}
+      <span className="font-medium">
+        {mode === 'TENDER'
+          ? 'משלמים רק אחרי שהשגנו לכם את הריביות.'
+          : 'משלמים רק אם הושגו התנאים שביקשתם.'}
+      </span>
+    </p>
+  );
+}
 
 /** שדות התיק שמוצגים במקום אחר בטופס, ולא בחלק "ההלוואה והנכס" */
-const CASE_KEYS_ELSEWHERE = ['borrowersRelation', 'hasGuarantors'];
+const CASE_KEYS_ELSEWHERE = ['borrowersRelation', 'hasGuarantors', 'refinanceGoal'];
 const LOAN_FIELDS = CASE_FIELDS.filter((field) => !CASE_KEYS_ELSEWHERE.includes(field.key));
 const BORROWERS_RELATION_FIELDS = CASE_FIELDS.filter((field) => field.key === 'borrowersRelation');
 
@@ -76,6 +134,8 @@ function SaveStatus() {
 /** מה חסר בטופס — רק שדות חובה שמוצגים כרגע */
 function useIntakeProgress() {
   const { data, valuesOf, entities } = useCase();
+  const { mode, files } = useIntakeOptions();
+  const filesReady = files.refs.length > 0;
   return useMemo(() => {
     const sections: { title: string; filled: number; total: number }[] = [];
     const sum = (title: string, rows: { type: EntityType; id: string }[], extra = { filled: 0, total: 0 }) => {
@@ -99,6 +159,14 @@ function useIntakeProgress() {
         ]),
       ]);
 
+    if (mode === 'REFINANCE_CHECK') {
+      const goal = valuesOf('case', CASE_ENTITY_ID).refinanceGoal;
+      sections.push({
+        title: 'מטרת המיחזור ודוח היתרות',
+        filled: (goal ? 1 : 0) + (filesReady ? 1 : 0),
+        total: 2,
+      });
+    }
     sum('הלווים וההכנסות', people('borrower'));
     sum('ההלוואה והנכס', [{ type: 'case', id: CASE_ENTITY_ID }]);
     sum('מקורות המימון', entities('fundingSource').map((row) => ({ type: 'fundingSource' as EntityType, id: row.id })));
@@ -114,7 +182,7 @@ function useIntakeProgress() {
     const filled = sections.reduce((acc, s) => acc + s.filled, 0);
     const total = sections.reduce((acc, s) => acc + s.total, 0);
     return { sections, filled, total };
-  }, [data, valuesOf, entities]);
+  }, [data, valuesOf, entities, mode, filesReady]);
 }
 
 function personName(values: Record<string, unknown>): string {
@@ -172,6 +240,51 @@ function FormSection({ n, children }: { n: number; children: React.ReactNode }) 
       <div className="flex items-start gap-3">
         <SectionNumber n={n} />
         <div className="min-w-0 flex-1 space-y-6">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+/** בדיקת מיחזור: בראש הטופס — מה המטרה, ודוח היתרות העדכני */
+function RefinancePart() {
+  const { valuesOf, setField } = useCase();
+  const { files } = useIntakeOptions();
+  const goal = valuesOf('case', CASE_ENTITY_ID).refinanceGoal as string | undefined;
+  return (
+    <section className="rounded-3xl border-2 border-violet-200 bg-white p-5 shadow-sm sm:p-7">
+      <SectionHeader
+        title="המיחזור שלכם"
+        subtitle="מה המטרה במיחזור, ודוח יתרות עדכני מהבנק שבו המשכנתא היום"
+        icon={RefreshCw}
+      />
+      <div className="mt-5 space-y-2">
+        <p className="text-sm font-medium text-slate-700">
+          מה המטרה שלכם במיחזור? <span className="text-rose-500">*</span>
+        </p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {REFINANCE_GOAL_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setField('case', CASE_ENTITY_ID, 'refinanceGoal', option.value)}
+              className={cn(
+                'h-10 rounded-xl border px-4 text-sm font-semibold transition-all',
+                goal === option.value
+                  ? 'border-violet-300 bg-violet-50 text-violet-800 shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6">
+        <LeadFileUpload
+          title="דוח יתרות עדכני *"
+          hint="PDF או תמונה, עד 15MB. את הדוח מורידים מאתר הבנק או מבקשים בסניף. הוא נשמר בתיק המסמכים שלכם."
+          state={files}
+        />
       </div>
     </section>
   );
@@ -278,26 +391,70 @@ function GuarantorsPart() {
   );
 }
 
-function SubmitPart() {
+/** הטופס כפי שנשלח לשרת ממבקר שלא מחובר */
+function payloadOf(data: NonNullable<ReturnType<typeof useCase>['data']>) {
+  return {
+    caseValues: data.caseValues,
+    entities: (Object.values(data.entities).flat()).map((entity) => ({
+      id: entity.id,
+      type: entity.type,
+      parentId: entity.parentId,
+      values: entity.values,
+    })),
+  };
+}
+
+function SubmitPart({ onSent }: { onSent: (at: string) => void }) {
   const { data, refresh } = useCase();
+  const { mode, local, storageKey, files } = useIntakeOptions();
   const progress = useIntakeProgress();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [sentAt, setSentAt] = useState<string | null>(null);
   if (!data) return null;
 
   const isClient = data.viewer.role === 'client';
   const missing = progress.total - progress.filled;
-  const submittedAt = data.intakeSubmittedAt;
+  const submittedAt = sentAt ?? data.intakeSubmittedAt;
+  const request = mode !== 'intake';
+  const refinanceMissing =
+    mode === 'REFINANCE_CHECK' && (!data.caseValues.refinanceGoal || files.refs.length === 0);
 
   const submit = async () => {
+    if (refinanceMissing) {
+      setError('לבדיקת מיחזור צריך לבחור מטרה ולצרף דוח יתרות עדכני (בראש הטופס)');
+      setConfirming(false);
+      return;
+    }
+    if (files.uploading) {
+      setError('דוח היתרות עדיין עולה — רגע אחד ונסו שוב');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/principal-approval/case/${data.id}/intake-submit`, { method: 'POST' });
+      const res = request
+        ? await fetch('/api/intake-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              kind: mode,
+              files: files.refs,
+              ...(local ? { payload: payloadOf(data) } : {}),
+            }),
+          })
+        : await fetch(`/api/principal-approval/case/${data.id}/intake-submit`, { method: 'POST' });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error ?? 'השידור נכשל');
       setConfirming(false);
+      setSentAt(body?.submittedAt ?? new Date().toISOString());
+      if (local) {
+        clearLocalCase(storageKey);
+        onSent(body?.submittedAt ?? new Date().toISOString());
+        return;
+      }
+      if (request) onSent(body?.submittedAt ?? new Date().toISOString());
       await refresh();
     } catch (err: any) {
       setError(err?.message ?? 'השידור נכשל');
@@ -391,9 +548,33 @@ function SubmitPart() {
   );
 }
 
+function SentScreen({ mode, at }: { mode: IntakeMode; at: string }) {
+  return (
+    <div className="intake-form mx-auto max-w-2xl px-4 py-16" dir="rtl">
+      <div className="rounded-3xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+        <h1 className="mt-4 text-center text-title font-black text-slate-900">הבקשה נשלחה</h1>
+        <p className="mt-3 text-center text-base leading-relaxed text-slate-600">
+          {mode === 'REFINANCE_CHECK'
+            ? 'קיבלנו את הפרטים ואת דוח היתרות. נבדוק את המיחזור מול כל הבנקים ונחזור אליכם.'
+            : 'קיבלנו את הפרטים. נצא למכרז ריביות מול כל הבנקים ונחזור אליכם עם התוצאות.'}
+        </p>
+        <p className="mt-2 text-center text-sm text-slate-500">נשלח ב-{formatWhen(at)}</p>
+        {mode !== 'intake' && (
+          <div className="mt-6">
+            <FreeCheckNote mode={mode} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function IntakeShell() {
   const { data, loading, loadError, actionError, dismissActionError } = useCase();
+  const { mode, local } = useIntakeOptions();
   const progress = useIntakeProgress();
+  const [sentAt, setSentAt] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -417,18 +598,26 @@ function IntakeShell() {
   }
 
   const percent = progress.total === 0 ? 0 : Math.round((progress.filled / progress.total) * 100);
+  // מבקר שלא מחובר — אחרי השליחה הטופס נסגר ומוצג אישור
+  if (local && sentAt) return <SentScreen mode={mode} at={sentAt} />;
+  const copy = TITLES[mode];
 
   return (
     <div className="intake-form mx-auto max-w-5xl space-y-6 px-4 py-8" dir="rtl">
       <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-title font-black tracking-tight text-slate-900">טופס פרטי הלקוח</h1>
+            <h1 className="text-title font-black tracking-tight text-slate-900">{copy.title}</h1>
             <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
               {data.viewer.role === 'advisor'
-                ? `תצוגה של הטופס של ${data.client.name ?? data.client.email}`
-                : 'ממלאים פעם אחת את כל הפרטים לבקשת המשכנתא. כל שדה נשמר מיד, כך שאפשר לצאת ולחזור. בסוף הטופס לוחצים "שדר ליועץ".'}
+                ? `אתם ממלאים את הטופס של ${data.client.name ?? data.client.email}. כל שדה נשמר מיד בתיק שלו, והלקוח יראה אותו כבר מלא כשיפתח את הקישור. מה שהלקוח ממלא מופיע כאן בלי רענון.`
+                : copy.intro}
             </p>
+            {local && (
+              <p className="mt-2 text-sm text-slate-500">
+                מה שתמלאו נשמר בדפדפן הזה עד שתלחצו "שדר ליועץ".
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2">
             <SaveStatus />
@@ -460,8 +649,11 @@ function IntakeShell() {
         </div>
       )}
 
+      {mode !== 'intake' && <FreeCheckNote mode={mode} />}
+
       <ConflictResolver />
 
+      {mode === 'REFINANCE_CHECK' && <RefinancePart />}
       <BorrowersPart />
       <LoanPart />
       <FormSection n={3}>
@@ -471,21 +663,36 @@ function IntakeShell() {
         <BankAccountsSection />
       </FormSection>
       <GuarantorsPart />
-      <SubmitPart />
+      <SubmitPart onSent={setSentAt} />
     </div>
   );
 }
 
 /**
  * הטופס. בלי `clientRecordId` הוא נפתח על התיק של הלקוח המחובר; עם
- * `clientRecordId` (יועץ) — על התיק של אותו לקוח, לצפייה.
+ * `clientRecordId` (יועץ) — על התיק של אותו לקוח, למילוי ולעריכה. עם `local`
+ * הוא עובד בדפדפן בלבד, למבקר שלא מחובר.
  */
-export function ClientIntakeForm({ clientRecordId }: { clientRecordId?: string }) {
-  return (
-    <CaseProvider clientRecordId={clientRecordId}>
+export function ClientIntakeForm({
+  clientRecordId,
+  mode = 'intake',
+  local = false,
+}: {
+  clientRecordId?: string;
+  mode?: IntakeMode;
+  /** מבקר שלא מחובר: הטופס נשמר בדפדפן ונשלח בבת אחת בסוף */
+  local?: boolean;
+}) {
+  const files = useLeadFiles();
+  const storageKey = `mashkalanta:intake:${mode}`;
+  const options = { mode, local, storageKey, files };
+  const body = (
+    <IntakeOptionsContext.Provider value={options}>
       <div className="min-h-screen bg-slate-50">
         <IntakeShell />
       </div>
-    </CaseProvider>
+    </IntakeOptionsContext.Provider>
   );
+  if (local) return <LocalCaseProvider storageKey={storageKey}>{body}</LocalCaseProvider>;
+  return <CaseProvider clientRecordId={clientRecordId}>{body}</CaseProvider>;
 }

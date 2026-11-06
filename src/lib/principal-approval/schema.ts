@@ -197,6 +197,13 @@ export const GUARANTORS_RELEVANCE_OPTIONS: Option[] = [
   { value: 'not_relevant', label: 'לא רלוונטי' },
 ];
 
+/** מטרות המיחזור — אותן שלוש מטרות של בדיקת המיחזור (src/lib/refinance-check.ts) */
+export const REFINANCE_GOAL_OPTIONS: Option[] = [
+  { value: 'reduce-payment', label: 'הקטנת ההחזר החודשי' },
+  { value: 'reduce-interest', label: 'הקטנת סך הריביות' },
+  { value: 'fast-payoff', label: 'להיפטר מהמשכנתא מהר' },
+];
+
 export const YES_NO_OPTIONS: Option[] = [
   { value: 'true', label: 'כן' },
   { value: 'false', label: 'לא' },
@@ -366,13 +373,6 @@ export const INCOME_FIELDS: FieldDef[] = [
     span: 2,
   },
   {
-    key: 'employerZipCode',
-    kind: 'zip',
-    label: 'מיקוד מקום התעסוקה',
-    visibleWhen: EMPLOYED_INCOME,
-    requiredWhen: EMPLOYED_INCOME,
-  },
-  {
     key: 'incomeNotes',
     kind: 'textarea',
     label: 'הערות',
@@ -390,7 +390,6 @@ export const PREV_EMPLOYMENT_FIELDS: FieldDef[] = [
   { key: 'employerPhone', kind: 'phone', label: 'טלפון במקום העבודה' },
   { key: 'employerCity', kind: 'text', label: 'עיר מקום התעסוקה', required: true },
   { key: 'employerAddress', kind: 'text', label: 'כתובת מקום התעסוקה', required: true, span: 2 },
-  { key: 'employerZipCode', kind: 'zip', label: 'מיקוד מקום התעסוקה', required: true },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -537,6 +536,13 @@ export const CASE_FIELDS: FieldDef[] = [
   { key: 'propertyCity', kind: 'text', label: 'עיר הנכס' },
   { key: 'propertyAddress', kind: 'text', label: 'כתובת הנכס', span: 2 },
   { key: 'propertyZipCode', kind: 'zip', label: 'מיקוד הנכס' },
+  {
+    // נשאל רק בבקשת בדיקת מיחזור (/refinance-request), בראש הטופס
+    key: 'refinanceGoal',
+    kind: 'select',
+    label: 'מטרת המיחזור',
+    options: REFINANCE_GOAL_OPTIONS,
+  },
   {
     key: 'hasGuarantors',
     kind: 'select',

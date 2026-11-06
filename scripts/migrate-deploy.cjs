@@ -29,6 +29,7 @@ const RETRYABLE_MIGRATIONS = new Set([
   '20261019150000_landing_content',
   '20261020160000_site_content',
   '20261106040000_client_intake_form',
+  '20261106070000_client_intake_requests',
   '20261101140000_staff_visitor',
   '20261101140000_advisor_task_deletions',
 ]);

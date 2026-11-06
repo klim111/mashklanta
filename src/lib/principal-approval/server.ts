@@ -79,7 +79,7 @@ export function decodeValue(raw: string | null | undefined): unknown {
 }
 
 /** Splits a value into the plaintext / encrypted columns of `CaseField`. */
-function encodeForStorage(
+export function encodeForStorage(
   caseId: string,
   entityType: EntityType,
   entityId: string,
