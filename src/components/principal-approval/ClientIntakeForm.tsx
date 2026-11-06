@@ -88,15 +88,15 @@ const TITLES: Record<IntakeMode, { title: string; intro: string }> = {
   },
 };
 
-/** "הבדיקה בחינם" — מופיע בראש טופסי הבקשה ובעמוד הראשי */
+/** תנאי התשלום: שתי הבדיקות בחינם — מופיע בראש טופסי הבקשה ובמסך "הבקשה נשלחה" */
 export function FreeCheckNote({ mode }: { mode: 'TENDER' | 'REFINANCE_CHECK' }) {
   return (
     <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-base font-bold text-emerald-900 ring-1 ring-emerald-200">
-      הבדיקה בחינם!{' '}
+      שתי הבדיקות בחינם — מכרז הריביות ובדיקת המיחזור!{' '}
       <span className="font-medium">
         {mode === 'TENDER'
           ? 'משלמים רק אחרי שהשגנו לכם את הריביות.'
-          : 'משלמים רק אם הושגו התנאים שביקשתם.'}
+          : 'משלמים רק אחרי שהשגנו לכם את התנאים שביקשתם.'}
       </span>
     </p>
   );
