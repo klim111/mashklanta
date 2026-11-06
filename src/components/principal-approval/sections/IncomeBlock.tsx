@@ -17,7 +17,16 @@ import { AddButton, EntityCard } from './SectionShell';
  * When the seniority at the current employer is under a year, a previous
  * employment block is required and is opened automatically.
  */
-export function IncomeBlock({ personId, personLabel }: { personId: string; personLabel: string }) {
+export function IncomeBlock({
+  personId,
+  personLabel,
+  allowRemoveLast = false,
+}: {
+  personId: string;
+  personLabel: string;
+  /** בטופס פרטי הלקוח אפשר להסיר גם את מקור ההכנסה האחרון (למשל ללווה שאינו עובד) */
+  allowRemoveLast?: boolean;
+}) {
   const { entities, valuesOf, addEntity, removeEntity } = useCase();
   const incomes = entities('income', personId);
 
@@ -39,7 +48,9 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
 
       {incomes.map((income, index) => {
         const values = valuesOf('income', income.id);
-        const months = monthsSince(values.employmentStartDate as string | null);
+        // ותק נבדק רק בהכנסה מעבודה — בפנסיה או בשכירות אין מקום עבודה קודם
+        const employed = values.incomeType === 'salary' || values.incomeType === 'self_employed';
+        const months = employed ? monthsSince(values.employmentStartDate as string | null) : null;
         const needsPrevious =
           months !== null && months < PREV_EMPLOYMENT_THRESHOLD_MONTHS;
         const prevEmployments = entities('prevEmployment', income.id);
@@ -56,7 +67,10 @@ export function IncomeBlock({ personId, personLabel }: { personId: string; perso
                 </span>
               ) : undefined
             }
-            onRemove={incomes.length > 1 ? () => void removeEntity(income.id) : undefined}
+            removeLabel="הסרת מקור ההכנסה"
+            onRemove={
+              allowRemoveLast || incomes.length > 1 ? () => void removeEntity(income.id) : undefined
+            }
           >
             <FieldGrid fields={INCOME_FIELDS} entityType="income" entityId={income.id} />
 

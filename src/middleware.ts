@@ -17,6 +17,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/auth',
   // פנייה ליועץ נשלחת גם מעמוד הבית, בלי חשבון; הנתיב עצמו מגביל קצב ומאמת פרטים
   '/api/advisor-leads',
+  // בקשת מכרז ריביות או בדיקת מיחזור מעמוד הבית, בלי חשבון; הנתיב מגביל קצב ובודק כל שדה
+  '/api/intake-request',
   '/api/auth-diagnostics',
   '/api/health',
   '/api/addresses',

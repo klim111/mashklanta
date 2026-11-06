@@ -29,6 +29,8 @@ export interface AdvisorClient {
   selfRegistered?: boolean;
   /** לקוח מתעניין שהיועץ פתח לו תיק, ועדיין לא נרשם */
   prospect?: boolean;
+  /** פנייה מהעמוד הראשי: TENDER (מכרז ריביות) או REFINANCE_CHECK (בדיקת מיחזור) */
+  requestKind?: string | null;
   /** מתי נפתח החשבון של הלקוח */
   registeredAt?: string;
   /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */

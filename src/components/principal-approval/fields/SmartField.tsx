@@ -3,7 +3,12 @@
 import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import type { EntityType, FieldDef, Option } from '@/lib/principal-approval/schema';
-import { isFieldRequired, isFieldVisible } from '@/lib/principal-approval/schema';
+import {
+  fieldLabel,
+  fieldPlaceholder,
+  isFieldRequired,
+  isFieldVisible,
+} from '@/lib/principal-approval/schema';
 import { digitsOnly } from '@/lib/principal-approval/format';
 import { provenanceLabel } from '@/lib/principal-approval/access';
 import { ACTIVE_BANKS } from '@/lib/banks/banks';
@@ -56,10 +61,12 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
       : undefined;
 
   const update = (next: unknown) => setField(entityType, entityId, field.key, next);
+  const label = fieldLabel(field, values);
+  const placeholder = fieldPlaceholder(field, values);
 
   const shell = (children: React.ReactNode) => (
     <FieldShell
-      label={field.label}
+      label={label}
       required={required}
       help={field.help}
       error={error}
@@ -131,7 +138,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
             id={inputId}
             value={(value as number) ?? null}
             onChange={(n) => update(n)}
-            placeholder={field.placeholder}
+            placeholder={placeholder}
             readOnly={readOnly}
             disabled={readOnly}
             // Shekel amounts and counts are whole numbers, so they get live
@@ -236,7 +243,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           onChange={(v) => update(v)}
           readOnly={readOnly}
           error={error}
-          placeholder={field.placeholder ?? 'בחר…'}
+          placeholder={placeholder ?? 'בחר…'}
         />,
       );
     }
@@ -268,7 +275,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           onChange={(next) => update(next)}
           readOnly={readOnly}
           error={error}
-          placeholder={field.placeholder ?? 'בחר…'}
+          placeholder={placeholder ?? 'בחר…'}
         />,
       );
     }
@@ -299,7 +306,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           dir="ltr"
           className={`${inputClass({ error, readOnly })} text-right tracking-widest`}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder}
+          placeholder={placeholder}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(digitsOnly(e.target.value, 9))}
@@ -315,7 +322,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           dir="ltr"
           className={`${inputClass({ error, readOnly })} text-right`}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder ?? '050-1234567'}
+          placeholder={placeholder ?? '050-1234567'}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(e.target.value.replace(/[^\d+\-\s]/g, ''))}
@@ -331,7 +338,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           dir="ltr"
           className={`${inputClass({ error, readOnly })} text-right tracking-widest`}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder ?? '7 ספרות'}
+          placeholder={placeholder ?? '7 ספרות'}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(digitsOnly(e.target.value, 7))}
@@ -347,7 +354,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           dir="ltr"
           className={`${inputClass({ error, readOnly })} text-right tracking-wider`}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder ?? 'מספר חשבון'}
+          placeholder={placeholder ?? 'מספר חשבון'}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(digitsOnly(e.target.value, 12))}
@@ -362,7 +369,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           dir="ltr"
           className={`${inputClass({ error, readOnly })} text-right`}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder}
+          placeholder={placeholder}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(e.target.value.trim())}
@@ -376,7 +383,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           rows={3}
           className={`${inputClass({ error, readOnly })} h-auto py-2 leading-relaxed`}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder}
+          placeholder={placeholder}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(e.target.value)}
@@ -392,7 +399,7 @@ export function SmartField({ field, entityType, entityId, peopleOptions = [] }: 
           type="text"
           className={inputClass({ error, readOnly })}
           value={(value as string) ?? ''}
-          placeholder={field.placeholder}
+          placeholder={placeholder}
           readOnly={readOnly}
           disabled={readOnly}
           onChange={(e) => update(e.target.value)}

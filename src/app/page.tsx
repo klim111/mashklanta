@@ -16,6 +16,7 @@ import { PlatformBillingNotes } from '@/components/service-flow/PlatformBillingN
 import { usePricing } from '@/components/pricing/PricingProvider';
 import { HeroPromoVideo } from '@/components/home/HeroPromoVideo';
 import { HeroCarousel } from '@/components/home/hero-carousel/HeroCarousel';
+import { HomeRequestCta } from '@/components/home/HomeRequestCta';
 import { demoId } from '@/demo/demo-attr';
 
 export default function Home() {
@@ -70,6 +71,9 @@ export default function Home() {
             <span className="text-blue-600 font-semibold">ושקיפות מלאה</span>
           </motion.p>
         </div>
+
+        {/* הגשת בקשות לכל הבנקים ובדיקת מיחזור — בראש המסך, בלי לגלול */}
+        <HomeRequestCta />
 
         {/* קרוסלת היתרונות: במה משלה בזרימת הדף, בין הטקסט לכפתורים, כך שבשום גודל מסך
             היא לא נכנסת מתחת לטקסט או לכפתורים. בטלפון הגובה קבוע; ממסך בינוני ומעלה הוא

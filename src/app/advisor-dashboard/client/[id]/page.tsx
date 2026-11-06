@@ -36,6 +36,7 @@ import { ClientPaymentSettings } from '@/components/advisor/ClientPaymentSetting
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 import { VideoCallPicker } from '@/components/meeting-call/VideoCallPicker';
 import { ProspectFileCard } from '@/components/advisor/ProspectFileCard';
+import { ClientIntakeCard } from '@/components/advisor/ClientIntakeCard';
 import {
   useAdvisorNotes,
   useAdvisorTasks,
@@ -271,6 +272,7 @@ export default function AdvisorClientPage() {
 
       <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
         {client.prospect && <ProspectFileCard clientId={client.id} email={client.email} />}
+        {tab === 'stages' && <ClientIntakeCard clientId={client.id} clientEmail={client.email} />}
         {tab === 'summary' && (
           <ClientActivitySummary activity={activity.activity} ready={activity.ready} error={activity.error} />
         )}

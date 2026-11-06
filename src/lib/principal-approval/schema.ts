@@ -73,6 +73,15 @@ export interface FieldDef extends ValidatableField {
   visibleWhen?: Condition;
   /** Becomes mandatory only while the condition holds. */
   requiredWhen?: Condition;
+  /**
+   * תווית ורמז שמשתנים לפי ערך של שדה אחר באותה רשומה — למשל "פירוט" של מקור
+   * מימון, שבמכירת דירה שואל על הדירה ובמתנה שואל ממי היא.
+   */
+  labelBy?: {
+    field: string;
+    labels: Record<string, string>;
+    placeholders?: Record<string, string>;
+  };
   /** Grid width, 1–3 columns. */
   span?: 1 | 2 | 3;
   /**
@@ -181,6 +190,19 @@ export const MORTGAGE_BANK_OPTIONS: Option[] = MORTGAGE_BANKS.map((bank) => ({
   value: bank,
   label: bank,
 }));
+
+/** האם יש ערבים לבקשה — "לא רלוונטי" סוגר את כל חלק הערבים */
+export const GUARANTORS_RELEVANCE_OPTIONS: Option[] = [
+  { value: 'yes', label: 'יש ערבים' },
+  { value: 'not_relevant', label: 'לא רלוונטי' },
+];
+
+/** מטרות המיחזור — אותן שלוש מטרות של בדיקת המיחזור (src/lib/refinance-check.ts) */
+export const REFINANCE_GOAL_OPTIONS: Option[] = [
+  { value: 'reduce-payment', label: 'הקטנת ההחזר החודשי' },
+  { value: 'reduce-interest', label: 'הקטנת סך הריביות' },
+  { value: 'fast-payoff', label: 'להיפטר מהמשכנתא מהר' },
+];
 
 export const YES_NO_OPTIONS: Option[] = [
   { value: 'true', label: 'כן' },
@@ -324,7 +346,9 @@ export const INCOME_FIELDS: FieldDef[] = [
     key: 'employmentStartDate',
     kind: 'pastDate',
     label: 'תאריך תחילת העסקה',
-    required: true,
+    // פנסיה, מזונות, מלגה ושכירות אינן עבודה — אין להן ותק ואין מקום עבודה קודם
+    visibleWhen: EMPLOYED_INCOME,
+    requiredWhen: EMPLOYED_INCOME,
     help: 'ותק של פחות משנה מחייב פירוט מקום עבודה קודם',
   },
   {
@@ -349,13 +373,6 @@ export const INCOME_FIELDS: FieldDef[] = [
     span: 2,
   },
   {
-    key: 'employerZipCode',
-    kind: 'zip',
-    label: 'מיקוד מקום התעסוקה',
-    visibleWhen: EMPLOYED_INCOME,
-    requiredWhen: EMPLOYED_INCOME,
-  },
-  {
     key: 'incomeNotes',
     kind: 'textarea',
     label: 'הערות',
@@ -373,7 +390,6 @@ export const PREV_EMPLOYMENT_FIELDS: FieldDef[] = [
   { key: 'employerPhone', kind: 'phone', label: 'טלפון במקום העבודה' },
   { key: 'employerCity', kind: 'text', label: 'עיר מקום התעסוקה', required: true },
   { key: 'employerAddress', kind: 'text', label: 'כתובת מקום התעסוקה', required: true, span: 2 },
-  { key: 'employerZipCode', kind: 'zip', label: 'מיקוד מקום התעסוקה', required: true },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -408,11 +424,59 @@ export const BANK_ACCOUNT_FIELDS: FieldDef[] = [
 /* Funding sources                                                             */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * מקורות שדורשים השלמת מידע. חסכונות זמינים ואין מה לפרט עליהם — ולכן הם לא
+ * פותחים שום שדה נוסף.
+ */
+const FUNDING_NEEDS_DETAILS: Condition = {
+  field: 'sourceType',
+  in: ['apartment_sale', 'other_loans', 'gift_from_family'],
+};
+
 export const FUNDING_SOURCE_FIELDS: FieldDef[] = [
   { key: 'sourceType', kind: 'select', label: 'מקור מימון', required: true, options: FUNDING_SOURCE_OPTIONS },
   { key: 'amount', kind: 'money', label: 'סכום', required: true, suffix: '₪', sensitive: true },
-  { key: 'expectedDate', kind: 'date', label: 'מועד זמינות צפוי' },
-  { key: 'details', kind: 'text', label: 'פירוט', span: 2, placeholder: 'לדוגמה: מכירת דירה ברחוב הרצל 5' },
+  {
+    key: 'expectedDate',
+    kind: 'date',
+    label: 'מועד זמינות צפוי',
+    visibleWhen: FUNDING_NEEDS_DETAILS,
+    labelBy: {
+      field: 'sourceType',
+      labels: {
+        apartment_sale: 'מתי יתקבל הכסף מהמכירה',
+        other_loans: 'מתי תתקבל ההלוואה',
+        gift_from_family: 'מתי תתקבל המתנה',
+      },
+    },
+  },
+  {
+    key: 'saleContractSigned',
+    kind: 'boolean',
+    label: 'נחתם חוזה מכירה',
+    visibleWhen: { field: 'sourceType', equals: 'apartment_sale' },
+    requiredWhen: { field: 'sourceType', equals: 'apartment_sale' },
+  },
+  {
+    key: 'details',
+    kind: 'text',
+    label: 'פירוט',
+    span: 2,
+    visibleWhen: FUNDING_NEEDS_DETAILS,
+    labelBy: {
+      field: 'sourceType',
+      labels: {
+        apartment_sale: 'כתובת הדירה הנמכרת',
+        other_loans: 'ממי ההלוואה ומה ההחזר החודשי',
+        gift_from_family: 'ממי המתנה',
+      },
+      placeholders: {
+        apartment_sale: 'לדוגמה: הרצל 5, תל אביב',
+        other_loans: 'לדוגמה: הלוואה מקרן ההשתלמות, החזר 1,200 ₪',
+        gift_from_family: 'לדוגמה: הורי הלווה',
+      },
+    },
+  },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -472,6 +536,20 @@ export const CASE_FIELDS: FieldDef[] = [
   { key: 'propertyCity', kind: 'text', label: 'עיר הנכס' },
   { key: 'propertyAddress', kind: 'text', label: 'כתובת הנכס', span: 2 },
   { key: 'propertyZipCode', kind: 'zip', label: 'מיקוד הנכס' },
+  {
+    // נשאל רק בבקשת בדיקת מיחזור (/refinance-request), בראש הטופס
+    key: 'refinanceGoal',
+    kind: 'select',
+    label: 'מטרת המיחזור',
+    options: REFINANCE_GOAL_OPTIONS,
+  },
+  {
+    key: 'hasGuarantors',
+    kind: 'select',
+    label: 'ערבים לבקשה',
+    options: GUARANTORS_RELEVANCE_OPTIONS,
+    help: 'אם אין ערבים — בחרו "לא רלוונטי" וחלק הערבים ייסגר',
+  },
   {
     key: 'propertyAtWorkplace',
     kind: 'boolean',
@@ -646,6 +724,18 @@ export function conditionHolds(condition: Condition | undefined, values: Record<
   if (condition.in) return condition.in.some((v) => v === value);
   if (condition.equals !== undefined) return value === condition.equals;
   return true;
+}
+
+/** התווית של השדה לפי מה שנבחר ברשומה (ראו `labelBy`) */
+export function fieldLabel(field: FieldDef, values: Record<string, unknown>): string {
+  const by = field.labelBy;
+  if (!by) return field.label;
+  return by.labels[String(values[by.field] ?? '')] ?? field.label;
+}
+
+export function fieldPlaceholder(field: FieldDef, values: Record<string, unknown>): string | undefined {
+  const by = field.labelBy;
+  return by?.placeholders?.[String(values[by.field] ?? '')] ?? field.placeholder;
 }
 
 export function isFieldVisible(field: FieldDef, values: Record<string, unknown>): boolean {

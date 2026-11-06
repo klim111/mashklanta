@@ -56,6 +56,8 @@ export interface ClientListItem {
   selfRegistered: boolean;
   /** לקוח מתעניין שהיועץ פתח לו תיק בעצמו, ועדיין לא נרשם (src/lib/prospect-client.ts) */
   prospect: boolean;
+  /** פנייה מהעמוד הראשי: TENDER (מכרז ריביות) או REFINANCE_CHECK (בדיקת מיחזור) */
+  requestKind: string | null;
   /** מתי נפתח החשבון של הלקוח */
   registeredAt: string;
   /** שילם על משהו בפלטפורמה: חבילת גישה, קישור תשלום או ליווי */
@@ -261,6 +263,7 @@ export async function listAdvisorClients(advisorId: string): Promise<ClientListI
       planProgress: row.plans[0]?.progress ?? 0,
       selfRegistered: row.autoLinked,
       prospect: row.prospect,
+      requestKind: row.requestKind ?? null,
       registeredAt: (row.user?.createdAt ?? row.createdAt).toISOString(),
       paid: paid.paid,
       firstPaidAt: paid.firstPaidAt,

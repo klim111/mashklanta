@@ -148,6 +148,7 @@ const PAGE_LABELS: Record<string, string> = {
   '/mortgage-refinance': 'בדיקת מיחזור',
   '/pricing': 'מחירים',
   '/principal-approval': 'אישור עקרוני',
+  '/client-details-form': 'טופס פרטי הלקוח',
   '/privacy': 'מדיניות פרטיות',
   '/saved-mixes': 'תמהילים שמורים',
   '/simulations': 'סימולציות',

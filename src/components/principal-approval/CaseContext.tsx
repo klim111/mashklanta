@@ -541,3 +541,4 @@ export function CaseProvider({
 
   return <CaseContext.Provider value={value}>{children}</CaseContext.Provider>;
 }
+export const CaseContextProvider = CaseContext.Provider;

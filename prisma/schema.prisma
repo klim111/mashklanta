@@ -407,6 +407,12 @@ model Client {
    * נרשם עם אותו מייל — הכרטיס וכל מה שהוזן בו עוברים לחשבון שלו
    */
   prospect   Boolean @default(false)
+  /**
+   * פנייה מהעמוד הראשי דרך טופס פרטי הלקוח: TENDER — בקשת מכרז ריביות למשכנתא
+   * חדשה, REFINANCE_CHECK — בקשה לבחון מיחזור משכנתא. ריק — לקוח רגיל
+   */
+  requestKind String?
+  requestedAt DateTime?
   guestMeetings GuestMeeting[]
 
   // ריביות מהבנקים
@@ -1283,6 +1289,12 @@ model MortgageCase {
    * שדות שהיועץ מילא ועוד לא שידר ללקוח: נתיב השדה → { entityType, entityId, fieldKey, value }
    */
   advisorDraftJson Json?
+  /**
+   * טופס פרטי הלקוח (/client-details-form): מתי היועץ הפיק ללקוח קישור לטופס,
+   * ומתי הלקוח לחץ בסופו "שדר ליועץ"
+   */
+  intakeRequestedAt DateTime?
+  intakeSubmittedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
