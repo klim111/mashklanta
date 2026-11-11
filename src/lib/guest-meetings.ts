@@ -227,7 +227,7 @@ export async function guestMeetingForAdvisor(advisorId: string, id: string) {
   return { view: toView(row), advisorName: row.advisor.name || row.advisor.email || 'היועץ' };
 }
 
-/** אסימון הכניסה של היועץ לחדר של פגישת האורח */
+/** אסימון הכניסה של היועץ לחדר של פגישת האורח. סיומת לכל כניסה — אפשר להצטרף מכמה מכשירים */
 export async function advisorGuestToken(
   advisorId: string,
   meeting: GuestMeetingView,
@@ -235,7 +235,7 @@ export async function advisorGuestToken(
   config: { apiKey: string; apiSecret: string }
 ): Promise<string> {
   const access = new AccessToken(config.apiKey, config.apiSecret, {
-    identity: `advisor:${advisorId}`,
+    identity: `advisor:${advisorId}:${randomBytes(4).toString('hex')}`,
     name: advisorName,
     ttl: '4h',
     metadata: JSON.stringify({ role: 'ADVISOR' }),

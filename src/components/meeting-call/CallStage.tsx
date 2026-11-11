@@ -275,7 +275,8 @@ export function CallStage({
   );
   const screenShare = tracks.find((track) => track.source === Track.Source.ScreenShare && track.publication);
   const cameras = tracks.filter((track) => track.source === Track.Source.Camera);
-  const alone = participants.length < 2;
+  /** לבד — אין עדיין משתתף מהצד השני (כניסה נוספת של אותו צד ממכשיר אחר לא נחשבת) */
+  const alone = !participants.some((participant) => !participant.isLocal && participantRole(participant) !== details.role);
 
   const togglePanel = (next: Exclude<Panel, null>) => setPanel((current) => (current === next ? null : next));
   const panelOpen = panel !== null;
@@ -599,4 +600,13 @@ function ControlButton({
       {children}
     </button>
   );
+}
+
+/** הצד של המשתתף, מהמטא-דאטה של אסימון הכניסה */
+function participantRole(participant: { metadata?: string }): string | null {
+  try {
+    return (JSON.parse(participant.metadata ?? '{}') as { role?: string }).role ?? null;
+  } catch {
+    return null;
+  }
 }
