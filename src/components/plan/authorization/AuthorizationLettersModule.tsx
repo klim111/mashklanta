@@ -26,8 +26,8 @@ import {
   AUTHORIZATION_FONT_PATH,
   MAX_AUTHORIZATION_BORROWERS,
   authorizationFormPath,
-  authorizationFormSpec,
   emptyBorrower,
+  missingForAllBanks,
   missingForBank,
   signedLetterFileName,
 } from '@/lib/authorization-forms';
@@ -42,17 +42,24 @@ const ACCEPT = ALLOWED_DOCUMENT_TYPES.join(',');
 interface Draft {
   borrowers: AuthorizationBorrower[];
   place: string;
-  /** "לקוח הבנק" לכל לווה, לפי בנק — רק בטפסים ששואלים */
-  customer: Record<string, Array<boolean | null>>;
+  /**
+   * "לקוח הבנק" לכל לווה, לפי בנק. הלקוח לא נשאל על כך במסך — השדה נשאר
+   * בטיוטה רק כדי שטיוטות ישנות ייטענו בלי שגיאה.
+   */
+  customer?: Record<string, Array<boolean | null>>;
 }
 
-const BORROWER_FIELDS: Array<{ key: keyof AuthorizationBorrower; label: string; ltr?: boolean; type?: string; hint?: string }> = [
+/** כל השדות כאן נדרשים בטופס של בנק אחד לפחות, ולכן כולם חובה */
+const BORROWER_FIELDS: Array<{ key: keyof AuthorizationBorrower; label: string; ltr?: boolean; type?: string }> = [
   { key: 'name', label: 'שם מלא' },
   { key: 'idNumber', label: 'מספר ת"ז', ltr: true, type: 'text' },
   { key: 'phone', label: 'טלפון נייד', ltr: true, type: 'tel' },
-  { key: 'email', label: 'אימייל', ltr: true, type: 'email', hint: 'נדרש בטופס של בנק ירושלים' },
-  { key: 'address', label: 'כתובת מגורים', hint: 'נדרשת בטופס של בנק ירושלים' },
+  { key: 'email', label: 'אימייל', ltr: true, type: 'email' },
+  { key: 'address', label: 'כתובת מגורים' },
 ];
+
+/** תשובת "לקוח הבנק" — לא נשאלת, והתיבות בטופס נשארות ריקות */
+const NO_CUSTOMER_ANSWER: Array<boolean | null> = [null, null];
 
 const inputClass =
   'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-info text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
@@ -93,6 +100,7 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
   const [advisor, setAdvisor] = useState<{ details: AdvisorFormDetails | null; missing: string[] } | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [generatingAll, setGeneratingAll] = useState(false);
   const [finished, setFinished] = useState(false);
   const loaded = useRef(false);
 
@@ -145,24 +153,24 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
     return map;
   }, [documents]);
   const uploadedCount = AUTHORIZATION_BANKS.filter((bank) => letters.has(authorizationDocumentKey(bank.slug))).length;
+  const pendingBanks = AUTHORIZATION_BANKS.filter((bank) => !letters.has(authorizationDocumentKey(bank.slug)));
+  const allSaved = pendingBanks.length === 0;
   const openTask = tasks.find((task) => task.templateKey === AUTHORIZATION_TASK_KEY && task.status === 'OPEN');
   const borrowerCount = draft.borrowers.length;
   const missingSignatures = draft.borrowers
     .map((_, index) => (signatures[index] ? null : borrowerCount > 1 ? `חתימה של לווה ${index + 1}` : 'חתימה'))
     .filter((item): item is string => Boolean(item));
+  /** מה חסר כדי להפיק את הכתבים של כל הבנקים — הפרטים והחתימות */
+  const missingForAll = [
+    ...missingForAllBanks({ borrowers: draft.borrowers, place: draft.place, customer: NO_CUSTOMER_ANSWER }),
+    ...missingSignatures,
+  ];
 
   const setBorrower = (index: number, key: keyof AuthorizationBorrower, value: string) =>
     setDraft((current) => ({
       ...current,
       borrowers: current.borrowers.map((borrower, i) => (i === index ? { ...borrower, [key]: value } : borrower)),
     }));
-
-  const setCustomer = (slug: string, index: number, value: boolean) =>
-    setDraft((current) => {
-      const answers = [...(current.customer[slug] ?? [null, null])];
-      answers[index] = value;
-      return { ...current, customer: { ...current.customer, [slug]: answers } };
-    });
 
   const setSignature = useCallback(
     (index: number) => (png: Uint8Array | null) =>
@@ -184,7 +192,7 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
         advisor: advisor?.details ?? { name: '', idNumber: '', phone: '', companyName: '', companyNumber: '' },
         place: draft.place,
         date: new Date(),
-        customer: draft.customer[bank.slug] ?? [null, null],
+        customer: NO_CUSTOMER_ANSWER,
       },
       { form, font, signatures: signatures.slice(0, borrowerCount) }
     );
@@ -193,17 +201,41 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
   const toFile = (bank: AuthorizationBank, bytes: Uint8Array) =>
     new File([bytes as BlobPart], signedLetterFileName(bank), { type: 'application/pdf' });
 
-  const generate = async (bank: AuthorizationBank) => {
+  /** מפיק ושומר את הכתב של בנק אחד. מחזיר אם הכתב נשמר */
+  const generate = async (bank: AuthorizationBank): Promise<boolean> => {
     setLocalError(null);
     setGenerating(bank.slug);
     try {
       const bytes = await buildPdf(bank);
       const file = toFile(bank, bytes);
-      await upload(authorizationDocumentKey(bank.slug), authorizationDocumentName(bank.bank), file);
+      return Boolean(await upload(authorizationDocumentKey(bank.slug), authorizationDocumentName(bank.bank), file));
     } catch (failure) {
-      setLocalError(failure instanceof Error ? `הפקת הטופס נכשלה: ${failure.message}` : 'הפקת הטופס נכשלה. נסו שוב.');
+      setLocalError(
+        failure instanceof Error
+          ? `הפקת הטופס של ${bank.bank} נכשלה: ${failure.message}`
+          : `הפקת הטופס של ${bank.bank} נכשלה. נסו שוב.`
+      );
+      return false;
     } finally {
       setGenerating(null);
+    }
+  };
+
+  /**
+   * מפיק את הכתבים של כל הבנקים שעוד אין להם כתב, אחד אחרי השני. מחזיר אם
+   * בסוף יש כתב לכל הבנקים.
+   */
+  const generateAll = async (): Promise<boolean> => {
+    if (missingForAll.length > 0) return false;
+    setGeneratingAll(true);
+    try {
+      let ok = true;
+      for (const bank of pendingBanks) {
+        if (!(await generate(bank))) ok = false;
+      }
+      return ok;
+    } finally {
+      setGeneratingAll(false);
     }
   };
 
@@ -237,8 +269,13 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
     await upload(authorizationDocumentKey(bank.slug), authorizationDocumentName(bank.bank), file);
   };
 
+  /**
+   * "סיימתי" מפיק קודם את הכתבים שעוד חסרים, ורק כשיש כתב לכל הבנקים המשימה
+   * נסגרת — כך אי אפשר לסיים עם חלק מהבנקים בלי לשים לב.
+   */
   const finish = async () => {
     if (!openTask) return;
+    if (!allSaved && !(await generateAll())) return;
     if (await complete(openTask.id)) setFinished(true);
   };
 
@@ -281,6 +318,9 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
         {/* 1. הפרטים */}
         <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
           <StepTitle number={1} title="הפרטים שלכם" />
+          <p dir="rtl" className="text-info text-slate-600">
+            כל הפרטים נדרשים בטפסים של הבנקים. ממלאים פעם אחת, והם נכתבים בכל הטפסים.
+          </p>
           {draft.borrowers.map((borrower, index) => (
             <div key={index} dir="rtl" className="space-y-2.5">
               {borrowerCount > 1 && (
@@ -302,10 +342,10 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
                 </div>
               )}
               <div dir="rtl" className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {BORROWER_FIELDS.map(({ key, label, ltr, type, hint }) => (
+                {BORROWER_FIELDS.map(({ key, label, ltr, type }) => (
                   <label key={key} className="block">
                     <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-600">
-                      {label}
+                      {label} <span className="text-rose-500">*</span>
                     </span>
                     <input
                       value={borrower[key]}
@@ -316,38 +356,23 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
                       autoComplete="off"
                       className={`${inputClass} ${ltr ? 'text-right' : ''}`}
                     />
-                    {hint && (
-                      <span dir="rtl" className="mt-0.5 block text-2xs text-slate-400">
-                        {hint}
-                      </span>
-                    )}
                   </label>
                 ))}
               </div>
             </div>
           ))}
-          <div dir="rtl" className="flex flex-wrap items-end gap-3">
-            {borrowerCount < MAX_AUTHORIZATION_BORROWERS && (
+          {borrowerCount < MAX_AUTHORIZATION_BORROWERS && (
+            <div dir="rtl">
               <button
                 type="button"
                 onClick={() => setDraft((current) => ({ ...current, borrowers: [...current.borrowers, emptyBorrower()] }))}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-button font-bold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-3.5 py-2 text-button font-bold text-slate-700 hover:bg-slate-50"
               >
                 <UserPlus className="h-4 w-4" />
                 הוספת לווה נוסף
               </button>
-            )}
-            <label className="block min-w-[14rem] flex-1 sm:max-w-xs">
-              <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-600">
-                היישוב שבו אתם חותמים
-              </span>
-              <input
-                value={draft.place}
-                onChange={(event) => setDraft((current) => ({ ...current, place: event.target.value }))}
-                className={inputClass}
-              />
-            </label>
-          </div>
+            </div>
+          )}
           <AdvisorLine advisor={advisor} />
         </section>
 
@@ -355,8 +380,18 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
         <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
           <StepTitle number={2} title="החתימה" />
           <p dir="rtl" className="text-info text-slate-600">
-            החתימה מוטבעת בכל הטפסים שתפיקו כאן. אפשר לחתום בעכבר, באצבע או בעט של טאבלט.
+            החתימה מוטבעת בכל הטפסים. אפשר לחתום בעכבר, באצבע או בעט של טאבלט.
           </p>
+          <label className="block max-w-xs">
+            <span dir="rtl" className="mb-1 block text-2xs font-bold text-slate-600">
+              היישוב שבו אתם חותמים <span className="text-rose-500">*</span>
+            </span>
+            <input
+              value={draft.place}
+              onChange={(event) => setDraft((current) => ({ ...current, place: event.target.value }))}
+              className={inputClass}
+            />
+          </label>
           <div dir="rtl" className={`grid gap-4 ${borrowerCount > 1 ? 'md:grid-cols-2' : ''}`}>
             {draft.borrowers.map((borrower, index) => (
               <SignaturePad
@@ -370,7 +405,30 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
 
         {/* 3. הבנקים */}
         <section className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5">
-          <StepTitle number={3} title="הפקת הכתבים לבנקים שבחרתם" />
+          <StepTitle number={3} title="הפקת הכתבים לכל הבנקים" />
+          {missingForAll.length > 0 ? (
+            <div dir="rtl" role="status" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
+              <p dir="rtl" className="flex items-center gap-1.5 text-info font-black text-amber-900">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                כדי להפיק את הכתבים חסר עוד:
+              </p>
+              <p dir="rtl" className="mt-1 text-info text-amber-900">{missingForAll.join(', ')}</p>
+            </div>
+          ) : (
+            !allSaved && (
+              <button
+                type="button"
+                onClick={() => void generateAll()}
+                disabled={!ready || generatingAll}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-button font-black text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              >
+                {generatingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck2 className="h-4 w-4" />}
+                {uploadedCount === 0
+                  ? `הפקת הכתבים החתומים לכל ${AUTHORIZATION_BANKS.length} הבנקים`
+                  : `הפקת ${pendingBanks.length === 1 ? 'הכתב שנשאר' : `${pendingBanks.length} הכתבים שנשארו`}`}
+              </button>
+            )
+          )}
           {shownError && (
             <p dir="rtl" role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-info text-rose-800">
               {shownError}
@@ -383,7 +441,7 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
                 ...missingForBank(bank.slug, {
                   borrowers: draft.borrowers,
                   place: draft.place,
-                  customer: draft.customer[bank.slug] ?? [null, null],
+                  customer: NO_CUSTOMER_ANSWER,
                 }),
                 ...missingSignatures,
               ];
@@ -392,12 +450,9 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
                   key={bank.slug}
                   bank={bank}
                   planId={planId}
-                  borrowers={draft.borrowers}
-                  customer={draft.customer[bank.slug] ?? [null, null]}
-                  onCustomer={(index, value) => setCustomer(bank.slug, index, value)}
                   letter={letters.get(key) ?? null}
                   missing={missing}
-                  busy={!ready || busyKey === key || generating === bank.slug}
+                  busy={!ready || generatingAll || busyKey === key || generating === bank.slug}
                   generating={generating === bank.slug}
                   onGenerate={() => void generate(bank)}
                   onPreview={() => void preview(bank)}
@@ -411,11 +466,13 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
 
         <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4">
           <p dir="rtl" className="min-w-0 flex-[1_1_14rem] text-right text-info text-slate-600">
-            {uploadedCount === 0
-              ? 'עדיין לא נשמרו כתבים חתומים.'
-              : uploadedCount === 1
-                ? 'כתב הסמכה אחד נשמר ונמצא אצל היועץ.'
-                : `${uploadedCount} כתבי הסמכה נשמרו ונמצאים אצל היועץ.`}
+            {allSaved
+              ? `הכתבים של כל ${AUTHORIZATION_BANKS.length} הבנקים נשמרו ונמצאים אצל היועץ.`
+              : uploadedCount === 0
+                ? `עדיין לא נשמרו כתבים. צריך כתב חתום לכל ${AUTHORIZATION_BANKS.length} הבנקים.`
+                : `נשמרו ${uploadedCount} מתוך ${AUTHORIZATION_BANKS.length} כתבים. חסרים עוד: ${pendingBanks
+                    .map((bank) => bank.bank)
+                    .join(', ')}.`}
             <span dir="rtl" className="mt-1 flex items-center gap-1 text-2xs text-slate-400">
               <Lock className="h-3 w-3" />
               הכתבים נשמרים באחסון פרטי ונגישים רק לכם וליועץ שלכם
@@ -431,11 +488,12 @@ export function AuthorizationLettersModule({ planId }: { planId: string }) {
               <button
                 type="button"
                 onClick={() => void finish()}
-                disabled={uploadedCount === 0}
+                disabled={!ready || generatingAll || (!allSaved && missingForAll.length > 0)}
+                title={!allSaved && missingForAll.length > 0 ? `חסר עוד: ${missingForAll.join(', ')}` : undefined}
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-button font-black text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <CheckCircle2 className="h-4 w-4" />
-                סיימתי
+                {generatingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                {allSaved ? 'סיימתי' : 'הפקת כל הכתבים וסיום'}
               </button>
             )
           )}
@@ -489,9 +547,6 @@ function AdvisorLine({ advisor }: { advisor: { details: AdvisorFormDetails | nul
 function BankRow({
   bank,
   planId,
-  borrowers,
-  customer,
-  onCustomer,
   letter,
   missing,
   busy,
@@ -503,9 +558,6 @@ function BankRow({
 }: {
   bank: AuthorizationBank;
   planId: string;
-  borrowers: AuthorizationBorrower[];
-  customer: Array<boolean | null>;
-  onCustomer: (index: number, value: boolean) => void;
   letter: PlanDocumentView | null;
   missing: string[];
   busy: boolean;
@@ -516,7 +568,6 @@ function BankRow({
   onRemove: (documentId: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const asksCustomer = authorizationFormSpec(bank.slug)?.asksCustomer ?? false;
   const ready = missing.length === 0;
 
   return (
@@ -537,7 +588,8 @@ function BankRow({
             ) : ready ? (
               'הכול מוכן להפקה'
             ) : (
-              `חסר: ${missing.join(', ')}`
+              // מה שחסר מופיע פעם אחת, מעל הבנקים — לא בשורה של כל בנק
+              'ימולא אוטומטית אחרי שתשלימו את הפרטים והחתימה'
             )}
           </p>
         </div>
@@ -593,31 +645,6 @@ function BankRow({
           </button>
         </div>
       </div>
-
-      {asksCustomer && (
-        <div dir="rtl" className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-2.5">
-          {borrowers.map((borrower, index) => (
-            <div key={index} dir="rtl" className="flex items-center gap-2">
-              <span dir="rtl" className="text-2xs font-bold text-slate-600">
-                {borrower.name.trim() || `לווה ${index + 1}`} לקוח/ה של {bank.bank}?
-              </span>
-              {[true, false].map((value) => (
-                <button
-                  key={String(value)}
-                  type="button"
-                  onClick={() => onCustomer(index, value)}
-                  aria-pressed={customer[index] === value}
-                  className={`rounded-lg px-2.5 py-1 text-2xs font-black transition-colors ${
-                    customer[index] === value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {value ? 'כן' : 'לא'}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
 
       <div dir="rtl" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs">
         <button

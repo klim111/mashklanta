@@ -9,7 +9,9 @@ import {
   emptyBorrower,
   fieldValue,
   missingAdvisorDetails,
+  missingForAllBanks,
   missingForBank,
+  requiredBorrowerFields,
   parseAdvisorDetails,
 } from './authorization-forms';
 import type { AuthorizationFillInput } from './authorization-forms';
@@ -70,15 +72,30 @@ describe('missingForBank', () => {
     const borrowers = [{ ...emptyBorrower('ישראל ישראלי'), idNumber: '012345678' }];
     expect(missingForBank('leumi', { borrowers, place: 'חיפה', customer: [] })).toEqual([]);
     expect(missingForBank('leumi', { borrowers, place: '', customer: [] })).toEqual(['היישוב שבו אתם חותמים']);
-    expect(missingForBank('discount', { borrowers, place: '', customer: [null] })).toEqual([
-      'טלפון',
-      'האם לקוח/ה של הבנק',
-    ]);
+    // שאלת "לקוח הבנק" לא נשאלת במסך ולא עוצרת את ההפקה
+    expect(missingForBank('discount', { borrowers, place: '', customer: [null] })).toEqual(['טלפון']);
     expect(missingForBank('jerusalem', { borrowers, place: '', customer: [] })).toEqual([
       'טלפון',
       'כתובת מגורים',
       'אימייל',
     ]);
+  });
+});
+
+describe('missingForAllBanks', () => {
+  it('lists every field any bank needs, once', () => {
+    const borrowers = [{ ...emptyBorrower('ישראל ישראלי'), idNumber: '012345678' }];
+    expect(missingForAllBanks({ borrowers, place: '', customer: [] })).toEqual([
+      'היישוב שבו אתם חותמים',
+      'טלפון',
+      'כתובת מגורים',
+      'אימייל',
+    ]);
+    const full = [{ ...borrowers[0], phone: '0541234567', email: 'a@b.co', address: 'הרצל 1, חיפה' }];
+    expect(missingForAllBanks({ borrowers: full, place: 'חיפה', customer: [null] })).toEqual([]);
+  });
+  it('requires every field some form prints', () => {
+    expect(Array.from(requiredBorrowerFields()).sort()).toEqual(['address', 'email', 'idNumber', 'name', 'phone']);
   });
 });
 
