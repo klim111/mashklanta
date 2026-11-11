@@ -21,7 +21,7 @@ import {
   useTracks,
 } from '@livekit/components-react';
 import { RoomEvent, Track } from 'livekit-client';
-import { FolderOpen, FolderPlus, LayoutGrid, MessageSquare, MonitorPlay, PhoneOff, X } from 'lucide-react';
+import { FolderOpen, FolderPlus, LayoutGrid, MessageSquare, MonitorPlay, MonitorUp, PhoneOff, X } from 'lucide-react';
 import { formatTime } from '@/lib/advisor-crm';
 import { ChatPane } from '@/components/conversation/ChatPane';
 import { CallDocumentsPanel } from './CallDocumentsPanel';
@@ -89,6 +89,8 @@ export function CallStage({
   const [guestTools, setGuestTools] = useState(false);
   const otherName = details.role === 'ADVISOR' ? details.clientName : details.advisorName;
   const canShareScreen = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getDisplayMedia);
+  /** הסבר כשאי אפשר לשתף מסך מהמכשיר הזה (טלפון, טאבלט, דפדפן בתוך אפליקציה) */
+  const [shareNotice, setShareNotice] = useState(false);
 
   /*
     הטיפול בהודעה מתחלף בכל רינדור, אבל הפונקציה שנמסרת לערוץ נשארת אותה
@@ -405,6 +407,23 @@ export function CallStage({
           </div>
         )}
 
+        {shareNotice && (
+          <div className="flex items-center justify-between gap-2 bg-amber-500/20 px-4 py-2 text-sm font-bold text-amber-100">
+            <span>
+              מהמכשיר הזה אי אפשר לשתף מסך: טלפונים וטאבלטים לא מאפשרים את זה, וגם לא דפדפן שנפתח מתוך אפליקציה כמו
+              וואטסאפ. כדי לשתף מסך, היכנסו לפגישה מהמחשב, בכרום או באדג׳.
+            </span>
+            <button
+              type="button"
+              aria-label="סגירה"
+              onClick={() => setShareNotice(false)}
+              className="rounded p-1 hover:bg-white/10"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <div className="relative flex min-h-0 flex-1">
           {/* רכיבי LiveKit בנויים לכיוון שמאל-לימין */}
           <div dir="ltr" className={`lk-video-conference-inner min-w-0 flex-1 ${panelOpen ? 'hidden md:flex' : ''}`}>
@@ -481,7 +500,7 @@ export function CallStage({
           <TrackToggle source={Track.Source.Camera} className="call-control">
             מצלמה
           </TrackToggle>
-          {canShareScreen && (
+          {canShareScreen ? (
             <TrackToggle
               source={Track.Source.ScreenShare}
               captureOptions={{ audio: false, selfBrowserSurface: 'exclude' }}
@@ -489,6 +508,11 @@ export function CallStage({
             >
               {localParticipant.isScreenShareEnabled ? 'הפסקת שיתוף' : 'שיתוף מסך'}
             </TrackToggle>
+          ) : (
+            <ControlButton active={false} onClick={() => setShareNotice(true)}>
+              <MonitorUp className="h-4 w-4" />
+              שיתוף מסך
+            </ControlButton>
           )}
           <ControlButton active={panel === 'chat'} onClick={() => togglePanel('chat')}>
             <MessageSquare className="h-4 w-4" />
