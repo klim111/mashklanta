@@ -68,7 +68,6 @@ function parseMortgagePayoffReport(text: string) {
     linkage,
     tracks: [] as Array<{ trackType: string; rate: number | null; linkage: string | null; outstanding: number | null }>,
     validUntil: null as string | null,
-    rawText: text,
   };
 }
 
@@ -89,9 +88,11 @@ export async function POST(req: NextRequest) {
       const text = await extractTextFromImageUri(imageUrl, ["he"]);
       const parsedJson = parseMortgagePayoffReport(text);
 
+      // הטקסט המלא של המסמך אינו נשמר: הוא מכיל מידע רגיש (ת"ז, מספרי חשבון,
+      // נתוני שכר) שאין לו שימוש אחרי שהשדות המובנים חולצו ממנו.
       await prisma.document.update({
         where: { id: doc.id },
-        data: { status: "ready", ocrText: text, parsedJson },
+        data: { status: "ready", parsedJson },
       });
 
       const updated = await prisma.document.findUnique({ where: { id: doc.id } });

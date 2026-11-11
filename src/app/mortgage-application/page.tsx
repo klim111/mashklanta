@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { MortgageApplication } from '@/components/mortgage-application/MortgageApplication';
+import NavBar from '@/components/ui/navbar';
 
 export const metadata: Metadata = {
   title: 'בקשת משכנתא חכמה | משכלנתא',
@@ -8,5 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default function MortgageApplicationPage() {
-  return <MortgageApplication />;
+  return (
+    <>
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm">
+        <NavBar />
+      </div>
+      <MortgageApplication />
+    </>
+  );
 }
