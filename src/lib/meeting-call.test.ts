@@ -51,7 +51,7 @@ describe('meetingCallToken', () => {
     const config = { apiKey: 'key', apiSecret: 'secret-that-is-long-enough-for-hs256' };
     const jwt = await meetingCallToken(info, 'cli', config);
     const claims = await new TokenVerifier(config.apiKey, config.apiSecret).verify(jwt);
-    expect(claims.sub).toBe('client:cli');
+    expect(claims.sub).toMatch(/^client:cli:[0-9a-f]{8}$/);
     expect(claims.name).toBe('רון');
     expect(claims.video).toMatchObject({ room: meetingRoomName('m1'), roomJoin: true, canPublishData: true });
   });

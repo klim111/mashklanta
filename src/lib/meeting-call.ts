@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { AccessToken } from 'livekit-server-sdk';
 import { prisma } from './db';
 import { meetingIsLive } from './advisor-crm';
@@ -104,7 +105,9 @@ export function meetingCallOpen(info: Pick<MeetingCallInfo, 'status'>): boolean 
 
 /**
  * אסימון כניסה לחדר של הפגישה. הזהות כוללת את הצד, כדי שכל צד יזהה את השני
- * גם בלי לשאול את השרת; התוקף מכסה פגישה ארוכה במיוחד, ולא יותר.
+ * גם בלי לשאול את השרת, וסיומת לכל כניסה — כך אפשר להצטרף מכמה מכשירים
+ * (למשל וידאו מהטאבלט ושיתוף מהמחשב) בלי שהכניסה השנייה תנתק את הראשונה.
+ * התוקף מכסה פגישה ארוכה במיוחד, ולא יותר.
  */
 export async function meetingCallToken(
   info: MeetingCallInfo,
@@ -112,7 +115,7 @@ export async function meetingCallToken(
   config: { apiKey: string; apiSecret: string }
 ): Promise<string> {
   const token = new AccessToken(config.apiKey, config.apiSecret, {
-    identity: `${info.role.toLowerCase()}:${userId}`,
+    identity: `${info.role.toLowerCase()}:${userId}:${randomBytes(4).toString('hex')}`,
     name: info.role === 'ADVISOR' ? info.advisorName : info.clientName,
     ttl: '4h',
     metadata: JSON.stringify({ role: info.role }),
