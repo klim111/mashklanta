@@ -175,12 +175,14 @@ export function pageKeyForPath(pathname: string): string {
 }
 
 /**
- * `*` לבד — כל האתר. כוכבית בתוך נתיב מחליפה מקטע אחד (למשל לוח הסילוקין של כל תהליך);
+ * `*` לבד — כל האתר (חוץ מדפי המשרדים של היועצים). כוכבית בתוך נתיב מחליפה מקטע אחד (למשל לוח הסילוקין של כל תהליך);
  * כוכבית בסוף הנתיב כוללת גם את כל מה שמתחתיו.
  */
 export function pageMatches(pattern: string, pathname: string): boolean {
-  if (pattern === ALL_PAGES) return true;
   const path = canonicalPath(pathname);
+  // "כל האתר" הוא האתר של משכלנתא: דפי המשרדים של היועצים (/o/<slug>) הם
+  // המיתוג של היועץ, ובאנר או החלפת טקסט מופיעים בהם רק כשבוחרים אותם במפורש
+  if (pattern === ALL_PAGES) return !path.startsWith('/o/');
   if (!pattern.includes('*')) return pattern === path;
   const patternParts = pattern.split('/');
   const pathParts = path.split('/');

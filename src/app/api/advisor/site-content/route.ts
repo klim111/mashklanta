@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuth } from '@/lib/auth';
+import { requirePlatformAdmin } from '@/lib/platform-admin';
 import { getSiteContentFresh, saveSiteContent } from '@/lib/site-content-store';
 import { setTextRule } from '@/lib/site-content';
 
@@ -8,11 +8,10 @@ import { setTextRule } from '@/lib/site-content';
  * ומעריכה ישירה על הדף (PATCH, טקסט אחד). שמירה מתעדכנת מיד בכל העמודים.
  */
 async function advisorId(): Promise<string | NextResponse> {
-  const session = await getServerAuth();
-  const id = session?.user?.id;
-  if (!id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session?.user?.role !== 'ADVISOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  return id;
+  // משנה את האתר כולו — מנהל הפלטפורמה בלבד (src/lib/platform-admin.ts)
+  const auth = await requirePlatformAdmin();
+  if (auth instanceof NextResponse) return auth;
+  return auth.advisorId;
 }
 
 export async function GET() {

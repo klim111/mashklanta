@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarPlus, FolderOpen, FolderPlus, Link2, ListChecks } from 'lucide-react';
+import { Calculator, CalendarPlus, FolderOpen, FolderPlus, Link2, ListChecks, Plus, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,13 @@ export interface QuickActionsProps {
   onProposeMeeting: (input: NewMeetingInput) => Promise<string | null>;
   /** כהה — לשורה שיושבת על הרקע הכהה של ראש לוח הבקרה */
   tone?: 'dark' | 'light';
+  /**
+   * buttons — שורת כפתורים (ברירת המחדל) · menu — כפתור אחד "חדש" שפותח
+   * רשימה, לראש אזור היועץ. אותם חלונות בדיוק בשתי הצורות
+   */
+  variant?: 'buttons' | 'menu';
+  /** "לקוח חדש" ברשימה של כפתור "חדש" */
+  onNewClient?: () => void;
 }
 
 /**
@@ -41,8 +50,11 @@ export function QuickActions({
   onCreateTask,
   onProposeMeeting,
   tone = 'light',
+  variant = 'buttons',
+  onNewClient,
 }: QuickActionsProps) {
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
@@ -61,9 +73,59 @@ export function QuickActions({
       ? 'inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20'
       : 'inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:border-blue-300 hover:text-blue-700';
 
+  /** פריט ברשימה של "חדש": סוגר את הרשימה ופותח את החלון */
+  const menuItem = (label: string, icon: React.ReactNode, onSelect: () => void) => (
+    <button
+      key={label}
+      type="button"
+      onClick={() => {
+        setMenuOpen(false);
+        onSelect();
+      }}
+      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-right text-sm font-bold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">{icon}</span>
+      {label}
+    </button>
+  );
+
+  const triggers =
+    variant === 'menu' ? (
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            חדש
+          </button>
+        </PopoverTrigger>
+        <PopoverContent dir="rtl" align="end" className="w-64 rounded-2xl p-1.5 text-right">
+          {onNewClient && menuItem('לקוח חדש', <UserPlus className="h-4 w-4" />, onNewClient)}
+          {!clientId && menuItem('תיק ללקוח מתעניין', <FolderPlus className="h-4 w-4" />, () => setFileOpen(true))}
+          {menuItem('משימה', <ListChecks className="h-4 w-4" />, () => setTaskOpen(true))}
+          {menuItem('פגישה', <CalendarPlus className="h-4 w-4" />, () => setMeetingOpen(true))}
+          {!clientId && menuItem('לינק חד-פעמי לפגישה', <Link2 className="h-4 w-4" />, () => setGuestOpen(true))}
+          {menuItem('תיק מסמכים', <FolderOpen className="h-4 w-4" />, openDocuments)}
+          <Link
+            href="/mortgage-advisor"
+            onClick={() => setMenuOpen(false)}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-right text-sm font-bold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <Calculator className="h-4 w-4" />
+            </span>
+            תמהיל
+          </Link>
+        </PopoverContent>
+      </Popover>
+    ) : null;
+
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      {triggers}
+      <div className={variant === 'menu' ? 'hidden' : 'flex flex-wrap gap-2'}>
         <button type="button" onClick={() => setTaskOpen(true)} className={buttonClass}>
           <ListChecks className="h-4 w-4" />
           הוסף משימה

@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getServerAuth } from '@/lib/auth';
 import { listDepartedClients } from '@/lib/account-deletion';
+import { requireAdvisor } from '@/lib/platform-admin';
 
-/** לקוחות שהסירו את החשבון, עם רשומות התשלום שנשמרו מהם */
+/** לקוחות שהסירו את החשבון, עם רשומות התשלום שנשמרו מהם — של היועץ בלבד */
 export async function GET() {
-  const session = await getServerAuth();
-  const userId = session?.user?.id;
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'ADVISOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  return NextResponse.json({ clients: await listDepartedClients(userId) });
+  const auth = await requireAdvisor();
+  if (auth instanceof NextResponse) return auth;
+  return NextResponse.json({ clients: await listDepartedClients(auth.advisorId, auth.platformAdmin) });
 }

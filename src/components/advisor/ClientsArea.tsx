@@ -7,6 +7,7 @@ import { UnfinishedSignupsPanel } from './UnfinishedSignupsPanel';
 import { PayingClientsTable } from './PayingClientsTable';
 import type { PayingClientRow } from './PayingClientsTable';
 import type { AdvisorClient } from './useAdvisorClients';
+import type { PlanStageId } from '@/lib/advisor-crm';
 import { useLiveVersion } from '@/hooks/useLiveRefresh';
 
 export type ClientGroup = 'unfinished' | 'registered' | 'paying' | 'departed';
@@ -80,6 +81,8 @@ export function ClientsArea({
   onScheduleMeeting,
   query,
   onQueryChange,
+  initialStage,
+  startAdding,
 }: {
   clients: AdvisorClient[];
   ready: boolean;
@@ -88,6 +91,9 @@ export function ClientsArea({
   onScheduleMeeting?: (client: AdvisorClient) => void;
   query?: string;
   onQueryChange?: (value: string) => void;
+  /** סינון לפי שלב כבר בפתיחה, ופתיחת הטופס "לקוח חדש" (src/components/advisor/ClientList.tsx) */
+  initialStage?: PlanStageId | 'none' | '';
+  startAdding?: boolean;
 }) {
   const [group, setGroup] = useState<ClientGroup>('registered');
   const unfinished = useUnfinishedCount();
@@ -169,6 +175,8 @@ export function ClientsArea({
             onScheduleMeeting={onScheduleMeeting}
             query={query}
             onQueryChange={onQueryChange}
+            initialStage={initialStage}
+            startAdding={startAdding}
           />
         </div>
       )}

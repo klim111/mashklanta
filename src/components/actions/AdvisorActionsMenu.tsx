@@ -113,6 +113,8 @@ export function AdvisorActionsMenu() {
 
   if (status !== 'authenticated' || session?.user?.role !== 'ADVISOR') return null;
   if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null;
+  // בלוח היועץ עצמו יש תפריט צד וכפתור "חדש" עם אותן פעולות
+  if (pathname === '/advisor-dashboard') return null;
 
   const openTab = (tab: string) => {
     setOpen(false);

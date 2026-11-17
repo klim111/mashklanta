@@ -14,6 +14,7 @@ import { passwordProblem } from '@/lib/password-policy';
 import { useSignupDraft } from '@/components/analytics/useSignupDraft';
 import { SignupDraftNotice } from '@/components/analytics/SignupDraftNotice';
 import { ConsultSentNotice } from '@/components/auth/ConsultSentNotice';
+import { OfficeJoinNotice } from '@/components/office/OfficeJoinNotice';
 import { AuthLogo, BackHomeLink } from '@/components/auth/AuthPageParts';
 import { authHref, safeCallbackPath } from '@/lib/auth-url';
 import { trackEvent } from '@/lib/gtag';
@@ -148,6 +149,9 @@ function RegisterForm() {
             <h1 className="text-title font-bold text-slate-900">הרשמה</h1>
             <p className="text-slate-600 mt-2">פתיחת חשבון לקוח במשכלנתא. נשלח לכם מייל לאישור הכתובת.</p>
           </div>
+
+          {/* הגיעו מדף משרד של יועץ: אל מי מצטרפים */}
+          {searchParams.get('office') && <OfficeJoinNotice slug={searchParams.get('office')!} />}
 
           {/* אחרי בקשת ליווי מ"היוועצו איתנו": הסבר, והשם והמייל מהבקשה כבר בטופס */}
           {searchParams.get('from') === 'consult' && (

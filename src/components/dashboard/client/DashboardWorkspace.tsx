@@ -41,6 +41,7 @@ export function DashboardWorkspace({
   cashFlow,
   initial = null,
   request = null,
+  hidden = [],
 }: {
   actions: ReactNode;
   actionsCount: number;
@@ -49,13 +50,17 @@ export function DashboardWorkspace({
   initial?: WorkspaceId | null;
   /** פתיחה מבחוץ, גם כשאותו אזור כבר נבחר קודם — `nonce` משתנה בכל בקשה */
   request?: { id: WorkspaceId; nonce: number } | null;
+  /** כלים שהיועץ לא פתח ללקוח (src/lib/office.ts) — העמודה שלהם לא מוצגת */
+  hidden?: WorkspaceId[];
 }) {
-  const [open, setOpen] = useState<WorkspaceId | null>(initial);
+  const columns = META.filter((item) => !hidden.includes(item.id));
+  const visible = (id: WorkspaceId | null) => (id && !hidden.includes(id) ? id : null);
+  const [open, setOpen] = useState<WorkspaceId | null>(visible(initial));
   const ref = useRef<HTMLElement | null>(null);
 
-  useEffect(() => setOpen(initial), [initial]);
+  useEffect(() => setOpen(visible(initial)), [initial]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!request) return;
+    if (!request || !visible(request.id)) return;
     setOpen(request.id);
     window.requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }, [request]);
@@ -73,8 +78,12 @@ export function DashboardWorkspace({
 
   if (!open) {
     return (
-      <section ref={ref} className="grid scroll-mt-6 gap-4 md:grid-cols-3" data-demo-id="dash-workspace">
-        {META.map((meta) => (
+      <section
+        ref={ref}
+        className={`grid scroll-mt-6 gap-4 ${columns.length === 3 ? 'md:grid-cols-3' : columns.length === 2 ? 'md:grid-cols-2' : ''}`}
+        data-demo-id="dash-workspace"
+      >
+        {columns.map((meta) => (
           <motion.button
             layout
             key={meta.id}
@@ -96,8 +105,8 @@ export function DashboardWorkspace({
     );
   }
 
-  const current = META.find((meta) => meta.id === open)!;
-  const others = META.filter((meta) => meta.id !== open);
+  const current = META.find((item) => item.id === open)!;
+  const others = columns.filter((item) => item.id !== open);
 
   return (
     <section

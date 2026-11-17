@@ -18,6 +18,7 @@ import { demoId } from '@/demo/demo-attr';
 import type { DashboardSection } from '@/lib/client-agenda';
 import { PAID_FEATURE_HINT } from '@/components/access/PaidFeatureLock';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
+import { isToolModuleId, type ClientToolAccess } from '@/lib/office';
 
 type HubTool = {
   id: string;
@@ -146,12 +147,21 @@ const tools: HubTool[] = [
   },
 ];
 
-export function ToolsHub({ onSection }: { onSection?: (section: DashboardSection) => void } = {}) {
+export function ToolsHub({
+  onSection,
+  toolAccess,
+}: {
+  onSection?: (section: DashboardSection) => void;
+  /** הכלים שהיועץ פתח ללקוח (src/lib/office.ts). בלי — כל הכלים */
+  toolAccess?: ClientToolAccess;
+} = {}) {
   const { access, ready } = usePlatformAccess();
+  // כלי שהיועץ לא פתח ללקוח לא מוצג כאן בכלל — גם לא כנעול
+  const offered = tools.filter((tool) => !toolAccess || !isToolModuleId(tool.id) || toolAccess[tool.id]);
   // בונה התמהילים אינו כלי חינמי: עד רכישת החבילה הוא יורד מרשימת הכלים, ומוצג בנפרד עם מנעול
   const locked = ready && !access.paidClient;
-  const shown = locked ? tools.filter((tool) => !tool.paid) : tools;
-  const lockedTools = locked ? tools.filter((tool) => tool.paid) : [];
+  const shown = locked ? offered.filter((tool) => !tool.paid) : offered;
+  const lockedTools = locked ? offered.filter((tool) => tool.paid) : [];
 
   return (
     <div dir="rtl" className="space-y-6">

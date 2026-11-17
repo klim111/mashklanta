@@ -33,6 +33,7 @@ import { useClientActivity } from '@/components/advisor/useClientActivity';
 import { ClientActivitySummary } from '@/components/advisor/ClientActivitySummary';
 import { ClientControlBoard } from '@/components/advisor/ClientControlBoard';
 import { ClientPaymentSettings } from '@/components/advisor/ClientPaymentSettings';
+import { ClientToolAccessCard } from '@/components/advisor/office/ClientToolAccessCard';
 import { AdvisorInboxDock } from '@/components/conversation/AdvisorInboxDock';
 import { VideoCallPicker } from '@/components/meeting-call/VideoCallPicker';
 import { ProspectFileCard } from '@/components/advisor/ProspectFileCard';
@@ -290,11 +291,15 @@ export default function AdvisorClientPage() {
         )}
 
         {tab === 'payment' && (
-          <ClientPaymentSettings
-            clientId={clientId}
-            billing={activity.activity?.billing}
-            onChanged={() => void activity.refresh()}
-          />
+          <div className="space-y-4">
+            <ClientPaymentSettings
+              clientId={clientId}
+              billing={activity.activity?.billing}
+              onChanged={() => void activity.refresh()}
+            />
+            {/* אילו כלים הלקוח רואה באזור האישי (src/lib/office.ts) */}
+            <ClientToolAccessCard clientId={clientId} />
+          </div>
         )}
 
         {tab === 'stages' && (

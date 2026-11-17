@@ -1139,6 +1139,15 @@ input[type="number"]::placeholder {
   margin: 12mm 10mm;
 }
 
+/*
+ * אזור היועץ, דף המשרד והמיתוג של המשרד באזור הלקוח — טקסט מיושר לימין
+ * (ברירת המחדל באתר ממרכזת p/span/div). מה שצריך להיות ממורכז מקבל text-center.
+ */
+.start-aligned :is(p, span, div, h1, h2, h3, li):not([dir]):not(.text-center),
+.start-aligned:is(p, span, div):not([dir]):not(.text-center) {
+  text-align: right;
+}
+
 /* המסמכים המשפטיים (/privacy, /terms) — טקסט רציף מיושר לימין, לא למרכז */
 .legal-doc.legal-doc :is(p, div, span, h1, h2, h3, li) {
   text-align: right;

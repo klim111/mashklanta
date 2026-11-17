@@ -96,9 +96,24 @@ export function readPaymentLinkInput(raw: unknown): { input: PaymentLinkInput } 
   };
 }
 
-export async function listPaymentLinks(): Promise<PaymentLinkView[]> {
-  const rows = await prisma.paymentLink.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
+/**
+ * קישורי התשלום: של היועץ שיצר אותם בלבד. מנהל הפלטפורמה (`createdById`
+ * ריק) רואה את כולם — גם קישורים מלפני האיחוד ליועץ יחיד, שנוצרו במזהה אחר.
+ */
+export async function listPaymentLinks(createdById: string | null): Promise<PaymentLinkView[]> {
+  const rows = await prisma.paymentLink.findMany({
+    where: createdById ? { createdById } : undefined,
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+  });
   return rows.map(toView);
+}
+
+/** האם היועץ רשאי לפעול על הקישור: הוא יצר אותו, או שהוא מנהל הפלטפורמה */
+export async function canManagePaymentLink(id: string, advisorId: string, platformAdmin: boolean): Promise<boolean> {
+  if (platformAdmin) return true;
+  const row = await prisma.paymentLink.findUnique({ where: { id }, select: { createdById: true } });
+  return row?.createdById === advisorId;
 }
 
 /** קישורי התשלום של לקוח אחד — לפי הכרטיס, או לפי המייל בקישור שנוצר בלי כרטיס */

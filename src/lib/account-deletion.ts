@@ -232,9 +232,13 @@ export interface DepartedClientView {
 }
 
 /** "לקוחות שעזבו" בלוח היועץ: מי שהסיר את החשבון, ומה ששילם עד אז */
-export async function listDepartedClients(advisorId: string): Promise<DepartedClientView[]> {
+export async function listDepartedClients(
+  advisorId: string,
+  /** רשומות בלי יועץ (מלפני השיוך) — רק למנהל הפלטפורמה */
+  includeUnassigned = false
+): Promise<DepartedClientView[]> {
   const rows = await prisma.departedClient.findMany({
-    where: { OR: [{ advisorId }, { advisorId: null }] },
+    where: includeUnassigned ? { OR: [{ advisorId }, { advisorId: null }] } : { advisorId },
     orderBy: { departedAt: 'desc' },
     take: 500,
   });

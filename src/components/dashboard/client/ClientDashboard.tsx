@@ -53,6 +53,10 @@ import { mixBuilderHref } from './mixBuilderLink';
 import { demoId } from '@/demo/demo-attr';
 import { ConversationDockSlot, useClientConversation } from '@/components/conversation/ClientChatDock';
 import { CHAT_TITLE } from '@/lib/conversation';
+import { TOOL_MODULE_IDS, type ClientToolAccess, type ToolModuleId } from '@/lib/office';
+import { useClientOffice } from '@/components/office/useClientOffice';
+import { ClientOfficeBrand } from '@/components/office/ClientOfficeBrand';
+import { PoweredBy } from '@/components/office/PoweredBy';
 
 interface SectionMeta {
   id: DashboardSection;
@@ -147,6 +151,21 @@ const SECTIONS: SectionMeta[] = [
   },
 ];
 
+/** אזורים שהם כלי שהיועץ בוחר אם לפתוח ללקוח (src/lib/office.ts) */
+const SECTION_TOOL: Partial<Record<DashboardSection, ToolModuleId>> = {
+  expenses: 'equity',
+  'cash-flow': 'cash-flow',
+  'rate-requests': 'mix-planner',
+};
+
+function sectionOpen(section: DashboardSection, tools: ClientToolAccess): boolean {
+  const tool = SECTION_TOOL[section];
+  if (tool) return tools[tool];
+  // מרכז הכלים — כשלפחות כלי אחד פתוח
+  if (section === 'tools') return TOOL_MODULE_IDS.some((id) => tools[id]);
+  return true;
+}
+
 /** קישורים ישנים כמו `/dashboard#plans` ו-`#mortgages` מובילים לסקירה, שבה המשכנתאות */
 const LEGACY_HASH: Record<string, DashboardSection> = { plans: 'overview', mortgages: 'overview' };
 
@@ -179,6 +198,8 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
   /** המשכנתא שמוצגת ב"המשכנתא שלי" — ברירת המחדל היא האחרונה שנחתמה */
   const [mortgagePlanId, setMortgagePlanId] = useState<string | null>(null);
   const data = useClientDashboard();
+  /** המשרד של היועץ — המיתוג בראש האזור, והכלים שפתח ללקוח */
+  const officeState = useClientOffice();
   const { startPlan, busy: startBusy } = useStartPlan(data.plansState.start);
   /**
    * בחירה שהגיעה בכתובת — מעמוד הבית אחרי ההרשמה, או ממסך התשלום — ממשיכה
@@ -252,7 +273,12 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
       }
     >
       <MessageCircle className="h-5 w-5 shrink-0" />
-      <span className={`min-w-0 flex-1 text-right ${tone === 'sidebar' ? 'leading-tight' : 'truncate'}`}>{CHAT_TITLE}</span>
+      <span className={`min-w-0 flex-1 text-right ${tone === 'sidebar' ? 'leading-tight' : 'truncate'}`}>
+        {/* במשרד של יועץ — ההתכתבות היא איתו, ולא עם "נציג משכלנתא" */}
+        {officeState.office
+          ? `הודעות ל${officeState.office.profile.advisorName || officeState.office.name}`
+          : CHAT_TITLE}
+      </span>
       {/* מה שהגיע ועוד לא נקרא — גלוי כאן גם כשחלון ההתכתבות לא נפתח */}
       {chatUnread > 0 && (
         <span className="relative flex shrink-0">
@@ -281,10 +307,16 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
     // קישור ישן ל-`#rate-requests` אצל לקוח שלא שילם חוזר לסקירה
     if (data.accessReady && !mixesOpen && section === 'rate-requests') navigate('overview');
   }, [data.accessReady, mixesOpen, section, navigate]);
+  useEffect(() => {
+    // כלי שהיועץ לא פתח ללקוח — גם קישור ישיר אליו חוזר לסקירה
+    if (officeState.ready && !sectionOpen(section, officeState.tools)) navigate('overview');
+  }, [officeState.ready, officeState.tools, section, navigate]);
   const navItems = (tone: 'sidebar' | 'bar') =>
     SECTIONS.filter(
       (item) =>
-        (item.id !== 'my-mortgage' || hasSignedMortgage) && (item.id !== 'rate-requests' || mixesOpen)
+        (item.id !== 'my-mortgage' || hasSignedMortgage) &&
+        (item.id !== 'rate-requests' || mixesOpen) &&
+        sectionOpen(item.id, officeState.tools)
     ).map((item) => {
       const Icon = item.icon;
       const active = section === item.id;
@@ -323,12 +355,16 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
       <ContinueToolsDialog />
       {/* תפריט הצד — במסך רחב */}
       <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:bg-brand-dark lg:px-4 lg:py-5">
-        <Link href="/" className="flex items-center gap-2.5 px-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg">
-            <HomeIcon className="h-5 w-5 text-white" />
-          </span>
-          <span className="text-xl font-black text-white">משכלנתא</span>
-        </Link>
+        {officeState.office ? (
+          <ClientOfficeBrand office={officeState.office} variant="sidebar" />
+        ) : (
+          <Link href="/" className="flex items-center gap-2.5 px-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg">
+              <HomeIcon className="h-5 w-5 text-white" />
+            </span>
+            <span className="text-xl font-black text-white">משכלנתא</span>
+          </Link>
+        )}
 
         <p className="mt-6 px-3 text-xs font-bold tracking-wide text-white/40">האזור האישי</p>
         <nav className="mt-2 space-y-1" {...demoId('dash-sidebar-nav')}>
@@ -346,6 +382,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
             deletePlan={data.plansState.remove}
           />
           <AdvisorCta variant="sidebar" />
+          {officeState.office && <PoweredBy tone="dark" />}
           <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10">
               <UserRound className="h-4 w-4 text-white" />
@@ -375,12 +412,16 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
         {/* ראש העמוד במסך צר — מותג, משתמש וניווט אופקי */}
         <header className="sticky top-0 z-30 bg-brand-dark lg:hidden">
           <div className="flex h-14 items-center justify-between px-4">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600">
-                <HomeIcon className="h-4 w-4 text-white" />
-              </span>
-              <span className="text-lg font-black text-white">משכלנתא</span>
-            </Link>
+            {officeState.office ? (
+              <ClientOfficeBrand office={officeState.office} variant="bar" />
+            ) : (
+              <Link href="/" className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600">
+                  <HomeIcon className="h-4 w-4 text-white" />
+                </span>
+                <span className="text-lg font-black text-white">משכלנתא</span>
+              </Link>
+            )}
             <div className="flex items-center gap-1">
               <span className="max-w-[9rem] truncate text-sm font-semibold text-white/80">{displayName}</span>
               <Link
@@ -454,6 +495,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
                   onDetailPlan={setDetailPlanId}
                   onNavigate={navigate}
                   onOpenMortgage={openMortgage}
+                  toolAccess={officeState.tools}
                 />
               )}
 
@@ -522,7 +564,7 @@ export function ClientDashboard({ name, email }: { name: string | null; email: s
 
               {section === 'tools' && (
                 <div {...demoId('dash-tools')}>
-                  <ToolsHub onSection={navigate} />
+                  <ToolsHub onSection={navigate} toolAccess={officeState.tools} />
                 </div>
               )}
 

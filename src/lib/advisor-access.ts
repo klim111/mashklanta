@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { sendEmail, emailTemplates } from '@/lib/email';
 import { canonicalSiteOrigin } from '@/lib/auth-url';
+import { advisorOrigin } from '@/lib/advisor-host';
 import { normalizeEmail } from '@/lib/find-user-by-login';
 import { passwordProblem } from '@/lib/password-policy';
 import { rateLimit } from '@/lib/rate-limit';
@@ -31,7 +32,8 @@ export const ADVISOR_DEVICE_COOKIE = 'mk_adv_device';
 const IDENTIFIER_PREFIX = 'advisor-login:';
 
 function confirmUrl(token: string, requestOrigin?: string | null): string {
-  const origin = canonicalSiteOrigin() ?? requestOrigin ?? 'http://localhost:3000';
+  // כשיש כתובת נפרדת ליועצים, הכניסה נשמרת שם (src/lib/advisor-host.ts)
+  const origin = advisorOrigin() ?? canonicalSiteOrigin() ?? requestOrigin ?? 'http://localhost:3000';
   return `${origin}/auth/advisor-verify?token=${encodeURIComponent(token)}`;
 }
 

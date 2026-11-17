@@ -1,8 +1,11 @@
 import { Prisma } from '@prisma/client';
+import { cookies } from 'next/headers';
 import { prisma } from './db';
 import { syncStageDocuments } from './clients';
 import { ADVISOR_EMAIL } from './single-advisor';
 import { claimProspectFile } from './prospect-client';
+import { OFFICE_COOKIE } from './office';
+import { officeOwnerBySlug } from './office-store';
 
 /**
  * שיוך לקוחות ליועץ.
@@ -40,6 +43,21 @@ export interface ClientLink {
 }
 
 /**
+ * היועץ של המשרד שדרכו הגולש הגיע — דף המשרד (/o/<slug>) שומר את הקישור
+ * בעוגייה, וכך מי שנרשם מהדף של יועץ משויך אליו ולא ליועץ של הפלטפורמה.
+ * רק משרד פעיל. מחוץ לבקשה, או בלי עוגייה — null.
+ */
+async function advisorFromOfficeCookie(): Promise<PrimaryAdvisor | null> {
+  try {
+    const slug = (await cookies()).get(OFFICE_COOKIE)?.value;
+    if (!slug) return null;
+    return await officeOwnerBySlug(decodeURIComponent(slug));
+  } catch {
+    return null;
+  }
+}
+
+/**
  * כרטיס הלקוח של המשתמש, ואם אין — פתיחת כרטיס אצל היועץ של הפלטפורמה.
  *
  * בפתיחת הכרטיס, מה שהלקוח כבר עשה לפני שהיה לו כרטיס (תהליכים, מסמכים,
@@ -61,10 +79,12 @@ export async function ensureClientLink(userId: string): Promise<ClientLink | nul
   });
   if (existing) return { clientId: existing.id, advisorId: existing.advisorId };
 
-  const [user, advisor] = await Promise.all([
+  const [user, officeAdvisor] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { role: true, name: true, email: true } }),
-    primaryAdvisor(),
+    advisorFromOfficeCookie(),
   ]);
+  // מי שהגיע מדף משרד של יועץ — אליו; כל השאר — ליועץ של הפלטפורמה
+  const advisor = officeAdvisor ?? (await primaryAdvisor());
   if (!user || user.role !== 'CLIENT' || !user.email || !advisor || advisor.id === userId) return null;
 
   let clientId: string;
