@@ -39,6 +39,11 @@ interface ClientListProps {
   /** חיפוש חיצוני — כשהוא מגיע משורת החיפוש שבראש הלוח */
   query?: string;
   onQueryChange?: (value: string) => void;
+  /** סינון לפי שלב כבר בפתיחה — למשל מלחיצה על שלב בעמוד הבית */
+  /** `none` — לקוחות שעוד אין להם תהליך */
+  initialStage?: PlanStageId | 'none' | '';
+  /** טופס "לקוח חדש" פתוח כבר בפתיחה — מכפתור "חדש" שבראש אזור היועץ */
+  startAdding?: boolean;
 }
 
 function formatShekel(value: number | null): string {
@@ -60,14 +65,16 @@ export function ClientList({
   emptyHint,
   query: externalQuery,
   onQueryChange,
+  initialStage = '',
+  startAdding = false,
 }: ClientListProps) {
   const [internalQuery, setInternalQuery] = useState('');
   const query = externalQuery ?? internalQuery;
   const setQuery = onQueryChange ?? setInternalQuery;
 
   const [incomeBucket, setIncomeBucket] = useState<string>('');
-  const [stageFilter, setStageFilter] = useState<string>('');
-  const [adding, setAdding] = useState(false);
+  const [stageFilter, setStageFilter] = useState<string>(initialStage);
+  const [adding, setAdding] = useState(startAdding);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -78,7 +85,9 @@ export function ClientList({
     const term = query.trim().toLowerCase();
     return clients.filter((client) => {
       if (incomeBucket && client.incomeBucket !== incomeBucket) return false;
-      if (stageFilter && client.planStage !== stageFilter) return false;
+      if (stageFilter === 'none' ? client.planStage !== null : stageFilter && client.planStage !== stageFilter) {
+        return false;
+      }
       if (!term) return true;
       return [client.name, client.email, client.phone ?? ''].some((field) =>
         field.toLowerCase().includes(term)
@@ -127,6 +136,7 @@ export function ClientList({
               שלב {index + 1} · {stageLabel(stage)}
             </option>
           ))}
+          <option value="none">עוד בלי תהליך</option>
         </select>
         <select
           value={incomeBucket}

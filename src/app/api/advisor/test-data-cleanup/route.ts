@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuth } from '@/lib/auth';
+import { requirePlatformAdmin } from '@/lib/platform-admin';
 import {
   buildCleanupBackup,
   buildCleanupPreview,
@@ -15,11 +15,10 @@ export const maxDuration = 300;
 /** מילת האישור שהיועץ מקליד לפני המחיקה */
 const CONFIRM_WORD = 'מחק';
 
+/** מוחק נתונים מכל האתר — מנהל הפלטפורמה בלבד */
 async function requireAdvisor() {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'ADVISOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  return null;
+  const auth = await requirePlatformAdmin();
+  return auth instanceof NextResponse ? auth : null;
 }
 
 /** מה יימחק ומה יישאר */

@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuth } from '@/lib/auth';
-import { cancelPaymentLink, sendPaymentLink } from '@/lib/payment-links';
+import { canManagePaymentLink, cancelPaymentLink, sendPaymentLink } from '@/lib/payment-links';
+import { requireAdvisor } from '@/lib/platform-admin';
 
-/** פעולה על קישור תשלום: `send` — שליחה ללקוח במייל · `cancel` — ביטול קישור שעוד לא שולם */
+/**
+ * פעולה על קישור תשלום: `send` — שליחה ללקוח במייל · `cancel` — ביטול קישור שעוד לא שולם.
+ * רק על קישור שהיועץ יצר בעצמו (מנהל הפלטפורמה — על כל קישור).
+ */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdvisor();
+  if (auth instanceof NextResponse) return auth;
   const session = await getServerAuth();
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'ADVISOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
+  if (!(await canManagePaymentLink(id, auth.advisorId, auth.platformAdmin))) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const body = await req.json().catch(() => null);
   if (body?.action === 'send') {
-    const error = await sendPaymentLink(id, session.user.email);
+    const error = await sendPaymentLink(id, session?.user?.email);
     return error ? NextResponse.json({ error }, { status: 400 }) : NextResponse.json({ ok: true });
   }
   if (body?.action === 'cancel') {

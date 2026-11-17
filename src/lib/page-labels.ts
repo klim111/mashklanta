@@ -19,6 +19,7 @@ const PAGES: Array<[prefix: string, label: string]> = [
   ['/principal-approval', 'אישור עקרוני'],
   ['/client-details-form', 'טופס פרטי הלקוח'],
   ['/consult', 'היוועצו איתנו בתפריט העליון'],
+  ['/o', 'דף המשרד'],
 ];
 
 export function pageLabel(path: string | null | undefined): string | null {

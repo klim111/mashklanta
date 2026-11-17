@@ -6,6 +6,7 @@ import { createLead, listOwnOpenLeads, parseLeadTopic } from '@/lib/advisor-lead
 import { parseRequestKind } from '@/lib/advisor-requests';
 import { cleanSourcePath } from '@/lib/page-labels';
 import { parseLeadFileRefs, resolveLeadFiles } from '@/lib/lead-files';
+import { officeOwnerBySlug } from '@/lib/office-store';
 
 function clean(value: unknown, max = 200): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -62,7 +63,12 @@ export async function POST(req: NextRequest) {
   const files = await resolveLeadFiles(parseLeadFileRefs(body?.files));
   if (!files.ok) return NextResponse.json({ error: files.error }, { status: files.status });
 
+  // פנייה של אורח מדף משרד של יועץ (/o/<slug>) מגיעה ליועץ של המשרד. לקוח רשום
+  // משויך לפי הכרטיס שלו (src/lib/advisor-link.ts)
+  const officeAdvisor = userId ? null : await officeOwnerBySlug(clean(body?.office, 40) || null);
+
   const lead = await createLead(userId, {
+    advisorId: officeAdvisor?.id ?? null,
     topic: parseLeadTopic(body?.topic),
     name,
     phone: clean(body?.phone, 30),

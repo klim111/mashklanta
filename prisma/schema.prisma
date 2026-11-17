@@ -95,6 +95,11 @@ model User {
    * הקטגוריות שהיועץ הגדיר לתמהילים שאינם משויכים ללקוח
    */
   mixCategories   MixCategory[]        @relation("AdvisorMixCategories")
+  /**
+   * המשרד הדיגיטלי של היועץ (src/lib/office.ts): השם, הקישור, המיתוג והכלים
+   * שהלקוחות שלו רואים. ליועץ יש משרד אחד
+   */
+  office          Office?              @relation("OfficeOwner")
 
   // ─────────────────────── האישור העקרוני (איסוף פרטי הבקשה) ───────────────────────
   /**
@@ -413,6 +418,11 @@ model Client {
    */
   requestKind String?
   requestedAt DateTime?
+  /**
+   * הכלים שהיועץ פתח או סגר ללקוח הזה, מעבר להגדרת המשרד (src/lib/office.ts):
+   * { "<מזהה כלי>": "on" | "off" }. ריק — כמו שהמשרד מגדיר
+   */
+  toolAccessJson Json?
   guestMeetings GuestMeeting[]
 
   // ריביות מהבנקים
@@ -1571,6 +1581,31 @@ model PaymentLink {
 
   @@index([createdById, createdAt])
   @@index([status])
+}
+
+/**
+ * המשרד הדיגיטלי של יועץ (src/lib/office.ts, src/lib/office-store.ts).
+ *
+ * כל יועץ מקבל משרד אחד: דף ציבורי בכתובת /o/<slug> עם המיתוג שלו, והגדרת
+ * הכלים שהלקוחות שלו רואים באזור האישי. עד שהיועץ מפעיל את המשרד
+ * (`published`), הדף הציבורי סגור והלקוחות לא רואים את המיתוג.
+ */
+model Office {
+  id          String   @id @default(cuid())
+  ownerId     String   @unique
+  owner       User     @relation("OfficeOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  /** החלק שבקישור: mashkalanta.com/o/<slug> */
+  slug        String   @unique
+  /** שם המשרד, כפי שהלקוחות רואים אותו */
+  name        String
+  /** המשרד פעיל: הדף הציבורי פתוח, והלקוחות רואים את המיתוג באזור האישי */
+  published   Boolean  @default(false)
+  /** פרטי המשרד והמיתוג: כותרת, אודות, טלפון, לוגו, תמונה וצבע (OfficeProfile) */
+  profileJson Json     @default("{}")
+  /** הכלים שהלקוחות רואים, והכלים החינמיים בדף המשרד (OfficeTools) */
+  toolsJson   Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 /**

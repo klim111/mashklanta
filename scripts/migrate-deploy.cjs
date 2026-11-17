@@ -32,6 +32,7 @@ const RETRYABLE_MIGRATIONS = new Set([
   '20261106070000_client_intake_requests',
   '20261101140000_staff_visitor',
   '20261101140000_advisor_task_deletions',
+  '20261117080000_advisor_office',
 ]);
 
 const databaseUrl = process.env.DATABASE_URL;

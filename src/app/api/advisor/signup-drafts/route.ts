@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getServerAuth } from '@/lib/auth';
 import { buildUnfinishedSignups } from '@/lib/site-analytics';
-
-async function requireAdvisor() {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'ADVISOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  return null;
-}
+import { requireAdvisor, requirePlatformAdmin } from '@/lib/platform-admin';
 
 /**
  * "הרשמות שלא הושלמו": מי שהתחיל להקליד פרטים בטופס ההרשמה ועזב, ומי ששלח
  * הרשמה ולא אישר את המייל — עם מה שהספקנו לשמור, ועד איפה הגיע.
  */
 export async function GET() {
-  const denied = await requireAdvisor();
-  if (denied) return denied;
+  const auth = await requireAdvisor();
+  if (auth instanceof NextResponse) return auth;
+  // הרשמות שלא הושלמו הן נתון של האתר כולו — יועץ שאינו מנהל הפלטפורמה לא רואה אותן
+  if (!auth.platformAdmin) return NextResponse.json({ signups: [] });
 
   const [drafts, pendings] = await Promise.all([
     prisma.signupDraft.findMany({ orderBy: { updatedAt: 'desc' }, take: 1000 }),
@@ -87,8 +82,8 @@ export async function GET() {
 
 /** הסרת טיוטה מהרשימה (למשל אחרי שטופלה). הרשמה שממתינה לאישור לא נמחקת מכאן */
 export async function DELETE(request: NextRequest) {
-  const denied = await requireAdvisor();
-  if (denied) return denied;
+  const auth = await requirePlatformAdmin();
+  if (auth instanceof NextResponse) return auth;
 
   const id = request.nextUrl.searchParams.get('id');
   if (!id || id.startsWith('pending:')) return NextResponse.json({ error: 'Bad request' }, { status: 400 });

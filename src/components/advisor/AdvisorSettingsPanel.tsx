@@ -39,13 +39,19 @@ const SETTINGS_ANCHOR_CONTEXT = { years: 25, variablePeriod: 5 };
  * כל מסלול חדש בכלי בניית התמהיל נפתח עם הריבית הזו — ועדיין ניתן לשנות אותה
  * בעת היצירה, בלי שהשינוי ייגע בהגדרות.
  */
+export type AdvisorSettingsCard = 'profile' | 'password' | 'form-details' | 'rates' | 'categories' | 'cleanup';
+
 export function AdvisorSettingsPanel({
   name,
   email,
+  cards,
 }: {
   name: string;
   email: string;
+  /** אילו כרטיסים להציג — באזור היועץ הם מתחלקים בין "חשבון ואבטחה" ל"המשרד שלי". בלי — כולם */
+  cards?: AdvisorSettingsCard[];
 }) {
+  const shows = (card: AdvisorSettingsCard) => !cards || cards.includes(card);
   const { settings, ready, saveRates, addCategory, removeCategory } = useAdvisorSettings();
 
   const [bank, setBank] = useState<string>(MORTGAGE_BANKS[0]);
@@ -166,209 +172,215 @@ export function AdvisorSettingsPanel({
 
   return (
     <div className="space-y-4">
-      <SectionCard title="פרטים אישיים" icon={<Building2 className="h-4 w-4 text-blue-600" />}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold text-slate-700">שם מלא</span>
-            <Input
-              value={profileName}
-              onChange={(event) => {
-                setProfileName(event.target.value);
-                setProfileSaved(false);
-              }}
-              className="h-9 text-sm"
-            />
-            <span className="mt-1 block text-[11px] text-slate-500">
-              זה השם שמופיע ללקוחות לצד ההערות והפגישות שלכם.
-            </span>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold text-slate-700">כתובת מייל</span>
-            <Input defaultValue={email} disabled className="h-9 bg-slate-50 text-sm" />
-          </label>
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs"
-            disabled={!profile}
-            onClick={() => void saveProfile()}
-          >
-            <Save className="ml-1 h-3.5 w-3.5" />
-            שמור שם
-          </Button>
-          {profileSaved && (
-            <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-              <Check className="h-4 w-4" />
-              נשמר
-            </span>
-          )}
-        </div>
-      </SectionCard>
-
-      <AdvisorPasswordCard />
-
-      <AdvisorFormDetailsCard />
-
-      <SectionCard
-        title="ריביות ברירת מחדל"
-        icon={<Percent className="h-4 w-4 text-blue-600" />}
-        action={
-          <span className="text-[11px] text-slate-500">
-            {filledForBank > 0 ? `${filledForBank} ריביות שמורות ל${bank}` : 'טרם הוגדרו ריביות'}
-          </span>
-        }
-      >
-        <p className="mb-3 text-xs leading-relaxed text-slate-500">
-          הזינו פעם אחת את הריביות שאתם עובדים איתן מול כל בנק ולכל לוח סילוקין. במסלולים
-          המשתנים הריבית מפורקת לעוגן ולמרווח: העוגן נמשך אוטומטית מבנק ישראל — ריבית הפריים
-          במשק למסלול פריים, ועקום האפס הנומינלי או הריאלי למשתנות — ואתם מזינים את המרווח
-          שמעליו. אפשר גם להזין את הריבית הסופית, והמרווח יתעדכן בהתאם. בכל יצירת תמהיל
-          המסלולים ייפתחו עם המרווח הזה על גבי העוגן העדכני, כך שהריביות לא נשארות תקועות על
-          ערך ישן. במסלולים בריבית קבועה, בזכאות ובמט"ח אין עוגן — הריבית נסגרת מול הבנק או
-          נקבעת בתקנות, ולכן היא מוזנת כשדה אחד.
-        </p>
-
-        <div className="mb-3 flex flex-wrap gap-2">
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-bold text-slate-700">בנק</span>
-            <select
-              value={bank}
-              onChange={(event) => setBank(event.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
-            >
-              {MORTGAGE_BANKS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-bold text-slate-700">לוח סילוקין</span>
-            <select
-              value={amortization}
-              onChange={(event) => setAmortization(event.target.value as AmortizationType)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
-            >
-              {AMORTIZATION_KEYS.map((item) => (
-                <option key={item} value={item}>
-                  {AMORTIZATION_TYPES[item]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {!ready ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
+{shows('profile') && (
+        <SectionCard title="פרטים אישיים" icon={<Building2 className="h-4 w-4 text-blue-600" />}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-slate-700">שם מלא</span>
+              <Input
+                value={profileName}
+                onChange={(event) => {
+                  setProfileName(event.target.value);
+                  setProfileSaved(false);
+                }}
+                className="h-9 text-sm"
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">
+                זה השם שמופיע ללקוחות לצד ההערות והפגישות שלכם.
+              </span>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-slate-700">כתובת מייל</span>
+              <Input defaultValue={email} disabled className="h-9 bg-slate-50 text-sm" />
+            </label>
           </div>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {TRACK_KEYS.map((track) => {
-              const anchor = anchors.get(track) ?? null;
-              const rawRate = draft[track]?.trim() ?? '';
-              const rawSpread = spreadDraft[track]?.trim() ?? '';
-              const rate =
-                rawRate === ''
-                  ? defaultRateFor(track, marketRates, SETTINGS_ANCHOR_CONTEXT)
-                  : Number(rawRate);
-              const spread = rawSpread === '' ? null : Number(rawSpread);
-
-              return (
-                <div key={track} className="rounded-xl border border-slate-200 bg-white p-2.5">
-                  <p className="mb-1.5 truncate text-xs font-semibold text-slate-700">
-                    {TRACK_TYPES[track]}
-                  </p>
-                  <AnchorSpreadRate
-                    anchor={anchor}
-                    spread={spread}
-                    rate={Number.isFinite(rate) ? rate : 0}
-                    onRefreshAnchor={refreshMarketRates}
-                    onChange={({ rate: nextRate, spread: nextSpread }) => {
-                      setDraft((current) => ({ ...current, [track]: String(nextRate) }));
-                      setSpreadDraft((current) => ({
-                        ...current,
-                        [track]: nextSpread === undefined ? '' : String(nextSpread),
-                      }));
-                      setSaved(false);
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" className="h-9 text-xs" onClick={submit} disabled={saving}>
-            <Save className="ml-1 h-4 w-4" />
-            {saving ? 'שומר...' : `שמור ריביות ל${bank}`}
-          </Button>
-          {saved && (
-            <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-              <Check className="h-4 w-4" />
-              נשמר
-            </span>
-          )}
-          {error && <span className="text-xs text-red-600">{error}</span>}
-          <span className="text-[11px] text-slate-400">
-            מרווח ריק מחזיר את המסלול למרווח הכללי של המערכת
-          </span>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="קטגוריות לתמהילים" icon={<Tag className="h-4 w-4 text-blue-600" />}>
-        <p className="mb-3 text-xs leading-relaxed text-slate-500">
-          תמהיל שנשמר בלי שיוך ללקוח מסודר לפי הקטגוריה שתבחרו בשמירה. כאן מגדירים אילו קטגוריות
-          יוצעו לכם.
-        </p>
-
-        <div className="space-y-2">
-          {settings.categories.map((category) => (
-            <div
-              key={category.id}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5"
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              disabled={!profile}
+              onClick={() => void saveProfile()}
             >
-              <Tag className="h-3.5 w-3.5 text-blue-600" />
-              <span className="flex-1 text-sm font-semibold text-slate-800">{category.name}</span>
-              <span className="text-[11px] text-slate-500">{category.mixCount} תמהילים</span>
-              <button
-                type="button"
-                onClick={() => void removeCategory(category.id)}
-                aria-label="מחיקת קטגוריה"
-                className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-
-          <form
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (!newCategory.trim()) return;
-              await addCategory(newCategory.trim());
-              setNewCategory('');
-            }}
-            className="flex items-center gap-2"
-          >
-            <Input
-              value={newCategory}
-              onChange={(event) => setNewCategory(event.target.value)}
-              placeholder="שם קטגוריה חדשה — למשל: תמהילים לדוגמה, מחזורים"
-              className="h-9 text-sm"
-            />
-            <Button type="submit" size="sm" variant="outline" className="h-9 text-xs">
-              הוסף
+              <Save className="ml-1 h-3.5 w-3.5" />
+              שמור שם
             </Button>
-          </form>
-        </div>
-      </SectionCard>
+            {profileSaved && (
+              <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                <Check className="h-4 w-4" />
+                נשמר
+              </span>
+            )}
+          </div>
+        </SectionCard>
+      )}
 
-      <TestDataCleanupCard />
+      {shows('password') && <AdvisorPasswordCard />}
+
+      {shows('form-details') && <AdvisorFormDetailsCard />}
+
+{shows('rates') && (
+        <SectionCard
+          title="ריביות ברירת מחדל"
+          icon={<Percent className="h-4 w-4 text-blue-600" />}
+          action={
+            <span className="text-[11px] text-slate-500">
+              {filledForBank > 0 ? `${filledForBank} ריביות שמורות ל${bank}` : 'טרם הוגדרו ריביות'}
+            </span>
+          }
+        >
+          <p className="mb-3 text-xs leading-relaxed text-slate-500">
+            הזינו פעם אחת את הריביות שאתם עובדים איתן מול כל בנק ולכל לוח סילוקין. במסלולים
+            המשתנים הריבית מפורקת לעוגן ולמרווח: העוגן נמשך אוטומטית מבנק ישראל — ריבית הפריים
+            במשק למסלול פריים, ועקום האפס הנומינלי או הריאלי למשתנות — ואתם מזינים את המרווח
+            שמעליו. אפשר גם להזין את הריבית הסופית, והמרווח יתעדכן בהתאם. בכל יצירת תמהיל
+            המסלולים ייפתחו עם המרווח הזה על גבי העוגן העדכני, כך שהריביות לא נשארות תקועות על
+            ערך ישן. במסלולים בריבית קבועה, בזכאות ובמט"ח אין עוגן — הריבית נסגרת מול הבנק או
+            נקבעת בתקנות, ולכן היא מוזנת כשדה אחד.
+          </p>
+
+          <div className="mb-3 flex flex-wrap gap-2">
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-bold text-slate-700">בנק</span>
+              <select
+                value={bank}
+                onChange={(event) => setBank(event.target.value)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
+              >
+                {MORTGAGE_BANKS.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] font-bold text-slate-700">לוח סילוקין</span>
+              <select
+                value={amortization}
+                onChange={(event) => setAmortization(event.target.value as AmortizationType)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
+              >
+                {AMORTIZATION_KEYS.map((item) => (
+                  <option key={item} value={item}>
+                    {AMORTIZATION_TYPES[item]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {!ready ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {TRACK_KEYS.map((track) => {
+                const anchor = anchors.get(track) ?? null;
+                const rawRate = draft[track]?.trim() ?? '';
+                const rawSpread = spreadDraft[track]?.trim() ?? '';
+                const rate =
+                  rawRate === ''
+                    ? defaultRateFor(track, marketRates, SETTINGS_ANCHOR_CONTEXT)
+                    : Number(rawRate);
+                const spread = rawSpread === '' ? null : Number(rawSpread);
+
+                return (
+                  <div key={track} className="rounded-xl border border-slate-200 bg-white p-2.5">
+                    <p className="mb-1.5 truncate text-xs font-semibold text-slate-700">
+                      {TRACK_TYPES[track]}
+                    </p>
+                    <AnchorSpreadRate
+                      anchor={anchor}
+                      spread={spread}
+                      rate={Number.isFinite(rate) ? rate : 0}
+                      onRefreshAnchor={refreshMarketRates}
+                      onChange={({ rate: nextRate, spread: nextSpread }) => {
+                        setDraft((current) => ({ ...current, [track]: String(nextRate) }));
+                        setSpreadDraft((current) => ({
+                          ...current,
+                          [track]: nextSpread === undefined ? '' : String(nextSpread),
+                        }));
+                        setSaved(false);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button size="sm" className="h-9 text-xs" onClick={submit} disabled={saving}>
+              <Save className="ml-1 h-4 w-4" />
+              {saving ? 'שומר...' : `שמור ריביות ל${bank}`}
+            </Button>
+            {saved && (
+              <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                <Check className="h-4 w-4" />
+                נשמר
+              </span>
+            )}
+            {error && <span className="text-xs text-red-600">{error}</span>}
+            <span className="text-[11px] text-slate-400">
+              מרווח ריק מחזיר את המסלול למרווח הכללי של המערכת
+            </span>
+          </div>
+        </SectionCard>
+      )}
+
+{shows('categories') && (
+        <SectionCard title="קטגוריות לתמהילים" icon={<Tag className="h-4 w-4 text-blue-600" />}>
+          <p className="mb-3 text-xs leading-relaxed text-slate-500">
+            תמהיל שנשמר בלי שיוך ללקוח מסודר לפי הקטגוריה שתבחרו בשמירה. כאן מגדירים אילו קטגוריות
+            יוצעו לכם.
+          </p>
+
+          <div className="space-y-2">
+            {settings.categories.map((category) => (
+              <div
+                key={category.id}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5"
+              >
+                <Tag className="h-3.5 w-3.5 text-blue-600" />
+                <span className="flex-1 text-sm font-semibold text-slate-800">{category.name}</span>
+                <span className="text-[11px] text-slate-500">{category.mixCount} תמהילים</span>
+                <button
+                  type="button"
+                  onClick={() => void removeCategory(category.id)}
+                  aria-label="מחיקת קטגוריה"
+                  className="rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+
+            <form
+              onSubmit={async (event) => {
+                event.preventDefault();
+                if (!newCategory.trim()) return;
+                await addCategory(newCategory.trim());
+                setNewCategory('');
+              }}
+              className="flex items-center gap-2"
+            >
+              <Input
+                value={newCategory}
+                onChange={(event) => setNewCategory(event.target.value)}
+                placeholder="שם קטגוריה חדשה — למשל: תמהילים לדוגמה, מחזורים"
+                className="h-9 text-sm"
+              />
+              <Button type="submit" size="sm" variant="outline" className="h-9 text-xs">
+                הוסף
+              </Button>
+            </form>
+          </div>
+        </SectionCard>
+      )}
+
+      {shows('cleanup') && <TestDataCleanupCard />}
     </div>
   );
 }
