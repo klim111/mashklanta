@@ -210,5 +210,9 @@ function routeRequest(request: NextRequest, token: Token): NextResponse {
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
+  /**
+   * גם טפסי המכרז והמיחזור מהעמוד הראשי: כניסת יועץ שפגה נמחקת לפני שהדף נטען,
+   * כדי שהדף וה-API יסכימו מי מחובר (אחרת הטופס נטען כמחובר ונכשל ב-401).
+   */
+  matcher: ['/', '/tender-request', '/refinance-request', '/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
 };

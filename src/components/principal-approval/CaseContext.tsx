@@ -36,6 +36,8 @@ interface CaseContextValue {
   data: CaseDTO | null;
   loading: boolean;
   loadError: string | null;
+  /** קוד ה-HTTP של טעינה שנכשלה (401 — ההתחברות כבר לא תקפה), או null */
+  loadStatus: number | null;
   /** Values of one entity, with local optimistic edits applied. */
   valuesOf: (entityType: EntityType, entityId: string) => Record<string, unknown>;
   metaOf: (entityType: EntityType, entityId: string, fieldKey: string) => FieldMeta | undefined;
@@ -104,6 +106,7 @@ export function CaseProvider({
   const [data, setData] = useState<CaseDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadStatus, setLoadStatus] = useState<number | null>(null);
   const [localValues, setLocalValues] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
@@ -123,13 +126,17 @@ export function CaseProvider({
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setLoadStatus(null);
     try {
       const url = clientRecordId
         ? `/api/principal-approval/case?clientRecordId=${encodeURIComponent(clientRecordId)}`
         : '/api/principal-approval/case';
       const res = await fetch(url, { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error ?? 'טעינת התיק נכשלה');
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setLoadStatus(res.status);
+        throw new Error(json?.error ?? 'טעינת התיק נכשלה');
+      }
       setData(json as CaseDTO);
       // הטיוטה של היועץ נשארת מוצגת גם אחרי טעינה מחדש
       setLocalValues(holdForBroadcast ? heldValues() : {});
@@ -518,6 +525,7 @@ export function CaseProvider({
     data,
     loading,
     loadError,
+    loadStatus,
     valuesOf,
     metaOf,
     errorOf: (entityType, entityId, fieldKey) => errors[fieldPath(entityType, entityId, fieldKey)],

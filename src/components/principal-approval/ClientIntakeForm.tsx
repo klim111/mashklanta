@@ -13,7 +13,7 @@
  * רואה את הדוח המסכם בתיק הלקוח.
  */
 
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   BadgePercent,
@@ -63,6 +63,8 @@ interface IntakeOptions {
   local: boolean;
   storageKey: string;
   files: ReturnType<typeof useLeadFiles>;
+  /** הטופס נפתח כמחובר, אבל השרת לא מזהה את ההתחברות — עוברים לטופס של מבקר */
+  onSignedOut?: () => void;
 }
 
 const IntakeOptionsContext = createContext<IntakeOptions | null>(null);
@@ -571,12 +573,20 @@ function SentScreen({ mode, at }: { mode: IntakeMode; at: string }) {
 }
 
 function IntakeShell() {
-  const { data, loading, loadError, actionError, dismissActionError } = useCase();
-  const { mode, local } = useIntakeOptions();
+  const { data, loading, loadError, loadStatus, actionError, dismissActionError } = useCase();
+  const { mode, local, onSignedOut } = useIntakeOptions();
   const progress = useIntakeProgress();
   const [sentAt, setSentAt] = useState<string | null>(null);
+  /**
+   * הטפסים מהעמוד הראשי פתוחים גם למי שלא מחובר. כשהדף ראה התחברות והשרת לא
+   * (למשל כניסת יועץ שפגה), ממשיכים כמבקר במקום להציג "לא ניתן לטעון".
+   */
+  const fallBackToLocal = !local && loadStatus === 401 && Boolean(onSignedOut);
+  useEffect(() => {
+    if (fallBackToLocal) onSignedOut?.();
+  }, [fallBackToLocal, onSignedOut]);
 
-  if (loading) {
+  if (loading || fallBackToLocal) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -685,7 +695,12 @@ export function ClientIntakeForm({
 }) {
   const files = useLeadFiles();
   const storageKey = `mashkalanta:intake:${mode}`;
-  const options = { mode, local, storageKey, files };
+  const [signedOut, setSignedOut] = useState(false);
+  // רק בטפסים הציבוריים (מכרז, מיחזור); טופס פרטי הלקוח דורש התחברות
+  const publicForm = mode !== 'intake' && !clientRecordId;
+  local = local || (publicForm && signedOut);
+  const onSignedOut = useMemo(() => (publicForm ? () => setSignedOut(true) : undefined), [publicForm]);
+  const options = { mode, local, storageKey, files, onSignedOut };
   const body = (
     <IntakeOptionsContext.Provider value={options}>
       <div className="min-h-screen bg-slate-50">
