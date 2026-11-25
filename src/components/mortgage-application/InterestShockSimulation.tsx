@@ -165,7 +165,7 @@ export function InterestShockSimulation({
         <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-500 to-red-600 rounded-full flex items-center justify-center">
           <Zap className="w-8 h-8 text-white" />
         </div>
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">
+        <h2 className="text-title font-bold text-slate-800 mb-2">
           סימולציית הלם ריבית
         </h2>
         <p className="text-slate-600 max-w-2xl mx-auto">
@@ -181,7 +181,7 @@ export function InterestShockSimulation({
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          <h3 className="text-subtitle font-semibold text-slate-800 mb-4">
             המשכנתא הנוכחית
           </h3>
           
@@ -237,7 +237,7 @@ export function InterestShockSimulation({
           transition={{ duration: 0.4, delay: 0.3 }}
         >
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">
+            <h3 className="text-subtitle font-semibold text-slate-800 mb-4">
               תרחישי עלייה
             </h3>
             
@@ -296,7 +296,7 @@ export function InterestShockSimulation({
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          <h3 className="text-subtitle font-semibold text-slate-800 mb-4">
             תוצאות הסימולציה
           </h3>
 

@@ -1,0 +1,380 @@
+{
+ "fetchedAt": "2026-09-26T12:00:00.000Z",
+ "latestMonth": "2026-08",
+ "rates": [
+  {
+   "key": "fixed_unlinked",
+   "label": "קבועה לא צמודה",
+   "rate": 4.62,
+   "anchor": null,
+   "anchorLabel": null,
+   "anchorDetail": null,
+   "margin": null,
+   "asOf": "2026-08",
+   "note": "ריבית קבועה לכל התקופה, ללא עוגן"
+  },
+  {
+   "key": "fixed_linked",
+   "label": "קבועה צמודה למדד",
+   "rate": 3.29,
+   "anchor": null,
+   "anchorLabel": null,
+   "anchorDetail": null,
+   "margin": null,
+   "asOf": "2026-08",
+   "note": "ריבית קבועה לכל התקופה, ללא עוגן"
+  },
+  {
+   "key": "variable_linked",
+   "label": "משתנה צמודה למדד",
+   "rate": 3.19,
+   "anchor": 1.64,
+   "anchorLabel": "עוגן ממוצע",
+   "anchorDetail": null,
+   "margin": 1.55,
+   "asOf": "2026-08",
+   "note": null
+  },
+  {
+   "key": "variable_unlinked",
+   "label": "משתנה לא צמודה (פריים)",
+   "rate": null,
+   "anchor": 4.75,
+   "anchorLabel": "עוגן (פריים)",
+   "anchorDetail": "ריבית בנק ישראל 3.25% + 1.5%",
+   "margin": null,
+   "asOf": "2026-09-26",
+   "note": "בנק ישראל אינו מפרסם ריבית ממוצעת למסלול זה מאז ינואר 2024"
+  }
+ ],
+ "latest": {
+  "count": 9100,
+  "volume": 9655500400,
+  "average": 1061044,
+  "paymentToIncome": 29.2
+ },
+ "yearToDate": {
+  "year": 2026,
+  "count": 73219,
+  "volume": 79600000000,
+  "average": 1086970,
+  "months": 8
+ },
+ "years": [
+  {
+   "year": 2012,
+   "count": 80000,
+   "volume": 51200000000,
+   "average": 640000,
+   "months": 12
+  },
+  {
+   "year": 2013,
+   "count": 86000,
+   "volume": 56760000000,
+   "average": 660000,
+   "months": 12
+  },
+  {
+   "year": 2014,
+   "count": 86000,
+   "volume": 60200000000,
+   "average": 700000,
+   "months": 12
+  },
+  {
+   "year": 2015,
+   "count": 111000,
+   "volume": 79920000000,
+   "average": 720000,
+   "months": 12
+  },
+  {
+   "year": 2016,
+   "count": 88000,
+   "volume": 64240000000,
+   "average": 730000,
+   "months": 12
+  },
+  {
+   "year": 2017,
+   "count": 80000,
+   "volume": 60800000000,
+   "average": 760000,
+   "months": 12
+  },
+  {
+   "year": 2018,
+   "count": 86000,
+   "volume": 67940000000,
+   "average": 790000,
+   "months": 12
+  },
+  {
+   "year": 2019,
+   "count": 95000,
+   "volume": 76950000000,
+   "average": 810000,
+   "months": 12
+  },
+  {
+   "year": 2020,
+   "count": 99000,
+   "volume": 84150000000,
+   "average": 850000,
+   "months": 12
+  },
+  {
+   "year": 2021,
+   "count": 131000,
+   "volume": 121830000000,
+   "average": 930000,
+   "months": 12
+  },
+  {
+   "year": 2022,
+   "count": 120000,
+   "volume": 120000000000,
+   "average": 1000000,
+   "months": 12
+  },
+  {
+   "year": 2023,
+   "count": 74000,
+   "volume": 76220000000,
+   "average": 1030000,
+   "months": 12
+  },
+  {
+   "year": 2024,
+   "count": 92000,
+   "volume": 97520000000,
+   "average": 1060000,
+   "months": 12
+  },
+  {
+   "year": 2025,
+   "count": 101000,
+   "volume": 109080000000,
+   "average": 1080000,
+   "months": 12
+  },
+  {
+   "year": 2026,
+   "count": 73219,
+   "volume": 79600000000,
+   "average": 1086970,
+   "months": 8
+  }
+ ],
+ "rateHistory": [
+  {
+   "month": "2023-11",
+   "fixed_unlinked": 5.05,
+   "fixed_linked": 3.38,
+   "variable_linked": 3.82
+  },
+  {
+   "month": "2023-12",
+   "fixed_unlinked": 5.15,
+   "fixed_linked": 3.37,
+   "variable_linked": 3.88
+  },
+  {
+   "month": "2024-01",
+   "fixed_unlinked": 5.25,
+   "fixed_linked": 3.35,
+   "variable_linked": 3.95
+  },
+  {
+   "month": "2024-02",
+   "fixed_unlinked": 5.17,
+   "fixed_linked": 3.25,
+   "variable_linked": 3.62
+  },
+  {
+   "month": "2024-03",
+   "fixed_unlinked": 5.08,
+   "fixed_linked": 3.15,
+   "variable_linked": 3.3
+  },
+  {
+   "month": "2024-04",
+   "fixed_unlinked": 5.05,
+   "fixed_linked": 3.05,
+   "variable_linked": 3.22
+  },
+  {
+   "month": "2024-05",
+   "fixed_unlinked": 5.03,
+   "fixed_linked": 3.04,
+   "variable_linked": 3.15
+  },
+  {
+   "month": "2024-06",
+   "fixed_unlinked": 5.01,
+   "fixed_linked": 3.03,
+   "variable_linked": 3.22
+  },
+  {
+   "month": "2024-07",
+   "fixed_unlinked": 4.98,
+   "fixed_linked": 3.02,
+   "variable_linked": 3.28
+  },
+  {
+   "month": "2024-08",
+   "fixed_unlinked": 4.95,
+   "fixed_linked": 3.06,
+   "variable_linked": 3.35
+  },
+  {
+   "month": "2024-09",
+   "fixed_unlinked": 4.92,
+   "fixed_linked": 3.11,
+   "variable_linked": 3.33
+  },
+  {
+   "month": "2024-10",
+   "fixed_unlinked": 4.88,
+   "fixed_linked": 3.16,
+   "variable_linked": 3.32
+  },
+  {
+   "month": "2024-11",
+   "fixed_unlinked": 4.85,
+   "fixed_linked": 3.2,
+   "variable_linked": 3.3
+  },
+  {
+   "month": "2024-12",
+   "fixed_unlinked": 4.87,
+   "fixed_linked": 3.21,
+   "variable_linked": 3.31
+  },
+  {
+   "month": "2025-01",
+   "fixed_unlinked": 4.88,
+   "fixed_linked": 3.23,
+   "variable_linked": 3.33
+  },
+  {
+   "month": "2025-02",
+   "fixed_unlinked": 4.9,
+   "fixed_linked": 3.24,
+   "variable_linked": 3.34
+  },
+  {
+   "month": "2025-03",
+   "fixed_unlinked": 4.92,
+   "fixed_linked": 3.25,
+   "variable_linked": 3.35
+  },
+  {
+   "month": "2025-04",
+   "fixed_unlinked": 4.92,
+   "fixed_linked": 3.29,
+   "variable_linked": 3.45
+  },
+  {
+   "month": "2025-05",
+   "fixed_unlinked": 4.92,
+   "fixed_linked": 3.33,
+   "variable_linked": 3.55
+  },
+  {
+   "month": "2025-06",
+   "fixed_unlinked": 4.92,
+   "fixed_linked": 3.38,
+   "variable_linked": 3.65
+  },
+  {
+   "month": "2025-07",
+   "fixed_unlinked": 4.92,
+   "fixed_linked": 3.42,
+   "variable_linked": 3.62
+  },
+  {
+   "month": "2025-08",
+   "fixed_unlinked": 4.9,
+   "fixed_linked": 3.4,
+   "variable_linked": 3.58
+  },
+  {
+   "month": "2025-09",
+   "fixed_unlinked": 4.88,
+   "fixed_linked": 3.38,
+   "variable_linked": 3.55
+  },
+  {
+   "month": "2025-10",
+   "fixed_unlinked": 4.87,
+   "fixed_linked": 3.37,
+   "variable_linked": 3.48
+  },
+  {
+   "month": "2025-11",
+   "fixed_unlinked": 4.85,
+   "fixed_linked": 3.35,
+   "variable_linked": 3.42
+  },
+  {
+   "month": "2025-12",
+   "fixed_unlinked": 4.82,
+   "fixed_linked": 3.33,
+   "variable_linked": 3.35
+  },
+  {
+   "month": "2026-01",
+   "fixed_unlinked": 4.79,
+   "fixed_linked": 3.3,
+   "variable_linked": 3.28
+  },
+  {
+   "month": "2026-02",
+   "fixed_unlinked": 4.75,
+   "fixed_linked": 3.27,
+   "variable_linked": 3.2
+  },
+  {
+   "month": "2026-03",
+   "fixed_unlinked": 4.72,
+   "fixed_linked": 3.25,
+   "variable_linked": 3.27
+  },
+  {
+   "month": "2026-04",
+   "fixed_unlinked": 4.73,
+   "fixed_linked": 3.27,
+   "variable_linked": 3.33
+  },
+  {
+   "month": "2026-05",
+   "fixed_unlinked": 4.74,
+   "fixed_linked": 3.28,
+   "variable_linked": 3.4
+  },
+  {
+   "month": "2026-06",
+   "fixed_unlinked": 4.75,
+   "fixed_linked": 3.3,
+   "variable_linked": 3.33
+  },
+  {
+   "month": "2026-07",
+   "fixed_unlinked": 4.69,
+   "fixed_linked": 3.29,
+   "variable_linked": 3.26
+  },
+  {
+   "month": "2026-08",
+   "fixed_unlinked": 4.62,
+   "fixed_linked": 3.29,
+   "variable_linked": 3.19
+  }
+ ],
+ "boiRate": {
+  "value": 3.25,
+  "asOf": "2026-09-26"
+ }
+}

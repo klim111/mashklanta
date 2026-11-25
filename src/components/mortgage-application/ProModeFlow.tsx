@@ -60,7 +60,7 @@ export function ProModeFlow({ userProfile, onReset }: ProModeFlowProps) {
       >
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-800 mb-2">
+            <h1 className="text-title font-semibold text-slate-800 mb-2">
               מצב מקצועי - דשבורד מלא
             </h1>
             <p className="text-slate-600">
@@ -141,7 +141,7 @@ export function ProModeFlow({ userProfile, onReset }: ProModeFlowProps) {
 
               {/* Section Content */}
               <div className="space-y-3">
-                <h3 className="text-xl font-semibold text-slate-800">
+                <h3 className="text-subtitle font-semibold text-slate-800">
                   {section.title}
                 </h3>
                 <p className="text-slate-600 text-sm leading-relaxed">

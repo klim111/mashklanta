@@ -1,0 +1,313 @@
+/* הבמה המשותפת של מסכי הסופה והחוטים: יחס 16:9, וכל המידות ביחידות של רוחב הבמה */
+.stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  container-type: inline-size;
+  isolation: isolate;
+  box-shadow: 0 20px 45px -26px rgba(15, 23, 42, 0.55);
+  background: #1b2433;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---------- הסופה ---------- */
+
+.skyStorm {
+  background: radial-gradient(120% 80% at 50% 0%, #3a4458 0%, #232b3a 45%, #141922 100%);
+}
+.skyClear {
+  background: linear-gradient(180deg, #5fa8ff 0%, #9fcbff 45%, #dcebff 75%, #f3f8ff 100%);
+  opacity: 0;
+}
+.sun {
+  position: absolute;
+  width: 16cqw;
+  height: 16cqw;
+  border-radius: 50%;
+  left: 9cqw;
+  top: 6cqw;
+  background: radial-gradient(circle, #fff6c9 0%, #ffe27a 45%, rgba(255, 226, 122, 0) 70%);
+  opacity: 0;
+}
+.cloud {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(1.2cqw);
+}
+.cloudDark {
+  background: #0f141d;
+}
+.cloudWhite {
+  background: #fff;
+  opacity: 0;
+}
+.ground {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  bottom: -14%;
+  height: 30%;
+  border-radius: 50% 50% 0 0;
+}
+.groundStorm {
+  background: linear-gradient(#2a3242, #161b25);
+}
+.groundClear {
+  background: linear-gradient(#eaf3ff, #d4e6ff);
+  opacity: 0;
+}
+.flash {
+  background: #e9f0ff;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+.screen {
+  position: absolute;
+  left: 20cqw;
+  width: 60cqw;
+  top: 4cqw;
+  border-radius: 1.1cqw;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 2cqw 5cqw -1.5cqw rgba(30, 58, 138, 0.45), 0 0 0 0.35cqw rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transform-origin: 50% 100%;
+  z-index: 20;
+}
+.screen img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.couple {
+  position: absolute;
+  left: 50%;
+  bottom: 2.2cqw;
+  width: 17cqw;
+  margin-left: -8.5cqw;
+  z-index: 50;
+}
+.couple svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.arm {
+  transition: transform 0.9s cubic-bezier(0.5, 0, 0.2, 1);
+}
+.armHisLeft {
+  transform-origin: 52px 70px;
+  transform: rotate(14deg);
+}
+.armHisRight {
+  transform-origin: 88px 70px;
+  transform: rotate(-26deg);
+}
+.armHerLeft {
+  transform-origin: 112px 74px;
+  transform: rotate(24deg);
+}
+.armHerRight {
+  transform-origin: 146px 74px;
+  transform: rotate(-12deg);
+}
+.worried .armHisLeft {
+  transform: rotate(152deg);
+}
+.worried .armHisRight {
+  transform: rotate(-152deg);
+}
+.worried .armHerLeft {
+  transform: rotate(150deg);
+}
+.worried .armHerRight {
+  transform: rotate(-150deg);
+}
+
+.paper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  min-width: 9cqw;
+  padding: 1cqw 1.3cqw 1.1cqw;
+  background: #fdfdfb;
+  border-radius: 0.45cqw;
+  box-shadow: 0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.35);
+  will-change: transform, opacity;
+  direction: rtl;
+  opacity: 0;
+}
+.paper::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0.55cqw;
+  border-radius: 0.45cqw 0.45cqw 0 0;
+  background: var(--c);
+}
+.paper b {
+  display: block;
+  margin-top: 0.25cqw;
+  font-weight: 900;
+  font-size: max(11px, 2.15cqw);
+  line-height: 1.15;
+  color: #111827;
+  white-space: nowrap;
+}
+.paper i {
+  display: block;
+  height: 0.32cqw;
+  margin-top: 0.45cqw;
+  border-radius: 1cqw;
+  background: #e2e6ee;
+}
+.paper i:nth-of-type(2) {
+  width: 78%;
+}
+.paper i:nth-of-type(3) {
+  width: 56%;
+}
+.blank {
+  width: 7cqw;
+  min-width: 0;
+}
+
+/* הלוגו של משכלנתא כפי שהוא מופיע בתוך הבמה */
+.logo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  padding: 1cqw 1.8cqw 1cqw 1.3cqw;
+  border-radius: 2cqw;
+  background: #fff;
+  z-index: 70;
+  direction: rtl;
+  opacity: 0;
+}
+.logoIcon {
+  display: grid;
+  place-items: center;
+  width: 4cqw;
+  height: 4cqw;
+  border-radius: 1cqw;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+.logoIcon svg {
+  width: 2.3cqw;
+  height: 2.3cqw;
+}
+.logoWord {
+  font-weight: 900;
+  font-size: 3.2cqw;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+.logoWord em {
+  font-style: normal;
+  color: #059669;
+}
+
+/* ---------- החוטים ---------- */
+
+.threadsDark {
+  background: radial-gradient(90% 80% at 50% 45%, #2c3446 0%, #1c2230 60%, #141822 100%);
+}
+.threadsLight {
+  background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 60%, #ffffff 100%);
+  opacity: 0;
+}
+.card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0.75cqw 1.2cqw 0.8cqw;
+  border-top: 0.5cqw solid var(--c);
+  border-radius: 0.5cqw;
+  background: #fdfdfb;
+  box-shadow: 0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.3);
+  direction: rtl;
+  white-space: nowrap;
+  will-change: transform;
+  z-index: 20;
+  opacity: 0;
+}
+.card b {
+  display: block;
+  font-weight: 900;
+  font-size: max(11px, 2.1cqw);
+  line-height: 1.15;
+  color: #111827;
+}
+.station {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16cqw;
+  margin-left: -8cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8cqw;
+  z-index: 30;
+  direction: rtl;
+  opacity: 0;
+}
+.stationName {
+  font-weight: 800;
+  font-size: max(10px, 2cqw);
+  line-height: 1.1;
+  color: #0f172a;
+  white-space: nowrap;
+}
+.dot {
+  display: grid;
+  place-items: center;
+  width: 4cqw;
+  height: 4cqw;
+  border: 0.35cqw solid #c7d2e6;
+  border-radius: 50%;
+  background: #fff;
+  font-weight: 900;
+  font-size: 1.8cqw;
+  line-height: 1;
+  color: #64748b;
+  transition: background 0.35s, border-color 0.35s, color 0.35s, transform 0.35s;
+}
+.dot svg {
+  display: none;
+  width: 2.2cqw;
+  height: 2.2cqw;
+}
+.done .dot {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+  transform: scale(1.08);
+}
+.done .dot svg {
+  display: block;
+}
+.done .dot span {
+  display: none;
+}

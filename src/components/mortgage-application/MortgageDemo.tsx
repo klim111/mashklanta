@@ -112,7 +112,7 @@ export function MortgageDemo() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30" dir="rtl">
+    <div className="min-h-screen bg-slate-50" dir="rtl">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <motion.div
@@ -121,7 +121,7 @@ export function MortgageDemo() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-4xl font-bold text-slate-800 mb-4">
+          <h1 className="text-title font-bold text-slate-800 mb-4">
             דמו מערכת משכנתא חכמה
           </h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto">
@@ -153,7 +153,7 @@ export function MortgageDemo() {
                       </div>
                       
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                        <h3 className="text-subtitle font-semibold text-slate-800 mb-2">
                           {component.title}
                         </h3>
                         <p className="text-slate-600 leading-relaxed">
@@ -179,7 +179,7 @@ export function MortgageDemo() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.8 }}
             >
-              <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">
+              <h2 className="text-subtitle font-bold text-slate-800 mb-6 text-center">
                 תכונות המערכת
               </h2>
               

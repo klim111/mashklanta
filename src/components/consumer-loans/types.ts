@@ -1,15 +1,76 @@
+/**
+ * סוג ההלוואה. משמש לצביעה ולקיבוץ בלוח הבקרה, ולהסברים שמתאימים לסוג —
+ * למשל שהלוואת כרטיס אשראי היא בדרך כלל היקרה בתיק. רשות, כדי ששמירות
+ * מקומיות קיימות ימשיכו להיטען.
+ */
+export type LoanCategory = 'bank' | 'credit' | 'car' | 'family' | 'other';
+
+/**
+ * פירעון מוקדם בתוך הלוואה — אותו רעיון של פרעון מוקדם במסלול בבונה התמהילים:
+ * סכום חד-פעמי שמשולם יחד עם תשלום מסוים, ואחריו ההלוואה מתקצרת או שההחזר
+ * החודשי קטן.
+ */
+export interface LoanPrepayment {
+  id: string;
+  amount: number;
+  /** מספר התשלום שאיתו משולם הפירעון (1 = התשלום הראשון) */
+  month: number;
+  /** shorten = התקופה מתקצרת וההחזר נשמר, reduce = ההחזר קטן והתקופה נשמרת */
+  mode: 'shorten' | 'reduce';
+  /**
+   * תאריך הפירעון (YYYY-MM-DD), כשהלקוח בחר לפי תאריך ולא לפי מספר תשלום.
+   * אז month הוא התשלום האחרון שלפניו, ועל הסכום שנפרע משולמת גם הריבית
+   * היומית שהצטברה מאותו תשלום ועד יום הפירעון.
+   */
+  date?: string;
+}
+
 export interface Loan {
   id: string;
   name: string;
   principal: number; // קרן ההלוואה בש"ח
   apr: number; // ריבית שנתית נומינלית באחוזים
   months: number; // תקופה בחודשים
+  category?: LoanCategory;
+  /** תאריך לקיחת ההלוואה (YYYY-MM-DD) — רשות */
+  startDate?: string;
+  /** היום בחודש שבו יורד התשלום (1–31) — רשות */
+  paymentDay?: number;
+  prepayments?: LoanPrepayment[];
+}
+
+/**
+ * הלוואה כפי שהיא בפאנל השליטה: הלוואה חדשה נפתחת בלי ערכים, וכל שדה נשאר
+ * ריק עד שהלקוח מזין אותו. רק הלוואה שכל שלושת השדות שלה מולאו נכנסת לחישובים.
+ */
+export interface LoanDraft {
+  id: string;
+  name: string;
+  principal: number | null;
+  apr: number | null;
+  months: number | null;
+  category?: LoanCategory;
+  /** תאריך לקיחת ההלוואה (YYYY-MM-DD) — רשות */
+  startDate?: string;
+  /** היום בחודש שבו יורד התשלום (1–31) — רשות */
+  paymentDay?: number;
+  prepayments?: LoanPrepayment[];
+}
+
+/** איחוד הלוואות: אילו הלוואות מאוחדות, ובאיזו ריבית ותקופה (ריקים עד שהוזנו) */
+export interface ConsolidationPlan {
+  loanIds: string[];
+  apr: number | null;
+  months: number | null;
 }
 
 export interface AmortRow {
   m: number; // מספר החודש
   balStart: number; // יתרה בתחילת החודש
   pay: number; // תשלום חודשי
+  prepay?: number; // פירעון מוקדם ששולם יחד עם התשלום
+  prepayInterest?: number; // ריבית יומית ששולמה על הסכום שנפרע, מהתשלום ועד יום הפירעון
+  date?: string; // תאריך התשלום (YYYY-MM-DD), כשהוזנו תאריך לקיחה ויום תשלום
   interest: number; // חלק הריבית
   principal: number; // חלק הקרן
   balEnd: number; // יתרה בסוף החודש
@@ -60,7 +121,16 @@ export interface OptimizationResult {
 }
 
 export interface LoanPlannerState {
-  loans: Loan[];
+  loans: LoanDraft[];
   selectedForComparison: string[];
   optimizationInput: Partial<OptimizationInput>;
+  /**
+   * ההכנסה החודשית הפנויה של משק הבית. רשות — כשהיא מוזנת הכלי מציג את יחס
+   * ההחזר, אותו יחס שהבנק בוחן כשהוא שוקל משכנתא.
+   */
+  monthlyIncome?: number;
+  /** האיחוד שהלקוח בנה — כשהוא קיים מופיעים טאבי האיחוד */
+  consolidation?: ConsolidationPlan;
+  /** האם טאבי האסטרטגיה פתוחים */
+  strategyOpen?: boolean;
 }

@@ -1,0 +1,61 @@
+# בניית אפליקציית משכלנתא לנייד (Capacitor, ראו mobile/README.md).
+# אנדרואיד: קובץ התקנה (APK) לבדיקה, שמופיע בתוצרי הריצה ב-Actions.
+# אייפון: בדיקה שהפרויקט נבנה (בסימולטור, בלי חתימה), רק בהפעלה ידנית.
+name: Mobile app
+
+on:
+  workflow_dispatch:
+    inputs:
+      ios:
+        description: "לבנות גם את פרויקט האייפון"
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "capacitor.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/mobile-app.yml"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # רק הספריות; האפליקציה עצמה טוענת את האתר, אז אין צורך ב-prisma או בבניית Next
+      - run: npm ci --ignore-scripts
+      - run: npx cap sync android
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mashkalanta-android-debug
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+
+  ios:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx cap sync ios
+      - name: Build for simulator
+        run: >
+          xcodebuild -project mobile/ios/App/App.xcodeproj -scheme App
+          -sdk iphonesimulator -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
