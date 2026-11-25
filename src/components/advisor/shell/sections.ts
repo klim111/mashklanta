@@ -21,7 +21,7 @@ export const SECTION_VIEWS: Record<AdvisorSection, readonly string[]> = {
   tools: ['tools', 'mixes', 'rate-requests'],
   office: ['profile', 'client-tools', 'payment-links', 'professional'],
   account: [],
-  admin: ['visits', 'signups', 'pricing', 'site-content', 'landing-pages', 'maintenance'],
+  admin: ['advisors', 'visits', 'signups', 'pricing', 'site-content', 'landing-pages', 'maintenance'],
 };
 
 export interface AdvisorLocation {
@@ -39,6 +39,7 @@ export const LEGACY_TABS: Record<string, AdvisorLocation> = {
   mixes: { section: 'tools', view: 'mixes' },
   'rate-requests': { section: 'tools', view: 'rate-requests' },
   'site-visits': { section: 'admin', view: 'visits' },
+  'platform-advisors': { section: 'admin', view: 'advisors' },
   'unfinished-signups': { section: 'admin', view: 'signups' },
   pricing: { section: 'admin', view: 'pricing' },
   'site-content': { section: 'admin', view: 'site-content' },

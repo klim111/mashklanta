@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { OTHER_OFFICE_MESSAGE, linkedToAnotherAdvisor } from '@/lib/advisor-link';
 import { getServerAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { listAdvisorClients, syncStageDocuments } from '@/lib/clients';
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.client.findUnique({
     where: { advisorId_userId: { advisorId, userId: user.id } },
   });
+  // לקוח של משרד אחר לא נפתח ליועץ הזה רק כי הוא יודע את המייל שלו
+  if (!existing && (await linkedToAnotherAdvisor(user.id, advisorId))) {
+    return NextResponse.json({ error: OTHER_OFFICE_MESSAGE, code: 'other-office' }, { status: 409 });
+  }
   // לקוח שנרשם לבד כבר מופיע ברשימה עם כרטיס אוטומטי — הצירוף הופך אותו ללקוח בליווי
   if (existing?.autoLinked) {
     const phone = typeof body?.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;

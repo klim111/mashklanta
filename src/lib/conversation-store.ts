@@ -111,7 +111,12 @@ export async function resolveConversationAccess(
   }
   if (records.length > 0) return null;
 
-  // לקוח בלי יועץ — פתוח לכל יועץ, כמו פנייה שלא שויכה
+  /*
+    לקוח בלי יועץ — ההודעות שלו מגיעות ליועץ הפלטפורמה (advisorOf), ולכן רק
+    הוא רואה אותן. יועץ של משרד אחר לא נכנס לשיחה של לקוח שאינו שלו.
+  */
+  const platform = await primaryAdvisor();
+  if (!platform || platform.id !== viewerId) return null;
   const target = await prisma.user.findUnique({ where: { id: clientUserId }, select: { role: true } });
   if (target?.role !== 'CLIENT') return null;
   return { clientUserId, viewerId, viewerRole: 'ADVISOR' };
@@ -119,7 +124,7 @@ export async function resolveConversationAccess(
 
 /**
  * היועץ המלווה של הלקוח — הרשומה הראשונה שנפתחה. לקוח שעדיין לא שויך מקבל
- * את היועץ של הפלטפורמה (בשלב הזה יש יועץ אחד), כדי שהודעה ממנו לא תיעלם.
+ * את יועץ הפלטפורמה, כדי שהודעה ממנו לא תיעלם.
  */
 async function advisorOf(clientUserId: string) {
   const record = await prisma.client.findFirst({
@@ -339,12 +344,17 @@ export async function conversationSummary(access: ConversationAccess): Promise<C
  * וכבר כתבו. שיחות עם הודעה שלא נקראה עולות ראשונות.
  */
 export async function advisorInbox(advisorId: string): Promise<AdvisorInboxRow[]> {
+  // שיחות של לקוחות שעוד לא שויכו — רק אצל יועץ הפלטפורמה, שאליו הן מגיעות
+  const platform = await primaryAdvisor();
+  const seesUnassigned = platform?.id === advisorId;
   const [assigned, unassigned] = await Promise.all([
     prisma.client.findMany({
       where: { advisorId },
       select: { id: true, userId: true, name: true, email: true },
     }),
-    prisma.user.findMany({
+    !seesUnassigned
+      ? Promise.resolve([] as Array<{ id: string; name: string | null; email: string | null }>)
+      : prisma.user.findMany({
       where: {
         role: 'CLIENT',
         advisedAs: { none: {} },

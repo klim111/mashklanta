@@ -174,8 +174,12 @@ export async function getOfficePage(
 ): Promise<{ office: PublicOffice; published: boolean; ownerView: boolean } | null> {
   const slug = normalizeSlug(rawSlug);
   if (!slug || slug !== rawSlug.toLowerCase()) return null;
-  const row = await prisma.office.findUnique({ where: { slug }, select: { ...officeSelect, ownerId: true } });
-  if (!row) return null;
+  const row = await prisma.office.findUnique({
+    where: { slug },
+    select: { ...officeSelect, ownerId: true, suspendedAt: true },
+  });
+  // משרד מושעה סגור לכולם, גם ליועץ עצמו
+  if (!row || row.suspendedAt) return null;
   const ownerView = Boolean(viewerId) && viewerId === row.ownerId;
   if (!row.published && !ownerView) return null;
   return { office: toPublic(toView(row)), published: row.published, ownerView };
@@ -189,10 +193,36 @@ export async function officeOwnerBySlug(
   if (!slug || slugProblem(slug)) return null;
   const row = await prisma.office.findUnique({
     where: { slug },
-    select: { published: true, owner: { select: { id: true, name: true, email: true, role: true } } },
+    select: {
+      published: true,
+      suspendedAt: true,
+      owner: { select: { id: true, name: true, email: true, role: true } },
+    },
   });
-  if (!row?.published || row.owner.role !== 'ADVISOR') return null;
+  if (!row?.published || row.suspendedAt || row.owner.role !== 'ADVISOR') return null;
   return { id: row.owner.id, name: row.owner.name, email: row.owner.email };
+}
+
+/** היועץ של משרד פעיל, לפי מזהה המשרד — לשיוך שנשמר בהרשמה (User.signupOfficeId) */
+export async function officeOwnerById(
+  officeId: string | null | undefined
+): Promise<{ id: string; name: string | null; email: string | null } | null> {
+  if (!officeId) return null;
+  const row = await prisma.office.findUnique({
+    where: { id: officeId },
+    select: { suspendedAt: true, owner: { select: { id: true, name: true, email: true, role: true } } },
+  });
+  // משרד שהלקוח כבר נרשם דרכו — גם אם הדף הוסתר בינתיים, השיוך נשמר; רק השעיה מבטלת
+  if (!row || row.suspendedAt || row.owner.role !== 'ADVISOR') return null;
+  return { id: row.owner.id, name: row.owner.name, email: row.owner.email };
+}
+
+/** מזהה המשרד הפעיל לפי הקישור — נשמר בהרשמה הממתינה ועובר לחשבון */
+export async function activeOfficeIdBySlug(rawSlug: string | null | undefined): Promise<string | null> {
+  const slug = normalizeSlug(rawSlug);
+  if (!slug || slugProblem(slug)) return null;
+  const row = await prisma.office.findUnique({ where: { slug }, select: { id: true, published: true, suspendedAt: true } });
+  return row?.published && !row.suspendedAt ? row.id : null;
 }
 
 export interface ClientOfficeView {
@@ -214,10 +244,13 @@ export async function officeForClient(userId: string): Promise<ClientOfficeView>
   });
   if (!record) return { office: null, tools: clientToolAccess(DEFAULT_OFFICE_TOOLS, null) };
 
-  const row = await prisma.office.findUnique({ where: { ownerId: record.advisorId }, select: officeSelect });
+  const row = await prisma.office.findUnique({
+    where: { ownerId: record.advisorId },
+    select: { ...officeSelect, suspendedAt: true },
+  });
   const view = row ? toView(row) : null;
   return {
-    office: view?.published ? toPublic(view) : null,
+    office: view?.published && !row?.suspendedAt ? toPublic(view) : null,
     tools: clientToolAccess(view?.tools ?? DEFAULT_OFFICE_TOOLS, normalizeToolOverrides(record.toolAccessJson)),
   };
 }

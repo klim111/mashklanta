@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { syncStageDocuments } from './clients';
+import { linkedToAnotherAdvisor } from './office-scope';
 import { PROSPECT_EMAIL_DOMAIN, isProspectEmail } from './prospect-email';
 
 export { NOT_PROSPECT_USER, PROSPECT_EMAIL_DOMAIN, isProspectEmail } from './prospect-email';
@@ -76,7 +77,16 @@ export async function openProspectClientFile(input: OpenProspectInput): Promise<
   // לקוח שכבר רשום בפלטפורמה — תיק רגיל על החשבון שלו
   if (email) {
     const user = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true } });
-    if (user && user.role === 'CLIENT' && user.id !== input.advisorId) {
+    /*
+      רק כשהחשבון לא משויך למשרד אחר. אחרת נפתח תיק מתעניין נפרד, בלי גישה
+      לחומרים של החשבון (src/lib/advisor-link.ts, linkedToAnotherAdvisor).
+    */
+    if (
+      user &&
+      user.role === 'CLIENT' &&
+      user.id !== input.advisorId &&
+      !(await linkedToAnotherAdvisor(user.id, input.advisorId))
+    ) {
       const existing = await prisma.client.findUnique({
         where: { advisorId_userId: { advisorId: input.advisorId, userId: user.id } },
         select: { id: true },
@@ -144,11 +154,12 @@ export async function claimProspectFile(userId: string): Promise<{ clientId: str
   if (!file || file.userId === userId) return null;
   const from = file.userId;
 
-  // לקוח שכבר יש לו תיק אצל אותו יועץ — לא נוגעים (אין שני תיקים לאותו ליווי)
-  const clash = await prisma.client.findUnique({
-    where: { advisorId_userId: { advisorId: file.advisorId, userId } },
-    select: { id: true },
-  });
+  /*
+    לקוח שכבר יש לו תיק — אצל אותו יועץ או במשרד אחר — לא נוגעים. תיק מתעניין
+    עובר לחשבון רק כשהחשבון חדש. אחרת יועץ יכול היה לפתוח תיק מתעניין עם
+    המייל של לקוח של משרד אחר, ולקבל את החומרים שלו בכניסה הבאה של הלקוח.
+  */
+  const clash = await prisma.client.findFirst({ where: { userId }, select: { id: true } });
   if (clash) return null;
 
   const owned = { where: { ownerId: from }, data: { ownerId: userId } };

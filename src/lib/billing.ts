@@ -14,7 +14,7 @@ import {
   paymentConfirmationEmail,
   renewalReminderEmail,
 } from './billing-emails';
-import { NOTIFY_EMAIL, emailAdvisorAboutPayment } from './advisor-notify';
+import { advisorEmailFor, emailAdvisorAboutPayment } from './advisor-notify';
 import { RENEWAL_LINK_GRACE_DAYS, renewalToken, type RenewalReason } from './billing-links';
 
 /**
@@ -314,7 +314,7 @@ async function recordLinkPayment(checkoutId: string, linkId: string, result: Hyp
       console.error('Payment link confirmation email failed:', error)
     );
   }
-  // ההתראה על התשלום יוצאת לכתובת ההתראות של משכלנתא, כמו כל התראה על פעולה של לקוח
+  // ההתראה על התשלום יוצאת ליועץ שיצר את הקישור — כל משרד מקבל את התשלומים שלו
   const notice = linkPaidAdvisorEmail({
     clientName: link.clientName,
     clientEmail: link.clientEmail,
@@ -323,7 +323,8 @@ async function recordLinkPayment(checkoutId: string, linkId: string, result: Hyp
     invoiceNumber: link.invoiceNumber,
     dashboardUrl: `${siteOrigin()}/advisor-dashboard`,
   });
-  await sendEmail({ to: NOTIFY_EMAIL, ...notice, replyTo: link.clientEmail || undefined }).catch((error) =>
+  const to = await advisorEmailFor(link.createdById);
+  await sendEmail({ to, ...notice, replyTo: link.clientEmail || undefined }).catch((error) =>
     console.error('Payment link advisor email failed:', error)
   );
 }

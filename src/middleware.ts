@@ -45,6 +45,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/guest-meeting',
   // פרטי משרד פעיל לפי הקישור — מה שממילא מוצג בדף המשרד הציבורי (/o/<slug>)
   '/api/office/public',
+  // בקשת הצטרפות של יועץ מדף /join — לא פותחת חשבון; הנתיב מגביל קצב ובודק כל שדה
+  '/api/advisor-applications',
 ];
 
 function isPublicApi(pathname: string): boolean {

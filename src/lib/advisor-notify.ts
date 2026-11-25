@@ -12,7 +12,7 @@ import { ADVISOR_EMAIL } from './single-advisor';
  */
 
 export interface AdvisorRequestEmail {
-  /** היועץ שהפנייה שויכה אליו (לתיעוד; המייל יוצא ליועץ של הפלטפורמה) */
+  /** היועץ שהפנייה שויכה אליו — המייל יוצא אליו */
   advisorId?: string | null;
   /** מה מחכה ליועץ: "בקשה לפגישה", "בקשת ליווי לשלב בניית התמהיל" */
   what: string;
@@ -29,10 +29,14 @@ function siteOrigin(): string {
 }
 
 /**
- * לאן נשלח המייל: בשלב הזה יש יועץ אחד, ולכן תמיד ליועץ של הפלטפורמה — גם
- * כשהפנייה שויכה ליועץ ישן שעוד לא התמזג לחשבון היחיד.
+ * לאן נשלח המייל: ליועץ שהפנייה שויכה אליו — כל יועץ מקבל את הפניות של
+ * המשרד שלו. פנייה שלא שויכה לאף יועץ (מהאתר הראשי) — ליועץ הפלטפורמה.
  */
-async function advisorEmail(): Promise<string> {
+export async function advisorEmailFor(advisorId?: string | null): Promise<string> {
+  if (advisorId) {
+    const advisor = await prisma.user.findUnique({ where: { id: advisorId }, select: { role: true, email: true } });
+    if (advisor?.role === 'ADVISOR' && advisor.email) return advisor.email;
+  }
   return (await primaryAdvisor())?.email || ADVISOR_EMAIL;
 }
 
@@ -77,7 +81,7 @@ export function advisorRequestEmailContent(input: AdvisorRequestEmail, origin = 
 
 export async function emailAdvisorAboutRequest(input: AdvisorRequestEmail): Promise<void> {
   try {
-    const to = await advisorEmail();
+    const to = await advisorEmailFor(input.advisorId);
     const content = advisorRequestEmailContent(input);
     // תשובה למייל מגיעה ישר ללקוח שפנה
     const replyTo = input.from.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.from.email) ? input.from.email : undefined;

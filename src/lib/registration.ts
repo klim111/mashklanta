@@ -7,6 +7,8 @@ import { publicSiteOrigin } from '@/lib/auth-url';
 import { normalizeEmail } from '@/lib/find-user-by-login';
 import { saveEquityPlan } from '@/lib/equity-plan-store';
 import { isFinancingProfile, sanitizeExpenses } from '@/lib/equity-planning';
+import { OFFICE_COOKIE } from '@/lib/office';
+import { activeOfficeIdBySlug } from '@/lib/office-store';
 
 /**
  * הרשמת לקוח חדש עם אימות מייל.
@@ -157,7 +159,20 @@ type PendingInput = {
   requestOrigin?: string | null;
   /** מה שהלקוח הזין בכלים החינמיים לפני ההרשמה (guestSnapshotToToolData) */
   toolData?: Record<string, unknown> | null;
+  /** המשרד שדרכו נרשם. בלי ערך — נקרא מהעוגייה שדף המשרד שמר (mk_office) */
+  officeSlug?: string | null;
 };
+
+/** המשרד שהגולש הגיע ממנו, לפי העוגייה של דף המשרד. מחוץ לבקשה — null */
+async function officeSlugFromCookie(): Promise<string | null> {
+  try {
+    const { cookies } = await import('next/headers');
+    const value = (await cookies()).get(OFFICE_COOKIE)?.value;
+    return value ? decodeURIComponent(value).slice(0, 60) : null;
+  } catch {
+    return null;
+  }
+}
 
 export type StartResult =
   | { status: 'sent' }
@@ -191,6 +206,7 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
   const token = generateToken();
   const hashedPassword = input.password ? await bcrypt.hash(input.password, 12) : null;
   const withinHour = existing && now.getTime() - existing.createdAt.getTime() < 60 * 60 * 1000;
+  const officeSlug = input.officeSlug ?? (await officeSlugFromCookie());
 
   const data = {
     email,
@@ -206,6 +222,8 @@ export async function startRegistration(input: PendingInput): Promise<StartResul
     callbackUrl: safeCallbackUrl(input.callbackUrl),
     // הרשמה חוזרת בלי נתוני כלים אינה מוחקת את מה שנשלח בפעם הקודמת
     ...(input.toolData ? { toolDataJson: input.toolData as Prisma.InputJsonValue } : {}),
+    // השיוך למשרד נשמר במסד, ולא רק בעוגייה — הקישור במייל עשוי להיפתח בדפדפן אחר
+    ...(officeSlug ? { officeSlug } : {}),
     expires: new Date(now.getTime() + VERIFICATION_TTL_MINUTES * 60 * 1000),
     lastSentAt: now,
     // מונה השליחות נשמר בתוך שעה, כדי שהרשמה חוזרת לא תעקוף את המגבלה
@@ -356,10 +374,13 @@ export async function confirmRegistration(input: {
   const equity = toolData?.equity;
   if (toolData) delete toolData.equity;
 
+  const signupOfficeId = await activeOfficeIdBySlug(pending.officeSlug).catch(() => null);
+
   let user;
   try {
     user = await prisma.user.create({
       data: {
+        ...(signupOfficeId ? { signupOfficeId } : {}),
         email: pending.email,
         name: pending.name,
         username: username || null,

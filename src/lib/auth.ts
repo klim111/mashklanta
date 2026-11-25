@@ -25,6 +25,7 @@ import { emailAdvisorAboutSignup } from "@/lib/advisor-notify";
 import {
   ADVISOR_DEVICE_COOKIE,
   AdvisorLinkError,
+  advisorStillAllowed,
   confirmAdvisorLink,
   notifyAdvisorLogin,
 } from "@/lib/advisor-access";
@@ -86,6 +87,9 @@ async function carryGuestData(userId: string): Promise<void> {
  * זהה לזה שרשום ב-Google Cloud Console וגוגל עונה `redirect_uri_mismatch`.
  */
 applyNormalizedAuthUrl();
+
+/** כל כמה זמן נבדק מחדש שיועץ מחובר עדיין רשאי להיכנס (משרד שלא הושעה) */
+const ADVISOR_RECHECK_MS = 60_000;
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -223,7 +227,7 @@ export const authOptions: NextAuthOptions = {
             readCookie(headers.cookie, ADVISOR_DEVICE_COOKIE),
             { password: credentials?.password ?? null, newPassword: credentials?.newPassword ?? null }
           );
-          await notifyAdvisorLogin({
+          await notifyAdvisorLogin(advisor.email, {
             ip: (headers["x-forwarded-for"] ?? "").split(",")[0]?.trim() || "לא ידוע",
             userAgent: headers["user-agent"] ?? null,
           });
@@ -368,6 +372,22 @@ export const authOptions: NextAuthOptions = {
           delete token.advisorSession;
         } else {
           token.advisorSeen = Date.now();
+        }
+      }
+      /**
+       * משרד שמנהל הפלטפורמה השעה, או חשבון שאינו יועץ יותר — גם כניסה פתוחה
+       * נסגרת. נבדק מול המסד פעם בדקה לכל היותר.
+       */
+      if (token.role === "ADVISOR" && token.id) {
+        const checkedAt = Number(token.advisorCheckedAt) || 0;
+        if (Date.now() - checkedAt > ADVISOR_RECHECK_MS) {
+          if (await advisorStillAllowed(String(token.id)).catch(() => true)) {
+            token.advisorCheckedAt = Date.now();
+          } else {
+            delete token.id;
+            delete token.role;
+            delete token.advisorSession;
+          }
         }
       }
       return token;

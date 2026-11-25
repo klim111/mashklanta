@@ -43,6 +43,7 @@ import { SiteContentEditorPanel } from '../SiteContentEditorPanel';
 import { PaymentLinksPanel } from '../PaymentLinksPanel';
 import { UnfinishedSignupsPanel } from '../UnfinishedSignupsPanel';
 import { TestDataCleanupCard } from '../TestDataCleanupCard';
+import { AdvisorsAdminPanel } from '../AdvisorsAdminPanel';
 import { StageChip } from '../ui';
 import { setAdvisoryEnded } from '../advisory-end';
 import { useAdvisorClients } from '../useAdvisorClients';
@@ -103,6 +104,7 @@ const VIEW_LABELS: Record<string, string> = {
   'client-tools': 'הכלים ללקוחות',
   'payment-links': 'קישורי תשלום',
   professional: 'הגדרות מקצועיות',
+  advisors: 'יועצים ומשרדים',
   visits: 'ביקורים באתר',
   signups: 'הרשמות שלא הושלמו',
   pricing: 'תמחור ומסלולים',
@@ -597,6 +599,7 @@ export function AdvisorShell() {
 
                 {location.section === 'admin' && (
                   <>
+                    {location.view === 'advisors' && <AdvisorsAdminPanel />}
                     {location.view === 'visits' && <SiteAnalyticsPanel />}
                     {location.view === 'signups' && <UnfinishedSignupsPanel />}
                     {location.view === 'pricing' && <PricingEditorPanel />}
