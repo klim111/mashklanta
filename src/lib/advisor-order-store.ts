@@ -9,6 +9,7 @@ import { PLATFORM_PROCESS_PRICE, platformMonthsSince } from './service-flow';
 import { ensureClientLinkSafely } from './advisor-link';
 import { emailAdvisorAboutRequest } from './advisor-notify';
 import { sendAdvisoryEndedOffer } from './billing';
+import { advisorRowScope } from './platform-admin-core';
 
 /**
  * שכבת הגישה להזמנות הליווי.
@@ -262,7 +263,7 @@ export interface AdvisorOrderRequest extends AdvisorOrder {
 export async function listAdvisorRequests(advisorId: string): Promise<AdvisorOrderRequest[]> {
   const rows = await prisma.advisorServiceOrder.findMany({
     // גם בקשות שעדיין לא שויכו לאף יועץ, כמו בפניות — כדי שלא ייעלמו
-    where: { OR: [{ advisorId }, { advisorId: null }], status: { in: ['REQUESTED', 'PAID'] } },
+    where: { ...(await advisorRowScope(advisorId)), status: { in: ['REQUESTED', 'PAID'] } },
     orderBy: { createdAt: 'desc' },
     select: {
       ...orderSelect,
@@ -297,7 +298,7 @@ export async function markOrderInWork(
   inWork: boolean
 ): Promise<AdvisorOrder | null> {
   const existing = await prisma.advisorServiceOrder.findFirst({
-    where: { id: orderId, OR: [{ advisorId }, { advisorId: null }], status: { in: ['REQUESTED', 'PAID'] } },
+    where: { id: orderId, ...(await advisorRowScope(advisorId)), status: { in: ['REQUESTED', 'PAID'] } },
     select: { id: true, planId: true, workStartedAt: true },
   });
   if (!existing) return null;

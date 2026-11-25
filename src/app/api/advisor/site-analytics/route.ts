@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getServerAuth } from '@/lib/auth';
+import { requirePlatformAdmin } from '@/lib/platform-admin';
 import { summarizeLogins, summarizeVisits } from '@/lib/site-analytics';
 import { notStaffVisitor } from '@/lib/staff-visitors';
 import { NOT_PROSPECT_USER } from '@/lib/prospect-client';
@@ -14,9 +14,9 @@ const MAX_ROWS = 100_000;
  * התחבר: כל ביקור של משתמש מחובר, עם IP, מכשיר, דפדפן ומיקום.
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.user.role !== 'ADVISOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  // הביקורים באתר כולו — מנהל הפלטפורמה בלבד
+  const auth = await requirePlatformAdmin();
+  if (auth instanceof NextResponse) return auth;
 
   const days = Math.min(Math.max(Number(request.nextUrl.searchParams.get('days')) || 30, 1), 365);
   const to = new Date();
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     ? await Promise.all([
         prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }),
         prisma.client.findMany({
-          where: { userId: { in: userIds }, advisorId: session.user.id },
+          where: { userId: { in: userIds }, advisorId: auth.advisorId },
           select: { id: true, userId: true },
         }),
       ])

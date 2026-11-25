@@ -8,6 +8,7 @@ import { pageLabel } from './page-labels';
 import { recordRequestInChat } from './conversation-store';
 import { PLAN_STAGES } from './mortgage-plan';
 import type { PlanStageId } from './mortgage-plan';
+import { advisorRowScope } from './platform-admin-core';
 import { journeyStageFor } from '@/data/platform/planStages';
 import { LEAD_TOPIC_LABELS, parseLeadTopic } from './advisor-lead-topics';
 import type { LeadTopic } from './advisor-lead-topics';
@@ -113,6 +114,11 @@ export interface CreateLeadInput {
   /** העמוד שממנו נשלחה הפנייה */
   sourcePath?: string | null;
   /**
+   * היועץ שהפנייה של אורח מגיעה אליו — כשנשלחה מדף המשרד שלו. לקוח רשום
+   * משויך תמיד לפי הכרטיס שלו, והשדה לא משפיע עליו
+   */
+  advisorId?: string | null;
+  /**
    * לקוח רשום: הפנייה נכתבת גם בצ׳אט שלו עם היועץ, כהודעה ממנו. `false` —
    * כשהפנייה נשלחה מהצ׳אט עצמו, וההודעה כבר שם.
    */
@@ -167,7 +173,7 @@ export async function createLead(
   const row = await prisma.advisorLead.create({
     data: {
       ownerId: userId,
-      advisorId: client?.advisorId ?? null,
+      advisorId: client?.advisorId ?? input.advisorId ?? null,
       clientId: client?.clientId ?? null,
       topic: input.topic,
       name,
@@ -215,7 +221,7 @@ export async function createLead(
  */
 export async function listAdvisorLeads(advisorId: string): Promise<AdvisorLeadView[]> {
   const rows = await prisma.advisorLead.findMany({
-    where: { status: { not: 'CLOSED' }, OR: [{ advisorId }, { advisorId: null }] },
+    where: { status: { not: 'CLOSED' }, ...(await advisorRowScope(advisorId)) },
     orderBy: { createdAt: 'desc' },
     select: leadSelect,
   });
@@ -268,7 +274,7 @@ export async function leadFileForAdvisor(
   fileId: string
 ): Promise<StoredAttachment | null> {
   const lead = await prisma.advisorLead.findFirst({
-    where: { id: leadId, OR: [{ advisorId }, { advisorId: null }] },
+    where: { id: leadId, ...(await advisorRowScope(advisorId)) },
     select: { files: true },
   });
   if (!lead) return null;

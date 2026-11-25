@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { safeCallbackPath } from '@/lib/auth-url';
+import { canonicalSiteOrigin, safeCallbackPath } from '@/lib/auth-url';
+import { advisorOrigin, hostSplit } from '@/lib/advisor-host';
 import { ADVISOR_SESSION_COOKIE, advisorSessionValid } from '@/lib/advisor-session';
 import { CLIENT_VIEW_COOKIE, clientViewCookieOn } from '@/lib/client-view';
 import { ACT_AS_HEADER, ACT_AS_PARAM, validClientId } from '@/lib/act-as-shared';
@@ -42,6 +43,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/cron',
   // הלינק החד-פעמי של פגישת אורח — הלינק עצמו הוא ההרשאה, ורק בזמן הפגישה
   '/api/guest-meeting',
+  // פרטי משרד פעיל לפי הקישור — מה שממילא מוצג בדף המשרד הציבורי (/o/<slug>)
+  '/api/office/public',
 ];
 
 function isPublicApi(pathname: string): boolean {
@@ -77,16 +80,33 @@ const SESSION_COOKIES = ['next-auth.session-token', '__Secure-next-auth.session-
 type Token = Awaited<ReturnType<typeof readToken>>;
 
 export async function middleware(request: NextRequest) {
+  /**
+   * כתובת נפרדת לאזור היועצים (ADVISOR_ORIGIN, src/lib/advisor-host.ts): כל
+   * צד נכנס בכתובת שלו. בלי המשתנה — אין הפניות, ודף הבית עובר כמו קודם.
+   */
+  const split = hostSplit({
+    host: request.headers.get('host') ?? request.nextUrl.host,
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    advisorOrigin: advisorOrigin(),
+    mainOrigin: canonicalSiteOrigin(),
+  });
+  if (split?.redirect) return NextResponse.redirect(split.redirect);
+  // דף הבית נמצא במידלוור רק בשביל ההפניה של כתובת היועצים
+  if (request.nextUrl.pathname === '/') return NextResponse.next();
+
   const token = await readToken(request);
 
   /**
    * התחברות של יועץ שאינה תקפה עוד — הדפדפן נסגר, האזור לא היה פתוח זמן רב,
    * או שעברו יותר מדי שעות מהכניסה (src/lib/advisor-session.ts) — נמחקת
-   * מהדפדפן, והבקשה ממשיכה כאילו אין התחברות.
+   * מהדפדפן, והבקשה ממשיכה כאילו אין התחברות. כשיש כתובת נפרדת ליועצים,
+   * גם התחברות של יועץ באתר של הלקוחות לא תקפה: היועץ עובד רק מהכתובת שלו.
    */
   if (
     (token as { role?: string } | null)?.role === 'ADVISOR' &&
-    !advisorSessionValid(token!, request.cookies.get(ADVISOR_SESSION_COOKIE)?.value)
+    ((split && !split.onAdvisorHost) ||
+      !advisorSessionValid(token!, request.cookies.get(ADVISOR_SESSION_COOKIE)?.value))
   ) {
     // גם הדף או ה-API שמטפלים בבקשה הזו כבר לא רואים את ההתחברות
     SESSION_COOKIES.forEach((name) => request.cookies.delete(name));
@@ -188,5 +208,5 @@ function routeRequest(request: NextRequest, token: Token): NextResponse {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
+  matcher: ['/', '/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
 };

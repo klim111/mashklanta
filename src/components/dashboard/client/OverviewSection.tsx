@@ -59,6 +59,7 @@ import { useCashFlow } from '@/components/cash-flow/useCashFlow';
 import { usePlatformAccess } from '@/components/service-flow/usePlatformAccess';
 import { mixBuilderHref } from './mixBuilderLink';
 import type { ClientDashboardData } from './useClientDashboard';
+import { ALL_TOOLS_OPEN, type ClientToolAccess } from '@/lib/office';
 
 /** "היום" / "מחר", ואחרת יום.חודש — קצר מספיק לתיבת המועד */
 function shortDayLabel(iso: string): string {
@@ -81,7 +82,10 @@ export function OverviewSection({
   onNavigate,
   onOpenMortgage,
   workspace = null,
+  toolAccess = ALL_TOOLS_OPEN,
 }: {
+  /** הכלים שהיועץ פתח ללקוח (src/lib/office.ts) */
+  toolAccess?: ClientToolAccess;
   /** פתיחת "המשכנתא שלי" על משכנתא שנחתמה */
   onOpenMortgage?: (planId: string) => void;
   data: ClientDashboardData;
@@ -372,11 +376,13 @@ export function OverviewSection({
           icon={<RefreshCw className="h-4 w-4" />}
           label="מיחזור משכנתא"
         />
-        <QuickAction
-          onClick={() => onNavigate('expenses')}
-          icon={<Wallet className="h-4 w-4" />}
-          label="תכנון הוצאות והון עצמי"
-        />
+        {toolAccess.equity && (
+          <QuickAction
+            onClick={() => onNavigate('expenses')}
+            icon={<Wallet className="h-4 w-4" />}
+            label="תכנון הוצאות והון עצמי"
+          />
+        )}
         <QuickAction
           onClick={() => onNavigate('settings')}
           icon={<UserRound className="h-4 w-4" />}
@@ -637,11 +643,15 @@ export function OverviewSection({
       {/* שלוש העמודות: פעולות מהירות, הון עצמי, מצב הון ותזרים */}
       <DashboardWorkspace
         actions={quickActions}
-        actionsCount={8}
+        actionsCount={toolAccess.equity ? 8 : 7}
         equityPlan={equityState.plan}
         cashFlow={cashFlow}
         initial={workspace}
         request={workspaceRequest}
+        hidden={[
+          ...(toolAccess.equity ? [] : (['equity'] as const)),
+          ...(toolAccess['cash-flow'] ? [] : (['cash-flow'] as const)),
+        ]}
       />
       {/* מה שהוזן בכלי המיחזור, ההיתכנות וההלוואות — כולל לפני ההרשמה */}
       <SavedToolsCard />
