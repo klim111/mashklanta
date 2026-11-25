@@ -20,6 +20,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/advisor-leads',
   // בקשת מכרז ריביות או בדיקת מיחזור מעמוד הבית, בלי חשבון; הנתיב מגביל קצב ובודק כל שדה
   '/api/intake-request',
+  // רשימת הסניפים של בנק (מידע ציבורי) — לשדה הסניף בטפסים של העמוד הראשי, גם למי שלא מחובר
+  '/api/banks/branches',
   '/api/auth-diagnostics',
   '/api/health',
   '/api/addresses',
