@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { ArrowRight, LineChart } from 'lucide-react';
+import { LineChart } from 'lucide-react';
 import NavBar from '@/components/ui/navbar';
 import { CashFlowTool } from '@/components/cash-flow/CashFlowTool';
 
@@ -22,13 +21,6 @@ export default function AdvisorCashFlowPage() {
             <LineChart className="h-6 w-6 text-orange-500" />
             כלי מצב הון ותזרים
           </h1>
-          <Link
-            href="/advisor-dashboard"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-          >
-            <ArrowRight className="h-4 w-4" />
-            ללוח הבקרה
-          </Link>
         </div>
         <CashFlowTool plan={null} />
       </div>

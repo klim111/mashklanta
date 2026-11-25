@@ -1298,3 +1298,39 @@ html.a11y-big-cursor [role='button'] {
 .intake-form :is(p, span, div, h1, h2, h3, li):not([dir]):not(.text-center) {
   text-align: right;
 }
+
+/* ---------------------------------------------------------------------------
+   אזור היועץ (/advisor-dashboard ...) — כיתוב גדול מעט יותר מבשאר האתר, כדי
+   שמסכי העבודה יהיו קריאים בלי להתאמץ. כל מידה עולה בכ-2 פיקסלים (12→14,
+   14→16, 16→18), והכותרות הגדולות נשארות כמו שהן. המחלקה advisor-type מוצבת
+   על <html> מתוך src/app/advisor-dashboard/layout.tsx, ולכן חלה גם על חלונות
+   ותפריטים שנפתחים מחוץ לעמוד (portals).
+--------------------------------------------------------------------------- */
+.advisor-type :is(.text-\[9px\], .text-\[10px\]) {
+  font-size: 0.8125rem;
+  line-height: 1.15rem;
+}
+
+.advisor-type :is(.text-2xs, .text-xs, .text-\[11px\], .text-\[12px\]) {
+  font-size: 0.875rem;
+  line-height: 1.3rem;
+}
+
+.advisor-type :is(.text-\[12\.5px\], .text-\[13px\]) {
+  font-size: 0.9375rem;
+  line-height: 1.4rem;
+}
+
+.advisor-type .text-sm {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.advisor-type :is(.text-button, .text-info, .text-\[15px\]) {
+  font-size: 1.0625rem;
+}
+
+.advisor-type .text-base {
+  font-size: 1.125rem;
+  line-height: 1.65rem;
+}

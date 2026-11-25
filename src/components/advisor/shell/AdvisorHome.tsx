@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type React from 'react';
 import Link from 'next/link';
 import {
   AlarmClock,
@@ -69,6 +70,7 @@ export function AdvisorHome({
   publicUrl,
   onNavigate,
   onStage,
+  toolbar,
 }: {
   firstName: string;
   overview: AdvisorOverviewView;
@@ -80,6 +82,8 @@ export function AdvisorHome({
   onNavigate: (section: AdvisorSection, view?: string) => void;
   /** רשימת הלקוחות מסוננת לשלב (`none` — לקוחות בלי תהליך) */
   onStage: (stage: PlanStageId | 'none') => void;
+  /** חיפוש לקוח ו"חדש" — מיד מתחת לברכה */
+  toolbar?: React.ReactNode;
 }) {
   const now = new Date();
 
@@ -164,9 +168,11 @@ export function AdvisorHome({
         </h1>
       </header>
 
+      {toolbar}
+
       {office && !office.published && <OfficeSetupCard onOpen={() => onNavigate('office')} />}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* מה מחכה לי */}
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <header className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">

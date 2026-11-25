@@ -95,7 +95,7 @@ export function QuickActions({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-5 text-base font-black text-white shadow-sm transition-colors hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
             חדש
@@ -103,11 +103,7 @@ export function QuickActions({
         </PopoverTrigger>
         <PopoverContent dir="rtl" align="end" className="w-64 rounded-2xl p-1.5 text-right">
           {onNewClient && menuItem('לקוח חדש', <UserPlus className="h-4 w-4" />, onNewClient)}
-          {!clientId && menuItem('תיק ללקוח מתעניין', <FolderPlus className="h-4 w-4" />, () => setFileOpen(true))}
-          {menuItem('משימה', <ListChecks className="h-4 w-4" />, () => setTaskOpen(true))}
-          {menuItem('פגישה', <CalendarPlus className="h-4 w-4" />, () => setMeetingOpen(true))}
-          {!clientId && menuItem('לינק חד-פעמי לפגישה', <Link2 className="h-4 w-4" />, () => setGuestOpen(true))}
-          {menuItem('תיק מסמכים', <FolderOpen className="h-4 w-4" />, openDocuments)}
+          {/* בונה התמהילים — עמוד נפרד, ולכן קישור ולא חלון */}
           <Link
             href="/mortgage-advisor"
             onClick={() => setMenuOpen(false)}
@@ -116,8 +112,13 @@ export function QuickActions({
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
               <Calculator className="h-4 w-4" />
             </span>
-            תמהיל
+            תמהיל חדש
           </Link>
+          {!clientId && menuItem('תיק ללקוח מתעניין', <FolderPlus className="h-4 w-4" />, () => setFileOpen(true))}
+          {menuItem('משימה', <ListChecks className="h-4 w-4" />, () => setTaskOpen(true))}
+          {menuItem('פגישה', <CalendarPlus className="h-4 w-4" />, () => setMeetingOpen(true))}
+          {!clientId && menuItem('לינק חד-פעמי לפגישה', <Link2 className="h-4 w-4" />, () => setGuestOpen(true))}
+          {menuItem('תיק מסמכים', <FolderOpen className="h-4 w-4" />, openDocuments)}
         </PopoverContent>
       </Popover>
     ) : null;
