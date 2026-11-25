@@ -5,7 +5,7 @@ import { syncStageDocuments } from './clients';
 import { ADVISOR_EMAIL } from './single-advisor';
 import { claimProspectFile } from './prospect-client';
 import { OFFICE_COOKIE } from './office';
-import { officeOwnerBySlug } from './office-store';
+import { officeOwnerById, officeOwnerBySlug } from './office-store';
 
 /**
  * שיוך לקוחות ליועץ.
@@ -14,9 +14,9 @@ import { officeOwnerBySlug } from './office-store';
  * רואה את התהליכים, המסמכים, התמהילים והבקשות של הלקוח. עד עכשיו כרטיס נפתח
  * רק כשיועץ הוסיף לקוח בעצמו, ולכן לקוח שנרשם לבד לא הופיע אצל אף יועץ.
  *
- * בשלב הזה יש בפלטפורמה יועץ אחד, ולכן כל לקוח שנרשם לבד משויך אליו: מיד
- * בהרשמה, ובכל פעם שהוא פונה ליועץ. היועץ הוא חשבון היועץ הוותיק במערכת —
- * כשיש רק אחד, זה הוא.
+ * לקוח שנרשם דרך דף משרד (/o/<slug>) משויך ליועץ של אותו משרד. השיוך נשמר
+ * במסד בהרשמה (User.signupOfficeId), ובנוסף נקרא מהעוגייה של דף המשרד. מי
+ * שנרשם באתר הראשי, בלי דף משרד, משויך ליועץ הפלטפורמה.
  */
 
 export interface PrimaryAdvisor {
@@ -26,9 +26,8 @@ export interface PrimaryAdvisor {
 }
 
 /**
- * היועץ של הפלטפורמה: חשבון היועץ היחיד (src/lib/single-advisor.ts), ואם
- * עדיין לא נוצר — חשבון היועץ הראשון שנפתח. יועצים ישנים מתמזגים לחשבון
- * היחיד בכניסה הראשונה שלו, יחד עם הלקוחות שלהם.
+ * יועץ הפלטפורמה (src/lib/single-advisor.ts), ואם עדיין לא נוצר — חשבון
+ * היועץ הראשון שנפתח. אליו מגיעים לקוחות ופניות מהאתר הראשי.
  */
 export async function primaryAdvisor(): Promise<PrimaryAdvisor | null> {
   const select = { id: true, name: true, email: true } as const;
@@ -64,7 +63,10 @@ async function advisorFromOfficeCookie(): Promise<PrimaryAdvisor | null> {
  * תמהילים, בקשות ריבית, פניות ובקשות ליווי) מקבל אותו, כדי שיופיע אצל היועץ.
  * הפעולה בטוחה לקריאה חוזרת. מחזיר null למשתמש שאינו לקוח, או כשאין יועץ.
  */
-export async function ensureClientLink(userId: string): Promise<ClientLink | null> {
+export async function ensureClientLink(
+  userId: string,
+  options: { useOfficeCookie?: boolean } = {}
+): Promise<ClientLink | null> {
   // תיק מתעניין שהיועץ פתח עם המייל הזה עובר עכשיו לחשבון (src/lib/prospect-client.ts)
   const claimed = await claimProspectFile(userId).catch((error) => {
     console.error('[advisor-link] claiming the prospect file failed:', error);
@@ -79,11 +81,16 @@ export async function ensureClientLink(userId: string): Promise<ClientLink | nul
   });
   if (existing) return { clientId: existing.id, advisorId: existing.advisorId };
 
-  const [user, officeAdvisor] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { role: true, name: true, email: true } }),
-    advisorFromOfficeCookie(),
-  ]);
-  // מי שהגיע מדף משרד של יועץ — אליו; כל השאר — ליועץ של הפלטפורמה
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, name: true, email: true, signupOfficeId: true },
+  });
+  // מי שנרשם דרך דף משרד של יועץ — אליו (לפי מה שנשמר בהרשמה, ואחרת לפי
+  // העוגייה); כל השאר — ליועץ של הפלטפורמה
+  // העוגייה היא של הדפדפן ששלח את הבקשה: רק כשזה הלקוח עצמו
+  const officeAdvisor =
+    (await officeOwnerById(user?.signupOfficeId)) ??
+    (options.useOfficeCookie === false ? null : await advisorFromOfficeCookie());
   const advisor = officeAdvisor ?? (await primaryAdvisor());
   if (!user || user.role !== 'CLIENT' || !user.email || !advisor || advisor.id === userId) return null;
 
@@ -156,7 +163,8 @@ export async function linkUnlinkedClients(advisorId: string): Promise<number> {
     });
     let linked = 0;
     for (const user of users) {
-      if (await ensureClientLink(user.id)) linked += 1;
+      // הבקשה כאן היא של היועץ, ולכן העוגייה של הדפדפן שלו לא קובעת לאיזה משרד הלקוח שייך
+      if (await ensureClientLink(user.id, { useOfficeCookie: false })) linked += 1;
     }
     // לקוח שהיה לו כרטיס כבר קודם, ופתח תהליך לפני שנפתח לו — גם התהליך מגיע
     const orphans = await prisma.mortgagePlan.findMany({
@@ -178,3 +186,6 @@ export async function linkUnlinkedClients(advisorId: string): Promise<number> {
     return 0;
   }
 }
+
+
+export { OTHER_OFFICE_MESSAGE, linkedToAnotherAdvisor } from './office-scope';

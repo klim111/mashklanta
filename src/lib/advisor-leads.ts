@@ -189,7 +189,8 @@ export async function createLead(
   });
 
   await emailAdvisorAboutRequest({
-    advisorId: client?.advisorId ?? null,
+    // הפנייה מגיעה ליועץ שהיא שויכה אליו: היועץ של הלקוח, או בעל המשרד שבדף שלו נשלחה
+    advisorId: client?.advisorId ?? input.advisorId ?? null,
     what: requestKind ? REQUEST_KIND_LABELS[requestKind] : 'פנייה חדשה',
     details: [
       ['נושא', LEAD_TOPIC_LABELS[input.topic]],
