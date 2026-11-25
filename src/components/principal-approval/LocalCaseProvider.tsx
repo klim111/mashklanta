@@ -192,6 +192,7 @@ export function LocalCaseProvider({ storageKey, children }: { storageKey: string
       data,
       loading: data === null,
       loadError: null,
+      loadStatus: null,
       valuesOf,
       metaOf: () => undefined,
       errorOf: (entityType: EntityType, entityId: string, fieldKey: string) =>

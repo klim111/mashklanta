@@ -26,5 +26,5 @@ export default async function Page() {
       </div>
     );
   }
-  return <ClientIntakeForm mode="REFINANCE_CHECK" local={!session?.user} />;
+  return <ClientIntakeForm mode="REFINANCE_CHECK" local={!session?.user?.id} />;
 }

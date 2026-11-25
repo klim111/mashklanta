@@ -20,6 +20,8 @@ const PUBLIC_API_PREFIXES = [
   '/api/advisor-leads',
   // בקשת מכרז ריביות או בדיקת מיחזור מעמוד הבית, בלי חשבון; הנתיב מגביל קצב ובודק כל שדה
   '/api/intake-request',
+  // רשימת הסניפים של בנק (מידע ציבורי) — לשדה הסניף בטפסים של העמוד הראשי, גם למי שלא מחובר
+  '/api/banks/branches',
   '/api/auth-diagnostics',
   '/api/health',
   '/api/addresses',
@@ -210,5 +212,9 @@ function routeRequest(request: NextRequest, token: Token): NextResponse {
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
+  /**
+   * גם טפסי המכרז והמיחזור מהעמוד הראשי: כניסת יועץ שפגה נמחקת לפני שהדף נטען,
+   * כדי שהדף וה-API יסכימו מי מחובר (אחרת הטופס נטען כמחובר ונכשל ב-401).
+   */
+  matcher: ['/', '/tender-request', '/refinance-request', '/dashboard/:path*', '/advisor-dashboard/:path*', '/meeting/:path*', '/auth/:path*', '/api/:path*'],
 };

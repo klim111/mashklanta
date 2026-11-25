@@ -26,5 +26,5 @@ export default async function Page() {
       </div>
     );
   }
-  return <ClientIntakeForm mode="TENDER" local={!session?.user} />;
+  return <ClientIntakeForm mode="TENDER" local={!session?.user?.id} />;
 }
