@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
@@ -54,6 +54,7 @@ import { OfficeProfilePanel } from '../office/OfficeProfilePanel';
 import { OfficeToolsPanel } from '../office/OfficeToolsPanel';
 import { AdvisorHome } from './AdvisorHome';
 import { AdvisorToolsGrid } from './AdvisorToolsGrid';
+import { BackHomeButtons } from './AdvisorBackBar';
 import {
   SECTION_VIEWS,
   allowedLocation,
@@ -144,6 +145,9 @@ export function AdvisorShell() {
   const location = allowedLocation(requested, officeState.platformAdmin);
   const waitingForRole = requested.section === 'admin' && !officeState.ready;
 
+  /** כמה מעברים בין אזורים נעשו בלשונית — "חזרה" חוזרת אחורה רק כשיש לאן */
+  const depth = useRef(0);
+
   // המיקום מהכתובת, וגם בחזרה אחורה בדפדפן
   useEffect(() => {
     const read = () => {
@@ -152,15 +156,20 @@ export function AdvisorShell() {
       const client = params.get('client');
       if (client) setFocusClientId(client);
     };
+    const onPop = () => {
+      depth.current = Math.max(0, depth.current - 1);
+      read();
+    };
     read();
-    window.addEventListener('popstate', read);
-    return () => window.removeEventListener('popstate', read);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   const go = useCallback((section: AdvisorSection, view?: string) => {
     const next = normalizeLocation(section, view);
     setRequested(next);
     setSearchOpen(false);
+    depth.current += 1;
     window.history.pushState(null, '', `${window.location.pathname}${locationQuery(next)}`);
     window.scrollTo({ top: 0 });
   }, []);
@@ -199,6 +208,12 @@ export function AdvisorShell() {
 
   const refreshAll = async () => {
     await Promise.all([refreshClients(), refreshOverview(), refreshRequests(), refreshLeads()]);
+  };
+
+  /** "חזרה" — למסך הקודם באזור היועץ; כשנכנסו ישר לאזור הזה — למסך הבית */
+  const goBack = () => {
+    if (depth.current > 0) window.history.back();
+    else go('home');
   };
 
   const openClients = (intent: Omit<ClientsIntent, 'nonce'>) => {
@@ -269,7 +284,7 @@ export function AdvisorShell() {
   const search = (
     <div className="relative min-w-0 flex-1">
       <Search
-        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute right-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400"
         aria-hidden
       />
       <input
@@ -282,7 +297,7 @@ export function AdvisorShell() {
         onBlur={() => window.setTimeout(() => setSearchOpen(false), 150)}
         placeholder="חיפוש לקוח לפי שם, מייל או טלפון"
         aria-label="חיפוש לקוח"
-        className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pr-9 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:bg-white"
+        className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-10 text-base text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500"
       />
       {searchOpen && query.trim() && (
         <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
@@ -302,6 +317,14 @@ export function AdvisorShell() {
           ))}
         </div>
       )}
+    </div>
+  );
+
+  /** חיפוש לקוח ו"חדש" — בראש אזור העבודה, ברוחב המסגרת */
+  const toolbar = (
+    <div className="flex items-center gap-2">
+      {search}
+      {quickActions}
     </div>
   );
 
@@ -391,35 +414,23 @@ export function AdvisorShell() {
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-col">
-        {/* שורת העבודה: חיפוש לקוח, "חדש" ובניית תמהיל — זמינים מכל מסך */}
-        <header className="start-aligned sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-          <div className="flex items-center gap-2 px-4 py-2.5 lg:px-6">
-            <button
-              type="button"
-              onClick={() => go('home')}
-              aria-label="היום שלי"
-              className="flex shrink-0 items-center gap-2 lg:hidden"
-            >
+        {/* במסך צר: הלוגו, היציאה והאזורים כשורת כפתורים. במסך רחב — תפריט הצד */}
+        <header className="start-aligned sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <button type="button" onClick={() => go('home')} aria-label="היום שלי" className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white">
                 מ
               </span>
+              <span className="text-lg font-black text-slate-900">משכלנתא</span>
             </button>
-            {search}
-            {quickActions}
-            <Link
-              href="/mortgage-advisor"
-              className="hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:border-blue-300 hover:text-blue-700 md:inline-flex"
-            >
-              <PieChart className="h-4 w-4" aria-hidden />
-              בניית תמהיל
-            </Link>
+            <span className="flex-1" />
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: '/' })}
               aria-label="יציאה"
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-800 lg:hidden"
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-800"
             >
-              <LogOut className="h-4 w-4" aria-hidden />
+              <LogOut className="h-5 w-5" aria-hidden />
             </button>
           </div>
           {/* במסך צר — האזורים כשורת כפתורים */}
@@ -443,6 +454,12 @@ export function AdvisorShell() {
 
         <main className="flex-1 px-4 py-5 pb-24 lg:px-6">
           <div className="mx-auto max-w-6xl">
+            {location.section !== 'home' && (
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <BackHomeButtons onBack={goBack} onHome={() => go('home')} />
+                <div className="min-w-[16rem] flex-1">{toolbar}</div>
+              </div>
+            )}
             {location.section !== 'home' && !waitingForRole && (
               <div className="start-aligned mb-5">
                 <h1 className="text-title font-black text-slate-900">{text.title}</h1>
@@ -491,6 +508,7 @@ export function AdvisorShell() {
                     publicUrl={officeState.publicUrl}
                     onNavigate={go}
                     onStage={(stage) => openClients({ stage, adding: false })}
+                    toolbar={toolbar}
                   />
                 )}
 

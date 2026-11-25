@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, ArrowRight, FileSignature, FileText, FolderOpen } from 'lucide-react';
+import { AlertTriangle, FileSignature, FileText, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientDocumentsPanel } from '@/components/advisor/ClientDocumentsPanel';
@@ -75,13 +75,7 @@ export default function ClientDocumentsPage() {
     <div dir="rtl" className="min-h-screen bg-slate-50">
       <header className="border-b bg-white">
         <div className="container mx-auto flex flex-wrap items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="sm" className="h-9" asChild>
-            <Link href={`/advisor-dashboard/client/${client.id}`}>
-              <ArrowRight className="ml-1 h-4 w-4" />
-              חזרה ל{client.name}
-            </Link>
-          </Button>
-          <h1 className="flex min-w-0 items-center gap-2 text-lg font-bold text-slate-900">
+          <h1 className="flex min-w-0 items-center gap-2 text-xl font-black text-slate-900">
             <FolderOpen className="h-5 w-5 text-blue-600" />
             תיק המסמכים של {client.name}
           </h1>

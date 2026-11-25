@@ -85,11 +85,14 @@ function formatDay(iso: string): string {
 export function SendAuthorizationButton({
   clientId,
   clientName,
-  className = '',
+  className,
+  label = 'כתבי הסמכה ללקוח',
 }: {
   clientId: string;
   clientName: string;
+  /** מחליף את העיצוב של הכפתור */
   className?: string;
+  label?: string;
 }) {
   const { view, sending, message, send } = useAuthorizationLetters(clientId);
   const [open, setOpen] = useState(false);
@@ -100,10 +103,13 @@ export function SendAuthorizationButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-button font-black text-white transition-colors hover:bg-violet-700 ${className}`}
+        className={
+          className ??
+          'inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-button font-black text-white transition-colors hover:bg-violet-700'
+        }
       >
         <FileSignature className="h-4 w-4" />
-        כתבי הסמכה ללקוח
+        {label}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
